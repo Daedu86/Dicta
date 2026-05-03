@@ -1,0 +1,7 @@
+# Core requirements for local transcript generation + validation
+jsonschema>=4.0
+numpy>=1.24
+
+# Install for full local alignment pipeline (optional but recommended for MVP)
+whisperx>=3.1.0
+torch>=2.1
