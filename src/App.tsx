@@ -48,6 +48,7 @@ import { HistoricalPerformanceService } from './core/history/HistoricalPerforman
 import { buildAudioTelemetryFrame, buildAdaptiveAudioInput } from './inputs/audio/audioTelemetryAdapter';
 import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
+import { applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
 import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
 import { buildQwenCloudTelemetryFrame, buildAdaptiveQwenCloudInput } from './inputs/qwenCloud/qwenCloudTelemetryAdapter';
 import { QwenCloudAudioAdapter, buildQwenCloudPhraseId } from './inputs/qwenCloud/qwenCloudAudioAdapter';
@@ -1997,7 +1998,13 @@ function App() {
 
       const pauseAtBoundary = chunk.canPauseAfter ?? true;
       const semanticCompleteness = chunk.semanticCompleteness ?? 1;
-      const rate = decision.playbackRate;
+      const rate = applyBrowserTtsRuntimeRateFloor({
+        mode: decision.mode,
+        requestedRate: decision.playbackRate,
+        lagSec: liveSignal.lagSec,
+        accuracy: clamp01(liveSignal.accuracy / 100),
+      });
+      const runtimeDecision = rate === decision.playbackRate ? decision : { ...decision, playbackRate: rate };
       const effectivePauseNow = decision.shouldPauseNow && pauseAtBoundary;
       const effectiveReplay = false;
       const utterance = new SpeechSynthesisUtterance(chunk.text);
@@ -2041,7 +2048,7 @@ function App() {
         phraseDifficulty: chunk.phraseDifficulty ?? 0.5,
         phraseLengthWords: chunk.wordCount,
         phraseLengthChars: chunk.text.length,
-        currentPlaybackRate: ttsSpeechRate,
+        currentPlaybackRate: rate,
         currentPauseAfterPhraseMs: ttsPlaybackProfile.pauseMs,
         language: ttsLanguage,
         trend: liveSignal.trend,
@@ -2053,7 +2060,7 @@ function App() {
         rareWordLoad: chunk.rareWordLoad,
         syntaxComplexity: chunk.syntaxComplexity,
       });
-      recordAdaptiveBenchmark(chunkTelemetry, decision, {
+      recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
         actualPlaybackRate: rate,
         actualPauseMs: effectivePauseNow ? decision.pauseAfterPhraseMs : 0,
         replayExecuted: effectiveReplay,

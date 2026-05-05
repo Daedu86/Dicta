@@ -153,6 +153,24 @@ describe('AdaptiveDictationController semantic guardrails', () => {
     expect(balancedDecision.playbackRate).toBeGreaterThanOrEqual(0.84);
   });
 
+  it('keeps defer-pause slowdown above the mode floor', () => {
+    const controller = new AdaptiveDictationController();
+    const supportDeferred = controller.decide({
+      live: buildLive({ lagSec: 3.2, accuracy: 0.79, correctionRate: 0.13, canPauseAfter: false }),
+      history: buildHistory({ comfortablePlaybackRate: 0.84, averageAccuracy: 0.9 }),
+    });
+    expect(supportDeferred.deferPauseUntilSafeBoundary).toBe(true);
+    expect(supportDeferred.mode).toBe('support');
+    expect(supportDeferred.playbackRate).toBeGreaterThanOrEqual(0.82);
+
+    const balancedDeferred = controller.decide({
+      live: buildLive({ lagSec: 1.0, accuracy: 0.91, correctionRate: 0.03, canPauseAfter: false }),
+      history: buildHistory({ comfortablePlaybackRate: 0.84, averageAccuracy: 0.9 }),
+    });
+    expect(balancedDeferred.deferPauseUntilSafeBoundary).toBe(false);
+    expect(balancedDeferred.playbackRate).toBeGreaterThanOrEqual(0.84);
+  });
+
   it('exits support after sustained recovery', () => {
     const controller = new AdaptiveDictationController();
     controller.decide({
