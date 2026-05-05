@@ -25,6 +25,9 @@ export interface LiveTelemetryFrame {
   lagSec: number;
   lagWords: number;
   lagChars: number;
+  rawLagSec?: number;
+  stableLagSec?: number;
+  lagOutlierCount?: number;
 
   accuracy: number;
   errorRate: number;
@@ -131,6 +134,9 @@ export interface AdaptiveTimelinePoint {
   playbackRate: number;
   accuracy: number;
   lagSec: number;
+  rawLagSec?: number;
+  stableLagSec?: number;
+  lagOutlierCount?: number;
   wpm: number;
   pauseMs: number;
   correctionRate?: number;

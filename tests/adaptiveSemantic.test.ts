@@ -112,6 +112,74 @@ describe('AdaptiveDictationController semantic guardrails', () => {
     expect(decision.nextPhraseSize).toBe('short');
     expect(decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(1200);
   });
+
+  it('uses stabilized lagSec for decisions while rawLagSec remains diagnostic', () => {
+    const controller = new AdaptiveDictationController();
+    const input: AdaptivePacingInput = {
+      live: buildLive({
+        lagSec: 1.1,
+        rawLagSec: -91.68,
+        stableLagSec: -5,
+        accuracy: 0.9,
+        correctionRate: 0.04,
+      }),
+      history: buildHistory(),
+    };
+    const decision = controller.decide(input);
+    expect(decision.mode).not.toBe('support');
+  });
+
+  it('enforces playback rate floors by mode', () => {
+    const controller = new AdaptiveDictationController();
+    const supportDecision = controller.decide({
+      live: buildLive({ lagSec: 3.4, accuracy: 0.75, correctionRate: 0.14 }),
+      history: buildHistory({ comfortablePlaybackRate: 0.84, averageAccuracy: 0.92 }),
+    });
+    expect(supportDecision.mode).toBe('support');
+    expect(supportDecision.playbackRate).toBeGreaterThanOrEqual(0.82);
+
+    const extremeSupportDecision = controller.decide({
+      live: buildLive({ lagSec: 4.8, accuracy: 0.72, correctionRate: 0.2 }),
+      history: buildHistory({ comfortablePlaybackRate: 0.84, averageAccuracy: 0.92 }),
+    });
+    expect(extremeSupportDecision.mode).toBe('support');
+    expect(extremeSupportDecision.playbackRate).toBeGreaterThanOrEqual(0.78);
+
+    const balancedDecision = controller.decide({
+      live: buildLive({ lagSec: 1.0, accuracy: 0.9, correctionRate: 0.05 }),
+      history: buildHistory({ comfortablePlaybackRate: 0.84, averageAccuracy: 0.9 }),
+    });
+    expect(balancedDecision.mode === 'balanced' || balancedDecision.mode === 'flow').toBe(true);
+    expect(balancedDecision.playbackRate).toBeGreaterThanOrEqual(0.84);
+  });
+
+  it('exits support after sustained recovery', () => {
+    const controller = new AdaptiveDictationController();
+    controller.decide({
+      live: buildLive({ lagSec: 3.1, accuracy: 0.79, correctionRate: 0.12 }),
+      history: buildHistory(),
+    });
+    controller.decide({
+      live: buildLive({ lagSec: 2.8, accuracy: 0.8, correctionRate: 0.11 }),
+      history: buildHistory(),
+    });
+
+    const recovered1 = controller.decide({
+      live: buildLive({ lagSec: 1.2, accuracy: 0.94, correctionRate: 0.03 }),
+      history: buildHistory(),
+    });
+    const recovered2 = controller.decide({
+      live: buildLive({ lagSec: 1.1, accuracy: 0.95, correctionRate: 0.03 }),
+      history: buildHistory(),
+    });
+    const recovered3 = controller.decide({
+      live: buildLive({ lagSec: 1.0, accuracy: 0.95, correctionRate: 0.03 }),
+      history: buildHistory(),
+    });
+    expect(recovered1.mode).not.toBe('support');
+    expect(recovered2.mode).not.toBe('support');
+    expect(recovered3.mode).not.toBe('support');
+  });
 });
 
 describe('SemanticPhrasePlanner heuristics', () => {

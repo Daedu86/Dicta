@@ -23,6 +23,7 @@ import { normalizeTranscript, buildTargetWords, normalizeWord } from './core/nor
 import { deriveSyncState, SyncController } from './core/syncController';
 import { AdaptiveDictationController } from './core/adaptive/AdaptiveDictationController';
 import { planSemanticPhrases, type SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
+import { buildLagStabilitySample } from './core/adaptive/lagStability';
 import {
   createEmptyInputLanguageBenchmark,
   normalizeBenchmarkLanguage,
@@ -426,6 +427,7 @@ function App() {
   const ttsChunkStartWordIndexRef = useRef(0);
   const ttsChunkWordCountRef = useRef(0);
   const ttsCompletedSourceWordsRef = useRef(0);
+  const ttsLagOutlierCountRef = useRef(0);
   const ttsLastControllerActionRef = useRef<ControlAction>('hold');
   const applyTtsPerformanceSampleRef = useRef<() => void>(() => undefined);
   const ttsSemanticPhraseAdvanceCountRef = useRef(0);
@@ -451,6 +453,9 @@ function App() {
   const ttsLiveSignalRef = useRef<TtsLiveSignal>({
     accuracy: 100,
     lagSec: 0,
+    rawLagSec: 0,
+    stableLagSec: 0,
+    lagOutlierCount: 0,
     wpm: 0,
     trend: 'stable',
     controllerState: 'hold',
@@ -955,6 +960,7 @@ function App() {
     ttsChunkStartWordIndexRef.current = 0;
     ttsChunkWordCountRef.current = 0;
     ttsCompletedSourceWordsRef.current = 0;
+    ttsLagOutlierCountRef.current = 0;
     ttsLastControllerActionRef.current = 'hold';
     kokoroStartedAtMsRef.current = null;
     kokoroChunkStartMsRef.current = null;
@@ -1744,7 +1750,12 @@ function App() {
     const spokenPosition = estimateTtsSpokenWordIndex(now);
     const nextLagWords = sourceWordCount > 0 ? spokenPosition - typedProgress : 0;
     const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
-    const nextLagSec = nextLagWords / wordsPerSecond;
+    const nextRawLagSec = nextLagWords / wordsPerSecond;
+    const lagSample = buildLagStabilitySample(nextRawLagSec);
+    if (lagSample.isOutlier) {
+      ttsLagOutlierCountRef.current += 1;
+    }
+    const nextLagSec = lagSample.stableLagSec;
     const elapsedMinutes = Math.max(getTtsElapsedSeconds(now) / 60, 1 / 60);
     const nextWpm = ttsPracticeWords.length > 0 ? ttsPracticeWords.length / elapsedMinutes : 0;
     const nextAccuracy = ttsPracticeWords.length > 0 ? ttsVisibleAccuracy : 100;
@@ -1760,6 +1771,9 @@ function App() {
     ttsLiveSignalRef.current = {
       accuracy: nextAccuracy,
       lagSec: nextLagSec,
+      rawLagSec: lagSample.rawLagSec,
+      stableLagSec: lagSample.stableLagSec,
+      lagOutlierCount: ttsLagOutlierCountRef.current,
       wpm: nextWpm,
       trend: nextTrend,
       controllerState: nextControllerAction,
@@ -1858,6 +1872,7 @@ function App() {
     ttsSemanticPhraseReplayCountRef.current = 0;
     ttsStartedAtMsRef.current = performance.now();
     ttsCompletedSourceWordsRef.current = 0;
+    ttsLagOutlierCountRef.current = 0;
     ttsLastControllerActionRef.current = 'hold';
     ensureAttemptTelemetry();
     recordTtsTelemetryAction('play', ttsSpeechRate);
@@ -1937,6 +1952,9 @@ function App() {
         lagSec: liveSignal.lagSec,
         lagWords: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND)),
         lagChars: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND * 5)),
+        rawLagSec: liveSignal.rawLagSec,
+        stableLagSec: liveSignal.stableLagSec,
+        lagOutlierCount: liveSignal.lagOutlierCount,
         accuracy: clamp01(liveSignal.accuracy / 100),
         errorRate: clamp01(1 - liveSignal.accuracy / 100),
         wpm: liveSignal.wpm,
@@ -2009,6 +2027,9 @@ function App() {
         lagSec: liveSignal.lagSec,
         lagWords: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND)),
         lagChars: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND * 5)),
+        rawLagSec: liveSignal.rawLagSec,
+        stableLagSec: liveSignal.stableLagSec,
+        lagOutlierCount: liveSignal.lagOutlierCount,
         accuracy: clamp01(liveSignal.accuracy / 100),
         errorRate: clamp01(1 - liveSignal.accuracy / 100),
         wpm: liveSignal.wpm,
@@ -2842,6 +2863,9 @@ function App() {
     ttsLiveSignalRef.current = {
       accuracy: nextAccuracy,
       lagSec: nextLagSec,
+      rawLagSec: nextLagSec,
+      stableLagSec: nextLagSec,
+      lagOutlierCount: ttsLagOutlierCountRef.current,
       wpm: nextWpm,
       trend: nextTrend,
       controllerState: nextControllerAction,
@@ -7070,6 +7094,9 @@ type TtsPlaybackProfile = {
 type TtsLiveSignal = {
   accuracy: number;
   lagSec: number;
+  rawLagSec: number;
+  stableLagSec: number;
+  lagOutlierCount: number;
   wpm: number;
   trend: PerformanceTrend;
   controllerState: ControlAction;

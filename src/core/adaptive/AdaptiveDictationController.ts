@@ -5,9 +5,11 @@ import type {
   PhraseSize,
 } from './types';
 
-const MIN_PLAYBACK_RATE = 0.75;
+const MIN_PLAYBACK_RATE = 0.84;
 const MAX_PLAYBACK_RATE = 1.15;
 const MAX_RATE_DELTA = 0.05;
+const SUPPORT_RATE_FLOOR = 0.82;
+const EXTREME_SUPPORT_RATE_FLOOR = 0.78;
 
 const phraseSizeForMode: Record<PacingMode, PhraseSize> = {
   support: 'short',
@@ -68,11 +70,13 @@ export class AdaptiveDictationController {
   private previousRate = 1;
   private struggleFrames = 0;
   private recoveryFrames = 0;
+  private supportFrames = 0;
+  private balancedFrames = 0;
 
   decide(input: AdaptivePacingInput): PacingDecision {
     const { live, history } = input;
     const supportsPhraseReplay = input.capabilities?.supportsPhraseReplay ?? true;
-    const mode = chooseMode(input);
+    const chosenMode = chooseMode(input);
     const baselineRate = clamp(history.comfortablePlaybackRate || 1, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
     const rateBias = (live.accuracy - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
     const targetRate = clamp(baselineRate + rateBias, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
@@ -88,8 +92,6 @@ export class AdaptiveDictationController {
     const canReplayIndependently = live.canReplayIndependently ?? true;
     const semanticCompleteness = live.semanticCompleteness ?? 1;
     const boundaryType = live.phraseBoundaryType ?? 'sentence';
-    const boundaryStrictness: 'sentence' | 'clause' | 'phrase' = mode === 'support' ? 'clause' : mode === 'flow' ? 'phrase' : 'sentence';
-    const allowMidPhrasePause = mode === 'support' && boundaryType === 'minor';
     const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
     const phraseOverload = longPhrase && (live.accuracy < 0.88 || live.lagSec > 1.5 || live.correctionRate > 0.08);
     const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
@@ -101,6 +103,27 @@ export class AdaptiveDictationController {
       this.recoveryFrames += 1;
       this.struggleFrames = 0;
     }
+    if (chosenMode === 'support') {
+      this.supportFrames += 1;
+      this.balancedFrames = 0;
+    } else {
+      this.balancedFrames += 1;
+      this.supportFrames = 0;
+    }
+
+    let mode: PacingMode = chosenMode;
+    if (
+      mode === 'support' &&
+      this.supportFrames >= 2 &&
+      this.recoveryFrames >= 3 &&
+      live.accuracy > 0.92 &&
+      Math.abs(live.lagSec) < 1.5
+    ) {
+      mode = 'balanced';
+    }
+
+    const boundaryStrictness: 'sentence' | 'clause' | 'phrase' = mode === 'support' ? 'clause' : mode === 'flow' ? 'phrase' : 'sentence';
+    const allowMidPhrasePause = mode === 'support' && boundaryType === 'minor';
 
     const hysteresisStruggling = userIsStruggling || this.struggleFrames >= 2;
     const shouldPauseNow = hysteresisStruggling && canPauseAfter;
@@ -131,7 +154,8 @@ export class AdaptiveDictationController {
     // When replay is not supported, convert "replay wanted" into stronger recovery.
     if (!supportsPhraseReplay && replayWanted) {
       nextPhraseSize = 'short';
-      playbackRate = Math.max(MIN_PLAYBACK_RATE, Number((playbackRate - 0.06).toFixed(2)));
+      const provisional = Number((playbackRate - 0.06).toFixed(2));
+      playbackRate = Math.max(SUPPORT_RATE_FLOOR, provisional);
       pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, idealPauseByMode.support);
     }
 
@@ -171,9 +195,18 @@ export class AdaptiveDictationController {
       reason.push('low-history-confidence');
     }
 
+    const extremeSupport = mode === 'support' && live.lagSec > 4 && live.accuracy < 0.76;
+    const modeFloor =
+      mode === 'support'
+        ? (extremeSupport ? EXTREME_SUPPORT_RATE_FLOOR : SUPPORT_RATE_FLOOR)
+        : MIN_PLAYBACK_RATE;
+    playbackRate = Number(Math.max(modeFloor, playbackRate).toFixed(2));
+
     return {
       mode,
-      playbackRate: deferPauseUntilSafeBoundary ? Math.max(MIN_PLAYBACK_RATE, Number((playbackRate - 0.04).toFixed(2))) : playbackRate,
+      playbackRate: deferPauseUntilSafeBoundary
+        ? Number(Math.max(modeFloor, Number((playbackRate - 0.04).toFixed(2))).toFixed(2))
+        : playbackRate,
       pauseAfterPhraseMs,
       shouldPauseNow,
       shouldReplayPhrase,
