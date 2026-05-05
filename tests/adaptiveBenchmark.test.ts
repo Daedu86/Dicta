@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computeBenchmarkRecommendation,
   computeControlFidelityScore,
   computeSemanticFidelityScore,
   createEmptyInputLanguageBenchmark,
@@ -137,6 +138,40 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     ]);
     expect(range[0]).toBeGreaterThanOrEqual(0.95);
     expect(range[1]).toBeLessThanOrEqual(0.98);
+  });
+
+  it('calibrates browser-tts ES recommendation floor to 0.86 in high-accuracy near-zero-lag conditions', () => {
+    const profile: InputLanguageBenchmarkMetrics = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'es'),
+      sampleCount: 20,
+      averageAccuracy: 0.95,
+      averageWpm: 68,
+      averageLagSec: 0.1,
+      stableAverageLagSec: 0.1,
+      p90AbsLagSec: 0.8,
+      rateAccuracyBuckets: [
+        { rate: 0.81, seconds: 6, averageAccuracy: 0.98, averageLagSec: 0.05, averageWpm: 66, sampleCount: 6 },
+        { rate: 0.83, seconds: 6, averageAccuracy: 0.97, averageLagSec: 0.06, averageWpm: 67, sampleCount: 6 },
+      ],
+    };
+    const recommendation = computeBenchmarkRecommendation(profile);
+    expect(recommendation.targetRateRange[0]).toBeGreaterThanOrEqual(0.86);
+    expect(recommendation.targetRateRange[1]).toBeGreaterThanOrEqual(recommendation.targetRateRange[0] + 0.04);
+  });
+
+  it('does not calibrate recommendation floor for non-browser-tts-es profiles', () => {
+    const profile: InputLanguageBenchmarkMetrics = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'en'),
+      sampleCount: 20,
+      averageAccuracy: 0.95,
+      stableAverageLagSec: 0.1,
+      p90AbsLagSec: 0.8,
+      rateAccuracyBuckets: [
+        { rate: 0.82, seconds: 8, averageAccuracy: 0.97, averageLagSec: 0.05, averageWpm: 66, sampleCount: 8 },
+      ],
+    };
+    const recommendation = computeBenchmarkRecommendation(profile);
+    expect(recommendation.targetRateRange[0]).toBeLessThan(0.86);
   });
 
   it('weakAreas includes unsafe_boundaries and high_rate when thresholds are exceeded', () => {

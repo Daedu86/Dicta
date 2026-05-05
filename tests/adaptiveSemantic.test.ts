@@ -8,6 +8,7 @@ import {
   replaySemanticPhrasePlayback,
 } from '../src/core/adaptive/SemanticPhrasePlanner';
 import type { AdaptivePacingInput, HistoricalPerformanceProfile, LiveTelemetryFrame } from '../src/core/adaptive/types';
+import { resolveBrowserTtsAdaptiveProfile } from '../src/inputs/browserTts/browserTtsAdaptiveProfiles';
 
 function buildHistory(overrides: Partial<HistoricalPerformanceProfile> = {}): HistoricalPerformanceProfile {
   return {
@@ -153,6 +154,38 @@ describe('AdaptiveDictationController semantic guardrails', () => {
     expect(balancedDecision.playbackRate).toBeGreaterThanOrEqual(0.84);
   });
 
+  it('caps support-needed playbackRate at 0.92 without affecting balanced/flow ceiling', () => {
+    const controller = new AdaptiveDictationController();
+    const supportDecision = controller.decide({
+      live: buildLive({
+        lagSec: 2.2,
+        correctionRate: 0.11,
+        rollingAccuracyLast3: 0.81,
+        rollingAccuracyLast5: 0.83,
+      }),
+      history: buildHistory({ comfortablePlaybackRate: 1.08, averageAccuracy: 0.8 }),
+    });
+    expect(supportDecision.mode).toBe('support');
+    expect(supportDecision.reason.includes('support-needed')).toBe(true);
+    expect(supportDecision.playbackRate).toBeLessThanOrEqual(0.92);
+    expect(supportDecision.playbackRate).toBeGreaterThanOrEqual(0.82);
+
+    const flowDecision = controller.decide({
+      live: buildLive({
+        lagSec: 0,
+        correctionRate: 0,
+        rollingAccuracyLast3: 0.99,
+        rollingAccuracyLast5: 0.99,
+        wpm: 120,
+      }),
+      history: buildHistory({ comfortablePlaybackRate: 1.1, averageWpm: 40, averageAccuracy: 0.8 }),
+    });
+    expect(flowDecision.mode === 'flow' || flowDecision.mode === 'balanced').toBe(true);
+    if (flowDecision.mode === 'flow') {
+      expect(flowDecision.playbackRate).toBeGreaterThan(0.92);
+    }
+  });
+
   it('keeps defer-pause slowdown above the mode floor', () => {
     const controller = new AdaptiveDictationController();
     const supportDeferred = controller.decide({
@@ -226,6 +259,40 @@ describe('AdaptiveDictationController semantic guardrails', () => {
       history: buildHistory({ averageAccuracy: 0.9 }),
     });
     expect(recoveredChunk.mode === 'balanced' || recoveredChunk.mode === 'flow').toBe(true);
+  });
+
+  it('keeps controller support floor/ceiling aligned with language profile', () => {
+    const controller = new AdaptiveDictationController();
+    const enProfile = resolveBrowserTtsAdaptiveProfile('en');
+    const deProfile = resolveBrowserTtsAdaptiveProfile('de');
+
+    const enDecision = controller.decide({
+      live: buildLive({
+        language: 'en',
+        lagSec: 2.6,
+        rollingAccuracyLast3: 0.8,
+        rollingAccuracyLast5: 0.82,
+        correctionRate: 0.11,
+      }),
+      history: buildHistory({ comfortablePlaybackRate: 1.1, averageAccuracy: 0.8 }),
+    });
+    expect(enDecision.mode).toBe('support');
+    expect(enDecision.playbackRate).toBeGreaterThanOrEqual(enProfile.supportRateFloor);
+    expect(enDecision.playbackRate).toBeLessThanOrEqual(enProfile.supportRateCeiling);
+
+    const deDecision = controller.decide({
+      live: buildLive({
+        language: 'de',
+        lagSec: 2.6,
+        rollingAccuracyLast3: 0.8,
+        rollingAccuracyLast5: 0.82,
+        correctionRate: 0.11,
+      }),
+      history: buildHistory({ comfortablePlaybackRate: 1.1, averageAccuracy: 0.8 }),
+    });
+    expect(deDecision.mode).toBe('support');
+    expect(deDecision.playbackRate).toBeGreaterThanOrEqual(deProfile.supportRateFloor);
+    expect(deDecision.playbackRate).toBeLessThanOrEqual(deProfile.supportRateCeiling);
   });
 });
 

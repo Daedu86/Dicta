@@ -10,6 +10,7 @@ import type {
   PacingDecision,
   RateAccuracyBucket,
 } from './types';
+import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browserTtsAdaptiveProfiles';
 
 const ROLLING_WINDOW_DAYS = 30 as const;
 const MAX_TIMELINE_POINTS = 450;
@@ -233,7 +234,7 @@ export function computeRateAccuracyBuckets(samples: AdaptiveTimelinePoint[]): Ra
 }
 
 export function computeBenchmarkRecommendation(metrics: InputLanguageBenchmarkMetrics): InputLanguageBenchmarkRecommendation {
-  const targetRateRange = pickBestRateRange(metrics.rateAccuracyBuckets);
+  const targetRateRange = calibrateTargetRateRangeForProfile(metrics, pickBestRateRange(metrics.rateAccuracyBuckets));
   const weakAreas = deriveWeakAreas(metrics);
   const focus = weakAreas.length > 0 ? weakAreas.slice(0, 3).map(formatWeakArea) : ['Maintain stable pace and medium-length semantic phrases'];
   const confidence = clamp01(Math.min(1, metrics.sampleCount / 40) * metrics.sweetSpotScore);
@@ -402,6 +403,31 @@ function buildDefaultRecommendation(): InputLanguageBenchmarkRecommendation {
     confidence: 0,
     summary: 'No benchmark samples yet.',
   };
+}
+
+function calibrateTargetRateRangeForProfile(
+  metrics: InputLanguageBenchmarkMetrics,
+  base: [number, number],
+): [number, number] {
+  const inputMode = String(metrics.inputMode).toLowerCase();
+  if (inputMode !== 'browser-tts') {
+    return base;
+  }
+  const profile = resolveBrowserTtsAdaptiveProfile(String(metrics.language).toLowerCase());
+  if (!profile.recommendationCalibrationEnabled) {
+    return base;
+  }
+  const gate = profile.recommendationCalibrationGate;
+  if (!gate) return base;
+  const [lower, upper] = base;
+  const highAccuracy = normalizeAccuracy(metrics.averageAccuracy) >= gate.minAccuracy;
+  const stableLagNearZero = Math.abs(metrics.stableAverageLagSec) <= gate.maxStableLagSecAbs && metrics.p90AbsLagSec <= gate.maxP90AbsLagSec;
+  if (!highAccuracy || !stableLagNearZero || lower >= profile.minRecommendedRate) {
+    return base;
+  }
+  const adjustedLower = profile.minRecommendedRate;
+  const adjustedUpper = Math.max(upper, adjustedLower + 0.04);
+  return [adjustedLower, adjustedUpper];
 }
 
 function clamp01(value: number): number {

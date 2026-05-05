@@ -149,6 +149,31 @@ describe('session feedback diagnostics', () => {
     expect(payload.playbackDiagnostics).toEqual(feedback.playbackIssues);
   });
 
+  it('includes sessionCountDroppedReason when session count decreases after benchmark recalculation', () => {
+    const before = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'es'),
+      sessionCount: 12,
+      sampleCount: 120,
+    };
+    const after = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'es'),
+      sessionCount: 9,
+      sampleCount: 90,
+    };
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-drop',
+      inputMode: 'browser-tts',
+      language: 'es',
+      sourceType: 'dictation_script',
+      createdAt: '2026-05-05T10:00:00.000Z',
+      benchmarkBefore: before,
+      benchmarkAfter: after,
+      phraseEvents: [phraseEvent(0, 'p00', 'phrase_started', 1)],
+      totalPhrases: 1,
+    });
+    expect(feedback.sessionCountDroppedReason).toContain('rolling-window pruning');
+  });
+
   it('derives fallback playback diagnostics from recent timeline points', () => {
     const timeline: AdaptiveTimelinePoint[] = [
       timelinePoint(0, 'phrase_advance', 1),

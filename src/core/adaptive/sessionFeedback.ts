@@ -46,6 +46,7 @@ export function buildAdaptiveSessionFeedback(args: SessionFeedbackBuildArgs): Ad
   const improvementDelta = computeImprovementDelta(args.benchmarkBefore, args.benchmarkAfter, playbackIssues);
   const verdict = computeVerdict(improvementDelta.overallImprovementScore, args.phraseEvents.length);
   const notes = buildFeedbackNotes(playbackIssues, improvementDelta, verdict);
+  const sessionCountDroppedReason = deriveSessionCountDroppedReason(args.benchmarkBefore, args.benchmarkAfter);
 
   return {
     sessionId: args.sessionId,
@@ -58,12 +59,25 @@ export function buildAdaptiveSessionFeedback(args: SessionFeedbackBuildArgs): Ad
     sourceType: args.sourceType,
     benchmarkBefore: args.benchmarkBefore ? compactBenchmark(args.benchmarkBefore) : undefined,
     benchmarkAfter: args.benchmarkAfter ? compactBenchmark(args.benchmarkAfter) : undefined,
+    sessionCountDroppedReason,
     improvementDelta,
     playbackIssues,
     phraseStats,
     verdict,
     notes,
   };
+}
+
+function deriveSessionCountDroppedReason(
+  before: InputLanguageBenchmarkMetrics | null | undefined,
+  after: InputLanguageBenchmarkMetrics | null | undefined,
+): string | undefined {
+  if (!before || !after) return undefined;
+  if (after.sessionCount >= before.sessionCount) return undefined;
+  if (after.sampleCount < before.sampleCount) {
+    return 'sessionCount decreased after rolling-window pruning removed older timeline samples.';
+  }
+  return 'sessionCount decreased after sessionId-based unique-session recalculation on the current benchmark timeline.';
 }
 
 export function buildSessionFeedbackJsonPayload(

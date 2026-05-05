@@ -1,6 +1,5 @@
 import type { PhraseBoundaryType } from '../../core/adaptive/types';
-
-const UNSAFE_BOUNDARY_MIN_PAUSE_MS = 1200;
+import type { BrowserTtsAdaptiveProfile } from './browserTtsAdaptiveProfiles';
 
 function roundRate(value: number): number {
   return Number(value.toFixed(2));
@@ -11,12 +10,13 @@ export function applyBrowserTtsUnsafeBoundaryPolicy(params: {
   requestedRate: number;
   previousRate: number;
   pauseAfterPhraseMs: number;
+  profile: BrowserTtsAdaptiveProfile;
 }): {
   playbackRate: number;
   pauseAfterPhraseMs: number;
   unsafeBoundaryApplied: boolean;
 } {
-  const { boundaryType, requestedRate, previousRate, pauseAfterPhraseMs } = params;
+  const { boundaryType, requestedRate, previousRate, pauseAfterPhraseMs, profile } = params;
   if (boundaryType !== 'unsafe') {
     return {
       playbackRate: roundRate(requestedRate),
@@ -29,8 +29,7 @@ export function applyBrowserTtsUnsafeBoundaryPolicy(params: {
   // do not speed up and increase pause buffer.
   return {
     playbackRate: roundRate(Math.min(requestedRate, previousRate)),
-    pauseAfterPhraseMs: Math.max(pauseAfterPhraseMs, UNSAFE_BOUNDARY_MIN_PAUSE_MS),
+    pauseAfterPhraseMs: Math.max(pauseAfterPhraseMs, profile.unsafeBoundaryMinPauseMs),
     unsafeBoundaryApplied: true,
   };
 }
-

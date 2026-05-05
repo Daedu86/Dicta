@@ -50,6 +50,7 @@ import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './i
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
 import { applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
 import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
+import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
 import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
 import { buildQwenCloudTelemetryFrame, buildAdaptiveQwenCloudInput } from './inputs/qwenCloud/qwenCloudTelemetryAdapter';
 import { QwenCloudAudioAdapter, buildQwenCloudPhraseId } from './inputs/qwenCloud/qwenCloudAudioAdapter';
@@ -1907,6 +1908,7 @@ function App() {
 
       const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, 'browser-tts', ttsLanguage);
       const liveSignal = ttsLiveSignalRef.current;
+      const browserTtsProfile = resolveBrowserTtsAdaptiveProfile(ttsLanguage);
       const typedWordsNow = ttsPracticeEvaluation.typedWords.length;
       const matchedWordsNow = ttsPracticeEvaluation.matchedWords;
       const typedDelta = Math.max(0, typedWordsNow - ttsLastAccuracySnapshotRef.current.typedWords);
@@ -1934,7 +1936,9 @@ function App() {
         recordPhrasePlaybackEvent('phrase_started', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
       }
 
-      const germanShortBias = ttsLanguage === 'de' && (liveSignal.lagSec > 2.0 || liveSignal.accuracy < 82);
+      const germanShortBias = browserTtsProfile.germanShortBias.enabled &&
+        (liveSignal.lagSec > browserTtsProfile.germanShortBias.lagSecTrigger ||
+          liveSignal.accuracy < browserTtsProfile.germanShortBias.accuracyPercentTrigger);
       const candidateChunk =
         planBrowserTtsAdaptiveChunk({
           macroWords,
@@ -2026,12 +2030,15 @@ function App() {
         requestedRate: decision.playbackRate,
         lagSec: liveSignal.lagSec,
         accuracy: rollingAccuracyLast3,
+        supportNeeded: decision.reason.includes('support-needed'),
+        profile: browserTtsProfile,
       });
       const unsafeRuntime = applyBrowserTtsUnsafeBoundaryPolicy({
         boundaryType: chunk.phraseBoundaryType,
         requestedRate: rateAfterFloor,
         previousRate: ttsSpeechRate,
         pauseAfterPhraseMs: decision.pauseAfterPhraseMs,
+        profile: browserTtsProfile,
       });
       const rate = unsafeRuntime.playbackRate;
       const runtimeDecision =

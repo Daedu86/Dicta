@@ -277,6 +277,7 @@ export interface AdaptiveSessionFeedback {
   sourceType: 'plain_text' | 'dictation_script';
   benchmarkBefore?: Partial<InputLanguageBenchmarkMetrics>;
   benchmarkAfter?: Partial<InputLanguageBenchmarkMetrics>;
+  sessionCountDroppedReason?: string;
   improvementDelta: {
     accuracyDelta: number;
     lagDelta: number;

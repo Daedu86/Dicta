@@ -4,12 +4,11 @@ import type {
   PacingMode,
   PhraseSize,
 } from './types';
+import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browserTtsAdaptiveProfiles';
 
 const MIN_PLAYBACK_RATE = 0.84;
 const MAX_PLAYBACK_RATE = 1.15;
 const MAX_RATE_DELTA = 0.05;
-const SUPPORT_RATE_FLOOR = 0.82;
-const EXTREME_SUPPORT_RATE_FLOOR = 0.78;
 
 const phraseSizeForMode: Record<PacingMode, PhraseSize> = {
   support: 'short',
@@ -27,9 +26,9 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function smoothRate(current: number, target: number): number {
+function smoothRate(current: number, target: number, minRate: number): number {
   const delta = clamp(target - current, -MAX_RATE_DELTA, MAX_RATE_DELTA);
-  return Number(clamp(current + delta, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE).toFixed(2));
+  return Number(clamp(current + delta, minRate, MAX_PLAYBACK_RATE).toFixed(2));
 }
 
 function computeScore(value: number, min: number, max: number): number {
@@ -77,16 +76,23 @@ export class AdaptiveDictationController {
 
   decide(input: AdaptivePacingInput): PacingDecision {
     const { live, history } = input;
+    const browserTtsProfile = input.live.inputMode === 'browser-tts'
+      ? resolveBrowserTtsAdaptiveProfile(input.live.language)
+      : null;
+    const supportRateFloor = browserTtsProfile?.supportRateFloor ?? 0.82;
+    const extremeSupportRateFloor = browserTtsProfile?.extremeSupportRateFloor ?? 0.78;
+    const supportRateCeiling = browserTtsProfile?.supportRateCeiling ?? 0.92;
+    const balancedFlowFloor = browserTtsProfile?.balancedFlowFloor ?? MIN_PLAYBACK_RATE;
     const sessionAccuracy = live.sessionAccuracy ?? live.accuracy;
     const chunkAccuracy = live.chunkAccuracy ?? sessionAccuracy;
     const rollingAccuracyLast3 = live.rollingAccuracyLast3 ?? chunkAccuracy;
     const rollingAccuracyLast5 = live.rollingAccuracyLast5 ?? rollingAccuracyLast3;
     const supportsPhraseReplay = input.capabilities?.supportsPhraseReplay ?? true;
     const chosenMode = chooseMode(input);
-    const baselineRate = clamp(history.comfortablePlaybackRate || 1, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
+    const baselineRate = clamp(history.comfortablePlaybackRate || 1, balancedFlowFloor, MAX_PLAYBACK_RATE);
     const rateBias = (rollingAccuracyLast3 - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
-    const targetRate = clamp(baselineRate + rateBias, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
-    let playbackRate = smoothRate(this.previousRate, targetRate);
+    const targetRate = clamp(baselineRate + rateBias, balancedFlowFloor, MAX_PLAYBACK_RATE);
+    let playbackRate = Number(clamp(smoothRate(this.previousRate, targetRate, balancedFlowFloor), balancedFlowFloor, MAX_PLAYBACK_RATE).toFixed(2));
     this.previousRate = playbackRate;
 
     const lagScore = computeScore(2.5 - live.lagSec, 0, 2.5);
@@ -161,7 +167,7 @@ export class AdaptiveDictationController {
     if (!supportsPhraseReplay && replayWanted) {
       nextPhraseSize = 'short';
       const provisional = Number((playbackRate - 0.06).toFixed(2));
-      playbackRate = Math.max(SUPPORT_RATE_FLOOR, provisional);
+      playbackRate = Math.max(supportRateFloor, provisional);
       pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, idealPauseByMode.support);
     }
 
@@ -170,7 +176,7 @@ export class AdaptiveDictationController {
       nextPhraseSize = 'medium';
     }
 
-    const replayRate = clamp(playbackRate - 0.10, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
+    const replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, MAX_PLAYBACK_RATE);
 
     const reason = [`mode=${mode}`];
     if (phraseOverload) {
@@ -204,9 +210,12 @@ export class AdaptiveDictationController {
     const extremeSupport = mode === 'support' && live.lagSec > 4 && rollingAccuracyLast3 < 0.76;
     const modeFloor =
       mode === 'support'
-        ? (extremeSupport ? EXTREME_SUPPORT_RATE_FLOOR : SUPPORT_RATE_FLOOR)
-        : MIN_PLAYBACK_RATE;
+        ? (extremeSupport ? extremeSupportRateFloor : supportRateFloor)
+        : balancedFlowFloor;
     playbackRate = Number(Math.max(modeFloor, playbackRate).toFixed(2));
+    if (mode === 'support' && reason.includes('support-needed')) {
+      playbackRate = Number(Math.min(supportRateCeiling, playbackRate).toFixed(2));
+    }
 
     return {
       mode,
