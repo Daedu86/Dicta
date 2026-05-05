@@ -9,6 +9,7 @@ import type {
 export const browserTtsInputCapabilities: InputCapabilities = {
   supportsClausePause: false,
   supportsSentencePause: true,
+  supportsPhraseReplay: false,
   supportsMidPhraseReplay: false,
   supportsDynamicRateChange: true,
   requiresPreChunking: true,

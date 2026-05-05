@@ -8,6 +8,7 @@ export type LanguageCode = 'en' | 'es' | 'de' | 'unknown' | string;
 export interface InputCapabilities {
   supportsClausePause: boolean;
   supportsSentencePause: boolean;
+  supportsPhraseReplay?: boolean;
   supportsMidPhraseReplay: boolean;
   supportsDynamicRateChange: boolean;
   requiresPreChunking: boolean;

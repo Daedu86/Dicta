@@ -92,6 +92,26 @@ describe('AdaptiveDictationController semantic guardrails', () => {
     const decision = controller.decide(input);
     expect(decision.shouldReplayPhrase).toBe(false);
   });
+
+  it('converts replay intent into recovery when phrase replay is not supported', () => {
+    const controller = new AdaptiveDictationController();
+    const input: AdaptivePacingInput = {
+      live: buildLive({ lagSec: 3.1, accuracy: 0.78, canReplayIndependently: true, semanticCompleteness: 0.9 }),
+      history: buildHistory(),
+      capabilities: {
+        supportsClausePause: false,
+        supportsSentencePause: true,
+        supportsPhraseReplay: false,
+        supportsMidPhraseReplay: false,
+        supportsDynamicRateChange: true,
+        requiresPreChunking: true,
+      },
+    };
+    const decision = controller.decide(input);
+    expect(decision.shouldReplayPhrase).toBe(false);
+    expect(decision.nextPhraseSize).toBe('short');
+    expect(decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(1200);
+  });
 });
 
 describe('SemanticPhrasePlanner heuristics', () => {

@@ -66,14 +66,17 @@ function chooseMode(input: AdaptivePacingInput): PacingMode {
 
 export class AdaptiveDictationController {
   private previousRate = 1;
+  private struggleFrames = 0;
+  private recoveryFrames = 0;
 
   decide(input: AdaptivePacingInput): PacingDecision {
     const { live, history } = input;
+    const supportsPhraseReplay = input.capabilities?.supportsPhraseReplay ?? true;
     const mode = chooseMode(input);
     const baselineRate = clamp(history.comfortablePlaybackRate || 1, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
     const rateBias = (live.accuracy - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
     const targetRate = clamp(baselineRate + rateBias, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
-    const playbackRate = smoothRate(this.previousRate, targetRate);
+    let playbackRate = smoothRate(this.previousRate, targetRate);
     this.previousRate = playbackRate;
 
     const lagScore = computeScore(2.5 - live.lagSec, 0, 2.5);
@@ -91,10 +94,20 @@ export class AdaptiveDictationController {
     const phraseOverload = longPhrase && (live.accuracy < 0.88 || live.lagSec > 1.5 || live.correctionRate > 0.08);
     const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
     const userIsStruggling = live.lagSec > 2.0 || live.accuracy < 0.82 || live.correctionRate > 0.12 || phraseOverload || longPhraseSensitive;
-    const shouldPauseNow = userIsStruggling && canPauseAfter;
+    if (userIsStruggling) {
+      this.struggleFrames += 1;
+      this.recoveryFrames = 0;
+    } else {
+      this.recoveryFrames += 1;
+      this.struggleFrames = 0;
+    }
+
+    const hysteresisStruggling = userIsStruggling || this.struggleFrames >= 2;
+    const shouldPauseNow = hysteresisStruggling && canPauseAfter;
     const deferPauseUntilSafeBoundary = userIsStruggling && !canPauseAfter;
-    const shouldReplayPhrase = live.lagSec > 2.5 && live.accuracy < 0.82 && canReplayIndependently && semanticCompleteness >= 0.65;
-    const pauseAfterPhraseMs = shouldReplayPhrase ? Math.max(1200, idealPauseByMode[mode]) : idealPauseByMode[mode];
+    const replayWanted = live.lagSec > 2.5 && live.accuracy < 0.82 && canReplayIndependently && semanticCompleteness >= 0.65;
+    const shouldReplayPhrase = supportsPhraseReplay && replayWanted;
+    let pauseAfterPhraseMs = shouldReplayPhrase ? Math.max(1200, idealPauseByMode[mode]) : idealPauseByMode[mode];
 
     let nextPhraseSize = phraseSizeForMode[mode];
     if (phraseOverload || longPhraseSensitive) {
@@ -115,6 +128,18 @@ export class AdaptiveDictationController {
       nextPhraseSize = 'medium';
     }
 
+    // When replay is not supported, convert "replay wanted" into stronger recovery.
+    if (!supportsPhraseReplay && replayWanted) {
+      nextPhraseSize = 'short';
+      playbackRate = Math.max(MIN_PLAYBACK_RATE, Number((playbackRate - 0.06).toFixed(2)));
+      pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, idealPauseByMode.support);
+    }
+
+    // Gradual recovery: require multiple good frames before allowing aggressive growth.
+    if (this.recoveryFrames < 3 && nextPhraseSize === 'long') {
+      nextPhraseSize = 'medium';
+    }
+
     const replayRate = clamp(playbackRate - 0.10, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
 
     const reason = [`mode=${mode}`];
@@ -126,6 +151,8 @@ export class AdaptiveDictationController {
     }
     if (shouldReplayPhrase) {
       reason.push('replay-due-to-lag-or-error');
+    } else if (!supportsPhraseReplay && replayWanted) {
+      reason.push('replay-disabled-recovery');
     } else if (live.lagSec > 2.5 && live.accuracy < 0.82 && !canReplayIndependently) {
       reason.push('replay-blocked-boundary');
     } else if (live.lagSec > 2.5 && live.accuracy < 0.82 && semanticCompleteness < 0.65) {

@@ -17,8 +17,9 @@ flowchart TB
     app["React/Vite frontend<br/>src/App.tsx"]
     training["Training workspace<br/>audio + transcript typing"]
     tts["TTS workspace<br/>browser SpeechSynthesis"]
+    adaptiveUi["Adaptive Pace Layer workspace<br/>benchmarks + session feedback + charts"]
     dashboard["Dashboard + leaderboard<br/>session metrics and review"]
-    storage["localStorage<br/>dicta.sessions.v1"]
+    storage["localStorage<br/>dicta.sessions.v1<br/>dicta.adaptiveBenchmarks.v1<br/>dicta.adaptiveSessionFeedback.v1"]
     audio["HTMLAudioElement<br/>src/core/audioEngine.ts"]
   end
 
@@ -28,7 +29,18 @@ flowchart TB
     transcript["Transcript parsing + normalization<br/>src/core/transcript.ts<br/>src/core/normalization.ts"]
     telemetry["Telemetry tracking<br/>src/core/telemetry.ts"]
     config["Difficulty config<br/>src/core/config.ts"]
+    adaptive["Adaptive Pace Layer (brain)<br/>src/core/adaptive/*"]
+    adaptiveCharts["Adaptive benchmark charts<br/>src/components/AdaptiveBenchmarkCharts.tsx"]
+    history["Historical profile<br/>src/core/history/HistoricalPerformanceService.ts"]
     types["Shared dictation types<br/>src/types/dictation.ts"]
+  end
+
+  subgraph inputs["Input adapters (per mode)"]
+    inputAudio["Audio mode adapter<br/>src/inputs/audio/audioTelemetryAdapter.ts"]
+    inputBrowserTts["Browser TTS adapter<br/>src/inputs/browserTts/browserTtsTelemetryAdapter.ts"]
+    ttsChunkPlanner["Browser TTS dynamic chunk planner<br/>src/inputs/browserTts/ttsDynamicChunkPlanner.ts"]
+    inputKokoro["Kokoro adapter<br/>src/inputs/kokoro/kokoroTelemetryAdapter.ts"]
+    inputQwen["Qwen Cloud adapter<br/>src/inputs/qwenCloud/qwenCloudTelemetryAdapter.ts"]
   end
 
   subgraph devserver["Local Vite dev server"]
@@ -54,6 +66,7 @@ flowchart TB
   user --> app
   app --> training
   app --> tts
+  app --> adaptiveUi
   app --> dashboard
   app <--> storage
 
@@ -63,17 +76,32 @@ flowchart TB
   training --> transcript
   training --> telemetry
   training --> config
+  training --> adaptive
+  training --> history
   tts --> eval
   tts --> telemetry
+  tts --> adaptive
+  tts --> ttsChunkPlanner
+  tts --> history
   tts -. future upgrade .-> extTts
   dashboard --> telemetry
   dashboard --> storage
+  adaptiveUi --> adaptiveCharts
+  adaptiveUi --> adaptive
+  adaptiveUi --> storage
 
   sync --> types
   eval --> types
   transcript --> types
   telemetry --> types
   config --> types
+  adaptive --> types
+  history --> types
+
+  adaptive --> inputs
+  inputs --> adaptive
+  inputBrowserTts --> ttsChunkPlanner
+  ttsChunkPlanner --> inputBrowserTts
 
   app --> api
   api --> temp
@@ -113,7 +141,12 @@ flowchart LR
   eval["Evaluation<br/>accuracy, points, alignment"]
   sync["Sync control loop<br/>lag, WPM, playback rate, repeats"]
   telemetry["Telemetry series<br/>lag, WPM, accuracy, actions"]
+  adaptive["Adaptive Pace Layer<br/>pace decisions + semantic chunking"]
+  history["Historical profile<br/>per input/language"]
+  benchmark["Input-language benchmark<br/>rolling timeline + weak areas"]
+  feedback["Session feedback<br/>improvement deltas + diagnostics"]
   local["localStorage sessions<br/>single-browser persistence"]
+  adaptiveStore["Adaptive stores<br/>benchmarks + session feedback<br/>(inputMode, language) scoped"]
   dashboard["Dashboard / leaderboard<br/>review, charts, export JSON"]
 
   prodGap["Needs production backend"]
@@ -141,14 +174,89 @@ flowchart LR
   eval --> telemetry
   speech --> telemetry
 
+  session --> history
+  telemetry --> adaptive
+  history --> adaptive
+  adaptive --> playback
+  adaptive --> speech
+  adaptive --> benchmark
+  benchmark --> adaptive
+  telemetry --> benchmark
+  benchmark --> feedback
+
   telemetry --> session
   session --> local
+  benchmark --> adaptiveStore
+  feedback --> adaptiveStore
+  adaptiveStore --> dashboard
   local --> dashboard
   telemetry --> dashboard
+  feedback --> dashboard
   dashboard --> export["Session JSON export<br/>copy/download"]
 
   api -. production replacement .-> prodGap
   local -. shared persistence replacement .-> dbGap
+```
+
+## Adaptive Pace Layer (Brain) Loop
+
+This is the internal control loop that makes Dicta adaptive. It is "centralized" in the sense that every input mode produces the same normalized telemetry shape, and a single decision policy produces a `PacingDecision` that can be applied (as best as the input mode allows).
+
+```mermaid
+---
+id: 8d3c9f5d-2466-4b0e-9a7d-34d1e0a69a3a
+---
+flowchart TB
+  subgraph sources["Signals"]
+    user["User typing<br/>(speed, corrections, pauses)"]
+    content["Content structure<br/>(semantic boundaries, difficulty)"]
+    modeCaps["Input capabilities<br/>(can pause, can replay, rate changes)"]
+    history["Historical profile<br/>HistoricalPerformanceService"]
+  end
+
+  subgraph normalize["Normalization"]
+    adapters["Telemetry adapters<br/>src/inputs/*/*TelemetryAdapter.ts"]
+    live["LiveTelemetryFrame<br/>accuracy, lag, WPM, boundaries, completeness"]
+  end
+
+  subgraph brain["Adaptive Pace Layer<br/>src/core/adaptive/*"]
+    planner["SemanticPhrasePlanner<br/>plan macro phrases + score difficulty/completeness"]
+    controller["AdaptiveDictationController<br/>decide pacing (support/balanced/flow)"]
+    benchmark["AdaptiveInputLanguageBenchmarkService<br/>update rolling benchmark + weak areas"]
+    feedback["sessionFeedback<br/>post-session diagnostics + improvement deltas"]
+  end
+
+  subgraph apply["Execution"]
+    engines["Input engines<br/>AudioEngine / SpeechSynthesis / Kokoro / Qwen"]
+    chunkPlanner["Browser TTS chunk planner<br/>ttsDynamicChunkPlanner<br/>(sub-split inside macro phrase)"]
+    actions["Apply PacingDecision<br/>rate, pause/defer, replay (if supported), nextPhraseSize"]
+  end
+
+  subgraph persist["Persistence"]
+    storage["localStorage<br/>sessions + benchmarks + session feedback"]
+    exports["JSON exports<br/>for offline analysis / iteration"]
+  end
+
+  user --> adapters
+  content --> planner
+  modeCaps --> controller
+  history --> controller
+
+  adapters --> live
+  planner --> live
+  live --> controller
+  controller --> actions
+  planner --> chunkPlanner
+  chunkPlanner --> actions
+  actions --> engines
+
+  live --> benchmark
+  controller --> benchmark
+  benchmark --> controller
+
+  benchmark --> storage
+  feedback --> storage
+  storage --> exports
 ```
 
 ## Current `/api/transcribe` Behavior
