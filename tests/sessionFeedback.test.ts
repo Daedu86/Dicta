@@ -63,6 +63,20 @@ describe('session feedback diagnostics', () => {
     expect(issues.phraseIndexJumpCount).toBe(1);
   });
 
+  it('treats phraseIndex as canonical even when phraseId numbering differs', () => {
+    const issues = detectPlaybackIssues([
+      phraseEvent(0, 'tts-21-chunk', 'phrase_started', 1),
+      phraseEvent(1, 'tts-99-chunk', 'phrase_started', 2),
+      phraseEvent(1, 'tts-5-chunk', 'phrase_started', 3),
+      phraseEvent(2, 'tts-300-chunk', 'phrase_advanced', 4),
+    ]);
+
+    expect(issues.phraseIndexJumpCount).toBe(0);
+    expect(issues.outOfOrderAdvanceCount).toBe(0);
+    expect(issues.repeatedPhraseCount).toBe(1);
+    expect(issues.repeatedPhrases[0]?.phraseId).toBe('tts-99-chunk');
+  });
+
   it('calculates positive improvement deltas when benchmark metrics improve', () => {
     const before = {
       ...createEmptyInputLanguageBenchmark('browser-tts', 'en'),

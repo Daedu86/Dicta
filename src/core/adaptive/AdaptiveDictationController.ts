@@ -38,22 +38,24 @@ function computeScore(value: number, min: number, max: number): number {
 
 function chooseMode(input: AdaptivePacingInput): PacingMode {
   const { live, history } = input;
-  const accuracy = live.accuracy;
+  const sessionAccuracy = live.sessionAccuracy ?? live.accuracy;
+  const chunkAccuracy = live.chunkAccuracy ?? sessionAccuracy;
+  const rollingAccuracy = live.rollingAccuracyLast3 ?? chunkAccuracy;
   const lag = live.lagSec;
   const correction = live.correctionRate;
   const wpm = live.wpm;
 
   const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
-  const phraseOverload = longPhrase && (accuracy < 0.88 || lag > 1.5 || correction > 0.08);
+  const phraseOverload = longPhrase && (rollingAccuracy < 0.88 || lag > 1.5 || correction > 0.08);
   const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
 
   const goodFlow =
-    accuracy >= 0.94 &&
+    rollingAccuracy >= 0.94 &&
     lag < 0.7 &&
     wpm >= Math.max(history.averageWpm * 0.95, 0) &&
     !phraseOverload &&
     !longPhraseSensitive;
-  const struggling = lag > 2.0 || accuracy < 0.8 || correction > 0.10 || phraseOverload || longPhraseSensitive;
+  const struggling = lag > 2.0 || rollingAccuracy < 0.8 || correction > 0.10 || phraseOverload || longPhraseSensitive;
 
   if (struggling) {
     return 'support';
@@ -75,16 +77,20 @@ export class AdaptiveDictationController {
 
   decide(input: AdaptivePacingInput): PacingDecision {
     const { live, history } = input;
+    const sessionAccuracy = live.sessionAccuracy ?? live.accuracy;
+    const chunkAccuracy = live.chunkAccuracy ?? sessionAccuracy;
+    const rollingAccuracyLast3 = live.rollingAccuracyLast3 ?? chunkAccuracy;
+    const rollingAccuracyLast5 = live.rollingAccuracyLast5 ?? rollingAccuracyLast3;
     const supportsPhraseReplay = input.capabilities?.supportsPhraseReplay ?? true;
     const chosenMode = chooseMode(input);
     const baselineRate = clamp(history.comfortablePlaybackRate || 1, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
-    const rateBias = (live.accuracy - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
+    const rateBias = (rollingAccuracyLast3 - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
     const targetRate = clamp(baselineRate + rateBias, MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE);
     let playbackRate = smoothRate(this.previousRate, targetRate);
     this.previousRate = playbackRate;
 
     const lagScore = computeScore(2.5 - live.lagSec, 0, 2.5);
-    const accuracyScore = computeScore(live.accuracy, 0.6, 1);
+    const accuracyScore = computeScore(rollingAccuracyLast3, 0.6, 1);
     const hesitationScore = computeScore(1 - live.pauseMs / 2000, 0, 1);
     const confidenceScore = clamp(history.profileConfidence, 0, 1);
 
@@ -93,9 +99,9 @@ export class AdaptiveDictationController {
     const semanticCompleteness = live.semanticCompleteness ?? 1;
     const boundaryType = live.phraseBoundaryType ?? 'sentence';
     const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
-    const phraseOverload = longPhrase && (live.accuracy < 0.88 || live.lagSec > 1.5 || live.correctionRate > 0.08);
+    const phraseOverload = longPhrase && (rollingAccuracyLast3 < 0.88 || live.lagSec > 1.5 || live.correctionRate > 0.08);
     const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
-    const userIsStruggling = live.lagSec > 2.0 || live.accuracy < 0.82 || live.correctionRate > 0.12 || phraseOverload || longPhraseSensitive;
+    const userIsStruggling = live.lagSec > 2.0 || rollingAccuracyLast3 < 0.82 || live.correctionRate > 0.12 || phraseOverload || longPhraseSensitive;
     if (userIsStruggling) {
       this.struggleFrames += 1;
       this.recoveryFrames = 0;
@@ -116,7 +122,7 @@ export class AdaptiveDictationController {
       mode === 'support' &&
       this.supportFrames >= 2 &&
       this.recoveryFrames >= 3 &&
-      live.accuracy > 0.92 &&
+      rollingAccuracyLast5 > 0.92 &&
       Math.abs(live.lagSec) < 1.5
     ) {
       mode = 'balanced';
@@ -128,7 +134,7 @@ export class AdaptiveDictationController {
     const hysteresisStruggling = userIsStruggling || this.struggleFrames >= 2;
     const shouldPauseNow = hysteresisStruggling && canPauseAfter;
     const deferPauseUntilSafeBoundary = userIsStruggling && !canPauseAfter;
-    const replayWanted = live.lagSec > 2.5 && live.accuracy < 0.82 && canReplayIndependently && semanticCompleteness >= 0.65;
+    const replayWanted = live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && canReplayIndependently && semanticCompleteness >= 0.65;
     const shouldReplayPhrase = supportsPhraseReplay && replayWanted;
     let pauseAfterPhraseMs = shouldReplayPhrase ? Math.max(1200, idealPauseByMode[mode]) : idealPauseByMode[mode];
 
@@ -139,7 +145,7 @@ export class AdaptiveDictationController {
     if (semanticCompleteness < 0.6) {
       nextPhraseSize = 'short';
     } else if (
-      live.accuracy > 0.96 &&
+      rollingAccuracyLast3 > 0.96 &&
       live.lagSec < 0.5 &&
       live.correctionRate < 0.05 &&
       live.phraseDifficulty < 0.5
@@ -177,9 +183,9 @@ export class AdaptiveDictationController {
       reason.push('replay-due-to-lag-or-error');
     } else if (!supportsPhraseReplay && replayWanted) {
       reason.push('replay-disabled-recovery');
-    } else if (live.lagSec > 2.5 && live.accuracy < 0.82 && !canReplayIndependently) {
+    } else if (live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && !canReplayIndependently) {
       reason.push('replay-blocked-boundary');
-    } else if (live.lagSec > 2.5 && live.accuracy < 0.82 && semanticCompleteness < 0.65) {
+    } else if (live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && semanticCompleteness < 0.65) {
       reason.push('replay-blocked-incomplete-phrase');
     }
     if (deferPauseUntilSafeBoundary) {
@@ -195,7 +201,7 @@ export class AdaptiveDictationController {
       reason.push('low-history-confidence');
     }
 
-    const extremeSupport = mode === 'support' && live.lagSec > 4 && live.accuracy < 0.76;
+    const extremeSupport = mode === 'support' && live.lagSec > 4 && rollingAccuracyLast3 < 0.76;
     const modeFloor =
       mode === 'support'
         ? (extremeSupport ? EXTREME_SUPPORT_RATE_FLOOR : SUPPORT_RATE_FLOOR)

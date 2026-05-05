@@ -49,6 +49,7 @@ import { buildAudioTelemetryFrame, buildAdaptiveAudioInput } from './inputs/audi
 import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
 import { applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
+import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
 import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
 import { buildQwenCloudTelemetryFrame, buildAdaptiveQwenCloudInput } from './inputs/qwenCloud/qwenCloudTelemetryAdapter';
 import { QwenCloudAudioAdapter, buildQwenCloudPhraseId } from './inputs/qwenCloud/qwenCloudAudioAdapter';
@@ -429,6 +430,9 @@ function App() {
   const ttsChunkWordCountRef = useRef(0);
   const ttsCompletedSourceWordsRef = useRef(0);
   const ttsLagOutlierCountRef = useRef(0);
+  const ttsUnsafeChunkCountRef = useRef(0);
+  const ttsChunkAccuracyWindowRef = useRef<number[]>([]);
+  const ttsLastAccuracySnapshotRef = useRef({ typedWords: 0, matchedWords: 0 });
   const ttsLastControllerActionRef = useRef<ControlAction>('hold');
   const applyTtsPerformanceSampleRef = useRef<() => void>(() => undefined);
   const ttsSemanticPhraseAdvanceCountRef = useRef(0);
@@ -962,6 +966,9 @@ function App() {
     ttsChunkWordCountRef.current = 0;
     ttsCompletedSourceWordsRef.current = 0;
     ttsLagOutlierCountRef.current = 0;
+    ttsUnsafeChunkCountRef.current = 0;
+    ttsChunkAccuracyWindowRef.current = [];
+    ttsLastAccuracySnapshotRef.current = { typedWords: 0, matchedWords: 0 };
     ttsLastControllerActionRef.current = 'hold';
     kokoroStartedAtMsRef.current = null;
     kokoroChunkStartMsRef.current = null;
@@ -1874,6 +1881,9 @@ function App() {
     ttsStartedAtMsRef.current = performance.now();
     ttsCompletedSourceWordsRef.current = 0;
     ttsLagOutlierCountRef.current = 0;
+    ttsUnsafeChunkCountRef.current = 0;
+    ttsChunkAccuracyWindowRef.current = [];
+    ttsLastAccuracySnapshotRef.current = { typedWords: 0, matchedWords: 0 };
     ttsLastControllerActionRef.current = 'hold';
     ensureAttemptTelemetry();
     recordTtsTelemetryAction('play', ttsSpeechRate);
@@ -1897,6 +1907,15 @@ function App() {
 
       const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, 'browser-tts', ttsLanguage);
       const liveSignal = ttsLiveSignalRef.current;
+      const typedWordsNow = ttsPracticeEvaluation.typedWords.length;
+      const matchedWordsNow = ttsPracticeEvaluation.matchedWords;
+      const typedDelta = Math.max(0, typedWordsNow - ttsLastAccuracySnapshotRef.current.typedWords);
+      const matchedDelta = Math.max(0, matchedWordsNow - ttsLastAccuracySnapshotRef.current.matchedWords);
+      const sessionAccuracy = clamp01(liveSignal.accuracy / 100);
+      const chunkAccuracy = typedDelta > 0 ? clamp01(matchedDelta / typedDelta) : sessionAccuracy;
+      const rollingWindow = [...ttsChunkAccuracyWindowRef.current, chunkAccuracy];
+      const rollingAccuracyLast3 = averageNumbers(rollingWindow.slice(-3), chunkAccuracy);
+      const rollingAccuracyLast5 = averageNumbers(rollingWindow.slice(-5), chunkAccuracy);
       const semanticPhrase = semanticPhrases[macroPhraseIndex];
       const macroWords = semanticPhraseWords[macroPhraseIndex] ?? [];
       const macroStartWordIndex = semanticPhraseStartWordIndices[macroPhraseIndex] ?? 0;
@@ -1956,7 +1975,11 @@ function App() {
         rawLagSec: liveSignal.rawLagSec,
         stableLagSec: liveSignal.stableLagSec,
         lagOutlierCount: liveSignal.lagOutlierCount,
-        accuracy: clamp01(liveSignal.accuracy / 100),
+        accuracy: sessionAccuracy,
+        chunkAccuracy,
+        rollingAccuracyLast3,
+        rollingAccuracyLast5,
+        sessionAccuracy,
         errorRate: clamp01(1 - liveSignal.accuracy / 100),
         wpm: liveSignal.wpm,
         charsPerMinute: 0,
@@ -1998,13 +2021,33 @@ function App() {
 
       const pauseAtBoundary = chunk.canPauseAfter ?? true;
       const semanticCompleteness = chunk.semanticCompleteness ?? 1;
-      const rate = applyBrowserTtsRuntimeRateFloor({
+      const rateAfterFloor = applyBrowserTtsRuntimeRateFloor({
         mode: decision.mode,
         requestedRate: decision.playbackRate,
         lagSec: liveSignal.lagSec,
-        accuracy: clamp01(liveSignal.accuracy / 100),
+        accuracy: rollingAccuracyLast3,
       });
-      const runtimeDecision = rate === decision.playbackRate ? decision : { ...decision, playbackRate: rate };
+      const unsafeRuntime = applyBrowserTtsUnsafeBoundaryPolicy({
+        boundaryType: chunk.phraseBoundaryType,
+        requestedRate: rateAfterFloor,
+        previousRate: ttsSpeechRate,
+        pauseAfterPhraseMs: decision.pauseAfterPhraseMs,
+      });
+      const rate = unsafeRuntime.playbackRate;
+      const runtimeDecision =
+        rate === decision.playbackRate && unsafeRuntime.pauseAfterPhraseMs === decision.pauseAfterPhraseMs
+          ? decision
+          : {
+              ...decision,
+              playbackRate: rate,
+              pauseAfterPhraseMs: unsafeRuntime.pauseAfterPhraseMs,
+              reason: unsafeRuntime.unsafeBoundaryApplied
+                ? `${decision.reason}, unsafe-boundary-conservative`
+                : decision.reason,
+            };
+      if (unsafeRuntime.unsafeBoundaryApplied) {
+        ttsUnsafeChunkCountRef.current += 1;
+      }
       const effectivePauseNow = decision.shouldPauseNow && pauseAtBoundary;
       const effectiveReplay = false;
       const utterance = new SpeechSynthesisUtterance(chunk.text);
@@ -2037,7 +2080,12 @@ function App() {
         rawLagSec: liveSignal.rawLagSec,
         stableLagSec: liveSignal.stableLagSec,
         lagOutlierCount: liveSignal.lagOutlierCount,
-        accuracy: clamp01(liveSignal.accuracy / 100),
+        unsafeChunkCount: ttsUnsafeChunkCountRef.current,
+        accuracy: sessionAccuracy,
+        chunkAccuracy,
+        rollingAccuracyLast3,
+        rollingAccuracyLast5,
+        sessionAccuracy,
         errorRate: clamp01(1 - liveSignal.accuracy / 100),
         wpm: liveSignal.wpm,
         charsPerMinute: 0,
@@ -2062,13 +2110,18 @@ function App() {
       });
       recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
         actualPlaybackRate: rate,
-        actualPauseMs: effectivePauseNow ? decision.pauseAfterPhraseMs : 0,
+        actualPauseMs: effectivePauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
         replayExecuted: effectiveReplay,
         actualBoundaryType: chunk.phraseBoundaryType,
         event: effectiveReplay ? 'replay' : effectivePauseNow ? 'pause' : decision.deferPauseUntilSafeBoundary ? 'defer_pause' : 'phrase_advance',
         phraseIndex: macroPhraseIndex,
         totalSemanticPhrases: semanticPhrases.length,
       });
+      ttsChunkAccuracyWindowRef.current = rollingWindow.slice(-5);
+      ttsLastAccuracySnapshotRef.current = {
+        typedWords: typedWordsNow,
+        matchedWords: matchedWordsNow,
+      };
       setAdaptiveSemanticDebug((current) => {
         const phraseCount = current.safePauseCount + current.unsafePauseCount + current.deferredPauseCount + 1;
         const avgCompleteness = ((current.averageSemanticCompleteness * (phraseCount - 1)) + semanticCompleteness) / phraseCount;
@@ -7326,6 +7379,11 @@ function buildTtsPlaybackProfile(sessions: StoredSession[], currentSession: Stor
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+function averageNumbers(values: number[], fallback = 0): number {
+  if (values.length === 0) return fallback;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function buildHistoricalPerformanceProfile(

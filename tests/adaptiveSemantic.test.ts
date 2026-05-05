@@ -198,6 +198,35 @@ describe('AdaptiveDictationController semantic guardrails', () => {
     expect(recovered2.mode).not.toBe('support');
     expect(recovered3.mode).not.toBe('support');
   });
+
+  it('uses rolling/chunk accuracy for adaptation instead of session accuracy alone', () => {
+    const controller = new AdaptiveDictationController();
+    const badChunk = controller.decide({
+      live: buildLive({
+        lagSec: 2.9,
+        sessionAccuracy: 0.95,
+        chunkAccuracy: 0.62,
+        rollingAccuracyLast3: 0.7,
+        rollingAccuracyLast5: 0.78,
+        correctionRate: 0.1,
+      }),
+      history: buildHistory({ averageAccuracy: 0.9 }),
+    });
+    expect(badChunk.mode).toBe('support');
+
+    const recoveredChunk = controller.decide({
+      live: buildLive({
+        lagSec: 0.8,
+        sessionAccuracy: 0.86,
+        chunkAccuracy: 0.97,
+        rollingAccuracyLast3: 0.95,
+        rollingAccuracyLast5: 0.94,
+        correctionRate: 0.02,
+      }),
+      history: buildHistory({ averageAccuracy: 0.9 }),
+    });
+    expect(recoveredChunk.mode === 'balanced' || recoveredChunk.mode === 'flow').toBe(true);
+  });
 });
 
 describe('SemanticPhrasePlanner heuristics', () => {

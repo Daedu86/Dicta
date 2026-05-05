@@ -192,7 +192,9 @@ export function derivePlaybackDiagnosticsFromTimeline(
 }
 
 export function detectPlaybackIssues(events: PhrasePlaybackEvent[]): AdaptiveSessionFeedback['playbackIssues'] {
-  const startsByPhrase = new Map<string, PhrasePlaybackEvent[]>();
+  // Guardrail: phraseIndex is the canonical playback position.
+  // phraseId is opaque metadata and must not drive ordering/jump logic.
+  const startsByIndex = new Map<number, PhrasePlaybackEvent[]>();
   const startedByIndex = new Map<number, PhrasePlaybackEvent>();
   const skippedPhrases: AdaptiveSessionFeedback['playbackIssues']['skippedPhrases'] = [];
   let outOfOrderAdvanceCount = 0;
@@ -203,7 +205,7 @@ export function detectPlaybackIssues(events: PhrasePlaybackEvent[]): AdaptiveSes
 
   for (const event of events) {
     if (event.event === 'phrase_started') {
-      startsByPhrase.set(event.phraseId, [...(startsByPhrase.get(event.phraseId) ?? []), event]);
+      startsByIndex.set(event.phraseIndex, [...(startsByIndex.get(event.phraseIndex) ?? []), event]);
       startedByIndex.set(event.phraseIndex, event);
       if (lastStartedIndex !== null) {
         if (event.phraseIndex > lastStartedIndex + 1) {
@@ -236,9 +238,9 @@ export function detectPlaybackIssues(events: PhrasePlaybackEvent[]): AdaptiveSes
     }
   }
 
-  const repeatedPhrases = [...startsByPhrase.entries()]
-    .map(([phraseId, starts]) => ({
-      phraseId,
+  const repeatedPhrases = [...startsByIndex.entries()]
+    .map(([phraseIndex, starts]) => ({
+      phraseId: starts[0]?.phraseId ?? `index-${phraseIndex}`,
       textPreview: starts[0]?.textPreview ?? '',
       repeatCount: Math.max(0, starts.length - 1),
       timestampsMs: starts.map((event) => event.timestampMs),

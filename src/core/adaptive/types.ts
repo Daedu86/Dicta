@@ -28,8 +28,13 @@ export interface LiveTelemetryFrame {
   rawLagSec?: number;
   stableLagSec?: number;
   lagOutlierCount?: number;
+  unsafeChunkCount?: number;
 
   accuracy: number;
+  chunkAccuracy?: number;
+  rollingAccuracyLast3?: number;
+  rollingAccuracyLast5?: number;
+  sessionAccuracy?: number;
   errorRate: number;
 
   wpm: number;
@@ -137,6 +142,7 @@ export interface AdaptiveTimelinePoint {
   rawLagSec?: number;
   stableLagSec?: number;
   lagOutlierCount?: number;
+  unsafeChunkCount?: number;
   wpm: number;
   pauseMs: number;
   correctionRate?: number;
@@ -212,6 +218,12 @@ export interface InputLanguageBenchmarkMetrics {
   averageAccuracy: number;
   averageWpm: number;
   averageLagSec: number;
+  rawAverageLagSec: number;
+  stableAverageLagSec: number;
+  medianLagSec: number;
+  p75LagSec: number;
+  p90AbsLagSec: number;
+  lagOutlierCount: number;
   averageCorrectionRate: number;
   semanticCutPenalty: number;
   unsafePauseCount: number;

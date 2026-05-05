@@ -51,6 +51,12 @@ export function createEmptyInputLanguageBenchmark(
     averageAccuracy: 0,
     averageWpm: 0,
     averageLagSec: 0,
+    rawAverageLagSec: 0,
+    stableAverageLagSec: 0,
+    medianLagSec: 0,
+    p75LagSec: 0,
+    p90AbsLagSec: 0,
+    lagOutlierCount: 0,
     averageCorrectionRate: 0,
     semanticCutPenalty: 0,
     unsafePauseCount: 0,
@@ -103,6 +109,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     rawLagSec: args.live.rawLagSec ?? args.live.lagSec,
     stableLagSec: args.live.stableLagSec ?? args.live.lagSec,
     lagOutlierCount: args.live.lagOutlierCount,
+    unsafeChunkCount: args.live.unsafeChunkCount,
     wpm: args.live.wpm,
     pauseMs: args.decision.pauseAfterPhraseMs,
     correctionRate: args.live.correctionRate,
@@ -117,6 +124,10 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     event: args.event ?? deriveTimelineEvent(args.decision),
   };
   const timeline = pruneTimelineToRollingWindow([...current.timeline, timelinePoint], ROLLING_WINDOW_DAYS);
+  const rawLagSeries = timeline.map((point) => point.rawLagSec ?? point.lagSec);
+  const stableLagSeries = timeline.map((point) => point.stableLagSec ?? point.lagSec);
+  const absoluteStableLagSeries = stableLagSeries.map((value) => Math.abs(value));
+  const stableLagOutlierCount = rawLagSeries.filter((value) => Math.abs(value) > 5).length;
   const sampleCount = current.sampleCount + 1;
   const next: InputLanguageBenchmarkMetrics = {
     ...current,
@@ -125,7 +136,13 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     lastUpdatedAt: new Date(timestampMs).toISOString(),
     averageAccuracy: runningAverage(current.averageAccuracy, args.live.accuracy, current.sampleCount),
     averageWpm: runningAverage(current.averageWpm, args.live.wpm, current.sampleCount),
-    averageLagSec: runningAverage(current.averageLagSec, args.live.lagSec, current.sampleCount),
+    averageLagSec: average(stableLagSeries),
+    rawAverageLagSec: average(rawLagSeries),
+    stableAverageLagSec: average(stableLagSeries),
+    medianLagSec: percentile(stableLagSeries, 0.5),
+    p75LagSec: percentile(stableLagSeries, 0.75),
+    p90AbsLagSec: percentile(absoluteStableLagSeries, 0.9),
+    lagOutlierCount: stableLagOutlierCount,
     averageCorrectionRate: runningAverage(current.averageCorrectionRate, args.live.correctionRate, current.sampleCount),
     semanticCutPenalty: current.semanticCutPenalty + semanticCutPenalty,
     unsafePauseCount: current.unsafePauseCount + (unsafePause ? 1 : 0),
@@ -181,10 +198,12 @@ export function computeControlFidelityScore(metrics: InputLanguageBenchmarkMetri
 
 export function computeLearningEffectivenessScore(metrics: InputLanguageBenchmarkMetrics): number {
   const accuracy = clamp01(metrics.averageAccuracy > 1 ? metrics.averageAccuracy / 100 : metrics.averageAccuracy);
-  const lagScore = clamp01(1 - Math.abs(metrics.averageLagSec) / 5);
+  const lagScore = clamp01(1 - Math.abs(metrics.stableAverageLagSec) / 5);
+  const lagConsistencyScore = clamp01(1 - metrics.p90AbsLagSec / 5);
+  const outlierPenalty = clamp01(1 - metrics.lagOutlierCount / Math.max(1, metrics.sampleCount * 0.2));
   const correctionScore = clamp01(1 - metrics.averageCorrectionRate / 0.25);
   const burstScore = clamp01(1 - metrics.errorBurstLength / 12);
-  return clamp01(accuracy * 0.45 + lagScore * 0.25 + correctionScore * 0.2 + burstScore * 0.1);
+  return clamp01(accuracy * 0.4 + lagScore * 0.2 + lagConsistencyScore * 0.15 + correctionScore * 0.15 + burstScore * 0.05 + outlierPenalty * 0.05);
 }
 
 export function computeFlowStabilityScore(metrics: InputLanguageBenchmarkMetrics): number {
@@ -248,7 +267,7 @@ export function deriveWeakAreas(metrics: InputLanguageBenchmarkMetrics): Adaptiv
   if (metrics.averageSemanticCompleteness < 0.7) weakAreas.push('low_semantic_completeness');
   if (metrics.unsafePauseCount > Math.max(2, metrics.sampleCount * 0.08)) weakAreas.push('unsafe_boundaries');
   if (metrics.replayDeniedByBoundaryCount > Math.max(2, metrics.sampleCount * 0.08)) weakAreas.push('replay');
-  if (Math.abs(metrics.averageLagSec) > 2) weakAreas.push('lag');
+  if (Math.abs(metrics.stableAverageLagSec) > 2 || metrics.p90AbsLagSec > 3) weakAreas.push('lag');
   if (metrics.averageCorrectionRate > 0.12) weakAreas.push('corrections');
   if (metrics.averageAccuracy < 0.82) weakAreas.push('low_accuracy');
   if (metrics.modeSwitchFrequency > 0.25 || metrics.rateVariance > 0.03) weakAreas.push('flow_instability');
@@ -352,6 +371,13 @@ function runningAverage(currentAverage: number, nextValue: number, previousCount
 
 function average(values: number[]): number {
   return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function percentile(values: number[], p: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * p)));
+  return sorted[index];
 }
 
 function normalizeAccuracy(value: number): number {

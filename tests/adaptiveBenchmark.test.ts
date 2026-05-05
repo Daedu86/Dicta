@@ -168,4 +168,36 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const pruned = pruneTimelineToRollingWindow(points, 30);
     expect(pruned.length).toBeLessThanOrEqual(450);
   });
+
+  it('tracks robust lag stats and resists raw outlier distortion', () => {
+    let profile = createEmptyInputLanguageBenchmark('browser-tts', 'es');
+    const base = Date.now();
+    profile = updateInputLanguageBenchmark({
+      current: profile,
+      live: live({ lagSec: 0.3, rawLagSec: 0.3, stableLagSec: 0.3 }),
+      decision: decision(),
+      timestampMs: base + 1000,
+      sessionId: 's1',
+    });
+    profile = updateInputLanguageBenchmark({
+      current: profile,
+      live: live({ lagSec: -5, rawLagSec: -91.6, stableLagSec: -5 }),
+      decision: decision(),
+      timestampMs: base + 2000,
+      sessionId: 's1',
+    });
+    profile = updateInputLanguageBenchmark({
+      current: profile,
+      live: live({ lagSec: 0.4, rawLagSec: 0.4, stableLagSec: 0.4 }),
+      decision: decision(),
+      timestampMs: base + 3000,
+      sessionId: 's1',
+    });
+
+    expect(profile.rawAverageLagSec).toBeLessThan(-25);
+    expect(profile.stableAverageLagSec).toBeGreaterThan(-2);
+    expect(profile.averageLagSec).toBe(profile.stableAverageLagSec);
+    expect(profile.lagOutlierCount).toBe(1);
+    expect(profile.p90AbsLagSec).toBeLessThanOrEqual(5);
+  });
 });
