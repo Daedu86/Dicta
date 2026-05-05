@@ -3455,6 +3455,27 @@ function App() {
     }
   }
 
+  async function copyBenchmarkFeedbackPromptWithHumanFeedback(
+    profile: InputLanguageBenchmarkMetrics,
+    feedback: AdaptiveSessionFeedback | null,
+    humanFeedback: string,
+  ): Promise<void> {
+    try {
+      const base = buildBenchmarkFeedbackPackage(profile, feedback, {
+        activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
+      }) as Record<string, unknown>;
+      const payload = {
+        ...base,
+        llmPrompt: buildDictationScriptPrompt(profile),
+        humanFeedback: humanFeedback.trim(),
+      };
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      setSessionFeedbackMessage('Copied JSON Benchmark + Feedback + LLM Prompt + Human feedback');
+    } catch {
+      setSessionFeedbackMessage('Could not copy benchmark + feedback + LLM prompt + human feedback.');
+    }
+  }
+
   const transcriptPreviewStart = Math.max(0, attemptEvaluation.lastMatchedTargetIndex + 1);
   const transcriptPreview = targetWords.slice(transcriptPreviewStart, transcriptPreviewStart + 12).join(' ');
   const canGenerateTranscript = Boolean(audioFile || loadedAudioFromUrl);
@@ -4871,6 +4892,9 @@ function App() {
                     onCopySessionFeedback={(profile, feedback) => void copySessionFeedbackJson(profile, feedback)}
                     onCopyBenchmarkFeedback={(profile, feedback) => void copyBenchmarkFeedbackJson(profile, feedback)}
                     onCopyBenchmarkFeedbackPrompt={(profile, feedback) => void copyBenchmarkFeedbackPrompt(profile, feedback)}
+                    onCopyBenchmarkFeedbackPromptWithHumanFeedback={(profile, feedback, humanFeedback) =>
+                      void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback)
+                    }
                   />
                 </div>
               </section>
@@ -5678,6 +5702,7 @@ function AdaptiveBenchmarkSection({
   onCopySessionFeedback,
   onCopyBenchmarkFeedback,
   onCopyBenchmarkFeedbackPrompt,
+  onCopyBenchmarkFeedbackPromptWithHumanFeedback,
 }: {
   id?: string;
   adapters: AdaptiveAdapterCardConfig[];
@@ -5701,6 +5726,11 @@ function AdaptiveBenchmarkSection({
   onCopySessionFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
   onCopyBenchmarkFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
   onCopyBenchmarkFeedbackPrompt: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
+  onCopyBenchmarkFeedbackPromptWithHumanFeedback: (
+    profile: InputLanguageBenchmarkMetrics,
+    feedback: AdaptiveSessionFeedback | null,
+    humanFeedback: string,
+  ) => void;
 }) {
   const selectedAdapter = adapters.find((adapter) => mapSessionInputMode(adapter.inputMode) === selectedInputMode);
   const [benchmarkSubsectionsExpanded, setBenchmarkSubsectionsExpanded] = useState({
@@ -5804,6 +5834,7 @@ function AdaptiveBenchmarkSection({
               onCopySessionFeedback={onCopySessionFeedback}
               onCopyBenchmarkFeedback={onCopyBenchmarkFeedback}
               onCopyBenchmarkFeedbackPrompt={onCopyBenchmarkFeedbackPrompt}
+              onCopyBenchmarkFeedbackPromptWithHumanFeedback={onCopyBenchmarkFeedbackPromptWithHumanFeedback}
             />
           ) : null}
         </>
@@ -5860,6 +5891,7 @@ function AdaptiveBenchmarkWorkspace({
   onCopySessionFeedback,
   onCopyBenchmarkFeedback,
   onCopyBenchmarkFeedbackPrompt,
+  onCopyBenchmarkFeedbackPromptWithHumanFeedback,
 }: {
   profile: InputLanguageBenchmarkMetrics;
   inputTitle: string;
@@ -5876,6 +5908,11 @@ function AdaptiveBenchmarkWorkspace({
   onCopySessionFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
   onCopyBenchmarkFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
   onCopyBenchmarkFeedbackPrompt: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
+  onCopyBenchmarkFeedbackPromptWithHumanFeedback: (
+    profile: InputLanguageBenchmarkMetrics,
+    feedback: AdaptiveSessionFeedback | null,
+    humanFeedback: string,
+  ) => void;
 }) {
   const languageLabel = formatBenchmarkLanguage(profile.language);
   const recommendedRange = `${profile.recommendation.targetRateRange[0].toFixed(2)}x-${profile.recommendation.targetRateRange[1].toFixed(2)}x`;
@@ -5889,6 +5926,8 @@ function AdaptiveBenchmarkWorkspace({
     deepMetrics: true,
     timeline: true,
   });
+  const [humanFeedbackEditorOpen, setHumanFeedbackEditorOpen] = useState(false);
+  const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
 
   useEffect(() => {
     if (focusAnchor === 'sessionFeedback') {
@@ -6112,8 +6151,55 @@ function AdaptiveBenchmarkWorkspace({
             >
               Copy Benchmark + Feedback + LLM Prompt
             </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                setHumanFeedbackEditorOpen(true);
+                window.setTimeout(() => {
+                  document.getElementById('adaptive-human-feedback')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 0);
+              }}
+              title="Opens a box to add your own guidance for the next script, then copies JSON with benchmark + feedback + LLM prompt + your human feedback."
+            >
+              Copy Benchmark + Feedback + LLM Prompt + Human Feedback
+            </button>
           </div>
         </div>
+        {humanFeedbackEditorOpen ? (
+          <div id="adaptive-human-feedback" className="adaptive-human-feedback-editor">
+            <textarea
+              value={humanFeedbackDraft}
+              onChange={(e) => setHumanFeedbackDraft(e.target.value)}
+              placeholder="Add human feedback for the next script (topics, required words, style, constraints)..."
+              rows={4}
+            />
+            <div className="adaptive-human-feedback-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  setHumanFeedbackEditorOpen(false);
+                  setHumanFeedbackDraft('');
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onCopyBenchmarkFeedbackPromptWithHumanFeedback(profile, sessionFeedback, humanFeedbackDraft);
+                  setHumanFeedbackEditorOpen(false);
+                  setHumanFeedbackDraft('');
+                }}
+                disabled={humanFeedbackDraft.trim().length === 0}
+                title={humanFeedbackDraft.trim().length === 0 ? 'Add some feedback first' : 'Copy JSON package'}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        ) : null}
         {sessionFeedbackMessage ? (
           <p className={sessionFeedbackMessage.toLowerCase().includes('could not') ? 'error' : 'success'}>{sessionFeedbackMessage}</p>
         ) : null}
