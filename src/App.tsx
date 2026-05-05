@@ -4661,8 +4661,8 @@ function App() {
                   <section className="panel workspace-panel adaptive-decision-panel">
                     <div className="adaptive-section-header">
                       <div>
-                        <p className="dashboard-eyebrow">Section # 1 - Central Brain</p>
-                        <h3>Decision Engine</h3>
+                        <p className="dashboard-eyebrow">Section # 1 - Training Cockpit</p>
+                        <h3>Central Brain</h3>
                       </div>
                       <button
                         type="button"
@@ -4701,7 +4701,7 @@ function App() {
                   <section className="panel workspace-panel adaptive-architecture-panel">
                     <div className="adaptive-section-header">
                       <div>
-                        <p className="dashboard-eyebrow">Section # 2 - Architecture Note</p>
+                        <p className="dashboard-eyebrow">Section # 2 - Brain & Adapter Overview</p>
                         <h3>Centralized decision, input-specific execution</h3>
                       </div>
                       <button
@@ -4740,7 +4740,7 @@ function App() {
                   <section className="panel workspace-panel adaptive-adapters-panel">
                     <div className="adaptive-section-header">
                       <div>
-                        <p className="dashboard-eyebrow">Section # 3 - Input Adapters</p>
+                        <p className="dashboard-eyebrow">Section # 3 - Brain & Adapter Overview</p>
                         <h3>Execution strategies</h3>
                         <p className="dashboard-meta">Select an input to focus its benchmark profile below.</p>
                       </div>
@@ -4781,7 +4781,7 @@ function App() {
                   <section className="panel workspace-panel adaptive-summary-panel">
                     <div className="adaptive-section-header">
                       <div>
-                        <p className="dashboard-eyebrow">Section # 4 - Latest Session Overview</p>
+                        <p className="dashboard-eyebrow">Section # 4 - Latest Session</p>
                         <h3>Most recent run</h3>
                       </div>
                       <button
@@ -4821,7 +4821,7 @@ function App() {
                     <section className="panel workspace-panel adaptive-metrics-panel">
                       <div className="adaptive-section-header">
                         <div>
-                          <p className="dashboard-eyebrow">Section # 5 - Live Pacing Metrics</p>
+                          <p className="dashboard-eyebrow">Section # 5 - Live Adaptive State</p>
                           <h3>Latest pacing snapshot</h3>
                           <p className="dashboard-meta">Most recent metrics computed from the stored session.</p>
                         </div>
@@ -4884,7 +4884,7 @@ function App() {
                     <section className="panel workspace-panel adaptive-telemetry-panel">
                       <div className="adaptive-section-header">
                         <div>
-                          <p className="dashboard-eyebrow">Section # 6 - Telemetry Snapshot</p>
+                          <p className="dashboard-eyebrow">Section # 6 - Diagnostics</p>
                           <h3>Debug counters</h3>
                           <p className="dashboard-meta">Most recent live debug counters, semantic pacing signals, and rate distribution.</p>
                         </div>
@@ -5838,8 +5838,8 @@ function AdaptiveBenchmarkSection({
     <section id={id} className="panel workspace-panel adaptive-benchmark-panel">
       <div className="adaptive-section-header">
         <div>
-          <p className="dashboard-eyebrow">Section # 7 - Benchmarks & Coaching</p>
-          <h3>Benchmark Profiles</h3>
+          <p className="dashboard-eyebrow">Section # 7 - Benchmarks</p>
+          <h3>Profile Benchmarks</h3>
           <p className="dashboard-meta">Select an input and language to view its benchmark workspace. This is shared across the Adaptive Pace Layer.</p>
         </div>
         <button
@@ -6009,16 +6009,29 @@ function AdaptiveBenchmarkWorkspace({
   const recommendedRange = `${profile.recommendation.targetRateRange[0].toFixed(2)}x-${profile.recommendation.targetRateRange[1].toFixed(2)}x`;
   const debugLatest = profile.timeline[profile.timeline.length - 1] ?? null;
   const fallbackDiagnostics = derivePlaybackDiagnosticsFromTimeline(profile.timeline.slice(-60));
+  const hasBenchmarkData = profile.sampleCount > 0 || profile.sessionCount > 0;
+  const hasSessionFeedback = Boolean(sessionFeedback);
+  const sequencingClean = sessionFeedback
+    ? sessionFeedback.playbackIssues.repeatedPhraseCount === 0 &&
+      sessionFeedback.playbackIssues.skippedPhraseCount === 0 &&
+      sessionFeedback.playbackIssues.outOfOrderAdvanceCount === 0 &&
+      sessionFeedback.playbackIssues.replayAdvancedPhraseCount === 0 &&
+      sessionFeedback.playbackIssues.phraseIndexJumpCount === 0
+    : fallbackDiagnostics.repeatedPhraseCount === 0 &&
+      fallbackDiagnostics.replayCount === 0 &&
+      fallbackDiagnostics.phraseIndexJumpCount === 0;
+  const coachSummary = buildAdaptiveCoachSummary(profile, sessionFeedback, sequencingClean);
   const [workspaceSubsectionsExpanded, setWorkspaceSubsectionsExpanded] = useState({
     kpis: true,
     coach: true,
     script: true,
     feedback: true,
-    deepMetrics: true,
-    timeline: true,
+    deepMetrics: false,
+    timeline: false,
   });
   const [humanFeedbackEditorOpen, setHumanFeedbackEditorOpen] = useState(false);
   const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
+  const [exportStatusMessage, setExportStatusMessage] = useState('');
 
   useEffect(() => {
     if (focusAnchor === 'sessionFeedback') {
@@ -6057,11 +6070,175 @@ function AdaptiveBenchmarkWorkspace({
       {benchmarkExportMessage ? (
         <p className={benchmarkExportMessage.toLowerCase().includes('could not') ? 'error' : 'success'}>{benchmarkExportMessage}</p>
       ) : null}
+      {exportStatusMessage ? <p className="success">{exportStatusMessage}</p> : null}
+
+      <section className="adaptive-benchmark-subpanel adaptive-cockpit-panel">
+        <div className="adaptive-section-header adaptive-subsection-header">
+          <div>
+            <p className="dashboard-eyebrow">Training Cockpit</p>
+            <h4>Active profile and next action</h4>
+          </div>
+        </div>
+        <div className="adaptive-cockpit-grid">
+          <section className="adaptive-benchmark-subpanel">
+            <h4>Active Profile</h4>
+            <p className="dashboard-meta">All metrics and exports use this profile.</p>
+            <div className="today-summary-grid">
+              <Metric label="Profile" value={`${profile.inputMode}/${profile.language}`} />
+              <Metric label="Sessions" value={String(profile.sessionCount)} />
+              <Metric label="Samples" value={String(profile.sampleCount)} />
+              <Metric label="Updated" value={profile.lastUpdatedAt ? formatSessionDate(profile.lastUpdatedAt) : 'n/a'} />
+              <Metric label="Weak areas" value={profile.weakAreas.length > 0 ? profile.weakAreas.join(', ') : 'none'} />
+              <Metric label="Target rate" value={recommendedRange} />
+            </div>
+          </section>
+
+          <section className="adaptive-benchmark-subpanel">
+            <h4>Coach Summary</h4>
+            <p className="dashboard-meta">{coachSummary}</p>
+            {sequencingClean ? (
+              <p className="success">Playback sequencing is clean: no repeats, skips, jumps, or replay-advance issues.</p>
+            ) : (
+              <p className="error">Playback issues detected. Review Session Feedback and Diagnostics before generating the next script.</p>
+            )}
+          </section>
+
+          <section className="adaptive-benchmark-subpanel">
+            <h4>Export / Copy Actions</h4>
+            <p className="dashboard-meta">Exports use: {profile.inputMode}/{profile.language}</p>
+            <div className="adaptive-export-groups">
+              <div>
+                <p className="dashboard-eyebrow">Primary</p>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="secondary-button adaptive-recommended-action"
+                    onClick={() => {
+                      onCopyBenchmarkFeedbackPrompt(profile, sessionFeedback);
+                      setExportStatusMessage(`Copied: Generate next adaptive script · ${profile.inputMode}/${profile.language}`);
+                    }}
+                    disabled={!hasBenchmarkData || !hasSessionFeedback}
+                  >
+                    Generate next adaptive script
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setHumanFeedbackEditorOpen(true)}
+                    disabled={!hasBenchmarkData || !hasSessionFeedback}
+                  >
+                    Generate next script with my notes
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      onCopyBenchmarkWithScriptPrompt(profile);
+                      setExportStatusMessage(`Copied: Generate from benchmark only · ${profile.inputMode}/${profile.language}`);
+                    }}
+                    disabled={!hasBenchmarkData}
+                  >
+                    Generate from benchmark only
+                  </button>
+                </div>
+                {!hasBenchmarkData ? <p className="hint">No benchmark available for this profile yet.</p> : null}
+                {!hasSessionFeedback ? <p className="hint">No completed session feedback for this profile yet.</p> : null}
+              </div>
+              <div>
+                <p className="dashboard-eyebrow">Diagnostics</p>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      onCopyBenchmarkFeedback(profile, sessionFeedback);
+                      setExportStatusMessage(`Copied: Full diagnostic package · ${profile.inputMode}/${profile.language}`);
+                    }}
+                    disabled={!hasBenchmarkData}
+                  >
+                    Copy full diagnostic package
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      onCopySessionFeedback(profile, sessionFeedback);
+                      setExportStatusMessage(`Copied: Latest session feedback · ${profile.inputMode}/${profile.language}`);
+                    }}
+                    disabled={!hasSessionFeedback}
+                  >
+                    Copy latest session feedback
+                  </button>
+                </div>
+              </div>
+              <div>
+                <p className="dashboard-eyebrow">Templates</p>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      onCopyScriptPrompt(profile);
+                      setExportStatusMessage(`Copied: Base prompt · ${profile.inputMode}/${profile.language}`);
+                    }}
+                  >
+                    Copy base prompt
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      onCopyScriptTemplate(profile);
+                      setExportStatusMessage(`Copied: Output template · ${profile.inputMode}/${profile.language}`);
+                    }}
+                  >
+                    Copy output template
+                  </button>
+                </div>
+              </div>
+            </div>
+            {humanFeedbackEditorOpen ? (
+              <div id="adaptive-human-feedback" className="adaptive-human-feedback-editor">
+                <textarea
+                  value={humanFeedbackDraft}
+                  onChange={(e) => setHumanFeedbackDraft(e.target.value)}
+                  placeholder="Add human feedback for the next script (topics, required words, style, constraints)..."
+                  rows={4}
+                />
+                <div className="adaptive-human-feedback-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      setHumanFeedbackEditorOpen(false);
+                      setHumanFeedbackDraft('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onCopyBenchmarkFeedbackPromptWithHumanFeedback(profile, sessionFeedback, humanFeedbackDraft);
+                      setExportStatusMessage(`Copied: Generate next script with my notes · ${profile.inputMode}/${profile.language} · human notes included`);
+                      setHumanFeedbackEditorOpen(false);
+                      setHumanFeedbackDraft('');
+                    }}
+                    disabled={humanFeedbackDraft.trim().length === 0 || !hasBenchmarkData || !hasSessionFeedback}
+                  >
+                    Submit
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+        </div>
+      </section>
 
       <div className="adaptive-section-header adaptive-subsection-header">
         <div>
-          <p className="dashboard-eyebrow">Section # 7.2.1 - KPI Summary</p>
-          <h4>Benchmark KPIs</h4>
+          <p className="dashboard-eyebrow">Benchmarks</p>
+          <h4>Aggregate benchmark metrics</h4>
         </div>
         <button
           type="button"
@@ -6091,7 +6268,7 @@ function AdaptiveBenchmarkWorkspace({
 
       <div className="adaptive-section-header adaptive-subsection-header">
         <div>
-          <p className="dashboard-eyebrow">Section # 7.2.2 - Coach Charts</p>
+          <p className="dashboard-eyebrow">Next Training Targets</p>
           <h4>Target zone and trends</h4>
         </div>
         <button
@@ -6137,8 +6314,8 @@ function AdaptiveBenchmarkWorkspace({
 
       <div className="adaptive-section-header adaptive-subsection-header">
         <div>
-          <p className="dashboard-eyebrow">Section # 7.2.3 - Script Prompt</p>
-          <h4>Generate the next script</h4>
+          <p className="dashboard-eyebrow">Templates</p>
+          <h4>Prompt and output template</h4>
         </div>
         <button
           type="button"
@@ -6195,7 +6372,7 @@ function AdaptiveBenchmarkWorkspace({
 
       <div className="adaptive-section-header adaptive-subsection-header">
         <div>
-          <p className="dashboard-eyebrow">Section # 7.2.4 - Session Feedback</p>
+          <p className="dashboard-eyebrow">Latest Session</p>
           <h4>Playback issues and improvement deltas</h4>
         </div>
         <button
@@ -6242,55 +6419,8 @@ function AdaptiveBenchmarkWorkspace({
             >
               Copy Benchmark + Feedback + LLM Prompt
             </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => {
-                setHumanFeedbackEditorOpen(true);
-                window.setTimeout(() => {
-                  document.getElementById('adaptive-human-feedback')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 0);
-              }}
-              title="Opens a box to add your own guidance for the next script, then copies JSON with benchmark + feedback + LLM prompt + your human feedback."
-            >
-              Copy Benchmark + Feedback + LLM Prompt + Human Feedback
-            </button>
           </div>
         </div>
-        {humanFeedbackEditorOpen ? (
-          <div id="adaptive-human-feedback" className="adaptive-human-feedback-editor">
-            <textarea
-              value={humanFeedbackDraft}
-              onChange={(e) => setHumanFeedbackDraft(e.target.value)}
-              placeholder="Add human feedback for the next script (topics, required words, style, constraints)..."
-              rows={4}
-            />
-            <div className="adaptive-human-feedback-actions">
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                  setHumanFeedbackEditorOpen(false);
-                  setHumanFeedbackDraft('');
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onCopyBenchmarkFeedbackPromptWithHumanFeedback(profile, sessionFeedback, humanFeedbackDraft);
-                  setHumanFeedbackEditorOpen(false);
-                  setHumanFeedbackDraft('');
-                }}
-                disabled={humanFeedbackDraft.trim().length === 0}
-                title={humanFeedbackDraft.trim().length === 0 ? 'Add some feedback first' : 'Copy JSON package'}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-        ) : null}
         {sessionFeedbackMessage ? (
           <p className={sessionFeedbackMessage.toLowerCase().includes('could not') ? 'error' : 'success'}>{sessionFeedbackMessage}</p>
         ) : null}
@@ -6371,7 +6501,7 @@ function AdaptiveBenchmarkWorkspace({
 
       <div className="adaptive-section-header adaptive-subsection-header">
         <div>
-          <p className="dashboard-eyebrow">Section # 7.2.5 - Deep Metrics</p>
+          <p className="dashboard-eyebrow">Diagnostics</p>
           <h4>Semantic + recovery + recommendation</h4>
         </div>
         <button
@@ -6448,7 +6578,7 @@ function AdaptiveBenchmarkWorkspace({
 
       <div className="adaptive-section-header adaptive-subsection-header">
         <div>
-          <p className="dashboard-eyebrow">Section # 7.2.6 - Timeline & Debug</p>
+          <p className="dashboard-eyebrow">Diagnostics</p>
           <h4>Recent decisions</h4>
         </div>
         <button
@@ -6633,6 +6763,18 @@ function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remaining = Math.round(seconds % 60);
   return `${minutes}m ${remaining}s`;
+}
+
+function buildAdaptiveCoachSummary(
+  profile: InputLanguageBenchmarkMetrics,
+  sessionFeedback: AdaptiveSessionFeedback | null,
+  sequencingClean: boolean,
+): string {
+  const focus = profile.weakAreas.length > 0 ? profile.weakAreas.join(', ') : 'consistency';
+  const recommendation = `${profile.recommendation.targetRateRange[0].toFixed(2)}x-${profile.recommendation.targetRateRange[1].toFixed(2)}x, ${profile.recommendation.targetPhraseSize} phrases, ${Math.round(profile.recommendation.targetPauseMs)}ms pauses`;
+  const verdict = sessionFeedback?.verdict ?? 'no recent feedback';
+  const sequencingText = sequencingClean ? 'Sequencing is clean.' : 'Sequencing issues need attention.';
+  return `Accuracy is ${formatPercent(profile.averageAccuracy)} with average lag ${profile.averageLagSec.toFixed(2)}s and flow stability ${formatScore(profile.flowStabilityScore)}. Focus: ${focus}. Latest verdict: ${verdict}. Next target: ${recommendation}. ${sequencingText}`;
 }
 
 function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummary {
