@@ -56,14 +56,6 @@ textarea {
   max-width: 100%;
 }
 
-.layout-sidebar-expanded {
-  grid-template-columns: 360px minmax(0, 1fr);
-}
-
-.layout-sidebar-collapsed {
-  grid-template-columns: 92px minmax(0, 1fr);
-}
-
 .left-pane {
   position: sticky;
   top: 1rem;
@@ -137,6 +129,7 @@ textarea {
 
 .brand-header-panel {
   justify-content: space-between;
+  flex-wrap: wrap;
   padding: 0.95rem;
   border: 1px solid #295a95;
   border-radius: 16px;
@@ -204,12 +197,22 @@ textarea {
   flex-shrink: 0;
 }
 
+.brand-new-session-button {
+  flex-shrink: 0;
+}
+
 .brand-header-actions {
   display: flex;
   align-items: flex-end;
   flex-direction: column;
   gap: 0.45rem;
   flex: 0 0 auto;
+}
+
+.brand-session-create-card {
+  flex: 1 1 100%;
+  width: 100%;
+  margin-top: 0.85rem;
 }
 
 .sidebar-collapse-button {
@@ -396,25 +399,9 @@ textarea {
   color: #b6d3f3;
 }
 
-.collapsed-session-dot-active {
-  background: linear-gradient(180deg, #75aef1, #5f9de7);
-  color: #07254f;
-  border-color: #8bbaf1;
-  box-shadow: 0 0 0 2px rgba(116, 174, 241, 0.22);
-}
-
-.collapsed-session-dot-label {
-  font-size: 0.92rem;
-  line-height: 1;
-}
-
 .collapsed-expand-button {
   margin-bottom: 0.2rem;
   font-size: 1rem;
-}
-
-.collapsed-session-add {
-  font-size: 1.05rem;
 }
 
 .sidebar-card {
@@ -497,59 +484,6 @@ textarea {
   margin: 0;
   color: #5d7083;
   font-size: 0.84rem;
-}
-
-.session-list {
-  display: grid;
-  gap: 0.65rem;
-  margin-top: 0.75rem;
-}
-
-.session-card {
-  border: 1px solid #d6e2ef;
-  border-radius: 12px;
-  padding: 0.5rem 0.6rem;
-  background: linear-gradient(180deg, #fcfdff, #f4f8fc);
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  min-width: 0;
-}
-
-.session-card-active {
-  border-color: #5a94e8;
-  box-shadow: 0 0 0 2px rgba(90, 148, 232, 0.14);
-  background: linear-gradient(180deg, #fafdff, #edf5ff);
-}
-
-.session-card-line {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  width: 100%;
-  min-width: 0;
-}
-
-.session-card-title {
-  font-weight: 800;
-  color: #13223d;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.session-card-date {
-  color: #5d7083;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-.session-card-delete {
-  width: auto;
-  margin-left: auto;
-  padding-inline: 0.8rem;
 }
 
 input,
@@ -1183,18 +1117,18 @@ textarea[readonly] {
   display: grid;
   grid-template-columns:
     40px
-    minmax(100px, 1.2fr)
-    minmax(40px, 0.75fr)
-    minmax(40px, 0.75fr)
-    minmax(50px, 0.75fr)
-    minmax(50px, 0.75fr)
-    minmax(50px, 0.75fr)
-    minmax(50px, 0.75fr)
-    minmax(62px, 0.8fr)
-    minmax(66px, 0.8fr)
-    minmax(84px, 0.9fr)
-    minmax(70px, 0.9fr);
-  gap: 0.45rem;
+    minmax(150px, 1.55fr)
+    minmax(46px, 0.56fr)
+    minmax(46px, 0.56fr)
+    minmax(56px, 0.66fr)
+    minmax(48px, 0.54fr)
+    minmax(52px, 0.6fr)
+    minmax(54px, 0.62fr)
+    minmax(62px, 0.72fr)
+    minmax(60px, 0.62fr)
+    minmax(96px, 0.94fr)
+    136px;
+  gap: 0.65rem;
   align-items: center;
   min-width: 0;
 }
@@ -1209,7 +1143,7 @@ textarea[readonly] {
 .leaderboard-table-header {
   padding: 0 0.5rem 0.35rem;
   color: #4e6076;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1220,6 +1154,7 @@ textarea[readonly] {
   border-radius: 14px;
   background: linear-gradient(180deg, #fcfdff, #f6f9fc);
   padding: 0.9rem 0.5rem;
+  overflow: visible;
 }
 
 .leaderboard-table-row-active {
@@ -1250,8 +1185,9 @@ textarea[readonly] {
   min-width: 0;
 }
 
-.leaderboard-cell-action select {
-  max-width: 100%;
+.leaderboard-cell-action {
+  overflow: visible;
+  white-space: normal;
 }
 
 .leaderboard-cell-name,
@@ -1261,9 +1197,63 @@ textarea[readonly] {
   white-space: nowrap;
 }
 
-.leaderboard-cell-action select {
-  width: 100%;
-  margin-top: 0;
+.leaderboard-action-buttons {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.leaderboard-action-button {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  min-width: 1.5rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.leaderboard-action-button-danger {
+  color: #9d2626;
+}
+
+.repeat-words-table {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.repeat-words-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 64px 64px;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #24384f;
+}
+
+.repeat-words-header {
+  background: transparent;
+  border-color: transparent;
+  padding: 0 0.1rem;
+  color: #4e6076;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.repeat-words-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .leaderboard-row {
@@ -2408,6 +2398,33 @@ textarea[readonly] {
   min-width: 0;
 }
 
+.bottom-metrics-top-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 0;
+}
+
+.live-metrics-collapse-button {
+  width: auto;
+  margin-top: 0;
+  min-height: 34px;
+  padding: 0 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-metrics-collapse-icon {
+  display: inline-block;
+  transform: rotate(0deg);
+  transition: transform 160ms ease;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.live-metrics-collapse-icon-collapsed {
+  transform: rotate(180deg);
+}
+
 .bottom-metrics-player {
   display: grid;
   gap: 0.4rem;
@@ -2559,16 +2576,12 @@ textarea[readonly] {
 }
 
 @media (max-width: 1360px) {
-  .layout-sidebar-expanded {
-    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-  }
-
   .leaderboard-table-header {
     display: none;
   }
 
   .leaderboard-table-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(112px, 0.78fr) minmax(0, 1.22fr);
     gap: 0.65rem;
     padding: 0.8rem;
   }
@@ -2641,8 +2654,12 @@ textarea[readonly] {
     grid-column: 1 / -1;
   }
 
-  .leaderboard-cell-action select {
-    max-width: 100%;
+  .leaderboard-action-buttons {
+    width: auto;
+  }
+
+  .leaderboard-action-button {
+    flex: 0 0 auto;
   }
 
   .bottom-metrics-top {

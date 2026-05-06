@@ -83,11 +83,12 @@ import { MiniTrends, SweetSpotGauge, TargetZoneChart } from './components/Adapti
 const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 const KOKORO_ENABLED_KEY = 'dicta.kokoroEnabled.v1';
+const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
 const THEME_MODE_KEY = 'dicta.themeMode.v1';
 const LIVE_METRICS_LANGUAGE_KEY = 'dicta.liveMetricsLanguage.v1';
 const LIVE_METRICS_RANGE_KEY = 'dicta.liveMetricsRange.v1';
+const INSIGHTS_COLLAPSED_KEY = 'dicta.insightsCollapsed.v1';
 const LEADERBOARD_LANGUAGE_KEY = 'dicta.leaderboardLanguage.v1';
-const SIDEBAR_SESSIONS_LANGUAGE_KEY = 'dicta.sidebarSessionsLanguage.v1';
 const ADMIN_LANGUAGE_KEY = 'dicta.adminLanguage.v1';
 const ADAPTIVE_BENCHMARKS_KEY = 'dicta.adaptiveBenchmarks.v1';
 const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
@@ -137,7 +138,7 @@ type SessionSource = 'plainText' | 'dictationScript';
 type TtsLanguage = 'en' | 'de' | 'es';
 type TypingLanguage = 'en' | 'de' | 'es';
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
-type WorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin';
+type WorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter';
 type ThemeMode = 'light' | 'dark';
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
@@ -215,6 +216,7 @@ type AdaptiveAdapterCardConfig = {
 type AdaptiveBenchmarksByInputLanguage = Record<string, Record<string, InputLanguageBenchmarkMetrics>>;
 type AdaptiveSessionFeedbackByInputLanguage = Record<string, Record<string, AdaptiveSessionFeedback[]>>;
 type BenchmarkLanguageButton = 'en' | 'es' | 'de';
+type RepeatWordStat = { word: string; total: number; missed: number; typos: number };
 
 type AdaptiveSemanticDebug = {
   semanticCutPenalty: number;
@@ -281,7 +283,6 @@ function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
   const [dashboardSessionId, setDashboardSessionId] = useState<string | null>(null);
-  const [sessionsExpanded, setSessionsExpanded] = useState(false);
   const [setupExpanded, setSetupExpanded] = useState(true);
   const [ttsExpanded, setTtsExpanded] = useState(true);
   const [ttsText, setTtsText] = useState('');
@@ -333,9 +334,12 @@ function App() {
   const [kokoroManualBias, setKokoroManualBias] = useState(0);
   const [kokoroServiceReady, setKokoroServiceReady] = useState<boolean | null>(null);
   const [kokoroEnabled, setKokoroEnabled] = useState<boolean>(false);
+  const [openRouterDefaultModel, setOpenRouterDefaultModel] = useState('');
+  const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name?: string; context_length?: number }>>([]);
+  const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [openRouterError, setOpenRouterError] = useState('');
   const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
   const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [metricsLanguageView, setMetricsLanguageView] = useState<MetricsLanguageView>(() => {
     const saved = window.localStorage.getItem(LIVE_METRICS_LANGUAGE_KEY);
     if (saved === 'en' || saved === 'es' || saved === 'de') {
@@ -350,25 +354,15 @@ function App() {
     }
     return 'en';
   });
-  const [sessionsLanguageView, setSessionsLanguageView] = useState<MetricsLanguageView>(() => {
-    const saved = window.localStorage.getItem(SIDEBAR_SESSIONS_LANGUAGE_KEY);
-    if (saved === 'en' || saved === 'es' || saved === 'de') {
-      return saved;
-    }
-    const existing = loadSessions();
-    const sorted = [...existing].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    for (const session of sorted) {
-      const language = resolveSessionLanguage(session);
-      if (language === 'en' || language === 'es' || language === 'de') return language;
-    }
-    return 'de';
-  });
   const [adminLanguageView, setAdminLanguageView] = useState<MetricsLanguageView>(() => {
     const saved = window.localStorage.getItem(ADMIN_LANGUAGE_KEY);
     if (saved === 'en' || saved === 'es' || saved === 'de') {
       return saved;
     }
     return 'en';
+  });
+  const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => {
+    return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
   });
   const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => {
     const saved = window.localStorage.getItem(LIVE_METRICS_RANGE_KEY);
@@ -413,7 +407,6 @@ function App() {
   const [selectedBenchmarkInputMode, setSelectedBenchmarkInputMode] = useState<InputMode>('kokoro');
   const [selectedBenchmarkLanguage, setSelectedBenchmarkLanguage] = useState<BenchmarkLanguageButton>('en');
   const [benchmarkExportMessage, setBenchmarkExportMessage] = useState('');
-  const [scriptPromptMessage, setScriptPromptMessage] = useState('');
   const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
@@ -450,6 +443,7 @@ function App() {
   const adaptiveBenchmarkLastUpdateRef = useRef<Record<string, number>>({});
   const sessionBenchmarkBeforeRef = useRef<Record<string, InputLanguageBenchmarkMetrics>>({});
   const sessionFeedbackContextRef = useRef<Record<string, { inputMode: InputMode; language: LanguageCode }>>({});
+  const suppressSidebarAutoSelectRef = useRef(false);
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
   const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
@@ -500,7 +494,11 @@ function App() {
         ? 'tts'
         : 'kokoro';
   const brandActionLabel =
-    workspaceMode === 'leaderboard' || workspaceMode === 'dashboard' || workspaceMode === 'adaptive' || workspaceMode === 'admin'
+    workspaceMode === 'leaderboard' ||
+    workspaceMode === 'dashboard' ||
+    workspaceMode === 'adaptive' ||
+    workspaceMode === 'admin' ||
+    workspaceMode === 'openrouter'
       ? 'Back to training'
       : 'Leaderboard';
   const latestSession = useMemo<StoredSession | null>(() => {
@@ -518,10 +516,6 @@ function App() {
         .sort((a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy)
         .map((session, index) => ({ rank: index + 1, session })),
     [sessions, leaderboardLanguageView],
-  );
-  const sidebarSessions = useMemo(
-    () => [...sessions].filter((session) => resolveSessionLanguage(session) === sessionsLanguageView),
-    [sessions, sessionsLanguageView],
   );
   const adminSessions = useMemo(
     () => [...sessions].filter((session) => resolveSessionLanguage(session) === adminLanguageView),
@@ -544,6 +538,17 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(KOKORO_ENABLED_KEY, JSON.stringify(kokoroEnabled));
   }, [kokoroEnabled]);
+
+  useEffect(() => {
+    const storedModel = window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY);
+    if (storedModel) {
+      try {
+        setOpenRouterDefaultModel(JSON.parse(storedModel) as string);
+      } catch {
+        setOpenRouterDefaultModel(storedModel);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!kokoroEnabled) return;
@@ -572,16 +577,16 @@ function App() {
   }, [leaderboardLanguageView]);
 
   useEffect(() => {
-    window.localStorage.setItem(SIDEBAR_SESSIONS_LANGUAGE_KEY, sessionsLanguageView);
-  }, [sessionsLanguageView]);
-
-  useEffect(() => {
     window.localStorage.setItem(ADMIN_LANGUAGE_KEY, adminLanguageView);
   }, [adminLanguageView]);
 
   useEffect(() => {
     window.localStorage.setItem(LIVE_METRICS_RANGE_KEY, metricsRangeView);
   }, [metricsRangeView]);
+
+  useEffect(() => {
+    window.localStorage.setItem(INSIGHTS_COLLAPSED_KEY, String(insightsCollapsed));
+  }, [insightsCollapsed]);
 
   useEffect(() => {
     window.localStorage.setItem(ADAPTIVE_BENCHMARKS_KEY, JSON.stringify(adaptiveBenchmarksByInputLanguage));
@@ -605,18 +610,14 @@ function App() {
   }, [sessions, activeSessionId]);
 
   useEffect(() => {
-    if (sidebarSessions.length === 0) return;
-    if (sidebarSessions.some((session) => session.id === activeSessionId)) return;
-    setActiveSessionId(sidebarSessions[0].id);
-  }, [sidebarSessions, activeSessionId]);
-
-  useEffect(() => {
+    if (suppressSidebarAutoSelectRef.current) return;
     if (
       activeSession &&
       workspaceMode !== 'leaderboard' &&
       workspaceMode !== 'dashboard' &&
       workspaceMode !== 'adaptive' &&
-      workspaceMode !== 'admin'
+      workspaceMode !== 'admin' &&
+      workspaceMode !== 'openrouter'
     ) {
       setWorkspaceMode(activeInputWorkspaceMode);
     }
@@ -1375,7 +1376,6 @@ function App() {
   }
 
   function createSession(): void {
-    setSidebarExpanded(true);
     setSessionCreationMode('input1');
     setSessionCreationSource('plainText');
     setSessionCreationName('');
@@ -1394,6 +1394,7 @@ function App() {
       inputMode,
       name,
     );
+    suppressSidebarAutoSelectRef.current = true;
     setSessions((prev) => [nextSession, ...prev]);
     setActiveSessionId(nextSession.id);
     setWorkspaceMode(
@@ -1437,6 +1438,7 @@ function App() {
     }
 
     const nextSession = createSessionFromScript(result.script, getNextSessionIndex(sessions), inputMode);
+    suppressSidebarAutoSelectRef.current = true;
     setSessions((prev) => [nextSession, ...prev]);
     setActiveSessionId(nextSession.id);
     setWorkspaceMode(inputMode === 'input1' ? 'training' : inputMode === 'input2' || inputMode === 'input4' ? 'tts' : 'kokoro');
@@ -1462,7 +1464,19 @@ function App() {
   }
 
   function deleteSession(sessionId: string): void {
+    if (dashboardSessionId === sessionId) {
+      setDashboardSessionId(null);
+      if (workspaceMode === 'dashboard') {
+        setWorkspaceMode('leaderboard');
+      }
+    }
     setSessions((prev) => prev.filter((session) => session.id !== sessionId));
+  }
+
+  function openDashboardForSession(sessionId: string): void {
+    setActiveSessionId(sessionId);
+    setDashboardSessionId(sessionId);
+    setWorkspaceMode('dashboard');
   }
 
   function getActiveTypingLanguage(): TypingLanguage | null {
@@ -1501,7 +1515,6 @@ function App() {
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     setBenchmarkExportMessage('');
-    setScriptPromptMessage('');
     setSessionFeedbackMessage('');
     setAdaptiveBenchmarksFocusAnchor('sessionFeedback');
     setAdaptiveSectionExpanded((prev) => ({ ...prev, benchmarks: true }));
@@ -3486,9 +3499,9 @@ function App() {
   async function copyDictationScriptPrompt(profile: InputLanguageBenchmarkMetrics): Promise<void> {
     try {
       await navigator.clipboard.writeText(buildDictationScriptPrompt(profile));
-      setScriptPromptMessage('LLM prompt copied.');
+      setExportMessage('LLM prompt copied.');
     } catch {
-      setScriptPromptMessage('Could not copy LLM prompt.');
+      setExportMessage('Could not copy LLM prompt.');
     }
   }
 
@@ -3497,18 +3510,18 @@ function App() {
       const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(profile), null, 2);
       const prompt = buildDictationScriptPrompt(profile);
       await navigator.clipboard.writeText(`Benchmark JSON context:\n${benchmarkJson}\n\nLLM prompt:\n${prompt}`);
-      setScriptPromptMessage('Benchmark JSON and LLM prompt copied.');
+      setExportMessage('Benchmark JSON and LLM prompt copied.');
     } catch {
-      setScriptPromptMessage('Could not copy benchmark and LLM prompt.');
+      setExportMessage('Could not copy benchmark and LLM prompt.');
     }
   }
 
   async function copyDictationScriptTemplate(profile: InputLanguageBenchmarkMetrics): Promise<void> {
     try {
       await navigator.clipboard.writeText(buildDictationScriptTemplate(profile.inputMode, profile.language));
-      setScriptPromptMessage('Sample output template copied.');
+      setExportMessage('Sample output template copied.');
     } catch {
-      setScriptPromptMessage('Could not copy sample output template.');
+      setExportMessage('Could not copy sample output template.');
     }
   }
 
@@ -3643,12 +3656,16 @@ function App() {
     createEmptyInputLanguageBenchmark(selectedBenchmarkInputMode, selectedBenchmarkLanguage);
   const selectedSessionFeedback =
     adaptiveSessionFeedbackByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage]?.[0] ?? null;
+  const repeatWordStats = useMemo(
+    () => buildRepeatWordStats({ sessions, language: selectedBenchmarkLanguage, now: new Date() }),
+    [sessions, selectedBenchmarkLanguage],
+  );
   const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
   const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) : null;
 
   return (
     <main className={`app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
-      <section className={`layout ${sidebarExpanded ? 'layout-sidebar-expanded' : 'layout-sidebar-collapsed'}`}>
+      <section className="layout">
         <section className="panel brand-block brand-header-panel workspace-main-header">
           <div className="brand-header-main">
             <div className="brand-mark">
@@ -3660,6 +3677,13 @@ function App() {
             </div>
           </div>
           <div className="brand-header-actions">
+            <button
+              type="button"
+              className="secondary-button brand-new-session-button"
+              onClick={createSession}
+            >
+              + New session
+            </button>
             <button
               type="button"
               className="secondary-button brand-leaderboard-button"
@@ -3692,6 +3716,17 @@ function App() {
             </button>
             <button
               type="button"
+              className="secondary-button brand-openrouter-button"
+              onClick={() => {
+                setWorkspaceMode('openrouter');
+                setDashboardSessionId(null);
+              }}
+              title="Configure OpenRouter API key and choose a default free model"
+            >
+              OpenRouter
+            </button>
+            <button
+              type="button"
               className="secondary-button theme-toggle-button"
               onClick={() => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark'))}
               aria-label={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -3700,233 +3735,132 @@ function App() {
               {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
             </button>
           </div>
-        </section>
-        <aside className={`left-pane panel sidebar-panel ${sidebarExpanded ? 'sidebar-panel-expanded' : 'sidebar-panel-collapsed'}`}>
-          {sidebarExpanded ? (
-            <>
-              <section className="sidebar-section">
-                <button
-                  type="button"
-                  className="sidebar-section-heading sidebar-section-toggle"
-                  onClick={() => setSessionsExpanded((value) => !value)}
-                  aria-expanded={sessionsExpanded}
+          {sessionCreationMode ? (
+            <div className="sidebar-card session-create-card brand-session-create-card" role="dialog" aria-label="Choose input">
+              <p className="sidebar-copy">Choose the source for this new session.</p>
+              <label>
+                Session Source
+                <select
+                  value={sessionCreationSource}
+                  onChange={(event) => {
+                    setSessionCreationSource(event.target.value as SessionSource);
+                    setDictationScriptValidation(null);
+                  }}
                 >
-                  <span>Sessions</span>
-                  <span className="sidebar-section-meta">
+                  <option value="plainText">Plain Text</option>
+                  <option value="dictationScript">DictationScript JSON</option>
+                </select>
+              </label>
+              {sessionCreationSource === 'plainText' ? (
+                <>
+                  <label>
+                    Session name
+                    <input
+                      value={sessionCreationName}
+                      onChange={(e) => setSessionCreationName(e.target.value)}
+                      placeholder="My first session"
+                    />
+                  </label>
+                  <p className="session-create-hint">Enter a name first, then choose the setup.</p>
+                  <div className="session-create-actions">
                     <button
                       type="button"
-                      className="secondary-button sessions-collapse-button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSidebarExpanded(false);
-                      }}
-                      aria-label="Collapse sessions panel"
-                      title="Collapse sessions panel"
+                      className="secondary-button"
+                      onClick={() => createSessionWithMode('input1')}
+                      disabled={!canCreateSessionFromDialog}
                     >
-                      ←
+                      Input # 1 - Original Audio
                     </button>
-                    {sidebarSessions.length}
-                    <span className={`sidebar-chevron ${sessionsExpanded ? 'sidebar-chevron-open' : ''}`}>⌃</span>
-                  </span>
-                </button>
-                {sessionsExpanded ? (
-                  <>
-                    <div className="sidebar-actions sidebar-actions-single">
-                      <button type="button" className="secondary-button" onClick={createSession}>
-                        New session
-                      </button>
-                    </div>
-                    {sessionCreationMode ? (
-                      <div className="sidebar-card session-create-card" role="dialog" aria-label="Choose input">
-                        <p className="sidebar-copy">Choose the source for this new session.</p>
-                        <label>
-                          Session Source
-                          <select
-                            value={sessionCreationSource}
-                            onChange={(event) => {
-                              setSessionCreationSource(event.target.value as SessionSource);
-                              setDictationScriptValidation(null);
-                            }}
-                          >
-                            <option value="plainText">Plain Text</option>
-                            <option value="dictationScript">DictationScript JSON</option>
-                          </select>
-                        </label>
-                        {sessionCreationSource === 'plainText' ? (
-                          <>
-                            <label>
-                              Session name
-                              <input
-                                value={sessionCreationName}
-                                onChange={(e) => setSessionCreationName(e.target.value)}
-                                placeholder="My first session"
-                              />
-                            </label>
-                            <p className="session-create-hint">Enter a name first, then choose the setup.</p>
-                            <div className="session-create-actions">
-                              <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => createSessionWithMode('input1')}
-                                disabled={!canCreateSessionFromDialog}
-                              >
-                                Input # 1 - Original Audio
-                              </button>
-                              <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => createSessionWithMode('input2')}
-                                disabled={!canCreateSessionFromDialog}
-                              >
-                                Input # 2 - Text to Speech (TTS)
-                              </button>
-                              <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => createSessionWithMode('input3')}
-                                disabled={!canCreateSessionFromDialog}
-                              >
-                                Input # 3 - Kokoro TTS Local
-                              </button>
-                              <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => createSessionWithMode('input4')}
-                                disabled={!canCreateSessionFromDialog}
-                              >
-                                Input # 4 - CosyVoice2 Cache
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="session-script-import">
-                            <label>
-                              DictationScript JSON
-                              <textarea
-                                value={dictationScriptJson}
-                                onChange={(event) => {
-                                  setDictationScriptJson(event.target.value);
-                                  setDictationScriptValidation(null);
-                                }}
-                                rows={10}
-                                placeholder='{"title":"Generated Dictation","language":"en","inputMode":"kokoro","phrases":[...]}'
-                              />
-                            </label>
-                            <div className="session-create-actions">
-                              <button type="button" className="secondary-button" onClick={validateScriptImport}>
-                                Validate Script
-                              </button>
-                              <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={createSessionFromDictationScript}
-                                disabled={!validatedDictationScript}
-                              >
-                                Create Session
-                              </button>
-                            </div>
-                            {dictationScriptValidation ? (
-                              dictationScriptValidation.ok ? (
-                                <div className="script-preview">
-                                  <p className="success">Script validated.</p>
-                                  <div className="today-summary-grid">
-                                    <Metric label="Title" value={dictationScriptValidation.script.title} />
-                                    <Metric label="Language" value={dictationScriptValidation.script.language} />
-                                    <Metric label="Input mode" value={dictationScriptValidation.script.inputMode} />
-                                    <Metric label="Difficulty" value={dictationScriptValidation.script.difficulty} />
-                                    <Metric label="Phrases" value={String(dictationScriptValidation.script.phrases.length)} />
-                                    <Metric label="Duration" value={`${dictationScriptValidation.script.estimatedDurationSec}s`} />
-                                  </div>
-                                  <div className="script-phrase-preview">
-                                    {dictationScriptValidation.script.phrases.slice(0, 3).map((phrase) => (
-                                      <p key={phrase.id} className="hint">
-                                        {phrase.id}: {phrase.text.slice(0, 120)}
-                                      </p>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="error">
-                                  {dictationScriptValidation.errors.map((message) => (
-                                    <p key={message}>{message}</p>
-                                  ))}
-                                </div>
-                              )
-                            ) : null}
-                          </div>
-                        )}
-                        <button type="button" className="text-button" onClick={() => setSessionCreationMode(null)}>
-                          Cancel
-                        </button>
-                      </div>
-                    ) : null}
-                    <div className="sidebar-card">
-                      <div>
-                        <p className="sidebar-copy">Stored locally in this browser.</p>
-                        <div className="live-metrics-language-tabs sidebar-language-tabs" role="tablist" aria-label="Sessions language">
-                          {([
-                            ['en', 'Sessions for English'],
-                            ['es', 'Sessions for Spanish'],
-                            ['de', 'Sessions for German'],
-                          ] as const).map(([code, label]) => (
-                            <button
-                              key={code}
-                              type="button"
-                              className={`live-metrics-language-tab ${sessionsLanguageView === code ? 'live-metrics-language-tab-active' : ''}`}
-                              onClick={() => setSessionsLanguageView(code)}
-                              aria-pressed={sessionsLanguageView === code}
-                              title={label}
-                            >
-                              {code.toUpperCase()}
-                            </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => createSessionWithMode('input2')}
+                      disabled={!canCreateSessionFromDialog}
+                    >
+                      Input # 2 - Text to Speech (TTS)
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => createSessionWithMode('input3')}
+                      disabled={!canCreateSessionFromDialog}
+                    >
+                      Input # 3 - Kokoro TTS Local
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => createSessionWithMode('input4')}
+                      disabled={!canCreateSessionFromDialog}
+                    >
+                      Input # 4 - CosyVoice2 Cache
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="session-script-import">
+                  <label>
+                    DictationScript JSON
+                    <textarea
+                      value={dictationScriptJson}
+                      onChange={(event) => {
+                        setDictationScriptJson(event.target.value);
+                        setDictationScriptValidation(null);
+                      }}
+                      rows={10}
+                      placeholder='{"title":"Generated Dictation","language":"en","inputMode":"kokoro","phrases":[...]}'
+                    />
+                  </label>
+                  <div className="session-create-actions">
+                    <button type="button" className="secondary-button" onClick={validateScriptImport}>
+                      Validate Script
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={createSessionFromDictationScript}
+                      disabled={!validatedDictationScript}
+                    >
+                      Create Session
+                    </button>
+                  </div>
+                  {dictationScriptValidation ? (
+                    dictationScriptValidation.ok ? (
+                      <div className="script-preview">
+                        <p className="success">Script validated.</p>
+                        <div className="today-summary-grid">
+                          <Metric label="Title" value={dictationScriptValidation.script.title} />
+                          <Metric label="Language" value={dictationScriptValidation.script.language} />
+                          <Metric label="Input mode" value={dictationScriptValidation.script.inputMode} />
+                          <Metric label="Difficulty" value={dictationScriptValidation.script.difficulty} />
+                          <Metric label="Phrases" value={String(dictationScriptValidation.script.phrases.length)} />
+                          <Metric label="Duration" value={`${dictationScriptValidation.script.estimatedDurationSec}s`} />
+                        </div>
+                        <div className="script-phrase-preview">
+                          {dictationScriptValidation.script.phrases.slice(0, 3).map((phrase) => (
+                            <p key={phrase.id} className="hint">
+                              {phrase.id}: {phrase.text.slice(0, 120)}
+                            </p>
                           ))}
                         </div>
                       </div>
-                      <div className="session-list">
-                        {sidebarSessions.length === 0 ? (
-                          <div className="leaderboard-empty sidebar-sessions-empty">
-                            No sessions yet for {sessionsLanguageView.toUpperCase()}. Create or finish a session in that language to see it here.
-                          </div>
-                        ) : null}
-                        {sidebarSessions.map((session) => (
-                          <div
-                            key={session.id}
-                            role="button"
-                            tabIndex={0}
-                            className={`session-card ${session.id === activeSessionId ? 'session-card-active' : ''}`}
-                            onClick={() => setActiveSessionId(session.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                setActiveSessionId(session.id);
-                              }
-                            }}
-                          >
-                            <div className="session-card-line">
-                              <span className="session-card-title">{session.name || 'Untitled session'}</span>
-                              <span className="session-card-date">{formatSessionDate(session.updatedAt)}</span>
-                              {sessions.length > 1 ? (
-                                <button
-                                  type="button"
-                                  className="danger-button session-card-delete"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteSession(session.id);
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
+                    ) : (
+                      <div className="error">
+                        {dictationScriptValidation.errors.map((message) => (
+                          <p key={message}>{message}</p>
                         ))}
                       </div>
-                    </div>
-                  </>
-                ) : null}
-              </section>
-
-              {!setupLocked ? (
+                    )
+                  ) : null}
+                </div>
+              )}
+              <button type="button" className="text-button" onClick={() => setSessionCreationMode(null)}>
+                Cancel
+              </button>
+            </div>
+          ) : null}
+        </section>
+        {!setupLocked ? (
               activeInputMode === 'input1' ? (
               <section className="sidebar-section sidebar-section-border">
                 <button
@@ -4312,36 +4246,6 @@ function App() {
                 ) : null}
               </section>
               )) : null}
-            </>
-          ) : (
-            <div className="sidebar-collapsed-rail">
-              <button
-                type="button"
-                className="collapsed-session-dot collapsed-expand-button"
-                onClick={() => setSidebarExpanded(true)}
-                aria-label="Expand sidebar"
-                title="Expand sidebar"
-              >
-                →
-              </button>
-              {sessions.map((session) => (
-                <button
-                  key={session.id}
-                  type="button"
-                  className={`collapsed-session-dot ${session.id === activeSessionId ? 'collapsed-session-dot-active' : ''}`}
-                  onClick={() => setActiveSessionId(session.id)}
-                  title={session.name}
-                  aria-label={session.name}
-                >
-                  <span className="collapsed-session-dot-label">{session.id === activeSessionId ? '●' : '○'}</span>
-                </button>
-              ))}
-              <button type="button" className="collapsed-session-dot collapsed-session-add" onClick={createSession} aria-label="New session">
-                +
-              </button>
-            </div>
-          )}
-        </aside>
 
         <section className="workspace">
           <section className="workspace-shell">
@@ -4766,7 +4670,6 @@ function App() {
                             onOpen={() => {
                               setSelectedBenchmarkInputMode(mapSessionInputMode(adapter.inputMode));
                               setBenchmarkExportMessage('');
-                              setScriptPromptMessage('');
                               setSessionFeedbackMessage('');
                               window.setTimeout(() => {
                                 document.getElementById('adaptive-benchmarks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -4964,15 +4867,14 @@ function App() {
                     selectedInputMode={selectedBenchmarkInputMode}
                     selectedLanguage={selectedBenchmarkLanguage}
                     selectedProfile={selectedBenchmarkProfile}
+                    repeatWordStats={repeatWordStats}
                     onSelect={(inputMode, language) => {
                       setSelectedBenchmarkInputMode(inputMode);
                       setSelectedBenchmarkLanguage(language);
                       setBenchmarkExportMessage('');
-                      setScriptPromptMessage('');
                       setSessionFeedbackMessage('');
                     }}
                     benchmarkExportMessage={benchmarkExportMessage}
-                    scriptPromptMessage={scriptPromptMessage}
                     sessionFeedback={selectedSessionFeedback}
                     sessionFeedbackMessage={sessionFeedbackMessage}
                     onCopyBenchmark={(profile) => void copySelectedBenchmarkJson(profile)}
@@ -4989,6 +4891,69 @@ function App() {
                   />
                 </div>
               </section>
+            ) : workspaceMode === 'openrouter' ? (
+              <OpenRouterWorkspace
+                defaultModel={openRouterDefaultModel}
+                onSetDefaultModel={(value) => {
+                  setOpenRouterDefaultModel(value);
+                  window.localStorage.setItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(value));
+                }}
+                models={openRouterModels}
+                status={openRouterStatus}
+                error={openRouterError}
+                onRefreshModels={async () => {
+                  setOpenRouterStatus('loading');
+                  setOpenRouterError('');
+                  try {
+                    const response = await fetch('/api/openrouter/models');
+                    if (!response.ok) {
+                      const text = await response.text();
+                      throw new Error(text || `OpenRouter request failed (${response.status}).`);
+                    }
+                    const payload = (await response.json()) as {
+                      data?: Array<{
+                        id: string;
+                        name?: string;
+                        context_length?: number;
+                        pricing?: { prompt?: string | number; completion?: string | number };
+                      }>;
+                    };
+                    const data = Array.isArray(payload.data) ? payload.data : [];
+                    const freeModels = data
+                      .filter((model) => {
+                        const prompt = Number(model.pricing?.prompt ?? NaN);
+                        const completion = Number(model.pricing?.completion ?? NaN);
+                        return Number.isFinite(prompt) && Number.isFinite(completion) && prompt === 0 && completion === 0;
+                      })
+                      .map((model) => ({ id: model.id, name: model.name, context_length: model.context_length }))
+                      .sort((a, b) => a.id.localeCompare(b.id));
+                    setOpenRouterModels(freeModels);
+                    setOpenRouterStatus('ready');
+                    if (!openRouterDefaultModel && freeModels.length > 0) {
+                      setOpenRouterDefaultModel(freeModels[0].id);
+                      window.localStorage.setItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(freeModels[0].id));
+                    }
+                  } catch (err) {
+                    setOpenRouterModels([]);
+                    setOpenRouterStatus('error');
+                    setOpenRouterError(err instanceof Error ? err.message : 'OpenRouter model fetch failed.');
+                  }
+                }}
+                onBackToTraining={() => setWorkspaceMode('training')}
+                exportProfile={selectedBenchmarkProfile}
+                exportSessionFeedback={selectedSessionFeedback}
+                onCopyBenchmark={(profile) => void copySelectedBenchmarkJson(profile)}
+                onExportBenchmark={(profile) => downloadSelectedBenchmarkJson(profile)}
+                onCopyBenchmarkWithScriptPrompt={(profile) => void copyBenchmarkWithDictationScriptPrompt(profile)}
+                onCopyBenchmarkFeedbackPrompt={(profile, feedback) => void copyBenchmarkFeedbackPrompt(profile, feedback)}
+                onCopyBenchmarkFeedback={(profile, feedback) => void copyBenchmarkFeedbackJson(profile, feedback)}
+                onCopySessionFeedback={(profile, feedback) => void copySessionFeedbackJson(profile, feedback)}
+                onCopyScriptPrompt={(profile) => void copyDictationScriptPrompt(profile)}
+                onCopyScriptTemplate={(profile) => void copyDictationScriptTemplate(profile)}
+                onCopyBenchmarkFeedbackPromptWithHumanFeedback={(profile, feedback, humanFeedback) =>
+                  void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback)
+                }
+              />
             ) : workspaceMode === 'admin' ? (
               <AdminWorkspace
                 sessions={adminSessions}
@@ -5064,31 +5029,59 @@ function App() {
                       <span className="leaderboard-cell leaderboard-cell-duration">{formatSessionPlaybackDuration(session)}</span>
                       <span className="leaderboard-cell leaderboard-cell-date">{formatSessionDate(session.updatedAt)}</span>
                       <span className="leaderboard-cell leaderboard-cell-action">
-                        <select
-                          aria-label={`Actions for ${session.name || 'session'}`}
-                          defaultValue=""
-                          onChange={(e) => {
-                            const action = e.target.value;
-                            if (action === 'export') {
-                              downloadSessionSnapshot(session);
-                            }
-                            if (action === 'copy') {
+                        <div className="leaderboard-action-buttons" aria-label={`Actions for ${session.name || 'session'}`}>
+                          <button
+                            type="button"
+                            className="secondary-button leaderboard-action-button"
+                            onClick={() => {
+                              setActiveSessionId(session.id);
+                              setDashboardSessionId(null);
+                              setWorkspaceMode('training');
+                            }}
+                            aria-label={`Open training workspace for ${session.name || 'session'}`}
+                            title="Open in training workspace"
+                          >
+                            <span aria-hidden="true">⟵</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button leaderboard-action-button"
+                            onClick={() => openDashboardForSession(session.id)}
+                            aria-label={`Open dashboard for ${session.name || 'session'}`}
+                            title="Dashboard"
+                          >
+                            <span aria-hidden="true">◫</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button leaderboard-action-button"
+                            onClick={() => downloadSessionSnapshot(session)}
+                            aria-label={`Export JSON for ${session.name || 'session'}`}
+                            title="Export JSON"
+                          >
+                            <span aria-hidden="true">⇩</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button leaderboard-action-button"
+                            onClick={() => {
                               void copySessionSnapshot(session, setExportMessage);
-                            }
-                            if (action === 'dashboard') {
-                              setDashboardSessionId(session.id);
-                              setWorkspaceMode('dashboard');
-                            }
-                            e.currentTarget.value = '';
-                          }}
-                        >
-                          <option value="" disabled>
-                            Action
-                          </option>
-                          <option value="dashboard">Dashboard</option>
-                          <option value="export">Export session JSON</option>
-                          <option value="copy">Copy session JSON</option>
-                        </select>
+                            }}
+                            aria-label={`Copy JSON for ${session.name || 'session'}`}
+                            title="Copy JSON"
+                          >
+                            <span aria-hidden="true">⧉</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="danger-button leaderboard-action-button leaderboard-action-button-danger"
+                            onClick={() => deleteSession(session.id)}
+                            aria-label={`Delete ${session.name || 'session'}`}
+                            title="Delete session"
+                          >
+                            <span aria-hidden="true">✕</span>
+                          </button>
+                        </div>
                       </span>
                     </div>
                   ))}
@@ -5208,7 +5201,7 @@ function App() {
       </section>
       <section className="bottom-metrics-dock">
         <div className="bottom-metrics-inner">
-          <div className="bottom-metrics-top">
+          <div className={`bottom-metrics-top ${insightsCollapsed ? 'bottom-metrics-top-collapsed' : ''}`}>
             <div className="metrics-header bottom-metrics-header live-metrics-section live-metrics-section-header">
               <h2>Insights</h2>
               <div className="live-metrics-language-tabs" role="tablist" aria-label="Live metrics language">
@@ -5227,13 +5220,28 @@ function App() {
                   >
                     {code.toUpperCase()}
                   </button>
-                ))}
+                  ))}
               </div>
               <span className={`trend trend-${trend}`}>
                 {trend === 'improving' ? 'Improving' : trend === 'declining' ? 'Needs adjustment' : 'Stable'}
               </span>
+              <button
+                type="button"
+                className="secondary-button live-metrics-collapse-button"
+                onClick={() => setInsightsCollapsed((value) => !value)}
+                aria-expanded={!insightsCollapsed}
+                aria-label={insightsCollapsed ? 'Expand insights panel' : 'Minimize insights panel'}
+                title={insightsCollapsed ? 'Expand' : 'Minimize'}
+              >
+                <span
+                  className={`live-metrics-collapse-icon ${insightsCollapsed ? 'live-metrics-collapse-icon-collapsed' : ''}`}
+                  aria-hidden="true"
+                >
+                  ⌃
+                </span>
+              </button>
             </div>
-            {workspaceMode === 'tts' || workspaceMode === 'kokoro' ? (
+            {!insightsCollapsed && (workspaceMode === 'tts' || workspaceMode === 'kokoro') ? (
               <div className="bottom-metrics-player tts-bottom-player live-metrics-section live-metrics-section-player">
                 <span className="bottom-metrics-player-label">{workspaceMode === 'kokoro' ? 'Kokoro local' : 'Browser TTS'}</span>
                 <span>
@@ -5249,69 +5257,570 @@ function App() {
             ) : null}
           </div>
 
-          <section className="bottom-summary-section live-metrics-section live-metrics-section-last">
-            <div className="bottom-summary-header">
-              <h3>Last Session ({metricsLanguageView.toUpperCase()})</h3>
-            </div>
-            {!lastSessionForLanguage ? <p className="hint">No sessions found for this language yet.</p> : null}
-            <div className="bottom-summary-grid">
-              <Metric label="Name" value={lastSessionForLanguage?.name ?? '—'} />
-              <Metric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode) : '—'} />
-              <Metric label="Score" value={lastSessionForLanguage ? String(lastSessionForLanguage.metrics.score) : '—'} />
-              <Metric label="Updated" value={lastSessionForLanguage ? formatSessionDate(lastSessionForLanguage.updatedAt) : '—'} />
-            </div>
-          </section>
+          {!insightsCollapsed ? (
+            <>
+              <section className="bottom-summary-section live-metrics-section live-metrics-section-last">
+                <div className="bottom-summary-header">
+                  <h3>Last Session ({metricsLanguageView.toUpperCase()})</h3>
+                </div>
+                {!lastSessionForLanguage ? <p className="hint">No sessions found for this language yet.</p> : null}
+                <div className="bottom-summary-grid">
+                  <Metric label="Name" value={lastSessionForLanguage?.name ?? '—'} />
+                  <Metric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode) : '—'} />
+                  <Metric label="Score" value={lastSessionForLanguage ? String(lastSessionForLanguage.metrics.score) : '—'} />
+                  <Metric label="Accuracy" value={lastSessionForLanguage ? `${lastSessionForLanguage.metrics.accuracy.toFixed(1)}%` : '—'} />
+                  <Metric
+                    label="Duration"
+                    value={
+                      lastSessionForLanguage?.telemetry.startedAt && lastSessionForLanguage.telemetry.finishedAt
+                        ? formatDuration(
+                            (new Date(lastSessionForLanguage.telemetry.finishedAt).getTime() -
+                              new Date(lastSessionForLanguage.telemetry.startedAt).getTime()) /
+                              1000,
+                          )
+                        : '—'
+                    }
+                  />
+                  <Metric label="Updated" value={lastSessionForLanguage ? formatSessionDate(lastSessionForLanguage.updatedAt) : '—'} />
+                </div>
+              </section>
 
-          <section className="bottom-summary-section today-summary-section live-metrics-section live-metrics-section-period">
-            <div className="bottom-summary-header">
-              <h3>{rangeLabel(metricsRangeView)} ({metricsLanguageView.toUpperCase()})</h3>
-              <div className="live-metrics-range-tabs" role="tablist" aria-label="Live metrics range">
-                {([
-                  ['today', 'Today'],
-                  ['week', 'Week'],
-                  ['twoWeeks', '2 Weeks'],
-                  ['threeWeeks', '3 Weeks'],
-                  ['month', 'Month'],
-                ] as const).map(([code, label]) => (
-                  <button
-                    key={code}
-                    type="button"
-                    className={`live-metrics-range-tab ${metricsRangeView === code ? 'live-metrics-range-tab-active' : ''}`}
-                    onClick={() => setMetricsRangeView(code)}
-                    aria-pressed={metricsRangeView === code}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {languageTodaySummary.sessionsInRange.length === 0 ? <p className="hint">No sessions in this period for this language.</p> : null}
-            <div className="today-summary-grid">
-              <Metric label="Sessions" value={String(languageTodaySummary.sessionsInRange.length)} />
-              <Metric label="Duration" value={formatDuration(languageTodaySummary.durationSeconds)} />
-              <Metric label="Avg points" value={languageTodaySummary.avgPoints !== null ? languageTodaySummary.avgPoints.toFixed(1) : '—'} />
-              <Metric label="Avg score" value={languageTodaySummary.avgScore !== null ? languageTodaySummary.avgScore.toFixed(1) : '—'} />
-              <Metric label="Avg accuracy" value={languageTodaySummary.avgAccuracy !== null ? `${languageTodaySummary.avgAccuracy.toFixed(1)}%` : '—'} />
-              <Metric label="Avg WPM" value={languageTodaySummary.avgWpm !== null ? languageTodaySummary.avgWpm.toFixed(1) : '—'} />
-            </div>
-            <div className="today-chart-row">
-              {languageTodaySummary.days.map((item) => (
-                <div key={item.label} className="today-chart-bar">
-                  <span className="today-chart-label">{item.label}</span>
-                  <div className="today-chart-track">
-                    <div
-                      className="today-chart-fill"
-                      style={{ width: `${Math.round((item.count / languageTodaySummary.maxDayCount) * 100)}%` }}
-                    />
+              <section className="bottom-summary-section today-summary-section live-metrics-section live-metrics-section-period">
+                <div className="bottom-summary-header">
+                  <h3>{rangeLabel(metricsRangeView)} ({metricsLanguageView.toUpperCase()})</h3>
+                  <div className="live-metrics-range-tabs" role="tablist" aria-label="Live metrics range">
+                    {([
+                      ['today', 'Today'],
+                      ['week', 'Week'],
+                      ['twoWeeks', '2 Weeks'],
+                      ['threeWeeks', '3 Weeks'],
+                      ['month', 'Month'],
+                    ] as const).map(([code, label]) => (
+                      <button
+                        key={code}
+                        type="button"
+                        className={`live-metrics-range-tab ${metricsRangeView === code ? 'live-metrics-range-tab-active' : ''}`}
+                        onClick={() => setMetricsRangeView(code)}
+                        aria-pressed={metricsRangeView === code}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
+                {languageTodaySummary.sessionsInRange.length === 0 ? <p className="hint">No sessions in this period for this language.</p> : null}
+                <div className="today-summary-grid">
+                  <Metric label="Sessions" value={String(languageTodaySummary.sessionsInRange.length)} />
+                  <Metric label="Duration" value={formatDuration(languageTodaySummary.durationSeconds)} />
+                  <Metric label="Avg points" value={languageTodaySummary.avgPoints !== null ? languageTodaySummary.avgPoints.toFixed(1) : '—'} />
+                  <Metric label="Avg score" value={languageTodaySummary.avgScore !== null ? languageTodaySummary.avgScore.toFixed(1) : '—'} />
+                  <Metric label="Avg accuracy" value={languageTodaySummary.avgAccuracy !== null ? `${languageTodaySummary.avgAccuracy.toFixed(1)}%` : '—'} />
+                  <Metric label="Avg WPM" value={languageTodaySummary.avgWpm !== null ? languageTodaySummary.avgWpm.toFixed(1) : '—'} />
+                </div>
+                <div className="today-chart-row">
+                  {languageTodaySummary.days.map((item) => (
+                    <div key={item.label} className="today-chart-bar">
+                      <span className="today-chart-label">{item.label}</span>
+                      <div className="today-chart-track">
+                        <div
+                          className="today-chart-fill"
+                          style={{ width: `${Math.round((item.count / languageTodaySummary.maxDayCount) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : null}
 
         </div>
       </section>
     </main>
+  );
+}
+
+function OpenRouterWorkspace({
+  defaultModel,
+  onSetDefaultModel,
+  models,
+  status,
+  error,
+  onRefreshModels,
+  onBackToTraining,
+  exportProfile,
+  exportSessionFeedback,
+  onCopyBenchmark,
+  onExportBenchmark,
+  onCopyBenchmarkWithScriptPrompt,
+  onCopyBenchmarkFeedbackPrompt,
+  onCopyBenchmarkFeedback,
+  onCopySessionFeedback,
+  onCopyScriptPrompt,
+  onCopyScriptTemplate,
+  onCopyBenchmarkFeedbackPromptWithHumanFeedback,
+}: {
+  defaultModel: string;
+  onSetDefaultModel: (value: string) => void;
+  models: Array<{ id: string; name?: string; context_length?: number }>;
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  error: string;
+  onRefreshModels: () => Promise<void>;
+  onBackToTraining: () => void;
+  exportProfile: InputLanguageBenchmarkMetrics;
+  exportSessionFeedback: AdaptiveSessionFeedback | null;
+  onCopyBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
+  onExportBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
+  onCopyBenchmarkWithScriptPrompt: (profile: InputLanguageBenchmarkMetrics) => void;
+  onCopyBenchmarkFeedbackPrompt: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
+  onCopyBenchmarkFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
+  onCopySessionFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
+  onCopyScriptPrompt: (profile: InputLanguageBenchmarkMetrics) => void;
+  onCopyScriptTemplate: (profile: InputLanguageBenchmarkMetrics) => void;
+  onCopyBenchmarkFeedbackPromptWithHumanFeedback: (
+    profile: InputLanguageBenchmarkMetrics,
+    feedback: AdaptiveSessionFeedback | null,
+    humanFeedback: string,
+  ) => void;
+}) {
+  const [apiKeyDraft, setApiKeyDraft] = useState('');
+  const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [apiKeySuffix, setApiKeySuffix] = useState('');
+  const [apiKeyMessage, setApiKeyMessage] = useState('');
+  const [apiKeyBusy, setApiKeyBusy] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(defaultModel);
+  const [testPrompt, setTestPrompt] = useState('');
+  const [testResponse, setTestResponse] = useState('');
+  const [testUsage, setTestUsage] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null);
+  const [testBusy, setTestBusy] = useState(false);
+  const [testError, setTestError] = useState('');
+  const [exportStatusMessage, setExportStatusMessage] = useState('');
+  const [humanFeedbackEditorOpen, setHumanFeedbackEditorOpen] = useState(false);
+  const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
+
+  const refreshApiKeyStatus = async (): Promise<void> => {
+    try {
+      const response = await fetch('/api/openrouter/key/status');
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Status request failed (${response.status}).`);
+      }
+      const payload = (await response.json()) as { configured?: boolean; suffix?: string };
+      setApiKeyConfigured(Boolean(payload.configured));
+      setApiKeySuffix(typeof payload.suffix === 'string' ? payload.suffix : '');
+    } catch (err) {
+      setApiKeyConfigured(false);
+      setApiKeySuffix('');
+      setApiKeyMessage(err instanceof Error ? err.message : 'Failed to read key status.');
+    }
+  };
+
+  useEffect(() => {
+    void refreshApiKeyStatus();
+  }, []);
+
+  useEffect(() => {
+    setSelectedModel(defaultModel);
+  }, [defaultModel]);
+
+  const exportHasBenchmarkData = exportProfile.sampleCount > 0 || exportProfile.sessionCount > 0;
+  const exportHasSessionFeedback = Boolean(exportSessionFeedback);
+
+  return (
+    <section className="panel workspace-panel admin-workspace">
+      <div className="tts-workspace-header">
+        <div>
+          <p className="dashboard-eyebrow">Model gateway</p>
+          <h2>OpenRouter</h2>
+          <p className="dashboard-meta">Fetches models via a local API route so the OpenRouter key is not stored in the browser.</p>
+        </div>
+        <div className="dashboard-header-actions">
+          <button type="button" className="secondary-button" onClick={onBackToTraining}>
+            Back
+          </button>
+        </div>
+      </div>
+
+      <div className="dashboard-card admin-card">
+        <div className="admin-card-header">
+          <h3>Section # 1 API Key</h3>
+        </div>
+        <div className="admin-card-body">
+          <div className="admin-actions">
+            <span className="hint">
+              {apiKeyConfigured ? `Key saved in .env.local (${apiKeySuffix || 'configured'}).` : 'No key saved in .env.local yet.'}
+            </span>
+            {apiKeyConfigured ? (
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={apiKeyBusy}
+                onClick={() => {
+                  setApiKeyBusy(true);
+                  setApiKeyMessage('');
+                  void (async () => {
+                    try {
+                      const response = await fetch('/api/openrouter/key', { method: 'DELETE' });
+                      if (!response.ok) {
+                        const text = await response.text();
+                        throw new Error(text || `Delete request failed (${response.status}).`);
+                      }
+                      setApiKeyDraft('');
+                      setApiKeyVisible(false);
+                      setApiKeyMessage('Key removed from .env.local.');
+                      await refreshApiKeyStatus();
+                    } catch (err) {
+                      setApiKeyMessage(err instanceof Error ? err.message : 'Failed to remove key.');
+                    } finally {
+                      setApiKeyBusy(false);
+                    }
+                  })();
+                }}
+              >
+                Delete from .env.local
+              </button>
+            ) : null}
+          </div>
+
+          <label>
+            OpenRouter API key
+            <input
+              value={apiKeyDraft}
+              onChange={(e) => setApiKeyDraft(e.target.value)}
+              placeholder="sk-or-..."
+              type={apiKeyVisible ? 'text' : 'password'}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setApiKeyVisible((v) => !v)}
+              disabled={!apiKeyDraft.trim() || apiKeyBusy}
+            >
+              {apiKeyVisible ? 'Hide' : 'Show'}
+            </button>
+            <button
+              type="button"
+              disabled={!apiKeyDraft.trim() || apiKeyBusy}
+              onClick={() => {
+                const nextKey = apiKeyDraft.trim();
+                if (!nextKey) return;
+                setApiKeyBusy(true);
+                setApiKeyMessage('');
+                void (async () => {
+                  try {
+                    const response = await fetch('/api/openrouter/key', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ apiKey: nextKey }),
+                    });
+                    if (!response.ok) {
+                      const text = await response.text();
+                      throw new Error(text || `Save request failed (${response.status}).`);
+                    }
+                    const payload = (await response.json()) as { suffix?: string };
+                    setApiKeyDraft('');
+                    setApiKeyVisible(false);
+                    setApiKeyMessage(`Key saved in .env.local (${typeof payload.suffix === 'string' ? payload.suffix : 'configured'}).`);
+                    await refreshApiKeyStatus();
+                  } catch (err) {
+                    setApiKeyMessage(err instanceof Error ? err.message : 'Failed to save key.');
+                  } finally {
+                    setApiKeyBusy(false);
+                  }
+                })();
+              }}
+            >
+              Save to .env.local
+            </button>
+          </div>
+          {apiKeyMessage ? <p className={apiKeyMessage.toLowerCase().includes('failed') ? 'error' : 'hint'}>{apiKeyMessage}</p> : null}
+          <p className="hint">
+            This writes `OPENROUTER_API_KEY` into `.env.local` on your machine. The key is read by the dev server and never persisted to `localStorage`.
+          </p>
+        </div>
+      </div>
+
+      <div className="dashboard-card admin-card">
+        <div className="admin-card-header">
+          <h3>Section # 2 Free Models</h3>
+        </div>
+        <div className="admin-card-body">
+          <div className="admin-actions">
+            <button type="button" className="secondary-button" onClick={() => void onRefreshModels()} disabled={status === 'loading'}>
+              {status === 'loading' ? 'Refreshing…' : 'Refresh models'}
+            </button>
+            <span className="hint">
+              {status === 'ready' ? `${models.length} free model(s) found.` : status === 'loading' ? 'Querying OpenRouter…' : ''}
+            </span>
+          </div>
+          {error ? <p className="error">{error}</p> : null}
+
+          <label>
+            Default model
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              disabled={models.length === 0}
+            >
+              {models.length === 0 ? <option value="">No free models loaded</option> : null}
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.id}{model.context_length ? ` (${model.context_length} ctx)` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="admin-actions">
+            <button
+              type="button"
+              onClick={() => onSetDefaultModel(selectedModel)}
+              disabled={!selectedModel || models.length === 0}
+            >
+              Set default model
+            </button>
+            <span className="hint">{defaultModel ? `Default model set: ${defaultModel}` : 'No default model set yet.'}</span>
+          </div>
+          <p className="hint">
+            This list is filtered to models with OpenRouter pricing `prompt=0` and `completion=0`. Availability and “free” status can change upstream.
+          </p>
+        </div>
+      </div>
+
+      <div className="dashboard-card admin-card">
+        <div className="admin-card-header">
+          <h3>Section # 3 Testing model</h3>
+        </div>
+        <div className="admin-card-body">
+          <label>
+            Prompt
+            <textarea
+              value={testPrompt}
+              onChange={(e) => setTestPrompt(e.target.value)}
+              placeholder="Type a quick test prompt…"
+              rows={4}
+            />
+          </label>
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={testBusy || !testPrompt.trim() || !defaultModel}
+              onClick={() => {
+                const prompt = testPrompt.trim();
+                if (!prompt || !defaultModel) return;
+                setTestBusy(true);
+                setTestError('');
+                setTestResponse('');
+                setTestUsage(null);
+                void (async () => {
+                  try {
+                    const response = await fetch('/api/openrouter/chat', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ model: defaultModel, prompt }),
+                    });
+                    if (!response.ok) {
+                      const text = await response.text();
+                      throw new Error(text || `Test request failed (${response.status}).`);
+                    }
+                    const payload = (await response.json()) as {
+                      choices?: Array<{ message?: { content?: string } }>;
+                      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+                    };
+                    const text =
+                      payload.choices?.[0]?.message?.content && typeof payload.choices[0].message?.content === 'string'
+                        ? payload.choices[0].message?.content
+                        : '';
+                    setTestResponse(text || '(No response text returned.)');
+                    const usage = payload.usage ?? {};
+                    const promptTokens = Number(usage.prompt_tokens ?? 0);
+                    const completionTokens = Number(usage.completion_tokens ?? 0);
+                    const totalTokens = Number(usage.total_tokens ?? promptTokens + completionTokens);
+                    setTestUsage({
+                      promptTokens: Number.isFinite(promptTokens) ? promptTokens : 0,
+                      completionTokens: Number.isFinite(completionTokens) ? completionTokens : 0,
+                      totalTokens: Number.isFinite(totalTokens) ? totalTokens : 0,
+                    });
+                  } catch (err) {
+                    setTestError(err instanceof Error ? err.message : 'Model test failed.');
+                  } finally {
+                    setTestBusy(false);
+                  }
+                })();
+              }}
+            >
+              {testBusy ? 'Testing…' : 'Send test'}
+            </button>
+            <span className="hint">{defaultModel ? `Using: ${defaultModel}` : 'Set a default model first (Section #2).'}</span>
+          </div>
+          {testError ? <p className="error">{testError}</p> : null}
+          {testUsage ? (
+            <p className="hint">
+              Tokens: input {testUsage.promptTokens}, output {testUsage.completionTokens}, total {testUsage.totalTokens}.
+            </p>
+          ) : null}
+          {testResponse ? (
+            <label>
+              Response
+              <textarea value={testResponse} readOnly rows={6} />
+            </label>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="dashboard-card admin-card">
+        <div className="admin-card-header">
+          <h3>Section # 4 Export / Copy Actions</h3>
+        </div>
+        <div className="admin-card-body">
+          {exportStatusMessage ? <p className="success">{exportStatusMessage}</p> : null}
+          <p className="dashboard-meta">Exports use: {exportProfile.inputMode}/{exportProfile.language}</p>
+          <div className="adaptive-export-groups">
+            <div>
+              <p className="dashboard-eyebrow">Benchmark JSON</p>
+              <div className="admin-actions">
+                <button type="button" className="secondary-button" onClick={() => onCopyBenchmark(exportProfile)}>
+                  Copy Benchmark JSON
+                </button>
+                <button type="button" className="secondary-button" onClick={() => onExportBenchmark(exportProfile)}>
+                  Export Benchmark JSON
+                </button>
+              </div>
+            </div>
+            <div>
+              <p className="dashboard-eyebrow">Primary</p>
+              <div className="admin-actions">
+                <button
+                  type="button"
+                  className="secondary-button adaptive-recommended-action"
+                  onClick={() => {
+                    onCopyBenchmarkFeedbackPrompt(exportProfile, exportSessionFeedback);
+                    setExportStatusMessage(`Copied: Generate next adaptive script · ${exportProfile.inputMode}/${exportProfile.language}`);
+                  }}
+                  disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
+                >
+                  Generate next adaptive script
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setHumanFeedbackEditorOpen(true)}
+                  disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
+                >
+                  Generate next script with my notes
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    onCopyBenchmarkWithScriptPrompt(exportProfile);
+                    setExportStatusMessage(`Copied: Generate from benchmark only · ${exportProfile.inputMode}/${exportProfile.language}`);
+                  }}
+                  disabled={!exportHasBenchmarkData}
+                >
+                  Generate from benchmark only
+                </button>
+              </div>
+              {!exportHasBenchmarkData ? <p className="hint">No benchmark available for this profile yet.</p> : null}
+              {!exportHasSessionFeedback ? <p className="hint">No completed session feedback for this profile yet.</p> : null}
+            </div>
+            <div>
+              <p className="dashboard-eyebrow">Diagnostics</p>
+              <div className="admin-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    onCopyBenchmarkFeedback(exportProfile, exportSessionFeedback);
+                    setExportStatusMessage(`Copied: Full diagnostic package · ${exportProfile.inputMode}/${exportProfile.language}`);
+                  }}
+                  disabled={!exportHasBenchmarkData}
+                >
+                  Copy full diagnostic package
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    onCopySessionFeedback(exportProfile, exportSessionFeedback);
+                    setExportStatusMessage(`Copied: Latest session feedback · ${exportProfile.inputMode}/${exportProfile.language}`);
+                  }}
+                  disabled={!exportHasSessionFeedback}
+                >
+                  Copy latest session feedback
+                </button>
+              </div>
+            </div>
+            <div>
+              <p className="dashboard-eyebrow">Templates</p>
+              <div className="admin-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    onCopyScriptPrompt(exportProfile);
+                    setExportStatusMessage(`Copied: Base prompt · ${exportProfile.inputMode}/${exportProfile.language}`);
+                  }}
+                >
+                  Copy base prompt
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    onCopyScriptTemplate(exportProfile);
+                    setExportStatusMessage(`Copied: Output template · ${exportProfile.inputMode}/${exportProfile.language}`);
+                  }}
+                >
+                  Copy output template
+                </button>
+              </div>
+            </div>
+          </div>
+          {humanFeedbackEditorOpen ? (
+            <div className="adaptive-human-feedback-editor">
+              <textarea
+                value={humanFeedbackDraft}
+                onChange={(e) => setHumanFeedbackDraft(e.target.value)}
+                placeholder="Add notes for the next script (topics, required words, constraints)..."
+                rows={4}
+              />
+              <div className="adaptive-human-feedback-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    setHumanFeedbackEditorOpen(false);
+                    setHumanFeedbackDraft('');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCopyBenchmarkFeedbackPromptWithHumanFeedback(exportProfile, exportSessionFeedback, humanFeedbackDraft);
+                    setExportStatusMessage(
+                      `Copied: Generate next script with my notes · ${exportProfile.inputMode}/${exportProfile.language} · human notes included`,
+                    );
+                    setHumanFeedbackEditorOpen(false);
+                    setHumanFeedbackDraft('');
+                  }}
+                  disabled={humanFeedbackDraft.trim().length === 0 || !exportHasBenchmarkData || !exportHasSessionFeedback}
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -5780,9 +6289,9 @@ function AdaptiveBenchmarkSection({
   selectedInputMode,
   selectedLanguage,
   selectedProfile,
+  repeatWordStats,
   onSelect,
   benchmarkExportMessage,
-  scriptPromptMessage,
   sessionFeedback,
   sessionFeedbackMessage,
   onCopyBenchmark,
@@ -5804,9 +6313,9 @@ function AdaptiveBenchmarkSection({
   selectedInputMode: InputMode;
   selectedLanguage: BenchmarkLanguageButton;
   selectedProfile: InputLanguageBenchmarkMetrics;
+  repeatWordStats: RepeatWordStat[];
   onSelect: (inputMode: InputMode, language: BenchmarkLanguageButton) => void;
   benchmarkExportMessage: string;
-  scriptPromptMessage: string;
   sessionFeedback: AdaptiveSessionFeedback | null;
   sessionFeedbackMessage: string;
   onCopyBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
@@ -5913,8 +6422,8 @@ function AdaptiveBenchmarkSection({
               profile={selectedProfile}
               inputTitle={selectedAdapter?.title ?? selectedInputMode}
               focusAnchor={focusAnchor}
+              repeatWordStats={repeatWordStats}
               benchmarkExportMessage={benchmarkExportMessage}
-              scriptPromptMessage={scriptPromptMessage}
               sessionFeedback={sessionFeedback}
               sessionFeedbackMessage={sessionFeedbackMessage}
               onCopyBenchmark={onCopyBenchmark}
@@ -5970,8 +6479,8 @@ function AdaptiveBenchmarkWorkspace({
   profile,
   inputTitle,
   focusAnchor,
+  repeatWordStats,
   benchmarkExportMessage,
-  scriptPromptMessage,
   sessionFeedback,
   sessionFeedbackMessage,
   onCopyBenchmark,
@@ -5987,8 +6496,8 @@ function AdaptiveBenchmarkWorkspace({
   profile: InputLanguageBenchmarkMetrics;
   inputTitle: string;
   focusAnchor?: null | 'sessionFeedback';
+  repeatWordStats: RepeatWordStat[];
   benchmarkExportMessage: string;
-  scriptPromptMessage: string;
   sessionFeedback: AdaptiveSessionFeedback | null;
   sessionFeedbackMessage: string;
   onCopyBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
@@ -6011,6 +6520,7 @@ function AdaptiveBenchmarkWorkspace({
   const fallbackDiagnostics = derivePlaybackDiagnosticsFromTimeline(profile.timeline.slice(-60));
   const hasBenchmarkData = profile.sampleCount > 0 || profile.sessionCount > 0;
   const hasSessionFeedback = Boolean(sessionFeedback);
+  const repeatWordSummary = repeatWordStats.slice(0, 20);
   const sequencingClean = sessionFeedback
     ? sessionFeedback.playbackIssues.repeatedPhraseCount === 0 &&
       sessionFeedback.playbackIssues.skippedPhraseCount === 0 &&
@@ -6024,7 +6534,6 @@ function AdaptiveBenchmarkWorkspace({
   const [workspaceSubsectionsExpanded, setWorkspaceSubsectionsExpanded] = useState({
     kpis: true,
     coach: true,
-    script: true,
     feedback: true,
     deepMetrics: false,
     timeline: false,
@@ -6040,37 +6549,19 @@ function AdaptiveBenchmarkWorkspace({
   }, [focusAnchor]);
   return (
     <div className="adaptive-benchmark-workspace">
-      <div className="dashboard-card-header">
-        <div>
-          <h3>{inputTitle} / {languageLabel}</h3>
-          <p className="dashboard-meta">
-            Profile key: {profile.inputMode}/{profile.language}
-            {profile.inputMode === 'kokoro' && profile.language === 'de' ? ' · Kokoro German is non-native/blocked by default.' : ''}
-          </p>
-        </div>
-        <div className="admin-actions">
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => onCopyBenchmark(profile)}
-            title="Copy the selected benchmark profile JSON to your clipboard (KPIs, recommendation, weak areas, and recent timeline points)."
-          >
-            Copy Benchmark JSON
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => onExportBenchmark(profile)}
-            title="Download the selected benchmark profile JSON as a .json file (same content as Copy Benchmark JSON)."
-          >
-            Export Benchmark JSON
-          </button>
-        </div>
-      </div>
-      {benchmarkExportMessage ? (
-        <p className={benchmarkExportMessage.toLowerCase().includes('could not') ? 'error' : 'success'}>{benchmarkExportMessage}</p>
-      ) : null}
-      {exportStatusMessage ? <p className="success">{exportStatusMessage}</p> : null}
+          <div className="dashboard-card-header">
+            <div>
+              <h3>{inputTitle} / {languageLabel}</h3>
+              <p className="dashboard-meta">
+                Profile key: {profile.inputMode}/{profile.language}
+                {profile.inputMode === 'kokoro' && profile.language === 'de' ? ' · Kokoro German is non-native/blocked by default.' : ''}
+              </p>
+            </div>
+          </div>
+          {benchmarkExportMessage ? (
+            <p className={benchmarkExportMessage.toLowerCase().includes('could not') ? 'error' : 'success'}>{benchmarkExportMessage}</p>
+          ) : null}
+          {exportStatusMessage ? <p className="success">{exportStatusMessage}</p> : null}
 
       <section className="adaptive-benchmark-subpanel adaptive-cockpit-panel">
         <div className="adaptive-section-header adaptive-subsection-header">
@@ -6104,9 +6595,55 @@ function AdaptiveBenchmarkWorkspace({
           </section>
 
           <section className="adaptive-benchmark-subpanel">
+            <h4>Top words to repeat</h4>
+            <p className="dashboard-meta">Last 30 days · Language: {String(profile.language).toUpperCase()}</p>
+            {repeatWordSummary.length === 0 ? (
+              <p className="hint">No finished sessions in the last 30 days for {String(profile.language).toUpperCase()}.</p>
+            ) : (
+              <div className="repeat-words-table" role="table" aria-label="Top words to repeat">
+                <div className="repeat-words-row repeat-words-header" role="row">
+                  <span role="columnheader">Word</span>
+                  <span role="columnheader">Total</span>
+                  <span role="columnheader">Missed</span>
+                  <span role="columnheader">Typos</span>
+                </div>
+                {repeatWordSummary.map((entry) => (
+                  <div key={entry.word} className="repeat-words-row" role="row">
+                    <span role="cell" className="mono">{entry.word}</span>
+                    <span role="cell">{entry.total}</span>
+                    <span role="cell">{entry.missed}</span>
+                    <span role="cell">{entry.typos}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="adaptive-benchmark-subpanel">
             <h4>Export / Copy Actions</h4>
             <p className="dashboard-meta">Exports use: {profile.inputMode}/{profile.language}</p>
             <div className="adaptive-export-groups">
+              <div>
+                <p className="dashboard-eyebrow">Benchmark JSON</p>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => onCopyBenchmark(profile)}
+                    title="Copy the selected benchmark profile JSON to your clipboard (KPIs, recommendation, weak areas, and recent timeline points)."
+                  >
+                    Copy Benchmark JSON
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => onExportBenchmark(profile)}
+                    title="Download the selected benchmark profile JSON as a .json file (same content as Copy Benchmark JSON)."
+                  >
+                    Export Benchmark JSON
+                  </button>
+                </div>
+              </div>
               <div>
                 <p className="dashboard-eyebrow">Primary</p>
                 <div className="admin-actions">
@@ -6118,6 +6655,7 @@ function AdaptiveBenchmarkWorkspace({
                       setExportStatusMessage(`Copied: Generate next adaptive script · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasBenchmarkData || !hasSessionFeedback}
+                    title="Copy a ready-to-use prompt package for generating the next adaptive script (includes benchmark + latest session feedback)."
                   >
                     Generate next adaptive script
                   </button>
@@ -6126,6 +6664,7 @@ function AdaptiveBenchmarkWorkspace({
                     className="secondary-button"
                     onClick={() => setHumanFeedbackEditorOpen(true)}
                     disabled={!hasBenchmarkData || !hasSessionFeedback}
+                    title="Add your notes, then copy a prompt package for generating the next script (includes your notes)."
                   >
                     Generate next script with my notes
                   </button>
@@ -6137,6 +6676,7 @@ function AdaptiveBenchmarkWorkspace({
                       setExportStatusMessage(`Copied: Generate from benchmark only · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasBenchmarkData}
+                    title="Copy a prompt package that uses only benchmark data (no latest session feedback required)."
                   >
                     Generate from benchmark only
                   </button>
@@ -6155,6 +6695,7 @@ function AdaptiveBenchmarkWorkspace({
                       setExportStatusMessage(`Copied: Full diagnostic package · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasBenchmarkData}
+                    title="Copy a full diagnostic package (benchmark + session feedback when available) for debugging playback/quality issues."
                   >
                     Copy full diagnostic package
                   </button>
@@ -6166,6 +6707,7 @@ function AdaptiveBenchmarkWorkspace({
                       setExportStatusMessage(`Copied: Latest session feedback · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasSessionFeedback}
+                    title="Copy the latest session feedback JSON to your clipboard (verdict, deltas, and playback issues)."
                   >
                     Copy latest session feedback
                   </button>
@@ -6181,6 +6723,7 @@ function AdaptiveBenchmarkWorkspace({
                       onCopyScriptPrompt(profile);
                       setExportStatusMessage(`Copied: Base prompt · ${profile.inputMode}/${profile.language}`);
                     }}
+                    title="Copy the base prompt template (no benchmark/session feedback)."
                   >
                     Copy base prompt
                   </button>
@@ -6191,6 +6734,7 @@ function AdaptiveBenchmarkWorkspace({
                       onCopyScriptTemplate(profile);
                       setExportStatusMessage(`Copied: Output template · ${profile.inputMode}/${profile.language}`);
                     }}
+                    title="Copy the output JSON template expected for generated scripts."
                   >
                     Copy output template
                   </button>
@@ -6213,6 +6757,7 @@ function AdaptiveBenchmarkWorkspace({
                       setHumanFeedbackEditorOpen(false);
                       setHumanFeedbackDraft('');
                     }}
+                    title="Close without copying anything."
                   >
                     Cancel
                   </button>
@@ -6225,6 +6770,7 @@ function AdaptiveBenchmarkWorkspace({
                       setHumanFeedbackDraft('');
                     }}
                     disabled={humanFeedbackDraft.trim().length === 0 || !hasBenchmarkData || !hasSessionFeedback}
+                    title="Copy the prompt package including your notes (requires benchmark data + latest session feedback)."
                   >
                     Submit
                   </button>
@@ -6314,64 +6860,6 @@ function AdaptiveBenchmarkWorkspace({
 
       <div className="adaptive-section-header adaptive-subsection-header">
         <div>
-          <p className="dashboard-eyebrow">Templates</p>
-          <h4>Prompt and output template</h4>
-        </div>
-        <button
-          type="button"
-          className="secondary-button adaptive-section-toggle"
-          onClick={() => setWorkspaceSubsectionsExpanded((prev) => ({ ...prev, script: !prev.script }))}
-          aria-expanded={workspaceSubsectionsExpanded.script}
-          aria-label={workspaceSubsectionsExpanded.script ? 'Collapse section' : 'Expand section'}
-          title={workspaceSubsectionsExpanded.script ? 'Collapse' : 'Expand'}
-        >
-          <span className={`adaptive-section-toggle-icon ${workspaceSubsectionsExpanded.script ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-        </button>
-      </div>
-      {workspaceSubsectionsExpanded.script ? (
-      <section className="adaptive-benchmark-subpanel adaptive-script-prompt-panel">
-        <div className="dashboard-card-header">
-          <div>
-            <h4>Generate Next Dictation Script</h4>
-            <p className="dashboard-meta">
-              Generate a new DictationScript outside the app (ChatGPT/LLM), then paste JSON back into DictationScript import. Use the buttons below to copy the right context.
-            </p>
-          </div>
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onCopyScriptPrompt(profile)}
-              title="Copies the instructions only. Use this if you already pasted the benchmark context separately."
-            >
-              Copy LLM Prompt
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onCopyBenchmarkWithScriptPrompt(profile)}
-              title="Copies benchmark JSON context plus the LLM instructions. Use this as the default when generating the next script."
-            >
-              Copy Benchmark + LLM Prompt
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onCopyScriptTemplate(profile)}
-              title="Copies a valid DictationScript JSON skeleton (sample output). Use this if the LLM keeps returning invalid or incomplete JSON."
-            >
-              Copy Sample Output Template
-            </button>
-          </div>
-        </div>
-        {scriptPromptMessage ? (
-          <p className={scriptPromptMessage.toLowerCase().includes('could not') ? 'error' : 'success'}>{scriptPromptMessage}</p>
-        ) : null}
-      </section>
-      ) : null}
-
-      <div className="adaptive-section-header adaptive-subsection-header">
-        <div>
           <p className="dashboard-eyebrow">Latest Session</p>
           <h4>Playback issues and improvement deltas</h4>
         </div>
@@ -6392,33 +6880,7 @@ function AdaptiveBenchmarkWorkspace({
         <div className="dashboard-card-header">
           <div>
             <h4>Session Feedback</h4>
-            <p className="dashboard-meta">Use these exports to diagnose repeats/skips/jumps and to generate a better next script based on real results.</p>
-          </div>
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onCopySessionFeedback(profile, sessionFeedback)}
-              title="Copies session feedback only (verdict, deltas, playback issues). If formal feedback is missing, includes a status plus timeline fallback diagnostics."
-            >
-              Copy Session Feedback JSON
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onCopyBenchmarkFeedback(profile, sessionFeedback)}
-              title="Copies the selected benchmark profile plus the latest session feedback and playback diagnostics. Use this to ask an LLM to analyze what went wrong/right."
-            >
-              Copy Full Benchmark + Feedback Package
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onCopyBenchmarkFeedbackPrompt(profile, sessionFeedback)}
-              title="Copies benchmark + feedback package plus the LLM prompt. Use this to generate the next DictationScript while accounting for playback issues and improvement deltas."
-            >
-              Copy Benchmark + Feedback + LLM Prompt
-            </button>
+            <p className="dashboard-meta">Use Training Cockpit Export / Copy Actions for session-feedback exports and prompt packages.</p>
           </div>
         </div>
         {sessionFeedbackMessage ? (
@@ -7053,10 +7515,11 @@ function createSessionFromScript(script: DictationScript, index: number, inputMo
 }
 
 function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMode | null {
-  if (inputMode === 'input1' || inputMode === 'audio') return 'input1';
-  if (inputMode === 'input2' || inputMode === 'browser-tts') return 'input2';
-  if (inputMode === 'input3' || inputMode === 'kokoro') return 'input3';
-  if (inputMode === 'input4' || inputMode === 'qwen-cloud') return 'input4';
+  const normalized = String(inputMode).trim().toLowerCase().replace(/_/g, '-');
+  if (normalized === 'input1' || normalized === 'audio') return 'input1';
+  if (normalized === 'input2' || normalized === 'browser-tts' || normalized === 'browsertts') return 'input2';
+  if (normalized === 'input3' || normalized === 'kokoro' || normalized === 'kokoro-tts') return 'input3';
+  if (normalized === 'input4' || normalized === 'qwen-cloud' || normalized === 'qwen') return 'input4';
   return null;
 }
 
@@ -7771,6 +8234,85 @@ function buildTextTranscript(text: string): Transcript | null {
     .filter((word): word is { word: string; start: number; end: number } => Boolean(word));
 
   return words.length > 0 ? { words } : null;
+}
+
+function buildRepeatWordStats({
+  sessions,
+  language,
+  now,
+}: {
+  sessions: StoredSession[];
+  language: BenchmarkLanguageButton;
+  now: Date;
+}): RepeatWordStat[] {
+  const cutoffMs = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+  const withinWindow = sessions.filter((session) => {
+    if (session.status !== 'finished') return false;
+    const resolvedLanguage = resolveSessionLanguage(session);
+    if (resolvedLanguage !== language) return false;
+    const updatedAtMs = new Date(session.updatedAt).getTime();
+    return Number.isFinite(updatedAtMs) && updatedAtMs >= cutoffMs;
+  });
+
+  const missed = new Map<string, number>();
+  const typos = new Map<string, number>();
+
+  const bump = (bucket: Map<string, number>, word: string, delta = 1) => {
+    if (!word) return;
+    bucket.set(word, (bucket.get(word) ?? 0) + delta);
+  };
+
+  for (const session of withinWindow) {
+    let transcript: Transcript | null = session.transcript;
+    if (!transcript) {
+      if (session.inputMode === 'input2' || session.inputMode === 'input4') {
+        transcript = buildTextTranscript(session.ttsText);
+      } else if (session.inputMode === 'input3') {
+        transcript = buildTextTranscript(session.kokoroText);
+      } else {
+        continue;
+      }
+    }
+
+    let typedText = '';
+    if (session.inputMode === 'input1') typedText = session.inputText;
+    if (session.inputMode === 'input2' || session.inputMode === 'input4') typedText = session.ttsPracticeText;
+    if (session.inputMode === 'input3') typedText = session.kokoroPracticeText;
+
+    const evaluation = evaluateTranscriptAttempt(typedText, transcript);
+    if (evaluation.targetWords.length === 0) continue;
+
+    const matchedTargetIndices = new Set(evaluation.alignedPairs.map((pair) => pair.targetIndex));
+    for (let index = 0; index < evaluation.targetWords.length; index += 1) {
+      if (!matchedTargetIndices.has(index)) {
+        bump(missed, evaluation.targetWords[index] ?? '');
+      }
+    }
+
+    for (const pair of evaluation.alignedPairs) {
+      if (!pair.exact) {
+        bump(typos, evaluation.targetWords[pair.targetIndex] ?? '');
+      }
+    }
+  }
+
+  const words = new Set([...missed.keys(), ...typos.keys()]);
+  const combined: RepeatWordStat[] = [];
+  for (const word of words) {
+    const missedCount = missed.get(word) ?? 0;
+    const typoCount = typos.get(word) ?? 0;
+    const total = missedCount + typoCount;
+    if (total <= 0) continue;
+    combined.push({ word, total, missed: missedCount, typos: typoCount });
+  }
+
+  return combined
+    .sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      if (b.missed !== a.missed) return b.missed - a.missed;
+      return a.word.localeCompare(b.word);
+    })
+    .slice(0, 20);
 }
 
 function getTtsVoiceLang(language: TtsLanguage): string {

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -9,12 +9,243 @@ import path from 'node:path';
 let kokoroSidecarProcess: ChildProcess | null = null;
 let cosyvoiceSidecarProcess: ChildProcess | null = null;
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  loadEnv(mode, process.cwd(), '');
+
+  return {
   plugins: [
     react(),
     {
       name: 'local-transcribe-api',
       configureServer(server) {
+        const envLocalPath = path.resolve(process.cwd(), '.env.local');
+
+        const maskApiKeySuffix = (value: string): string => {
+          const trimmed = value.trim();
+          if (!trimmed) return '';
+          const suffixLength = 4;
+          const suffix = trimmed.length > suffixLength ? trimmed.slice(-suffixLength) : trimmed;
+          return `…${suffix}`;
+        };
+
+        const readEnvLocal = async (): Promise<string> => {
+          try {
+            return await fs.readFile(envLocalPath, 'utf-8');
+          } catch {
+            return '';
+          }
+        };
+
+        const parseEnvValue = (rawValue: string): string => {
+          const trimmed = rawValue.trim();
+          if (!trimmed) return '';
+          if (
+            (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) ||
+            (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2)
+          ) {
+            return trimmed.slice(1, -1);
+          }
+          return trimmed;
+        };
+
+        const getOpenRouterApiKey = async (): Promise<string> => {
+          const fromProcess = process.env.OPENROUTER_API_KEY?.trim();
+          if (fromProcess) return fromProcess;
+
+          const envText = await readEnvLocal();
+          const line = envText
+            .split(/\r?\n/)
+            .map((row) => row.trim())
+            .find((row) => row.startsWith('OPENROUTER_API_KEY='));
+          if (!line) return '';
+          return parseEnvValue(line.slice('OPENROUTER_API_KEY='.length)).trim();
+        };
+
+        const upsertOpenRouterApiKey = async (apiKey: string): Promise<void> => {
+          const cleaned = apiKey.trim();
+          const nextLine = `OPENROUTER_API_KEY=${cleaned}`;
+          const envText = await readEnvLocal();
+          const lines = envText ? envText.split(/\r?\n/) : [];
+          let replaced = false;
+          const nextLines = lines.map((line) => {
+            if (line.trim().startsWith('OPENROUTER_API_KEY=')) {
+              replaced = true;
+              return nextLine;
+            }
+            return line;
+          });
+          if (!replaced) {
+            if (nextLines.length > 0 && nextLines[nextLines.length - 1].trim() !== '') {
+              nextLines.push('');
+            }
+            nextLines.push(nextLine);
+          }
+          await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
+        };
+
+        const removeOpenRouterApiKey = async (): Promise<boolean> => {
+          const envText = await readEnvLocal();
+          if (!envText) return false;
+          const lines = envText.split(/\r?\n/);
+          const nextLines = lines.filter((line) => !line.trim().startsWith('OPENROUTER_API_KEY='));
+          if (nextLines.length === lines.length) return false;
+          await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
+          return true;
+        };
+
+        server.middlewares.use('/api/openrouter/models', async (req, res) => {
+          if (req.method !== 'GET') {
+            res.statusCode = 405;
+            res.end('Method not allowed');
+            return;
+          }
+
+          const openRouterApiKey = await getOpenRouterApiKey();
+          if (!openRouterApiKey) {
+            res.statusCode = 400;
+            res.end('Missing OPENROUTER_API_KEY. Set it in .env.local (or via the OpenRouter UI) and try again.');
+            return;
+          }
+
+          try {
+            const response = await fetch('https://openrouter.ai/api/v1/models', {
+              headers: {
+                Authorization: `Bearer ${openRouterApiKey}`,
+                'HTTP-Referer': (req.headers.origin as string | undefined) ?? 'http://localhost:5173',
+                'X-Title': 'Dicta MVP (local)',
+              },
+            });
+
+            const body = await response.text();
+            res.statusCode = response.status;
+            res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
+            res.end(body);
+          } catch (error) {
+            res.statusCode = 500;
+            res.end(error instanceof Error ? error.message : 'OpenRouter proxy failed.');
+          }
+        });
+
+        server.middlewares.use('/api/openrouter/key/status', async (req, res) => {
+          if (req.method !== 'GET') {
+            res.statusCode = 405;
+            res.end('Method not allowed');
+            return;
+          }
+
+          try {
+            const openRouterApiKey = await getOpenRouterApiKey();
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ configured: Boolean(openRouterApiKey), suffix: maskApiKeySuffix(openRouterApiKey) }));
+          } catch (error) {
+            res.statusCode = 500;
+            res.end(error instanceof Error ? error.message : 'OpenRouter key status failed.');
+          }
+        });
+
+        server.middlewares.use('/api/openrouter/key', async (req, res) => {
+          if (req.method === 'POST') {
+            try {
+              const body = await new Promise<string>((resolve, reject) => {
+                let data = '';
+                req.on('data', (chunk) => {
+                  data += chunk;
+                });
+                req.on('end', () => resolve(data));
+                req.on('error', reject);
+              });
+              const parsed = JSON.parse(body) as { apiKey?: string };
+              const nextKey = parsed.apiKey?.trim() ?? '';
+              if (!nextKey) {
+                res.statusCode = 400;
+                res.end('Missing apiKey.');
+                return;
+              }
+
+              await upsertOpenRouterApiKey(nextKey);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
+              return;
+            } catch (error) {
+              res.statusCode = 500;
+              res.end(error instanceof Error ? error.message : 'Failed to save OpenRouter key.');
+              return;
+            }
+          }
+
+          if (req.method === 'DELETE') {
+            try {
+              const removed = await removeOpenRouterApiKey();
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: true, removed }));
+              return;
+            } catch (error) {
+              res.statusCode = 500;
+              res.end(error instanceof Error ? error.message : 'Failed to remove OpenRouter key.');
+              return;
+            }
+          }
+
+          res.statusCode = 405;
+          res.end('Method not allowed');
+        });
+
+        server.middlewares.use('/api/openrouter/chat', async (req, res) => {
+          if (req.method !== 'POST') {
+            res.statusCode = 405;
+            res.end('Method not allowed');
+            return;
+          }
+
+          const openRouterApiKey = await getOpenRouterApiKey();
+          if (!openRouterApiKey) {
+            res.statusCode = 400;
+            res.end('Missing OPENROUTER_API_KEY. Set it in .env.local and try again.');
+            return;
+          }
+
+          try {
+            const body = await new Promise<string>((resolve, reject) => {
+              let data = '';
+              req.on('data', (chunk) => {
+                data += chunk;
+              });
+              req.on('end', () => resolve(data));
+              req.on('error', reject);
+            });
+            const parsed = JSON.parse(body) as { model?: string; prompt?: string };
+            const model = parsed.model?.trim() ?? '';
+            const prompt = parsed.prompt?.trim() ?? '';
+            if (!model || !prompt) {
+              res.statusCode = 400;
+              res.end('Missing model or prompt.');
+              return;
+            }
+
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${openRouterApiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': (req.headers.origin as string | undefined) ?? 'http://localhost:5173',
+                'X-Title': 'Dicta MVP (local)',
+              },
+              body: JSON.stringify({
+                model,
+                messages: [{ role: 'user', content: prompt }],
+              }),
+            });
+
+            const responseBody = await response.text();
+            res.statusCode = response.status;
+            res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
+            res.end(responseBody);
+          } catch (error) {
+            res.statusCode = 500;
+            res.end(error instanceof Error ? error.message : 'OpenRouter test request failed.');
+          }
+        });
+
         server.middlewares.use('/api/admin/files', async (req, res) => {
           if (req.method !== 'GET') {
             res.statusCode = 405;
@@ -166,6 +397,7 @@ export default defineConfig({
             }
 
             const kokoroDir = path.resolve(process.cwd(), 'services', 'kokoro_tts');
+            await ensureKokoroVenvReady(kokoroDir);
             const pythonCmd =
               process.platform === 'win32'
                 ? path.join(kokoroDir, '.venv', 'Scripts', 'python.exe')
@@ -266,7 +498,42 @@ export default defineConfig({
       },
     },
   ],
+  };
 });
+
+async function ensureKokoroVenvReady(kokoroDir: string): Promise<void> {
+  const venvPython =
+    process.platform === 'win32'
+      ? path.join(kokoroDir, '.venv', 'Scripts', 'python.exe')
+      : path.join(kokoroDir, '.venv', 'bin', 'python');
+
+  if (await fileExists(venvPython)) {
+    return;
+  }
+
+  {
+    const systemPython = process.platform === 'win32' ? 'python' : 'python3';
+    await new Promise<void>((resolve, reject) => {
+      execFile(systemPython, ['-m', 'venv', '.venv'], { cwd: kokoroDir }, (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr || stdout || error.message));
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    execFile(venvPython, ['-m', 'pip', 'install', '-r', 'requirements.txt'], { cwd: kokoroDir }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(stderr || stdout || error.message));
+        return;
+      }
+      resolve();
+    });
+  });
+}
 
 async function ensureCosyVoiceVenvReady(cosyVoiceDir: string): Promise<void> {
   const venvPython =

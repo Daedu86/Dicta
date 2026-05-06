@@ -45,7 +45,12 @@ flowchart TB
 
   subgraph devserver["Local Vite dev server"]
     api["POST /api/transcribe<br/>vite.config.ts<br/>Local dev only"]
+    openrouterProxy["GET /api/openrouter/models<br/>vite.config.ts<br/>Local dev only<br/>Reads OPENROUTER_API_KEY from env"]
     temp["Temp audio + transcript files<br/>OS temp directory"]
+  end
+
+  subgraph external["External services"]
+    openrouterCloud["OpenRouter API<br/>/api/v1/models"]
   end
 
   subgraph ingestion["Local ingestion pipeline"]
@@ -104,6 +109,9 @@ flowchart TB
   ttsChunkPlanner --> inputBrowserTts
 
   app --> api
+  app --> openrouterProxy
+  openrouterProxy --> openrouterCloud
+  openrouterCloud --> openrouterProxy
   api --> temp
   api --> py
   py --> whisper
@@ -113,6 +121,7 @@ flowchart TB
   api --> app
 
   api -. replace for production .-> prod
+  openrouterProxy -. replace for production .-> prod
   storage -. replace for shared accounts .-> db
   app -. required for cloud use .-> auth
   temp -. replace for deployed ingestion .-> deploy
@@ -130,6 +139,8 @@ flowchart LR
   textInput["Manual text source<br/>for browser TTS"]
 
   api["/api/transcribe<br/>Vite middleware<br/>Local dev only"]
+  openrouterProxy["/api/openrouter/models<br/>Vite middleware<br/>Local dev only"]
+  openrouterCloud["OpenRouter API<br/>model listing"]
   python["scripts/transcribe_align.py<br/>WhisperX alignment"]
   transcriptJson["Transcript JSON<br/>{ words: [{ word, start, end }] }"]
 
@@ -194,7 +205,13 @@ flowchart LR
   feedback --> dashboard
   dashboard --> export["Session JSON export<br/>copy/download"]
 
+  session --> openrouterProxy
+  openrouterProxy --> openrouterCloud
+  openrouterCloud --> openrouterProxy
+  openrouterProxy --> session
+
   api -. production replacement .-> prodGap
+  openrouterProxy -. production replacement .-> prodGap
   local -. shared persistence replacement .-> dbGap
 ```
 

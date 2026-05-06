@@ -103,6 +103,20 @@ def resolve_language_behavior(language: str) -> dict[str, str | bool | None]:
         return {"native": False, "processed_language": None, "generation_code": None, "pipeline_code": None, "fallback": None}
     raise RuntimeError(f"Unsupported Kokoro language: {language}")
 
+@lru_cache(maxsize=64)
+def _spanish_g2p():
+    from kokorog2p.es import SpanishG2P
+
+    return SpanishG2P(language="es", use_espeak_fallback=False, use_goruut_fallback=False)
+
+
+def _phonemize_spanish(text: str) -> str:
+    tokens = _spanish_g2p()(text)
+    parts = [token.phonemes for token in tokens if getattr(token, "phonemes", None)]
+    if not parts:
+        raise RuntimeError("Spanish G2P produced no phonemes.")
+    return " ".join(parts)
+
 
 @lru_cache(maxsize=16)
 def _pykokoro_pipeline(voice: str, language: str):
@@ -113,7 +127,11 @@ def _pykokoro_pipeline(voice: str, language: str):
     return KokoroPipeline(
         PipelineConfig(
             voice=voice,
-            generation=GenerationConfig(lang=str(behavior["generation_code"]), speed=1.0),
+            generation=GenerationConfig(
+                lang=str(behavior["generation_code"]),
+                speed=1.0,
+                is_phonemes=language == "es",
+            ),
         )
     )
 
@@ -121,7 +139,8 @@ def _pykokoro_pipeline(voice: str, language: str):
 def _synthesize_with_pykokoro(request: TtsChunkRequest, output_path: Path) -> SynthesisResult:
     pipe = _pykokoro_pipeline(_normalize_voice(request.voice), request.language)
     behavior = resolve_language_behavior(request.language)
-    result = pipe.run(request.text)
+    input_text = _phonemize_spanish(request.text) if request.language == "es" else request.text
+    result = pipe.run(input_text)
     audio = np.asarray(result.audio)
     sample_rate = int(result.sample_rate)
     if abs(request.baseSpeed - 1.0) > 0.01:

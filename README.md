@@ -21,6 +21,18 @@ npm install
 npm run dev
 ```
 
+### OpenRouter (Recommended: server-side key)
+
+To use the OpenRouter workspace without exposing your API key to the browser, configure it on the local dev server:
+
+```bash
+cp .env.example .env.local
+```
+
+Set `OPENROUTER_API_KEY` in `.env.local`, then restart `npm run dev`.
+
+Alternatively, open the **OpenRouter** workspace and use **Save to .env.local** / **Delete from .env.local** (dev-only) to manage the key from the UI.
+
 ## Typical MVP Flow
 
 1. Pick an input mode (audio playback, browser TTS, Kokoro, Qwen Cloud).
@@ -136,6 +148,8 @@ Dicta stores everything in browser local storage for the MVP:
 - `dicta.sessions.v1`: sessions, telemetry series, and per-session stats
 - `dicta.adaptiveBenchmarks.v1`: rolling benchmark profiles per `(inputMode, language)`
 - `dicta.adaptiveSessionFeedback.v1`: completed feedback packages per `(inputMode, language)`
+
+OpenRouter credentials are intentionally **not** stored in `localStorage`. The dev server proxies OpenRouter requests using `OPENROUTER_API_KEY` from `.env.local`.
 
 ## Local Ingestion Pipeline (WhisperX)
 
