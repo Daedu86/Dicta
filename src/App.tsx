@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
 import './App.css';
 import type { ControlAction, SessionTelemetry, Transcript, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
 import type {
@@ -2553,6 +2553,66 @@ function App() {
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 0);
     setQwenCloudManifestMessage(`Downloaded ${filename}.`);
+  }
+
+  function importDictaLocalStorageSnapshot(rawJson: string): void {
+    try {
+      const parsed = JSON.parse(rawJson) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Import file must be a JSON object exported from Dicta Admin.');
+      }
+
+      const incoming = Object.entries(parsed).filter(
+        (entry): entry is [string, string] => entry[0].startsWith('dicta.') && typeof entry[1] === 'string',
+      );
+      if (incoming.length === 0) {
+        throw new Error('No Dicta localStorage keys found in this file.');
+      }
+
+      const sessionEntry = incoming.find(([key]) => key === SESSION_STORAGE_KEY);
+      if (sessionEntry) {
+        const parsedSessions = JSON.parse(sessionEntry[1]) as unknown;
+        if (!Array.isArray(parsedSessions)) {
+          throw new Error('Imported sessions are not in the expected format.');
+        }
+      }
+
+      const confirmed = window.confirm(
+        'Import this Dicta storage snapshot into this browser? This replaces the current Vercel browser sessions, leaderboard, benchmarks, and feedback.',
+      );
+      if (!confirmed) return;
+
+      for (const key of Object.keys(getDictaLocalStorageSnapshot())) {
+        window.localStorage.removeItem(key);
+      }
+      for (const [key, value] of incoming) {
+        window.localStorage.setItem(key, value);
+      }
+
+      const importedSessions = loadSessions();
+      setSessions(importedSessions);
+      setActiveSessionId(importedSessions[0]?.id ?? createStoredSession().id);
+      setDashboardSessionId(null);
+      setAdaptiveBenchmarksByInputLanguage(loadAdaptiveBenchmarks());
+      setAdaptiveSessionFeedbackByInputLanguage(loadAdaptiveSessionFeedback());
+      setDictaLanguageView(loadPersistedDictaLanguageView());
+
+      const storedModel = window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY);
+      if (storedModel) {
+        try {
+          setOpenRouterDefaultModel(JSON.parse(storedModel) as string);
+        } catch {
+          setOpenRouterDefaultModel(storedModel);
+        }
+      } else {
+        setOpenRouterDefaultModel('');
+      }
+
+      setWorkspaceMode('leaderboard');
+      setExportMessage(`Imported ${incoming.length} Dicta storage key(s). Leaderboard and adaptive profiles restored in this browser.`);
+    } catch (error) {
+      setExportMessage(error instanceof Error ? `Import failed: ${error.message}` : 'Import failed.');
+    }
   }
 
   async function ensureCosyVoiceCacheSidecar(): Promise<boolean> {
@@ -5535,6 +5595,7 @@ function App() {
                 onBackToTraining={() => setWorkspaceMode('training')}
                 onCopyLocalStorage={() => void copyDictaLocalStorage(setExportMessage)}
                 onExportLocalStorage={downloadDictaLocalStorage}
+                onImportLocalStorage={importDictaLocalStorageSnapshot}
                 onExportSession={downloadSessionSnapshot}
                 onCopySession={(session) => void copySessionSnapshot(session, setExportMessage)}
               />
@@ -7200,6 +7261,7 @@ function AdminWorkspace({
   onBackToTraining,
   onCopyLocalStorage,
   onExportLocalStorage,
+  onImportLocalStorage,
   onExportSession,
   onCopySession,
 }: {
@@ -7213,9 +7275,19 @@ function AdminWorkspace({
   onBackToTraining: () => void;
   onCopyLocalStorage: () => void;
   onExportLocalStorage: () => void;
+  onImportLocalStorage: (rawJson: string) => void;
   onExportSession: (session: StoredSession) => void;
   onCopySession: (session: StoredSession) => void;
 }) {
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function onImportFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+    if (!file) return;
+    onImportLocalStorage(await file.text());
+  }
+
   return (
     <section className="panel workspace-panel admin-workspace">
       <div className="tts-workspace-header">
@@ -7276,8 +7348,21 @@ function AdminWorkspace({
               <button type="button" className="secondary-button" onClick={onExportLocalStorage}>
                 Export JSON
               </button>
+              <button type="button" className="secondary-button" onClick={() => importInputRef.current?.click()}>
+                Import JSON
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                onChange={(event) => void onImportFileChange(event)}
+                style={{ display: 'none' }}
+              />
             </div>
           </div>
+          <p className="hint">
+            Export from your localhost app, then import that file here to restore sessions, leaderboard data, adaptive benchmarks, and feedback for this browser.
+          </p>
           <div className="admin-table">
             <div className="admin-table-row admin-table-header">
               <span>Key</span>
