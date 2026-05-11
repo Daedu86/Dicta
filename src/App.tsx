@@ -100,6 +100,7 @@ const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
 const OPENROUTER_GENERATED_SCRIPT_KEY = 'dicta.openrouterGeneratedScript.v1';
 const OPENROUTER_GENERATED_VARIANTS_KEY = 'dicta.openrouterGeneratedVariants.v1';
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
+const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 const DashboardLineChart = lazy(() =>
   import('./components/DashboardCharts').then((module) => ({ default: module.DashboardLineChart })),
 );
@@ -589,6 +590,14 @@ function App() {
   }, [kokoroEnabled]);
 
   useEffect(() => {
+    if (!LOCAL_DEV_FEATURES_AVAILABLE && kokoroEnabled) {
+      setKokoroEnabled(false);
+      setKokoroServiceReady(false);
+      setError('Kokoro is local-only in the Vercel build. Use Input #2 for hosted/mobile practice.');
+    }
+  }, [kokoroEnabled]);
+
+  useEffect(() => {
     const storedModel = window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY);
     if (storedModel) {
       try {
@@ -668,6 +677,11 @@ function App() {
 
   useEffect(() => {
     if (workspaceMode !== 'admin') return;
+    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
+      setAdminFileInventory(null);
+      setAdminFileInventoryError('Local file inventory is available only when running the Vite dev server.');
+      return;
+    }
 
     let cancelled = false;
     async function loadAdminFiles(): Promise<void> {
@@ -1222,6 +1236,10 @@ function App() {
   }, [kokoroStatus]);
 
   async function generateTranscriptFromAudio(): Promise<void> {
+    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
+      setError('WhisperX transcription is local-only in the Vercel build. Generate transcripts from the local dev app.');
+      return;
+    }
     if (setupLocked) {
       setError('Input settings are locked for this session.');
       return;
@@ -1872,6 +1890,10 @@ function App() {
   }
 
   async function ensureKokoroServiceRunning(): Promise<boolean> {
+    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
+      setError('Kokoro is local-only in the Vercel build. Use Input #2 for hosted/mobile practice.');
+      return false;
+    }
     if (await checkKokoroHealth()) {
       return true;
     }
@@ -1887,6 +1909,12 @@ function App() {
   }
 
   async function toggleKokoroEnabled(): Promise<void> {
+    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
+      setKokoroServiceReady(false);
+      setKokoroEnabled(false);
+      setError('Kokoro is local-only in the Vercel build. Use Input #2 for hosted/mobile practice.');
+      return;
+    }
     if (kokoroEnabled) {
       if (kokoroStatus === 'playing' || kokoroStatus === 'paused') {
         stopKokoroPlayback('hold');
@@ -2528,6 +2556,12 @@ function App() {
   }
 
   async function ensureCosyVoiceCacheSidecar(): Promise<boolean> {
+    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
+      setCosyVoiceCacheReady(false);
+      setCosyVoiceCacheConfigured(false);
+      setCosyVoiceCacheMessage('CosyVoice2 cache generation is local-only in the Vercel build.');
+      return false;
+    }
     try {
       const healthBefore = await fetchCosyVoiceCacheHealth();
       if (healthBefore?.ok) {
@@ -2560,6 +2594,10 @@ function App() {
   }
 
   async function bootstrapCosyVoiceSidecar(): Promise<void> {
+    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
+      setCosyVoiceCacheMessage('CosyVoice2 bootstrap is local-only in the Vercel build.');
+      return;
+    }
     setCosyVoiceCacheMessage('');
     try {
       await bootstrapCosyVoiceCacheSidecar();
@@ -4055,7 +4093,8 @@ function App() {
                       type="button"
                       className="secondary-button"
                       onClick={() => createSessionWithMode('input3')}
-                      disabled={!canCreateSessionFromDialog}
+                      disabled={!canCreateSessionFromDialog || !LOCAL_DEV_FEATURES_AVAILABLE}
+                      title={LOCAL_DEV_FEATURES_AVAILABLE ? 'Create a local Kokoro session.' : 'Kokoro is local-only and unavailable in the Vercel build.'}
                     >
                       Input # 3 - Kokoro TTS Local
                     </button>
@@ -4063,11 +4102,19 @@ function App() {
                       type="button"
                       className="secondary-button"
                       onClick={() => createSessionWithMode('input4')}
-                      disabled={!canCreateSessionFromDialog}
+                      disabled={!canCreateSessionFromDialog || !LOCAL_DEV_FEATURES_AVAILABLE}
+                      title={
+                        LOCAL_DEV_FEATURES_AVAILABLE
+                          ? 'Create a local CosyVoice2 cache session.'
+                          : 'Input #4 cache generation is local-only and not part of the Vercel build.'
+                      }
                     >
                       Input # 4 - CosyVoice2 Cache
                     </button>
                   </div>
+                  {!LOCAL_DEV_FEATURES_AVAILABLE ? (
+                    <p className="session-create-hint">Hosted Vercel builds support Input #2. Kokoro and Input #4 remain local desktop workflows.</p>
+                  ) : null}
                 </>
               ) : (
                 <div className="session-script-import">
@@ -4342,6 +4389,8 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void bootstrapCosyVoiceSidecar()}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
+                        title={LOCAL_DEV_FEATURES_AVAILABLE ? 'Bootstrap the local CosyVoice2 generator.' : 'Local-only in the Vercel build.'}
                       >
                         1. Bootstrap CosyVoice2
                       </button>
@@ -4349,10 +4398,15 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void ensureCosyVoiceCacheSidecar()}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
+                        title={LOCAL_DEV_FEATURES_AVAILABLE ? 'Start the local CosyVoice2 generator.' : 'Local-only in the Vercel build.'}
                       >
                         2. Start CosyVoice2 generator
                       </button>
                     </div>
+                    {!LOCAL_DEV_FEATURES_AVAILABLE ? (
+                      <p className="hint">CosyVoice2 cache generation is local-only. The Vercel build keeps Input #4 disabled to stay free-tier friendly.</p>
+                    ) : null}
                     <div className="kokoro-toggle-row">
                       <span
                         className={`kokoro-toggle-status ${
@@ -4380,7 +4434,7 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateCosyVoiceCacheFromCurrentText()}
-                        disabled={!ttsHasText || cosyVoiceCacheGenerating}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !ttsHasText || cosyVoiceCacheGenerating}
                       >
                         {cosyVoiceCacheGenerating ? 'Generating cache…' : '3. Generate cache WAVs'}
                       </button>
@@ -4405,7 +4459,7 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={lockInputSettings}
-                        disabled={setupLocked || !inputSettingsReady}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || setupLocked || !inputSettingsReady}
                       >
                         {setupLocked ? '4. Input settings locked' : '4. Submit and lock input settings'}
                       </button>
@@ -4495,7 +4549,9 @@ function App() {
                       <span>Service: {kokoroServiceReady === false ? 'offline' : kokoroServiceReady ? 'ready' : 'not checked'}</span>
                     </div>
                     <p className="hint">
-                      Local Kokoro service expected at http://localhost:8787. Generated phrase audio is cached on disk by the sidecar.
+                      {LOCAL_DEV_FEATURES_AVAILABLE
+                        ? 'Local Kokoro service expected at http://localhost:8787. Generated phrase audio is cached on disk by the sidecar.'
+                        : 'Kokoro is local-only and unavailable in the Vercel build. Use Input #2 for hosted/mobile practice.'}
                     </p>
                     {kokoroLanguageWarning ? <p className="error">{kokoroLanguageWarning}</p> : null}
                     <div className="input-lock-box">
@@ -4503,7 +4559,7 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={lockInputSettings}
-                        disabled={setupLocked || !inputSettingsReady}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || setupLocked || !inputSettingsReady}
                       >
                         {setupLocked ? 'Input settings locked' : 'Submit and lock input settings'}
                       </button>
@@ -4555,6 +4611,9 @@ function App() {
                     <p className="dashboard-eyebrow">Local Kokoro sidecar</p>
                     <h2>Input # 3 - Kokoro TTS Local</h2>
                     <p className="dashboard-meta">Generate phrase audio locally, listen, type, and adapt pace from your telemetry.</p>
+                    {!LOCAL_DEV_FEATURES_AVAILABLE ? (
+                      <p className="dashboard-meta">Kokoro needs a local Python sidecar and is disabled in hosted Vercel builds.</p>
+                    ) : null}
                   </div>
                   <div className="dashboard-header-actions">
                     <button
@@ -4596,6 +4655,7 @@ function App() {
                             }
                           }}
                           disabled={
+                            !LOCAL_DEV_FEATURES_AVAILABLE ||
                             !kokoroEnabled ||
                             !kokoroHasText ||
                             kokoroStatus === 'playing' ||
@@ -4616,7 +4676,7 @@ function App() {
                           type="button"
                           className="tts-media-icon-button"
                           onClick={pauseKokoro}
-                          disabled={!kokoroEnabled || kokoroStatus !== 'playing'}
+                          disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroEnabled || kokoroStatus !== 'playing'}
                           aria-label="Pause Kokoro"
                           title="Pause Kokoro"
                         >
@@ -4626,7 +4686,7 @@ function App() {
                           type="button"
                           className="tts-media-icon-button"
                           onClick={() => stopKokoroPlayback('stop')}
-                          disabled={kokoroStatus === 'idle'}
+                          disabled={!LOCAL_DEV_FEATURES_AVAILABLE || kokoroStatus === 'idle'}
                           aria-label="Stop Kokoro"
                           title="Stop Kokoro"
                         >
@@ -4676,6 +4736,8 @@ function App() {
                         type="button"
                         className="secondary-button kokoro-toggle-button"
                         onClick={() => void toggleKokoroEnabled()}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
+                        title={LOCAL_DEV_FEATURES_AVAILABLE ? 'Toggle the local Kokoro service.' : 'Kokoro is local-only in the Vercel build.'}
                       >
                         {kokoroEnabled ? 'Turn Kokoro Off' : 'Turn Kokoro On'}
                       </button>
@@ -4689,31 +4751,67 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void playKokoro()}
-                        disabled={!kokoroEnabled || !kokoroHasText || kokoroStatus === 'playing' || isKokoroLanguageBlocked(kokoroLanguage)}
+                        disabled={
+                          !LOCAL_DEV_FEATURES_AVAILABLE ||
+                          !kokoroEnabled ||
+                          !kokoroHasText ||
+                          kokoroStatus === 'playing' ||
+                          isKokoroLanguageBlocked(kokoroLanguage)
+                        }
                       >
                         Start
                       </button>
-                      <button type="button" className="secondary-button" onClick={pauseKokoro} disabled={!kokoroEnabled || kokoroStatus !== 'playing'}>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={pauseKokoro}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroEnabled || kokoroStatus !== 'playing'}
+                      >
                         Pause
                       </button>
-                      <button type="button" className="secondary-button" onClick={() => void resumeKokoro()} disabled={!kokoroEnabled || kokoroStatus !== 'paused'}>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void resumeKokoro()}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroEnabled || kokoroStatus !== 'paused'}
+                      >
                         Resume
                       </button>
-                      <button type="button" className="secondary-button" onClick={replayKokoroPhrase} disabled={!kokoroCurrentChunk}>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={replayKokoroPhrase}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroCurrentChunk}
+                      >
                         Replay phrase
                       </button>
                     </div>
                     <div className="kokoro-source-actions kokoro-source-actions-secondary">
-                      <button type="button" className="secondary-button" onClick={rewindKokoroPhrase} disabled={!kokoroCurrentChunk}>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={rewindKokoroPhrase}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroCurrentChunk}
+                      >
                         Rewind
                       </button>
-                      <button type="button" className="secondary-button" onClick={() => adjustKokoroManualPace(-0.05, 'manual_slow')}>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => adjustKokoroManualPace(-0.05, 'manual_slow')}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
+                      >
                         Slower
                       </button>
-                      <button type="button" className="secondary-button" onClick={() => adjustKokoroManualPace(0.05, 'manual_fast')}>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => adjustKokoroManualPace(0.05, 'manual_fast')}
+                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
+                      >
                         Faster
                       </button>
-                      <button type="button" className="secondary-button" onClick={resetKokoroPace}>
+                      <button type="button" className="secondary-button" onClick={resetKokoroPace} disabled={!LOCAL_DEV_FEATURES_AVAILABLE}>
                         Reset pace
                       </button>
                     </div>
@@ -6230,6 +6328,12 @@ function OpenRouterWorkspace({
   }, [activeGenerateSlot.inputMode, activeGenerateSlot.json, activeGenerateSlot.language]);
 
   const refreshApiKeyStatus = async (): Promise<void> => {
+    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
+      setApiKeyConfigured(false);
+      setApiKeySuffix('');
+      setApiKeyMessage('Hosted builds read OPENROUTER_API_KEY from Vercel environment variables.');
+      return;
+    }
     try {
       const response = await fetch('/api/openrouter/key/status');
       if (!response.ok) {
@@ -6255,7 +6359,7 @@ function OpenRouterWorkspace({
   }, [defaultModel]);
 
   useEffect(() => {
-    setGenerateInputMode(defaultGenerateInputMode);
+    setGenerateInputMode(LOCAL_DEV_FEATURES_AVAILABLE ? defaultGenerateInputMode : 'browser-tts');
     setGenerateLanguage(defaultGenerateLanguage);
   }, [defaultGenerateInputMode, defaultGenerateLanguage]);
 
@@ -6277,6 +6381,9 @@ function OpenRouterWorkspace({
     { value: 'kokoro', label: 'Input #3', description: 'Kokoro' },
     { value: 'qwen-cloud', label: 'Input #4', description: 'Qwen Cloud' },
   ];
+  const generateInputModeOptions = LOCAL_DEV_FEATURES_AVAILABLE
+    ? profileInputModeOptions
+    : profileInputModeOptions.filter((option) => option.value === 'browser-tts');
   const profileLanguageOptions: Array<{ value: BenchmarkLanguageButton; label: string }> = [
     { value: 'es', label: 'ES' },
     { value: 'en', label: 'EN' },
@@ -6298,7 +6405,9 @@ function OpenRouterWorkspace({
         <div>
           <p className="dashboard-eyebrow">Model gateway</p>
           <h2>OpenRouter</h2>
-          <p className="dashboard-meta">Fetches models via a local API route so the OpenRouter key is not stored in the browser.</p>
+          <p className="dashboard-meta">
+            Fetches models via a server API route so the OpenRouter key is not stored in the browser.
+          </p>
         </div>
         <div className="dashboard-header-actions">
           <button type="button" className="secondary-button" onClick={onBackToTraining}>
@@ -6322,6 +6431,16 @@ function OpenRouterWorkspace({
           </button>
         </div>
         {sectionsExpanded.apiKey ? <div className="admin-card-body">
+          {!LOCAL_DEV_FEATURES_AVAILABLE ? (
+            <>
+              <p className="hint">
+                Hosted Vercel builds use the server-side <span className="mono">OPENROUTER_API_KEY</span> environment variable. Manage it in the
+                Vercel project settings, then refresh models below to verify it.
+              </p>
+              {apiKeyMessage ? <p className="hint">{apiKeyMessage}</p> : null}
+            </>
+          ) : (
+          <>
           <div className="admin-actions">
             <span className="hint">
               {apiKeyConfigured ? `Key saved in .env.local (${apiKeySuffix || 'configured'}).` : 'No key saved in .env.local yet.'}
@@ -6417,6 +6536,8 @@ function OpenRouterWorkspace({
           <p className="hint">
             This writes `OPENROUTER_API_KEY` into `.env.local` on your machine. The key is read by the dev server and never persisted to `localStorage`.
           </p>
+          </>
+          )}
         </div> : null}
       </div>
 
@@ -6923,7 +7044,7 @@ function OpenRouterWorkspace({
               <section className="openrouter-button-control" aria-label="Input mode">
                 <h4>Input mode</h4>
                 <div className="openrouter-choice-row">
-                  {profileInputModeOptions.map((option) => (
+                  {generateInputModeOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"

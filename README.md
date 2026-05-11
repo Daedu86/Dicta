@@ -21,6 +21,23 @@ npm install
 npm run dev
 ```
 
+## Vercel Deployment (Free-Tier Friendly)
+
+Dicta can be deployed to Vercel as a static Vite app with lightweight OpenRouter API routes:
+
+- Input #2 / Browser TTS works in the hosted app and keeps using browser `localStorage`.
+- OpenRouter generation works through `/api/openrouter/models` and `/api/openrouter/chat` when `OPENROUTER_API_KEY` is set in Vercel environment variables.
+- Kokoro, WhisperX transcription, CosyVoice/Input #4 generation, and local file inventory remain local-only workflows.
+
+Set the secret in Vercel before using OpenRouter in a hosted deployment:
+
+```bash
+vercel env add OPENROUTER_API_KEY production
+vercel env add OPENROUTER_API_KEY preview
+```
+
+Then deploy with the Vercel Git integration or CLI. The Vercel build runs `npm run build` and serves `dist/`.
+
 ### OpenRouter (Recommended: server-side key)
 
 To use the OpenRouter workspace without exposing your API key to the browser, configure it on the local dev server:

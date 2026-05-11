@@ -35,3 +35,4 @@ public/tts-cache/qwen/
 .env.*
 !.env.example
 third_party/CosyVoice/
+.vercel
