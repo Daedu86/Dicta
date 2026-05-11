@@ -13,6 +13,7 @@
     "ingest:dryrun": "python scripts/transcribe_align.py --audio fixtures/dummy.wav --output fixtures/sample-transcript.json --dry-run"
   },
   "dependencies": {
+    "@vercel/functions": "^3.5.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-is": "^19.2.5",
