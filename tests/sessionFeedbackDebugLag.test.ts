@@ -26,7 +26,7 @@ describe('debug benchmark feedback lag diagnostics', () => {
       ],
     };
 
-    const payload = buildBenchmarkFeedbackPackage(profile, null) as Record<string, any>;
+    const payload = buildBenchmarkFeedbackPackage(profile, null);
     expect(payload.recentTimelinePoints).toHaveLength(1);
     expect(payload.recentTimelinePoints[0].rawLagSec).toBe(-36.48);
     expect(payload.recentTimelinePoints[0].stableLagSec).toBe(-5);

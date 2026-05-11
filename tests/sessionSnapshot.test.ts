@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeSessionModeData } from '../src/core/sessionNormalization';
-import { sessionSnapshotJson } from '../src/core/sessionSnapshot';
+import { sessionSnapshotJson, type SessionSnapshot } from '../src/core/sessionSnapshot';
 
 describe('Session modeData schema', () => {
   it('input1 creates only modeData.input1', () => {
@@ -170,7 +170,7 @@ describe('Session modeData schema', () => {
       },
     });
 
-    const parsed = JSON.parse(json) as any;
+    const parsed = JSON.parse(json) as SessionSnapshot;
     expect(parsed).toHaveProperty('modeData');
     expect(parsed).not.toHaveProperty('transcriptionLanguage');
     expect(parsed).not.toHaveProperty('ttsLanguage');
@@ -184,6 +184,31 @@ describe('Session modeData schema', () => {
     });
 
     expect(parsed.telemetrySummary.rateDistribution).toEqual([{ rate: 0.96, seconds: 90 }]);
+  });
+
+  it('saved JSON uses voice duration instead of attempt elapsed duration', () => {
+    const json = sessionSnapshotJson({
+      id: 'tts-duration',
+      name: 'TTS duration',
+      inputMode: 'input2',
+      ttsLanguage: 'de',
+      ttsText: 'eins zwei drei vier',
+      metrics: { rate: 0.8 },
+      telemetry: {
+        startedAt: '2026-04-28T10:00:00.000Z',
+        finishedAt: '2026-04-28T10:10:00.000Z',
+        lagSeries: [],
+        wpmSeries: [],
+        accuracySeries: [],
+        actions: [],
+        ttsChunks: [],
+        repeatCount: 0,
+        rateDistribution: [],
+      },
+    });
+
+    const parsed = JSON.parse(json) as SessionSnapshot;
+    expect(parsed.telemetrySummary.durationSec).toBeCloseTo(4 / 2.6, 5);
   });
 
   it('saved JSON includes explicit Kokoro native-language metadata', () => {
@@ -205,7 +230,7 @@ describe('Session modeData schema', () => {
       },
     });
 
-    const parsed = JSON.parse(json) as any;
+    const parsed = JSON.parse(json) as SessionSnapshot;
     expect(parsed.modeData.input3).toEqual({
       type: 'kokoro',
       language: 'es',
@@ -213,5 +238,31 @@ describe('Session modeData schema', () => {
       nativeLanguage: true,
       processedLanguage: 'es',
     });
+  });
+
+  it('saved JSON preserves generated session errors', () => {
+    const json = sessionSnapshotJson({
+      id: 'generated-error',
+      name: 'Session 1 generation error',
+      inputMode: 'input2',
+      ttsLanguage: 'de',
+      status: 'error',
+      generationError: 'JSON must parse.',
+      telemetry: {
+        startedAt: '',
+        lagSeries: [],
+        wpmSeries: [],
+        accuracySeries: [],
+        actions: [],
+        ttsChunks: [],
+        repeatCount: 0,
+        rateDistribution: [],
+      },
+    });
+
+    const parsed = JSON.parse(json) as SessionSnapshot;
+    expect(parsed.status).toBe('error');
+    expect(parsed.generationError).toBe('JSON must parse.');
+    expect(parsed.modeData.input2).toEqual({ type: 'builtInTts', language: 'de', textLength: 0 });
   });
 });

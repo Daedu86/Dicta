@@ -37,6 +37,7 @@ const BOUNDARY_TYPES: PhraseBoundaryType[] = ['sentence', 'clause', 'minor', 'un
 const DIFFICULTIES: DictationScriptDifficulty[] = ['easy', 'normal', 'hard'];
 const PHRASE_SIZES: PhraseSize[] = ['short', 'medium', 'long'];
 const INTONATION_HINTS: DictationScriptIntonationHint[] = ['falling', 'continuation', 'contrast', 'question', 'neutral'];
+type UnknownRecord = Record<string, unknown>;
 
 export function parseDictationScriptJson(raw: string): DictationScriptValidationResult {
   try {
@@ -55,7 +56,8 @@ export function validateDictationScript(value: unknown): DictationScriptValidati
 }
 
 export function normalizeDictationScript(value: unknown): DictationScript {
-  const input = value as any;
+  const input = value as UnknownRecord;
+  const phrases = Array.isArray(input.phrases) ? input.phrases : [];
   return {
     title: String(input.title).trim(),
     language: String(input.language).trim(),
@@ -66,20 +68,23 @@ export function normalizeDictationScript(value: unknown): DictationScript {
     recommendedRateRange: normalizeRateRange(input.recommendedRateRange),
     recommendedPhraseSize: isPhraseSize(input.recommendedPhraseSize) ? input.recommendedPhraseSize : 'medium',
     recommendedPauseMs: finiteOr(input.recommendedPauseMs, 600),
-    phrases: input.phrases.map((phrase: any) => ({
-      id: String(phrase.id).trim(),
-      text: String(phrase.text).trim(),
-      boundaryType: phrase.boundaryType,
-      pauseAfterMs: Number(phrase.pauseAfterMs),
-      canReplayIndependently: phrase.canReplayIndependently,
-      requiresContinuation: phrase.requiresContinuation,
-      semanticCompleteness: Number(phrase.semanticCompleteness),
-      difficulty: Number(phrase.difficulty),
-      emphasisWords: Array.isArray(phrase.emphasisWords)
-        ? phrase.emphasisWords.filter((word: unknown): word is string => typeof word === 'string')
-        : [],
-      intonationHint: isIntonationHint(phrase.intonationHint) ? phrase.intonationHint : 'neutral',
-    })),
+    phrases: phrases.map((phrase) => {
+      const candidate = phrase as UnknownRecord;
+      return {
+        id: String(candidate.id).trim(),
+        text: String(candidate.text).trim(),
+        boundaryType: candidate.boundaryType as PhraseBoundaryType,
+        pauseAfterMs: Number(candidate.pauseAfterMs),
+        canReplayIndependently: Boolean(candidate.canReplayIndependently),
+        requiresContinuation: Boolean(candidate.requiresContinuation),
+        semanticCompleteness: Number(candidate.semanticCompleteness),
+        difficulty: Number(candidate.difficulty),
+        emphasisWords: Array.isArray(candidate.emphasisWords)
+          ? candidate.emphasisWords.filter((word: unknown): word is string => typeof word === 'string')
+          : [],
+        intonationHint: isIntonationHint(candidate.intonationHint) ? candidate.intonationHint : 'neutral',
+      };
+    }),
   };
 }
 
@@ -88,7 +93,7 @@ function collectValidationErrors(value: unknown): string[] {
   if (!value || typeof value !== 'object') {
     return ['Script must be a JSON object.'];
   }
-  const input = value as any;
+  const input = value as UnknownRecord;
 
   if (typeof input.title !== 'string' || input.title.trim().length === 0) errors.push('title must exist.');
   if (typeof input.language !== 'string' || input.language.trim().length === 0) errors.push('language must exist.');
@@ -103,10 +108,10 @@ function collectValidationErrors(value: unknown): string[] {
       errors.push(`phrases[${index}] must be an object.`);
       return;
     }
-    const candidate = phrase as any;
+    const candidate = phrase as UnknownRecord;
     if (typeof candidate.id !== 'string' || candidate.id.trim().length === 0) errors.push(`phrases[${index}].id must exist.`);
     if (typeof candidate.text !== 'string' || candidate.text.trim().length === 0) errors.push(`phrases[${index}].text must exist.`);
-    if (!BOUNDARY_TYPES.includes(candidate.boundaryType)) errors.push(`phrases[${index}].boundaryType is invalid.`);
+    if (!BOUNDARY_TYPES.includes(candidate.boundaryType as PhraseBoundaryType)) errors.push(`phrases[${index}].boundaryType is invalid.`);
     if (!Number.isFinite(Number(candidate.pauseAfterMs))) errors.push(`phrases[${index}].pauseAfterMs must be a finite number.`);
     if (!isUnitNumber(candidate.semanticCompleteness)) errors.push(`phrases[${index}].semanticCompleteness must be between 0 and 1.`);
     if (!isUnitNumber(candidate.difficulty)) errors.push(`phrases[${index}].difficulty must be between 0 and 1.`);

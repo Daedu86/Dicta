@@ -1,4 +1,5 @@
 import { cloneTelemetry, normalizeSessionModeData } from './sessionNormalization';
+import { estimateSessionVoiceDurationSec } from './sessionDuration';
 import type { SessionModeData } from './sessionNormalization';
 
 export type SessionSnapshot = {
@@ -9,6 +10,7 @@ export type SessionSnapshot = {
   inputMode: string;
   difficulty?: string;
   status?: string;
+  generationError?: string;
   modeData: SessionModeData;
   metrics?: unknown;
   telemetrySummary: {
@@ -28,23 +30,23 @@ function average(values: number[]): number | null {
   return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 }
 
+type UnknownRecord = Record<string, unknown>;
+
 export function buildSessionSnapshot(session: unknown): SessionSnapshot {
-  const input = session && typeof session === 'object' ? (session as any) : {};
+  const input: UnknownRecord = session && typeof session === 'object' ? (session as UnknownRecord) : {};
   const telemetry = cloneTelemetry(input.telemetry);
 
-  const durationSec =
-    telemetry.startedAt && telemetry.finishedAt
-      ? (new Date(telemetry.finishedAt).getTime() - new Date(telemetry.startedAt).getTime()) / 1000
-      : null;
+  const durationSec = estimateSessionVoiceDurationSec({ ...input, telemetry });
 
   return {
-    id: input.id ?? '',
-    name: input.name ?? '',
-    createdAt: input.createdAt,
-    updatedAt: input.updatedAt,
-    inputMode: input.inputMode ?? 'input1',
-    difficulty: input.difficulty,
-    status: input.status,
+    id: typeof input.id === 'string' ? input.id : '',
+    name: typeof input.name === 'string' ? input.name : '',
+    createdAt: typeof input.createdAt === 'string' ? input.createdAt : undefined,
+    updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : undefined,
+    inputMode: typeof input.inputMode === 'string' ? input.inputMode : 'input1',
+    difficulty: typeof input.difficulty === 'string' ? input.difficulty : undefined,
+    status: typeof input.status === 'string' ? input.status : undefined,
+    generationError: typeof input.generationError === 'string' && input.generationError.trim() ? input.generationError : undefined,
     modeData: normalizeSessionModeData(session),
     metrics: input.metrics,
     telemetrySummary: {
@@ -64,4 +66,3 @@ export function buildSessionSnapshot(session: unknown): SessionSnapshot {
 export function sessionSnapshotJson(session: unknown): string {
   return JSON.stringify(buildSessionSnapshot(session), null, 2);
 }
-

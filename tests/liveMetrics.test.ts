@@ -69,6 +69,17 @@ describe('language metrics aggregation', () => {
     expect(summary.days).toHaveLength(1);
   });
 
+  it('uses voice duration when sessions provide it', () => {
+    const today = new Date('2026-04-28T12:00:00.000Z');
+    const sessions = [
+      session({ inputMode: 'input2', ttsLanguage: 'de', updatedAt: '2026-04-28T09:00:00.000Z', voiceDurationSec: 20 }),
+      session({ inputMode: 'input3', kokoroLanguage: 'de', updatedAt: '2026-04-28T10:00:00.000Z', voiceDurationSec: 35 }),
+    ];
+
+    const summary = buildRangeSummaryForLanguage(sessions, 'de', 'today', today);
+    expect(summary.durationSeconds).toBe(55);
+  });
+
   it('supports rolling windows for week/2w/3w/month', () => {
     const today = new Date('2026-04-30T12:00:00.000Z');
     const sessions = [

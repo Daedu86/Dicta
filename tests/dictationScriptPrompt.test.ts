@@ -46,10 +46,21 @@ describe('dictationScriptPrompt', () => {
     const template = buildDictationScriptTemplate('kokoro', 'en');
     const parsed = JSON.parse(template);
 
+    expect(parsed.title).not.toBe('Generated Dictation');
     expect(parsed.inputMode).toBe('kokoro');
     expect(parsed.language).toBe('en');
     expect(Array.isArray(parsed.phrases)).toBe(true);
     expect(parsed.phrases.length).toBeGreaterThan(0);
+  });
+
+  it('tells the model to create a specific non-generic title', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const prompt = buildDictationScriptPrompt(profile);
+
+    expect(prompt).toContain('Set "title" to a short, specific');
+    expect(prompt).toContain('Do not use generic titles');
+    expect(prompt).toContain('expected voice/audio playback duration');
+    expect(prompt).toContain('Generated Dictation');
   });
 
   it('includes required fields on the first sample phrase', () => {

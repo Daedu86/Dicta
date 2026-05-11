@@ -40,6 +40,8 @@ export type SessionModeData = {
   input3: Input3ModeData | null;
 };
 
+type UnknownRecord = Record<string, unknown>;
+
 function isInputMode(value: unknown): value is SessionInputMode {
   return value === 'input1' || value === 'input2' || value === 'input3' || value === 'input4';
 }
@@ -59,6 +61,10 @@ function numberOr(value: unknown, fallback: number): number {
 
 function safeLength(value: unknown): number {
   return typeof value === 'string' ? value.length : 0;
+}
+
+function asRecord(value: unknown): UnknownRecord {
+  return value && typeof value === 'object' ? (value as UnknownRecord) : {};
 }
 
 export function normalizeRateDistribution(input: unknown): Array<{ rate: number; seconds: number }> {
@@ -103,18 +109,20 @@ export function cloneTelemetry(telemetry: unknown): SessionTelemetry {
     };
   }
 
-  const input = telemetry as any;
+  const input = asRecord(telemetry);
   const normalizedRateDistribution = normalizeRateDistribution(input.rateDistribution ?? input.timeAtRate ?? {});
 
   return {
-    startedAt: input.startedAt ?? '',
-    finishedAt: input.finishedAt,
-    lagSeries: [...(input.lagSeries ?? [])],
-    wpmSeries: [...(input.wpmSeries ?? [])],
-    accuracySeries: [...(input.accuracySeries ?? [])],
-    actions: [...(input.actions ?? [])],
-    ttsChunks: [...(input.ttsChunks ?? [])],
-    repeatCount: input.repeatCount ?? 0,
+    startedAt: typeof input.startedAt === 'string' ? input.startedAt : '',
+    finishedAt: typeof input.finishedAt === 'string' ? input.finishedAt : undefined,
+    lagSeries: Array.isArray(input.lagSeries) ? input.lagSeries.filter((value): value is number => typeof value === 'number') : [],
+    wpmSeries: Array.isArray(input.wpmSeries) ? input.wpmSeries.filter((value): value is number => typeof value === 'number') : [],
+    accuracySeries: Array.isArray(input.accuracySeries)
+      ? input.accuracySeries.filter((value): value is number => typeof value === 'number')
+      : [],
+    actions: Array.isArray(input.actions) ? (input.actions as SessionTelemetry['actions']) : [],
+    ttsChunks: Array.isArray(input.ttsChunks) ? (input.ttsChunks as SessionTelemetry['ttsChunks']) : [],
+    repeatCount: numberOr(input.repeatCount, 0),
     rateDistribution: normalizedRateDistribution,
   };
 }
@@ -140,15 +148,18 @@ export function normalizeSessionLanguages(
 }
 
 export function normalizeSessionModeData(session: unknown): SessionModeData {
-  const input = session && typeof session === 'object' ? (session as any) : {};
+  const input = asRecord(session);
   const inputMode: SessionInputMode = isInputMode(input.inputMode) ? input.inputMode : 'input1';
 
-  const existingModeData = input.modeData && typeof input.modeData === 'object' ? (input.modeData as any) : null;
-  const existingInput1 = existingModeData?.input1 && typeof existingModeData.input1 === 'object' ? existingModeData.input1 : null;
-  const existingInput2 = existingModeData?.input2 && typeof existingModeData.input2 === 'object' ? existingModeData.input2 : null;
-  const existingInput3 = existingModeData?.input3 && typeof existingModeData.input3 === 'object' ? existingModeData.input3 : null;
+  const existingModeData = input.modeData && typeof input.modeData === 'object' ? (input.modeData as UnknownRecord) : null;
+  const existingInput1 =
+    existingModeData?.input1 && typeof existingModeData.input1 === 'object' ? (existingModeData.input1 as UnknownRecord) : null;
+  const existingInput2 =
+    existingModeData?.input2 && typeof existingModeData.input2 === 'object' ? (existingModeData.input2 as UnknownRecord) : null;
+  const existingInput3 =
+    existingModeData?.input3 && typeof existingModeData.input3 === 'object' ? (existingModeData.input3 as UnknownRecord) : null;
 
-  const textSummary = input.textSummary && typeof input.textSummary === 'object' ? (input.textSummary as any) : null;
+  const textSummary = input.textSummary && typeof input.textSummary === 'object' ? (input.textSummary as UnknownRecord) : null;
 
   const input1LanguageRaw = existingInput1?.language ?? input.transcriptionLanguage;
   const input2LanguageRaw = existingInput2?.language ?? input.ttsLanguage;
@@ -162,7 +173,8 @@ export function normalizeSessionModeData(session: unknown): SessionModeData {
     numberOr(
       existingInput1?.transcriptWords ??
         textSummary?.transcriptWords ??
-        (input.transcript?.words?.length ?? 0),
+        (asRecord(input.transcript).words as unknown[] | undefined)?.length ??
+        0,
       0,
     );
   const inputTextLength = numberOr(existingInput1?.inputTextLength ?? textSummary?.inputTextLength ?? safeLength(input.inputText), 0);
@@ -191,16 +203,25 @@ export function normalizeSessionModeData(session: unknown): SessionModeData {
   } else if (inputMode === 'input3') {
     const latestKokoroChunk =
       Array.isArray(input.kokoroChunks) && input.kokoroChunks.length > 0
-        ? input.kokoroChunks[input.kokoroChunks.length - 1]
+        ? asRecord(input.kokoroChunks[input.kokoroChunks.length - 1])
         : null;
     const language = input3Language;
+    const nativeLanguage =
+      typeof latestKokoroChunk?.nativeLanguage === 'boolean'
+        ? latestKokoroChunk.nativeLanguage
+        : isKokoroNativeLanguage(language);
+    const processedLanguage =
+      latestKokoroChunk?.processedLanguage === 'en' || latestKokoroChunk?.processedLanguage === 'es'
+        ? latestKokoroChunk.processedLanguage
+        : getKokoroProcessedLanguage(language);
+    const fallback = typeof latestKokoroChunk?.fallback === 'string' ? latestKokoroChunk.fallback : '';
     modeData.input3 = {
       type: 'kokoro',
       language,
       textLength: kokoroTextLength,
-      nativeLanguage: latestKokoroChunk?.nativeLanguage ?? isKokoroNativeLanguage(language),
-      processedLanguage: latestKokoroChunk?.processedLanguage ?? getKokoroProcessedLanguage(language),
-      ...(latestKokoroChunk?.fallback ? { fallback: latestKokoroChunk.fallback } : {}),
+      nativeLanguage,
+      processedLanguage,
+      ...(fallback ? { fallback } : {}),
     };
   }
 

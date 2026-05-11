@@ -75,7 +75,7 @@ export function buildQwenCloudPhraseId(text: string, language: string): string {
 }
 
 export class QwenCloudAudioAdapter implements DictationAudioAdapter {
-  public inputMode: 'qwen-cloud' = 'qwen-cloud';
+  public inputMode = 'qwen-cloud' as const;
   private currentPhrase: QwenCloudPhrase | null = null;
   private manifestCache = new Map<string, QwenCloudManifest | null>();
   private audio = new Audio();

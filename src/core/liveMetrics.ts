@@ -12,6 +12,7 @@ export type SessionLanguageLike = {
 export type SessionForMetrics = SessionLanguageLike & {
   name?: string;
   updatedAt: string;
+  voiceDurationSec?: number | null;
   metrics: {
     points: number;
     score: number;
@@ -93,6 +94,9 @@ export function buildRangeSummaryForLanguage(
   const average = (values: number[]): number | null =>
     values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
   const getSessionDurationSec = (session: SessionForMetrics): number | null => {
+    if (typeof session.voiceDurationSec === 'number' && Number.isFinite(session.voiceDurationSec)) {
+      return session.voiceDurationSec;
+    }
     if (!session.telemetry.startedAt || !session.telemetry.finishedAt) return null;
     return (new Date(session.telemetry.finishedAt).getTime() - new Date(session.telemetry.startedAt).getTime()) / 1000;
   };

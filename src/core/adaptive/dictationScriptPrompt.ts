@@ -36,12 +36,15 @@ export function buildDictationScriptPrompt(profile: InputLanguageBenchmarkMetric
     `inputSpecificGuidance: ${inputSpecificGuidance(profile.inputMode)}`,
     '',
     'Generation rules:',
+    '- Set "title" to a short, specific, human-readable title in the target language that describes this script content.',
+    '- Do not use generic titles such as "Generated Dictation", "Dictation", "Training Script", or "Untitled".',
     '- Generate semantic phrases, not raw text chunks.',
     '- Avoid unsafe mid-grammar splits.',
     '- Keep phrases replayable independently when possible.',
     '- Use continuation intonation for incomplete clauses.',
     '- Use falling intonation for full sentences.',
     '- Keep difficulty in the learner training zone, based on the benchmark recommendation.',
+    '- Set estimatedDurationSec to the expected voice/audio playback duration only; do not include learner typing or submit time.',
     '- Target the weakAreas listed above.',
     '- Use sentence/clause/minor boundaries when safe; use unsafe only when the text truly requires continuation.',
     '',
@@ -76,7 +79,7 @@ export function buildDictationScriptPrompt(profile: InputLanguageBenchmarkMetric
 
 export function buildDictationScriptTemplate(inputMode: InputMode, language: LanguageCode): string {
   return stringify({
-    title: 'Generated Dictation',
+    title: 'Specific content title in the target language',
     language,
     inputMode,
     difficulty: 'normal',

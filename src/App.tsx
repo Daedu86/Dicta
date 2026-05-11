@@ -32,6 +32,10 @@ import {
 import { buildBenchmarkFilename, buildSelectedBenchmarkExportPayload } from './core/adaptive/benchmarkJson';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './core/adaptive/dictationScriptPrompt';
 import {
+  buildOpenRouterGenerationPrompt,
+  type OpenRouterGeneratePromptSource,
+} from './core/adaptive/openRouterGenerationPrompt';
+import {
   parseDictationScriptJson,
   validateDictationScript,
   type DictationScript,
@@ -69,6 +73,7 @@ import {
 import { buildKokoroSourceWords, type KokoroPhraseChunk } from './core/kokoroPhraseChunking';
 import { KOKORO_GERMAN_WARNING, getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
 import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
+import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { sessionSnapshotJson } from './core/sessionSnapshot';
 import {
   buildRangeSummaryForLanguage,
@@ -92,6 +97,8 @@ const LEADERBOARD_LANGUAGE_KEY = 'dicta.leaderboardLanguage.v1';
 const ADMIN_LANGUAGE_KEY = 'dicta.adminLanguage.v1';
 const ADAPTIVE_BENCHMARKS_KEY = 'dicta.adaptiveBenchmarks.v1';
 const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
+const OPENROUTER_GENERATED_SCRIPT_KEY = 'dicta.openrouterGeneratedScript.v1';
+const OPENROUTER_GENERATED_VARIANTS_KEY = 'dicta.openrouterGeneratedVariants.v1';
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 const DashboardLineChart = lazy(() =>
   import('./components/DashboardCharts').then((module) => ({ default: module.DashboardLineChart })),
@@ -130,9 +137,10 @@ type StoredSession = {
   telemetry: SessionTelemetry;
   sessionSource: SessionSource;
   dictationScript: DictationScript | null;
+  generationError?: string;
 };
 
-type SessionStatus = 'ready' | 'running' | 'paused' | 'finished';
+type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 type SessionSource = 'plainText' | 'dictationScript';
 type TtsLanguage = 'en' | 'de' | 'es';
@@ -218,6 +226,40 @@ type AdaptiveSessionFeedbackByInputLanguage = Record<string, Record<string, Adap
 type BenchmarkLanguageButton = 'en' | 'es' | 'de';
 type RepeatWordStat = { word: string; total: number; missed: number; typos: number };
 
+function stripJsonFence(value: string): string {
+  const trimmed = value.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fenced) return fenced[1].trim();
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return trimmed.slice(firstBrace, lastBrace + 1).trim();
+  }
+  return trimmed;
+}
+
+function validateGeneratedScriptForTarget(
+  raw: string,
+  targetInputMode: InputMode,
+  targetLanguage: BenchmarkLanguageButton,
+): DictationScriptValidationResult {
+  const result = parseDictationScriptJson(raw);
+  if (!result.ok) return result;
+  const normalizedInputMode = String(result.script.inputMode).trim().toLowerCase().replace(/_/g, '-');
+  const normalizedLanguage = String(result.script.language).trim().toLowerCase();
+  const errors: string[] = [];
+  if (normalizedInputMode !== targetInputMode) {
+    errors.push(`inputMode must be exactly ${targetInputMode}.`);
+  }
+  if (normalizedLanguage !== targetLanguage) {
+    errors.push(`language must be exactly ${targetLanguage}.`);
+  }
+  if (errors.length > 0) {
+    return { ok: false, script: null, errors };
+  }
+  return result;
+}
+
 type AdaptiveSemanticDebug = {
   semanticCutPenalty: number;
   unsafePauseCount: number;
@@ -275,6 +317,7 @@ function App() {
   const [dictationScriptJson, setDictationScriptJson] = useState('');
   const [dictationScriptValidation, setDictationScriptValidation] = useState<DictationScriptValidationResult | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('leaderboard');
+  const [openRouterGenerateFocusRequest, setOpenRouterGenerateFocusRequest] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = window.localStorage.getItem(THEME_MODE_KEY);
     if (saved === 'light' || saved === 'dark') {
@@ -305,6 +348,7 @@ function App() {
   const [ttsPracticeText, setTtsPracticeText] = useState('');
   const [ttsStatus, setTtsStatus] = useState<TtsStatus>('idle');
   const [ttsCurrentChunk, setTtsCurrentChunk] = useState('');
+  const [ttsPlayerProgressTick, setTtsPlayerProgressTick] = useState(0);
   const [ttsPacingMode, setTtsPacingMode] = useState<TtsPacingMode>('balanced');
   const [ttsSpeechRate, setTtsSpeechRate] = useState(1);
   const [qwenExpanded, setQwenExpanded] = useState(true);
@@ -329,38 +373,30 @@ function App() {
   const [kokoroStatus, setKokoroStatus] = useState<TtsStatus>('idle');
   const [kokoroCurrentChunk, setKokoroCurrentChunk] = useState<KokoroGeneratedChunk | null>(null);
   const [kokoroChunks, setKokoroChunks] = useState<KokoroGeneratedChunk[]>([]);
+  const [kokoroPlayerProgressTick, setKokoroPlayerProgressTick] = useState(0);
   const [kokoroPacingMode, setKokoroPacingMode] = useState<TtsPacingMode>('balanced');
   const [kokoroSpeechRate, setKokoroSpeechRate] = useState(1);
   const [kokoroManualBias, setKokoroManualBias] = useState(0);
   const [kokoroServiceReady, setKokoroServiceReady] = useState<boolean | null>(null);
   const [kokoroEnabled, setKokoroEnabled] = useState<boolean>(false);
   const [openRouterDefaultModel, setOpenRouterDefaultModel] = useState('');
+  const [directOpenRouterBusy, setDirectOpenRouterBusy] = useState(false);
+  const [directIntermediateOpenRouterBusy, setDirectIntermediateOpenRouterBusy] = useState(false);
+  const [directAdvancedOpenRouterBusy, setDirectAdvancedOpenRouterBusy] = useState(false);
   const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name?: string; context_length?: number }>>([]);
   const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [openRouterError, setOpenRouterError] = useState('');
   const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
   const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
-  const [metricsLanguageView, setMetricsLanguageView] = useState<MetricsLanguageView>(() => {
-    const saved = window.localStorage.getItem(LIVE_METRICS_LANGUAGE_KEY);
-    if (saved === 'en' || saved === 'es' || saved === 'de') {
-      return saved;
-    }
-    return 'en';
-  });
-  const [leaderboardLanguageView, setLeaderboardLanguageView] = useState<MetricsLanguageView>(() => {
-    const saved = window.localStorage.getItem(LEADERBOARD_LANGUAGE_KEY);
-    if (saved === 'en' || saved === 'es' || saved === 'de') {
-      return saved;
-    }
-    return 'en';
-  });
-  const [adminLanguageView, setAdminLanguageView] = useState<MetricsLanguageView>(() => {
-    const saved = window.localStorage.getItem(ADMIN_LANGUAGE_KEY);
-    if (saved === 'en' || saved === 'es' || saved === 'de') {
-      return saved;
-    }
-    return 'en';
-  });
+  const [dictaLanguageView, setDictaLanguageView] = useState<MetricsLanguageView>(() =>
+    loadPersistedDictaLanguageView(),
+  );
+  const metricsLanguageView = dictaLanguageView;
+  const leaderboardLanguageView = dictaLanguageView;
+  const adminLanguageView = dictaLanguageView;
+  const setMetricsLanguageView = setDictaLanguageView;
+  const setLeaderboardLanguageView = setDictaLanguageView;
+  const setAdminLanguageView = setDictaLanguageView;
   const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => {
     return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
   });
@@ -394,7 +430,7 @@ function App() {
   const [adaptiveSessionFeedbackByInputLanguage, setAdaptiveSessionFeedbackByInputLanguage] = useState<AdaptiveSessionFeedbackByInputLanguage>(() =>
     loadAdaptiveSessionFeedback(),
   );
-  const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<null | 'sessionFeedback'>(null);
+  const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<null | 'sessionFeedback' | 'exports'>(null);
   const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState({
     decision: true,
     architecture: true,
@@ -405,7 +441,8 @@ function App() {
     benchmarks: true,
   });
   const [selectedBenchmarkInputMode, setSelectedBenchmarkInputMode] = useState<InputMode>('kokoro');
-  const [selectedBenchmarkLanguage, setSelectedBenchmarkLanguage] = useState<BenchmarkLanguageButton>('en');
+  const selectedBenchmarkLanguage: BenchmarkLanguageButton = dictaLanguageView;
+  const setSelectedBenchmarkLanguage = setDictaLanguageView;
   const [benchmarkExportMessage, setBenchmarkExportMessage] = useState('');
   const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
   const previousLagRef = useRef(0);
@@ -444,6 +481,7 @@ function App() {
   const sessionBenchmarkBeforeRef = useRef<Record<string, InputLanguageBenchmarkMetrics>>({});
   const sessionFeedbackContextRef = useRef<Record<string, { inputMode: InputMode; language: LanguageCode }>>({});
   const suppressSidebarAutoSelectRef = useRef(false);
+  const hydratingSessionIdRef = useRef<string | null>(null);
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
   const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
@@ -505,6 +543,17 @@ function App() {
     if (sessions.length === 0) return null;
     return [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
   }, [sessions]);
+  const pendingSessions = useMemo(
+    () =>
+      [...sessions]
+        .filter((session) => session.status !== 'error' && !isSessionReadyForTraining(session))
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+    [sessions],
+  );
+  const sessionsWithVoiceDuration = useMemo(
+    () => sessions.map((session) => ({ ...session, voiceDurationSec: getSessionVoiceDurationSec(session) })),
+    [sessions],
+  );
   const ttsPlaybackProfile = useMemo(
     () => buildTtsPlaybackProfile(sessions, activeSession),
     [sessions, activeSession],
@@ -569,16 +618,10 @@ function App() {
   }, [kokoroEnabled, kokoroText, kokoroStatus]);
 
   useEffect(() => {
-    window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, metricsLanguageView);
-  }, [metricsLanguageView]);
-
-  useEffect(() => {
-    window.localStorage.setItem(LEADERBOARD_LANGUAGE_KEY, leaderboardLanguageView);
-  }, [leaderboardLanguageView]);
-
-  useEffect(() => {
-    window.localStorage.setItem(ADMIN_LANGUAGE_KEY, adminLanguageView);
-  }, [adminLanguageView]);
+    window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, dictaLanguageView);
+    window.localStorage.setItem(LEADERBOARD_LANGUAGE_KEY, dictaLanguageView);
+    window.localStorage.setItem(ADMIN_LANGUAGE_KEY, dictaLanguageView);
+  }, [dictaLanguageView]);
 
   useEffect(() => {
     window.localStorage.setItem(LIVE_METRICS_RANGE_KEY, metricsRangeView);
@@ -675,12 +718,12 @@ function App() {
       : 0;
 
   const lastSessionForLanguage = useMemo(
-    () => findLastSessionForLanguage(sessions, metricsLanguageView),
-    [sessions, metricsLanguageView],
+    () => findLastSessionForLanguage(sessionsWithVoiceDuration, metricsLanguageView),
+    [sessionsWithVoiceDuration, metricsLanguageView],
   );
   const languageTodaySummary = useMemo(
-    () => buildRangeSummaryForLanguage(sessions, metricsLanguageView, metricsRangeView),
-    [sessions, metricsLanguageView, metricsRangeView],
+    () => buildRangeSummaryForLanguage(sessionsWithVoiceDuration, metricsLanguageView, metricsRangeView),
+    [sessionsWithVoiceDuration, metricsLanguageView, metricsRangeView],
   );
   const ttsHasText = ttsText.trim().length > 0;
   const ttsTranscript = useMemo(() => buildTextTranscript(ttsText), [ttsText]);
@@ -905,6 +948,7 @@ function App() {
   useEffect(() => {
     if (!activeSession) return;
 
+    hydratingSessionIdRef.current = activeSession.id;
     setAudioUrl(activeSession.audioUrl);
     setAudioSourceUrlInput(activeSession.audioSourceUrlInput);
     setLoadedAudioFromUrl(activeSession.audioUrl.startsWith('blob:') ? '' : activeSession.audioUrl);
@@ -990,6 +1034,10 @@ function App() {
 
   useEffect(() => {
     if (!activeSession) return;
+    if (hydratingSessionIdRef.current === activeSession.id) {
+      hydratingSessionIdRef.current = null;
+      return;
+    }
 
     setSessions((prev) =>
       prev.map((session) => {
@@ -1160,6 +1208,18 @@ function App() {
       setAudioReadyMessage('Audio loaded successfully.');
     }
   }, [audioUrl]);
+
+  useEffect(() => {
+    if (ttsStatus !== 'playing') return;
+    const interval = window.setInterval(() => setTtsPlayerProgressTick((value) => value + 1), 500);
+    return () => window.clearInterval(interval);
+  }, [ttsStatus]);
+
+  useEffect(() => {
+    if (kokoroStatus !== 'playing') return;
+    const interval = window.setInterval(() => setKokoroPlayerProgressTick((value) => value + 1), 500);
+    return () => window.clearInterval(interval);
+  }, [kokoroStatus]);
 
   async function generateTranscriptFromAudio(): Promise<void> {
     if (setupLocked) {
@@ -1456,6 +1516,69 @@ function App() {
     setExportMessage('DictationScript session created and locked.');
   }
 
+  function createSessionFromOpenRouterScript(script: DictationScript, options: { navigateToLeaderboard?: boolean } = {}): void {
+    const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
+    const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
+    if (!inputMode) {
+      setOpenRouterError('Generated script inputMode must match input1/input2/input3/input4 or audio/browser-tts/kokoro/qwen-cloud.');
+      return;
+    }
+
+    const nextSession = createSessionFromScript(script, getNextSessionIndex(sessions), inputMode);
+    suppressSidebarAutoSelectRef.current = true;
+    setSessions((prev) => [nextSession, ...prev]);
+    setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
+    if (navigateToLeaderboard) {
+      setActiveSessionId(nextSession.id);
+      setWorkspaceMode('leaderboard');
+      setDashboardSessionId(null);
+    }
+    setSessionCreationMode(null);
+    setSessionCreationSource('plainText');
+    setSessionCreationName('');
+    setDictationScriptJson('');
+    setDictationScriptValidation(null);
+    setSetupExpanded(false);
+    setTtsExpanded(false);
+    setQwenExpanded(false);
+    setKokoroExpanded(false);
+    setError('');
+    setOpenRouterError('');
+    setExportMessage('OpenRouter DictationScript session created and locked.');
+  }
+
+  function createOpenRouterErrorSession({
+    slotLabel,
+    inputMode,
+    language,
+    message,
+  }: {
+    slotLabel: string;
+    inputMode: InputMode;
+    language: BenchmarkLanguageButton;
+    message: string;
+  }, options: { navigateToLeaderboard?: boolean } = {}): void {
+    const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
+    const sessionInputMode = mapDictationScriptInputModeToSession(inputMode) ?? 'input2';
+    const nextSession = createGeneratedErrorSession({
+      index: getNextSessionIndex(sessions),
+      inputMode: sessionInputMode,
+      language,
+      name: `${slotLabel} generation error`,
+      message,
+    });
+    suppressSidebarAutoSelectRef.current = true;
+    setSessions((prev) => [nextSession, ...prev]);
+    setLeaderboardLanguageView(language);
+    if (navigateToLeaderboard) {
+      setActiveSessionId(nextSession.id);
+      setWorkspaceMode('leaderboard');
+      setDashboardSessionId(null);
+    }
+    setError('');
+    setOpenRouterError(message);
+  }
+
   function buildSemanticPhrasesForCurrentSession(text: string, language: string | undefined, mode: TtsPacingMode): SemanticPhrase[] {
     if (activeSession?.sessionSource === 'dictationScript' && activeSession.dictationScript) {
       return buildSemanticPhrasesFromDictationScript(activeSession.dictationScript);
@@ -1477,6 +1600,12 @@ function App() {
     setActiveSessionId(sessionId);
     setDashboardSessionId(sessionId);
     setWorkspaceMode('dashboard');
+  }
+
+  function openWorkspaceForSession(session: StoredSession): void {
+    setActiveSessionId(session.id);
+    setDashboardSessionId(null);
+    setWorkspaceMode(getWorkspaceModeForSessionInput(session.inputMode));
   }
 
   function getActiveTypingLanguage(): TypingLanguage | null {
@@ -1506,7 +1635,7 @@ function App() {
     return null;
   }
 
-  function openAdaptiveForActiveInput(): void {
+  function openOpenRouterGenerateForActiveInput(): void {
     if (!activeSession) return;
     const inputMode = mapSessionInputMode(activeSession.inputMode);
     const languageCandidate = resolveStoredSessionLanguage(activeSession);
@@ -1516,13 +1645,135 @@ function App() {
     setSelectedBenchmarkLanguage(language);
     setBenchmarkExportMessage('');
     setSessionFeedbackMessage('');
-    setAdaptiveBenchmarksFocusAnchor('sessionFeedback');
+    setWorkspaceMode('openrouter');
+    setDashboardSessionId(null);
+    setOpenRouterGenerateFocusRequest((value) => value + 1);
+  }
+
+  async function generateDirectSessionFromOpenRouter({
+    slotLabel,
+    durationMinutes,
+    isBusy,
+    setBusy,
+    targetDifficulty,
+    difficultyInstruction,
+  }: {
+    slotLabel: string;
+    durationMinutes: 2 | 3 | 4;
+    isBusy: boolean;
+    setBusy: (value: boolean) => void;
+    targetDifficulty?: 'normal' | 'hard';
+    difficultyInstruction?: string;
+  }): Promise<void> {
+    if (!activeSession || isBusy) return;
+    const model = openRouterDefaultModel.trim();
+    const inputMode = mapSessionInputMode(activeSession.inputMode);
+    const languageCandidate = resolveStoredSessionLanguage(activeSession);
+    const language: BenchmarkLanguageButton =
+      languageCandidate === 'en' || languageCandidate === 'es' || languageCandidate === 'de' ? languageCandidate : 'en';
+
+    if (!model) {
+      setOpenRouterError('Set a default OpenRouter model before generating the next session.');
+      return;
+    }
+
+    setBusy(true);
+    setOpenRouterError('');
+    setSelectedBenchmarkInputMode(inputMode);
+    setSelectedBenchmarkLanguage(language);
+    try {
+      const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
+      const sessionFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
+      const { prompt } = buildOpenRouterGenerationPrompt({
+        profile,
+        sessionFeedback,
+        promptSource: 'compact-adaptive',
+        durationMinutes,
+        targetDifficulty,
+        difficultyInstruction,
+      });
+      const response = await fetch('/api/openrouter/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, prompt }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Generation request failed (${response.status}).`);
+      }
+      const payload = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = typeof payload.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
+      if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
+      const validation = validateGeneratedScriptForTarget(stripJsonFence(text), inputMode, language);
+      if (validation.ok) {
+        createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false });
+      } else {
+        createOpenRouterErrorSession({
+          slotLabel,
+          inputMode,
+          language,
+          message: validation.errors.join(' ') || 'Generated script did not validate.',
+        }, { navigateToLeaderboard: false });
+      }
+    } catch (err) {
+      createOpenRouterErrorSession({
+        slotLabel,
+        inputMode,
+        language,
+        message: err instanceof Error ? err.message : 'OpenRouter generation failed.',
+      }, { navigateToLeaderboard: false });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generateNextSessionFromOpenRouter(): Promise<void> {
+    await generateDirectSessionFromOpenRouter({
+      slotLabel: 'Direct session',
+      durationMinutes: 3,
+      isBusy: directOpenRouterBusy,
+      setBusy: setDirectOpenRouterBusy,
+    });
+  }
+
+  async function generateIntermediateNextSessionFromOpenRouter(): Promise<void> {
+    await generateDirectSessionFromOpenRouter({
+      slotLabel: 'Intermediate direct session',
+      durationMinutes: 2,
+      isBusy: directIntermediateOpenRouterBusy,
+      setBusy: setDirectIntermediateOpenRouterBusy,
+      targetDifficulty: 'normal',
+      difficultyInstruction: 'Keep phrase-level "difficulty" values in an intermediate range, roughly 0.45-0.65.',
+    });
+  }
+
+  async function generateAdvancedNextSessionFromOpenRouter(): Promise<void> {
+    await generateDirectSessionFromOpenRouter({
+      slotLabel: 'Advanced direct session',
+      durationMinutes: 2,
+      isBusy: directAdvancedOpenRouterBusy,
+      setBusy: setDirectAdvancedOpenRouterBusy,
+      targetDifficulty: 'hard',
+      difficultyInstruction: 'Use advanced content and keep phrase-level "difficulty" values high, roughly 0.70-0.90.',
+    });
+  }
+
+  function openAdaptiveExportsForActiveInput(): void {
+    if (!activeSession) return;
+    const inputMode = mapSessionInputMode(activeSession.inputMode);
+    const languageCandidate = resolveStoredSessionLanguage(activeSession);
+    const language: BenchmarkLanguageButton =
+      languageCandidate === 'en' || languageCandidate === 'es' || languageCandidate === 'de' ? languageCandidate : 'en';
+    setSelectedBenchmarkInputMode(inputMode);
+    setSelectedBenchmarkLanguage(language);
+    setBenchmarkExportMessage('');
+    setSessionFeedbackMessage('');
+    setAdaptiveBenchmarksFocusAnchor('exports');
     setAdaptiveSectionExpanded((prev) => ({ ...prev, benchmarks: true }));
     setWorkspaceMode('adaptive');
     setDashboardSessionId(null);
-    window.setTimeout(() => {
-      document.getElementById('adaptive-session-feedback')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 0);
   }
 
   const keyboardProfile = resolveKeyboardProfile();
@@ -3583,22 +3834,43 @@ function App() {
   const transcriptPreviewStart = Math.max(0, attemptEvaluation.lastMatchedTargetIndex + 1);
   const transcriptPreview = targetWords.slice(transcriptPreviewStart, transcriptPreviewStart + 12).join(' ');
   const canGenerateTranscript = Boolean(audioFile || loadedAudioFromUrl);
-  const canStartSession = Boolean(audioReady && transcript && transcript.words.length > 0 && sessionStatus !== 'finished');
+  const canStartSession = Boolean(audioReady && transcript && transcript.words.length > 0 && sessionStatus !== 'finished' && sessionStatus !== 'error');
   const canPauseSession = running && sessionStatus === 'running';
-  const canFinishSession = sessionStatus !== 'finished' && (running || typedWords.length > 0 || currentAudioTime > 0);
+  const canFinishSession = sessionStatus !== 'finished' && sessionStatus !== 'error' && (running || typedWords.length > 0 || currentAudioTime > 0);
   const inputSettingsReady =
     activeInputMode === 'input1'
       ? Boolean(audioReady && transcript && transcript.words.length > 0)
       : activeInputMode === 'input2' || activeInputMode === 'input4'
         ? ttsHasText
         : kokoroHasText;
-  const setupLocked = sessionStatus === 'finished' || inputSettingsLocked;
+  const setupLocked = sessionStatus === 'finished' || sessionStatus === 'error' || inputSettingsLocked;
   const canSubmitTtsSession =
     (activeInputMode === 'input2' || activeInputMode === 'input4') &&
     sessionStatus !== 'finished' &&
+    sessionStatus !== 'error' &&
     ttsHasText &&
     ttsPracticeWords.length > 0;
-  const canSubmitKokoroSession = activeInputMode === 'input3' && sessionStatus !== 'finished' && kokoroHasText && kokoroPracticeWords.length > 0;
+  const canSubmitKokoroSession =
+    activeInputMode === 'input3' && sessionStatus !== 'finished' && sessionStatus !== 'error' && kokoroHasText && kokoroPracticeWords.length > 0;
+  const ttsPlayerWordCount = ttsTranscript?.words.length ?? 0;
+  const ttsPlayerCurrentWord = ttsHasText ? estimateTtsSpokenWordIndex() : 0;
+  const ttsPlayerWordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
+  const ttsPlayerDurationSec = ttsPlayerWordCount > 0 ? ttsPlayerWordCount / ttsPlayerWordsPerSecond : 0;
+  const ttsPlayerCurrentSec =
+    ttsPlayerWordCount > 0 ? Math.min(ttsPlayerDurationSec, (ttsPlayerCurrentWord / ttsPlayerWordCount) * ttsPlayerDurationSec) : 0;
+  const ttsPlayerProgressPercent = ttsPlayerDurationSec > 0 ? clamp((ttsPlayerCurrentSec / ttsPlayerDurationSec) * 100, 0, 100) : 0;
+  const kokoroPlayerWordCount = kokoroTranscript?.words.length ?? 0;
+  const kokoroPlayerCurrentWord = kokoroHasText ? estimateKokoroSpokenWordIndex() : 0;
+  const kokoroPlayerWordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * kokoroSpeechRate);
+  const kokoroPlayerDurationSec = kokoroPlayerWordCount > 0 ? kokoroPlayerWordCount / kokoroPlayerWordsPerSecond : 0;
+  const kokoroPlayerCurrentSec =
+    kokoroPlayerWordCount > 0
+      ? Math.min(kokoroPlayerDurationSec, (kokoroPlayerCurrentWord / kokoroPlayerWordCount) * kokoroPlayerDurationSec)
+      : 0;
+  const kokoroPlayerProgressPercent =
+    kokoroPlayerDurationSec > 0 ? clamp((kokoroPlayerCurrentSec / kokoroPlayerDurationSec) * 100, 0, 100) : 0;
+  void ttsPlayerProgressTick;
+  void kokoroPlayerProgressTick;
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
@@ -4249,6 +4521,33 @@ function App() {
 
         <section className="workspace">
           <section className="workspace-shell">
+            {pendingSessions.length > 0 ? (
+              <section className="pending-session-lane" aria-label="Pending sessions">
+                <div className="pending-session-lane-header">
+                  <div>
+                    <p className="dashboard-eyebrow">Pending sessions</p>
+                    <h3>Ready to perform</h3>
+                  </div>
+                  <span className="pending-session-count">{pendingSessions.length}</span>
+                </div>
+                <div className="pending-session-strip">
+                  {pendingSessions.map((session) => (
+                    <button
+                      key={session.id}
+                      type="button"
+                      className={`pending-session-chip ${session.id === activeSessionId ? 'pending-session-chip-active' : ''}`}
+                      onClick={() => openWorkspaceForSession(session)}
+                      title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
+                    >
+                      <span className="pending-session-title">{getSessionDisplayTitle(session)}</span>
+                      <span className="pending-session-meta">
+                        {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {getPendingSessionReason(session)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             {workspaceMode === 'kokoro' ? (
               <section className="panel workspace-panel tts-workspace kokoro-workspace">
                 <div className="tts-workspace-header">
@@ -4261,10 +4560,7 @@ function App() {
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => {
-                        setWorkspaceMode('adaptive');
-                        setDashboardSessionId(null);
-                      }}
+                      onClick={openAdaptiveExportsForActiveInput}
                     >
                       Adaptive Pace Layer
                     </button>
@@ -4288,14 +4584,58 @@ function App() {
                     <h3>Kokoro source</h3>
                     <div className="source-media-player">
                       <span className="bottom-metrics-player-label">Media player</span>
-                      <audio
-                        ref={audioRef}
-                        controls
-                        src={audioUrl}
-                        className="audio"
-                        onTimeUpdate={() => setCurrentAudioTime(audioRef.current?.currentTime ?? 0)}
-                        onEnded={finishSession}
-                      />
+                      <div className="tts-media-controls" role="group" aria-label="Kokoro media controls">
+                        <button
+                          type="button"
+                          className="tts-media-icon-button"
+                          onClick={() => {
+                            if (kokoroStatus === 'paused') {
+                              void resumeKokoro();
+                            } else {
+                              void playKokoro();
+                            }
+                          }}
+                          disabled={
+                            !kokoroEnabled ||
+                            !kokoroHasText ||
+                            kokoroStatus === 'playing' ||
+                            isKokoroLanguageBlocked(kokoroLanguage)
+                          }
+                          aria-label={kokoroStatus === 'paused' ? 'Resume Kokoro' : 'Start Kokoro'}
+                          title={kokoroStatus === 'paused' ? 'Resume Kokoro' : 'Start Kokoro'}
+                        >
+                          ▶
+                        </button>
+                        <span className="tts-media-time">
+                          {formatDuration(kokoroPlayerCurrentSec)} / {formatDuration(kokoroPlayerDurationSec)}
+                        </span>
+                        <div className="tts-media-progress" aria-hidden="true">
+                          <span style={{ width: `${kokoroPlayerProgressPercent}%` }} />
+                        </div>
+                        <button
+                          type="button"
+                          className="tts-media-icon-button"
+                          onClick={pauseKokoro}
+                          disabled={!kokoroEnabled || kokoroStatus !== 'playing'}
+                          aria-label="Pause Kokoro"
+                          title="Pause Kokoro"
+                        >
+                          ❚❚
+                        </button>
+                        <button
+                          type="button"
+                          className="tts-media-icon-button"
+                          onClick={() => stopKokoroPlayback('stop')}
+                          disabled={kokoroStatus === 'idle'}
+                          aria-label="Stop Kokoro"
+                          title="Stop Kokoro"
+                        >
+                          ■
+                        </button>
+                      </div>
+                      <p className="hint">
+                        Synced to the Kokoro source transcript: {kokoroPlayerCurrentWord}/{kokoroPlayerWordCount} words.
+                      </p>
                     </div>
                     <div className={`tts-source-box ${kokoroHasText ? 'tts-source-box-ready' : ''}`}>
                       {kokoroHasText ? kokoroText : 'Paste text in the sidebar to load a Kokoro source passage.'}
@@ -4397,8 +4737,50 @@ function App() {
                       <button type="button" onClick={submitKokoroSession} disabled={!canSubmitKokoroSession}>
                         Submit statistics
                       </button>
-                      <button type="button" className="secondary-button" onClick={openAdaptiveForActiveInput}>
+                      <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
                         Adaptive Pace Layer
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void generateNextSessionFromOpenRouter()}
+                        disabled={directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        title={
+                          openRouterDefaultModel.trim()
+                            ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
+                            : 'Set a default OpenRouter model first.'
+                        }
+                      >
+                        {directOpenRouterBusy ? 'Generating...' : 'Generate next session'}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
+                        disabled={directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        title={
+                          openRouterDefaultModel.trim()
+                            ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
+                            : 'Set a default OpenRouter model first.'
+                        }
+                      >
+                        {directIntermediateOpenRouterBusy ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
+                        disabled={directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        title={
+                          openRouterDefaultModel.trim()
+                            ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
+                            : 'Set a default OpenRouter model first.'
+                        }
+                      >
+                        {directAdvancedOpenRouterBusy ? 'Generating advanced...' : 'Generate next session - Advanced'}
+                      </button>
+                      <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
+                        OpenRouter script
                       </button>
                       <button type="button" className="secondary-button" onClick={resetSession}>
                         Reset
@@ -4449,14 +4831,47 @@ function App() {
                     <h3>TTS source</h3>
                     <div className="source-media-player">
                       <span className="bottom-metrics-player-label">Media player</span>
-                      <audio
-                        ref={audioRef}
-                        controls
-                        src={audioUrl}
-                        className="audio"
-                        onTimeUpdate={() => setCurrentAudioTime(audioRef.current?.currentTime ?? 0)}
-                        onEnded={finishSession}
-                      />
+                      <div className="tts-media-controls" role="group" aria-label="Browser TTS media controls">
+                        <button
+                          type="button"
+                          className="tts-media-icon-button"
+                          onClick={ttsStatus === 'paused' ? resumeTts : playTts}
+                          disabled={!ttsHasText || ttsStatus === 'playing'}
+                          aria-label={ttsStatus === 'paused' ? 'Resume TTS' : 'Play TTS'}
+                          title={ttsStatus === 'paused' ? 'Resume TTS' : 'Play TTS'}
+                        >
+                          ▶
+                        </button>
+                        <span className="tts-media-time">
+                          {formatDuration(ttsPlayerCurrentSec)} / {formatDuration(ttsPlayerDurationSec)}
+                        </span>
+                        <div className="tts-media-progress" aria-hidden="true">
+                          <span style={{ width: `${ttsPlayerProgressPercent}%` }} />
+                        </div>
+                        <button
+                          type="button"
+                          className="tts-media-icon-button"
+                          onClick={pauseTts}
+                          disabled={ttsStatus !== 'playing'}
+                          aria-label="Pause TTS"
+                          title="Pause TTS"
+                        >
+                          ❚❚
+                        </button>
+                        <button
+                          type="button"
+                          className="tts-media-icon-button"
+                          onClick={() => stopTtsPlayback('stop')}
+                          disabled={ttsStatus === 'idle'}
+                          aria-label="Stop TTS"
+                          title="Stop TTS"
+                        >
+                          ■
+                        </button>
+                      </div>
+                      <p className="hint">
+                        Browser TTS does not expose an audio file, so these controls drive the speech engine directly.
+                      </p>
                     </div>
                     <div className={`tts-source-box ${ttsHasText ? 'tts-source-box-ready' : ''}`}>
                       {ttsHasText ? ttsText : 'Paste text in the sidebar to load a source passage.'}
@@ -4511,8 +4926,50 @@ function App() {
                       <button type="button" onClick={submitTtsSession} disabled={!canSubmitTtsSession}>
                         Submit statistics
                       </button>
-                      <button type="button" className="secondary-button" onClick={openAdaptiveForActiveInput}>
+                      <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
                         Adaptive Pace Layer
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void generateNextSessionFromOpenRouter()}
+                        disabled={directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        title={
+                          openRouterDefaultModel.trim()
+                            ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
+                            : 'Set a default OpenRouter model first.'
+                        }
+                      >
+                        {directOpenRouterBusy ? 'Generating...' : 'Generate next session'}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
+                        disabled={directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        title={
+                          openRouterDefaultModel.trim()
+                            ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
+                            : 'Set a default OpenRouter model first.'
+                        }
+                      >
+                        {directIntermediateOpenRouterBusy ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
+                        disabled={directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        title={
+                          openRouterDefaultModel.trim()
+                            ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
+                            : 'Set a default OpenRouter model first.'
+                        }
+                      >
+                        {directAdvancedOpenRouterBusy ? 'Generating advanced...' : 'Generate next session - Advanced'}
+                      </button>
+                      <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
+                        OpenRouter script
                       </button>
                       <button type="button" className="secondary-button" onClick={resetSession}>
                         Reset
@@ -4942,6 +5399,20 @@ function App() {
                 onBackToTraining={() => setWorkspaceMode('training')}
                 exportProfile={selectedBenchmarkProfile}
                 exportSessionFeedback={selectedSessionFeedback}
+                exportActiveSessionStatus={getBenchmarkActiveSessionStatus(selectedBenchmarkProfile)}
+                benchmarks={adaptiveBenchmarksByInputLanguage}
+                sessionFeedbackByInputLanguage={adaptiveSessionFeedbackByInputLanguage}
+                onSelectExportProfile={(inputMode, language) => {
+                  setSelectedBenchmarkInputMode(inputMode);
+                  setSelectedBenchmarkLanguage(language);
+                  setBenchmarkExportMessage('');
+                  setSessionFeedbackMessage('');
+                }}
+                defaultGenerateInputMode={selectedBenchmarkInputMode}
+                defaultGenerateLanguage={selectedBenchmarkLanguage}
+                focusGenerateRequest={openRouterGenerateFocusRequest}
+                onCreateGeneratedSession={createSessionFromOpenRouterScript}
+                onCreateGenerationErrorSession={createOpenRouterErrorSession}
                 onCopyBenchmark={(profile) => void copySelectedBenchmarkJson(profile)}
                 onExportBenchmark={(profile) => downloadSelectedBenchmarkJson(profile)}
                 onCopyBenchmarkWithScriptPrompt={(profile) => void copyBenchmarkWithDictationScriptPrompt(profile)}
@@ -5015,31 +5486,44 @@ function App() {
                       No sessions yet for {leaderboardLanguageView.toUpperCase()}. Finish a session in that language to populate this leaderboard.
                     </div>
                   ) : null}
-                  {leaderboard.map(({ rank, session }) => (
-                    <div key={session.id} className={`leaderboard-table-row ${session.id === activeSessionId ? 'leaderboard-table-row-active' : ''}`}>
+                  {leaderboard.map(({ rank, session }) => {
+                    const readinessClass =
+                      session.status === 'error'
+                        ? 'leaderboard-table-row-error'
+                        : isSessionReadyForTraining(session)
+                          ? 'leaderboard-table-row-ready'
+                          : 'leaderboard-table-row-not-ready';
+                    const statusLabel = formatLeaderboardSessionStatus(session);
+                    const statusTitle = session.generationError ? `${statusLabel}: ${session.generationError}` : statusLabel;
+                    return (
+                    <div
+                      key={session.id}
+                      className={`leaderboard-table-row ${readinessClass} ${session.id === activeSessionId ? 'leaderboard-table-row-active' : ''}`}
+                    >
                       <span className="leaderboard-cell leaderboard-cell-rank">#{rank}</span>
-                      <span className="leaderboard-cell leaderboard-cell-name">{session.name || 'Untitled session'}</span>
+                      <span className="leaderboard-cell leaderboard-cell-name" title={getSessionDisplayTitle(session)}>
+                        {getSessionDisplayTitle(session)}
+                      </span>
                       <span className="leaderboard-cell leaderboard-cell-points">{session.metrics.points}</span>
                       <span className="leaderboard-cell leaderboard-cell-score">{session.metrics.score}</span>
                       <span className="leaderboard-cell leaderboard-cell-accuracy">{session.metrics.accuracy.toFixed(1)}%</span>
                       <span className="leaderboard-cell leaderboard-cell-wpm">{session.metrics.wpm.toFixed(1)}</span>
                       <span className="leaderboard-cell leaderboard-cell-lag">{session.metrics.lagSec.toFixed(2)}s</span>
                       <span className="leaderboard-cell leaderboard-cell-rate">{session.metrics.rate.toFixed(2)}x</span>
-                      <span className="leaderboard-cell leaderboard-cell-status">{formatSessionStatus(session.status)}</span>
+                      <span className="leaderboard-cell leaderboard-cell-status" title={statusTitle}>
+                        {statusLabel}
+                        {session.generationError ? <small>{session.generationError}</small> : null}
+                      </span>
                       <span className="leaderboard-cell leaderboard-cell-duration">{formatSessionPlaybackDuration(session)}</span>
                       <span className="leaderboard-cell leaderboard-cell-date">{formatSessionDate(session.updatedAt)}</span>
                       <span className="leaderboard-cell leaderboard-cell-action">
-                        <div className="leaderboard-action-buttons" aria-label={`Actions for ${session.name || 'session'}`}>
+                        <div className="leaderboard-action-buttons" aria-label={`Actions for ${getSessionDisplayTitle(session)}`}>
                           <button
                             type="button"
                             className="secondary-button leaderboard-action-button"
-                            onClick={() => {
-                              setActiveSessionId(session.id);
-                              setDashboardSessionId(null);
-                              setWorkspaceMode('training');
-                            }}
-                            aria-label={`Open training workspace for ${session.name || 'session'}`}
-                            title="Open in training workspace"
+                            onClick={() => openWorkspaceForSession(session)}
+                            aria-label={`Open training workspace for ${getSessionDisplayTitle(session)}`}
+                            title="Open in input workspace"
                           >
                             <span aria-hidden="true">⟵</span>
                           </button>
@@ -5047,7 +5531,7 @@ function App() {
                             type="button"
                             className="secondary-button leaderboard-action-button"
                             onClick={() => openDashboardForSession(session.id)}
-                            aria-label={`Open dashboard for ${session.name || 'session'}`}
+                            aria-label={`Open dashboard for ${getSessionDisplayTitle(session)}`}
                             title="Dashboard"
                           >
                             <span aria-hidden="true">◫</span>
@@ -5056,7 +5540,7 @@ function App() {
                             type="button"
                             className="secondary-button leaderboard-action-button"
                             onClick={() => downloadSessionSnapshot(session)}
-                            aria-label={`Export JSON for ${session.name || 'session'}`}
+                            aria-label={`Export JSON for ${getSessionDisplayTitle(session)}`}
                             title="Export JSON"
                           >
                             <span aria-hidden="true">⇩</span>
@@ -5067,7 +5551,7 @@ function App() {
                             onClick={() => {
                               void copySessionSnapshot(session, setExportMessage);
                             }}
-                            aria-label={`Copy JSON for ${session.name || 'session'}`}
+                            aria-label={`Copy JSON for ${getSessionDisplayTitle(session)}`}
                             title="Copy JSON"
                           >
                             <span aria-hidden="true">⧉</span>
@@ -5076,7 +5560,7 @@ function App() {
                             type="button"
                             className="danger-button leaderboard-action-button leaderboard-action-button-danger"
                             onClick={() => deleteSession(session.id)}
-                            aria-label={`Delete ${session.name || 'session'}`}
+                            aria-label={`Delete ${getSessionDisplayTitle(session)}`}
                             title="Delete session"
                           >
                             <span aria-hidden="true">✕</span>
@@ -5084,7 +5568,8 @@ function App() {
                         </div>
                       </span>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               </section>
             ) : (
@@ -5272,12 +5757,8 @@ function App() {
                   <Metric
                     label="Duration"
                     value={
-                      lastSessionForLanguage?.telemetry.startedAt && lastSessionForLanguage.telemetry.finishedAt
-                        ? formatDuration(
-                            (new Date(lastSessionForLanguage.telemetry.finishedAt).getTime() -
-                              new Date(lastSessionForLanguage.telemetry.startedAt).getTime()) /
-                              1000,
-                          )
+                      typeof lastSessionForLanguage?.voiceDurationSec === 'number'
+                        ? formatDuration(lastSessionForLanguage.voiceDurationSec)
                         : '—'
                     }
                   />
@@ -5340,6 +5821,38 @@ function App() {
   );
 }
 
+type PersistedOpenRouterGeneration = {
+  text: string;
+  json: string;
+  inputMode: InputMode;
+  language: BenchmarkLanguageButton;
+  usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
+  elapsedMs: number | null;
+};
+
+type OpenRouterGenerationSlotId = 'prompt1' | 'prompt2';
+
+type OpenRouterGenerationUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+};
+
+type OpenRouterGenerationSlotState = {
+  notes: string;
+  model: string;
+  text: string;
+  json: string;
+  inputMode: InputMode | null;
+  language: BenchmarkLanguageButton | null;
+  usage: OpenRouterGenerationUsage | null;
+  elapsedMs: number | null;
+  generatedAt: string | null;
+  error: string;
+};
+
+type OpenRouterGenerationSlots = Record<OpenRouterGenerationSlotId, OpenRouterGenerationSlotState>;
+
 function OpenRouterWorkspace({
   defaultModel,
   onSetDefaultModel,
@@ -5350,6 +5863,15 @@ function OpenRouterWorkspace({
   onBackToTraining,
   exportProfile,
   exportSessionFeedback,
+  exportActiveSessionStatus,
+  benchmarks,
+  sessionFeedbackByInputLanguage,
+  onSelectExportProfile,
+  defaultGenerateInputMode,
+  defaultGenerateLanguage,
+  focusGenerateRequest,
+  onCreateGeneratedSession,
+  onCreateGenerationErrorSession,
   onCopyBenchmark,
   onExportBenchmark,
   onCopyBenchmarkWithScriptPrompt,
@@ -5369,6 +5891,20 @@ function OpenRouterWorkspace({
   onBackToTraining: () => void;
   exportProfile: InputLanguageBenchmarkMetrics;
   exportSessionFeedback: AdaptiveSessionFeedback | null;
+  exportActiveSessionStatus: string | undefined;
+  benchmarks: AdaptiveBenchmarksByInputLanguage;
+  sessionFeedbackByInputLanguage: AdaptiveSessionFeedbackByInputLanguage;
+  onSelectExportProfile: (inputMode: InputMode, language: BenchmarkLanguageButton) => void;
+  defaultGenerateInputMode: InputMode;
+  defaultGenerateLanguage: BenchmarkLanguageButton;
+  focusGenerateRequest: number;
+  onCreateGeneratedSession: (script: DictationScript) => void;
+  onCreateGenerationErrorSession: (args: {
+    slotLabel: string;
+    inputMode: InputMode;
+    language: BenchmarkLanguageButton;
+    message: string;
+  }) => void;
   onCopyBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
   onExportBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
   onCopyBenchmarkWithScriptPrompt: (profile: InputLanguageBenchmarkMetrics) => void;
@@ -5383,6 +5919,7 @@ function OpenRouterWorkspace({
     humanFeedback: string,
   ) => void;
 }) {
+  const persistedGenerationSlotsRef = useRef<OpenRouterGenerationSlots | null>(loadPersistedOpenRouterGenerationVariants(defaultModel));
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
@@ -5398,6 +5935,299 @@ function OpenRouterWorkspace({
   const [exportStatusMessage, setExportStatusMessage] = useState('');
   const [humanFeedbackEditorOpen, setHumanFeedbackEditorOpen] = useState(false);
   const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
+  const [generateInputMode, setGenerateInputMode] = useState<InputMode>(defaultGenerateInputMode);
+  const [generateLanguage, setGenerateLanguage] = useState<BenchmarkLanguageButton>(defaultGenerateLanguage);
+  const [generatePromptSource, setGeneratePromptSource] = useState<OpenRouterGeneratePromptSource>('compact-adaptive');
+  const [generateDurationMinutes, setGenerateDurationMinutes] = useState<2 | 3 | 4>(3);
+  const [activeGenerateSlotId, setActiveGenerateSlotId] = useState<OpenRouterGenerationSlotId>('prompt1');
+  const [generationSlots, setGenerationSlots] = useState<OpenRouterGenerationSlots>(
+    () => persistedGenerationSlotsRef.current ?? createEmptyOpenRouterGenerationSlots(defaultModel),
+  );
+  const [generateBusySlots, setGenerateBusySlots] = useState<Record<OpenRouterGenerationSlotId, boolean>>({
+    prompt1: false,
+    prompt2: false,
+  });
+  const [sectionsExpanded, setSectionsExpanded] = useState({
+    apiKey: true,
+    models: true,
+    test: true,
+    exports: true,
+    generate: true,
+  });
+
+  const copyToClipboard = async (label: string, text: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setExportStatusMessage(`Copied: ${label} · ${exportProfile.inputMode}/${exportProfile.language}`);
+    } catch {
+      setExportStatusMessage(`Could not copy: ${label}.`);
+    }
+  };
+
+  const formatPromptSizeHint = (value: string): string => {
+    const normalized = value.trim();
+    if (!normalized) return 'Words: 0 · Tokens: ~0';
+    const words = normalized.split(/\s+/).filter(Boolean).length;
+    const chars = normalized.length;
+    const estimatedTokens = Math.max(1, Math.round(chars / 4));
+    return `Words: ${words} · Tokens: ~${estimatedTokens}`;
+  };
+
+  function updateGenerationSlots(updater: (current: OpenRouterGenerationSlots) => OpenRouterGenerationSlots): void {
+    setGenerationSlots((current) => {
+      const next = updater(current);
+      persistOpenRouterGenerationVariants(next);
+      return next;
+    });
+  }
+
+  function updateGenerationSlot(slotId: OpenRouterGenerationSlotId, patch: Partial<OpenRouterGenerationSlotState>): void {
+    updateGenerationSlots((current) => ({
+      ...current,
+      [slotId]: {
+        ...current[slotId],
+        ...patch,
+      },
+    }));
+  }
+
+  function clearGeneratedScriptDraft(slotId: OpenRouterGenerationSlotId): void {
+    updateGenerationSlots((current) => ({
+      ...current,
+      [slotId]: createEmptyOpenRouterGenerationSlot(defaultModel),
+    }));
+  }
+
+  function buildVariantPrompt(slotId: OpenRouterGenerationSlotId, basePrompt: string, slot: OpenRouterGenerationSlotState, modelId: string): string {
+    const slotLabel = getOpenRouterSlotLabel(slotId);
+    const notes = slot.notes.trim() || 'No additional variant notes.';
+    return [
+      basePrompt,
+      '',
+      `Variant-specific notes for ${slotLabel}:`,
+      `Selected model: ${modelId || 'not selected'}.`,
+      'Use these notes to make this variant meaningfully different from the other prompt while still obeying the required schema, inputMode, language, and duration.',
+      notes,
+    ].join('\n');
+  }
+
+  async function generateOpenRouterSlot(slotId: OpenRouterGenerationSlotId): Promise<void> {
+    const slot = generationSlots[slotId];
+    const slotModel = defaultModel;
+    const slotLabel = getOpenRouterSlotLabel(slotId);
+    if (!slotModel) {
+      const message = `Set a model for ${slotLabel} first.`;
+      updateGenerationSlot(slotId, { error: message });
+      onCreateGenerationErrorSession({
+        slotLabel,
+        inputMode: generateInputMode,
+        language: generateLanguage,
+        message,
+      });
+      return;
+    }
+
+    setGenerateBusySlots((current) => ({ ...current, [slotId]: true }));
+    updateGenerationSlot(slotId, { error: '' });
+    const slotPrompt = buildVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
+    const startedAt = performance.now();
+    try {
+      const response = await fetch('/api/openrouter/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: slotModel, prompt: slotPrompt }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Generation request failed (${response.status}).`);
+      }
+      const payload = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+        usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+      };
+      const text = typeof payload.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
+      if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
+      const elapsedMs = Math.max(0, Math.round(performance.now() - startedAt));
+      const cleaned = stripJsonFence(text);
+      const validation = validateGeneratedScriptForTarget(cleaned, generateInputMode, generateLanguage);
+      const usage = payload.usage ?? {};
+      const promptTokens = Number(usage.prompt_tokens ?? 0);
+      const completionTokens = Number(usage.completion_tokens ?? 0);
+      const totalTokens = Number(usage.total_tokens ?? promptTokens + completionTokens);
+      const nextUsage = {
+        promptTokens: Number.isFinite(promptTokens) ? promptTokens : 0,
+        completionTokens: Number.isFinite(completionTokens) ? completionTokens : 0,
+        totalTokens: Number.isFinite(totalTokens) ? totalTokens : 0,
+      };
+      const nextSlot = {
+        text,
+        json: cleaned,
+        inputMode: generateInputMode,
+        language: generateLanguage,
+        usage: nextUsage,
+        elapsedMs,
+        generatedAt: new Date().toISOString(),
+        model: slotModel,
+        error: validation.ok ? '' : validation.errors.join(' '),
+      };
+      updateGenerationSlot(slotId, nextSlot);
+      if (validation.ok) {
+        onCreateGeneratedSession(validation.script);
+        clearGeneratedScriptDraft(slotId);
+      } else {
+        onCreateGenerationErrorSession({
+          slotLabel,
+          inputMode: generateInputMode,
+          language: generateLanguage,
+          message: nextSlot.error || 'Generated script did not validate.',
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'OpenRouter generation failed.';
+      updateGenerationSlot(slotId, {
+        inputMode: generateInputMode,
+        language: generateLanguage,
+        generatedAt: new Date().toISOString(),
+        model: slotModel,
+        error: message,
+      });
+      onCreateGenerationErrorSession({
+        slotLabel,
+        inputMode: generateInputMode,
+        language: generateLanguage,
+        message,
+      });
+    } finally {
+      setGenerateBusySlots((current) => ({ ...current, [slotId]: false }));
+    }
+  }
+
+  const exportPayloads = useMemo(() => {
+    const activeSessionStatus = exportActiveSessionStatus;
+    const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(exportProfile), null, 2);
+    const llmPrompt = buildDictationScriptPrompt(exportProfile);
+    const outputTemplate = buildDictationScriptTemplate(exportProfile.inputMode, exportProfile.language);
+    const benchmarkOnlyPackage = `Benchmark JSON context:\n${benchmarkJson}\n\nLLM prompt:\n${llmPrompt}`;
+    const benchmarkFeedbackPackage = buildBenchmarkFeedbackPackage(exportProfile, exportSessionFeedback, { activeSessionStatus }) as Record<
+      string,
+      unknown
+    >;
+    const diagnosticPackage = JSON.stringify(benchmarkFeedbackPackage, null, 2);
+    const promptPackage = buildBenchmarkFeedbackPromptPackage(exportProfile, exportSessionFeedback, llmPrompt, { activeSessionStatus });
+    const sessionFeedbackJson = JSON.stringify(
+      buildSessionFeedbackJsonPayload(exportProfile.inputMode, exportProfile.language, exportSessionFeedback, {
+        activeSessionStatus,
+        fallbackDiagnostics: derivePlaybackDiagnosticsFromTimeline(exportProfile.timeline.slice(-60)),
+      }),
+      null,
+      2,
+    );
+    const humanNotesPackage = JSON.stringify(
+      {
+        ...benchmarkFeedbackPackage,
+        llmPrompt,
+        humanFeedback: humanFeedbackDraft.trim(),
+      },
+      null,
+      2,
+    );
+
+    const compactBenchmark = JSON.stringify(
+      {
+        profileKey: `${exportProfile.inputMode}/${exportProfile.language}`,
+        sessionCount: exportProfile.sessionCount,
+        sampleCount: exportProfile.sampleCount,
+        lastUpdatedAt: exportProfile.lastUpdatedAt ?? null,
+        recommendation: exportProfile.recommendation,
+        weakAreas: exportProfile.weakAreas,
+        kpis: {
+          sweetSpotScore: exportProfile.sweetSpotScore,
+          semanticFidelityScore: exportProfile.semanticFidelityScore,
+          controlFidelityScore: exportProfile.controlFidelityScore,
+          learningEffectivenessScore: exportProfile.learningEffectivenessScore,
+          flowStabilityScore: exportProfile.flowStabilityScore,
+          averageAccuracy: exportProfile.averageAccuracy,
+          averageWpm: exportProfile.averageWpm,
+          averageLagSec: exportProfile.averageLagSec,
+          preferredPlaybackRate: exportProfile.preferredPlaybackRate,
+          preferredPhraseSize: exportProfile.preferredPhraseSize,
+        },
+      },
+      null,
+      2,
+    );
+
+    const compactSessionFeedback = JSON.stringify(
+      exportSessionFeedback
+        ? {
+            verdict: exportSessionFeedback.verdict,
+            improvementDelta: exportSessionFeedback.improvementDelta,
+            playbackIssues: {
+              repeatedPhraseCount: exportSessionFeedback.playbackIssues.repeatedPhraseCount,
+              maxRepeatCountForSinglePhrase: exportSessionFeedback.playbackIssues.maxRepeatCountForSinglePhrase,
+              skippedPhraseCount: exportSessionFeedback.playbackIssues.skippedPhraseCount,
+              outOfOrderAdvanceCount: exportSessionFeedback.playbackIssues.outOfOrderAdvanceCount,
+              replayAdvancedPhraseCount: exportSessionFeedback.playbackIssues.replayAdvancedPhraseCount,
+              phraseIndexJumpCount: exportSessionFeedback.playbackIssues.phraseIndexJumpCount,
+            },
+            phraseStats: exportSessionFeedback.phraseStats,
+            notes: exportSessionFeedback.notes.slice(0, 8),
+          }
+        : { verdict: 'n/a' },
+      null,
+      2,
+    );
+
+    const compactPromptPackage = JSON.stringify(
+      {
+        benchmark: JSON.parse(compactBenchmark) as Record<string, unknown>,
+        latestSessionFeedback: JSON.parse(compactSessionFeedback) as Record<string, unknown>,
+        llmPrompt,
+      },
+      null,
+      2,
+    );
+
+    return {
+      benchmarkJson,
+      llmPrompt,
+      outputTemplate,
+      benchmarkOnlyPackage,
+      diagnosticPackage,
+      promptPackage,
+      sessionFeedbackJson,
+      humanNotesPackage,
+      compactBenchmark,
+      compactSessionFeedback,
+      compactPromptPackage,
+    };
+  }, [exportActiveSessionStatus, exportProfile, exportSessionFeedback, humanFeedbackDraft]);
+
+  const generateProfile =
+    benchmarks[generateInputMode]?.[generateLanguage] ?? createEmptyInputLanguageBenchmark(generateInputMode, generateLanguage);
+  const generateSessionFeedback = sessionFeedbackByInputLanguage[generateInputMode]?.[generateLanguage]?.[0] ?? null;
+  const generateHasBenchmarkData = generateProfile.sampleCount > 0 || generateProfile.sessionCount > 0;
+  const generateHasSessionFeedback = Boolean(generateSessionFeedback);
+  const generatePayloads = useMemo(
+    () =>
+      buildOpenRouterGenerationPrompt({
+        profile: generateProfile,
+        sessionFeedback: generateSessionFeedback,
+        promptSource: generatePromptSource,
+        durationMinutes: generateDurationMinutes,
+      }),
+    [generateDurationMinutes, generateProfile, generatePromptSource, generateSessionFeedback],
+  );
+  const activeGenerateSlot = generationSlots[activeGenerateSlotId];
+  const activeGenerateSlotModel = defaultModel;
+  const activeGenerateSlotPrompt = useMemo(
+    () => buildVariantPrompt(activeGenerateSlotId, generatePayloads.prompt, activeGenerateSlot, activeGenerateSlotModel),
+    [activeGenerateSlotId, activeGenerateSlot, activeGenerateSlotModel, generatePayloads.prompt],
+  );
+  const activeGenerateSlotValidation = useMemo<DictationScriptValidationResult | null>(() => {
+    if (!activeGenerateSlot.json || !activeGenerateSlot.inputMode || !activeGenerateSlot.language) return null;
+    return validateGeneratedScriptForTarget(activeGenerateSlot.json, activeGenerateSlot.inputMode, activeGenerateSlot.language);
+  }, [activeGenerateSlot.inputMode, activeGenerateSlot.json, activeGenerateSlot.language]);
 
   const refreshApiKeyStatus = async (): Promise<void> => {
     try {
@@ -5424,8 +6254,43 @@ function OpenRouterWorkspace({
     setSelectedModel(defaultModel);
   }, [defaultModel]);
 
+  useEffect(() => {
+    setGenerateInputMode(defaultGenerateInputMode);
+    setGenerateLanguage(defaultGenerateLanguage);
+  }, [defaultGenerateInputMode, defaultGenerateLanguage]);
+
+  useEffect(() => {
+    if (focusGenerateRequest === 0) return;
+    setSectionsExpanded((prev) => ({ ...prev, generate: true }));
+    window.setTimeout(() => {
+      document.getElementById('openrouter-generate-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  }, [focusGenerateRequest]);
+
   const exportHasBenchmarkData = exportProfile.sampleCount > 0 || exportProfile.sessionCount > 0;
   const exportHasSessionFeedback = Boolean(exportSessionFeedback);
+  const exportLanguage: BenchmarkLanguageButton =
+    exportProfile.language === 'en' || exportProfile.language === 'es' || exportProfile.language === 'de' ? exportProfile.language : 'en';
+  const profileInputModeOptions: Array<{ value: InputMode; label: string; description: string }> = [
+    { value: 'audio', label: 'Input #1', description: 'Audio' },
+    { value: 'browser-tts', label: 'Input #2', description: 'Browser TTS' },
+    { value: 'kokoro', label: 'Input #3', description: 'Kokoro' },
+    { value: 'qwen-cloud', label: 'Input #4', description: 'Qwen Cloud' },
+  ];
+  const profileLanguageOptions: Array<{ value: BenchmarkLanguageButton; label: string }> = [
+    { value: 'es', label: 'ES' },
+    { value: 'en', label: 'EN' },
+    { value: 'de', label: 'DE' },
+  ];
+  const generatePromptSourceOptions: Array<{ value: OpenRouterGeneratePromptSource; label: string; description: string }> = [
+    { value: 'compact-adaptive', label: 'Compact adaptive', description: 'Compact benchmark + compact feedback when available.' },
+    { value: 'compact-benchmark-only', label: 'Compact benchmark', description: 'Compact benchmark only; skips latest feedback.' },
+    { value: 'compact-base', label: 'Compact base', description: 'Base prompt only; smallest prompt.' },
+    { value: 'original-adaptive', label: 'Original adaptive', description: 'Full benchmark + full feedback when available.' },
+    { value: 'original-benchmark-only', label: 'Original benchmark', description: 'Full benchmark only; skips latest feedback.' },
+    { value: 'original-base', label: 'Original base', description: 'Original base prompt only.' },
+  ];
+  const generateDurationOptions: Array<2 | 3 | 4> = [2, 3, 4];
 
   return (
     <section className="panel workspace-panel admin-workspace">
@@ -5445,8 +6310,18 @@ function OpenRouterWorkspace({
       <div className="dashboard-card admin-card">
         <div className="admin-card-header">
           <h3>Section # 1 API Key</h3>
+          <button
+            type="button"
+            className="secondary-button adaptive-section-toggle"
+            onClick={() => setSectionsExpanded((prev) => ({ ...prev, apiKey: !prev.apiKey }))}
+            aria-expanded={sectionsExpanded.apiKey}
+            aria-label={sectionsExpanded.apiKey ? 'Collapse section' : 'Expand section'}
+            title={sectionsExpanded.apiKey ? 'Collapse' : 'Expand'}
+          >
+            <span className={`adaptive-section-toggle-icon ${sectionsExpanded.apiKey ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
+          </button>
         </div>
-        <div className="admin-card-body">
+        {sectionsExpanded.apiKey ? <div className="admin-card-body">
           <div className="admin-actions">
             <span className="hint">
               {apiKeyConfigured ? `Key saved in .env.local (${apiKeySuffix || 'configured'}).` : 'No key saved in .env.local yet.'}
@@ -5542,14 +6417,24 @@ function OpenRouterWorkspace({
           <p className="hint">
             This writes `OPENROUTER_API_KEY` into `.env.local` on your machine. The key is read by the dev server and never persisted to `localStorage`.
           </p>
-        </div>
+        </div> : null}
       </div>
 
       <div className="dashboard-card admin-card">
         <div className="admin-card-header">
           <h3>Section # 2 Free Models</h3>
+          <button
+            type="button"
+            className="secondary-button adaptive-section-toggle"
+            onClick={() => setSectionsExpanded((prev) => ({ ...prev, models: !prev.models }))}
+            aria-expanded={sectionsExpanded.models}
+            aria-label={sectionsExpanded.models ? 'Collapse section' : 'Expand section'}
+            title={sectionsExpanded.models ? 'Collapse' : 'Expand'}
+          >
+            <span className={`adaptive-section-toggle-icon ${sectionsExpanded.models ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
+          </button>
         </div>
-        <div className="admin-card-body">
+        {sectionsExpanded.models ? <div className="admin-card-body">
           <div className="admin-actions">
             <button type="button" className="secondary-button" onClick={() => void onRefreshModels()} disabled={status === 'loading'}>
               {status === 'loading' ? 'Refreshing…' : 'Refresh models'}
@@ -5588,14 +6473,24 @@ function OpenRouterWorkspace({
           <p className="hint">
             This list is filtered to models with OpenRouter pricing `prompt=0` and `completion=0`. Availability and “free” status can change upstream.
           </p>
-        </div>
+        </div> : null}
       </div>
 
       <div className="dashboard-card admin-card">
         <div className="admin-card-header">
           <h3>Section # 3 Testing model</h3>
+          <button
+            type="button"
+            className="secondary-button adaptive-section-toggle"
+            onClick={() => setSectionsExpanded((prev) => ({ ...prev, test: !prev.test }))}
+            aria-expanded={sectionsExpanded.test}
+            aria-label={sectionsExpanded.test ? 'Collapse section' : 'Expand section'}
+            title={sectionsExpanded.test ? 'Collapse' : 'Expand'}
+          >
+            <span className={`adaptive-section-toggle-icon ${sectionsExpanded.test ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
+          </button>
         </div>
-        <div className="admin-card-body">
+        {sectionsExpanded.test ? <div className="admin-card-body">
           <label>
             Prompt
             <textarea
@@ -5670,25 +6565,98 @@ function OpenRouterWorkspace({
               <textarea value={testResponse} readOnly rows={6} />
             </label>
           ) : null}
-        </div>
+        </div> : null}
       </div>
 
       <div className="dashboard-card admin-card">
         <div className="admin-card-header">
           <h3>Section # 4 Export / Copy Actions</h3>
+          <button
+            type="button"
+            className="secondary-button adaptive-section-toggle"
+            onClick={() => setSectionsExpanded((prev) => ({ ...prev, exports: !prev.exports }))}
+            aria-expanded={sectionsExpanded.exports}
+            aria-label={sectionsExpanded.exports ? 'Collapse section' : 'Expand section'}
+            title={sectionsExpanded.exports ? 'Collapse' : 'Expand'}
+          >
+            <span className={`adaptive-section-toggle-icon ${sectionsExpanded.exports ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
+          </button>
         </div>
-        <div className="admin-card-body">
+        {sectionsExpanded.exports ? <div className="admin-card-body">
           {exportStatusMessage ? <p className="success">{exportStatusMessage}</p> : null}
           <p className="dashboard-meta">Exports use: {exportProfile.inputMode}/{exportProfile.language}</p>
+          <div className="openrouter-generate-controls openrouter-export-profile-controls">
+            <section className="openrouter-button-control" aria-label="Section 4 input mode">
+              <h4>Input mode</h4>
+              <div className="openrouter-choice-row">
+                {profileInputModeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`secondary-button openrouter-choice-button ${exportProfile.inputMode === option.value ? 'openrouter-choice-button-active' : ''}`}
+                    onClick={() => onSelectExportProfile(option.value, exportLanguage)}
+                    aria-pressed={exportProfile.inputMode === option.value}
+                    title={`Use ${option.description} benchmark exports for Section #4.`}
+                  >
+                    <span>{option.label}</span>
+                    <small>{option.description}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="openrouter-button-control" aria-label="Section 4 language">
+              <h4>Language</h4>
+              <div className="openrouter-choice-row openrouter-language-row">
+                {profileLanguageOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`secondary-button openrouter-choice-button ${exportLanguage === option.value ? 'openrouter-choice-button-active' : ''}`}
+                    onClick={() => onSelectExportProfile(exportProfile.inputMode, option.value)}
+                    aria-pressed={exportLanguage === option.value}
+                    title={`Use ${option.value} benchmark exports for Section #4.`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
           <div className="adaptive-export-groups">
-            <div>
-              <p className="dashboard-eyebrow">Benchmark JSON</p>
-              <div className="admin-actions">
-                <button type="button" className="secondary-button" onClick={() => onCopyBenchmark(exportProfile)}>
+              <div>
+                <p className="dashboard-eyebrow">Benchmark JSON</p>
+                <div className="admin-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => onCopyBenchmark(exportProfile)}
+                  title={`Copies benchmark JSON to clipboard.\n${formatPromptSizeHint(exportPayloads.benchmarkJson)}`}
+                >
                   Copy Benchmark JSON
                 </button>
-                <button type="button" className="secondary-button" onClick={() => onExportBenchmark(exportProfile)}>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => void copyToClipboard('Benchmark JSON (compact)', exportPayloads.compactBenchmark)}
+                  title={`Compact version: benchmark summary only (no timeline / large arrays).\n${formatPromptSizeHint(exportPayloads.compactBenchmark)}`}
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => onExportBenchmark(exportProfile)}
+                  title={`Downloads benchmark JSON.\n${formatPromptSizeHint(exportPayloads.benchmarkJson)}`}
+                >
                   Export Benchmark JSON
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => void copyToClipboard('Benchmark JSON (compact)', exportPayloads.compactBenchmark)}
+                  title={`Compact version: copies benchmark summary JSON (clipboard).\n${formatPromptSizeHint(exportPayloads.compactBenchmark)}`}
+                >
+                  Export
                 </button>
               </div>
             </div>
@@ -5703,16 +6671,38 @@ function OpenRouterWorkspace({
                     setExportStatusMessage(`Copied: Generate next adaptive script · ${exportProfile.inputMode}/${exportProfile.language}`);
                   }}
                   disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
+                  title={`Copies a ready-to-use prompt package (benchmark + latest session feedback).\n${formatPromptSizeHint(exportPayloads.promptPackage)}`}
                 >
                   Generate next adaptive script
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button adaptive-recommended-action"
+                  onClick={() => {
+                    void copyToClipboard('Generate next adaptive script (compact)', exportPayloads.compactPromptPackage);
+                  }}
+                  disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
+                  title={`Compact version: JSON package (benchmark summary + feedback summary + base prompt).\n${formatPromptSizeHint(exportPayloads.compactPromptPackage)}`}
+                >
+                  Generate
                 </button>
                 <button
                   type="button"
                   className="secondary-button"
                   onClick={() => setHumanFeedbackEditorOpen(true)}
                   disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
+                  title={`Opens a notes editor, then copies JSON payload including your notes.\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
                 >
                   Generate next script with my notes
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => setHumanFeedbackEditorOpen(true)}
+                  disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
+                  title={`Compact version: open notes editor (submit copies compact payload).\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
+                >
+                  Notes
                 </button>
                 <button
                   type="button"
@@ -5722,8 +6712,20 @@ function OpenRouterWorkspace({
                     setExportStatusMessage(`Copied: Generate from benchmark only · ${exportProfile.inputMode}/${exportProfile.language}`);
                   }}
                   disabled={!exportHasBenchmarkData}
+                  title={`Copies benchmark JSON context + base LLM prompt.\n${formatPromptSizeHint(exportPayloads.benchmarkOnlyPackage)}`}
                 >
                   Generate from benchmark only
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => {
+                    void copyToClipboard('Benchmark only (compact)', exportPayloads.compactBenchmark);
+                  }}
+                  disabled={!exportHasBenchmarkData}
+                  title={`Compact version: copies benchmark summary only.\n${formatPromptSizeHint(exportPayloads.compactBenchmark)}`}
+                >
+                  Benchmark
                 </button>
               </div>
               {!exportHasBenchmarkData ? <p className="hint">No benchmark available for this profile yet.</p> : null}
@@ -5740,8 +6742,20 @@ function OpenRouterWorkspace({
                     setExportStatusMessage(`Copied: Full diagnostic package · ${exportProfile.inputMode}/${exportProfile.language}`);
                   }}
                   disabled={!exportHasBenchmarkData}
+                  title={`Copies a diagnostic JSON package (benchmark + feedback when available).\n${formatPromptSizeHint(exportPayloads.diagnosticPackage)}`}
                 >
                   Copy full diagnostic package
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => {
+                    void copyToClipboard('Diagnostics (compact)', exportPayloads.compactSessionFeedback);
+                  }}
+                  disabled={!exportHasBenchmarkData}
+                  title={`Compact version: feedback summary JSON (no large phrase previews).\n${formatPromptSizeHint(exportPayloads.compactSessionFeedback)}`}
+                >
+                  Diagnostics
                 </button>
                 <button
                   type="button"
@@ -5751,8 +6765,20 @@ function OpenRouterWorkspace({
                     setExportStatusMessage(`Copied: Latest session feedback · ${exportProfile.inputMode}/${exportProfile.language}`);
                   }}
                   disabled={!exportHasSessionFeedback}
+                  title={`Copies latest session feedback JSON (includes fallback diagnostics).\n${formatPromptSizeHint(exportPayloads.sessionFeedbackJson)}`}
                 >
                   Copy latest session feedback
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => {
+                    void copyToClipboard('Session feedback (compact)', exportPayloads.compactSessionFeedback);
+                  }}
+                  disabled={!exportHasSessionFeedback}
+                  title={`Compact version: feedback summary JSON.\n${formatPromptSizeHint(exportPayloads.compactSessionFeedback)}`}
+                >
+                  Feedback
                 </button>
               </div>
             </div>
@@ -5766,8 +6792,19 @@ function OpenRouterWorkspace({
                     onCopyScriptPrompt(exportProfile);
                     setExportStatusMessage(`Copied: Base prompt · ${exportProfile.inputMode}/${exportProfile.language}`);
                   }}
+                  title={`Copies the base prompt template (no benchmark/session feedback).\n${formatPromptSizeHint(exportPayloads.llmPrompt)}`}
                 >
                   Copy base prompt
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => {
+                    void copyToClipboard('Base prompt', exportPayloads.llmPrompt);
+                  }}
+                  title={`Compact version: same content (already minimal).\n${formatPromptSizeHint(exportPayloads.llmPrompt)}`}
+                >
+                  Prompt
                 </button>
                 <button
                   type="button"
@@ -5776,8 +6813,19 @@ function OpenRouterWorkspace({
                     onCopyScriptTemplate(exportProfile);
                     setExportStatusMessage(`Copied: Output template · ${exportProfile.inputMode}/${exportProfile.language}`);
                   }}
+                  title={`Copies the output JSON template expected for generated scripts.\n${formatPromptSizeHint(exportPayloads.outputTemplate)}`}
                 >
                   Copy output template
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => {
+                    void copyToClipboard('Output template', exportPayloads.outputTemplate);
+                  }}
+                  title={`Compact version: same content (already minimal).\n${formatPromptSizeHint(exportPayloads.outputTemplate)}`}
+                >
+                  Template
                 </button>
               </div>
             </div>
@@ -5798,6 +6846,7 @@ function OpenRouterWorkspace({
                     setHumanFeedbackEditorOpen(false);
                     setHumanFeedbackDraft('');
                   }}
+                  title="Close without copying anything."
                 >
                   Cancel
                 </button>
@@ -5812,13 +6861,208 @@ function OpenRouterWorkspace({
                     setHumanFeedbackDraft('');
                   }}
                   disabled={humanFeedbackDraft.trim().length === 0 || !exportHasBenchmarkData || !exportHasSessionFeedback}
+                  title={`Copies JSON payload including benchmark + feedback + base prompt + your notes.\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
                 >
                   Submit
                 </button>
               </div>
             </div>
           ) : null}
+        </div> : null}
+      </div>
+
+      <div className="dashboard-card admin-card" id="openrouter-generate-section">
+        <div className="admin-card-header">
+          <h3>Section # 5 Generate Training Session</h3>
+          <button
+            type="button"
+            className="secondary-button adaptive-section-toggle"
+            onClick={() => setSectionsExpanded((prev) => ({ ...prev, generate: !prev.generate }))}
+            aria-expanded={sectionsExpanded.generate}
+            aria-label={sectionsExpanded.generate ? 'Collapse section' : 'Expand section'}
+            title={sectionsExpanded.generate ? 'Collapse' : 'Expand'}
+          >
+            <span className={`adaptive-section-toggle-icon ${sectionsExpanded.generate ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
+          </button>
         </div>
+        {sectionsExpanded.generate ? (
+          <div className="admin-card-body">
+            <section className="openrouter-button-control openrouter-slot-control" aria-label="Generated session setup">
+              <h4>Choose session setup</h4>
+              <div className="openrouter-choice-row">
+                {OPENROUTER_GENERATION_SLOT_IDS.map((slotId) => {
+                  const slot = generationSlots[slotId];
+                  const slotValidation =
+                    slot.json && slot.inputMode && slot.language ? validateGeneratedScriptForTarget(slot.json, slot.inputMode, slot.language) : null;
+                  return (
+                    <button
+                      key={slotId}
+                      type="button"
+                      className={`secondary-button openrouter-choice-button ${activeGenerateSlotId === slotId ? 'openrouter-choice-button-active' : ''}`}
+                      onClick={() => setActiveGenerateSlotId(slotId)}
+                      aria-pressed={activeGenerateSlotId === slotId}
+                      title={`${getOpenRouterSlotLabel(slotId)} has independent notes, model, output, validation, tokens, elapsed time, and create/cancel actions.`}
+                    >
+                      <span>{getOpenRouterSlotLabel(slotId)}</span>
+                      <small>{slotValidation?.ok ? 'ready to create' : slot.error ? 'needs fix' : slot.json || slot.text ? 'draft saved' : 'empty setup'}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <div className="today-summary-grid">
+              <Metric label="Target" value={`${generateInputMode}/${generateLanguage}`} />
+              <Metric label="Benchmark" value={generateHasBenchmarkData ? 'available' : 'missing'} />
+              <Metric label="Feedback" value={generateHasSessionFeedback ? 'available' : 'missing'} />
+              <Metric label="Duration" value={`${generateDurationMinutes} min`} />
+              <Metric label="Prompt size" value={formatPromptSizeHint(activeGenerateSlotPrompt).replace('Words: ', '').replace(' · Tokens:', ' /')} />
+            </div>
+
+            <div className="openrouter-generate-controls">
+              <section className="openrouter-button-control" aria-label="Input mode">
+                <h4>Input mode</h4>
+                <div className="openrouter-choice-row">
+                  {profileInputModeOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`secondary-button openrouter-choice-button ${generateInputMode === option.value ? 'openrouter-choice-button-active' : ''}`}
+                      onClick={() => setGenerateInputMode(option.value)}
+                      aria-pressed={generateInputMode === option.value}
+                      title={`Use ${option.description} as the required generated script inputMode (${option.value}).`}
+                    >
+                      <span>{option.label}</span>
+                      <small>{option.description}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="openrouter-button-control" aria-label="Duration">
+                <h4>Duration</h4>
+                <div className="openrouter-choice-row openrouter-language-row">
+                  {generateDurationOptions.map((minutes) => (
+                    <button
+                      key={minutes}
+                      type="button"
+                      className={`secondary-button openrouter-choice-button ${generateDurationMinutes === minutes ? 'openrouter-choice-button-active' : ''}`}
+                      onClick={() => setGenerateDurationMinutes(minutes)}
+                      aria-pressed={generateDurationMinutes === minutes}
+                    title={`Generate a ${minutes}-minute voice/audio session and request estimatedDurationSec close to ${minutes * 60}.`}
+                    >
+                      {minutes} min
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="openrouter-button-control" aria-label="Language">
+                <h4>Language</h4>
+                <div className="openrouter-choice-row openrouter-language-row">
+                  {profileLanguageOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`secondary-button openrouter-choice-button ${generateLanguage === option.value ? 'openrouter-choice-button-active' : ''}`}
+                      onClick={() => setGenerateLanguage(option.value)}
+                      aria-pressed={generateLanguage === option.value}
+                      title={`Use ${option.value} as the required generated script language.`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="openrouter-button-control openrouter-prompt-source-control" aria-label="Prompt source">
+                <h4>Prompt source</h4>
+                <div className="openrouter-choice-row">
+                  {generatePromptSourceOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`secondary-button openrouter-choice-button ${generatePromptSource === option.value ? 'openrouter-choice-button-active' : ''}`}
+                      onClick={() => setGeneratePromptSource(option.value)}
+                      aria-pressed={generatePromptSource === option.value}
+                      title={option.description}
+                    >
+                      <span>{option.label}</span>
+                      <small>{option.description}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {!generateHasBenchmarkData ? <p className="hint">No benchmark available for this input/language. Generation will use the base profile/template.</p> : null}
+            {!generateHasSessionFeedback ? <p className="hint">No completed session feedback for this input/language. Generation will not include latest feedback.</p> : null}
+
+            <label>
+              Prompt sent to OpenRouter
+              <textarea value={activeGenerateSlotPrompt} readOnly rows={8} />
+            </label>
+
+            <div className="admin-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={generateBusySlots[activeGenerateSlotId] || !activeGenerateSlotModel}
+                onClick={() => void generateOpenRouterSlot(activeGenerateSlotId)}
+              >
+                {generateBusySlots[activeGenerateSlotId] ? 'Generating...' : `Generate ${getOpenRouterSlotLabel(activeGenerateSlotId)}`}
+              </button>
+              <span className="hint">{activeGenerateSlotModel ? `Using: ${activeGenerateSlotModel}` : 'Set a default model first (Section #2).'}</span>
+            </div>
+
+            {activeGenerateSlot.usage ? (
+              <p className="hint">
+                {getOpenRouterSlotLabel(activeGenerateSlotId)} tokens: input {activeGenerateSlot.usage.promptTokens}, output{' '}
+                {activeGenerateSlot.usage.completionTokens}, total {activeGenerateSlot.usage.totalTokens}.
+              </p>
+            ) : null}
+            {activeGenerateSlot.elapsedMs !== null ? (
+              <p className="success">
+                {getOpenRouterSlotLabel(activeGenerateSlotId)} completed in {formatElapsedMs(activeGenerateSlot.elapsedMs)}
+                {activeGenerateSlot.generatedAt ? ` · ${new Date(activeGenerateSlot.generatedAt).toLocaleString()}` : ''}.
+              </p>
+            ) : null}
+            {activeGenerateSlot.error ? <p className="error">{activeGenerateSlot.error}</p> : null}
+            {activeGenerateSlot.json || activeGenerateSlot.text ? (
+              <div className="admin-actions">
+                <span className="hint">
+                  {getOpenRouterSlotLabel(activeGenerateSlotId)} draft kept until create or cancel
+                  {activeGenerateSlot.inputMode && activeGenerateSlot.language ? ` · ${activeGenerateSlot.inputMode}/${activeGenerateSlot.language}` : ''}.
+                </span>
+                <button type="button" className="secondary-button" onClick={() => clearGeneratedScriptDraft(activeGenerateSlotId)}>
+                  Cancel {getOpenRouterSlotLabel(activeGenerateSlotId)}
+                </button>
+              </div>
+            ) : null}
+
+            {activeGenerateSlotValidation?.ok ? (
+              <>
+                <div className="today-summary-grid">
+                  <Metric label="Title" value={activeGenerateSlotValidation.script.title} />
+                  <Metric label="Input mode" value={String(activeGenerateSlotValidation.script.inputMode)} />
+                  <Metric label="Language" value={activeGenerateSlotValidation.script.language} />
+                  <Metric label="Difficulty" value={activeGenerateSlotValidation.script.difficulty} />
+                  <Metric label="Phrases" value={String(activeGenerateSlotValidation.script.phrases.length)} />
+                  <Metric label="Duration" value={`${activeGenerateSlotValidation.script.estimatedDurationSec}s`} />
+                </div>
+              </>
+            ) : null}
+
+            {activeGenerateSlot.json ? (
+              <label>
+                Generated DictationScript JSON · {getOpenRouterSlotLabel(activeGenerateSlotId)}
+                <textarea value={activeGenerateSlot.json} readOnly rows={8} />
+              </label>
+            ) : activeGenerateSlot.text ? (
+              <label>
+                Raw model response · {getOpenRouterSlotLabel(activeGenerateSlotId)}
+                <textarea value={activeGenerateSlot.text} readOnly rows={8} />
+              </label>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -6011,9 +7255,9 @@ function SessionDashboard({
   const telemetry = cloneTelemetry(session.telemetry);
   const goals = buildAdaptiveGoals(sessions, session);
   const insights = buildCoachingInsights(session, goals);
-  const duration = formatTelemetryDuration(telemetry);
+  const duration = formatSessionPlaybackDuration(session);
   const transcriptReview = buildTranscriptReview(session);
-  const kpiSectionTooltip = 'Session KPI summary with score, points, accuracy, speed, lag, rate, repeats, and duration.';
+  const kpiSectionTooltip = 'Session KPI summary with score, points, accuracy, speed, lag, rate, repeats, and voice duration.';
   const kpiSectionCopyText =
     `Widget #0 - Session KPIs: ` +
     [
@@ -6309,7 +7553,7 @@ function AdaptiveBenchmarkSection({
   benchmarks: AdaptiveBenchmarksByInputLanguage;
   expanded: boolean;
   onToggleExpanded: () => void;
-  focusAnchor?: null | 'sessionFeedback';
+  focusAnchor?: null | 'sessionFeedback' | 'exports';
   selectedInputMode: InputMode;
   selectedLanguage: BenchmarkLanguageButton;
   selectedProfile: InputLanguageBenchmarkMetrics;
@@ -6339,7 +7583,7 @@ function AdaptiveBenchmarkSection({
   });
 
   useEffect(() => {
-    if (focusAnchor === 'sessionFeedback') {
+    if (focusAnchor === 'sessionFeedback' || focusAnchor === 'exports') {
       setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, workspace: true }));
     }
   }, [focusAnchor]);
@@ -6495,7 +7739,7 @@ function AdaptiveBenchmarkWorkspace({
 }: {
   profile: InputLanguageBenchmarkMetrics;
   inputTitle: string;
-  focusAnchor?: null | 'sessionFeedback';
+  focusAnchor?: null | 'sessionFeedback' | 'exports';
   repeatWordStats: RepeatWordStat[];
   benchmarkExportMessage: string;
   sessionFeedback: AdaptiveSessionFeedback | null;
@@ -6542,9 +7786,133 @@ function AdaptiveBenchmarkWorkspace({
   const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
   const [exportStatusMessage, setExportStatusMessage] = useState('');
 
+  const copyToClipboard = async (label: string, text: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setExportStatusMessage(`Copied: ${label} · ${profile.inputMode}/${profile.language}`);
+    } catch {
+      setExportStatusMessage(`Could not copy: ${label}.`);
+    }
+  };
+
+  const formatPromptSizeHint = (value: string): string => {
+    const normalized = value.trim();
+    if (!normalized) return 'Words: 0 · Tokens: ~0';
+    const words = normalized.split(/\s+/).filter(Boolean).length;
+    const chars = normalized.length;
+    const estimatedTokens = Math.max(1, Math.round(chars / 4));
+    return `Words: ${words} · Tokens: ~${estimatedTokens}`;
+  };
+
+  const exportPayloads = useMemo(() => {
+    const activeSessionStatus = undefined;
+    const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(profile), null, 2);
+    const llmPrompt = buildDictationScriptPrompt(profile);
+    const outputTemplate = buildDictationScriptTemplate(profile.inputMode, profile.language);
+    const benchmarkOnlyPackage = `Benchmark JSON context:\n${benchmarkJson}\n\nLLM prompt:\n${llmPrompt}`;
+
+    const benchmarkFeedbackPackage = buildBenchmarkFeedbackPackage(profile, sessionFeedback, { activeSessionStatus }) as Record<string, unknown>;
+    const diagnosticPackage = JSON.stringify(benchmarkFeedbackPackage, null, 2);
+    const promptPackage = buildBenchmarkFeedbackPromptPackage(profile, sessionFeedback, llmPrompt, { activeSessionStatus });
+    const sessionFeedbackJson = JSON.stringify(
+      buildSessionFeedbackJsonPayload(profile.inputMode, profile.language, sessionFeedback, {
+        activeSessionStatus,
+        fallbackDiagnostics,
+      }),
+      null,
+      2,
+    );
+    const humanNotesPackage = JSON.stringify(
+      {
+        ...benchmarkFeedbackPackage,
+        llmPrompt,
+        humanFeedback: humanFeedbackDraft.trim(),
+      },
+      null,
+      2,
+    );
+
+    const compactBenchmark = JSON.stringify(
+      {
+        profileKey: `${profile.inputMode}/${profile.language}`,
+        sessionCount: profile.sessionCount,
+        sampleCount: profile.sampleCount,
+        lastUpdatedAt: profile.lastUpdatedAt ?? null,
+        recommendation: profile.recommendation,
+        weakAreas: profile.weakAreas,
+        kpis: {
+          sweetSpotScore: profile.sweetSpotScore,
+          semanticFidelityScore: profile.semanticFidelityScore,
+          controlFidelityScore: profile.controlFidelityScore,
+          learningEffectivenessScore: profile.learningEffectivenessScore,
+          flowStabilityScore: profile.flowStabilityScore,
+          averageAccuracy: profile.averageAccuracy,
+          averageWpm: profile.averageWpm,
+          averageLagSec: profile.averageLagSec,
+          preferredPlaybackRate: profile.preferredPlaybackRate,
+          preferredPhraseSize: profile.preferredPhraseSize,
+        },
+      },
+      null,
+      2,
+    );
+
+    const compactSessionFeedback = JSON.stringify(
+      sessionFeedback
+        ? {
+            verdict: sessionFeedback.verdict,
+            improvementDelta: sessionFeedback.improvementDelta,
+            playbackIssues: {
+              repeatedPhraseCount: sessionFeedback.playbackIssues.repeatedPhraseCount,
+              maxRepeatCountForSinglePhrase: sessionFeedback.playbackIssues.maxRepeatCountForSinglePhrase,
+              skippedPhraseCount: sessionFeedback.playbackIssues.skippedPhraseCount,
+              outOfOrderAdvanceCount: sessionFeedback.playbackIssues.outOfOrderAdvanceCount,
+              replayAdvancedPhraseCount: sessionFeedback.playbackIssues.replayAdvancedPhraseCount,
+              phraseIndexJumpCount: sessionFeedback.playbackIssues.phraseIndexJumpCount,
+            },
+            phraseStats: sessionFeedback.phraseStats,
+            notes: sessionFeedback.notes.slice(0, 8),
+          }
+        : {
+            verdict: 'n/a',
+            fallbackDiagnostics,
+          },
+      null,
+      2,
+    );
+
+    const compactPromptPackage = JSON.stringify(
+      {
+        benchmark: JSON.parse(compactBenchmark) as Record<string, unknown>,
+        latestSessionFeedback: JSON.parse(compactSessionFeedback) as Record<string, unknown>,
+        llmPrompt,
+      },
+      null,
+      2,
+    );
+
+    return {
+      benchmarkJson,
+      llmPrompt,
+      outputTemplate,
+      benchmarkOnlyPackage,
+      diagnosticPackage,
+      promptPackage,
+      sessionFeedbackJson,
+      humanNotesPackage,
+      compactBenchmark,
+      compactSessionFeedback,
+      compactPromptPackage,
+    };
+  }, [fallbackDiagnostics, humanFeedbackDraft, profile, sessionFeedback]);
+
   useEffect(() => {
     if (focusAnchor === 'sessionFeedback') {
       setWorkspaceSubsectionsExpanded((prev) => ({ ...prev, feedback: true }));
+    } else if (focusAnchor === 'exports') {
+      window.setTimeout(() => {
+        document.getElementById('adaptive-export-copy-actions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
     }
   }, [focusAnchor]);
   return (
@@ -6619,7 +7987,7 @@ function AdaptiveBenchmarkWorkspace({
             )}
           </section>
 
-          <section className="adaptive-benchmark-subpanel">
+          <section className="adaptive-benchmark-subpanel" id="adaptive-export-copy-actions">
             <h4>Export / Copy Actions</h4>
             <p className="dashboard-meta">Exports use: {profile.inputMode}/{profile.language}</p>
             <div className="adaptive-export-groups">
@@ -6630,17 +7998,33 @@ function AdaptiveBenchmarkWorkspace({
                     type="button"
                     className="secondary-button"
                     onClick={() => onCopyBenchmark(profile)}
-                    title="Copy the selected benchmark profile JSON to your clipboard (KPIs, recommendation, weak areas, and recent timeline points)."
+                    title={`Copy the selected benchmark profile JSON to your clipboard (KPIs, recommendation, weak areas, and recent timeline points).\n${formatPromptSizeHint(exportPayloads.benchmarkJson)}`}
                   >
                     Copy Benchmark JSON
                   </button>
                   <button
                     type="button"
+                    className="secondary-button compact-button"
+                    onClick={() => void copyToClipboard('Benchmark JSON (compact)', exportPayloads.compactBenchmark)}
+                    title={`Compact version: benchmark summary only (no timeline / large arrays).\n${formatPromptSizeHint(exportPayloads.compactBenchmark)}`}
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
                     className="secondary-button"
                     onClick={() => onExportBenchmark(profile)}
-                    title="Download the selected benchmark profile JSON as a .json file (same content as Copy Benchmark JSON)."
+                    title={`Download the selected benchmark profile JSON as a .json file (same content as Copy Benchmark JSON).\n${formatPromptSizeHint(exportPayloads.benchmarkJson)}`}
                   >
                     Export Benchmark JSON
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button compact-button"
+                    onClick={() => void copyToClipboard('Benchmark JSON (compact)', exportPayloads.compactBenchmark)}
+                    title={`Compact version: copies benchmark summary JSON (clipboard).\n${formatPromptSizeHint(exportPayloads.compactBenchmark)}`}
+                  >
+                    Export
                   </button>
                 </div>
               </div>
@@ -6655,18 +8039,38 @@ function AdaptiveBenchmarkWorkspace({
                       setExportStatusMessage(`Copied: Generate next adaptive script · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasBenchmarkData || !hasSessionFeedback}
-                    title="Copy a ready-to-use prompt package for generating the next adaptive script (includes benchmark + latest session feedback)."
+                    title={`Copy a ready-to-use prompt package for generating the next adaptive script (includes benchmark + latest session feedback).\n${formatPromptSizeHint(exportPayloads.promptPackage)}`}
                   >
                     Generate next adaptive script
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button compact-button adaptive-recommended-action"
+                    onClick={() => {
+                      void copyToClipboard('Generate next adaptive script (compact)', exportPayloads.compactPromptPackage);
+                    }}
+                    disabled={!hasBenchmarkData || !hasSessionFeedback}
+                    title={`Compact version: JSON package (benchmark summary + feedback summary + base prompt).\n${formatPromptSizeHint(exportPayloads.compactPromptPackage)}`}
+                  >
+                    Generate
                   </button>
                   <button
                     type="button"
                     className="secondary-button"
                     onClick={() => setHumanFeedbackEditorOpen(true)}
                     disabled={!hasBenchmarkData || !hasSessionFeedback}
-                    title="Add your notes, then copy a prompt package for generating the next script (includes your notes)."
+                    title={`Add your notes, then copy a prompt package for generating the next script (includes your notes).\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
                   >
                     Generate next script with my notes
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button compact-button"
+                    onClick={() => setHumanFeedbackEditorOpen(true)}
+                    disabled={!hasBenchmarkData || !hasSessionFeedback}
+                    title={`Compact version: open notes editor.\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
+                  >
+                    Notes
                   </button>
                   <button
                     type="button"
@@ -6676,9 +8080,20 @@ function AdaptiveBenchmarkWorkspace({
                       setExportStatusMessage(`Copied: Generate from benchmark only · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasBenchmarkData}
-                    title="Copy a prompt package that uses only benchmark data (no latest session feedback required)."
+                    title={`Copy a prompt package that uses only benchmark data (no latest session feedback required).\n${formatPromptSizeHint(exportPayloads.benchmarkOnlyPackage)}`}
                   >
                     Generate from benchmark only
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button compact-button"
+                    onClick={() => {
+                      void copyToClipboard('Benchmark only (compact)', exportPayloads.compactBenchmark);
+                    }}
+                    disabled={!hasBenchmarkData}
+                    title={`Compact version: copies benchmark summary only.\n${formatPromptSizeHint(exportPayloads.compactBenchmark)}`}
+                  >
+                    Benchmark
                   </button>
                 </div>
                 {!hasBenchmarkData ? <p className="hint">No benchmark available for this profile yet.</p> : null}
@@ -6695,9 +8110,20 @@ function AdaptiveBenchmarkWorkspace({
                       setExportStatusMessage(`Copied: Full diagnostic package · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasBenchmarkData}
-                    title="Copy a full diagnostic package (benchmark + session feedback when available) for debugging playback/quality issues."
+                    title={`Copy a full diagnostic package (benchmark + session feedback when available) for debugging playback/quality issues.\n${formatPromptSizeHint(exportPayloads.diagnosticPackage)}`}
                   >
                     Copy full diagnostic package
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button compact-button"
+                    onClick={() => {
+                      void copyToClipboard('Diagnostics (compact)', exportPayloads.compactSessionFeedback);
+                    }}
+                    disabled={!hasBenchmarkData}
+                    title={`Compact version: feedback summary JSON (no large phrase previews).\n${formatPromptSizeHint(exportPayloads.compactSessionFeedback)}`}
+                  >
+                    Diagnostics
                   </button>
                   <button
                     type="button"
@@ -6707,9 +8133,20 @@ function AdaptiveBenchmarkWorkspace({
                       setExportStatusMessage(`Copied: Latest session feedback · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasSessionFeedback}
-                    title="Copy the latest session feedback JSON to your clipboard (verdict, deltas, and playback issues)."
+                    title={`Copy the latest session feedback JSON to your clipboard (verdict, deltas, and playback issues).\n${formatPromptSizeHint(exportPayloads.sessionFeedbackJson)}`}
                   >
                     Copy latest session feedback
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button compact-button"
+                    onClick={() => {
+                      void copyToClipboard('Session feedback (compact)', exportPayloads.compactSessionFeedback);
+                    }}
+                    disabled={!hasSessionFeedback}
+                    title={`Compact version: feedback summary JSON.\n${formatPromptSizeHint(exportPayloads.compactSessionFeedback)}`}
+                  >
+                    Feedback
                   </button>
                 </div>
               </div>
@@ -6723,9 +8160,19 @@ function AdaptiveBenchmarkWorkspace({
                       onCopyScriptPrompt(profile);
                       setExportStatusMessage(`Copied: Base prompt · ${profile.inputMode}/${profile.language}`);
                     }}
-                    title="Copy the base prompt template (no benchmark/session feedback)."
+                    title={`Copy the base prompt template (no benchmark/session feedback).\n${formatPromptSizeHint(exportPayloads.llmPrompt)}`}
                   >
                     Copy base prompt
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button compact-button"
+                    onClick={() => {
+                      void copyToClipboard('Base prompt', exportPayloads.llmPrompt);
+                    }}
+                    title={`Compact version: same content (already minimal).\n${formatPromptSizeHint(exportPayloads.llmPrompt)}`}
+                  >
+                    Prompt
                   </button>
                   <button
                     type="button"
@@ -6734,9 +8181,19 @@ function AdaptiveBenchmarkWorkspace({
                       onCopyScriptTemplate(profile);
                       setExportStatusMessage(`Copied: Output template · ${profile.inputMode}/${profile.language}`);
                     }}
-                    title="Copy the output JSON template expected for generated scripts."
+                    title={`Copy the output JSON template expected for generated scripts.\n${formatPromptSizeHint(exportPayloads.outputTemplate)}`}
                   >
                     Copy output template
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button compact-button"
+                    onClick={() => {
+                      void copyToClipboard('Output template', exportPayloads.outputTemplate);
+                    }}
+                    title={`Compact version: same content (already minimal).\n${formatPromptSizeHint(exportPayloads.outputTemplate)}`}
+                  >
+                    Template
                   </button>
                 </div>
               </div>
@@ -6770,7 +8227,7 @@ function AdaptiveBenchmarkWorkspace({
                       setHumanFeedbackDraft('');
                     }}
                     disabled={humanFeedbackDraft.trim().length === 0 || !hasBenchmarkData || !hasSessionFeedback}
-                    title="Copy the prompt package including your notes (requires benchmark data + latest session feedback)."
+                    title={`Copy the prompt package including your notes (requires benchmark data + latest session feedback).\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
                   >
                     Submit
                   </button>
@@ -7131,7 +8588,7 @@ function kpiHelpText(label: string): string | null {
     Lag: 'How far typing progress is behind or ahead of expected playback position in seconds.',
     Rate: 'Playback speed multiplier used during the session.',
     Repeats: 'How many times a segment or phrase was repeated during the attempt.',
-    Duration: 'Elapsed time between telemetry start and finish timestamps.',
+    Duration: 'Voice/audio playback duration, aligned with the media player duration.',
   };
   return map[label] ?? null;
 }
@@ -7227,6 +8684,11 @@ function formatDuration(seconds: number): string {
   return `${minutes}m ${remaining}s`;
 }
 
+function formatElapsedMs(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
 function buildAdaptiveCoachSummary(
   profile: InputLanguageBenchmarkMetrics,
   sessionFeedback: AdaptiveSessionFeedback | null,
@@ -7306,6 +8768,155 @@ function loadAdaptiveSessionFeedback(): AdaptiveSessionFeedbackByInputLanguage {
   } catch {
     return {};
   }
+}
+
+function loadPersistedDictaLanguageView(): MetricsLanguageView {
+  const keys = [LEADERBOARD_LANGUAGE_KEY, LIVE_METRICS_LANGUAGE_KEY, ADMIN_LANGUAGE_KEY];
+  for (const key of keys) {
+    const saved = window.localStorage.getItem(key);
+    if (saved === 'en' || saved === 'es' || saved === 'de') {
+      return saved;
+    }
+  }
+  return 'en';
+}
+
+function loadPersistedOpenRouterGeneration(): PersistedOpenRouterGeneration | null {
+  const raw = window.localStorage.getItem(OPENROUTER_GENERATED_SCRIPT_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedOpenRouterGeneration>;
+    if (
+      typeof parsed.text !== 'string' ||
+      typeof parsed.json !== 'string' ||
+      !isAdaptiveInputMode(parsed.inputMode) ||
+      !isBenchmarkLanguageButton(parsed.language)
+    ) {
+      return null;
+    }
+    const usage = parsed.usage;
+    return {
+      text: parsed.text,
+      json: parsed.json,
+      inputMode: parsed.inputMode,
+      language: parsed.language,
+      usage:
+        usage &&
+        Number.isFinite(usage.promptTokens) &&
+        Number.isFinite(usage.completionTokens) &&
+        Number.isFinite(usage.totalTokens)
+          ? {
+              promptTokens: usage.promptTokens,
+              completionTokens: usage.completionTokens,
+              totalTokens: usage.totalTokens,
+            }
+          : null,
+      elapsedMs: typeof parsed.elapsedMs === 'number' && Number.isFinite(parsed.elapsedMs) ? parsed.elapsedMs : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const OPENROUTER_GENERATION_SLOT_IDS: OpenRouterGenerationSlotId[] = ['prompt1', 'prompt2'];
+
+function getOpenRouterSlotLabel(slotId: OpenRouterGenerationSlotId): string {
+  return slotId === 'prompt1' ? 'Session 1' : 'Session 2';
+}
+
+function createEmptyOpenRouterGenerationSlot(defaultModel = ''): OpenRouterGenerationSlotState {
+  return {
+    notes: '',
+    model: defaultModel,
+    text: '',
+    json: '',
+    inputMode: null,
+    language: null,
+    usage: null,
+    elapsedMs: null,
+    generatedAt: null,
+    error: '',
+  };
+}
+
+function createEmptyOpenRouterGenerationSlots(defaultModel = ''): OpenRouterGenerationSlots {
+  return {
+    prompt1: createEmptyOpenRouterGenerationSlot(defaultModel),
+    prompt2: createEmptyOpenRouterGenerationSlot(defaultModel),
+  };
+}
+
+function normalizeOpenRouterGenerationSlot(
+  raw: Partial<OpenRouterGenerationSlotState> | null | undefined,
+  defaultModel: string,
+): OpenRouterGenerationSlotState {
+  const usage = raw?.usage;
+  return {
+    notes: typeof raw?.notes === 'string' ? raw.notes : '',
+    model: typeof raw?.model === 'string' ? raw.model : defaultModel,
+    text: typeof raw?.text === 'string' ? raw.text : '',
+    json: typeof raw?.json === 'string' ? raw.json : '',
+    inputMode: isAdaptiveInputMode(raw?.inputMode) ? raw.inputMode : null,
+    language: isBenchmarkLanguageButton(raw?.language) ? raw.language : null,
+    usage:
+      usage &&
+      Number.isFinite(usage.promptTokens) &&
+      Number.isFinite(usage.completionTokens) &&
+      Number.isFinite(usage.totalTokens)
+        ? {
+            promptTokens: usage.promptTokens,
+            completionTokens: usage.completionTokens,
+            totalTokens: usage.totalTokens,
+          }
+        : null,
+    elapsedMs: typeof raw?.elapsedMs === 'number' && Number.isFinite(raw.elapsedMs) ? raw.elapsedMs : null,
+    generatedAt: typeof raw?.generatedAt === 'string' ? raw.generatedAt : null,
+    error: typeof raw?.error === 'string' ? raw.error : '',
+  };
+}
+
+function loadPersistedOpenRouterGenerationVariants(defaultModel = ''): OpenRouterGenerationSlots {
+  const raw = window.localStorage.getItem(OPENROUTER_GENERATED_VARIANTS_KEY);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<OpenRouterGenerationSlotId, Partial<OpenRouterGenerationSlotState>>>;
+      return {
+        prompt1: normalizeOpenRouterGenerationSlot(parsed.prompt1, defaultModel),
+        prompt2: normalizeOpenRouterGenerationSlot(parsed.prompt2, defaultModel),
+      };
+    } catch {
+      return createEmptyOpenRouterGenerationSlots(defaultModel);
+    }
+  }
+
+  const legacyDraft = loadPersistedOpenRouterGeneration();
+  if (!legacyDraft) return createEmptyOpenRouterGenerationSlots(defaultModel);
+  return {
+    prompt1: {
+      ...createEmptyOpenRouterGenerationSlot(defaultModel),
+      text: legacyDraft.text,
+      json: legacyDraft.json,
+      inputMode: legacyDraft.inputMode,
+      language: legacyDraft.language,
+      usage: legacyDraft.usage,
+      elapsedMs: legacyDraft.elapsedMs,
+      generatedAt: new Date().toISOString(),
+    },
+    prompt2: createEmptyOpenRouterGenerationSlot(defaultModel),
+  };
+}
+
+function persistOpenRouterGenerationVariants(slots: OpenRouterGenerationSlots): void {
+  window.localStorage.setItem(OPENROUTER_GENERATED_VARIANTS_KEY, JSON.stringify(slots));
+  window.localStorage.removeItem(OPENROUTER_GENERATED_SCRIPT_KEY);
+}
+
+function isAdaptiveInputMode(value: unknown): value is InputMode {
+  return value === 'audio' || value === 'browser-tts' || value === 'kokoro' || value === 'qwen-cloud';
+}
+
+function isBenchmarkLanguageButton(value: unknown): value is BenchmarkLanguageButton {
+  return value === 'en' || value === 'es' || value === 'de';
 }
 
 function downloadDictaLocalStorage(): void {
@@ -7480,14 +9091,15 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', 
 }
 
 function createSessionFromScript(script: DictationScript, index: number, inputMode: SessionInputMode): StoredSession {
-  const text = script.phrases.map((phrase) => phrase.text).join(' ');
-  const language = scriptLanguageToTtsLanguage(script.language);
+  const titledScript = normalizeGeneratedDictationScriptTitle(script);
+  const text = titledScript.phrases.map((phrase) => phrase.text).join(' ');
+  const language = scriptLanguageToTtsLanguage(titledScript.language);
   const session: StoredSession = {
-    ...createStoredSession(index, inputMode, script.title),
+    ...createStoredSession(index, inputMode, titledScript.title),
     inputSettingsLocked: true,
-    difficulty: script.difficulty,
+    difficulty: titledScript.difficulty,
     sessionSource: 'dictationScript',
-    dictationScript: script,
+    dictationScript: titledScript,
   };
 
   if (inputMode === 'input1') {
@@ -7514,6 +9126,72 @@ function createSessionFromScript(script: DictationScript, index: number, inputMo
   };
 }
 
+function createGeneratedErrorSession({
+  index,
+  inputMode,
+  language,
+  name,
+  message,
+}: {
+  index: number;
+  inputMode: SessionInputMode;
+  language: TtsLanguage;
+  name: string;
+  message: string;
+}): StoredSession {
+  const session: StoredSession = {
+    ...createStoredSession(index, inputMode, name),
+    inputSettingsLocked: true,
+    status: 'error',
+    generationError: message,
+  };
+
+  if (inputMode === 'input1') {
+    return { ...session, transcriptionLanguage: language };
+  }
+  if (inputMode === 'input3') {
+    return { ...session, kokoroLanguage: language };
+  }
+  return { ...session, ttsLanguage: language };
+}
+
+function normalizeGeneratedDictationScriptTitle(script: DictationScript): DictationScript {
+  const title = script.title.trim();
+  if (!isGenericGeneratedTitle(title)) return script;
+  return {
+    ...script,
+    title: buildFallbackDictationScriptTitle(script),
+  };
+}
+
+function isGenericGeneratedTitle(title: string): boolean {
+  const normalized = title.trim().toLowerCase().replace(/[\s_-]+/g, ' ');
+  return (
+    normalized.length === 0 ||
+    normalized === 'generated dictation' ||
+    normalized === 'dictation' ||
+    normalized === 'training script' ||
+    normalized === 'generated script' ||
+    normalized === 'untitled'
+  );
+}
+
+function buildFallbackDictationScriptTitle(script: DictationScript): string {
+  const firstPhrase = script.phrases.find((phrase) => phrase.text.trim().length > 0)?.text.trim() ?? '';
+  const words = firstPhrase.match(/[\p{L}\p{N}]+/gu) ?? [];
+  const titleWords = words.slice(0, 6);
+  if (titleWords.length > 0) {
+    return truncateTitle(titleWords.join(' '));
+  }
+
+  const language = script.language === 'de' ? 'German' : script.language === 'es' ? 'Spanish' : script.language === 'en' ? 'English' : String(script.language).toUpperCase();
+  return `${language} ${String(script.inputMode)} practice`;
+}
+
+function truncateTitle(title: string): string {
+  return title.length > 64 ? `${title.slice(0, 61).trim()}...` : title;
+}
+
 function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMode | null {
   const normalized = String(inputMode).trim().toLowerCase().replace(/_/g, '-');
   if (normalized === 'input1' || normalized === 'audio') return 'input1';
@@ -7521,6 +9199,12 @@ function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMo
   if (normalized === 'input3' || normalized === 'kokoro' || normalized === 'kokoro-tts') return 'input3';
   if (normalized === 'input4' || normalized === 'qwen-cloud' || normalized === 'qwen') return 'input4';
   return null;
+}
+
+function getWorkspaceModeForSessionInput(inputMode: SessionInputMode): WorkspaceMode {
+  if (inputMode === 'input1') return 'training';
+  if (inputMode === 'input2' || inputMode === 'input4') return 'tts';
+  return 'kokoro';
 }
 
 function scriptLanguageToTtsLanguage(language: string): TtsLanguage {
@@ -7577,7 +9261,7 @@ function loadSessions(): StoredSession[] {
     return parsed.map((session, index) => {
       const inputMode: SessionInputMode =
         session.inputMode === 'input2' || session.inputMode === 'input3' || session.inputMode === 'input4' ? session.inputMode : 'input1';
-      const scriptResult = validateDictationScript((session as any).dictationScript);
+      const scriptResult = validateDictationScript(session.dictationScript);
 
       const base: StoredSession = {
         id: session.id ?? createStoredSession(index + 1).id,
@@ -7605,14 +9289,15 @@ function loadSessions(): StoredSession[] {
         kokoroPracticeText: session.kokoroPracticeText ?? '',
         kokoroChunks: session.kokoroChunks ?? [],
         difficulty: session.difficulty ?? 'normal',
-        status: session.status ?? 'ready',
+        status: isSessionStatus(session.status) ? session.status : 'ready',
         metrics: {
           ...createDefaultMetrics(),
           ...session.metrics,
         },
-        telemetry: cloneTelemetry((session as any).telemetry),
+        telemetry: cloneTelemetry(session.telemetry),
         sessionSource: session.sessionSource === 'dictationScript' && scriptResult.ok ? 'dictationScript' : 'plainText',
         dictationScript: scriptResult.ok ? scriptResult.script : null,
+        generationError: typeof session.generationError === 'string' ? session.generationError : undefined,
       };
 
       return normalizeSessionForPersistence(base);
@@ -7630,7 +9315,16 @@ function formatSessionDate(value: string): string {
 }
 
 function formatSessionPlaybackDuration(session: StoredSession): string {
-  return formatTelemetryDuration(cloneTelemetry(session.telemetry));
+  const durationSec = getSessionVoiceDurationSec(session);
+  return durationSec !== null ? formatDuration(durationSec) : 'n/a';
+}
+
+function getSessionVoiceDurationSec(session: StoredSession): number | null {
+  return estimateSessionVoiceDurationSec(session);
+}
+
+function isSessionStatus(value: unknown): value is SessionStatus {
+  return value === 'ready' || value === 'running' || value === 'paused' || value === 'finished' || value === 'error';
 }
 
 function buildTranscriptSegments(transcript: Transcript | null): Array<{ start: number; end: number; text: string }> {
@@ -7726,9 +9420,46 @@ function formatSessionStatus(value: SessionStatus): string {
       return 'Paused';
     case 'finished':
       return 'Finished';
+    case 'error':
+      return 'Error';
     default:
       return 'Ready';
   }
+}
+
+function formatLeaderboardSessionStatus(session: StoredSession): string {
+  if (session.status === 'finished' && session.inputMode !== 'input1' && !hasSubmittedSessionStats(session)) {
+    return 'Not submitted';
+  }
+  return formatSessionStatus(session.status);
+}
+
+function getPendingSessionReason(session: StoredSession): string {
+  if (session.status === 'finished' && session.inputMode !== 'input1' && !hasSubmittedSessionStats(session)) {
+    return 'stats pending';
+  }
+  if (!session.inputSettingsLocked) return 'setup pending';
+  if (session.status === 'running') return 'running';
+  if (session.status === 'paused') return 'paused';
+  return 'perform pending';
+}
+
+function getSessionDisplayTitle(session: StoredSession): string {
+  if (session.dictationScript) {
+    return normalizeGeneratedDictationScriptTitle(session.dictationScript).title;
+  }
+  return session.name || 'Untitled session';
+}
+
+function hasSubmittedSessionStats(session: StoredSession): boolean {
+  return session.telemetry.actions.some((entry) => entry.action === 'submit');
+}
+
+function isSessionReadyForTraining(session: StoredSession): boolean {
+  if (session.status === 'error') return false;
+  if (session.status !== 'finished') return false;
+  if (session.inputMode === 'input1') return true;
+  return hasSubmittedSessionStats(session);
 }
 
 type DashboardGoals = {
@@ -7918,22 +9649,6 @@ function buildCoachingInsights(session: StoredSession, goals: DashboardGoals): s
   return insights.slice(0, 5);
 }
 
-function formatTelemetryDuration(telemetry: SessionTelemetry): string {
-  if (!telemetry.startedAt || !telemetry.finishedAt) {
-    return 'n/a';
-  }
-
-  const ms = new Date(telemetry.finishedAt).getTime() - new Date(telemetry.startedAt).getTime();
-  if (!Number.isFinite(ms) || ms <= 0) {
-    return 'n/a';
-  }
-
-  const seconds = Math.round(ms / 1000);
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${String(secs).padStart(2, '0')}`;
-}
-
 function average(values: number[]): number {
   const valid = values.filter((value) => Number.isFinite(value));
   if (valid.length === 0) {
@@ -8016,7 +9731,7 @@ function buildHistoricalPerformanceProfile(
             : mode === 'browser-tts'
               ? session.ttsLanguage
               : session.kokoroLanguage) ?? undefined,
-        durationSec: Math.max(1, session.metrics.points * 2),
+        durationSec: Math.max(1, getSessionVoiceDurationSec(session) ?? session.metrics.points * 2),
         averagePlaybackRate: clamp(session.metrics.rate, 0.75, 1.15),
         averageWpm: session.metrics.wpm,
         averageAccuracy: clamp01(session.metrics.accuracy / 100),

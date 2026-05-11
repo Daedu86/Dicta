@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { SemanticPhrase } from '../src/core/adaptive/SemanticPhrasePlanner';
 import { buildQwenCloudCacheManifestFromSemanticPhrases, qwenCloudCacheManifestJson } from '../src/inputs/qwenCloud/qwenCloudCacheManifest';
 
 describe('qwenCloudCacheManifest', () => {
@@ -19,9 +20,9 @@ describe('qwenCloudCacheManifest', () => {
         rareWordLoad: 0,
         syntaxComplexity: 0.2,
       },
-    ] as const;
+    ] satisfies SemanticPhrase[];
 
-    const manifest = buildQwenCloudCacheManifestFromSemanticPhrases(semanticPhrases as any, 'en');
+    const manifest = buildQwenCloudCacheManifestFromSemanticPhrases(semanticPhrases, 'en');
     expect(manifest.engine).toBe('qwen-cloud');
     expect(manifest.language).toBe('en');
     expect(manifest.phrases.length).toBe(1);
@@ -36,4 +37,3 @@ describe('qwenCloudCacheManifest', () => {
     expect(parsed.phrases[0]).toHaveProperty('charCount');
   });
 });
-
