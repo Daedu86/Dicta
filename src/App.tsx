@@ -1934,12 +1934,16 @@ function App() {
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
-      createOpenRouterErrorSession({
-        slotLabel,
-        inputMode,
-        language,
-        message,
-      }, { navigateToLeaderboard: false });
+      if (shouldCreatePersistentGenerationErrorSession(message)) {
+        createOpenRouterErrorSession({
+          slotLabel,
+          inputMode,
+          language,
+          message,
+        }, { navigateToLeaderboard: false });
+      } else {
+        setOpenRouterError(message);
+      }
     } finally {
       setBusy(false);
     }
@@ -6470,12 +6474,14 @@ function OpenRouterWorkspace({
         model: slotModel,
         error: message,
       });
-      onCreateGenerationErrorSession({
-        slotLabel,
-        inputMode: generateInputMode,
-        language: generateLanguage,
-        message,
-      });
+      if (shouldCreatePersistentGenerationErrorSession(message)) {
+        onCreateGenerationErrorSession({
+          slotLabel,
+          inputMode: generateInputMode,
+          language: generateLanguage,
+          message,
+        });
+      }
     } finally {
       setGenerateBusySlots((current) => ({ ...current, [slotId]: false }));
     }
@@ -9778,6 +9784,16 @@ function loadDeletedSessionIds(): Set<string> {
 function persistDeletedSessionIds(ids: Set<string>): void {
   const normalized = [...ids].filter(Boolean).slice(-600);
   window.localStorage.setItem(DELETED_SESSION_IDS_KEY, JSON.stringify(normalized));
+}
+
+function shouldCreatePersistentGenerationErrorSession(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized.includes('failed to reach openrouter endpoint')) return false;
+  if (normalized.includes('failed to fetch')) return false;
+  if (normalized.includes('timed out')) return false;
+  if (normalized.includes('network')) return false;
+  return true;
 }
 
 function formatSessionDate(value: string): string {
