@@ -37,6 +37,11 @@ import {
   type OpenRouterGeneratePromptSource,
 } from './core/adaptive/openRouterGenerationPrompt';
 import {
+  buildFallbackOpenRouterSessionScript,
+  isTransientGenerationErrorSessionLike,
+  isTransientOpenRouterGenerationError,
+} from './core/adaptive/openRouterFallbackScript';
+import {
   parseDictationScriptJson,
   validateDictationScript,
   type DictationScript,
@@ -768,9 +773,17 @@ function App() {
       try {
         const rows = await pullSyncRows(client, syncConfig.profileId);
         if (cancelled) return;
+        const transientErrorSessionIds = rows
+          .filter((row) => row.item_type === 'session' && isTransientGenerationErrorSessionLike(row.payload))
+          .map((row) => row.item_key);
+        if (transientErrorSessionIds.length > 0) {
+          transientErrorSessionIds.forEach((sessionId) => deletedSessionIdsRef.current.add(sessionId));
+          persistDeletedSessionIds(deletedSessionIdsRef.current);
+          void Promise.allSettled(transientErrorSessionIds.map((sessionId) => deleteSessionSyncRow(client, syncConfig.profileId, sessionId)));
+        }
         const merged = mergeSyncRows(syncStateRef.current, rows);
         const filteredMergedSessions = (merged.sessions as StoredSession[]).filter(
-          (session) => !deletedSessionIdsRef.current.has(session.id),
+          (session) => !deletedSessionIdsRef.current.has(session.id) && !isTransientGenerationErrorSessionLike(session),
         );
         supabaseInitialPullCompleteRef.current = true;
 
@@ -784,7 +797,10 @@ function App() {
           }, 0);
         }
 
-        const pushed = await pushSyncRows(client, syncConfig.profileId, merged);
+        const pushed = await pushSyncRows(client, syncConfig.profileId, {
+          ...merged,
+          sessions: filteredMergedSessions,
+        });
         if (cancelled) return;
         setSupabaseSyncStatus({
           enabled: true,
@@ -1934,7 +1950,16 @@ function App() {
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
-      if (shouldCreatePersistentGenerationErrorSession(message)) {
+      if (isTransientOpenRouterGenerationError(message)) {
+        const fallbackScript = buildFallbackOpenRouterSessionScript({
+          inputMode,
+          language,
+          durationMinutes,
+          targetDifficulty,
+        });
+        createSessionFromOpenRouterScript(fallbackScript, { navigateToLeaderboard: false });
+        setOpenRouterError(`${message} Created a local fallback session instead.`);
+      } else if (shouldCreatePersistentGenerationErrorSession(message)) {
         createOpenRouterErrorSession({
           slotLabel,
           inputMode,
@@ -6467,6 +6492,16 @@ function OpenRouterWorkspace({
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
+      if (isTransientOpenRouterGenerationError(message)) {
+        const fallbackScript = buildFallbackOpenRouterSessionScript({
+          inputMode: generateInputMode,
+          language: generateLanguage,
+          durationMinutes: generateDurationMinutes,
+        });
+        onCreateGeneratedSession(fallbackScript);
+        clearGeneratedScriptDraft(slotId);
+        return;
+      }
       updateGenerationSlot(slotId, {
         inputMode: generateInputMode,
         language: generateLanguage,
@@ -9763,7 +9798,7 @@ function loadSessions(): StoredSession[] {
       };
 
       return normalizeSessionForPersistence(base);
-    }).filter((session) => !deletedIds.has(session.id));
+    }).filter((session) => !deletedIds.has(session.id) && !isTransientGenerationErrorSessionLike(session));
   } catch {
     return [];
   }
@@ -9787,16 +9822,7 @@ function persistDeletedSessionIds(ids: Set<string>): void {
 }
 
 function shouldCreatePersistentGenerationErrorSession(message: string): boolean {
-  const normalized = message.trim().toLowerCase();
-  if (!normalized) return false;
-  if (normalized.includes('failed to reach openrouter endpoint')) return false;
-  if (normalized.includes('failed to fetch')) return false;
-  if (normalized.includes('timed out')) return false;
-  if (normalized.includes('network')) return false;
-  if (normalized.includes('session expired')) return false;
-  if (normalized.includes('sign in to dicta')) return false;
-  if (normalized.includes('unauthorized')) return false;
-  return true;
+  return !isTransientOpenRouterGenerationError(message);
 }
 
 function formatSessionDate(value: string): string {

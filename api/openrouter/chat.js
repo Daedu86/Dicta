@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25_000);
+    const timeoutId = setTimeout(() => controller.abort(), 8_000);
     let response;
     try {
       response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'OpenRouter chat request failed.';
     if (message.toLowerCase().includes('aborted')) {
-      res.status(504).send('OpenRouter timed out. Try a faster free model or a shorter session length.');
+      res.status(504).send('OpenRouter timed out before Vercel could finish the request. Try a faster free model or a shorter session length.');
       return;
     }
     res.status(500).send(message);
