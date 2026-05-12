@@ -100,6 +100,7 @@ const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 const KOKORO_ENABLED_KEY = 'dicta.kokoroEnabled.v1';
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
 const THEME_MODE_KEY = 'dicta.themeMode.v1';
+const DELETED_SESSION_IDS_KEY = 'dicta.deletedSessionIds.v1';
 const LIVE_METRICS_LANGUAGE_KEY = 'dicta.liveMetricsLanguage.v1';
 const LIVE_METRICS_RANGE_KEY = 'dicta.liveMetricsRange.v1';
 const INSIGHTS_COLLAPSED_KEY = 'dicta.insightsCollapsed.v1';
@@ -518,6 +519,7 @@ function App() {
     buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
   );
   const supabasePullInFlightRef = useRef(false);
+  const deletedSessionIdsRef = useRef<Set<string>>(loadDeletedSessionIds());
   const kokoroSemanticPhrasesRef = useRef<SemanticPhrase[]>([]);
   const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
   const kokoroSemanticPhraseReplayCountRef = useRef(0);
@@ -767,11 +769,14 @@ function App() {
         const rows = await pullSyncRows(client, syncConfig.profileId);
         if (cancelled) return;
         const merged = mergeSyncRows(syncStateRef.current, rows);
+        const filteredMergedSessions = (merged.sessions as StoredSession[]).filter(
+          (session) => !deletedSessionIdsRef.current.has(session.id),
+        );
         supabaseInitialPullCompleteRef.current = true;
 
-        if (merged.changed) {
+        if (merged.changed || filteredMergedSessions.length !== (merged.sessions as StoredSession[]).length) {
           supabaseApplyingRemoteRef.current = true;
-          setSessions(merged.sessions as StoredSession[]);
+          setSessions(filteredMergedSessions);
           setAdaptiveBenchmarksByInputLanguage(merged.benchmarks as AdaptiveBenchmarksByInputLanguage);
           setAdaptiveSessionFeedbackByInputLanguage(merged.feedback as AdaptiveSessionFeedbackByInputLanguage);
           window.setTimeout(() => {
@@ -1772,6 +1777,8 @@ function App() {
         setWorkspaceMode('leaderboard');
       }
     }
+    deletedSessionIdsRef.current.add(sessionId);
+    persistDeletedSessionIds(deletedSessionIdsRef.current);
     setSessions((prev) => prev.filter((session) => session.id !== sessionId));
     if (supabaseClient && syncConfig.enabled) {
       setSupabaseSyncStatus((current) => ({
@@ -9706,6 +9713,7 @@ function loadSessions(): StoredSession[] {
     if (parsed.length === 0) {
       return [];
     }
+    const deletedIds = loadDeletedSessionIds();
     return parsed.map((session, index) => {
       const inputMode: SessionInputMode =
         session.inputMode === 'input2' || session.inputMode === 'input3' || session.inputMode === 'input4' ? session.inputMode : 'input1';
@@ -9749,10 +9757,27 @@ function loadSessions(): StoredSession[] {
       };
 
       return normalizeSessionForPersistence(base);
-    });
+    }).filter((session) => !deletedIds.has(session.id));
   } catch {
     return [];
   }
+}
+
+function loadDeletedSessionIds(): Set<string> {
+  const raw = window.localStorage.getItem(DELETED_SESSION_IDS_KEY);
+  if (!raw) return new Set();
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((value): value is string => typeof value === 'string' && value.length > 0));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistDeletedSessionIds(ids: Set<string>): void {
+  const normalized = [...ids].filter(Boolean).slice(-600);
+  window.localStorage.setItem(DELETED_SESSION_IDS_KEY, JSON.stringify(normalized));
 }
 
 function formatSessionDate(value: string): string {
