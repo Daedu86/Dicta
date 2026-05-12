@@ -1883,6 +1883,7 @@ function App() {
     setOpenRouterError('');
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
+    const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
       const sessionFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
@@ -1897,7 +1898,7 @@ function App() {
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, prompt }),
+        body: JSON.stringify({ model, prompt, maxTokens: targetMaxTokens }),
       });
       if (!response.ok) {
         const text = await response.text();
@@ -1920,11 +1921,17 @@ function App() {
         }, { navigateToLeaderboard: false });
       }
     } catch (err) {
+      const message =
+        err instanceof TypeError
+          ? 'Failed to reach OpenRouter endpoint. Refresh the page and try a free model such as openrouter/free.'
+          : err instanceof Error
+            ? err.message
+            : 'OpenRouter generation failed.';
       createOpenRouterErrorSession({
         slotLabel,
         inputMode,
         language,
-        message: err instanceof Error ? err.message : 'OpenRouter generation failed.',
+        message,
       }, { navigateToLeaderboard: false });
     } finally {
       setBusy(false);
@@ -6389,12 +6396,13 @@ function OpenRouterWorkspace({
     setGenerateBusySlots((current) => ({ ...current, [slotId]: true }));
     updateGenerationSlot(slotId, { error: '' });
     const slotPrompt = buildVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
+    const slotMaxTokens = generateDurationMinutes === 2 ? 1000 : generateDurationMinutes === 3 ? 1300 : 1600;
     const startedAt = performance.now();
     try {
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: slotModel, prompt: slotPrompt }),
+        body: JSON.stringify({ model: slotModel, prompt: slotPrompt, maxTokens: slotMaxTokens }),
       });
       if (!response.ok) {
         const text = await response.text();
@@ -6442,7 +6450,12 @@ function OpenRouterWorkspace({
         });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'OpenRouter generation failed.';
+      const message =
+        err instanceof TypeError
+          ? 'Failed to reach OpenRouter endpoint. Refresh and retry with a free model.'
+          : err instanceof Error
+            ? err.message
+            : 'OpenRouter generation failed.';
       updateGenerationSlot(slotId, {
         inputMode: generateInputMode,
         language: generateLanguage,
@@ -6899,7 +6912,7 @@ function OpenRouterWorkspace({
                     const response = await fetch('/api/openrouter/chat', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ model: defaultModel, prompt }),
+                      body: JSON.stringify({ model: defaultModel, prompt, maxTokens: 600 }),
                     });
                     if (!response.ok) {
                       const text = await response.text();

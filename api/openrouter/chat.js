@@ -11,7 +11,7 @@ function normalizeRequestBody(body) {
       return {};
     }
   }
-  if (Buffer.isBuffer(body)) {
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(body)) {
     try {
       return JSON.parse(body.toString('utf8'));
     } catch {
@@ -36,6 +36,8 @@ export default async function handler(req, res) {
   const payload = normalizeRequestBody(req.body);
   const model = typeof payload.model === 'string' ? payload.model.trim() : '';
   const prompt = typeof payload.prompt === 'string' ? payload.prompt.trim() : '';
+  const maxTokensRaw = Number(payload.maxTokens);
+  const maxTokens = Number.isFinite(maxTokensRaw) ? Math.max(128, Math.min(1800, Math.round(maxTokensRaw))) : undefined;
 
   if (!model || !prompt) {
     res.status(400).send('Missing model or prompt.');
@@ -43,25 +45,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': req.headers.origin ?? 'https://vercel.app',
-        'X-Title': 'Dicta',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25_000);
+    let response;
+    try {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': req.headers.origin ?? 'https://vercel.app',
+          'X-Title': 'Dicta',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const body = await response.text();
     res.status(response.status);
     res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
     res.send(body);
   } catch (error) {
-    res.status(500).send(error instanceof Error ? error.message : 'OpenRouter chat request failed.');
+    const message = error instanceof Error ? error.message : 'OpenRouter chat request failed.';
+    if (message.toLowerCase().includes('aborted')) {
+      res.status(504).send('OpenRouter timed out. Try a faster free model or a shorter session length.');
+      return;
+    }
+    res.status(500).send(message);
   }
 }
