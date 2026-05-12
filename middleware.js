@@ -25,6 +25,10 @@ function isPublicPath(pathname) {
   );
 }
 
+function isApiPath(pathname) {
+  return pathname.startsWith('/api/');
+}
+
 export default async function middleware(request) {
   const password = process.env.DICTA_APP_PASSWORD?.trim();
   if (!password) return next();
@@ -34,6 +38,15 @@ export default async function middleware(request) {
 
   const expected = await sha256(password);
   if (getCookie(request, AUTH_COOKIE) === expected) return next();
+
+  if (isApiPath(url.pathname)) {
+    return new Response('Session expired. Sign in to Dicta again, then retry OpenRouter generation.', {
+      status: 401,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+      },
+    });
+  }
 
   url.pathname = LOGIN_PATH;
   url.searchParams.set('next', new URL(request.url).pathname);

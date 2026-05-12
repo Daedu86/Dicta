@@ -9793,6 +9793,9 @@ function shouldCreatePersistentGenerationErrorSession(message: string): boolean 
   if (normalized.includes('failed to fetch')) return false;
   if (normalized.includes('timed out')) return false;
   if (normalized.includes('network')) return false;
+  if (normalized.includes('session expired')) return false;
+  if (normalized.includes('sign in to dicta')) return false;
+  if (normalized.includes('unauthorized')) return false;
   return true;
 }
 
