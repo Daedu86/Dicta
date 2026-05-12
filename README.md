@@ -180,10 +180,16 @@ CLI helper (Windows): `scripts/setup_supabase_sync.ps1` links a project and appl
 
 ## Local Ingestion Pipeline (WhisperX)
 
-Install Python dependencies:
+Install core Python dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Install the optional full local alignment stack (WhisperX + torch):
+
+```bash
+pip install -r requirements-alignment.txt
 ```
 
 Generate transcript from audio (full local alignment):
@@ -197,6 +203,12 @@ Dry run (smoke mode, no WhisperX needed):
 ```bash
 npm run ingest:dryrun
 ```
+
+Security note for local alignment:
+
+- The WhisperX/torch alignment stack is optional and isolated in `requirements-alignment.txt`.
+- That optional stack may currently resolve to vulnerable `transformers` versions until upstream ML dependencies are compatible with a stable patched release.
+- Do not load untrusted Hugging Face or PyTorch checkpoints, and do not resume runs from unknown checkpoint directories.
 
 ## Docs
 

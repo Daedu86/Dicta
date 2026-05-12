@@ -57,7 +57,7 @@ flowchart TB
     py["Python WhisperX CLI<br/>scripts/transcribe_align.py"]
     schema["Transcript schema<br/>scripts/transcript.schema.json"]
     fixtures["Fixture transcripts/audio<br/>fixtures/*.json<br/>fixtures/dummy.wav"]
-    whisper["WhisperX + torch<br/>requirements.txt"]
+    whisper["WhisperX + torch (optional)<br/>requirements-alignment.txt"]
   end
 
   subgraph gaps["Development gaps"]
