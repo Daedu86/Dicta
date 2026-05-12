@@ -168,6 +168,16 @@ Dicta stores everything in browser local storage for the MVP:
 
 OpenRouter credentials are intentionally **not** stored in `localStorage`. The dev server proxies OpenRouter requests using `OPENROUTER_API_KEY` from `.env.local`.
 
+Optional Supabase sync keeps these same browser stores synced across devices for one private profile. Create the `dicta_sync_items` table with `docs/supabase-sync.sql`, replace the policy profile id, and set these env vars locally and in Vercel:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_SYNC_PROFILE_ID`
+
+Vercel note: `VITE_*` env vars are baked in at build time, so after changing them you must redeploy before your phone sees sync enabled.
+
+CLI helper (Windows): `scripts/setup_supabase_sync.ps1` links a project and applies the SQL after substituting your chosen profile id.
+
 ## Local Ingestion Pipeline (WhisperX)
 
 Install Python dependencies:

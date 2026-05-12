@@ -76,6 +76,14 @@ import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNo
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { sessionSnapshotJson } from './core/sessionSnapshot';
 import {
+  createDictaSupabaseClient,
+  getDictaSyncConfig,
+  mergeSyncRows,
+  pullSyncRows,
+  pushSyncRows,
+  type DictaSyncState,
+} from './core/supabaseSync';
+import {
   buildRangeSummaryForLanguage,
   findLastSessionForLanguage,
   rangeLabel,
@@ -192,6 +200,15 @@ type AdminStorageSummary = {
   blobAudioRefs: number;
   remoteAudioRefs: number;
   audioLabels: number;
+};
+
+type SupabaseSyncStatus = {
+  enabled: boolean;
+  state: 'disabled' | 'idle' | 'pulling' | 'pushing' | 'synced' | 'error';
+  message: string;
+  lastSyncedAt: string | null;
+  imported: number;
+  pushed: number;
 };
 
 type AdminFileInventory = {
@@ -446,6 +463,16 @@ function App() {
   const setSelectedBenchmarkLanguage = setDictaLanguageView;
   const [benchmarkExportMessage, setBenchmarkExportMessage] = useState('');
   const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
+  const syncConfig = useMemo(() => getDictaSyncConfig(import.meta.env), []);
+  const supabaseClient = useMemo(() => createDictaSupabaseClient(syncConfig), [syncConfig]);
+  const [supabaseSyncStatus, setSupabaseSyncStatus] = useState<SupabaseSyncStatus>({
+    enabled: syncConfig.enabled,
+    state: syncConfig.enabled ? 'idle' : 'disabled',
+    message: syncConfig.enabled ? 'Supabase sync ready.' : 'Set Supabase env vars to enable cross-device sync.',
+    lastSyncedAt: null,
+    imported: 0,
+    pushed: 0,
+  });
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
 
@@ -483,6 +510,8 @@ function App() {
   const sessionFeedbackContextRef = useRef<Record<string, { inputMode: InputMode; language: LanguageCode }>>({});
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
+  const supabaseInitialPullCompleteRef = useRef(!syncConfig.enabled);
+  const supabaseApplyingRemoteRef = useRef(false);
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
   const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
@@ -713,6 +742,103 @@ function App() {
     const normalized = sessions.map((session) => normalizeSessionForPersistence(session));
     window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(normalized));
   }, [sessions]);
+
+  useEffect(() => {
+    if (!supabaseClient || !syncConfig.enabled) return;
+    const client = supabaseClient;
+    let cancelled = false;
+
+    async function syncFromSupabase(): Promise<void> {
+      setSupabaseSyncStatus((current) => ({
+        ...current,
+        state: 'pulling',
+        message: 'Pulling Supabase sync data...',
+      }));
+      try {
+        const rows = await pullSyncRows(client, syncConfig.profileId);
+        if (cancelled) return;
+        const merged = mergeSyncRows(buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage), rows);
+        supabaseInitialPullCompleteRef.current = true;
+
+        if (merged.changed) {
+          supabaseApplyingRemoteRef.current = true;
+          setSessions(merged.sessions as StoredSession[]);
+          setAdaptiveBenchmarksByInputLanguage(merged.benchmarks as AdaptiveBenchmarksByInputLanguage);
+          setAdaptiveSessionFeedbackByInputLanguage(merged.feedback as AdaptiveSessionFeedbackByInputLanguage);
+          window.setTimeout(() => {
+            supabaseApplyingRemoteRef.current = false;
+          }, 0);
+        }
+
+        const pushed = await pushSyncRows(client, syncConfig.profileId, merged);
+        if (cancelled) return;
+        setSupabaseSyncStatus({
+          enabled: true,
+          state: 'synced',
+          message: merged.imported > 0 ? `Synced. Imported ${merged.imported} remote item${merged.imported === 1 ? '' : 's'}.` : 'Synced with Supabase.',
+          lastSyncedAt: new Date().toISOString(),
+          imported: merged.imported,
+          pushed,
+        });
+      } catch (error) {
+        supabaseInitialPullCompleteRef.current = true;
+        if (cancelled) return;
+        setSupabaseSyncStatus((current) => ({
+          ...current,
+          state: 'error',
+          message: error instanceof Error ? error.message : 'Supabase sync failed.',
+        }));
+      }
+    }
+
+    void syncFromSupabase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabaseClient, syncConfig.enabled, syncConfig.profileId]);
+
+  useEffect(() => {
+    if (!supabaseClient || !syncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
+
+    const timeout = window.setTimeout(() => {
+      setSupabaseSyncStatus((current) => ({
+        ...current,
+        state: 'pushing',
+        message: 'Pushing local changes to Supabase...',
+      }));
+      pushSyncRows(
+        supabaseClient,
+        syncConfig.profileId,
+        buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+      )
+        .then((pushed) => {
+          setSupabaseSyncStatus((current) => ({
+            ...current,
+            state: 'synced',
+            message: 'Local changes synced to Supabase.',
+            lastSyncedAt: new Date().toISOString(),
+            pushed,
+          }));
+        })
+        .catch((error) => {
+          setSupabaseSyncStatus((current) => ({
+            ...current,
+            state: 'error',
+            message: error instanceof Error ? error.message : 'Supabase sync failed.',
+          }));
+        });
+    }, 1200);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
+    sessions,
+    supabaseClient,
+    syncConfig.enabled,
+    syncConfig.profileId,
+  ]);
 
   useEffect(() => {
     controllerRef.current = new SyncController(config);
@@ -1459,6 +1585,14 @@ function App() {
     setSessionCreationName('');
     setDictationScriptJson('');
     setDictationScriptValidation(null);
+  }
+
+  async function signOut(): Promise<void> {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/login.html';
+    }
   }
 
   function createSessionWithMode(inputMode: SessionInputMode): void {
@@ -4104,6 +4238,14 @@ function App() {
             >
               {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
             </button>
+            <button
+              type="button"
+              className="secondary-button brand-signout-button"
+              onClick={() => void signOut()}
+              title="Sign out and return to login"
+            >
+              Sign out
+            </button>
           </div>
           {sessionCreationMode ? (
             <div className="sidebar-card session-create-card brand-session-create-card" role="dialog" aria-label="Choose input">
@@ -5590,6 +5732,7 @@ function App() {
                 fileInventory={adminFileInventory}
                 fileInventoryError={adminFileInventoryError}
                 exportMessage={exportMessage}
+                syncStatus={supabaseSyncStatus}
                 languageView={adminLanguageView}
                 onChangeLanguage={setAdminLanguageView}
                 onBackToTraining={() => setWorkspaceMode('training')}
@@ -7256,6 +7399,7 @@ function AdminWorkspace({
   fileInventory,
   fileInventoryError,
   exportMessage,
+  syncStatus,
   languageView,
   onChangeLanguage,
   onBackToTraining,
@@ -7270,6 +7414,7 @@ function AdminWorkspace({
   fileInventory: AdminFileInventory | null;
   fileInventoryError: string;
   exportMessage: string;
+  syncStatus: SupabaseSyncStatus;
   languageView: MetricsLanguageView;
   onChangeLanguage: (value: MetricsLanguageView) => void;
   onBackToTraining: () => void;
@@ -7327,6 +7472,7 @@ function AdminWorkspace({
         <Metric label="Sessions" value={String(summary.sessionCount)} />
         <Metric label="Finished" value={String(summary.finishedSessions)} />
         <Metric label="LocalStorage" value={formatBytes(summary.dictaLocalStorageBytes)} />
+        <Metric label="Sync" value={formatSupabaseSyncState(syncStatus)} />
         <Metric label="Transcript words" value={String(summary.totalTranscriptWords)} />
         <Metric label="Telemetry samples" value={String(summary.telemetrySamples)} />
         <Metric label="Actions" value={String(summary.telemetryActions)} />
@@ -7362,6 +7508,11 @@ function AdminWorkspace({
           </div>
           <p className="hint">
             Export from your localhost app, then import that file here to restore sessions, leaderboard data, adaptive benchmarks, and feedback for this browser.
+          </p>
+          <p className={syncStatus.state === 'error' ? 'error' : 'hint'}>
+            Supabase sync: {syncStatus.message}
+            {syncStatus.lastSyncedAt ? ` Last synced ${formatSessionDate(syncStatus.lastSyncedAt)}.` : ''}
+            {syncStatus.enabled ? ` Imported ${syncStatus.imported}; pushed ${syncStatus.pushed}.` : ''}
           </p>
           <div className="admin-table">
             <div className="admin-table-row admin-table-header">
@@ -8895,6 +9046,15 @@ function formatElapsedMs(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
+function formatSupabaseSyncState(status: SupabaseSyncStatus): string {
+  if (!status.enabled) return 'Off';
+  if (status.state === 'pulling') return 'Pulling';
+  if (status.state === 'pushing') return 'Pushing';
+  if (status.state === 'error') return 'Error';
+  if (status.state === 'synced') return 'Synced';
+  return 'Ready';
+}
+
 function buildAdaptiveCoachSummary(
   profile: InputLanguageBenchmarkMetrics,
   sessionFeedback: AdaptiveSessionFeedback | null,
@@ -8933,6 +9093,18 @@ function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummar
     blobAudioRefs: sessions.filter((session) => session.audioUrl.startsWith('blob:')).length,
     remoteAudioRefs: sessions.filter((session) => /^https?:\/\//.test(session.audioUrl)).length,
     audioLabels: sessions.filter((session) => session.audioLabel.trim().length > 0).length,
+  };
+}
+
+function buildCurrentSyncState(
+  sessions: StoredSession[],
+  benchmarks: AdaptiveBenchmarksByInputLanguage,
+  feedback: AdaptiveSessionFeedbackByInputLanguage,
+): DictaSyncState {
+  return {
+    sessions: sessions.map((session) => normalizeSessionForPersistence(session)),
+    benchmarks,
+    feedback,
   };
 }
 

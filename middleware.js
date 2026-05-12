@@ -20,6 +20,7 @@ function isPublicPath(pathname) {
   return (
     pathname === LOGIN_PATH ||
     pathname === '/api/auth/login' ||
+    pathname === '/api/auth/logout' ||
     pathname === '/favicon.svg'
   );
 }
