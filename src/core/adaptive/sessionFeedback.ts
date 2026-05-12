@@ -41,10 +41,13 @@ export type TimelinePlaybackDiagnostics = {
 };
 
 export function buildAdaptiveSessionFeedback(args: SessionFeedbackBuildArgs): AdaptiveSessionFeedback {
-  const playbackIssues = detectPlaybackIssues(args.phraseEvents);
-  const phraseStats = buildPhraseStats(args.phraseEvents, args.totalPhrases);
+  const phraseEvents = shouldScopeFeedbackToSession(args.inputMode, args.language)
+    ? args.phraseEvents.filter((event) => event.sessionId === args.sessionId)
+    : args.phraseEvents;
+  const playbackIssues = detectPlaybackIssues(phraseEvents);
+  const phraseStats = buildPhraseStats(phraseEvents, args.totalPhrases);
   const improvementDelta = computeImprovementDelta(args.benchmarkBefore, args.benchmarkAfter, playbackIssues);
-  const verdict = computeVerdict(improvementDelta.overallImprovementScore, args.phraseEvents.length);
+  const verdict = computeVerdict(improvementDelta.overallImprovementScore, phraseEvents.length);
   const notes = buildFeedbackNotes(playbackIssues, improvementDelta, verdict);
   const sessionCountDroppedReason = deriveSessionCountDroppedReason(args.benchmarkBefore, args.benchmarkAfter);
 
@@ -66,6 +69,10 @@ export function buildAdaptiveSessionFeedback(args: SessionFeedbackBuildArgs): Ad
     verdict,
     notes,
   };
+}
+
+function shouldScopeFeedbackToSession(inputMode: InputMode, language: LanguageCode): boolean {
+  return inputMode === 'browser-tts' && String(language).toLowerCase() === 'de';
 }
 
 function deriveSessionCountDroppedReason(

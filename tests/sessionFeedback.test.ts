@@ -149,6 +149,40 @@ describe('session feedback diagnostics', () => {
     expect(payload.playbackDiagnostics).toEqual(feedback.playbackIssues);
   });
 
+  it('scopes browser-tts DE latest feedback to the requested session only', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const currentSessionStart = {
+      ...phraseEvent(0, 'current-0', 'phrase_started', 10),
+      sessionId: 'session-current',
+      inputMode: 'browser-tts' as const,
+      language: 'de',
+    };
+    const oldSessionRepeats: PhrasePlaybackEvent[] = Array.from({ length: 6 }, (_, index) => ({
+      ...phraseEvent(2, 'old-2', 'phrase_started', index + 1),
+      sessionId: 'session-old',
+      inputMode: 'browser-tts' as const,
+      language: 'de',
+    }));
+
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-current',
+      inputMode: 'browser-tts',
+      language: 'de',
+      sourceType: 'dictation_script',
+      createdAt: '2026-04-30T08:00:00.000Z',
+      completedAt: '2026-04-30T08:10:00.000Z',
+      benchmarkBefore: profile,
+      benchmarkAfter: profile,
+      phraseEvents: [...oldSessionRepeats, currentSessionStart],
+      totalPhrases: 1,
+    });
+
+    expect(feedback.playbackIssues.repeatedPhraseCount).toBe(0);
+    expect(feedback.playbackIssues.maxRepeatCountForSinglePhrase).toBe(0);
+    expect(feedback.phraseStats.totalPhrases).toBe(1);
+    expect(feedback.phraseStats.averageRepeatsPerPhrase).toBe(0);
+  });
+
   it('includes sessionCountDroppedReason when session count decreases after benchmark recalculation', () => {
     const before = {
       ...createEmptyInputLanguageBenchmark('browser-tts', 'es'),

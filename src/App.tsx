@@ -25,6 +25,7 @@ import { AdaptiveDictationController } from './core/adaptive/AdaptiveDictationCo
 import { planSemanticPhrases, type SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import { buildLagStabilitySample } from './core/adaptive/lagStability';
 import {
+  clampBrowserTtsDeDecisionToRecommendation,
   createEmptyInputLanguageBenchmark,
   normalizeBenchmarkLanguage,
   updateInputLanguageBenchmark,
@@ -77,6 +78,7 @@ import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { sessionSnapshotJson } from './core/sessionSnapshot';
 import {
   createDictaSupabaseClient,
+  deleteSessionSyncRow,
   getDictaSyncConfig,
   mergeSyncRows,
   pullSyncRows,
@@ -299,10 +301,7 @@ type AdaptiveSemanticDebug = {
 function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [sessions, setSessions] = useState<StoredSession[]>(() => loadSessions());
-  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
-    const initialSessions = loadSessions();
-    return initialSessions[0]?.id ?? createStoredSession().id;
-  });
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => loadSessions()[0]?.id ?? '');
   const [audioUrl, setAudioUrl] = useState<string>('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioSourceUrlInput, setAudioSourceUrlInput] = useState<string>('');
@@ -515,6 +514,10 @@ function App() {
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
   const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
+  const syncStateRef = useRef<DictaSyncState>(
+    buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+  );
+  const supabasePullInFlightRef = useRef(false);
   const kokoroSemanticPhrasesRef = useRef<SemanticPhrase[]>([]);
   const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
   const kokoroSemanticPhraseReplayCountRef = useRef(0);
@@ -679,9 +682,9 @@ function App() {
 
   useEffect(() => {
     if (sessions.length === 0) {
-      const nextSession = createStoredSession();
-      setSessions([nextSession]);
-      setActiveSessionId(nextSession.id);
+      if (activeSessionId) {
+        setActiveSessionId('');
+      }
       return;
     }
 
@@ -744,20 +747,26 @@ function App() {
   }, [sessions]);
 
   useEffect(() => {
+    syncStateRef.current = buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage);
+  }, [sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage]);
+
+  useEffect(() => {
     if (!supabaseClient || !syncConfig.enabled) return;
     const client = supabaseClient;
     let cancelled = false;
 
-    async function syncFromSupabase(): Promise<void> {
+    async function pullAndMergeSync(reason: 'initial' | 'background'): Promise<void> {
+      if (supabasePullInFlightRef.current) return;
+      supabasePullInFlightRef.current = true;
       setSupabaseSyncStatus((current) => ({
         ...current,
         state: 'pulling',
-        message: 'Pulling Supabase sync data...',
+        message: reason === 'initial' ? 'Pulling Supabase sync data...' : 'Refreshing Supabase sync data...',
       }));
       try {
         const rows = await pullSyncRows(client, syncConfig.profileId);
         if (cancelled) return;
-        const merged = mergeSyncRows(buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage), rows);
+        const merged = mergeSyncRows(syncStateRef.current, rows);
         supabaseInitialPullCompleteRef.current = true;
 
         if (merged.changed) {
@@ -788,13 +797,31 @@ function App() {
           state: 'error',
           message: error instanceof Error ? error.message : 'Supabase sync failed.',
         }));
+      } finally {
+        supabasePullInFlightRef.current = false;
       }
     }
 
-    void syncFromSupabase();
+    void pullAndMergeSync('initial');
+
+    const intervalId = window.setInterval(() => {
+      void pullAndMergeSync('background');
+    }, 45_000);
+
+    const onFocus = () => {
+      void pullAndMergeSync('background');
+    };
+    const onOnline = () => {
+      void pullAndMergeSync('background');
+    };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('online', onOnline);
 
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onOnline);
     };
   }, [supabaseClient, syncConfig.enabled, syncConfig.profileId]);
 
@@ -1746,6 +1773,29 @@ function App() {
       }
     }
     setSessions((prev) => prev.filter((session) => session.id !== sessionId));
+    if (supabaseClient && syncConfig.enabled) {
+      setSupabaseSyncStatus((current) => ({
+        ...current,
+        state: 'pushing',
+        message: 'Deleting session in Supabase...',
+      }));
+      void deleteSessionSyncRow(supabaseClient, syncConfig.profileId, sessionId)
+        .then(() => {
+          setSupabaseSyncStatus((current) => ({
+            ...current,
+            state: 'synced',
+            message: 'Session deleted and synced.',
+            lastSyncedAt: new Date().toISOString(),
+          }));
+        })
+        .catch((error) => {
+          setSupabaseSyncStatus((current) => ({
+            ...current,
+            state: 'error',
+            message: error instanceof Error ? error.message : 'Failed to delete session in Supabase.',
+          }));
+        });
+    }
   }
 
   function openDashboardForSession(sessionId: string): void {
@@ -2432,7 +2482,9 @@ function App() {
         rareWordLoad: candidateChunk.rareWordLoad,
         syntaxComplexity: candidateChunk.syntaxComplexity,
       });
-      const decision = adaptiveControllerRef.current.decide(buildAdaptiveBrowserTtsInput(browserTelemetry, historyProfile));
+      const browserTtsBenchmark = getBenchmarkSnapshot('browser-tts', normalizeBenchmarkLanguage(ttsLanguage));
+      const rawDecision = adaptiveControllerRef.current.decide(buildAdaptiveBrowserTtsInput(browserTelemetry, historyProfile));
+      const decision = clampBrowserTtsDeDecisionToRecommendation(rawDecision, browserTtsBenchmark);
       const pacingMode = mapAdaptivePacingMode(decision.mode);
       const chunk =
         planBrowserTtsAdaptiveChunk({
@@ -2466,18 +2518,19 @@ function App() {
         pauseAfterPhraseMs: decision.pauseAfterPhraseMs,
         profile: browserTtsProfile,
       });
-      const rate = unsafeRuntime.playbackRate;
-      const runtimeDecision =
-        rate === decision.playbackRate && unsafeRuntime.pauseAfterPhraseMs === decision.pauseAfterPhraseMs
+      const postPolicyDecision =
+        unsafeRuntime.playbackRate === decision.playbackRate && unsafeRuntime.pauseAfterPhraseMs === decision.pauseAfterPhraseMs
           ? decision
           : {
               ...decision,
-              playbackRate: rate,
+              playbackRate: unsafeRuntime.playbackRate,
               pauseAfterPhraseMs: unsafeRuntime.pauseAfterPhraseMs,
               reason: unsafeRuntime.unsafeBoundaryApplied
                 ? `${decision.reason}, unsafe-boundary-conservative`
                 : decision.reason,
             };
+      const runtimeDecision = clampBrowserTtsDeDecisionToRecommendation(postPolicyDecision, browserTtsBenchmark);
+      const rate = runtimeDecision.playbackRate;
       if (unsafeRuntime.unsafeBoundaryApplied) {
         ttsUnsafeChunkCountRef.current += 1;
       }
@@ -2725,7 +2778,7 @@ function App() {
 
       const importedSessions = loadSessions();
       setSessions(importedSessions);
-      setActiveSessionId(importedSessions[0]?.id ?? createStoredSession().id);
+      setActiveSessionId(importedSessions[0]?.id ?? '');
       setDashboardSessionId(null);
       setAdaptiveBenchmarksByInputLanguage(loadAdaptiveBenchmarks());
       setAdaptiveSessionFeedbackByInputLanguage(loadAdaptiveSessionFeedback());
@@ -4246,6 +4299,10 @@ function App() {
             >
               Sign out
             </button>
+            <span className={`brand-sync-status brand-sync-status-${supabaseSyncStatus.state}`}>
+              Sync: {formatSupabaseSyncState(supabaseSyncStatus)}
+              {supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''}
+            </span>
           </div>
           {sessionCreationMode ? (
             <div className="sidebar-card session-create-card brand-session-create-card" role="dialog" aria-label="Choose input">
@@ -9628,13 +9685,13 @@ function getNextSessionIndex(sessions: StoredSession[]): number {
 function loadSessions(): StoredSession[] {
   const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
   if (!raw) {
-    return [createStoredSession()];
+    return [];
   }
 
   try {
     const parsed = JSON.parse(raw) as Partial<StoredSession>[];
     if (parsed.length === 0) {
-      return [createStoredSession()];
+      return [];
     }
     return parsed.map((session, index) => {
       const inputMode: SessionInputMode =
@@ -9681,7 +9738,7 @@ function loadSessions(): StoredSession[] {
       return normalizeSessionForPersistence(base);
     });
   } catch {
-    return [createStoredSession()];
+    return [];
   }
 }
 

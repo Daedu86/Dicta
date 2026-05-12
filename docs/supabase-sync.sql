@@ -37,5 +37,12 @@ to anon
 using (profile_id = 'replace-with-your-profile-id')
 with check (profile_id = 'replace-with-your-profile-id');
 
+drop policy if exists "dicta single profile delete" on public.dicta_sync_items;
+create policy "dicta single profile delete"
+on public.dicta_sync_items
+for delete
+to anon
+using (profile_id = 'replace-with-your-profile-id');
+
 create index if not exists dicta_sync_items_profile_updated_idx
 on public.dicta_sync_items (profile_id, updated_at desc);

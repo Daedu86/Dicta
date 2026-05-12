@@ -15,6 +15,7 @@ import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browse
 const ROLLING_WINDOW_DAYS = 30 as const;
 const MAX_TIMELINE_POINTS = 450;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const BROWSER_TTS_DE_MAX_RATE_MARGIN = 0.01;
 
 export type InputLanguageBenchmarkUpdateArgs = {
   current?: InputLanguageBenchmarkMetrics | null;
@@ -125,47 +126,122 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     event: args.event ?? deriveTimelineEvent(args.decision),
   };
   const timeline = pruneTimelineToRollingWindow([...current.timeline, timelinePoint], ROLLING_WINDOW_DAYS);
-  const rawLagSeries = timeline.map((point) => point.rawLagSec ?? point.lagSec);
-  const stableLagSeries = timeline.map((point) => point.stableLagSec ?? point.lagSec);
+  const usesFilteredBrowserTtsDeScoring = isBrowserTtsDe(args.live.inputMode, language);
+  const scoringTimeline = usesFilteredBrowserTtsDeScoring
+    ? timeline.filter(isValidBrowserTtsDeBenchmarkSample)
+    : timeline;
+  const rawLagSeries = scoringTimeline.map((point) => point.rawLagSec ?? point.lagSec);
+  const stableLagSeries = scoringTimeline.map((point) => point.stableLagSec ?? point.lagSec);
   const absoluteStableLagSeries = stableLagSeries.map((value) => Math.abs(value));
   const stableLagOutlierCount = rawLagSeries.filter((value) => Math.abs(value) > 5).length;
-  const sampleCount = current.sampleCount + 1;
+  const currentPointIsScored = !usesFilteredBrowserTtsDeScoring || isValidBrowserTtsDeBenchmarkSample(timelinePoint);
+  const sampleCount = usesFilteredBrowserTtsDeScoring ? scoringTimeline.length : current.sampleCount + 1;
+  const hasBrowserTtsDeScoringSamples = !usesFilteredBrowserTtsDeScoring || scoringTimeline.length > 0;
+  const previousAverageCount = current.sampleCount;
+  const latestScoredPoint = scoringTimeline[scoringTimeline.length - 1];
+  const semanticCounters = usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+    ? computeBrowserTtsDeSemanticCounters(scoringTimeline)
+    : usesFilteredBrowserTtsDeScoring
+      ? {
+          semanticCutPenalty: current.semanticCutPenalty,
+          unsafePauseCount: current.unsafePauseCount,
+          safePauseCount: current.safePauseCount,
+          deferredPauseCount: current.deferredPauseCount,
+          replayDeniedByBoundaryCount: current.replayDeniedByBoundaryCount,
+        }
+      : {
+        semanticCutPenalty: current.semanticCutPenalty + semanticCutPenalty,
+        unsafePauseCount: current.unsafePauseCount + (unsafePause ? 1 : 0),
+        safePauseCount: current.safePauseCount + (safePause ? 1 : 0),
+        deferredPauseCount: current.deferredPauseCount + (args.decision.deferPauseUntilSafeBoundary ? 1 : 0),
+        replayDeniedByBoundaryCount: current.replayDeniedByBoundaryCount + (replayDenied ? 1 : 0),
+      };
   const next: InputLanguageBenchmarkMetrics = {
     ...current,
-    sessionCount: countUniqueSessions(timeline),
+    sessionCount: countUniqueSessions(usesFilteredBrowserTtsDeScoring ? scoringTimeline : timeline),
     sampleCount,
     lastUpdatedAt: new Date(timestampMs).toISOString(),
-    averageAccuracy: runningAverage(current.averageAccuracy, args.live.accuracy, current.sampleCount),
-    averageWpm: runningAverage(current.averageWpm, args.live.wpm, current.sampleCount),
-    averageLagSec: average(stableLagSeries),
-    rawAverageLagSec: average(rawLagSeries),
-    stableAverageLagSec: average(stableLagSeries),
-    medianLagSec: percentile(stableLagSeries, 0.5),
-    p75LagSec: percentile(stableLagSeries, 0.75),
-    p90AbsLagSec: percentile(absoluteStableLagSeries, 0.9),
-    lagOutlierCount: stableLagOutlierCount,
-    averageCorrectionRate: runningAverage(current.averageCorrectionRate, args.live.correctionRate, current.sampleCount),
-    semanticCutPenalty: current.semanticCutPenalty + semanticCutPenalty,
-    unsafePauseCount: current.unsafePauseCount + (unsafePause ? 1 : 0),
-    safePauseCount: current.safePauseCount + (safePause ? 1 : 0),
-    deferredPauseCount: current.deferredPauseCount + (args.decision.deferPauseUntilSafeBoundary ? 1 : 0),
-    replayDeniedByBoundaryCount: current.replayDeniedByBoundaryCount + (replayDenied ? 1 : 0),
-    averageSemanticCompleteness: runningAverage(current.averageSemanticCompleteness, semanticCompleteness, current.sampleCount),
-    averagePhraseDifficulty: runningAverage(current.averagePhraseDifficulty, phraseDifficulty, current.sampleCount),
-    preferredPlaybackRate: args.decision.playbackRate,
+    averageAccuracy: usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+      ? average(scoringTimeline.map((point) => point.accuracy))
+      : usesFilteredBrowserTtsDeScoring
+        ? current.averageAccuracy
+        : runningAverage(current.averageAccuracy, args.live.accuracy, previousAverageCount),
+    averageWpm: usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+      ? average(scoringTimeline.map((point) => point.wpm))
+      : usesFilteredBrowserTtsDeScoring
+        ? current.averageWpm
+        : runningAverage(current.averageWpm, args.live.wpm, previousAverageCount),
+    averageLagSec: hasBrowserTtsDeScoringSamples ? average(stableLagSeries) : current.averageLagSec,
+    rawAverageLagSec: hasBrowserTtsDeScoringSamples ? average(rawLagSeries) : current.rawAverageLagSec,
+    stableAverageLagSec: hasBrowserTtsDeScoringSamples ? average(stableLagSeries) : current.stableAverageLagSec,
+    medianLagSec: hasBrowserTtsDeScoringSamples ? percentile(stableLagSeries, 0.5) : current.medianLagSec,
+    p75LagSec: hasBrowserTtsDeScoringSamples ? percentile(stableLagSeries, 0.75) : current.p75LagSec,
+    p90AbsLagSec: hasBrowserTtsDeScoringSamples ? percentile(absoluteStableLagSeries, 0.9) : current.p90AbsLagSec,
+    lagOutlierCount: hasBrowserTtsDeScoringSamples ? stableLagOutlierCount : current.lagOutlierCount,
+    averageCorrectionRate: usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+      ? average(scoringTimeline.map((point) => point.correctionRate ?? 0))
+      : usesFilteredBrowserTtsDeScoring
+        ? current.averageCorrectionRate
+        : runningAverage(current.averageCorrectionRate, args.live.correctionRate, previousAverageCount),
+    semanticCutPenalty: semanticCounters.semanticCutPenalty,
+    unsafePauseCount: semanticCounters.unsafePauseCount,
+    safePauseCount: semanticCounters.safePauseCount,
+    deferredPauseCount: semanticCounters.deferredPauseCount,
+    replayDeniedByBoundaryCount: semanticCounters.replayDeniedByBoundaryCount,
+    averageSemanticCompleteness: usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+      ? average(scoringTimeline.map((point) => point.semanticCompleteness ?? 1)) || 1
+      : usesFilteredBrowserTtsDeScoring
+        ? current.averageSemanticCompleteness
+        : runningAverage(current.averageSemanticCompleteness, semanticCompleteness, previousAverageCount),
+    averagePhraseDifficulty: usesFilteredBrowserTtsDeScoring
+      ? currentPointIsScored
+        ? runningAverage(current.averagePhraseDifficulty, phraseDifficulty, previousAverageCount)
+        : current.averagePhraseDifficulty
+      : runningAverage(current.averagePhraseDifficulty, phraseDifficulty, previousAverageCount),
+    preferredPlaybackRate: usesFilteredBrowserTtsDeScoring
+      ? (latestScoredPoint?.playbackRate ?? current.preferredPlaybackRate)
+      : args.decision.playbackRate,
     preferredPhraseSize: args.decision.nextPhraseSize,
-    preferredPauseAfterPhraseMs: args.decision.pauseAfterPhraseMs,
-    inputExecutionFidelityScore: runningAverage(current.inputExecutionFidelityScore, executionFidelity, current.sampleCount),
+    preferredPauseAfterPhraseMs: usesFilteredBrowserTtsDeScoring
+      ? (latestScoredPoint?.pauseMs ?? current.preferredPauseAfterPhraseMs)
+      : args.decision.pauseAfterPhraseMs,
+    inputExecutionFidelityScore: usesFilteredBrowserTtsDeScoring
+      ? hasBrowserTtsDeScoringSamples
+        ? computeAverageInputExecutionFidelity(scoringTimeline)
+        : current.inputExecutionFidelityScore
+      : currentPointIsScored
+      ? runningAverage(current.inputExecutionFidelityScore, executionFidelity, previousAverageCount)
+      : current.inputExecutionFidelityScore,
     timeline,
   };
 
-  next.rateAccuracyBuckets = computeRateAccuracyBuckets(timeline);
-  next.recoveryScore = computeRecoveryScore(timeline);
-  next.timeToRecoveryMs = computeTimeToRecoveryMs(timeline);
-  next.errorBurstLength = computeErrorBurstLength(timeline);
-  next.modeSwitchFrequency = computeModeSwitchFrequency(timeline);
-  next.rateVariance = computeVariance(timeline.map((point) => point.playbackRate));
-  next.pauseVariance = computeVariance(timeline.map((point) => point.pauseMs));
+  if (usesFilteredBrowserTtsDeScoring && !hasBrowserTtsDeScoringSamples) {
+    return {
+      ...next,
+      rateAccuracyBuckets: current.rateAccuracyBuckets,
+      recoveryScore: current.recoveryScore,
+      timeToRecoveryMs: current.timeToRecoveryMs,
+      errorBurstLength: current.errorBurstLength,
+      modeSwitchFrequency: current.modeSwitchFrequency,
+      rateVariance: current.rateVariance,
+      pauseVariance: current.pauseVariance,
+      semanticFidelityScore: current.semanticFidelityScore,
+      controlFidelityScore: current.controlFidelityScore,
+      learningEffectivenessScore: current.learningEffectivenessScore,
+      flowStabilityScore: current.flowStabilityScore,
+      sweetSpotScore: current.sweetSpotScore,
+      weakAreas: current.weakAreas,
+      recommendation: current.recommendation,
+    };
+  }
+
+  next.rateAccuracyBuckets = computeRateAccuracyBuckets(scoringTimeline);
+  next.recoveryScore = computeRecoveryScore(scoringTimeline);
+  next.timeToRecoveryMs = computeTimeToRecoveryMs(scoringTimeline);
+  next.errorBurstLength = computeErrorBurstLength(scoringTimeline);
+  next.modeSwitchFrequency = computeModeSwitchFrequency(scoringTimeline);
+  next.rateVariance = computeVariance(scoringTimeline.map((point) => point.playbackRate));
+  next.pauseVariance = computeVariance(scoringTimeline.map((point) => point.pauseMs));
   next.semanticFidelityScore = computeSemanticFidelityScore(next);
   next.controlFidelityScore = computeControlFidelityScore(next);
   next.learningEffectivenessScore = computeLearningEffectivenessScore(next);
@@ -174,6 +250,51 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
   next.weakAreas = deriveWeakAreas(next);
   next.recommendation = computeBenchmarkRecommendation(next);
   return next;
+}
+
+export function isValidBrowserTtsDeBenchmarkSample(point: AdaptiveTimelinePoint): boolean {
+  if (!isBrowserTtsDe(point.inputMode, point.language)) return true;
+  const rawLagSec = point.rawLagSec;
+  const lagSec = point.lagSec;
+  const stableLagSec = point.stableLagSec;
+  const semanticCompleteness = point.semanticCompleteness ?? 1;
+  return (
+    typeof rawLagSec === 'number' &&
+    Number.isFinite(rawLagSec) &&
+    Number.isFinite(lagSec) &&
+    (stableLagSec === undefined || Number.isFinite(stableLagSec)) &&
+    rawLagSec >= -3 &&
+    rawLagSec <= 6 &&
+    rawLagSec !== -5 &&
+    lagSec !== -5 &&
+    stableLagSec !== -5 &&
+    point.phraseBoundaryType !== 'unsafe' &&
+    semanticCompleteness >= 0.7 &&
+    isScoringTimelineEvent(point.event)
+  );
+}
+
+export function clampBrowserTtsDeDecisionToRecommendation(
+  decision: PacingDecision,
+  metrics: InputLanguageBenchmarkMetrics | null | undefined,
+): PacingDecision {
+  if (!metrics || !isBrowserTtsDe(metrics.inputMode, metrics.language)) return decision;
+  const targetRateRange = metrics.recommendation?.targetRateRange;
+  if (!Array.isArray(targetRateRange) || targetRateRange.length !== 2) return decision;
+  const [minRate, maxRate] = targetRateRange;
+  if (!Number.isFinite(minRate) || !Number.isFinite(maxRate) || maxRate < minRate) return decision;
+  const upper = maxRate + BROWSER_TTS_DE_MAX_RATE_MARGIN;
+  const playbackRate = Number(clampNumber(decision.playbackRate, minRate, upper).toFixed(2));
+  const replayRate = Number(clampNumber(decision.replayRate, minRate, upper).toFixed(2));
+  if (playbackRate === decision.playbackRate && replayRate === decision.replayRate) return decision;
+  return {
+    ...decision,
+    playbackRate,
+    replayRate,
+    reason: decision.reason.includes('de-target-rate-clamp')
+      ? decision.reason
+      : `${decision.reason}, de-target-rate-clamp`,
+  };
 }
 
 export function computeSweetSpotScore(metrics: InputLanguageBenchmarkMetrics): number {
@@ -295,6 +416,33 @@ function deriveTimelineEvent(decision: PacingDecision): AdaptiveTimelinePoint['e
   return 'rate_change';
 }
 
+function isBrowserTtsDe(inputMode: InputMode, language?: string | null): boolean {
+  return inputMode === 'browser-tts' && normalizeBenchmarkLanguage(language).toLowerCase() === 'de';
+}
+
+function isScoringTimelineEvent(event: AdaptiveTimelinePoint['event']): boolean {
+  return event === 'phrase_advance' || event === 'rate_change' || event === 'support_entered' || event === 'flow_entered';
+}
+
+function computeBrowserTtsDeSemanticCounters(timeline: AdaptiveTimelinePoint[]): Pick<
+  InputLanguageBenchmarkMetrics,
+  'semanticCutPenalty' | 'unsafePauseCount' | 'safePauseCount' | 'deferredPauseCount' | 'replayDeniedByBoundaryCount'
+> {
+  const unsafePauseCount = timeline.filter((point) => point.event === 'pause' && point.phraseBoundaryType === 'unsafe').length;
+  const safePauseCount = timeline.filter((point) => point.event === 'pause' && point.phraseBoundaryType !== 'unsafe').length;
+  const deferredPauseCount = timeline.filter((point) => point.event === 'defer_pause').length;
+  const replayDeniedByBoundaryCount = timeline.filter(
+    (point) => point.event === 'replay' && ((point.semanticCompleteness ?? 1) < 0.65 || point.phraseBoundaryType === 'unsafe'),
+  ).length;
+  return {
+    semanticCutPenalty: unsafePauseCount + deferredPauseCount * 0.35 + replayDeniedByBoundaryCount * 0.5,
+    unsafePauseCount,
+    safePauseCount,
+    deferredPauseCount,
+    replayDeniedByBoundaryCount,
+  };
+}
+
 function computeExecutionFidelity(execution?: InputExecutionTelemetry): number {
   if (!execution) return 1;
   const scores: number[] = [];
@@ -312,6 +460,10 @@ function computeExecutionFidelity(execution?: InputExecutionTelemetry): number {
   }
   if (execution.fallbackUsed) scores.push(0.75);
   return scores.length > 0 ? average(scores) : 1;
+}
+
+function computeAverageInputExecutionFidelity(timeline: AdaptiveTimelinePoint[]): number {
+  return timeline.length > 0 ? 1 : 0;
 }
 
 function computeRecoveryScore(timeline: AdaptiveTimelinePoint[]): number {
@@ -433,4 +585,9 @@ function calibrateTargetRateRangeForProfile(
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(1, value));
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
 }

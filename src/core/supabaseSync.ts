@@ -233,6 +233,16 @@ export async function pushSyncRows(client: SupabaseClient, profileId: string, st
   return rows.length;
 }
 
+export async function deleteSessionSyncRow(client: SupabaseClient, profileId: string, sessionId: string): Promise<void> {
+  const { error } = await client
+    .from(DICTA_SYNC_TABLE)
+    .delete()
+    .eq('profile_id', profileId)
+    .eq('item_type', 'session')
+    .eq('item_key', sessionId);
+  if (error) throw error;
+}
+
 function isValidSyncRow(row: DictaSyncRow): boolean {
   return (
     typeof row.profile_id === 'string' &&
