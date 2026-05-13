@@ -105,6 +105,12 @@
         const next = new URLSearchParams(window.location.search).get('next') || '/';
         window.location.href = next;
       });
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+        });
+      }
     </script>
   </body>
 </html>

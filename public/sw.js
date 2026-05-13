@@ -1,5 +1,12 @@
-const CACHE_NAME = 'dicta-shell-v1';
-const SHELL_ASSETS = ['/', '/training', '/manifest.webmanifest', '/favicon.svg', '/pwa-icon.svg'];
+const CACHE_NAME = 'dicta-shell-v2';
+const SHELL_ASSETS = [
+  '/login.html',
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/pwa-icon.svg',
+  '/pwa-icon-192.png',
+  '/pwa-icon-512.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -24,7 +31,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/')));
+    event.respondWith(fetch(request).catch(() => caches.match('/login.html')));
     return;
   }
 
