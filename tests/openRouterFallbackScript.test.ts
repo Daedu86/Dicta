@@ -22,6 +22,26 @@ describe('OpenRouter fallback script helpers', () => {
     expect(validateDictationScript(script).ok).toBe(true);
   });
 
+  it('produces varied fallback scripts for different seeds', () => {
+    const a = buildFallbackOpenRouterSessionScript({
+      inputMode: 'browser-tts',
+      language: 'de',
+      durationMinutes: 3,
+      targetDifficulty: 'normal',
+      seed: 'seed-a',
+    });
+    const b = buildFallbackOpenRouterSessionScript({
+      inputMode: 'browser-tts',
+      language: 'de',
+      durationMinutes: 3,
+      targetDifficulty: 'normal',
+      seed: 'seed-b',
+    });
+
+    expect(a.title).not.toEqual(b.title);
+    expect(a.phrases[0]?.text).not.toEqual(b.phrases[0]?.text);
+  });
+
   it('treats Vercel and mobile network failures as transient OpenRouter errors', () => {
     expect(isTransientOpenRouterGenerationError('Failed to fetch')).toBe(true);
     expect(isTransientOpenRouterGenerationError('Failed to reach OpenRouter endpoint. Refresh and retry.')).toBe(true);

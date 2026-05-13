@@ -6,6 +6,7 @@ type FallbackScriptOptions = {
   language: LanguageCode;
   durationMinutes: 2 | 3 | 4;
   targetDifficulty?: DictationScriptDifficulty;
+  seed?: string;
 };
 
 type UnknownRecord = Record<string, unknown>;
@@ -66,30 +67,38 @@ const HARD_FALLBACK_PHRASES: Record<LanguageCode, string[]> = {
 
 export function buildFallbackOpenRouterSessionScript(options: FallbackScriptOptions): DictationScript {
   const difficulty = options.targetDifficulty ?? 'normal';
+  const seed = `${options.seed ?? new Date().toISOString()}|${options.language}|${options.inputMode}|${options.durationMinutes}|${difficulty}`;
+  const seedInt = hashSeed(seed);
   const basePhrases = difficulty === 'hard'
     ? [...FALLBACK_PHRASES[options.language], ...HARD_FALLBACK_PHRASES[options.language]]
-    : FALLBACK_PHRASES[options.language];
+    : [...FALLBACK_PHRASES[options.language]];
+  const rotatedPhrases = rotate(basePhrases, seedInt % Math.max(1, basePhrases.length));
   const phraseCount = options.durationMinutes === 4 ? 24 : options.durationMinutes === 3 ? 18 : 12;
   const difficultyScore = difficulty === 'hard' ? 0.78 : difficulty === 'easy' ? 0.35 : 0.55;
+  const topicSuffix = buildTopicSuffix(options.language, seedInt);
+  const recommendedPauseMs = options.language === 'de' ? 760 + (seedInt % 140) : 620 + (seedInt % 120);
+  const boundarySequence: PhraseBoundaryType[] = difficulty === 'hard'
+    ? ['clause', 'sentence', 'sentence', 'clause', 'minor']
+    : ['sentence', 'sentence', 'clause', 'sentence'];
 
   return {
-    title: buildFallbackTitle(options.language, options.durationMinutes, difficulty),
+    title: `${buildFallbackTitle(options.language, options.durationMinutes, difficulty)} - ${topicSuffix}`,
     language: options.language,
     inputMode: options.inputMode,
     difficulty,
     estimatedDurationSec: options.durationMinutes * 60,
-    targetSkills: ['accuracy', 'steady pacing', 'phrase recall'],
+    targetSkills: ['accuracy', 'steady pacing', 'phrase recall', topicSuffix.toLowerCase()],
     recommendedRateRange: options.language === 'de' ? [0.8, 0.88] : [0.9, 1],
     recommendedPhraseSize: 'medium' satisfies PhraseSize,
-    recommendedPauseMs: options.language === 'de' ? 800 : 650,
+    recommendedPauseMs,
     phrases: Array.from({ length: phraseCount }, (_, index) => ({
-      id: `local-fallback-${options.language}-${index + 1}`,
-      text: basePhrases[index % basePhrases.length],
-      boundaryType: 'sentence' satisfies PhraseBoundaryType,
-      pauseAfterMs: options.language === 'de' ? 850 : 700,
+      id: `local-fallback-${options.language}-${index + 1}-${Math.abs(seedInt % 9973)}`,
+      text: rotatedPhrases[index % rotatedPhrases.length],
+      boundaryType: boundarySequence[index % boundarySequence.length],
+      pauseAfterMs: recommendedPauseMs + ((index + seedInt) % 3) * 35,
       canReplayIndependently: true,
-      requiresContinuation: false,
-      semanticCompleteness: 1,
+      requiresContinuation: boundarySequence[index % boundarySequence.length] === 'minor',
+      semanticCompleteness: boundarySequence[index % boundarySequence.length] === 'minor' ? 0.74 : 0.95,
       difficulty: difficultyScore,
       emphasisWords: [],
       intonationHint: 'falling' satisfies DictationScriptIntonationHint,
@@ -129,4 +138,29 @@ function buildFallbackTitle(language: LanguageCode, durationMinutes: number, dif
 
 function asRecord(value: unknown): UnknownRecord {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {};
+}
+
+function hashSeed(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash);
+}
+
+function rotate<T>(values: T[], offset: number): T[] {
+  if (values.length === 0) return values;
+  const normalized = ((offset % values.length) + values.length) % values.length;
+  return [...values.slice(normalized), ...values.slice(0, normalized)];
+}
+
+function buildTopicSuffix(language: LanguageCode, seed: number): string {
+  const topics =
+    language === 'de'
+      ? ['Cafe', 'Projektplanung', 'Alltag', 'Reise', 'Teammeeting', 'Markt']
+      : language === 'es'
+        ? ['cafe', 'planificacion', 'rutina', 'viaje', 'reunion', 'mercado']
+        : ['cafe', 'planning', 'daily flow', 'travel', 'meeting', 'market'];
+  return topics[seed % topics.length];
 }

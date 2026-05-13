@@ -111,4 +111,22 @@ describe('openRouterGenerationPrompt', () => {
     expect(payload.prompt).toContain('advanced content');
     expect(payload.prompt).toContain('0.70-0.90');
   });
+
+  it('includes diversification hints when provided', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const payload = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive',
+      durationMinutes: 3,
+      diversificationHints: [
+        'Do not repeat opener A',
+        'Use a different theme than B',
+      ],
+    });
+
+    expect(payload.prompt).toContain('Diversification constraints:');
+    expect(payload.prompt).toContain('1. Do not repeat opener A');
+    expect(payload.prompt).toContain('2. Use a different theme than B');
+  });
 });

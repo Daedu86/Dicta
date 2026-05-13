@@ -594,6 +594,19 @@ function App() {
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
     [sessions],
   );
+  const recentDictationSessionHints = useMemo(() => {
+    return sessions
+      .filter((session) => session.sessionSource === 'dictationScript' && Boolean(session.dictationScript))
+      .slice(0, 5)
+      .map((session) => {
+        const script = session.dictationScript;
+        const opener = script?.phrases?.[0]?.text?.trim() ?? '';
+        return {
+          title: script?.title?.trim() || session.name.trim(),
+          opener,
+        };
+      });
+  }, [sessions]);
   const sessionsWithVoiceDuration = useMemo(
     () => sessions.map((session) => ({ ...session, voiceDurationSec: getSessionVoiceDurationSec(session) })),
     [sessions],
@@ -1924,6 +1937,11 @@ function App() {
         durationMinutes,
         targetDifficulty,
         difficultyInstruction,
+        diversificationHints: buildOpenRouterDiversificationHints({
+          durationMinutes,
+          targetDifficulty,
+          recentSessions: recentDictationSessionHints,
+        }),
       });
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
@@ -1963,6 +1981,7 @@ function App() {
           language,
           durationMinutes,
           targetDifficulty,
+          seed: `${new Date().toISOString()}|${activeSession.id}|${sessions.length}|${slotLabel}`,
         });
         createSessionFromOpenRouterScript(fallbackScript, { navigateToLeaderboard: false });
         setOpenRouterError(`${message} Created a local fallback session instead.`);
@@ -10150,6 +10169,40 @@ function buildAdaptiveGoals(sessions: StoredSession[], currentSession: StoredSes
     lagMax: 3,
     repeatsMax: Math.max(0, Math.floor(avgRepeats)),
   };
+}
+
+function buildOpenRouterDiversificationHints({
+  durationMinutes,
+  targetDifficulty,
+  recentSessions,
+}: {
+  durationMinutes: 2 | 3 | 4;
+  targetDifficulty?: 'normal' | 'hard';
+  recentSessions: Array<{ title: string; opener: string }>;
+}): string[] {
+  const hints: string[] = [
+    `Create clearly different content from the last generated scripts while keeping the requested ${durationMinutes}-minute length.`,
+  ];
+  if (targetDifficulty === 'hard') {
+    hints.push('Use advanced grammar and vocabulary; avoid reusing simpler beginner sentence patterns.');
+  } else if (targetDifficulty === 'normal') {
+    hints.push('Keep medium complexity and avoid highly advanced sentence nesting.');
+  }
+  const recentOpeners = recentSessions
+    .map((session) => session.opener.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  if (recentOpeners.length > 0) {
+    hints.push(`Do not start phrases with these recent openings: ${recentOpeners.join(' | ')}`);
+  }
+  const recentTitles = recentSessions
+    .map((session) => session.title.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  if (recentTitles.length > 0) {
+    hints.push(`Avoid repeating these recent themes/titles: ${recentTitles.join(' | ')}`);
+  }
+  return hints;
 }
 
 function buildCoachingInsights(session: StoredSession, goals: DashboardGoals): string[] {

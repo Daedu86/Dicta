@@ -18,6 +18,7 @@ export type OpenRouterGenerationPromptArgs = {
   durationMinutes: 2 | 3 | 4;
   targetDifficulty?: 'normal' | 'hard';
   difficultyInstruction?: string;
+  diversificationHints?: string[];
 };
 
 export type OpenRouterGenerationPromptPayload = {
@@ -32,6 +33,7 @@ export function buildOpenRouterGenerationPrompt({
   durationMinutes,
   targetDifficulty,
   difficultyInstruction,
+  diversificationHints,
 }: OpenRouterGenerationPromptArgs): OpenRouterGenerationPromptPayload {
   const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(profile), null, 2);
   const llmPrompt = buildDictationScriptPrompt(profile);
@@ -111,6 +113,12 @@ export function buildOpenRouterGenerationPrompt({
     'If unsure, prefer a slightly longer script over a short one. Do not satisfy the duration by changing only "estimatedDurationSec"; generate enough phrase text to match the requested audio length.',
     '"estimatedDurationSec" means the expected time the learner hears the voice/audio, not total attempt or typing time.',
     'The JSON must validate against the DictationScript output template.',
+    ...(diversificationHints && diversificationHints.length > 0
+      ? [
+          'Diversification constraints:',
+          ...diversificationHints.map((hint, index) => `${index + 1}. ${hint}`),
+        ]
+      : []),
     '',
     'Output template:',
     outputTemplate,
