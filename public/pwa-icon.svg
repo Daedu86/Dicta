@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Dicta">
+  <rect width="512" height="512" rx="112" fill="#183b69"/>
+  <rect x="96" y="86" width="320" height="340" rx="42" fill="#081c33"/>
+  <path d="M174 140h62v232h-62z" fill="#a9c9ff"/>
+  <path d="M276 140h62v232h-62z" fill="#ff8bbb"/>
+  <path d="M203 169h104M203 218h104M203 267h104M203 316h104" stroke="#f5f8fc" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="363" cy="363" r="52" fill="#23c7d9"/>
+  <path d="M340 363h46M363 340v46" stroke="#081c33" stroke-width="18" stroke-linecap="round"/>
+</svg>

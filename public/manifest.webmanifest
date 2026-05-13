@@ -1,0 +1,25 @@
+{
+  "name": "Dicta",
+  "short_name": "Dicta",
+  "description": "Focused adaptive dictation training.",
+  "start_url": "/training",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#183b69",
+  "background_color": "#f5f8fc",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
