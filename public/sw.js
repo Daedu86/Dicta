@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dicta-shell-v2';
+const CACHE_NAME = 'dicta-shell-v3';
 const SHELL_ASSETS = [
   '/login.html',
   '/manifest.webmanifest',
@@ -32,6 +32,21 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).catch(() => caches.match('/login.html')));
+    return;
+  }
+
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request)),
+    );
     return;
   }
 

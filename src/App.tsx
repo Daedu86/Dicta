@@ -37,7 +37,6 @@ import {
   type OpenRouterGeneratePromptSource,
 } from './core/adaptive/openRouterGenerationPrompt';
 import {
-  buildFallbackOpenRouterSessionScript,
   isTransientGenerationErrorSessionLike,
   isTransientOpenRouterGenerationError,
 } from './core/adaptive/openRouterFallbackScript';
@@ -2014,17 +2013,7 @@ function App() {
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
-      if (shouldUseLocalFallbackForOpenRouterError(message)) {
-        const fallbackScript = buildFallbackOpenRouterSessionScript({
-          inputMode,
-          language,
-          durationMinutes,
-          targetDifficulty,
-          seed: `${new Date().toISOString()}|${activeSession.id}|${sessions.length}|${slotLabel}`,
-        });
-        createSessionFromOpenRouterScript(fallbackScript, { navigateToLeaderboard: false, generationOrigin: 'fallback-template' });
-        setOpenRouterError(`${message} Created a local fallback session instead.`);
-      } else if (isTransientOpenRouterGenerationError(message)) {
+      if (isTransientOpenRouterGenerationError(message)) {
         setOpenRouterError(formatInterruptedOpenRouterMessage(message));
       } else if (shouldCreatePersistentGenerationErrorSession(message)) {
         createOpenRouterErrorSession({
@@ -6859,16 +6848,6 @@ function OpenRouterWorkspace({
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
-      if (shouldUseLocalFallbackForOpenRouterError(message)) {
-        const fallbackScript = buildFallbackOpenRouterSessionScript({
-          inputMode: generateInputMode,
-          language: generateLanguage,
-          durationMinutes: generateDurationMinutes,
-        });
-        onCreateGeneratedSession(fallbackScript, { generationOrigin: 'fallback-template' });
-        clearGeneratedScriptDraft(slotId);
-        return;
-      }
       if (isTransientOpenRouterGenerationError(message)) {
         updateGenerationSlot(slotId, {
           inputMode: generateInputMode,
@@ -10408,17 +10387,6 @@ function persistDeletedSessionIds(ids: Set<string>): void {
 
 function shouldCreatePersistentGenerationErrorSession(message: string): boolean {
   return !isTransientOpenRouterGenerationError(message);
-}
-
-function shouldUseLocalFallbackForOpenRouterError(message: string): boolean {
-  const normalized = message.trim().toLowerCase();
-  if (!normalized) return false;
-  if (normalized.includes('selected openrouter model')) return false;
-  if (normalized.includes('openrouter did not return')) return false;
-  if (normalized.includes('http 429')) return false;
-  if (normalized.includes('rate-limited')) return false;
-  if (normalized.includes('generation request failed')) return false;
-  return false;
 }
 
 type OpenRouterWakeLockSentinel = {
