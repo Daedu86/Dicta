@@ -1,4 +1,5 @@
 import { buildSelectedBenchmarkExportPayload } from './benchmarkJson';
+import type { DictationScriptDifficulty } from './dictationScriptValidation';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './dictationScriptPrompt';
 import { buildBenchmarkFeedbackPromptPackage } from './sessionFeedback';
 import { normalizeInputLanguageBenchmarkForRecommendation } from './AdaptiveInputLanguageBenchmarkService';
@@ -17,7 +18,7 @@ export type OpenRouterGenerationPromptArgs = {
   sessionFeedback: AdaptiveSessionFeedback | null;
   promptSource: OpenRouterGeneratePromptSource;
   durationMinutes: 2 | 3 | 4;
-  targetDifficulty?: 'normal' | 'hard';
+  targetDifficulty?: DictationScriptDifficulty;
   difficultyInstruction?: string;
   diversificationHints?: string[];
 };

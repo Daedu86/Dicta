@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, KeyboardEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
 import './App.css';
 import type { ControlAction, SessionTelemetry, Transcript, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
 import type {
@@ -45,6 +45,7 @@ import {
   parseDictationScriptJson,
   validateDictationScript,
   type DictationScript,
+  type DictationScriptDifficulty,
   type DictationScriptValidationResult,
 } from './core/adaptive/dictationScriptValidation';
 import {
@@ -355,6 +356,7 @@ function App() {
   const [dictationScriptJson, setDictationScriptJson] = useState('');
   const [dictationScriptValidation, setDictationScriptValidation] = useState<DictationScriptValidationResult | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('leaderboard');
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [openRouterGenerateFocusRequest, setOpenRouterGenerateFocusRequest] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = window.localStorage.getItem(THEME_MODE_KEY);
@@ -380,6 +382,12 @@ function App() {
 
   useEffect(() => {
     qwenCloudAdapterRef.current = new QwenCloudAudioAdapter((message) => setError(message));
+  }, []);
+
+  useEffect(() => {
+    const onRouteChange = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', onRouteChange);
+    return () => window.removeEventListener('popstate', onRouteChange);
   }, []);
 
   const [ttsLanguage, setTtsLanguage] = useState<TtsLanguage>('de');
@@ -1679,6 +1687,13 @@ function App() {
     }
   }
 
+  function navigateAppRoute(path: '/' | '/training'): void {
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
+    }
+    setCurrentPath(path);
+  }
+
   function createSessionWithMode(inputMode: SessionInputMode): void {
     const name = sessionCreationName.trim();
     if (!name) {
@@ -1930,7 +1945,7 @@ function App() {
     durationMinutes: 2 | 3 | 4;
     isBusy: boolean;
     setBusy: (value: boolean) => void;
-    targetDifficulty?: 'normal' | 'hard';
+    targetDifficulty?: DictationScriptDifficulty;
     difficultyInstruction?: string;
   }): Promise<void> {
     if (!activeSession || isBusy) return;
@@ -2031,6 +2046,17 @@ function App() {
       durationMinutes: 3,
       isBusy: directOpenRouterBusy,
       setBusy: setDirectOpenRouterBusy,
+    });
+  }
+
+  async function generateEasyNextSessionFromOpenRouter(): Promise<void> {
+    await generateDirectSessionFromOpenRouter({
+      slotLabel: 'Easy direct session',
+      durationMinutes: 2,
+      isBusy: directOpenRouterBusy,
+      setBusy: setDirectOpenRouterBusy,
+      targetDifficulty: 'easy',
+      difficultyInstruction: 'Use easy content and keep phrase-level "difficulty" values low, roughly 0.25-0.45.',
     });
   }
 
@@ -4357,6 +4383,204 @@ function App() {
   );
   const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
   const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) : null;
+  const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
+  const focusedProgressLabel =
+    activeInputMode === 'input1'
+      ? transcriptSegments.length > 0
+        ? `Segment ${Math.max(1, activeTranscriptSegmentIndex + 1)}/${transcriptSegments.length}`
+        : 'No transcript loaded'
+      : activeInputMode === 'input3'
+        ? adaptiveSemanticDebug.totalSemanticPhrases > 0
+          ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
+          : kokoroPlayerWordCount > 0
+            ? `Word ${Math.min(kokoroPlayerCurrentWord, kokoroPlayerWordCount)}/${kokoroPlayerWordCount}`
+            : 'No source loaded'
+        : adaptiveSemanticDebug.totalSemanticPhrases > 0
+          ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
+          : ttsPlayerWordCount > 0
+            ? `Word ${Math.min(ttsPlayerCurrentWord, ttsPlayerWordCount)}/${ttsPlayerWordCount}`
+            : 'No source loaded';
+  const focusedSourceLabel =
+    activeInputMode === 'input1'
+      ? audioReady
+        ? activeSession?.audioLabel || 'Audio source loaded'
+        : 'Audio not loaded'
+      : activeInputMode === 'input3'
+        ? kokoroHasText
+          ? `${kokoroTranscript?.words.length ?? 0} words · ${kokoroLanguage?.toUpperCase()}`
+          : 'Kokoro source not loaded'
+        : ttsHasText
+          ? `${ttsTranscript?.words.length ?? 0} words · ${ttsLanguage?.toUpperCase()}`
+          : 'TTS source not loaded';
+  const focusedTextValue =
+    activeInputMode === 'input1'
+      ? inputText
+      : activeInputMode === 'input3'
+        ? kokoroPracticeText
+        : ttsPracticeText;
+  const focusedTextPlaceholder =
+    sessionStatus === 'finished'
+      ? 'Session submitted.'
+      : activeInputMode === 'input1'
+        ? 'Type what you hear...'
+        : 'Type the dictation here...';
+  const focusedInputHandler =
+    activeInputMode === 'input1'
+      ? onTypingChange
+      : activeInputMode === 'input3'
+        ? onKokoroPracticeChange
+        : onTtsPracticeChange;
+  const focusedKeyDownHandler =
+    activeInputMode === 'input1'
+      ? onTypingKeyDown
+      : activeInputMode === 'input3'
+        ? onKokoroPracticeKeyDown
+        : onTtsPracticeKeyDown;
+
+  function replayFocusedAudio(): void {
+    const currentTime = engineRef.current?.getCurrentTime() ?? audioRef.current?.currentTime ?? 0;
+    engineRef.current?.seek(Math.max(0, currentTime - 5));
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(0, currentTime - 5);
+    }
+  }
+
+  function replayFocusedTts(): void {
+    seekTtsPlayback(Math.max(0, ttsPlayerProgressPercent / 100 - 0.08));
+  }
+
+  const focusedTrainingProps: TrainingViewProps = {
+    activeSession,
+    activeInputLabel,
+    sessionStatus,
+    sourceLabel: focusedSourceLabel,
+    progressLabel: focusedProgressLabel,
+    statusLabel:
+      activeInputMode === 'input3'
+        ? kokoroStatus
+        : activeInputMode === 'input1'
+          ? formatSessionStatus(sessionStatus)
+          : ttsStatus,
+    audioRef,
+    audioUrl,
+    onAudioTimeUpdate: () => setCurrentAudioTime(audioRef.current?.currentTime ?? 0),
+    onAudioEnded: finishSession,
+    showAudioElement: activeInputMode === 'input1',
+    currentTextValue: focusedTextValue,
+    onTextChange: focusedInputHandler,
+    onTextKeyDown: focusedKeyDownHandler,
+    textPlaceholder: focusedTextPlaceholder,
+    readOnly: sessionStatus === 'finished',
+    canPlay:
+      activeInputMode === 'input1'
+        ? canStartSession
+        : activeInputMode === 'input3'
+          ? kokoroHasText && kokoroStatus !== 'playing' && sessionStatus !== 'finished'
+          : ttsHasText && ttsStatus !== 'playing' && sessionStatus !== 'finished',
+    playLabel:
+      activeInputMode === 'input1'
+        ? sessionStatus === 'paused'
+          ? 'Resume'
+          : 'Play'
+        : activeInputMode === 'input3'
+          ? kokoroStatus === 'paused'
+            ? 'Resume'
+            : 'Play'
+          : ttsStatus === 'paused'
+            ? 'Resume'
+            : 'Play',
+    onPlay:
+      activeInputMode === 'input1'
+        ? () => void startSession()
+        : activeInputMode === 'input3'
+          ? () => (kokoroStatus === 'paused' ? void resumeKokoro() : void playKokoro())
+          : () => (ttsStatus === 'paused' ? resumeTts() : playTts()),
+    canPause:
+      activeInputMode === 'input1'
+        ? canPauseSession
+        : activeInputMode === 'input3'
+          ? kokoroStatus === 'playing'
+          : ttsStatus === 'playing',
+    onPause:
+      activeInputMode === 'input1'
+        ? pauseSession
+        : activeInputMode === 'input3'
+          ? pauseKokoro
+          : pauseTts,
+    canReplay:
+      activeInputMode === 'input1'
+        ? audioReady
+        : activeInputMode === 'input3'
+          ? Boolean(kokoroCurrentChunk)
+          : ttsHasText && ttsPlayerDurationSec > 0,
+    onReplay:
+      activeInputMode === 'input1'
+        ? replayFocusedAudio
+        : activeInputMode === 'input3'
+          ? replayKokoroPhrase
+          : replayFocusedTts,
+    canStop:
+      activeInputMode === 'input1'
+        ? sessionStatus === 'running' || sessionStatus === 'paused'
+        : activeInputMode === 'input3'
+          ? kokoroStatus !== 'idle'
+          : ttsStatus !== 'idle',
+    onStop:
+      activeInputMode === 'input1'
+        ? finishSession
+        : activeInputMode === 'input3'
+          ? () => stopKokoroPlayback('stop')
+          : () => stopTtsPlayback('stop'),
+    canSubmit:
+      activeInputMode === 'input1'
+        ? canFinishSession
+        : activeInputMode === 'input3'
+          ? canSubmitKokoroSession
+          : canSubmitTtsSession,
+    onSubmit:
+      activeInputMode === 'input1'
+        ? finishSession
+        : activeInputMode === 'input3'
+          ? submitKokoroSession
+          : submitTtsSession,
+    submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
+    message: error || exportMessage || openRouterError,
+    generationButtons: [
+      {
+        label: directOpenRouterBusy ? 'Generating easy...' : 'New Easy Session',
+        onClick: () => void generateEasyNextSessionFromOpenRouter(),
+        disabled: directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
+        title: openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
+      },
+      {
+        label: directIntermediateOpenRouterBusy ? 'Generating medium...' : 'New Medium Session',
+        onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
+        disabled: directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
+        title: openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
+      },
+      {
+        label: directAdvancedOpenRouterBusy ? 'Generating hard...' : 'New Hard Session',
+        onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
+        disabled: directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
+        title: openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
+      },
+      {
+        label: 'New Custom Session',
+        onClick: openOpenRouterGenerateForActiveInput,
+        disabled: !activeSession,
+        title: 'Open the existing OpenRouter custom generation workspace.',
+      },
+    ],
+  };
+
+  if (isFocusedTrainingRoute) {
+    return (
+      <main className={`app training-route-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
+        <TrainingHeader onBackToApp={() => navigateAppRoute('/')} />
+        <TrainingView {...focusedTrainingProps} />
+      </main>
+    );
+  }
 
   return (
     <main className={`app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
@@ -4397,6 +4621,14 @@ function App() {
               }}
             >
               {brandActionLabel}
+            </button>
+            <button
+              type="button"
+              className="secondary-button brand-training-mode-button"
+              onClick={() => navigateAppRoute('/training')}
+              title="Open the focused mobile training view"
+            >
+              Training Mode
             </button>
           <button
             type="button"
@@ -9710,6 +9942,179 @@ function SessionDeviceIcon({ session }: { session: StoredSession }) {
   );
 }
 
+type TrainingGenerationButton = {
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
+  title: string;
+};
+
+type TrainingViewProps = {
+  activeSession: StoredSession | null;
+  activeInputLabel: string;
+  sessionStatus: SessionStatus;
+  sourceLabel: string;
+  progressLabel: string;
+  statusLabel: string;
+  audioRef: RefObject<HTMLAudioElement | null>;
+  audioUrl: string;
+  onAudioTimeUpdate: () => void;
+  onAudioEnded: () => void;
+  showAudioElement: boolean;
+  currentTextValue: string;
+  onTextChange: (value: string) => void;
+  onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  textPlaceholder: string;
+  readOnly: boolean;
+  canPlay: boolean;
+  playLabel: string;
+  onPlay: () => void;
+  canPause: boolean;
+  onPause: () => void;
+  canReplay: boolean;
+  onReplay: () => void;
+  canStop: boolean;
+  onStop: () => void;
+  canSubmit: boolean;
+  onSubmit: () => void;
+  submitLabel: string;
+  message: string;
+  generationButtons: TrainingGenerationButton[];
+};
+
+function TrainingHeader({ onBackToApp }: { onBackToApp: () => void }) {
+  return (
+    <header className="training-header">
+      <div className="training-header-brand">
+        <span className="training-header-mark" aria-hidden="true">🪗</span>
+        <div>
+          <h1>Dicta</h1>
+          <p>Training Mode</p>
+        </div>
+      </div>
+      <button type="button" className="secondary-button training-header-button" onClick={onBackToApp}>
+        Full app
+      </button>
+    </header>
+  );
+}
+
+function TrainingView({
+  activeSession,
+  activeInputLabel,
+  sessionStatus,
+  sourceLabel,
+  progressLabel,
+  statusLabel,
+  audioRef,
+  audioUrl,
+  onAudioTimeUpdate,
+  onAudioEnded,
+  showAudioElement,
+  currentTextValue,
+  onTextChange,
+  onTextKeyDown,
+  textPlaceholder,
+  readOnly,
+  canPlay,
+  playLabel,
+  onPlay,
+  canPause,
+  onPause,
+  canReplay,
+  onReplay,
+  canStop,
+  onStop,
+  canSubmit,
+  onSubmit,
+  submitLabel,
+  message,
+  generationButtons,
+}: TrainingViewProps) {
+  return (
+    <section className="training-view" aria-label="Focused training view">
+      <section className="training-card training-session-card">
+        <p className="training-eyebrow">{activeInputLabel}</p>
+        <h2>{activeSession ? getSessionDisplayTitle(activeSession) : 'No active session'}</h2>
+        <div className="training-session-meta" aria-label="Current session info">
+          <span>{progressLabel}</span>
+          <span>{sourceLabel}</span>
+          <span>{formatSessionStatus(sessionStatus)}</span>
+        </div>
+      </section>
+
+      <section className="training-card training-audio-card" aria-label="Media player and audio controls">
+        <div className="training-audio-status">
+          <span>Media player</span>
+          <strong>{statusLabel}</strong>
+        </div>
+        {showAudioElement ? (
+          <audio
+            ref={audioRef}
+            controls
+            src={audioUrl}
+            className="training-native-audio"
+            onTimeUpdate={onAudioTimeUpdate}
+            onEnded={onAudioEnded}
+          />
+        ) : null}
+        <div className="training-control-grid">
+          <button type="button" onClick={onPlay} disabled={!canPlay}>
+            {playLabel}
+          </button>
+          <button type="button" className="secondary-button" onClick={onReplay} disabled={!canReplay}>
+            Replay
+          </button>
+          <button type="button" className="secondary-button" onClick={onPause} disabled={!canPause}>
+            Pause
+          </button>
+          <button type="button" className="secondary-button" onClick={onStop} disabled={!canStop}>
+            Stop
+          </button>
+        </div>
+      </section>
+
+      <section className="training-card training-input-card" aria-label="Dictation input">
+        <label>
+          <span>Type what you hear</span>
+          <textarea
+            value={currentTextValue}
+            onChange={(event) => onTextChange(event.target.value)}
+            onKeyDown={onTextKeyDown}
+            placeholder={textPlaceholder}
+            readOnly={readOnly}
+            rows={10}
+          />
+        </label>
+      </section>
+
+      <section className="training-card training-submit-card">
+        <button type="button" className="training-submit-button" onClick={onSubmit} disabled={!canSubmit}>
+          {submitLabel}
+        </button>
+        {message ? <p className={message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') ? 'error' : 'hint'}>{message}</p> : null}
+      </section>
+
+      <section className="training-card training-generation-card" aria-label="Generate new sessions">
+        <div className="training-generation-grid">
+          {generationButtons.map((button) => (
+            <button
+              key={button.label}
+              type="button"
+              className="training-generation-button"
+              onClick={button.onClick}
+              disabled={button.disabled}
+              title={button.title}
+            >
+              {button.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
 export default App;
 
 function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', name?: string): StoredSession {
@@ -10329,7 +10734,7 @@ function buildOpenRouterDiversificationHints({
   recentSessions,
 }: {
   durationMinutes: 2 | 3 | 4;
-  targetDifficulty?: 'normal' | 'hard';
+  targetDifficulty?: DictationScriptDifficulty;
   recentSessions: Array<{ title: string; opener: string }>;
 }): string[] {
   const hints: string[] = [
@@ -10339,6 +10744,8 @@ function buildOpenRouterDiversificationHints({
     hints.push('Use advanced grammar and vocabulary; avoid reusing simpler beginner sentence patterns.');
   } else if (targetDifficulty === 'normal') {
     hints.push('Keep medium complexity and avoid highly advanced sentence nesting.');
+  } else if (targetDifficulty === 'easy') {
+    hints.push('Use simpler vocabulary, shorter clauses, and everyday topics.');
   }
   const recentOpeners = recentSessions
     .map((session) => session.opener.replace(/\s+/g, ' ').trim())
