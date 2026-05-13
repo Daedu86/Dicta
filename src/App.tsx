@@ -1936,6 +1936,7 @@ function App() {
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
+    const fallbackModels = selectOpenRouterFallbackModelIds(model, openRouterModels);
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
       const sessionFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
@@ -1955,7 +1956,7 @@ function App() {
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, prompt, maxTokens: targetMaxTokens }),
+        body: JSON.stringify({ model, prompt, maxTokens: targetMaxTokens, fallbackModels }),
       });
       if (!response.ok) {
         const text = await response.text();
@@ -6482,12 +6483,13 @@ function OpenRouterWorkspace({
     updateGenerationSlot(slotId, { error: '' });
     const slotPrompt = buildVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
     const slotMaxTokens = generateDurationMinutes === 2 ? 1000 : generateDurationMinutes === 3 ? 1300 : 1600;
+    const fallbackModels = selectOpenRouterFallbackModelIds(slotModel, models);
     const startedAt = performance.now();
     try {
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: slotModel, prompt: slotPrompt, maxTokens: slotMaxTokens }),
+        body: JSON.stringify({ model: slotModel, prompt: slotPrompt, maxTokens: slotMaxTokens, fallbackModels }),
       });
       if (!response.ok) {
         const text = await response.text();
@@ -9527,6 +9529,33 @@ function formatSessionGenerationOrigin(origin: GenerationOrigin): string {
   if (origin === 'openrouter') return 'OpenRouter generated';
   if (origin === 'fallback-template') return 'Local fallback template';
   return 'Manual/imported';
+}
+
+function selectOpenRouterFallbackModelIds(
+  defaultModel: string,
+  models: Array<{ id: string; name?: string; context_length?: number }>,
+): string[] {
+  const normalizedDefault = defaultModel.trim();
+  return models
+    .map((model) => model.id.trim())
+    .filter((id) => id && id !== normalizedDefault)
+    .sort((a, b) => rankOpenRouterFreeModelId(b) - rankOpenRouterFreeModelId(a) || a.localeCompare(b))
+    .slice(0, 2);
+}
+
+function rankOpenRouterFreeModelId(id: string): number {
+  const normalized = id.toLowerCase();
+  let score = 0;
+  if (normalized.includes(':free')) score += 10;
+  if (normalized.includes('flash')) score += 5;
+  if (normalized.includes('gemini')) score += 4;
+  if (normalized.includes('qwen')) score += 4;
+  if (normalized.includes('llama')) score += 3;
+  if (normalized.includes('mistral')) score += 3;
+  if (normalized.includes('gemma')) score += 3;
+  if (normalized.includes('8b') || normalized.includes('7b') || normalized.includes('3b')) score += 2;
+  if (normalized.includes('70b') || normalized.includes('405b')) score -= 4;
+  return score;
 }
 
 function benchmarkSubtitle(inputMode: InputMode): string {
