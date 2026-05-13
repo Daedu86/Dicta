@@ -4309,16 +4309,16 @@ function App() {
             <div className="brand-copy">
               <h1>Dicta MVP</h1>
               <p>Adaptive real-time dictation training</p>
-            </div>
-            <span
-              className={`brand-llm-status ${openRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
-              title={openRouterDefaultModel.trim() ? `Selected OpenRouter model: ${openRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
-            >
-              <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
-              <span className="brand-llm-status-text">
-                {openRouterDefaultModel.trim() ? `Model set: ${openRouterDefaultModel.trim()}` : 'No model set'}
+              <span
+                className={`brand-llm-status ${openRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
+                title={openRouterDefaultModel.trim() ? `Selected OpenRouter model: ${openRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
+              >
+                <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
+                <span className="brand-llm-status-text">
+                  {openRouterDefaultModel.trim() ? `Model set: ${openRouterDefaultModel.trim()}` : 'No model set'}
+                </span>
               </span>
-            </span>
+            </div>
           </div>
           <div className="brand-header-actions">
             <button
