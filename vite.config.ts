@@ -8,6 +8,16 @@ import path from 'node:path';
 
 let kokoroSidecarProcess: ChildProcess | null = null;
 let cosyvoiceSidecarProcess: ChildProcess | null = null;
+const localOpenRouterJobs = new Map<string, {
+  jobId: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  request: Record<string, unknown>;
+  result: unknown;
+  error: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+}>();
 
 export default defineConfig(({ mode }) => {
   loadEnv(mode, process.cwd(), '');
@@ -243,6 +253,137 @@ export default defineConfig(({ mode }) => {
           } catch (error) {
             res.statusCode = 500;
             res.end(error instanceof Error ? error.message : 'OpenRouter test request failed.');
+          }
+        });
+
+        server.middlewares.use('/api/openrouter/jobs', async (req, res) => {
+          if (req.method === 'GET') {
+            const url = new URL(req.url ?? '', 'http://localhost');
+            const jobId = url.searchParams.get('id') ?? '';
+            const job = localOpenRouterJobs.get(jobId);
+            if (!job) {
+              res.statusCode = 404;
+              res.end('OpenRouter job not found.');
+              return;
+            }
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(job));
+            return;
+          }
+
+          if (req.method !== 'POST') {
+            res.statusCode = 405;
+            res.end('Method not allowed');
+            return;
+          }
+
+          const openRouterApiKey = await getOpenRouterApiKey();
+          if (!openRouterApiKey) {
+            res.statusCode = 400;
+            res.end('Missing OPENROUTER_API_KEY. Set it in .env.local and try again.');
+            return;
+          }
+
+          try {
+            const body = await new Promise<string>((resolve, reject) => {
+              let data = '';
+              req.on('data', (chunk) => {
+                data += chunk;
+              });
+              req.on('end', () => resolve(data));
+              req.on('error', reject);
+            });
+            const parsed = JSON.parse(body) as {
+              model?: string;
+              prompt?: string;
+              maxTokens?: number;
+              inputMode?: string;
+              language?: string;
+              slotLabel?: string;
+              durationMinutes?: number;
+              targetDifficulty?: string;
+            };
+            const model = parsed.model?.trim() ?? '';
+            const prompt = parsed.prompt?.trim() ?? '';
+            if (!model || !prompt) {
+              res.statusCode = 400;
+              res.end('Missing model or prompt.');
+              return;
+            }
+
+            const now = new Date().toISOString();
+            const jobId = randomUUID();
+            const requestPayload = {
+              model,
+              prompt,
+              maxTokens: parsed.maxTokens,
+              inputMode: parsed.inputMode,
+              language: parsed.language,
+              slotLabel: parsed.slotLabel,
+              durationMinutes: parsed.durationMinutes,
+              targetDifficulty: parsed.targetDifficulty,
+            };
+            const job = {
+              jobId,
+              status: 'queued' as const,
+              request: requestPayload,
+              result: null,
+              error: '',
+              createdAt: now,
+              updatedAt: now,
+              completedAt: null,
+            };
+            localOpenRouterJobs.set(jobId, job);
+
+            void (async () => {
+              const startedAt = new Date().toISOString();
+              localOpenRouterJobs.set(jobId, { ...job, status: 'running', updatedAt: startedAt });
+              try {
+                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${openRouterApiKey}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': (req.headers.origin as string | undefined) ?? 'http://localhost:5173',
+                    'X-Title': 'Dicta MVP (local)',
+                  },
+                  body: JSON.stringify({
+                    model,
+                    messages: [{ role: 'user', content: prompt }],
+                    ...(parsed.maxTokens ? { max_tokens: parsed.maxTokens } : {}),
+                  }),
+                });
+                const responseBody = await response.text();
+                if (!response.ok) throw new Error(responseBody || `OpenRouter request failed (${response.status}).`);
+                const payload = JSON.parse(responseBody) as { choices?: Array<{ message?: { content?: string } }> };
+                const text = typeof payload.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
+                if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
+                const completedAt = new Date().toISOString();
+                localOpenRouterJobs.set(jobId, {
+                  ...job,
+                  status: 'succeeded',
+                  result: { text, payload, model },
+                  updatedAt: completedAt,
+                  completedAt,
+                });
+              } catch (error) {
+                const completedAt = new Date().toISOString();
+                localOpenRouterJobs.set(jobId, {
+                  ...job,
+                  status: 'failed',
+                  error: error instanceof Error ? error.message : 'OpenRouter job failed.',
+                  updatedAt: completedAt,
+                  completedAt,
+                });
+              }
+            })();
+
+            res.statusCode = 202;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(job));
+          } catch (error) {
+            res.statusCode = 500;
+            res.end(error instanceof Error ? error.message : 'OpenRouter job request failed.');
           }
         });
 

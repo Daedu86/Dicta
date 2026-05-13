@@ -1,0 +1,107 @@
+import type { DictationScriptDifficulty } from './adaptive/dictationScriptValidation';
+import type { InputMode, LanguageCode } from './adaptive/types';
+
+export const OPENROUTER_ACTIVE_JOB_STORAGE_KEY = 'dicta.openrouterActiveJob.v1';
+
+export type OpenRouterJobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+
+export type ActiveOpenRouterJob = {
+  jobId: string;
+  model: string;
+  slotLabel: string;
+  inputMode: InputMode;
+  language: LanguageCode;
+  durationMinutes: 2 | 3 | 4;
+  targetDifficulty?: DictationScriptDifficulty;
+  startedAt: string;
+};
+
+export type OpenRouterJobResponse = {
+  jobId: string;
+  status: OpenRouterJobStatus;
+  request?: Record<string, unknown>;
+  result?: unknown;
+  error?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  completedAt?: string | null;
+};
+
+export function loadActiveOpenRouterJob(): ActiveOpenRouterJob | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return normalizeActiveOpenRouterJob(JSON.parse(window.localStorage.getItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY) ?? 'null'));
+  } catch {
+    return null;
+  }
+}
+
+export function persistActiveOpenRouterJob(job: ActiveOpenRouterJob): void {
+  window.localStorage.setItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY, JSON.stringify(job));
+}
+
+export function clearActiveOpenRouterJob(): void {
+  window.localStorage.removeItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY);
+}
+
+export function extractOpenRouterJobText(result: unknown): string {
+  const record = asRecord(result);
+  const text = typeof record.text === 'string' ? record.text : '';
+  if (text.trim()) return text;
+
+  const payload = asRecord(record.payload);
+  const choices = Array.isArray(payload.choices) ? payload.choices : [];
+  const content = asRecord(asRecord(choices[0]).message).content;
+  return typeof content === 'string' ? content : '';
+}
+
+export function isOpenRouterJobTerminal(status: OpenRouterJobStatus): boolean {
+  return status === 'succeeded' || status === 'failed';
+}
+
+function normalizeActiveOpenRouterJob(value: unknown): ActiveOpenRouterJob | null {
+  const record = asRecord(value);
+  const jobId = stringField(record, 'jobId');
+  const model = stringField(record, 'model');
+  const slotLabel = stringField(record, 'slotLabel');
+  const inputMode = stringField(record, 'inputMode');
+  const language = stringField(record, 'language');
+  const durationMinutes = Number(record.durationMinutes);
+  const startedAt = stringField(record, 'startedAt');
+
+  if (!jobId || !model || !slotLabel || !isInputMode(inputMode) || !isLanguage(language) || !isDuration(durationMinutes) || !startedAt) {
+    return null;
+  }
+
+  const targetDifficulty = stringField(record, 'targetDifficulty');
+  return {
+    jobId,
+    model,
+    slotLabel,
+    inputMode,
+    language,
+    durationMinutes,
+    ...(targetDifficulty === 'easy' || targetDifficulty === 'normal' || targetDifficulty === 'hard' ? { targetDifficulty } : {}),
+    startedAt,
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function stringField(record: Record<string, unknown>, key: string): string {
+  return typeof record[key] === 'string' ? record[key] : '';
+}
+
+function isInputMode(value: string): value is InputMode {
+  return value === 'audio' || value === 'browser-tts' || value === 'kokoro' || value === 'qwen-cloud';
+}
+
+function isLanguage(value: string): value is LanguageCode {
+  return value === 'en' || value === 'es' || value === 'de';
+}
+
+function isDuration(value: number): value is 2 | 3 | 4 {
+  return value === 2 || value === 3 || value === 4;
+}

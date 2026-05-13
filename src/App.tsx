@@ -37,6 +37,15 @@ import {
   type OpenRouterGeneratePromptSource,
 } from './core/adaptive/openRouterGenerationPrompt';
 import {
+  clearActiveOpenRouterJob,
+  extractOpenRouterJobText,
+  isOpenRouterJobTerminal,
+  loadActiveOpenRouterJob,
+  persistActiveOpenRouterJob,
+  type ActiveOpenRouterJob,
+  type OpenRouterJobResponse,
+} from './core/openRouterJobs';
+import {
   isTransientGenerationErrorSessionLike,
   isTransientOpenRouterGenerationError,
 } from './core/adaptive/openRouterFallbackScript';
@@ -431,6 +440,8 @@ function App() {
   const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name?: string; context_length?: number }>>([]);
   const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [openRouterError, setOpenRouterError] = useState('');
+  const [activeOpenRouterJob, setActiveOpenRouterJob] = useState<ActiveOpenRouterJob | null>(() => loadActiveOpenRouterJob());
+  const [openRouterJobStatus, setOpenRouterJobStatus] = useState('');
   const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
   const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
   const [dictaLanguageView, setDictaLanguageView] = useState<MetricsLanguageView>(() =>
@@ -548,6 +559,7 @@ function App() {
   );
   const supabasePullInFlightRef = useRef(false);
   const deletedSessionIdsRef = useRef<Set<string>>(loadDeletedSessionIds());
+  const consumedOpenRouterJobIdsRef = useRef<Set<string>>(new Set());
   const kokoroSemanticPhrasesRef = useRef<SemanticPhrase[]>([]);
   const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
   const kokoroSemanticPhraseReplayCountRef = useRef(0);
@@ -700,6 +712,73 @@ function App() {
 
     return () => window.clearTimeout(id);
   }, [kokoroEnabled, kokoroText, kokoroStatus]);
+
+  useEffect(() => {
+    if (!activeOpenRouterJob) {
+      setOpenRouterJobStatus('');
+      return;
+    }
+
+    const trackedJob = activeOpenRouterJob;
+    let cancelled = false;
+    let intervalId = 0;
+
+    async function pollOpenRouterJob(): Promise<void> {
+      try {
+        const response = await fetch(`/api/openrouter/jobs?id=${encodeURIComponent(trackedJob.jobId)}`);
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `OpenRouter job status failed (${response.status}).`);
+        }
+        const job = (await response.json()) as OpenRouterJobResponse;
+        if (cancelled) return;
+
+        const elapsedSec = Math.max(0, Math.round((Date.now() - new Date(trackedJob.startedAt).getTime()) / 1000));
+        if (!isOpenRouterJobTerminal(job.status)) {
+          setOpenRouterJobStatus(`Generating with OpenRouter... safe to refresh. Model: ${trackedJob.model}. Elapsed: ${elapsedSec}s.`);
+          return;
+        }
+
+        clearActiveOpenRouterJob();
+        setActiveOpenRouterJob(null);
+        setOpenRouterJobStatus('');
+
+        if (job.status === 'failed') {
+          setOpenRouterError(job.error || 'OpenRouter job failed.');
+          return;
+        }
+
+        if (consumedOpenRouterJobIdsRef.current.has(trackedJob.jobId)) return;
+        consumedOpenRouterJobIdsRef.current.add(trackedJob.jobId);
+
+        const text = extractOpenRouterJobText(job.result);
+        if (!text.trim()) {
+          setOpenRouterError('OpenRouter job finished without usable text.');
+          return;
+        }
+
+        const validation = validateGeneratedScriptForTarget(stripJsonFence(text), trackedJob.inputMode, trackedJob.language as BenchmarkLanguageButton);
+        if (validation.ok) {
+          createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
+        } else {
+          setOpenRouterError(validation.errors.join(' ') || 'Generated script did not validate.');
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setOpenRouterError(error instanceof Error ? error.message : 'OpenRouter job polling failed.');
+      }
+    }
+
+    void pollOpenRouterJob();
+    intervalId = window.setInterval(() => {
+      void pollOpenRouterJob();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [activeOpenRouterJob]);
 
   useEffect(() => {
     window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, dictaLanguageView);
@@ -1947,7 +2026,7 @@ function App() {
     targetDifficulty?: DictationScriptDifficulty;
     difficultyInstruction?: string;
   }): Promise<void> {
-    if (!activeSession || isBusy) return;
+    if (!activeSession || isBusy || activeOpenRouterJob) return;
     const model = openRouterDefaultModel.trim();
     const inputMode = mapSessionInputMode(activeSession.inputMode);
     const languageCandidate = resolveStoredSessionLanguage(activeSession);
@@ -1964,7 +2043,6 @@ function App() {
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
-    const wakeLock = await requestOpenRouterWakeLock();
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
       const sessionFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
@@ -1981,31 +2059,40 @@ function App() {
           recentSessions: recentDictationSessionHints,
         }),
       });
-      const response = await fetch('/api/openrouter/chat', {
+      const response = await fetch('/api/openrouter/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, prompt, maxTokens: targetMaxTokens }),
+        body: JSON.stringify({
+          model,
+          prompt,
+          maxTokens: targetMaxTokens,
+          slotLabel,
+          inputMode,
+          language,
+          durationMinutes,
+          targetDifficulty,
+        }),
       });
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || `Generation request failed (${response.status}).`);
       }
-      const payload = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
+      const payload = (await response.json()) as OpenRouterJobResponse;
+      const jobId = payload.jobId;
+      if (!jobId) throw new Error('OpenRouter job did not return an id.');
+      const activeJob: ActiveOpenRouterJob = {
+        jobId,
+        model,
+        slotLabel,
+        inputMode,
+        language,
+        durationMinutes,
+        ...(targetDifficulty ? { targetDifficulty } : {}),
+        startedAt: new Date().toISOString(),
       };
-      const text = typeof payload.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
-      if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
-      const validation = validateGeneratedScriptForTarget(stripJsonFence(text), inputMode, language);
-      if (validation.ok) {
-        createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
-      } else {
-        createOpenRouterErrorSession({
-          slotLabel,
-          inputMode,
-          language,
-          message: validation.errors.join(' ') || 'Generated script did not validate.',
-        }, { navigateToLeaderboard: false });
-      }
+      persistActiveOpenRouterJob(activeJob);
+      setActiveOpenRouterJob(activeJob);
+      setOpenRouterJobStatus(`Generating with OpenRouter... safe to refresh. Model: ${model}. Elapsed: 0s.`);
     } catch (err) {
       const message =
         err instanceof TypeError
@@ -2026,7 +2113,6 @@ function App() {
         setOpenRouterError(message);
       }
     } finally {
-      await releaseOpenRouterWakeLock(wakeLock);
       setBusy(false);
     }
   }
@@ -4535,24 +4621,24 @@ function App() {
           ? submitKokoroSession
           : submitTtsSession,
     submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
-    message: error || exportMessage || openRouterError,
+    message: error || exportMessage || openRouterJobStatus || openRouterError,
     generationButtons: [
       {
-        label: directOpenRouterBusy ? 'Generating easy...' : 'New Easy Session',
+        label: directOpenRouterBusy || activeOpenRouterJob ? 'Generating easy...' : 'New Easy Session',
         onClick: () => void generateEasyNextSessionFromOpenRouter(),
-        disabled: directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
+        disabled: directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
       },
       {
-        label: directIntermediateOpenRouterBusy ? 'Generating medium...' : 'New Medium Session',
+        label: directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating medium...' : 'New Medium Session',
         onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-        disabled: directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
+        disabled: directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
       },
       {
-        label: directAdvancedOpenRouterBusy ? 'Generating hard...' : 'New Hard Session',
+        label: directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating hard...' : 'New Hard Session',
         onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-        disabled: directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
+        disabled: directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
       },
       {
@@ -5487,40 +5573,40 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateNextSessionFromOpenRouter()}
-                        disabled={directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterDefaultModel.trim()
                             ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
                             : 'Set a default OpenRouter model first.'
                         }
                       >
-                        {directOpenRouterBusy ? 'Generating...' : 'Generate next session'}
+                        {directOpenRouterBusy || activeOpenRouterJob ? 'Generating...' : 'Generate next session'}
                       </button>
                       <button
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                        disabled={directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
                             : 'Set a default OpenRouter model first.'
                         }
                       >
-                        {directIntermediateOpenRouterBusy ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
+                        {directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
                       </button>
                       <button
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                        disabled={directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
                             : 'Set a default OpenRouter model first.'
                         }
                       >
-                        {directAdvancedOpenRouterBusy ? 'Generating advanced...' : 'Generate next session - Advanced'}
+                        {directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating advanced...' : 'Generate next session - Advanced'}
                       </button>
                       <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
                         OpenRouter script
@@ -5686,40 +5772,40 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateNextSessionFromOpenRouter()}
-                        disabled={directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterDefaultModel.trim()
                             ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
                             : 'Set a default OpenRouter model first.'
                         }
                       >
-                        {directOpenRouterBusy ? 'Generating...' : 'Generate next session'}
+                        {directOpenRouterBusy || activeOpenRouterJob ? 'Generating...' : 'Generate next session'}
                       </button>
                       <button
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                        disabled={directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
                             : 'Set a default OpenRouter model first.'
                         }
                       >
-                        {directIntermediateOpenRouterBusy ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
+                        {directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
                       </button>
                       <button
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                        disabled={directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
                             : 'Set a default OpenRouter model first.'
                         }
                       >
-                        {directAdvancedOpenRouterBusy ? 'Generating advanced...' : 'Generate next session - Advanced'}
+                        {directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating advanced...' : 'Generate next session - Advanced'}
                       </button>
                       <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
                         OpenRouter script

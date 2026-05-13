@@ -174,6 +174,10 @@ Optional Supabase sync keeps these same browser stores synced across devices for
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUPABASE_SYNC_PROFILE_ID`
 
+Durable mobile OpenRouter generation also uses Supabase from server routes. Create `dicta_openrouter_jobs` with `docs/supabase-openrouter-jobs.sql` and add this server-only Vercel/local env var:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+
 Vercel note: `VITE_*` env vars are baked in at build time, so after changing them you must redeploy before your phone sees sync enabled.
 
 CLI helper (Windows): `scripts/setup_supabase_sync.ps1` links a project and applies the SQL after substituting your chosen profile id.

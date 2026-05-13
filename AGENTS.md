@@ -68,6 +68,8 @@ Supabase env vars are public Vite build vars and must be set locally and in Verc
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUPABASE_SYNC_PROFILE_ID`
 
+OpenRouter durable jobs use `dicta_openrouter_jobs` via server routes only. `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be referenced from Vite/client code.
+
 After changing Vite env vars in Vercel, redeploy because they are baked into the build.
 
 ## OpenRouter and Deployment
