@@ -2822,6 +2822,60 @@ textarea[readonly] {
   background: #9dccff;
 }
 
+.tts-media-seek {
+  --tts-progress: 0%;
+  width: 100%;
+  min-width: 80px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: #9dccff;
+  cursor: pointer;
+}
+
+.tts-media-seek:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tts-media-seek::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #9dccff var(--tts-progress), rgba(220, 232, 246, 0.2) var(--tts-progress));
+}
+
+.tts-media-seek::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: #dce8f6;
+  border: 2px solid #0b1f36;
+}
+
+.tts-media-seek::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(220, 232, 246, 0.2);
+}
+
+.tts-media-seek::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #9dccff;
+}
+
+.tts-media-seek::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #dce8f6;
+  border: 2px solid #0b1f36;
+}
+
 .bottom-summary-section {
   margin-bottom: 0.75rem;
 }

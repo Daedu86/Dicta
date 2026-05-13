@@ -23,6 +23,7 @@ export type ControlAction =
   | 'pause'
   | 'resume'
   | 'stop'
+  | 'seek'
   | 'submit'
   | 'replay_phrase'
   | 'rewind_phrase'

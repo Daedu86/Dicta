@@ -508,6 +508,7 @@ function App() {
   const ttsChunkStartWordIndexRef = useRef(0);
   const ttsChunkWordCountRef = useRef(0);
   const ttsCompletedSourceWordsRef = useRef(0);
+  const ttsPausedAtWordIndexRef = useRef<number | null>(null);
   const ttsLagOutlierCountRef = useRef(0);
   const ttsUnsafeChunkCountRef = useRef(0);
   const ttsChunkAccuracyWindowRef = useRef<number[]>([]);
@@ -2403,6 +2404,10 @@ function App() {
   }
 
   function playTts(): void {
+    playTtsFromWord(ttsStatus === 'paused' ? (ttsPausedAtWordIndexRef.current ?? ttsCompletedSourceWordsRef.current) : 0);
+  }
+
+  function playTtsFromWord(startWordIndex: number): void {
     if (sessionStatus === 'finished') {
       setError('Reset the finished session before playing TTS again.');
       return;
@@ -2432,7 +2437,8 @@ function App() {
     }
 
     const speech = window.speechSynthesis;
-    let chunkIndex = 0;
+    const clampedStartWordIndex = Math.floor(clamp(startWordIndex, 0, Math.max(0, sourceWords.length - 1)));
+    let chunkIndex = clampedStartWordIndex > 0 ? clampedStartWordIndex : 0;
     let macroPhraseIndex = 0;
     let macroWordOffset = 0;
     let cancelled = false;
@@ -2443,13 +2449,18 @@ function App() {
       acc.push(prev);
       return acc;
     }, []);
+    macroPhraseIndex = semanticPhraseIndexForWordIndex(semanticPhrases, clampedStartWordIndex);
+    macroWordOffset = Math.max(0, clampedStartWordIndex - (semanticPhraseStartWordIndices[macroPhraseIndex] ?? 0));
     let lastPhraseSize: PhraseSize = 'medium';
     let lastBoundaryStrictness: 'sentence' | 'clause' | 'phrase' = 'sentence';
-    beginAdaptiveSessionFeedback('browser-tts', ttsLanguage, semanticPhrases.length);
+    if (clampedStartWordIndex === 0) {
+      beginAdaptiveSessionFeedback('browser-tts', ttsLanguage, semanticPhrases.length);
+    }
     ttsSemanticPhraseAdvanceCountRef.current = 0;
     ttsSemanticPhraseReplayCountRef.current = 0;
     ttsStartedAtMsRef.current = performance.now();
-    ttsCompletedSourceWordsRef.current = 0;
+    ttsCompletedSourceWordsRef.current = clampedStartWordIndex;
+    ttsPausedAtWordIndexRef.current = null;
     ttsLagOutlierCountRef.current = 0;
     ttsUnsafeChunkCountRef.current = 0;
     ttsChunkAccuracyWindowRef.current = [];
@@ -3466,6 +3477,11 @@ function App() {
       } else {
         qwenCloudAdapterRef.current?.pause();
       }
+    } else if ('speechSynthesis' in window) {
+      ttsPausedAtWordIndexRef.current = estimateTtsSpokenWordIndex();
+      window.speechSynthesis.cancel();
+      ttsUtteranceRef.current = null;
+      ttsChunkStartMsRef.current = null;
     }
 
     recordTtsTelemetryAction('pause');
@@ -3509,6 +3525,10 @@ function App() {
     }
 
     if (!('speechSynthesis' in window)) return;
+    if (ttsPausedAtWordIndexRef.current !== null) {
+      playTtsFromWord(ttsPausedAtWordIndexRef.current);
+      return;
+    }
     window.speechSynthesis.resume();
     recordTtsTelemetryAction('resume');
     if (ttsStartedAtMsRef.current === null) {
@@ -3535,6 +3555,9 @@ function App() {
       window.speechSynthesis.cancel();
     }
     ttsUtteranceRef.current = null;
+    ttsChunkStartMsRef.current = null;
+    ttsPausedAtWordIndexRef.current = null;
+    ttsCompletedSourceWordsRef.current = 0;
     setTtsCurrentChunk('');
     setTtsPacingMode('balanced');
     setTtsSpeechRate(1);
@@ -3544,6 +3567,28 @@ function App() {
       return ttsPracticeText.trim() ? 'paused' : 'ready';
     });
     setTtsStatus(ttsText.trim() ? 'ready' : 'idle');
+  }
+
+  function seekTtsPlayback(percent: number): void {
+    if (activeInputMode !== 'input2' || !ttsHasText || sessionStatus === 'finished') return;
+    const wordCount = ttsTranscript?.words.length ?? 0;
+    if (wordCount === 0) return;
+    const targetWordIndex = Math.floor(clamp(percent, 0, 1) * Math.max(0, wordCount - 1));
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    ttsPausedAtWordIndexRef.current = null;
+    ttsCompletedSourceWordsRef.current = targetWordIndex;
+    ttsChunkStartMsRef.current = null;
+    recordTtsTelemetryAction('seek');
+    if (ttsStatus === 'playing' || ttsStatus === 'paused') {
+      playTtsFromWord(targetWordIndex);
+    } else {
+      setTtsStatus('ready');
+      setRunning(false);
+      setSessionStatus((current) => (current === 'finished' ? current : 'paused'));
+      setTtsPlayerProgressTick((value) => value + 1);
+    }
   }
 
   function applyKokoroPerformanceSample(options: { action?: ControlAction; finalize?: boolean } = {}): void {
@@ -5320,9 +5365,19 @@ function App() {
                         <span className="tts-media-time">
                           {formatDuration(ttsPlayerCurrentSec)} / {formatDuration(ttsPlayerDurationSec)}
                         </span>
-                        <div className="tts-media-progress" aria-hidden="true">
-                          <span style={{ width: `${ttsPlayerProgressPercent}%` }} />
-                        </div>
+                        <input
+                          className="tts-media-seek"
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={Math.round(ttsPlayerProgressPercent)}
+                          onChange={(event) => seekTtsPlayback(Number(event.currentTarget.value) / 100)}
+                          disabled={!ttsHasText || ttsPlayerDurationSec === 0}
+                          aria-label="Seek Browser TTS playback"
+                          title="Seek Browser TTS playback"
+                          style={{ '--tts-progress': `${ttsPlayerProgressPercent}%` } as React.CSSProperties}
+                        />
                         <button
                           type="button"
                           className="tts-media-icon-button"
@@ -5368,7 +5423,7 @@ function App() {
                       ) : null}
                     </div>
                     <div className="tts-source-actions">
-                      <button type="button" className="secondary-button" onClick={playTts} disabled={!ttsHasText}>
+                      <button type="button" className="secondary-button" onClick={playTts} disabled={!ttsHasText || ttsStatus === 'playing'}>
                         Play
                       </button>
                       <button type="button" className="secondary-button" onClick={pauseTts} disabled={ttsStatus !== 'playing'}>
