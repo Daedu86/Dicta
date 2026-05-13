@@ -157,6 +157,7 @@ type StoredSession = {
   metrics: SessionMetrics;
   telemetry: SessionTelemetry;
   sessionSource: SessionSource;
+  generationOrigin: GenerationOrigin;
   dictationScript: DictationScript | null;
   generationError?: string;
 };
@@ -164,6 +165,7 @@ type StoredSession = {
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 type SessionSource = 'plainText' | 'dictationScript';
+type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
 type TtsLanguage = 'en' | 'de' | 'es';
 type TypingLanguage = 'en' | 'de' | 'es';
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
@@ -1736,15 +1738,22 @@ function App() {
     setExportMessage('DictationScript session created and locked.');
   }
 
-  function createSessionFromOpenRouterScript(script: DictationScript, options: { navigateToLeaderboard?: boolean } = {}): void {
+  function createSessionFromOpenRouterScript(
+    script: DictationScript,
+    options: { navigateToLeaderboard?: boolean; generationOrigin?: GenerationOrigin } = {},
+  ): void {
     const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
+    const generationOrigin = options.generationOrigin ?? 'openrouter';
     const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
     if (!inputMode) {
       setOpenRouterError('Generated script inputMode must match input1/input2/input3/input4 or audio/browser-tts/kokoro/qwen-cloud.');
       return;
     }
 
-    const nextSession = createSessionFromScript(script, getNextSessionIndex(sessions), inputMode);
+    const nextSession = {
+      ...createSessionFromScript(script, getNextSessionIndex(sessions), inputMode),
+      generationOrigin,
+    };
     suppressSidebarAutoSelectRef.current = true;
     setSessions((prev) => [nextSession, ...prev]);
     setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
@@ -1959,7 +1968,7 @@ function App() {
       if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
       const validation = validateGeneratedScriptForTarget(stripJsonFence(text), inputMode, language);
       if (validation.ok) {
-        createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false });
+        createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
       } else {
         createOpenRouterErrorSession({
           slotLabel,
@@ -1983,7 +1992,7 @@ function App() {
           targetDifficulty,
           seed: `${new Date().toISOString()}|${activeSession.id}|${sessions.length}|${slotLabel}`,
         });
-        createSessionFromOpenRouterScript(fallbackScript, { navigateToLeaderboard: false });
+        createSessionFromOpenRouterScript(fallbackScript, { navigateToLeaderboard: false, generationOrigin: 'fallback-template' });
         setOpenRouterError(`${message} Created a local fallback session instead.`);
       } else if (shouldCreatePersistentGenerationErrorSession(message)) {
         createOpenRouterErrorSession({
@@ -5940,6 +5949,7 @@ function App() {
                       <span className="leaderboard-cell leaderboard-cell-rate">{session.metrics.rate.toFixed(2)}x</span>
                       <span className="leaderboard-cell leaderboard-cell-status" title={statusTitle}>
                         {statusLabel}
+                        <small>{formatSessionGenerationOrigin(session.generationOrigin)}</small>
                         {session.generationError ? <small>{session.generationError}</small> : null}
                       </span>
                       <span className="leaderboard-cell leaderboard-cell-duration">{formatSessionPlaybackDuration(session)}</span>
@@ -6326,7 +6336,7 @@ function OpenRouterWorkspace({
   defaultGenerateInputMode: InputMode;
   defaultGenerateLanguage: BenchmarkLanguageButton;
   focusGenerateRequest: number;
-  onCreateGeneratedSession: (script: DictationScript) => void;
+  onCreateGeneratedSession: (script: DictationScript, options?: { generationOrigin?: GenerationOrigin }) => void;
   onCreateGenerationErrorSession: (args: {
     slotLabel: string;
     inputMode: InputMode;
@@ -6501,7 +6511,7 @@ function OpenRouterWorkspace({
       };
       updateGenerationSlot(slotId, nextSlot);
       if (validation.ok) {
-        onCreateGeneratedSession(validation.script);
+        onCreateGeneratedSession(validation.script, { generationOrigin: 'openrouter' });
         clearGeneratedScriptDraft(slotId);
       } else {
         onCreateGenerationErrorSession({
@@ -6524,7 +6534,7 @@ function OpenRouterWorkspace({
           language: generateLanguage,
           durationMinutes: generateDurationMinutes,
         });
-        onCreateGeneratedSession(fallbackScript);
+        onCreateGeneratedSession(fallbackScript, { generationOrigin: 'fallback-template' });
         clearGeneratedScriptDraft(slotId);
         return;
       }
@@ -9500,6 +9510,12 @@ function formatSessionInputMode(mode: SessionInputMode): string {
   return 'Qwen cache';
 }
 
+function formatSessionGenerationOrigin(origin: GenerationOrigin): string {
+  if (origin === 'openrouter') return 'OpenRouter generated';
+  if (origin === 'fallback-template') return 'Local fallback template';
+  return 'Manual/imported';
+}
+
 function benchmarkSubtitle(inputMode: InputMode): string {
   if (inputMode === 'audio') return 'Real-world uploaded or recorded audio with transcript alignment.';
   if (inputMode === 'browser-tts') return 'Browser or OS voice baseline and fallback execution.';
@@ -9608,6 +9624,7 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', 
     metrics: createDefaultMetrics(),
     telemetry: cloneTelemetry(null),
     sessionSource: 'plainText',
+    generationOrigin: 'manual',
     dictationScript: null,
   };
 }
@@ -9828,6 +9845,10 @@ function loadSessions(): StoredSession[] {
         },
         telemetry: cloneTelemetry(session.telemetry),
         sessionSource: session.sessionSource === 'dictationScript' && scriptResult.ok ? 'dictationScript' : 'plainText',
+        generationOrigin:
+          session.generationOrigin === 'openrouter' || session.generationOrigin === 'fallback-template'
+            ? session.generationOrigin
+            : 'manual',
         dictationScript: scriptResult.ok ? scriptResult.script : null,
         generationError: typeof session.generationError === 'string' ? session.generationError : undefined,
       };
