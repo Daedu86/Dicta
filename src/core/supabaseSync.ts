@@ -36,6 +36,7 @@ export type DictaSyncMergeResult = DictaSyncState & {
   changed: boolean;
   imported: number;
   skipped: number;
+  deletedSessionIds: string[];
 };
 
 export function getDictaSyncConfig(env: Record<string, string | undefined>): DictaSyncConfig {
@@ -132,6 +133,7 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
 
   const benchmarks: Record<string, Record<string, unknown>> = cloneNestedRecord(local.benchmarks);
   const feedback: Record<string, Record<string, unknown[]>> = cloneFeedbackRecord(local.feedback);
+  const deletedSessionIds = new Set<string>();
 
   for (const row of rows) {
     if (!isValidSyncRow(row)) {
@@ -144,6 +146,18 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
       const id = typeof remote.id === 'string' ? remote.id : '';
       if (!id || id !== row.item_key) {
         skipped += 1;
+        continue;
+      }
+      if (remote.deleted === true) {
+        const localSession = sessionsById.get(id);
+        if (localSession && isRemoteNewer(row, localSession, ['updatedAt'])) {
+          deletedSessionIds.add(id);
+          sessionsById.delete(id);
+          changed = true;
+          imported += 1;
+        } else if (!localSession) {
+          deletedSessionIds.add(id);
+        }
         continue;
       }
       const localSession = sessionsById.get(id);
@@ -209,6 +223,7 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
     changed,
     imported,
     skipped,
+    deletedSessionIds: [...deletedSessionIds],
   };
 }
 
@@ -234,12 +249,24 @@ export async function pushSyncRows(client: SupabaseClient, profileId: string, st
 }
 
 export async function deleteSessionSyncRow(client: SupabaseClient, profileId: string, sessionId: string): Promise<void> {
-  const { error } = await client
-    .from(DICTA_SYNC_TABLE)
-    .delete()
-    .eq('profile_id', profileId)
-    .eq('item_type', 'session')
-    .eq('item_key', sessionId);
+  const deletedAt = new Date().toISOString();
+  const { error } = await client.from(DICTA_SYNC_TABLE).upsert(
+    {
+      profile_id: profileId,
+      item_type: 'session',
+      item_key: sessionId,
+      payload: {
+        id: sessionId,
+        deleted: true,
+        deletedAt,
+        updatedAt: deletedAt,
+      },
+      updated_at: deletedAt,
+    },
+    {
+      onConflict: 'profile_id,item_type,item_key',
+    },
+  );
   if (error) throw error;
 }
 

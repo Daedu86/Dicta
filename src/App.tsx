@@ -95,6 +95,13 @@ import {
   type DictaSyncState,
 } from './core/supabaseSync';
 import {
+  detectCreatedDeviceMetadata,
+  formatCreatedDeviceIcon,
+  formatCreatedDeviceTooltip,
+  normalizeCreatedDeviceKind,
+  type CreatedDeviceKind,
+} from './core/sessionDevice';
+import {
   buildRangeSummaryForLanguage,
   findLastSessionForLanguage,
   rangeLabel,
@@ -158,6 +165,8 @@ type StoredSession = {
   telemetry: SessionTelemetry;
   sessionSource: SessionSource;
   generationOrigin: GenerationOrigin;
+  createdDeviceKind: CreatedDeviceKind;
+  createdDeviceLabel?: string;
   dictationScript: DictationScript | null;
   generationError?: string;
 };
@@ -801,6 +810,10 @@ function App() {
           void Promise.allSettled(transientErrorSessionIds.map((sessionId) => deleteSessionSyncRow(client, syncConfig.profileId, sessionId)));
         }
         const merged = mergeSyncRows(syncStateRef.current, rows);
+        if (merged.deletedSessionIds.length > 0) {
+          merged.deletedSessionIds.forEach((sessionId) => deletedSessionIdsRef.current.add(sessionId));
+          persistDeletedSessionIds(deletedSessionIdsRef.current);
+        }
         const filteredMergedSessions = (merged.sessions as StoredSession[]).map(normalizeRestoredStoredSession).filter(
           (session) => !deletedSessionIdsRef.current.has(session.id) && !isTransientGenerationErrorSessionLike(session),
         );
@@ -4946,7 +4959,10 @@ function App() {
                         onClick={() => openWorkspaceForSession(session)}
                         title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
                       >
-                        <span className="pending-session-title">{getSessionDisplayTitle(session)}</span>
+                        <span className="pending-session-title">
+                          <SessionDeviceIcon session={session} />
+                          <span>{getSessionDisplayTitle(session)}</span>
+                        </span>
                         <span className="pending-session-meta">
                           {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {getPendingSessionReason(session)}
                         </span>
@@ -5963,7 +5979,8 @@ function App() {
                     >
                       <span className="leaderboard-cell leaderboard-cell-rank">#{rank}</span>
                       <span className="leaderboard-cell leaderboard-cell-name" title={getSessionDisplayTitle(session)}>
-                        {getSessionDisplayTitle(session)}
+                        <SessionDeviceIcon session={session} />
+                        <span>{getSessionDisplayTitle(session)}</span>
                       </span>
                       <span className="leaderboard-cell leaderboard-cell-points">{session.metrics.points}</span>
                       <span className="leaderboard-cell leaderboard-cell-score">{session.metrics.score}</span>
@@ -9628,10 +9645,21 @@ function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
   ];
 }
 
+function SessionDeviceIcon({ session }: { session: StoredSession }) {
+  const icon = formatCreatedDeviceIcon(session.createdDeviceKind);
+  if (!icon) return null;
+  return (
+    <span className="session-device-icon" title={formatCreatedDeviceTooltip(session.createdDeviceKind, session.createdDeviceLabel)} aria-label={formatCreatedDeviceTooltip(session.createdDeviceKind, session.createdDeviceLabel)}>
+      {icon}
+    </span>
+  );
+}
+
 export default App;
 
 function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', name?: string): StoredSession {
   const now = new Date().toISOString();
+  const deviceMetadata = detectCreatedDeviceMetadata();
   return {
     id: crypto.randomUUID(),
     name: name?.trim() || `Session ${index}`,
@@ -9659,6 +9687,7 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', 
     telemetry: cloneTelemetry(null),
     sessionSource: 'plainText',
     generationOrigin: 'manual',
+    ...deviceMetadata,
     dictationScript: null,
   };
 }
@@ -9883,6 +9912,8 @@ function loadSessions(): StoredSession[] {
           session.generationOrigin === 'openrouter' || session.generationOrigin === 'fallback-template'
             ? session.generationOrigin
             : 'manual',
+        createdDeviceKind: normalizeCreatedDeviceKind(session.createdDeviceKind),
+        createdDeviceLabel: typeof session.createdDeviceLabel === 'string' ? session.createdDeviceLabel : undefined,
         dictationScript: scriptResult.ok ? scriptResult.script : null,
         generationError: typeof session.generationError === 'string' ? session.generationError : undefined,
       };

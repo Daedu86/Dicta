@@ -723,7 +723,23 @@ button {
 }
 
 .pending-session-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   font-weight: 900;
+}
+
+.pending-session-title span:last-child,
+.leaderboard-cell-name span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-device-icon {
+  flex: 0 0 auto;
+  font-size: 0.9em;
+  line-height: 1;
 }
 
 .pending-session-meta {
@@ -1429,6 +1445,12 @@ textarea[readonly] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.leaderboard-cell-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .leaderboard-cell-status {
