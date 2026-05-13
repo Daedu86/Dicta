@@ -1965,6 +1965,7 @@ function App() {
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
+    const wakeLock = await requestOpenRouterWakeLock();
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
       const sessionFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
@@ -2024,7 +2025,7 @@ function App() {
         createSessionFromOpenRouterScript(fallbackScript, { navigateToLeaderboard: false, generationOrigin: 'fallback-template' });
         setOpenRouterError(`${message} Created a local fallback session instead.`);
       } else if (isTransientOpenRouterGenerationError(message)) {
-        setOpenRouterError(message);
+        setOpenRouterError(formatInterruptedOpenRouterMessage(message));
       } else if (shouldCreatePersistentGenerationErrorSession(message)) {
         createOpenRouterErrorSession({
           slotLabel,
@@ -2036,6 +2037,7 @@ function App() {
         setOpenRouterError(message);
       }
     } finally {
+      await releaseOpenRouterWakeLock(wakeLock);
       setBusy(false);
     }
   }
@@ -6798,6 +6800,7 @@ function OpenRouterWorkspace({
     const slotPrompt = buildVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
     const slotMaxTokens = generateDurationMinutes === 2 ? 1000 : generateDurationMinutes === 3 ? 1300 : 1600;
     const startedAt = performance.now();
+    const wakeLock = await requestOpenRouterWakeLock();
     try {
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
@@ -6872,7 +6875,7 @@ function OpenRouterWorkspace({
           language: generateLanguage,
           generatedAt: new Date().toISOString(),
           model: slotModel,
-          error: message,
+          error: formatInterruptedOpenRouterMessage(message),
         });
         return;
       }
@@ -6892,6 +6895,7 @@ function OpenRouterWorkspace({
         });
       }
     } finally {
+      await releaseOpenRouterWakeLock(wakeLock);
       setGenerateBusySlots((current) => ({ ...current, [slotId]: false }));
     }
   }
@@ -10414,7 +10418,42 @@ function shouldUseLocalFallbackForOpenRouterError(message: string): boolean {
   if (normalized.includes('http 429')) return false;
   if (normalized.includes('rate-limited')) return false;
   if (normalized.includes('generation request failed')) return false;
-  return normalized.includes('failed to fetch') || normalized.includes('failed to reach openrouter endpoint') || normalized.includes('network');
+  return false;
+}
+
+type OpenRouterWakeLockSentinel = {
+  released?: boolean;
+  release: () => Promise<void>;
+};
+
+type OpenRouterWakeLockNavigator = Navigator & {
+  wakeLock?: {
+    request: (type: 'screen') => Promise<OpenRouterWakeLockSentinel>;
+  };
+};
+
+async function requestOpenRouterWakeLock(): Promise<OpenRouterWakeLockSentinel | null> {
+  if (typeof navigator === 'undefined') return null;
+  const wakeLock = (navigator as OpenRouterWakeLockNavigator).wakeLock;
+  if (!wakeLock) return null;
+  try {
+    return await wakeLock.request('screen');
+  } catch {
+    return null;
+  }
+}
+
+async function releaseOpenRouterWakeLock(wakeLock: OpenRouterWakeLockSentinel | null): Promise<void> {
+  if (!wakeLock || wakeLock.released) return;
+  try {
+    await wakeLock.release();
+  } catch {
+    // The browser may release the lock automatically when the page is hidden.
+  }
+}
+
+function formatInterruptedOpenRouterMessage(message: string): string {
+  return `${message} No local fallback was created. Keep Dicta open and unlocked while OpenRouter finishes, then retry if the request was interrupted.`;
 }
 
 function formatSessionDate(value: string): string {
