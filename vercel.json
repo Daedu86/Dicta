@@ -17,7 +17,7 @@
       "maxDuration": 10
     },
     "api/openrouter/*.js": {
-      "maxDuration": 60
+      "maxDuration": 300
     }
   }
 }

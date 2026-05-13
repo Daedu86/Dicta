@@ -1984,7 +1984,7 @@ function App() {
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
-      if (isTransientOpenRouterGenerationError(message)) {
+      if (shouldUseLocalFallbackForOpenRouterError(message)) {
         const fallbackScript = buildFallbackOpenRouterSessionScript({
           inputMode,
           language,
@@ -1994,6 +1994,8 @@ function App() {
         });
         createSessionFromOpenRouterScript(fallbackScript, { navigateToLeaderboard: false, generationOrigin: 'fallback-template' });
         setOpenRouterError(`${message} Created a local fallback session instead.`);
+      } else if (isTransientOpenRouterGenerationError(message)) {
+        setOpenRouterError(message);
       } else if (shouldCreatePersistentGenerationErrorSession(message)) {
         createOpenRouterErrorSession({
           slotLabel,
@@ -6550,7 +6552,7 @@ function OpenRouterWorkspace({
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
-      if (isTransientOpenRouterGenerationError(message)) {
+      if (shouldUseLocalFallbackForOpenRouterError(message)) {
         const fallbackScript = buildFallbackOpenRouterSessionScript({
           inputMode: generateInputMode,
           language: generateLanguage,
@@ -6558,6 +6560,16 @@ function OpenRouterWorkspace({
         });
         onCreateGeneratedSession(fallbackScript, { generationOrigin: 'fallback-template' });
         clearGeneratedScriptDraft(slotId);
+        return;
+      }
+      if (isTransientOpenRouterGenerationError(message)) {
+        updateGenerationSlot(slotId, {
+          inputMode: generateInputMode,
+          language: generateLanguage,
+          generatedAt: new Date().toISOString(),
+          model: slotModel,
+          error: message,
+        });
         return;
       }
       updateGenerationSlot(slotId, {
@@ -9901,6 +9913,17 @@ function persistDeletedSessionIds(ids: Set<string>): void {
 
 function shouldCreatePersistentGenerationErrorSession(message: string): boolean {
   return !isTransientOpenRouterGenerationError(message);
+}
+
+function shouldUseLocalFallbackForOpenRouterError(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized.includes('selected openrouter model')) return false;
+  if (normalized.includes('openrouter did not return')) return false;
+  if (normalized.includes('http 429')) return false;
+  if (normalized.includes('rate-limited')) return false;
+  if (normalized.includes('generation request failed')) return false;
+  return normalized.includes('failed to fetch') || normalized.includes('failed to reach openrouter endpoint') || normalized.includes('network');
 }
 
 function formatSessionDate(value: string): string {

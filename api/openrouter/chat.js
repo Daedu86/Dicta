@@ -82,7 +82,7 @@ export default async function handler(req, res) {
       model,
       prompt,
       maxTokens,
-      timeoutMs: 55_000,
+      timeoutMs: 290_000,
     });
 
     res.status(response.status);
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'OpenRouter chat request failed.';
     if (message.toLowerCase().includes('aborted')) {
-      res.status(504).send(`Selected OpenRouter model "${model}" timed out after 55 seconds.`);
+      res.status(504).send(`Selected OpenRouter model "${model}" timed out after 290 seconds.`);
       return;
     }
     res.status(500).send(message);
