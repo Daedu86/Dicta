@@ -243,6 +243,11 @@ type SupabaseSyncStatus = {
   pushed: number;
 };
 
+type TtsPerformanceSampleResult = {
+  metrics: SessionMetrics;
+  telemetry: SessionTelemetry;
+};
+
 type AdminFileInventory = {
   projectRoot: string;
   folders: Array<{
@@ -867,6 +872,38 @@ function App() {
     const normalized = sessions.map((session) => normalizeSessionForPersistence(session));
     window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(normalized));
   }, [sessions]);
+
+  function persistAndPushSessionsNow(nextSessions: StoredSession[]): void {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSessions.map((session) => normalizeSessionForPersistence(session))));
+    if (!supabaseClient || !syncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
+
+    setSupabaseSyncStatus((current) => ({
+      ...current,
+      state: 'pushing',
+      message: 'Pushing final session to Supabase...',
+    }));
+    void pushSyncRows(
+      supabaseClient,
+      syncConfig.profileId,
+      buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+    )
+      .then((pushed) => {
+        setSupabaseSyncStatus((current) => ({
+          ...current,
+          state: 'synced',
+          message: 'Final session synced to Supabase.',
+          lastSyncedAt: new Date().toISOString(),
+          pushed,
+        }));
+      })
+      .catch((error) => {
+        setSupabaseSyncStatus((current) => ({
+          ...current,
+          state: 'error',
+          message: error instanceof Error ? error.message : 'Supabase sync failed.',
+        }));
+      });
+  }
 
   useEffect(() => {
     syncStateRef.current = buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage);
@@ -2421,7 +2458,7 @@ function App() {
     telemetryRef.current = next;
   }
 
-  function applyTtsPerformanceSample(options: { action?: ControlAction; finalize?: boolean } = {}): void {
+  function applyTtsPerformanceSample(options: { action?: ControlAction; finalize?: boolean } = {}): TtsPerformanceSampleResult {
     const now = performance.now();
     if (ttsStartedAtMsRef.current === null) {
       ttsStartedAtMsRef.current = now;
@@ -2449,6 +2486,16 @@ function App() {
     });
     const nextTrend = derivePerformanceTrend(nextLagSec, nextAccuracy, previousLagRef.current, previousAccuracyRef.current);
     const nextRate = ttsSpeechRate;
+    const nextScore =
+      ttsPracticeWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0
+        ? computeSessionScore({
+            accuracy: nextAccuracy,
+            lagSec: nextLagSec,
+            wpm: nextWpm,
+            rate: nextRate,
+            points: ttsPracticeEvaluation.points,
+          })
+        : 0;
 
     ttsLiveSignalRef.current = {
       accuracy: nextAccuracy,
@@ -2487,6 +2534,20 @@ function App() {
     }
 
     telemetryRef.current = nextTelemetry;
+    return {
+      metrics: {
+        controllerState: nextControllerAction,
+        rate: nextRate,
+        lagSec: nextLagSec,
+        lagWords: nextLagWords,
+        wpm: nextWpm,
+        accuracy: nextAccuracy,
+        trend: nextTrend,
+        score: nextScore,
+        points: ttsPracticeEvaluation.points,
+      },
+      telemetry: nextTelemetry,
+    };
   }
 
   applyTtsPerformanceSampleRef.current = applyTtsPerformanceSample;
@@ -2497,7 +2558,21 @@ function App() {
       return;
     }
 
-    applyTtsPerformanceSample({ action: 'submit', finalize: true });
+    const finalSample = applyTtsPerformanceSample({ action: 'submit', finalize: true });
+    const finishedAt = new Date().toISOString();
+    const nextSessions = sessions.map((session) =>
+      session.id === activeSessionId
+        ? {
+            ...session,
+            status: 'finished' as const,
+            metrics: finalSample.metrics,
+            telemetry: finalSample.telemetry,
+            updatedAt: finishedAt,
+          }
+        : session,
+    );
+    setSessions(nextSessions);
+    persistAndPushSessionsNow(nextSessions);
     stopTtsPlayback();
     setRunning(false);
     setSessionStatus('finished');
