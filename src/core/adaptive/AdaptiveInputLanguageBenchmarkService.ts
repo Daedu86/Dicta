@@ -16,6 +16,19 @@ const ROLLING_WINDOW_DAYS = 30 as const;
 const MAX_TIMELINE_POINTS = 450;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BROWSER_TTS_DE_MAX_RATE_MARGIN = 0.01;
+const BROWSER_TTS_DE_MIN_CONFIDENT_SAMPLES = 30;
+const BROWSER_TTS_DE_CONSERVATIVE_RATE_RANGE: [number, number] = [0.95, 1];
+const BROWSER_TTS_DE_CONSERVATIVE_PAUSE_MS = 1200;
+
+type BrowserTtsDeTimelinePressure = {
+  validScoringSampleCount: number;
+  supportRatio: number;
+  unsafeBoundaryRatio: number;
+  severeRawLagOutlierCount: number;
+  highLagRatio: number;
+  lowAccuracyRatio: number;
+  shouldUseConservativeRecommendation: boolean;
+};
 
 export type InputLanguageBenchmarkUpdateArgs = {
   current?: InputLanguageBenchmarkMetrics | null;
@@ -216,7 +229,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
   };
 
   if (usesFilteredBrowserTtsDeScoring && !hasBrowserTtsDeScoringSamples) {
-    return {
+    const zeroScoredNext = {
       ...next,
       rateAccuracyBuckets: current.rateAccuracyBuckets,
       recoveryScore: current.recoveryScore,
@@ -233,6 +246,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
       weakAreas: current.weakAreas,
       recommendation: current.recommendation,
     };
+    return applyBrowserTtsDeTimelinePressureFallback(zeroScoredNext);
   }
 
   next.rateAccuracyBuckets = computeRateAccuracyBuckets(scoringTimeline);
@@ -249,7 +263,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
   next.sweetSpotScore = computeSweetSpotScore(next);
   next.weakAreas = deriveWeakAreas(next);
   next.recommendation = computeBenchmarkRecommendation(next);
-  return next;
+  return applyBrowserTtsDeTimelinePressureFallback(next);
 }
 
 export function isValidBrowserTtsDeBenchmarkSample(point: AdaptiveTimelinePoint): boolean {
@@ -357,13 +371,14 @@ export function computeRateAccuracyBuckets(samples: AdaptiveTimelinePoint[]): Ra
 export function computeBenchmarkRecommendation(metrics: InputLanguageBenchmarkMetrics): InputLanguageBenchmarkRecommendation {
   const targetRateRange = calibrateTargetRateRangeForProfile(metrics, pickBestRateRange(metrics.rateAccuracyBuckets));
   const weakAreas = deriveWeakAreas(metrics);
-  const focus = weakAreas.length > 0 ? weakAreas.slice(0, 3).map(formatWeakArea) : ['Maintain stable pace and medium-length semantic phrases'];
+  const targetPhraseSize = metrics.averagePhraseDifficulty > 0.65 || metrics.averageSemanticCompleteness < 0.7 ? 'short' : metrics.preferredPhraseSize;
+  const focus = weakAreas.length > 0 ? weakAreas.slice(0, 3).map(formatWeakArea) : [`Maintain stable pace and ${targetPhraseSize}-length semantic phrases`];
   const confidence = clamp01(Math.min(1, metrics.sampleCount / 40) * metrics.sweetSpotScore);
   const inputLabel = metrics.inputMode;
   const languageLabel = String(metrics.language).toUpperCase();
   return {
     targetRateRange,
-    targetPhraseSize: metrics.averagePhraseDifficulty > 0.65 || metrics.averageSemanticCompleteness < 0.7 ? 'short' : metrics.preferredPhraseSize,
+    targetPhraseSize,
     targetPauseMs: Math.round(metrics.preferredPauseAfterPhraseMs || 700),
     nextTrainingFocus: focus,
     confidence,
@@ -394,6 +409,9 @@ export function deriveWeakAreas(metrics: InputLanguageBenchmarkMetrics): Adaptiv
   if (metrics.averageAccuracy < 0.82) weakAreas.push('low_accuracy');
   if (metrics.modeSwitchFrequency > 0.25 || metrics.rateVariance > 0.03) weakAreas.push('flow_instability');
   if (metrics.rateAccuracyBuckets.some((bucket) => bucket.rate >= 1.05 && bucket.averageAccuracy < 0.82)) weakAreas.push('high_rate');
+  if (isBrowserTtsDe(metrics.inputMode, metrics.language)) {
+    weakAreas.push(...deriveBrowserTtsDeTimelineWeakAreas(analyzeBrowserTtsDeTimelinePressure(metrics)));
+  }
   return [...new Set(weakAreas)];
 }
 
@@ -418,6 +436,94 @@ function deriveTimelineEvent(decision: PacingDecision): AdaptiveTimelinePoint['e
 
 function isBrowserTtsDe(inputMode: InputMode, language?: string | null): boolean {
   return inputMode === 'browser-tts' && normalizeBenchmarkLanguage(language).toLowerCase() === 'de';
+}
+
+function applyBrowserTtsDeTimelinePressureFallback(metrics: InputLanguageBenchmarkMetrics): InputLanguageBenchmarkMetrics {
+  if (!isBrowserTtsDe(metrics.inputMode, metrics.language)) return metrics;
+  const pressure = analyzeBrowserTtsDeTimelinePressure(metrics);
+  if (!pressure.shouldUseConservativeRecommendation) return metrics;
+  const weakAreas = [...new Set([...metrics.weakAreas, ...deriveBrowserTtsDeTimelineWeakAreas(pressure)])];
+  const nextTrainingFocus = buildBrowserTtsDeConservativeFocus(weakAreas);
+  return {
+    ...metrics,
+    weakAreas,
+    recommendation: {
+      targetRateRange: BROWSER_TTS_DE_CONSERVATIVE_RATE_RANGE,
+      targetPhraseSize: 'short',
+      targetPauseMs: BROWSER_TTS_DE_CONSERVATIVE_PAUSE_MS,
+      nextTrainingFocus,
+      confidence: Math.min(metrics.recommendation?.confidence ?? 0, 0.3),
+      summary:
+        `For browser-tts DE, playback may be stable, but benchmark confidence is low or support-mode pressure remains high. ` +
+        `Keep conservative settings at ${BROWSER_TTS_DE_CONSERVATIVE_RATE_RANGE[0].toFixed(2)}x-${BROWSER_TTS_DE_CONSERVATIVE_RATE_RANGE[1].toFixed(2)}x with short semantic phrases and focus on ${nextTrainingFocus.join(', ')}.`,
+    },
+  };
+}
+
+function analyzeBrowserTtsDeTimelinePressure(metrics: InputLanguageBenchmarkMetrics): BrowserTtsDeTimelinePressure {
+  if (!isBrowserTtsDe(metrics.inputMode, metrics.language)) {
+    return {
+      validScoringSampleCount: metrics.sampleCount,
+      supportRatio: 0,
+      unsafeBoundaryRatio: 0,
+      severeRawLagOutlierCount: 0,
+      highLagRatio: 0,
+      lowAccuracyRatio: 0,
+      shouldUseConservativeRecommendation: false,
+    };
+  }
+  const timeline = metrics.timeline.filter((point) => isBrowserTtsDe(point.inputMode, point.language));
+  const pressurePoints = timeline.filter((point) => isScoringTimelineEvent(point.event));
+  const denominator = Math.max(1, pressurePoints.length);
+  const supportCount = pressurePoints.filter((point) => point.mode === 'support' || includesDiagnosticReason(point, 'support-needed')).length;
+  const unsafeBoundaryCount = pressurePoints.filter((point) => point.phraseBoundaryType === 'unsafe' || includesDiagnosticReason(point, 'replay-blocked-boundary')).length;
+  const severeRawLagOutlierCount = pressurePoints.filter((point) => typeof point.rawLagSec === 'number' && Number.isFinite(point.rawLagSec) && Math.abs(point.rawLagSec) > 10).length;
+  const highLagCount = pressurePoints.filter((point) => Number.isFinite(point.lagSec) && point.lagSec !== -5 && point.lagSec > 2).length;
+  const lowAccuracyCount = pressurePoints.filter((point) => normalizeAccuracy(point.accuracy) < 0.7).length;
+  const supportRatio = supportCount / denominator;
+  const unsafeBoundaryRatio = unsafeBoundaryCount / denominator;
+  const highLagRatio = highLagCount / denominator;
+  const lowAccuracyRatio = lowAccuracyCount / denominator;
+  return {
+    validScoringSampleCount: metrics.sampleCount,
+    supportRatio,
+    unsafeBoundaryRatio,
+    severeRawLagOutlierCount,
+    highLagRatio,
+    lowAccuracyRatio,
+    shouldUseConservativeRecommendation:
+      metrics.sampleCount < BROWSER_TTS_DE_MIN_CONFIDENT_SAMPLES ||
+      supportRatio > 0.5 ||
+      unsafeBoundaryRatio > 0.1 ||
+      severeRawLagOutlierCount > 0 ||
+      highLagRatio > 0.15,
+  };
+}
+
+function deriveBrowserTtsDeTimelineWeakAreas(pressure: BrowserTtsDeTimelinePressure): AdaptiveWeakArea[] {
+  const weakAreas: AdaptiveWeakArea[] = [];
+  if (pressure.supportRatio > 0.5) weakAreas.push('support_dependency');
+  if (pressure.unsafeBoundaryRatio > 0.1) weakAreas.push('unsafe_boundary_pressure');
+  if (pressure.highLagRatio > 0.15 || pressure.severeRawLagOutlierCount > 0) weakAreas.push('lag');
+  if (pressure.highLagRatio > 0.15 && pressure.severeRawLagOutlierCount > 0) weakAreas.push('lag_instability');
+  if (pressure.lowAccuracyRatio > 0.25) weakAreas.push('accuracy_instability');
+  return weakAreas;
+}
+
+function buildBrowserTtsDeConservativeFocus(weakAreas: AdaptiveWeakArea[]): string[] {
+  const focus: string[] = [];
+  if (weakAreas.includes('accuracy_instability') || weakAreas.includes('low_accuracy')) focus.push('accuracy stability');
+  if (weakAreas.includes('lag') || weakAreas.includes('lag_instability')) focus.push('lag control');
+  if (weakAreas.includes('unsafe_boundary_pressure') || weakAreas.includes('unsafe_boundaries')) focus.push('safe semantic boundaries');
+  if (weakAreas.includes('support_dependency')) focus.push('reduce support dependency');
+  if (focus.length === 0) {
+    focus.push('accuracy stability', 'lag control', 'safe semantic boundaries', 'reduce support dependency');
+  }
+  return [...new Set(focus)];
+}
+
+function includesDiagnosticReason(point: AdaptiveTimelinePoint, token: string): boolean {
+  return typeof point.decisionReason === 'string' && point.decisionReason.toLowerCase().includes(token);
 }
 
 function isScoringTimelineEvent(event: AdaptiveTimelinePoint['event']): boolean {

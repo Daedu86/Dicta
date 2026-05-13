@@ -149,6 +149,45 @@ describe('session feedback diagnostics', () => {
     expect(payload.playbackDiagnostics).toEqual(feedback.playbackIssues);
   });
 
+  it('keeps clean browser-tts DE playback verdict stable even when benchmark recommendation is conservative', () => {
+    const before = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const after = {
+      ...before,
+      recommendation: {
+        ...before.recommendation,
+        targetRateRange: [0.95, 1] as [number, number],
+        targetPhraseSize: 'short' as const,
+        targetPauseMs: 1200,
+        confidence: 0.24,
+      },
+    };
+    const events: PhrasePlaybackEvent[] = Array.from({ length: 20 }, (_, index) => ({
+      ...phraseEvent(index, `p${index}`, 'phrase_completed', index + 1),
+      inputMode: 'browser-tts',
+      language: 'de',
+    }));
+
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-1',
+      inputMode: 'browser-tts',
+      language: 'de',
+      sourceType: 'dictation_script',
+      createdAt: '2026-05-13T08:00:00.000Z',
+      completedAt: '2026-05-13T08:05:00.000Z',
+      benchmarkBefore: before,
+      benchmarkAfter: after,
+      phraseEvents: events,
+      totalPhrases: 20,
+    });
+
+    expect(feedback.verdict).toBe('stable');
+    expect(feedback.playbackIssues.repeatedPhraseCount).toBe(0);
+    expect(feedback.playbackIssues.skippedPhraseCount).toBe(0);
+    expect(feedback.playbackIssues.outOfOrderAdvanceCount).toBe(0);
+    expect(feedback.playbackIssues.phraseIndexJumpCount).toBe(0);
+    expect(feedback.phraseStats.completedPhrases).toBe(20);
+  });
+
   it('scopes browser-tts DE latest feedback to the requested session only', () => {
     const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
     const currentSessionStart = {

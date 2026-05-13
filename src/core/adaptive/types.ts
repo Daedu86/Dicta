@@ -190,8 +190,12 @@ export type AdaptiveWeakArea =
   | 'unsafe_boundaries'
   | 'replay'
   | 'lag'
+  | 'lag_instability'
   | 'corrections'
   | 'low_accuracy'
+  | 'accuracy_instability'
+  | 'support_dependency'
+  | 'unsafe_boundary_pressure'
   | 'flow_instability';
 
 export interface InputLanguageBenchmarkRecommendation {
