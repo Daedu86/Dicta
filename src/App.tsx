@@ -79,6 +79,10 @@ import {
 import { buildKokoroSourceWords, type KokoroPhraseChunk } from './core/kokoroPhraseChunking';
 import { KOKORO_GERMAN_WARNING, getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
 import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
+import {
+  normalizeLiveSessionStatusForPersistence,
+  normalizeRestoredSessionStatus,
+} from './core/sessionStatusNormalization';
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { sessionSnapshotJson } from './core/sessionSnapshot';
 import {
@@ -782,7 +786,7 @@ function App() {
           void Promise.allSettled(transientErrorSessionIds.map((sessionId) => deleteSessionSyncRow(client, syncConfig.profileId, sessionId)));
         }
         const merged = mergeSyncRows(syncStateRef.current, rows);
-        const filteredMergedSessions = (merged.sessions as StoredSession[]).filter(
+        const filteredMergedSessions = (merged.sessions as StoredSession[]).map(normalizeRestoredStoredSession).filter(
           (session) => !deletedSessionIdsRef.current.has(session.id) && !isTransientGenerationErrorSessionLike(session),
         );
         supabaseInitialPullCompleteRef.current = true;
@@ -1243,6 +1247,8 @@ function App() {
             ? 'URL audio source'
             : session.audioLabel;
         const nextAudioUrl = audioFile ? '' : audioUrl;
+        const nextTelemetry = cloneTelemetry(telemetryRef.current);
+        const nextStatus = normalizeLiveSessionStatusForPersistence(sessionStatus, nextTelemetry, running);
         const changed =
           session.audioUrl !== nextAudioUrl ||
           session.audioSourceUrlInput !== audioSourceUrlInput ||
@@ -1260,7 +1266,7 @@ function App() {
           session.kokoroPracticeText !== kokoroPracticeText ||
           JSON.stringify(session.kokoroChunks) !== JSON.stringify(kokoroChunks) ||
           session.difficulty !== difficulty ||
-          session.status !== sessionStatus ||
+          session.status !== nextStatus ||
           session.metrics.controllerState !== controllerState ||
           session.metrics.rate !== rate ||
           session.metrics.lagSec !== lagSec ||
@@ -1270,7 +1276,7 @@ function App() {
           session.metrics.trend !== trend ||
           session.metrics.score !== activeVisibleScore ||
           session.metrics.points !== activePoints ||
-          !telemetryEquals(session.telemetry, telemetryRef.current);
+          !telemetryEquals(session.telemetry, nextTelemetry);
 
         if (!changed) {
           return session;
@@ -1294,7 +1300,7 @@ function App() {
           kokoroPracticeText,
           kokoroChunks,
           difficulty,
-          status: sessionStatus,
+          status: nextStatus,
           metrics: {
             controllerState,
             rate,
@@ -1306,7 +1312,7 @@ function App() {
             score: activeVisibleScore,
             points: activePoints,
           },
-          telemetry: cloneTelemetry(telemetryRef.current),
+          telemetry: nextTelemetry,
           updatedAt: new Date().toISOString(),
         };
       }),
@@ -1340,6 +1346,7 @@ function App() {
     activeVisibleScore,
     sessionStatus,
     controllerState,
+    running,
     wpm,
   ]);
 
@@ -9651,6 +9658,15 @@ function createGeneratedErrorSession({
   return { ...session, ttsLanguage: language };
 }
 
+function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
+  const telemetry = cloneTelemetry(session.telemetry);
+  return normalizeSessionForPersistence({
+    ...session,
+    telemetry,
+    status: normalizeRestoredSessionStatus(session.status, telemetry),
+  });
+}
+
 function normalizeGeneratedDictationScriptTitle(script: DictationScript): DictationScript {
   const title = script.title.trim();
   if (!isGenericGeneratedTitle(title)) return script;
@@ -9786,7 +9802,7 @@ function loadSessions(): StoredSession[] {
         kokoroPracticeText: session.kokoroPracticeText ?? '',
         kokoroChunks: session.kokoroChunks ?? [],
         difficulty: session.difficulty ?? 'normal',
-        status: isSessionStatus(session.status) ? session.status : 'ready',
+        status: normalizeRestoredSessionStatus(isSessionStatus(session.status) ? session.status : 'ready', cloneTelemetry(session.telemetry)),
         metrics: {
           ...createDefaultMetrics(),
           ...session.metrics,
@@ -9797,7 +9813,7 @@ function loadSessions(): StoredSession[] {
         generationError: typeof session.generationError === 'string' ? session.generationError : undefined,
       };
 
-      return normalizeSessionForPersistence(base);
+      return normalizeRestoredStoredSession(base);
     }).filter((session) => !deletedIds.has(session.id) && !isTransientGenerationErrorSessionLike(session));
   } catch {
     return [];
