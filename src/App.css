@@ -191,6 +191,51 @@ textarea {
   gap: 0.85rem;
   min-width: 0;
   flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+
+.brand-llm-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 34px;
+  max-width: min(360px, 100%);
+  padding: 0.25rem 0.65rem 0.25rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid #2d4f74;
+  background: rgba(7, 20, 35, 0.68);
+  color: #a7c3e6;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.brand-llm-status-set {
+  border-color: #275a3f;
+  color: #a9efc7;
+}
+
+.brand-llm-status-unset {
+  border-color: #71553a;
+  color: #f4c28b;
+}
+
+.brand-llm-status-icon {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  min-height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.brand-llm-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand-leaderboard-button {

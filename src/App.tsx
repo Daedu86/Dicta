@@ -1936,7 +1936,6 @@ function App() {
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
-    const fallbackModels = selectOpenRouterFallbackModelIds(model, openRouterModels);
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
       const sessionFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
@@ -1956,7 +1955,7 @@ function App() {
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, prompt, maxTokens: targetMaxTokens, fallbackModels }),
+        body: JSON.stringify({ model, prompt, maxTokens: targetMaxTokens }),
       });
       if (!response.ok) {
         const text = await response.text();
@@ -4311,6 +4310,15 @@ function App() {
               <h1>Dicta MVP</h1>
               <p>Adaptive real-time dictation training</p>
             </div>
+            <span
+              className={`brand-llm-status ${openRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
+              title={openRouterDefaultModel.trim() ? `Selected OpenRouter model: ${openRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
+            >
+              <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
+              <span className="brand-llm-status-text">
+                {openRouterDefaultModel.trim() ? `Model set: ${openRouterDefaultModel.trim()}` : 'No model set'}
+              </span>
+            </span>
           </div>
           <div className="brand-header-actions">
             <button
@@ -5832,7 +5840,7 @@ function App() {
                         return Number.isFinite(prompt) && Number.isFinite(completion) && prompt === 0 && completion === 0;
                       })
                       .map((model) => ({ id: model.id, name: model.name, context_length: model.context_length }))
-                      .sort((a, b) => rankOpenRouterFreeModelId(b.id) - rankOpenRouterFreeModelId(a.id) || a.id.localeCompare(b.id));
+                      .sort((a, b) => a.id.localeCompare(b.id));
                     setOpenRouterModels(freeModels);
                     setOpenRouterStatus('ready');
                     if (!openRouterDefaultModel && freeModels.length > 0) {
@@ -6483,13 +6491,12 @@ function OpenRouterWorkspace({
     updateGenerationSlot(slotId, { error: '' });
     const slotPrompt = buildVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
     const slotMaxTokens = generateDurationMinutes === 2 ? 1000 : generateDurationMinutes === 3 ? 1300 : 1600;
-    const fallbackModels = selectOpenRouterFallbackModelIds(slotModel, models);
     const startedAt = performance.now();
     try {
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: slotModel, prompt: slotPrompt, maxTokens: slotMaxTokens, fallbackModels }),
+        body: JSON.stringify({ model: slotModel, prompt: slotPrompt, maxTokens: slotMaxTokens }),
       });
       if (!response.ok) {
         const text = await response.text();
@@ -9529,37 +9536,6 @@ function formatSessionGenerationOrigin(origin: GenerationOrigin): string {
   if (origin === 'openrouter') return 'OpenRouter generated';
   if (origin === 'fallback-template') return 'Local fallback template';
   return 'Manual/imported';
-}
-
-function selectOpenRouterFallbackModelIds(
-  defaultModel: string,
-  models: Array<{ id: string; name?: string; context_length?: number }>,
-): string[] {
-  const normalizedDefault = defaultModel.trim();
-  return models
-    .map((model) => model.id.trim())
-    .filter((id) => id && id !== normalizedDefault)
-    .sort((a, b) => rankOpenRouterFreeModelId(b) - rankOpenRouterFreeModelId(a) || a.localeCompare(b))
-    .slice(0, 2);
-}
-
-function rankOpenRouterFreeModelId(id: string): number {
-  const normalized = id.toLowerCase();
-  let score = 0;
-  if (normalized.includes(':free')) score += 10;
-  if (normalized.includes('flash')) score += 5;
-  if (normalized.includes('gemini')) score += 4;
-  if (normalized.includes('qwen')) score += 4;
-  if (normalized.includes('llama')) score += 3;
-  if (normalized.includes('mistral')) score += 3;
-  if (normalized.includes('gemma')) score += 3;
-  if (normalized.includes('1b') || normalized.includes('3b')) score += 5;
-  if (normalized.includes('7b') || normalized.includes('8b')) score += 4;
-  if (normalized.includes('14b') || normalized.includes('27b')) score -= 1;
-  if (normalized.includes('70b') || normalized.includes('80b') || normalized.includes('120b') || normalized.includes('405b')) score -= 8;
-  if (normalized.includes('gpt-oss')) score -= 5;
-  if (normalized.includes('a3b')) score -= 3;
-  return score;
 }
 
 function benchmarkSubtitle(inputMode: InputMode): string {
