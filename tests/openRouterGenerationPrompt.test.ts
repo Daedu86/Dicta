@@ -129,4 +129,50 @@ describe('openRouterGenerationPrompt', () => {
     expect(payload.prompt).toContain('1. Do not repeat opener A');
     expect(payload.prompt).toContain('2. Use a different theme than B');
   });
+
+  it('normalizes stale browser-tts DE pressure before building OpenRouter context', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    profile.sampleCount = 2;
+    profile.sweetSpotScore = 0.9709;
+    profile.flowStabilityScore = 1;
+    profile.recommendation = {
+      ...profile.recommendation,
+      targetRateRange: [1.05, 1.05],
+      targetPhraseSize: 'short',
+      targetPauseMs: 750,
+      nextTrainingFocus: ['Maintain stable pace and medium-length semantic phrases'],
+      confidence: 0.0485,
+      summary: 'Maintain stable pace and medium-length semantic phrases.',
+    };
+    profile.timeline = Array.from({ length: 12 }, (_, index) => ({
+      timestampMs: Date.now() + index,
+      inputMode: 'browser-tts' as const,
+      language: 'de',
+      mode: 'support' as const,
+      playbackRate: 1.05,
+      accuracy: 0.7,
+      lagSec: index % 4 === 0 ? 3.4 : 1.4,
+      rawLagSec: index === 2 ? -46 : 1.4,
+      stableLagSec: index === 2 ? -5 : 1.4,
+      wpm: 48,
+      pauseMs: 1200,
+      phraseBoundaryType: index % 3 === 0 ? ('unsafe' as const) : ('clause' as const),
+      semanticCompleteness: index % 3 === 0 ? 0.6 : 0.82,
+      decisionReason: 'support-needed, replay-blocked-boundary',
+      event: 'phrase_advance' as const,
+    }));
+
+    const payload = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: null,
+      promptSource: 'compact-benchmark-only',
+      durationMinutes: 3,
+    });
+
+    expect(payload.prompt).toContain('"targetRateRange": [\n      0.95,\n      1\n    ]');
+    expect(payload.prompt).toContain('"targetPauseMs": 1200');
+    expect(payload.prompt).toContain('"support_dependency"');
+    expect(payload.prompt).not.toContain('"targetRateRange": [\n      1.05,\n      1.05\n    ]');
+    expect(payload.prompt).not.toContain('medium-length semantic phrases');
+  });
 });

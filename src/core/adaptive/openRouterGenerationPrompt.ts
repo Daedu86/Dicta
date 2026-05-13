@@ -1,6 +1,7 @@
 import { buildSelectedBenchmarkExportPayload } from './benchmarkJson';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './dictationScriptPrompt';
 import { buildBenchmarkFeedbackPromptPackage } from './sessionFeedback';
+import { normalizeInputLanguageBenchmarkForRecommendation } from './AdaptiveInputLanguageBenchmarkService';
 import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics } from './types';
 
 export type OpenRouterGeneratePromptSource =
@@ -35,29 +36,30 @@ export function buildOpenRouterGenerationPrompt({
   difficultyInstruction,
   diversificationHints,
 }: OpenRouterGenerationPromptArgs): OpenRouterGenerationPromptPayload {
-  const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(profile), null, 2);
-  const llmPrompt = buildDictationScriptPrompt(profile);
-  const outputTemplate = buildDictationScriptTemplate(profile.inputMode, profile.language);
+  const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
+  const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(normalizedProfile), null, 2);
+  const llmPrompt = buildDictationScriptPrompt(normalizedProfile);
+  const outputTemplate = buildDictationScriptTemplate(normalizedProfile.inputMode, normalizedProfile.language);
   const hasSessionFeedback = Boolean(sessionFeedback);
   const compactBenchmark = JSON.stringify(
     {
-      profileKey: `${profile.inputMode}/${profile.language}`,
-      sessionCount: profile.sessionCount,
-      sampleCount: profile.sampleCount,
-      lastUpdatedAt: profile.lastUpdatedAt ?? null,
-      recommendation: profile.recommendation,
-      weakAreas: profile.weakAreas,
+      profileKey: `${normalizedProfile.inputMode}/${normalizedProfile.language}`,
+      sessionCount: normalizedProfile.sessionCount,
+      sampleCount: normalizedProfile.sampleCount,
+      lastUpdatedAt: normalizedProfile.lastUpdatedAt ?? null,
+      recommendation: normalizedProfile.recommendation,
+      weakAreas: normalizedProfile.weakAreas,
       kpis: {
-        sweetSpotScore: profile.sweetSpotScore,
-        semanticFidelityScore: profile.semanticFidelityScore,
-        controlFidelityScore: profile.controlFidelityScore,
-        learningEffectivenessScore: profile.learningEffectivenessScore,
-        flowStabilityScore: profile.flowStabilityScore,
-        averageAccuracy: profile.averageAccuracy,
-        averageWpm: profile.averageWpm,
-        averageLagSec: profile.averageLagSec,
-        preferredPlaybackRate: profile.preferredPlaybackRate,
-        preferredPhraseSize: profile.preferredPhraseSize,
+        sweetSpotScore: normalizedProfile.sweetSpotScore,
+        semanticFidelityScore: normalizedProfile.semanticFidelityScore,
+        controlFidelityScore: normalizedProfile.controlFidelityScore,
+        learningEffectivenessScore: normalizedProfile.learningEffectivenessScore,
+        flowStabilityScore: normalizedProfile.flowStabilityScore,
+        averageAccuracy: normalizedProfile.averageAccuracy,
+        averageWpm: normalizedProfile.averageWpm,
+        averageLagSec: normalizedProfile.averageLagSec,
+        preferredPlaybackRate: normalizedProfile.preferredPlaybackRate,
+        preferredPhraseSize: normalizedProfile.preferredPhraseSize,
       },
     },
     null,
@@ -94,7 +96,7 @@ export function buildOpenRouterGenerationPrompt({
   );
   const compactBenchmarkOnlyPackage = `Compact benchmark context:\n${compactBenchmark}\n\nLLM prompt:\n${llmPrompt}`;
   const originalBenchmarkOnlyPackage = `Benchmark JSON context:\n${benchmarkJson}\n\nLLM prompt:\n${llmPrompt}`;
-  const originalAdaptivePackage = buildBenchmarkFeedbackPromptPackage(profile, sessionFeedback, llmPrompt, {
+  const originalAdaptivePackage = buildBenchmarkFeedbackPromptPackage(normalizedProfile, sessionFeedback, llmPrompt, {
     activeSessionStatus: undefined,
   });
   const targetSpokenWords = Math.round(durationMinutes * 60 * 2.6);
@@ -103,8 +105,8 @@ export function buildOpenRouterGenerationPrompt({
   const minimumPhraseCount = durationMinutes * 10;
   const hardRules = [
     'Return only a single JSON object. Do not wrap it in Markdown.',
-    `The returned JSON field "inputMode" must be exactly "${profile.inputMode}".`,
-    `The returned JSON field "language" must be exactly "${profile.language}".`,
+    `The returned JSON field "inputMode" must be exactly "${normalizedProfile.inputMode}".`,
+    `The returned JSON field "language" must be exactly "${normalizedProfile.language}".`,
     ...(targetDifficulty ? [`The returned JSON field "difficulty" must be exactly "${targetDifficulty}".`] : []),
     ...(difficultyInstruction ? [difficultyInstruction] : []),
     `Generate a training script with voice playback duration of ${durationMinutes} minutes and set "estimatedDurationSec" close to ${durationMinutes * 60}.`,

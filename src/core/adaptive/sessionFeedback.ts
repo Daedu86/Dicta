@@ -6,6 +6,7 @@ import type {
   LanguageCode,
   PhrasePlaybackEvent,
 } from './types';
+import { normalizeInputLanguageBenchmarkForRecommendation } from './AdaptiveInputLanguageBenchmarkService';
 
 export type SessionFeedbackBuildArgs = {
   sessionId: string;
@@ -111,16 +112,17 @@ export function buildBenchmarkFeedbackPackage(
   feedback: AdaptiveSessionFeedback | null,
   options: { activeSessionStatus?: string } = {},
 ): unknown {
-  const recentTimelinePoints = profile.timeline.slice(-FEEDBACK_EXPORT_TIMELINE_CAP);
+  const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
+  const recentTimelinePoints = normalizedProfile.timeline.slice(-FEEDBACK_EXPORT_TIMELINE_CAP);
   const fallbackDiagnostics = feedback ? null : derivePlaybackDiagnosticsFromTimeline(recentTimelinePoints);
   const sessionFeedbackStatus = buildSessionFeedbackStatus(feedback, options.activeSessionStatus);
   return {
-    inputMode: profile.inputMode,
-    language: profile.language,
+    inputMode: normalizedProfile.inputMode,
+    language: normalizedProfile.language,
     sessionFeedbackStatus,
-    benchmarkProfile: compactBenchmark(profile),
-    recommendation: profile.recommendation,
-    weakAreas: profile.weakAreas,
+    benchmarkProfile: compactBenchmark(normalizedProfile),
+    recommendation: normalizedProfile.recommendation,
+    weakAreas: normalizedProfile.weakAreas,
     recentTimelinePoints,
     latestSessionFeedback: feedback ?? buildFeedbackUnavailableSnapshot(sessionFeedbackStatus),
     playbackDiagnostics: feedback?.playbackIssues ?? fallbackDiagnostics,
@@ -385,22 +387,23 @@ function buildFeedbackUnavailableSnapshot(status: string): { status: string; mes
 }
 
 function compactBenchmark(profile: InputLanguageBenchmarkMetrics): Partial<InputLanguageBenchmarkMetrics> {
+  const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
   return {
-    inputMode: profile.inputMode,
-    language: profile.language,
-    sessionCount: profile.sessionCount,
-    sampleCount: profile.sampleCount,
-    lastUpdatedAt: profile.lastUpdatedAt,
-    sweetSpotScore: profile.sweetSpotScore,
-    semanticFidelityScore: profile.semanticFidelityScore,
-    controlFidelityScore: profile.controlFidelityScore,
-    learningEffectivenessScore: profile.learningEffectivenessScore,
-    flowStabilityScore: profile.flowStabilityScore,
-    averageAccuracy: profile.averageAccuracy,
-    averageWpm: profile.averageWpm,
-    averageLagSec: profile.averageLagSec,
-    weakAreas: profile.weakAreas,
-    recommendation: profile.recommendation,
+    inputMode: normalizedProfile.inputMode,
+    language: normalizedProfile.language,
+    sessionCount: normalizedProfile.sessionCount,
+    sampleCount: normalizedProfile.sampleCount,
+    lastUpdatedAt: normalizedProfile.lastUpdatedAt,
+    sweetSpotScore: normalizedProfile.sweetSpotScore,
+    semanticFidelityScore: normalizedProfile.semanticFidelityScore,
+    controlFidelityScore: normalizedProfile.controlFidelityScore,
+    learningEffectivenessScore: normalizedProfile.learningEffectivenessScore,
+    flowStabilityScore: normalizedProfile.flowStabilityScore,
+    averageAccuracy: normalizedProfile.averageAccuracy,
+    averageWpm: normalizedProfile.averageWpm,
+    averageLagSec: normalizedProfile.averageLagSec,
+    weakAreas: normalizedProfile.weakAreas,
+    recommendation: normalizedProfile.recommendation,
   };
 }
 

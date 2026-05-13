@@ -284,6 +284,29 @@ describe('session feedback diagnostics', () => {
     expect(payload.playbackDiagnostics?.source).toBe('timeline_fallback');
     expect(payload.playbackDiagnostics?.replayCount).toBe(1);
   });
+
+  it('normalizes stale browser-tts DE benchmark recommendations in feedback packages', () => {
+    const profile = staleBrowserTtsDePressureProfile();
+
+    const payload = buildBenchmarkFeedbackPackage(profile, null) as {
+      benchmarkProfile?: {
+        flowStabilityScore?: number;
+        weakAreas?: string[];
+        recommendation?: { targetRateRange?: [number, number]; targetPauseMs?: number; summary?: string };
+      };
+      recommendation?: { targetRateRange?: [number, number]; targetPauseMs?: number; summary?: string };
+      weakAreas?: string[];
+    };
+
+    expect(payload.recommendation?.targetRateRange).toEqual([0.95, 1]);
+    expect(payload.recommendation?.targetPauseMs).toBe(1200);
+    expect(payload.recommendation?.summary).not.toContain('medium-length semantic phrases');
+    expect(payload.weakAreas).toEqual(
+      expect.arrayContaining(['support_dependency', 'unsafe_boundary_pressure', 'lag_instability', 'accuracy_instability']),
+    );
+    expect(payload.benchmarkProfile?.flowStabilityScore).toBeLessThan(1);
+    expect(payload.benchmarkProfile?.recommendation?.targetRateRange).toEqual([0.95, 1]);
+  });
 });
 
 function timelinePoint(
@@ -304,5 +327,45 @@ function timelinePoint(
     phraseIndex,
     phraseId: `p${phraseIndex}`,
     event,
+  };
+}
+
+function staleBrowserTtsDePressureProfile() {
+  const base = Date.now();
+  const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+  return {
+    ...profile,
+    sampleCount: 2,
+    sweetSpotScore: 0.9709,
+    flowStabilityScore: 1,
+    weakAreas: [],
+    recommendation: {
+      ...profile.recommendation,
+      targetRateRange: [1.05, 1.05] as [number, number],
+      targetPhraseSize: 'short' as const,
+      targetPauseMs: 750,
+      nextTrainingFocus: ['Maintain stable pace and medium-length semantic phrases'],
+      confidence: 0.0485,
+      summary: 'Maintain stable pace and medium-length semantic phrases.',
+    },
+    timeline: Array.from({ length: 12 }, (_, index) => ({
+      timestampMs: base + index,
+      inputMode: 'browser-tts' as const,
+      language: 'de',
+      mode: 'support' as const,
+      playbackRate: 1.05,
+      accuracy: index % 2 === 0 ? 0.69 : 0.74,
+      lagSec: index % 4 === 0 ? 3.4 : 1.4,
+      rawLagSec: index === 3 ? -46 : index % 4 === 0 ? 3.4 : 1.4,
+      stableLagSec: index === 3 ? -5 : index % 4 === 0 ? 3.4 : 1.4,
+      wpm: 48,
+      pauseMs: 1200,
+      phraseBoundaryType: index % 3 === 0 ? ('unsafe' as const) : ('clause' as const),
+      semanticCompleteness: index % 3 === 0 ? 0.6 : 0.82,
+      decisionReason: 'support-needed, phrase-overload, replay-blocked-boundary',
+      event: 'phrase_advance' as const,
+      phraseIndex: index,
+      sessionId: 'stale-de',
+    })),
   };
 }
