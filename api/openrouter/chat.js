@@ -43,8 +43,12 @@ function rankFreeModelId(id) {
   if (normalized.includes('llama')) score += 3;
   if (normalized.includes('mistral')) score += 3;
   if (normalized.includes('gemma')) score += 3;
-  if (normalized.includes('8b') || normalized.includes('7b') || normalized.includes('3b')) score += 2;
-  if (normalized.includes('70b') || normalized.includes('405b')) score -= 4;
+  if (normalized.includes('1b') || normalized.includes('3b')) score += 5;
+  if (normalized.includes('7b') || normalized.includes('8b')) score += 4;
+  if (normalized.includes('14b') || normalized.includes('27b')) score -= 1;
+  if (normalized.includes('70b') || normalized.includes('80b') || normalized.includes('120b') || normalized.includes('405b')) score -= 8;
+  if (normalized.includes('gpt-oss')) score -= 5;
+  if (normalized.includes('a3b')) score -= 3;
   return score;
 }
 
@@ -145,16 +149,18 @@ export default async function handler(req, res) {
     model,
     ...payloadFallbackModels,
     ...fetchedFreeModels,
-  ]).slice(0, 3);
+  ])
+    .sort((a, b) => rankFreeModelId(b) - rankFreeModelId(a) || a.localeCompare(b))
+    .slice(0, 4);
 
   const startedAt = Date.now();
-  const budgetMs = 25_000;
+  const budgetMs = 55_000;
   const attempts = [];
 
   for (const candidateModel of candidateModels) {
     const remainingMs = budgetMs - (Date.now() - startedAt);
-    if (remainingMs < 5_500) break;
-    const timeoutMs = Math.min(12_000, remainingMs - 1_000);
+    if (remainingMs < 8_000) break;
+    const timeoutMs = Math.min(28_000, remainingMs - 2_000);
     try {
       const response = await postChatCompletion({
         apiKey,
