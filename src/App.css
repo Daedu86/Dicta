@@ -611,12 +611,10 @@ button {
 }
 
 .pending-session-chip {
-  display: grid;
-  gap: 0.25rem;
-  align-content: center;
+  position: relative;
   min-height: 72px;
   margin: 0;
-  padding: 0.75rem 0.85rem;
+  padding: 0;
   border-color: #f59e0b;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
@@ -630,6 +628,36 @@ button {
   border-color: #f97316;
   background: rgba(255, 247, 237, 0.98);
   box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.22);
+}
+
+.pending-session-open-button {
+  width: 100%;
+  min-height: 72px;
+  display: grid;
+  gap: 0.25rem;
+  align-content: center;
+  margin: 0;
+  border: 0;
+  border-radius: 12px;
+  padding: 0.75rem 2.4rem 0.75rem 0.85rem;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.pending-session-delete-button {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  min-height: 1.6rem;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.85rem;
+  line-height: 1;
 }
 
 .pending-session-title,

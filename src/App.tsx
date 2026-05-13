@@ -4925,18 +4925,31 @@ function App() {
                 </div>
                 <div className="pending-session-strip">
                   {pendingSessions.map((session) => (
-                    <button
+                    <div
                       key={session.id}
-                      type="button"
                       className={`pending-session-chip ${session.id === activeSessionId ? 'pending-session-chip-active' : ''}`}
-                      onClick={() => openWorkspaceForSession(session)}
-                      title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
                     >
-                      <span className="pending-session-title">{getSessionDisplayTitle(session)}</span>
-                      <span className="pending-session-meta">
-                        {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {getPendingSessionReason(session)}
-                      </span>
-                    </button>
+                      <button
+                        type="button"
+                        className="pending-session-open-button"
+                        onClick={() => openWorkspaceForSession(session)}
+                        title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
+                      >
+                        <span className="pending-session-title">{getSessionDisplayTitle(session)}</span>
+                        <span className="pending-session-meta">
+                          {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {getPendingSessionReason(session)}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="danger-button pending-session-delete-button"
+                        onClick={() => deleteSession(session.id)}
+                        aria-label={`Delete ${getSessionDisplayTitle(session)}`}
+                        title="Delete session"
+                      >
+                        <span aria-hidden="true">✕</span>
+                      </button>
+                    </div>
                   ))}
                 </div>
               </section>
