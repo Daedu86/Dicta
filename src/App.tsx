@@ -67,7 +67,7 @@ import { HistoricalPerformanceService } from './core/history/HistoricalPerforman
 import { buildAudioTelemetryFrame, buildAdaptiveAudioInput } from './inputs/audio/audioTelemetryAdapter';
 import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
-import { applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
+import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
 import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
 import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
@@ -2779,10 +2779,6 @@ function App() {
           germanShortBias,
         }) ?? candidateChunk;
 
-      // Persist the last decision outputs so the next candidate chunk reflects where we were heading.
-      lastPhraseSize = decision.nextPhraseSize;
-      lastBoundaryStrictness = decision.boundaryStrictness;
-
       const pauseAtBoundary = chunk.canPauseAfter ?? true;
       const semanticCompleteness = chunk.semanticCompleteness ?? 1;
       const rateAfterFloor = applyBrowserTtsRuntimeRateFloor({
@@ -2811,12 +2807,24 @@ function App() {
                 ? `${decision.reason}, unsafe-boundary-conservative`
                 : decision.reason,
             };
-      const runtimeDecision = clampBrowserTtsDeDecisionToRecommendation(postPolicyDecision, browserTtsBenchmark);
+      const mobileFallback = applyBrowserTtsMobilePacingFallback({
+        decision: postPolicyDecision,
+        lagSec: liveSignal.lagSec,
+        accuracy: rollingAccuracyLast3,
+        userAgent: window.navigator.userAgent,
+        platform: window.navigator.platform,
+        maxTouchPoints: window.navigator.maxTouchPoints,
+        profile: browserTtsProfile,
+      });
+      const runtimeDecision = clampBrowserTtsDeDecisionToRecommendation(mobileFallback.decision, browserTtsBenchmark);
+      // Persist the final executable decision so the next chunk reflects runtime constraints.
+      lastPhraseSize = runtimeDecision.nextPhraseSize;
+      lastBoundaryStrictness = runtimeDecision.boundaryStrictness;
       const rate = runtimeDecision.playbackRate;
       if (unsafeRuntime.unsafeBoundaryApplied) {
         ttsUnsafeChunkCountRef.current += 1;
       }
-      const effectivePauseNow = decision.shouldPauseNow && pauseAtBoundary;
+      const effectivePauseNow = runtimeDecision.shouldPauseNow && pauseAtBoundary;
       const effectiveReplay = false;
       const utterance = new SpeechSynthesisUtterance(chunk.text);
       utterance.rate = rate;
@@ -2881,7 +2889,7 @@ function App() {
         actualPauseMs: effectivePauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
         replayExecuted: effectiveReplay,
         actualBoundaryType: chunk.phraseBoundaryType,
-        event: effectiveReplay ? 'replay' : effectivePauseNow ? 'pause' : decision.deferPauseUntilSafeBoundary ? 'defer_pause' : 'phrase_advance',
+        event: effectiveReplay ? 'replay' : effectivePauseNow ? 'pause' : runtimeDecision.deferPauseUntilSafeBoundary ? 'defer_pause' : 'phrase_advance',
         phraseIndex: macroPhraseIndex,
         totalSemanticPhrases: semanticPhrases.length,
       });
@@ -2895,10 +2903,10 @@ function App() {
         const avgCompleteness = ((current.averageSemanticCompleteness * (phraseCount - 1)) + semanticCompleteness) / phraseCount;
         const difficulty = chunk.phraseDifficulty ?? 0.5;
         const avgDifficulty = ((current.averagePhraseDifficulty * (phraseCount - 1)) + difficulty) / phraseCount;
-        const unsafePauseCount = current.unsafePauseCount + (decision.shouldPauseNow && !pauseAtBoundary ? 1 : 0);
+        const unsafePauseCount = current.unsafePauseCount + (runtimeDecision.shouldPauseNow && !pauseAtBoundary ? 1 : 0);
         const safePauseCount = current.safePauseCount + (effectivePauseNow ? 1 : 0);
-        const deferredPauseCount = current.deferredPauseCount + (decision.deferPauseUntilSafeBoundary ? 1 : 0);
-        const replayDeniedByBoundaryCount = current.replayDeniedByBoundaryCount + (decision.shouldReplayPhrase && !effectiveReplay ? 1 : 0);
+        const deferredPauseCount = current.deferredPauseCount + (runtimeDecision.deferPauseUntilSafeBoundary ? 1 : 0);
+        const replayDeniedByBoundaryCount = current.replayDeniedByBoundaryCount + (runtimeDecision.shouldReplayPhrase && !effectiveReplay ? 1 : 0);
         const semanticCutPenalty = unsafePauseCount + replayDeniedByBoundaryCount * 0.5 + deferredPauseCount * 0.35;
         const fidelityRaw = 1 - semanticCutPenalty / Math.max(1, phraseCount * 1.5);
         return {
@@ -2949,7 +2957,7 @@ function App() {
         if (effectivePauseNow) {
           window.setTimeout(() => {
             speakNext();
-          }, decision.pauseAfterPhraseMs);
+          }, runtimeDecision.pauseAfterPhraseMs);
         } else {
           speakNext();
         }

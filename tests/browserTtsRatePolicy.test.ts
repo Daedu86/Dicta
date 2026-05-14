@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { applyBrowserTtsRuntimeRateFloor } from '../src/inputs/browserTts/browserTtsRatePolicy';
+import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor, isLikelyAndroidSpeechSynthesisRuntime } from '../src/inputs/browserTts/browserTtsRatePolicy';
 import { resolveBrowserTtsAdaptiveProfile } from '../src/inputs/browserTts/browserTtsAdaptiveProfiles';
+import type { PacingDecision } from '../src/core/adaptive/types';
 
 describe('applyBrowserTtsRuntimeRateFloor', () => {
   const enProfile = resolveBrowserTtsAdaptiveProfile('en');
@@ -70,5 +71,68 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
       supportNeeded: true,
       profile: deProfile,
     })).toBe(0.9);
+  });
+});
+
+describe('applyBrowserTtsMobilePacingFallback', () => {
+  const enProfile = resolveBrowserTtsAdaptiveProfile('en');
+  const baseDecision: PacingDecision = {
+    mode: 'balanced',
+    playbackRate: 1,
+    pauseAfterPhraseMs: 750,
+    shouldPauseNow: false,
+    shouldReplayPhrase: false,
+    boundaryStrictness: 'sentence',
+    allowMidPhrasePause: false,
+    deferPauseUntilSafeBoundary: false,
+    replayRate: 0.9,
+    nextPhraseSize: 'medium',
+    reason: 'mode=balanced',
+    lagScore: 0.5,
+    accuracyScore: 0.8,
+    hesitationScore: 0.8,
+    confidenceScore: 0.5,
+  };
+
+  it('detects Android mobile speech synthesis runtimes such as Samsung S22 Chrome', () => {
+    expect(isLikelyAndroidSpeechSynthesisRuntime({
+      userAgent: 'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S901B) AppleWebKit/537.36 Chrome/123.0 Mobile Safari/537.36',
+      platform: 'Linux armv8l',
+      maxTouchPoints: 5,
+    })).toBe(true);
+  });
+
+  it('leaves desktop browser TTS decisions unchanged', () => {
+    const result = applyBrowserTtsMobilePacingFallback({
+      decision: baseDecision,
+      lagSec: 2.1,
+      accuracy: 0.86,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123.0 Safari/537.36',
+      platform: 'Win32',
+      maxTouchPoints: 0,
+      profile: enProfile,
+    });
+
+    expect(result.mobileFallbackApplied).toBe(false);
+    expect(result.decision).toBe(baseDecision);
+  });
+
+  it('converts Android lag pressure into short chunks and audible pauses when speech rate may be ignored', () => {
+    const result = applyBrowserTtsMobilePacingFallback({
+      decision: baseDecision,
+      lagSec: 2.1,
+      accuracy: 0.86,
+      userAgent: 'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S901B) AppleWebKit/537.36 Chrome/123.0 Mobile Safari/537.36',
+      platform: 'Linux armv8l',
+      maxTouchPoints: 5,
+      profile: enProfile,
+    });
+
+    expect(result.mobileFallbackApplied).toBe(true);
+    expect(result.decision.nextPhraseSize).toBe('short');
+    expect(result.decision.shouldPauseNow).toBe(true);
+    expect(result.decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(1600);
+    expect(result.decision.playbackRate).toBeLessThanOrEqual(enProfile.supportRateCeiling);
+    expect(result.decision.reason).toContain('android-speech-rate-fallback');
   });
 });
