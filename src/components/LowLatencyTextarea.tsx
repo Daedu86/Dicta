@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { perfDiagnostics } from '../core/perfDiagnostics';
 
 export type LowLatencyTextareaHandle = {
   flush: () => string;
@@ -36,12 +37,20 @@ export const LowLatencyTextarea = forwardRef<LowLatencyTextareaHandle, LowLatenc
   const localValueRef = useRef(value);
   const lastCommittedValueRef = useRef(value);
   const onValueChangeRef = useRef(onValueChange);
+  const keydownAtRef = useRef<number | undefined>(undefined);
+  const latestInputEventIdRef = useRef(0);
+  const renderCountRef = useRef(0);
   const delayTimerRef = useRef<number | null>(null);
   const maxDelayTimerRef = useRef<number | null>(null);
+  renderCountRef.current += 1;
 
   useEffect(() => {
     onValueChangeRef.current = onValueChange;
   }, [onValueChange]);
+
+  useEffect(() => {
+    perfDiagnostics.recordRender('LowLatencyTextarea', renderCountRef.current);
+  });
 
   function clearTimers(): void {
     if (delayTimerRef.current !== null) {
@@ -58,6 +67,7 @@ export const LowLatencyTextarea = forwardRef<LowLatencyTextareaHandle, LowLatenc
     clearTimers();
     const nextValue = localValueRef.current;
     if (nextValue !== lastCommittedValueRef.current) {
+      perfDiagnostics.recordInputCommit(latestInputEventIdRef.current, performance.now());
       lastCommittedValueRef.current = nextValue;
       onValueChangeRef.current(nextValue);
     }
@@ -80,8 +90,22 @@ export const LowLatencyTextarea = forwardRef<LowLatencyTextareaHandle, LowLatenc
   }
 
   function setLocalAndSchedule(nextValue: string): void {
+    const inputAt = performance.now();
     localValueRef.current = nextValue;
     setLocalValue(nextValue);
+    const localSetAt = performance.now();
+    const inputEventId = perfDiagnostics.recordInputChange({
+      component: 'LowLatencyTextarea',
+      keydownAt: keydownAtRef.current,
+      inputAt,
+      localSetAt,
+      valueLength: nextValue.length,
+      renderCount: renderCountRef.current,
+    });
+    latestInputEventIdRef.current = inputEventId;
+    window.requestAnimationFrame(() => {
+      perfDiagnostics.recordInputPaint(inputEventId, performance.now());
+    });
     scheduleCommit();
   }
 
@@ -109,6 +133,7 @@ export const LowLatencyTextarea = forwardRef<LowLatencyTextareaHandle, LowLatenc
         onBlur?.(event);
       }}
       onKeyDown={(event) => {
+        keydownAtRef.current = performance.now();
         onKeyDown?.(event);
         if (event.defaultPrevented && event.currentTarget.value !== localValueRef.current) {
           setLocalAndSchedule(event.currentTarget.value);

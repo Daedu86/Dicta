@@ -89,6 +89,8 @@ import { buildKokoroSourceWords, type KokoroPhraseChunk } from './core/kokoroPhr
 import { KOKORO_GERMAN_WARNING, getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
 import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from './components/LowLatencyTextarea';
+import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
+import { perfDiagnostics } from './core/perfDiagnostics';
 import {
   normalizeLiveSessionStatusForPersistence,
   normalizeRestoredSessionStatus,
@@ -335,6 +337,8 @@ type AdaptiveSemanticDebug = {
 };
 
 function App() {
+  const appRenderCountRef = useRef(0);
+  appRenderCountRef.current += 1;
   const audioRef = useRef<HTMLAudioElement>(null);
   const [sessions, setSessions] = useState<StoredSession[]>(() => loadSessions());
   const [activeSessionId, setActiveSessionId] = useState<string>(() => loadSessions()[0]?.id ?? '');
@@ -371,6 +375,7 @@ function App() {
   const [dictationScriptValidation, setDictationScriptValidation] = useState<DictationScriptValidationResult | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('leaderboard');
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+  const [perfDiagnosticsEnabled, setPerfDiagnosticsEnabled] = useState(false);
   const [openRouterGenerateFocusRequest, setOpenRouterGenerateFocusRequest] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = window.localStorage.getItem(THEME_MODE_KEY);
@@ -675,6 +680,20 @@ function App() {
     activeTranscriptSegmentIndex >= 0 ? transcriptSegments[activeTranscriptSegmentIndex + 1] ?? null : transcriptSegments[0] ?? null;
 
   useEffect(() => {
+    perfDiagnostics.recordRender('App', appRenderCountRef.current);
+  });
+
+  useEffect(() => {
+    const enabled = perfDiagnostics.configure({
+      envDev: import.meta.env.DEV,
+      search: window.location.search,
+      storage: window.localStorage,
+    });
+    setPerfDiagnosticsEnabled(enabled);
+    return () => perfDiagnostics.dispose();
+  }, []);
+
+  useEffect(() => {
     window.localStorage.setItem(WORKSPACE_MODE_KEY, workspaceMode);
   }, [workspaceMode]);
 
@@ -870,12 +889,16 @@ function App() {
   }, [workspaceMode]);
 
   useEffect(() => {
-    const normalized = sessions.map((session) => normalizeSessionForPersistence(session));
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(normalized));
+    perfDiagnostics.withSpan('session.localStorage.persist', () => {
+      const normalized = sessions.map((session) => normalizeSessionForPersistence(session));
+      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(normalized));
+    }, { sessionCount: sessions.length });
   }, [sessions]);
 
   function persistAndPushSessionsNow(nextSessions: StoredSession[]): void {
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSessions.map((session) => normalizeSessionForPersistence(session))));
+    perfDiagnostics.withSpan('session.persistNow.localStorage', () => {
+      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSessions.map((session) => normalizeSessionForPersistence(session))));
+    }, { sessionCount: nextSessions.length });
     if (!supabaseClient || !syncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
 
     setSupabaseSyncStatus((current) => ({
@@ -886,7 +909,9 @@ function App() {
     void pushSyncRows(
       supabaseClient,
       syncConfig.profileId,
-      buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+      perfDiagnostics.withSpan('supabase.buildSyncState.final', () =>
+        buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+      ),
     )
       .then((pushed) => {
         setSupabaseSyncStatus((current) => ({
@@ -1015,7 +1040,9 @@ function App() {
       pushSyncRows(
         supabaseClient,
         syncConfig.profileId,
-        buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+        perfDiagnostics.withSpan('supabase.buildSyncState.background', () =>
+          buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+        ),
       )
         .then((pushed) => {
           setSupabaseSyncStatus((current) => ({
@@ -2077,6 +2104,7 @@ function App() {
       return;
     }
 
+    const endPerfSpan = perfDiagnostics.startSpan('openrouter.generateDirectSession', { targetDifficulty, durationMinutes });
     setBusy(true);
     setOpenRouterError('');
     setSelectedBenchmarkInputMode(inputMode);
@@ -2153,6 +2181,7 @@ function App() {
       }
     } finally {
       setBusy(false);
+      endPerfSpan();
     }
   }
 
@@ -2560,43 +2589,50 @@ function App() {
   applyTtsPerformanceSampleRef.current = applyTtsPerformanceSample;
 
   function submitTtsSession(latestPracticeText = ttsPracticeText): void {
+    const endPerfSpan = perfDiagnostics.startSpan('tts.submit', { inputMode: activeInputMode });
     if (!ttsHasText || !latestPracticeText.trim()) {
       setError('Paste TTS text and type your attempt before submitting.');
+      endPerfSpan();
       return;
     }
 
-    if (latestPracticeText !== ttsPracticeText) {
-      setTtsPracticeText(latestPracticeText);
+    try {
+      if (latestPracticeText !== ttsPracticeText) {
+        setTtsPracticeText(latestPracticeText);
+      }
+      const finalSample = applyTtsPerformanceSample({ action: 'submit', finalize: true, practiceTextOverride: latestPracticeText });
+      const finishedAt = new Date().toISOString();
+      const nextSessions = sessions.map((session) =>
+        session.id === activeSessionId
+          ? {
+              ...session,
+              ttsPracticeText: latestPracticeText,
+              status: 'finished' as const,
+              metrics: finalSample.metrics,
+              telemetry: finalSample.telemetry,
+              updatedAt: finishedAt,
+            }
+          : session,
+      );
+      setSessions(nextSessions);
+      persistAndPushSessionsNow(nextSessions);
+      stopTtsPlayback();
+      setRunning(false);
+      setSessionStatus('finished');
+      setTtsStatus('finished');
+      completeAdaptiveSessionFeedback();
+      setError('');
+    } finally {
+      endPerfSpan();
     }
-    const finalSample = applyTtsPerformanceSample({ action: 'submit', finalize: true, practiceTextOverride: latestPracticeText });
-    const finishedAt = new Date().toISOString();
-    const nextSessions = sessions.map((session) =>
-      session.id === activeSessionId
-        ? {
-            ...session,
-            ttsPracticeText: latestPracticeText,
-            status: 'finished' as const,
-            metrics: finalSample.metrics,
-            telemetry: finalSample.telemetry,
-            updatedAt: finishedAt,
-          }
-        : session,
-    );
-    setSessions(nextSessions);
-    persistAndPushSessionsNow(nextSessions);
-    stopTtsPlayback();
-    setRunning(false);
-    setSessionStatus('finished');
-    setTtsStatus('finished');
-    completeAdaptiveSessionFeedback();
-    setError('');
   }
 
   function playTts(): void {
-    playTtsFromWord(ttsStatus === 'paused' ? (ttsPausedAtWordIndexRef.current ?? ttsCompletedSourceWordsRef.current) : 0);
+    const perfPlayId = perfDiagnostics.beginTtsPlay('browser-tts-play-button');
+    playTtsFromWord(ttsStatus === 'paused' ? (ttsPausedAtWordIndexRef.current ?? ttsCompletedSourceWordsRef.current) : 0, perfPlayId);
   }
 
-  function playTtsFromWord(startWordIndex: number): void {
+  function playTtsFromWord(startWordIndex: number, perfPlayId = perfDiagnostics.beginTtsPlay('browser-tts-direct')): void {
     if (sessionStatus === 'finished') {
       setError('Reset the finished session before playing TTS again.');
       return;
@@ -2838,6 +2874,14 @@ function App() {
       const effectivePauseNow = runtimeDecision.shouldPauseNow && pauseAtBoundary;
       const effectiveReplay = false;
       const utterance = new SpeechSynthesisUtterance(chunk.text);
+      const perfUtteranceId = perfDiagnostics.beginTtsUtterance({
+        playId: perfPlayId,
+        chunkIndex,
+        phraseLengthWords: chunk.wordCount,
+        phraseLengthChars: chunk.text.length,
+        language: ttsLanguage,
+        pacingMode,
+      });
       utterance.rate = rate;
       utterance.pitch = 1;
       utterance.volume = 1;
@@ -2940,7 +2984,12 @@ function App() {
         };
       });
 
+      utterance.onstart = () => {
+        perfDiagnostics.recordTtsStart(perfUtteranceId);
+      };
+
       utterance.onend = () => {
+        perfDiagnostics.recordTtsEnd(perfUtteranceId);
         if (cancelled) return;
         const completesMacroPhrase = macroWordOffset + chunk.wordCount >= macroWords.length;
         if (completesMacroPhrase) {
@@ -2974,7 +3023,8 @@ function App() {
         }
       };
 
-      utterance.onerror = () => {
+      utterance.onerror = (event) => {
+        perfDiagnostics.recordTtsError(perfUtteranceId, event.error || 'unknown');
         if (cancelled) return;
         cancelled = true;
         ttsUtteranceRef.current = null;
@@ -2982,6 +3032,7 @@ function App() {
         setError('TTS playback stopped unexpectedly.');
       };
 
+      perfDiagnostics.recordTtsSpeak(perfUtteranceId);
       speech.speak(utterance);
     };
 
@@ -4217,45 +4268,53 @@ function App() {
       throttleMs?: number;
     } = {},
   ): void {
+    const endPerfSpan = perfDiagnostics.startSpan('adaptive.benchmark.update', { inputMode: live.inputMode, language: live.language });
     const language = normalizeBenchmarkLanguage(live.language);
     const key = `${live.inputMode}:${language}`;
     const now = Date.now();
     const lastUpdate = adaptiveBenchmarkLastUpdateRef.current[key] ?? 0;
-    if (options.throttleMs && now - lastUpdate < options.throttleMs) return;
+    if (options.throttleMs && now - lastUpdate < options.throttleMs) {
+      endPerfSpan();
+      return;
+    }
     adaptiveBenchmarkLastUpdateRef.current[key] = now;
 
-    setAdaptiveBenchmarksByInputLanguage((current) => {
-      const inputBenchmarks = current[live.inputMode] ?? {};
-      const existing = inputBenchmarks[language] ?? createEmptyInputLanguageBenchmark(live.inputMode, language);
-      const updated = updateInputLanguageBenchmark({
-        current: existing,
-        live,
-        decision,
-        sessionId: activeSessionId,
-        phraseIndex: options.phraseIndex,
-        totalSemanticPhrases: options.totalSemanticPhrases,
-        event: options.event,
-        execution: {
-          requestedPlaybackRate: decision.playbackRate,
-          actualPlaybackRate: options.actualPlaybackRate ?? live.currentPlaybackRate,
-          requestedPauseMs: decision.pauseAfterPhraseMs,
-          actualPauseMs: options.actualPauseMs,
-          requestedReplay: decision.shouldReplayPhrase,
-          replayExecuted: options.replayExecuted,
-          requestedBoundaryType: live.phraseBoundaryType,
-          actualBoundaryType: options.actualBoundaryType ?? live.phraseBoundaryType,
-          decisionAppliedAtMs: now,
-          executionStartedAtMs: now,
-        },
+    try {
+      setAdaptiveBenchmarksByInputLanguage((current) => {
+        const inputBenchmarks = current[live.inputMode] ?? {};
+        const existing = inputBenchmarks[language] ?? createEmptyInputLanguageBenchmark(live.inputMode, language);
+        const updated = updateInputLanguageBenchmark({
+          current: existing,
+          live,
+          decision,
+          sessionId: activeSessionId,
+          phraseIndex: options.phraseIndex,
+          totalSemanticPhrases: options.totalSemanticPhrases,
+          event: options.event,
+          execution: {
+            requestedPlaybackRate: decision.playbackRate,
+            actualPlaybackRate: options.actualPlaybackRate ?? live.currentPlaybackRate,
+            requestedPauseMs: decision.pauseAfterPhraseMs,
+            actualPauseMs: options.actualPauseMs,
+            requestedReplay: decision.shouldReplayPhrase,
+            replayExecuted: options.replayExecuted,
+            requestedBoundaryType: live.phraseBoundaryType,
+            actualBoundaryType: options.actualBoundaryType ?? live.phraseBoundaryType,
+            decisionAppliedAtMs: now,
+            executionStartedAtMs: now,
+          },
+        });
+        return {
+          ...current,
+          [live.inputMode]: {
+            ...inputBenchmarks,
+            [language]: updated,
+          },
+        };
       });
-      return {
-        ...current,
-        [live.inputMode]: {
-          ...inputBenchmarks,
-          [language]: updated,
-        },
-      };
-    });
+    } finally {
+      endPerfSpan();
+    }
   }
 
   function getBenchmarkSnapshot(inputMode: InputMode, language: LanguageCode): InputLanguageBenchmarkMetrics {
@@ -4774,6 +4833,7 @@ function App() {
       <main className={`app training-route-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
         <TrainingHeader onBackToApp={() => navigateAppRoute('/')} />
         <TrainingView {...focusedTrainingProps} />
+        <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />
       </main>
     );
   }
@@ -10222,6 +10282,12 @@ function TrainingView({
   textCommitDelayMs,
 }: TrainingViewProps) {
   const textInputRef = useRef<LowLatencyTextareaHandle | null>(null);
+  const trainingViewRenderCountRef = useRef(0);
+  trainingViewRenderCountRef.current += 1;
+
+  useEffect(() => {
+    perfDiagnostics.recordRender('TrainingView', trainingViewRenderCountRef.current);
+  });
 
   function flushTextInput(): string {
     return textInputRef.current?.flush() ?? currentTextValue;

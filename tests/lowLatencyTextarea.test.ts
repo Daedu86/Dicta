@@ -3,6 +3,7 @@ import { act, createElement, createRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from '../src/components/LowLatencyTextarea';
+import { perfDiagnostics } from '../src/core/perfDiagnostics';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -24,6 +25,8 @@ function input(value: string): void {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  perfDiagnostics.configure({ envDev: false, search: '?perf=1', storage: window.localStorage });
+  perfDiagnostics.reset();
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -103,5 +106,29 @@ describe('LowLatencyTextarea', () => {
     });
 
     expect(commits).toEqual(['antes de salir']);
+  });
+
+  it('reports passive typing diagnostics without changing input behavior', () => {
+    const commits: string[] = [];
+    act(() => {
+      root.render(createElement(LowLatencyTextarea, {
+        value: '',
+        onValueChange: (value: string) => commits.push(value),
+        commitDelayMs: 90,
+      }));
+    });
+
+    act(() => {
+      textArea().dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'a' }));
+      input('a');
+      vi.advanceTimersByTime(90);
+      vi.advanceTimersByTime(16);
+    });
+
+    const snapshot = perfDiagnostics.snapshot();
+    expect(textArea().value).toBe('a');
+    expect(commits).toEqual(['a']);
+    expect(snapshot.input.latest?.valueLength).toBe(1);
+    expect(snapshot.renders.LowLatencyTextarea).toBeGreaterThan(0);
   });
 });
