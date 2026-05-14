@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSyncItems, mergeSyncRows, toSyncRows, type DictaSyncState } from '../src/core/supabaseSync';
+import { buildSyncItems, mergeSyncRows, selectPushableSyncRows, toSyncRows, type DictaSyncState } from '../src/core/supabaseSync';
 
 const baseState = (): DictaSyncState => ({
   sessions: [
@@ -181,6 +181,91 @@ describe('supabaseSync', () => {
     expect(merged.sessions[0]).toMatchObject({ marker: 'local' });
     expect(merged.benchmarks['browser-tts'].en).toMatchObject({ marker: 'remote' });
     expect(merged.feedback['browser-tts'].en[0]).toMatchObject({ marker: 'remote' });
+  });
+
+  it('imports a submitted remote session over a newer local pending copy', () => {
+    const local = baseState();
+    local.sessions = [{
+      id: 's1',
+      updatedAt: '2026-05-03T10:00:00.000Z',
+      inputMode: 'input2',
+      status: 'ready',
+      marker: 'desktop-pending',
+    }];
+
+    const remote = baseState();
+    remote.sessions = [{
+      id: 's1',
+      updatedAt: '2026-05-02T10:00:00.000Z',
+      inputMode: 'input2',
+      status: 'finished',
+      telemetry: { actions: [{ action: 'submit' }] },
+      marker: 'phone-submitted',
+    }];
+
+    const merged = mergeSyncRows(local, toSyncRows('profile-1', buildSyncItems(remote)));
+
+    expect(merged.sessions[0]).toMatchObject({ marker: 'phone-submitted', status: 'finished' });
+  });
+
+  it('does not push a stale local pending session over a submitted remote session', () => {
+    const localRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-03T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-03T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'ready',
+        marker: 'desktop-pending',
+      },
+    }]);
+    const remoteRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-02T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-02T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'finished',
+        telemetry: { actions: [{ action: 'submit' }] },
+        marker: 'phone-submitted',
+      },
+    }]);
+
+    expect(selectPushableSyncRows(localRows, remoteRows)).toEqual([]);
+  });
+
+  it('allows a submitted local phone session to repair a newer remote pending copy', () => {
+    const localRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-02T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-02T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'finished',
+        telemetry: { actions: [{ action: 'submit' }] },
+        marker: 'phone-submitted',
+      },
+    }]);
+    const remoteRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-03T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-03T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'ready',
+        marker: 'desktop-pending',
+      },
+    }]);
+
+    expect(selectPushableSyncRows(localRows, remoteRows)).toHaveLength(1);
   });
 
   it('skips malformed rows safely', () => {

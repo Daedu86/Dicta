@@ -161,7 +161,7 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
         continue;
       }
       const localSession = sessionsById.get(id);
-      if (!localSession || isRemoteNewer(row, localSession, ['updatedAt'])) {
+      if (!localSession || shouldRemoteSessionReplaceLocal(row, localSession)) {
         sessionsById.set(id, row.payload);
         changed = true;
         imported += 1;
@@ -241,11 +241,35 @@ export async function pullSyncRows(client: SupabaseClient, profileId: string): P
 export async function pushSyncRows(client: SupabaseClient, profileId: string, state: DictaSyncState): Promise<number> {
   const rows = toSyncRows(profileId, buildSyncItems(state));
   if (rows.length === 0) return 0;
-  const { error } = await client.from(DICTA_SYNC_TABLE).upsert(rows, {
+  const existingRows = await pullSyncRows(client, profileId);
+  const pushableRows = selectPushableSyncRows(rows, existingRows);
+  if (pushableRows.length === 0) return 0;
+  const { error } = await client.from(DICTA_SYNC_TABLE).upsert(pushableRows, {
     onConflict: 'profile_id,item_type,item_key',
   });
   if (error) throw error;
-  return rows.length;
+  return pushableRows.length;
+}
+
+export function selectPushableSyncRows(localRows: DictaSyncRow[], remoteRows: DictaSyncRow[]): DictaSyncRow[] {
+  const remoteByKey = new Map<string, DictaSyncRow>();
+  for (const row of remoteRows) {
+    if (!isValidSyncRow(row)) continue;
+    remoteByKey.set(syncRowIdentity(row), row);
+  }
+
+  return localRows.filter((localRow) => {
+    if (!isValidSyncRow(localRow)) return false;
+    const remoteRow = remoteByKey.get(syncRowIdentity(localRow));
+    if (!remoteRow) return true;
+    if (localRow.item_type === 'session' && localSubmittedSessionOutranksRemote(localRow.payload, remoteRow.payload)) {
+      return true;
+    }
+    if (localRow.item_type === 'session' && remoteSubmittedSessionOutranksLocal(remoteRow.payload, localRow.payload)) {
+      return false;
+    }
+    return compareTimestamp(localRow.updated_at, remoteRow.updated_at) > 0;
+  });
 }
 
 export async function deleteSessionSyncRow(client: SupabaseClient, profileId: string, sessionId: string): Promise<void> {
@@ -288,6 +312,27 @@ function isRemoteNewer(row: DictaSyncRow, localPayload: unknown, localFields: st
   return compareTimestamp(row.updated_at, localTimestamp) > 0;
 }
 
+function shouldRemoteSessionReplaceLocal(row: DictaSyncRow, localSession: unknown): boolean {
+  if (remoteSubmittedSessionOutranksLocal(row.payload, localSession)) return true;
+  return isRemoteNewer(row, localSession, ['updatedAt']);
+}
+
+function remoteSubmittedSessionOutranksLocal(remotePayload: unknown, localPayload: unknown): boolean {
+  return isSubmittedFinishedSession(remotePayload) && !isSubmittedFinishedSession(localPayload);
+}
+
+function localSubmittedSessionOutranksRemote(localPayload: unknown, remotePayload: unknown): boolean {
+  return isSubmittedFinishedSession(localPayload) && !isSubmittedFinishedSession(remotePayload);
+}
+
+function isSubmittedFinishedSession(payload: unknown): boolean {
+  const record = asRecord(payload);
+  if (record.status !== 'finished') return false;
+  const telemetry = asRecord(record.telemetry);
+  const actions = telemetry.actions;
+  return Array.isArray(actions) && actions.some((entry) => asRecord(entry).action === 'submit');
+}
+
 function getFeedbackTimestamp(value: unknown): string {
   const record = asRecord(value);
   return timestampFrom(record.completedAt) ?? timestampFrom(record.createdAt) ?? new Date(0).toISOString();
@@ -308,6 +353,10 @@ function compareTimestamp(a: string, b: string): number {
 function getStringField(value: unknown, field: string): string {
   const record = asRecord(value);
   return typeof record[field] === 'string' ? record[field] : '';
+}
+
+function syncRowIdentity(row: DictaSyncRow): string {
+  return `${row.profile_id}:${row.item_type}:${row.item_key}`;
 }
 
 function splitBenchmarkKey(key: string): [string, string] {
