@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
 import './App.css';
 import type { ControlAction, SessionTelemetry, Transcript, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
@@ -88,6 +88,7 @@ import {
 import { buildKokoroSourceWords, type KokoroPhraseChunk } from './core/kokoroPhraseChunking';
 import { KOKORO_GERMAN_WARNING, getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
 import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
+import { LowLatencyTextarea, type LowLatencyTextareaHandle } from './components/LowLatencyTextarea';
 import {
   normalizeLiveSessionStatusForPersistence,
   normalizeRestoredSessionStatus,
@@ -1071,9 +1072,10 @@ function App() {
   );
   const ttsHasText = ttsText.trim().length > 0;
   const ttsTranscript = useMemo(() => buildTextTranscript(ttsText), [ttsText]);
+  const deferredTtsPracticeText = useDeferredValue(ttsPracticeText);
   const ttsPracticeEvaluation = useMemo(
-    () => evaluateTranscriptAttempt(ttsPracticeText, ttsTranscript),
-    [ttsPracticeText, ttsTranscript],
+    () => evaluateTranscriptAttempt(deferredTtsPracticeText, ttsTranscript),
+    [deferredTtsPracticeText, ttsTranscript],
   );
   const ttsPracticeWords = ttsPracticeEvaluation.typedWords;
   const ttsPracticeMissing = Math.max((ttsTranscript?.words.length ?? 0) - ttsPracticeEvaluation.matchedWords, 0);
@@ -2458,14 +2460,19 @@ function App() {
     telemetryRef.current = next;
   }
 
-  function applyTtsPerformanceSample(options: { action?: ControlAction; finalize?: boolean } = {}): TtsPerformanceSampleResult {
+  function applyTtsPerformanceSample(options: { action?: ControlAction; finalize?: boolean; practiceTextOverride?: string } = {}): TtsPerformanceSampleResult {
     const now = performance.now();
     if (ttsStartedAtMsRef.current === null) {
       ttsStartedAtMsRef.current = now;
     }
 
+    const evaluation = options.practiceTextOverride === undefined
+      ? ttsPracticeEvaluation
+      : evaluateTranscriptAttempt(options.practiceTextOverride, ttsTranscript);
+    const practiceWords = evaluation.typedWords;
+    const visibleAccuracy = practiceWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0 ? evaluation.accuracy : 0;
     const sourceWordCount = ttsTranscript?.words.length ?? 0;
-    const typedProgress = Math.max(0, ttsPracticeEvaluation.lastMatchedTargetIndex + 1);
+    const typedProgress = Math.max(0, evaluation.lastMatchedTargetIndex + 1);
     const spokenPosition = estimateTtsSpokenWordIndex(now);
     const nextLagWords = sourceWordCount > 0 ? spokenPosition - typedProgress : 0;
     const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
@@ -2476,24 +2483,24 @@ function App() {
     }
     const nextLagSec = lagSample.stableLagSec;
     const elapsedMinutes = Math.max(getTtsElapsedSeconds(now) / 60, 1 / 60);
-    const nextWpm = ttsPracticeWords.length > 0 ? ttsPracticeWords.length / elapsedMinutes : 0;
-    const nextAccuracy = ttsPracticeWords.length > 0 ? ttsVisibleAccuracy : 100;
+    const nextWpm = practiceWords.length > 0 ? practiceWords.length / elapsedMinutes : 0;
+    const nextAccuracy = practiceWords.length > 0 ? visibleAccuracy : 100;
     const nextControllerAction = deriveTtsControlAction({
       accuracy: nextAccuracy,
       lagSec: nextLagSec,
       wpm: nextWpm,
-      typedWords: ttsPracticeWords.length,
+      typedWords: practiceWords.length,
     });
     const nextTrend = derivePerformanceTrend(nextLagSec, nextAccuracy, previousLagRef.current, previousAccuracyRef.current);
     const nextRate = ttsSpeechRate;
     const nextScore =
-      ttsPracticeWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0
+      practiceWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0
         ? computeSessionScore({
             accuracy: nextAccuracy,
             lagSec: nextLagSec,
             wpm: nextWpm,
             rate: nextRate,
-            points: ttsPracticeEvaluation.points,
+            points: evaluation.points,
           })
         : 0;
 
@@ -2544,7 +2551,7 @@ function App() {
         accuracy: nextAccuracy,
         trend: nextTrend,
         score: nextScore,
-        points: ttsPracticeEvaluation.points,
+        points: evaluation.points,
       },
       telemetry: nextTelemetry,
     };
@@ -2552,18 +2559,22 @@ function App() {
 
   applyTtsPerformanceSampleRef.current = applyTtsPerformanceSample;
 
-  function submitTtsSession(): void {
-    if (!canSubmitTtsSession) {
+  function submitTtsSession(latestPracticeText = ttsPracticeText): void {
+    if (!ttsHasText || !latestPracticeText.trim()) {
       setError('Paste TTS text and type your attempt before submitting.');
       return;
     }
 
-    const finalSample = applyTtsPerformanceSample({ action: 'submit', finalize: true });
+    if (latestPracticeText !== ttsPracticeText) {
+      setTtsPracticeText(latestPracticeText);
+    }
+    const finalSample = applyTtsPerformanceSample({ action: 'submit', finalize: true, practiceTextOverride: latestPracticeText });
     const finishedAt = new Date().toISOString();
     const nextSessions = sessions.map((session) =>
       session.id === activeSessionId
         ? {
             ...session,
+            ttsPracticeText: latestPracticeText,
             status: 'finished' as const,
             metrics: finalSample.metrics,
             telemetry: finalSample.telemetry,
@@ -4663,10 +4674,19 @@ function App() {
           : ttsStatus === 'playing',
     onPause:
       activeInputMode === 'input1'
-        ? pauseSession
+        ? (latestTextValue?: string) => {
+            if (latestTextValue !== undefined && latestTextValue !== inputText) onTypingChange(latestTextValue);
+            pauseSession();
+          }
         : activeInputMode === 'input3'
-          ? pauseKokoro
-          : pauseTts,
+          ? (latestTextValue?: string) => {
+              if (latestTextValue !== undefined && latestTextValue !== kokoroPracticeText) onKokoroPracticeChange(latestTextValue);
+              pauseKokoro();
+            }
+          : (latestTextValue?: string) => {
+              if (latestTextValue !== undefined && latestTextValue !== ttsPracticeText) onTtsPracticeChange(latestTextValue);
+              pauseTts();
+            },
     canReplay:
       activeInputMode === 'input1'
         ? audioReady
@@ -4687,10 +4707,19 @@ function App() {
           : ttsStatus !== 'idle',
     onStop:
       activeInputMode === 'input1'
-        ? finishSession
+        ? (latestTextValue?: string) => {
+            if (latestTextValue !== undefined && latestTextValue !== inputText) onTypingChange(latestTextValue);
+            finishSession();
+          }
         : activeInputMode === 'input3'
-          ? () => stopKokoroPlayback('stop')
-          : () => stopTtsPlayback('stop'),
+          ? (latestTextValue?: string) => {
+              if (latestTextValue !== undefined && latestTextValue !== kokoroPracticeText) onKokoroPracticeChange(latestTextValue);
+              stopKokoroPlayback('stop');
+            }
+          : (latestTextValue?: string) => {
+              if (latestTextValue !== undefined && latestTextValue !== ttsPracticeText) onTtsPracticeChange(latestTextValue);
+              stopTtsPlayback('stop');
+            },
     canSubmit:
       activeInputMode === 'input1'
         ? canFinishSession
@@ -4699,12 +4728,19 @@ function App() {
           : canSubmitTtsSession,
     onSubmit:
       activeInputMode === 'input1'
-        ? finishSession
+        ? (latestTextValue?: string) => {
+            if (latestTextValue !== undefined && latestTextValue !== inputText) onTypingChange(latestTextValue);
+            finishSession();
+          }
         : activeInputMode === 'input3'
-          ? submitKokoroSession
-          : submitTtsSession,
+          ? (latestTextValue?: string) => {
+              if (latestTextValue !== undefined && latestTextValue !== kokoroPracticeText) onKokoroPracticeChange(latestTextValue);
+              submitKokoroSession();
+            }
+          : (latestTextValue?: string) => submitTtsSession(latestTextValue),
     submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
     message: error || exportMessage || openRouterJobStatus || openRouterError,
+    textCommitDelayMs: activeInputMode === 'input2' || activeInputMode === 'input4' ? 90 : 0,
     generationButtons: [
       {
         label: directOpenRouterBusy || activeOpenRouterJob ? 'Generating easy...' : 'New Easy Session',
@@ -5845,7 +5881,7 @@ function App() {
                       accuracy={ttsVisibleAccuracy}
                     />
                     <div className="tts-submit-row">
-                      <button type="button" onClick={submitTtsSession} disabled={!canSubmitTtsSession}>
+                      <button type="button" onClick={() => submitTtsSession()} disabled={!canSubmitTtsSession}>
                         Submit statistics
                       </button>
                       <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
@@ -10122,16 +10158,17 @@ type TrainingViewProps = {
   playLabel: string;
   onPlay: () => void;
   canPause: boolean;
-  onPause: () => void;
+  onPause: (latestTextValue?: string) => void;
   canReplay: boolean;
   onReplay: () => void;
   canStop: boolean;
-  onStop: () => void;
+  onStop: (latestTextValue?: string) => void;
   canSubmit: boolean;
-  onSubmit: () => void;
+  onSubmit: (latestTextValue?: string) => void;
   submitLabel: string;
   message: string;
   generationButtons: TrainingGenerationButton[];
+  textCommitDelayMs: number;
 };
 
 function TrainingHeader({ onBackToApp }: { onBackToApp: () => void }) {
@@ -10182,7 +10219,14 @@ function TrainingView({
   submitLabel,
   message,
   generationButtons,
+  textCommitDelayMs,
 }: TrainingViewProps) {
+  const textInputRef = useRef<LowLatencyTextareaHandle | null>(null);
+
+  function flushTextInput(): string {
+    return textInputRef.current?.flush() ?? currentTextValue;
+  }
+
   return (
     <section className="training-view" aria-label="Focused training view">
       <section className="training-card training-session-card">
@@ -10217,10 +10261,10 @@ function TrainingView({
           <button type="button" className="secondary-button" onClick={onReplay} disabled={!canReplay}>
             Replay
           </button>
-          <button type="button" className="secondary-button" onClick={onPause} disabled={!canPause}>
+          <button type="button" className="secondary-button" onClick={() => onPause(flushTextInput())} disabled={!canPause}>
             Pause
           </button>
-          <button type="button" className="secondary-button" onClick={onStop} disabled={!canStop}>
+          <button type="button" className="secondary-button" onClick={() => onStop(flushTextInput())} disabled={!canStop}>
             Stop
           </button>
         </div>
@@ -10229,19 +10273,22 @@ function TrainingView({
       <section className="training-card training-input-card" aria-label="Dictation input">
         <label>
           <span>Type what you hear</span>
-          <textarea
+          <LowLatencyTextarea
+            ref={textInputRef}
             value={currentTextValue}
-            onChange={(event) => onTextChange(event.target.value)}
+            onValueChange={onTextChange}
             onKeyDown={onTextKeyDown}
             placeholder={textPlaceholder}
             readOnly={readOnly}
             rows={10}
+            commitDelayMs={textCommitDelayMs}
+            maxCommitDelayMs={Math.max(textCommitDelayMs * 3, 240)}
           />
         </label>
       </section>
 
       <section className="training-card training-submit-card">
-        <button type="button" className="training-submit-button" onClick={onSubmit} disabled={!canSubmit}>
+        <button type="button" className="training-submit-button" onClick={() => onSubmit(flushTextInput())} disabled={!canSubmit}>
           {submitLabel}
         </button>
         {message ? <p className={message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') ? 'error' : 'hint'}>{message}</p> : null}
