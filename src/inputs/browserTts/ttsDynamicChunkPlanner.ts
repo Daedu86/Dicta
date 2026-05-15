@@ -11,6 +11,7 @@ export type PlanBrowserTtsChunkInput = {
   nextPhraseSize: PhraseSize;
   boundaryStrictness: BoundaryStrictness;
   germanShortBias?: boolean;
+  maxWordsOverride?: number;
 };
 
 export type PlannedBrowserTtsChunk = {
@@ -128,10 +129,12 @@ export function planBrowserTtsAdaptiveChunk(input: PlanBrowserTtsChunkInput): Pl
 
   const germanShortBias = Boolean(input.germanShortBias && input.language === 'de');
   const targetWords = targetWordsForSize(input.nextPhraseSize, germanShortBias);
-  const sizeTarget = Math.min(targetWords, remaining);
+  const cappedTargetWords = input.maxWordsOverride ? Math.min(targetWords, input.maxWordsOverride) : targetWords;
+  const sizeTarget = Math.min(cappedTargetWords, remaining);
   const minWords = Math.max(2, Math.min(remaining, Math.floor(sizeTarget * 0.65)));
-  const maxWords = Math.max(minWords, Math.min(remaining, Math.floor(sizeTarget * 1.35)));
-  const scanLimit = Math.min(remaining, maxWords + 6);
+  const uncappedMaxWords = Math.max(minWords, Math.min(remaining, Math.floor(sizeTarget * 1.35)));
+  const maxWords = input.maxWordsOverride ? Math.min(uncappedMaxWords, input.maxWordsOverride) : uncappedMaxWords;
+  const scanLimit = Math.min(remaining, input.maxWordsOverride ? maxWords : maxWords + 6);
   const minBoundary = minimumBoundaryScore(input.boundaryStrictness);
 
   let bestCut = Math.min(remaining, maxWords);
@@ -190,4 +193,3 @@ export function planBrowserTtsAdaptiveChunk(input: PlanBrowserTtsChunkInput): Pl
     phraseDifficulty: scored.phraseDifficulty,
   };
 }
-

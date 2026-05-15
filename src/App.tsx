@@ -70,6 +70,7 @@ import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './i
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
 import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
 import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
+import { applyBrowserTtsDeRecoveryPolicy, summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
 import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
 import { buildQwenCloudTelemetryFrame, buildAdaptiveQwenCloudInput } from './inputs/qwenCloud/qwenCloudTelemetryAdapter';
@@ -2958,6 +2959,13 @@ function App() {
       const liveSignal = ttsLiveSignalRef.current;
       const livePracticeEvaluation = evaluateTranscriptAttempt(ttsPracticeLiveTextRef.current, ttsTranscript);
       const browserTtsProfile = resolveBrowserTtsAdaptiveProfile(ttsLanguage);
+      const browserTtsBenchmark = getBenchmarkSnapshot('browser-tts', normalizeBenchmarkLanguage(ttsLanguage));
+      const browserTtsRecovery = summarizeBrowserTtsDeRecoveryState({
+        timeline: browserTtsBenchmark.timeline,
+        userAgent: window.navigator.userAgent,
+        platform: window.navigator.platform,
+        maxTouchPoints: window.navigator.maxTouchPoints,
+      });
       const typedWordsNow = livePracticeEvaluation.typedWords.length;
       const matchedWordsNow = livePracticeEvaluation.matchedWords;
       const typedDelta = Math.max(0, typedWordsNow - ttsLastAccuracySnapshotRef.current.typedWords);
@@ -2997,6 +3005,7 @@ function App() {
           nextPhraseSize: lastPhraseSize,
           boundaryStrictness: lastBoundaryStrictness,
           germanShortBias,
+          maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
         }) ??
         planBrowserTtsAdaptiveChunk({
           macroWords,
@@ -3006,6 +3015,7 @@ function App() {
           nextPhraseSize: 'short',
           boundaryStrictness: 'phrase',
           germanShortBias,
+          maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
         });
 
       if (!candidateChunk) {
@@ -3055,7 +3065,6 @@ function App() {
         rareWordLoad: candidateChunk.rareWordLoad,
         syntaxComplexity: candidateChunk.syntaxComplexity,
       });
-      const browserTtsBenchmark = getBenchmarkSnapshot('browser-tts', normalizeBenchmarkLanguage(ttsLanguage));
       const rawDecision = adaptiveControllerRef.current.decide(buildAdaptiveBrowserTtsInput(browserTelemetry, historyProfile));
       const decision = clampBrowserTtsDeDecisionToRecommendation(rawDecision, browserTtsBenchmark);
       const pacingMode = mapAdaptivePacingMode(decision.mode);
@@ -3068,6 +3077,7 @@ function App() {
           nextPhraseSize: decision.nextPhraseSize,
           boundaryStrictness: decision.boundaryStrictness,
           germanShortBias,
+          maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
         }) ?? candidateChunk;
 
       const pauseAtBoundary = chunk.canPauseAfter ?? true;
@@ -3107,7 +3117,12 @@ function App() {
         maxTouchPoints: window.navigator.maxTouchPoints,
         profile: browserTtsProfile,
       });
-      const runtimeDecision = clampBrowserTtsDeDecisionToRecommendation(mobileFallback.decision, browserTtsBenchmark);
+      const recommendedDecision = clampBrowserTtsDeDecisionToRecommendation(mobileFallback.decision, browserTtsBenchmark);
+      const runtimeDecision = applyBrowserTtsDeRecoveryPolicy({
+        decision: recommendedDecision,
+        recovery: browserTtsRecovery,
+        profile: browserTtsProfile,
+      });
       // Persist the final executable decision so the next chunk reflects runtime constraints.
       lastPhraseSize = runtimeDecision.nextPhraseSize;
       lastBoundaryStrictness = runtimeDecision.boundaryStrictness;

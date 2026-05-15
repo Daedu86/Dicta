@@ -87,5 +87,22 @@ describe('planBrowserTtsAdaptiveChunk', () => {
     expect(chunk).not.toBeNull();
     expect(chunk?.startWordIndex).toBe(13);
   });
-});
 
+  it('applies a recovery word cap for German short chunks while keeping safe boundaries', () => {
+    const words = 'Wir hoeren den ersten Satz. Danach schreiben wir langsam weiter.'.split(' ');
+    const chunk = planBrowserTtsAdaptiveChunk({
+      macroWords: words,
+      macroWordOffset: 0,
+      globalStartWordIndex: 0,
+      language: 'de',
+      nextPhraseSize: 'short',
+      boundaryStrictness: 'phrase',
+      germanShortBias: true,
+      maxWordsOverride: 4,
+    });
+
+    expect(chunk).not.toBeNull();
+    expect(chunk?.wordCount).toBeLessThanOrEqual(4);
+    expect(chunk?.phraseBoundaryType).not.toBe('unsafe');
+  });
+});
