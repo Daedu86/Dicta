@@ -188,6 +188,36 @@ describe('session feedback diagnostics', () => {
     expect(feedback.phraseStats.completedPhrases).toBe(20);
   });
 
+  it('keeps stable browser-tts DE playback separate from an invalid unchanged benchmark', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const events: PhrasePlaybackEvent[] = Array.from({ length: 20 }, (_, index) => ({
+      ...phraseEvent(index, `p${index}`, 'phrase_completed', index + 1),
+      sessionId: 'session-invalid-benchmark',
+      inputMode: 'browser-tts',
+      language: 'de',
+    }));
+
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-invalid-benchmark',
+      inputMode: 'browser-tts',
+      language: 'de',
+      sourceType: 'dictation_script',
+      createdAt: '2026-05-13T08:00:00.000Z',
+      completedAt: '2026-05-13T08:05:00.000Z',
+      benchmarkBefore: profile,
+      benchmarkAfter: profile,
+      phraseEvents: events,
+      totalPhrases: 20,
+    });
+
+    expect(feedback.verdict).toBe('stable');
+    expect(feedback.phraseStats.completedPhrases).toBe(20);
+    expect(feedback.improvementDelta.accuracyDelta).toBe(0);
+    expect(feedback.improvementDelta.lagDelta).toBe(0);
+    expect(feedback.improvementDelta.wpmDelta).toBe(0);
+    expect(feedback.improvementDelta.sweetSpotScoreDelta).toBe(0);
+  });
+
   it('scopes browser-tts DE latest feedback to the requested session only', () => {
     const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
     const currentSessionStart = {

@@ -161,6 +161,7 @@ export interface AdaptiveTimelinePoint {
     | 'mode_change'
     | 'rate_change'
     | 'phrase_advance'
+    | 'phrase_completed'
     | 'support_entered'
     | 'flow_entered';
 }

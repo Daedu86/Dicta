@@ -535,6 +535,7 @@ function App() {
   const [adaptiveBenchmarksByInputLanguage, setAdaptiveBenchmarksByInputLanguage] = useState<AdaptiveBenchmarksByInputLanguage>(() =>
     loadAdaptiveBenchmarks(),
   );
+  const adaptiveBenchmarksRef = useRef(adaptiveBenchmarksByInputLanguage);
   const [adaptiveSessionFeedbackByInputLanguage, setAdaptiveSessionFeedbackByInputLanguage] = useState<AdaptiveSessionFeedbackByInputLanguage>(() =>
     loadAdaptiveSessionFeedback(),
   );
@@ -962,6 +963,10 @@ function App() {
 
   useEffect(() => {
     window.localStorage.setItem(ADAPTIVE_BENCHMARKS_KEY, JSON.stringify(adaptiveBenchmarksByInputLanguage));
+  }, [adaptiveBenchmarksByInputLanguage]);
+
+  useEffect(() => {
+    adaptiveBenchmarksRef.current = adaptiveBenchmarksByInputLanguage;
   }, [adaptiveBenchmarksByInputLanguage]);
 
   useEffect(() => {
@@ -3231,10 +3236,37 @@ function App() {
         perfDiagnostics.recordTtsEnd(perfUtteranceId);
         if (cancelled) return;
         const completesMacroPhrase = macroWordOffset + chunk.wordCount >= macroWords.length;
+        ttsCompletedSourceWordsRef.current = chunk.startWordIndex + chunk.wordCount;
         if (completesMacroPhrase) {
           recordPhrasePlaybackEvent('phrase_completed', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
+          if (normalizeBenchmarkLanguage(ttsLanguage) === 'de') {
+            applyTtsPerformanceSample();
+            const completionLiveSignal = ttsLiveSignalRef.current;
+            const completionAccuracy = clamp01(completionLiveSignal.accuracy / 100);
+            const completionTelemetry: LiveTelemetryFrame = {
+              ...chunkTelemetry,
+              phraseId: semanticPhrase?.id ?? `phrase-${macroPhraseIndex}`,
+              accuracy: completionAccuracy,
+              errorRate: clamp01(1 - completionAccuracy),
+              wpm: completionLiveSignal.wpm,
+              lagSec: completionLiveSignal.lagSec,
+              rawLagSec: completionLiveSignal.rawLagSec,
+              stableLagSec: completionLiveSignal.stableLagSec,
+              lagOutlierCount: completionLiveSignal.lagOutlierCount,
+              unsafeChunkCount: ttsUnsafeChunkCountRef.current,
+              trend: completionLiveSignal.trend,
+            };
+            recordAdaptiveBenchmark(completionTelemetry, runtimeDecision, {
+              actualPlaybackRate: rate,
+              actualPauseMs: 0,
+              replayExecuted: false,
+              actualBoundaryType: chunk.phraseBoundaryType,
+              event: 'phrase_completed',
+              phraseIndex: macroPhraseIndex,
+              totalSemanticPhrases: semanticPhrases.length,
+            });
+          }
         }
-        ttsCompletedSourceWordsRef.current = chunk.startWordIndex + chunk.wordCount;
         chunkIndex += 1;
         macroWordOffset += chunk.wordCount;
         if (macroWordOffset >= macroWords.length) {
@@ -4543,13 +4575,15 @@ function App() {
             executionStartedAtMs: now,
           },
         });
-        return {
+        const nextBenchmarks = {
           ...current,
           [live.inputMode]: {
             ...inputBenchmarks,
             [language]: updated,
           },
         };
+        adaptiveBenchmarksRef.current = nextBenchmarks;
+        return nextBenchmarks;
       });
     } finally {
       endPerfSpan();
@@ -4557,7 +4591,7 @@ function App() {
   }
 
   function getBenchmarkSnapshot(inputMode: InputMode, language: LanguageCode): InputLanguageBenchmarkMetrics {
-    return adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
+    return adaptiveBenchmarksRef.current[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
   }
 
   function beginAdaptiveSessionFeedback(inputMode: InputMode, language: LanguageCode, totalPhrases = 0): void {
@@ -4638,6 +4672,7 @@ function App() {
     const stableLagSec = point.stableLagSec;
     const scoringEvent =
       point.event === 'phrase_advance' ||
+      point.event === 'phrase_completed' ||
       point.event === 'rate_change' ||
       point.event === 'support_entered' ||
       point.event === 'flow_entered';
@@ -4646,6 +4681,7 @@ function App() {
     if (stableLagSec !== undefined && !Number.isFinite(stableLagSec)) return 'stableLagSec_non_finite';
     if (rawLagSec < -3 || rawLagSec > 6) return 'rawLagSec_out_of_range';
     if (rawLagSec === -5 || point.lagSec === -5 || stableLagSec === -5) return 'lag_clipped_to_sentinel_-5';
+    if (point.wpm <= 0) return 'wpm_not_positive_or_placeholder';
     if (point.phraseBoundaryType === 'unsafe') return 'unsafe_phrase_boundary';
     if ((point.semanticCompleteness ?? 1) < 0.7) return 'semantic_completeness_below_0.7';
     if (!scoringEvent) return 'event_not_scoring';
@@ -4660,6 +4696,7 @@ function App() {
       'pause',
       'defer_pause',
       'phrase_advance',
+      'phrase_completed',
       'rate_change',
       'support_entered',
       'flow_entered',

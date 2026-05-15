@@ -288,6 +288,7 @@ export function isValidBrowserTtsDeBenchmarkSample(point: AdaptiveTimelinePoint)
     rawLagSec !== -5 &&
     lagSec !== -5 &&
     stableLagSec !== -5 &&
+    point.wpm > 0 &&
     point.phraseBoundaryType !== 'unsafe' &&
     semanticCompleteness >= 0.7 &&
     isScoringTimelineEvent(point.event)
@@ -539,7 +540,13 @@ function includesDiagnosticReason(point: AdaptiveTimelinePoint, token: string): 
 }
 
 function isScoringTimelineEvent(event: AdaptiveTimelinePoint['event']): boolean {
-  return event === 'phrase_advance' || event === 'rate_change' || event === 'support_entered' || event === 'flow_entered';
+  return (
+    event === 'phrase_advance' ||
+    event === 'phrase_completed' ||
+    event === 'rate_change' ||
+    event === 'support_entered' ||
+    event === 'flow_entered'
+  );
 }
 
 function computeBrowserTtsDeSemanticCounters(timeline: AdaptiveTimelinePoint[]): Pick<
