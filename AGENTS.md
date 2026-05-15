@@ -52,6 +52,26 @@ Key brain files:
 
 Browser TTS specific adapters live under `src/inputs/browserTts/`.
 
+## Training Mode Performance Rules
+
+Recent mobile/PWA fixes changed how `/training` handles typing and persistence. Preserve these behaviors unless the task explicitly replaces them.
+
+- `LowLatencyTextarea` behavior:
+  - Treat it as a low-latency uncontrolled input. Do not reintroduce per-keystroke React state updates for visible text.
+  - Keep deferred parent commits plus flush on blur, submit, pause/stop, unmount, and session/input switch.
+  - Keep session/input synchronization (`syncKey`) so session switches do not leak stale draft text.
+- Browser TTS runtime updates:
+  - Keep adaptive sampling cadence (`config.tickMs`) for decision quality.
+  - Keep throttled UI publication of runtime metrics to avoid full-tree rerender pressure while typing.
+  - If you touch Browser TTS live evaluation, ensure it can consume the latest local draft text and not only deferred committed state.
+- Session persistence:
+  - `dicta.sessions.v1` writes are intentionally debounced for performance.
+  - Preserve immediate persistence on finalize/submit paths and lifecycle flushes (`pagehide`, `beforeunload`, hidden visibility).
+  - Do not reintroduce synchronous full-session localStorage writes on every `sessions` update.
+- Diagnostics:
+  - `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling in installed Android PWA runtime.
+  - Keep diagnostics passive; avoid adding instrumentation that increases typing latency.
+
 ## Persistence and Sync
 
 Browser storage keys:
@@ -59,6 +79,7 @@ Browser storage keys:
 - `dicta.sessions.v1`
 - `dicta.adaptiveBenchmarks.v1`
 - `dicta.adaptiveSessionFeedback.v1`
+- `dicta.perfDiagnostics.v1`
 
 Supabase sync stores JSON rows in `dicta_sync_items`. Session deletes are synced as tombstones, not hard deletes. Do not reintroduce hard-delete-only behavior, or deleted sessions can reappear on another device.
 

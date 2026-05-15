@@ -59,6 +59,29 @@ Alternatively, open the **OpenRouter** workspace and use **Save to .env.local** 
 3. Start a session and type what you hear.
 4. Export session telemetry/feedback as JSON (for iteration and model tuning).
 
+## Training Mode: Recent Performance Changes (May 2026)
+
+Focused Training Mode (`/training`) received a mobile/PWA performance pass, validated on Samsung S22 with the installed standalone app runtime.
+
+- Input path reworked for low-latency typing:
+  - `LowLatencyTextarea` now uses native textarea updates (uncontrolled input) instead of React state updates per key.
+  - Parent state commits are delayed and flushed on key lifecycle boundaries (blur, pause/stop, submit, session change, unmount).
+  - Session/input switches force synchronization and flush pending text before replacing visible value.
+- Browser TTS runtime metrics publishing reduced:
+  - Adaptive sampling still runs at `tickMs` for decision quality.
+  - UI state publication (`lag/wpm/accuracy/rate/trend/controller`) is throttled to avoid full-tree rerenders on each tick.
+  - Live evaluation uses the latest typed draft so adaptive decisions stay current even with deferred parent commits.
+- Session persistence hot path reduced:
+  - `dicta.sessions.v1` localStorage writes are debounced (`1500ms`) instead of writing every `sessions` mutation.
+  - Immediate persistence is preserved for finalization flows (`Submit / Check`) and page lifecycle exits (`pagehide`, `beforeunload`, hidden visibility).
+
+Measured result from S22 PWA diagnostics (before -> after):
+
+- `keydown -> input`: ~`1ms` -> ~`1-3ms` (stable; hardware path already good)
+- `input -> paint`: ~`117ms avg / 173ms p95` -> ~`10ms avg / 17ms p95`
+- `LowLatencyTextarea` renders during run: `819` -> `167`
+- Long task max duration: `556ms` -> `217ms`
+
 ## What's New Since `v0.1.0-baseline` (May 3, 2026)
 
 This repo moved from "adaptive on paper" to "adaptive in execution", especially for Browser TTS.
@@ -165,6 +188,7 @@ Dicta stores everything in browser local storage for the MVP:
 - `dicta.sessions.v1`: sessions, telemetry series, and per-session stats
 - `dicta.adaptiveBenchmarks.v1`: rolling benchmark profiles per `(inputMode, language)`
 - `dicta.adaptiveSessionFeedback.v1`: completed feedback packages per `(inputMode, language)`
+- `dicta.perfDiagnostics.v1`: persisted diagnostics toggle for `?perf=1` mode in training
 
 OpenRouter credentials are intentionally **not** stored in `localStorage`. The dev server proxies OpenRouter requests using `OPENROUTER_API_KEY` from `.env.local`.
 
@@ -217,6 +241,14 @@ Security note for local alignment:
 ## Docs
 
 - `docs/architecture.md`: topology + data flow diagrams (repo-owned source of truth).
+- `docs/android-pwa-performance-debugging.md`: S22/PWA diagnostics workflow, `?perf=1` activation, and remote debugging notes.
+
+## Known Gaps After The Recent Training Changes
+
+- Training Mode still rerenders `App`/`TrainingView` frequently during long Browser TTS runs; visible typing is now fast, but tree-level render volume can still be reduced.
+- Some long tasks still appear around session persistence and high-volume telemetry updates in longer sessions.
+- Perf diagnostics are available in `DEV` or via `?perf=1`, but there is no export button in UI yet; snapshots are currently console-driven (`window.__DICTA_PERF__.snapshot()`).
+- Perf docs exist for Android/PWA debugging, but there is no automated benchmark gate in CI for typing-latency regressions.
 
 ## Tests
 
