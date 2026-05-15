@@ -1,4 +1,4 @@
-import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
 import './App.css';
 import type { ControlAction, SessionTelemetry, Transcript, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
@@ -251,6 +251,16 @@ type TtsPerformanceSampleResult = {
   telemetry: SessionTelemetry;
 };
 
+type TtsPublishedUiState = {
+  controllerState: ControlAction;
+  rate: number;
+  lagSec: number;
+  lagWords: number;
+  wpm: number;
+  accuracy: number;
+  trend: PerformanceTrend;
+};
+
 type AdminFileInventory = {
   projectRoot: string;
   folders: Array<{
@@ -445,6 +455,18 @@ function App() {
   const [kokoroServiceReady, setKokoroServiceReady] = useState<boolean | null>(null);
   const [kokoroEnabled, setKokoroEnabled] = useState<boolean>(false);
   const [openRouterDefaultModel, setOpenRouterDefaultModel] = useState('');
+
+  useEffect(() => {
+    inputLiveTextRef.current = inputText;
+  }, [inputText]);
+
+  useEffect(() => {
+    ttsPracticeLiveTextRef.current = ttsPracticeText;
+  }, [ttsPracticeText]);
+
+  useEffect(() => {
+    kokoroPracticeLiveTextRef.current = kokoroPracticeText;
+  }, [kokoroPracticeText]);
   const [directOpenRouterBusy, setDirectOpenRouterBusy] = useState(false);
   const [directIntermediateOpenRouterBusy, setDirectIntermediateOpenRouterBusy] = useState(false);
   const [directAdvancedOpenRouterBusy, setDirectAdvancedOpenRouterBusy] = useState(false);
@@ -524,6 +546,9 @@ function App() {
   });
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
+  const inputLiveTextRef = useRef('');
+  const ttsPracticeLiveTextRef = useRef('');
+  const kokoroPracticeLiveTextRef = useRef('');
 
   const trackerRef = useRef(new TypingTracker());
   const engineRef = useRef<AudioEngine | null>(null);
@@ -583,6 +608,16 @@ function App() {
     wpm: 0,
     trend: 'stable',
     controllerState: 'hold',
+  });
+  const ttsUiLastPublishedAtRef = useRef(0);
+  const ttsPublishedUiRef = useRef<TtsPublishedUiState>({
+    controllerState: 'hold',
+    rate: 1,
+    lagSec: 0,
+    lagWords: 0,
+    wpm: 0,
+    accuracy: 100,
+    trend: 'stable',
   });
   const config = useMemo(() => configForDifficulty(difficulty), [difficulty]);
   const controllerRef = useRef(new SyncController(config));
@@ -1285,13 +1320,7 @@ function App() {
     config.tickMs,
     sessionStatus,
     ttsHasText,
-    ttsPracticeEvaluation.lastMatchedTargetIndex,
-    ttsPracticeEvaluation.points,
-    ttsPracticeWords.length,
-    ttsSpeechRate,
     ttsStatus,
-    ttsTranscript,
-    ttsVisibleAccuracy,
   ]);
 
   useEffect(() => {
@@ -1329,14 +1358,17 @@ function App() {
     setTranscriptionLanguage(activeSession.transcriptionLanguage ?? 'de');
     setTranscript(activeSession.transcript);
     setInputText(activeSession.inputText);
+    inputLiveTextRef.current = activeSession.inputText;
     setDifficulty(activeSession.difficulty);
     setInputSettingsLocked(Boolean(activeSession.inputSettingsLocked));
     setTtsLanguage(activeSession.ttsLanguage ?? 'de');
     setTtsPracticeText(activeSession.ttsPracticeText ?? '');
+    ttsPracticeLiveTextRef.current = activeSession.ttsPracticeText ?? '';
     setKokoroText(activeSession.kokoroText ?? '');
     setKokoroLanguage(activeSession.kokoroLanguage ?? 'en');
     setKokoroVoice(activeSession.kokoroVoice ?? 'default');
     setKokoroPracticeText(activeSession.kokoroPracticeText ?? '');
+    kokoroPracticeLiveTextRef.current = activeSession.kokoroPracticeText ?? '';
     setKokoroChunks(activeSession.kokoroChunks ?? []);
     setSessionStatus(activeSession.status);
     setAudioReady(Boolean(activeSession.audioUrl));
@@ -1371,6 +1403,16 @@ function App() {
     setCurrentAudioTime(0);
     setTrend('stable');
     setControllerState('hold');
+    ttsUiLastPublishedAtRef.current = 0;
+    ttsPublishedUiRef.current = {
+      controllerState: 'hold',
+      rate: 1,
+      lagSec: 0,
+      lagWords: 0,
+      wpm: 0,
+      accuracy: 100,
+      trend: 'stable',
+    };
     telemetryRef.current = cloneTelemetry(activeSession.telemetry);
     setExportMessage('');
     setError('');
@@ -1736,8 +1778,11 @@ function App() {
     trackerRef.current.reset();
     controllerRef.current.reset();
     setInputText('');
+    inputLiveTextRef.current = '';
     setTtsPracticeText('');
+    ttsPracticeLiveTextRef.current = '';
     setKokoroPracticeText('');
+    kokoroPracticeLiveTextRef.current = '';
     setKokoroChunks([]);
     setTtsStatus(ttsText.trim() ? 'ready' : 'idle');
     setKokoroStatus(kokoroText.trim() ? 'ready' : 'idle');
@@ -1770,6 +1815,16 @@ function App() {
     setAccuracy(100);
     setCurrentAudioTime(0);
     setControllerState('hold');
+    ttsUiLastPublishedAtRef.current = 0;
+    ttsPublishedUiRef.current = {
+      controllerState: 'hold',
+      rate: 1,
+      lagSec: 0,
+      lagWords: 0,
+      wpm: 0,
+      accuracy: 100,
+      trend: 'stable',
+    };
     setSessionStatus('ready');
     setInputSettingsLocked(false);
     if (activeInputMode === 'input1') {
@@ -2287,6 +2342,7 @@ function App() {
 
   function onTypingChange(value: string): void {
     if (sessionStatus === 'finished') return;
+    inputLiveTextRef.current = value;
     setInputText(value);
     const audioTime = engineRef.current?.getCurrentTime() ?? 0;
     trackerRef.current.onInput(value, audioTime, targetWords);
@@ -2310,6 +2366,7 @@ function App() {
     if (ttsStartedAtMsRef.current === null) {
       ttsStartedAtMsRef.current = performance.now();
     }
+    ttsPracticeLiveTextRef.current = value;
     setTtsPracticeText(value);
   }
 
@@ -2331,6 +2388,7 @@ function App() {
     if (kokoroStartedAtMsRef.current === null) {
       kokoroStartedAtMsRef.current = performance.now();
     }
+    kokoroPracticeLiveTextRef.current = value;
     setKokoroPracticeText(value);
   }
 
@@ -2489,15 +2547,43 @@ function App() {
     telemetryRef.current = next;
   }
 
-  function applyTtsPerformanceSample(options: { action?: ControlAction; finalize?: boolean; practiceTextOverride?: string } = {}): TtsPerformanceSampleResult {
+  function publishTtsUiState(next: TtsPublishedUiState, now: number, force = false): void {
+    const previous = ttsPublishedUiRef.current;
+    const changed =
+      previous.controllerState !== next.controllerState ||
+      Math.abs(previous.rate - next.rate) > 0.005 ||
+      Math.abs(previous.lagSec - next.lagSec) > 0.05 ||
+      previous.lagWords !== next.lagWords ||
+      Math.abs(previous.wpm - next.wpm) > 0.5 ||
+      Math.abs(previous.accuracy - next.accuracy) > 0.1 ||
+      previous.trend !== next.trend;
+
+    if (!force && (!changed || now - ttsUiLastPublishedAtRef.current < 500)) {
+      return;
+    }
+
+    ttsPublishedUiRef.current = next;
+    ttsUiLastPublishedAtRef.current = now;
+
+    if (force || controllerState !== next.controllerState) setControllerState(next.controllerState);
+    if (force || Math.abs(rate - next.rate) > 0.005) setRate(next.rate);
+    if (force || Math.abs(lagSec - next.lagSec) > 0.05) setLagSec(next.lagSec);
+    if (force || lagWords !== next.lagWords) setLagWords(next.lagWords);
+    if (force || Math.abs(wpm - next.wpm) > 0.5) setWpm(next.wpm);
+    if (force || Math.abs(accuracy - next.accuracy) > 0.1) setAccuracy(next.accuracy);
+    if (force || trend !== next.trend) setTrend(next.trend);
+  }
+
+  function applyTtsPerformanceSample(
+    options: { action?: ControlAction; finalize?: boolean; forcePublishUi?: boolean; practiceTextOverride?: string } = {},
+  ): TtsPerformanceSampleResult {
     const now = performance.now();
     if (ttsStartedAtMsRef.current === null) {
       ttsStartedAtMsRef.current = now;
     }
 
-    const evaluation = options.practiceTextOverride === undefined
-      ? ttsPracticeEvaluation
-      : evaluateTranscriptAttempt(options.practiceTextOverride, ttsTranscript);
+    const practiceTextForEvaluation = options.practiceTextOverride ?? ttsPracticeLiveTextRef.current;
+    const evaluation = evaluateTranscriptAttempt(practiceTextForEvaluation, ttsTranscript);
     const practiceWords = evaluation.typedWords;
     const visibleAccuracy = practiceWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0 ? evaluation.accuracy : 0;
     const sourceWordCount = ttsTranscript?.words.length ?? 0;
@@ -2544,13 +2630,19 @@ function App() {
       controllerState: nextControllerAction,
     };
 
-    setControllerState(nextControllerAction);
-    setRate(nextRate);
-    setLagSec(nextLagSec);
-    setLagWords(nextLagWords);
-    setWpm(nextWpm);
-    setAccuracy(nextAccuracy);
-    setTrend(nextTrend);
+    publishTtsUiState(
+      {
+        controllerState: nextControllerAction,
+        rate: nextRate,
+        lagSec: nextLagSec,
+        lagWords: nextLagWords,
+        wpm: nextWpm,
+        accuracy: nextAccuracy,
+        trend: nextTrend,
+      },
+      now,
+      Boolean(options.forcePublishUi || options.finalize || options.action),
+    );
     previousLagRef.current = nextLagSec;
     previousAccuracyRef.current = nextAccuracy;
 
@@ -2713,9 +2805,10 @@ function App() {
 
       const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, 'browser-tts', ttsLanguage);
       const liveSignal = ttsLiveSignalRef.current;
+      const livePracticeEvaluation = evaluateTranscriptAttempt(ttsPracticeLiveTextRef.current, ttsTranscript);
       const browserTtsProfile = resolveBrowserTtsAdaptiveProfile(ttsLanguage);
-      const typedWordsNow = ttsPracticeEvaluation.typedWords.length;
-      const matchedWordsNow = ttsPracticeEvaluation.matchedWords;
+      const typedWordsNow = livePracticeEvaluation.typedWords.length;
+      const matchedWordsNow = livePracticeEvaluation.matchedWords;
       const typedDelta = Math.max(0, typedWordsNow - ttsLastAccuracySnapshotRef.current.typedWords);
       const matchedDelta = Math.max(0, matchedWordsNow - ttsLastAccuracySnapshotRef.current.matchedWords);
       const sessionAccuracy = clamp01(liveSignal.accuracy / 100);
@@ -2777,7 +2870,7 @@ function App() {
         inputMode: 'browser-tts',
         phraseId: `tts-${chunkIndex}`,
         estimatedSpokenRatio: sourceWords.length > 0 ? estimateTtsSpokenWordIndex() / sourceWords.length : 0,
-        typedProgressRatio: sourceWords.length > 0 ? Math.max(0, ttsPracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
+        typedProgressRatio: sourceWords.length > 0 ? Math.max(0, livePracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
         lagSec: liveSignal.lagSec,
         lagWords: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND)),
         lagChars: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND * 5)),
@@ -2904,7 +2997,7 @@ function App() {
         inputMode: 'browser-tts',
         phraseId: `tts-${chunkIndex}-chunk`,
         estimatedSpokenRatio: sourceWords.length > 0 ? estimateTtsSpokenWordIndex() / sourceWords.length : 0,
-        typedProgressRatio: sourceWords.length > 0 ? Math.max(0, ttsPracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
+        typedProgressRatio: sourceWords.length > 0 ? Math.max(0, livePracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
         lagSec: liveSignal.lagSec,
         lagWords: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND)),
         lagChars: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND * 5)),
@@ -4660,6 +4753,24 @@ function App() {
       : activeInputMode === 'input3'
         ? onKokoroPracticeChange
         : onTtsPracticeChange;
+  const focusedImmediateInputHandler =
+    activeInputMode === 'input1'
+      ? (value: string) => {
+          inputLiveTextRef.current = value;
+        }
+      : activeInputMode === 'input3'
+        ? (value: string) => {
+            kokoroPracticeLiveTextRef.current = value;
+          }
+        : (value: string) => {
+            if (!telemetryRef.current || !telemetryRef.current.startedAt) {
+              telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
+            }
+            if (ttsStartedAtMsRef.current === null) {
+              ttsStartedAtMsRef.current = performance.now();
+            }
+            ttsPracticeLiveTextRef.current = value;
+          };
   const focusedKeyDownHandler =
     activeInputMode === 'input1'
       ? onTypingKeyDown
@@ -4695,9 +4806,10 @@ function App() {
     audioUrl,
     onAudioTimeUpdate: () => setCurrentAudioTime(audioRef.current?.currentTime ?? 0),
     onAudioEnded: finishSession,
-    showAudioElement: activeInputMode === 'input1',
+    showAudioElement: activeInputMode === 'input1' && Boolean(audioUrl),
     currentTextValue: focusedTextValue,
     onTextChange: focusedInputHandler,
+    onImmediateTextChange: focusedImmediateInputHandler,
     onTextKeyDown: focusedKeyDownHandler,
     textPlaceholder: focusedTextPlaceholder,
     readOnly: sessionStatus === 'finished',
@@ -4799,7 +4911,7 @@ function App() {
           : (latestTextValue?: string) => submitTtsSession(latestTextValue),
     submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
     message: error || exportMessage || openRouterJobStatus || openRouterError,
-    textCommitDelayMs: activeInputMode === 'input2' || activeInputMode === 'input4' ? 90 : 0,
+    textCommitDelayMs: activeInputMode === 'input2' || activeInputMode === 'input4' ? 250 : 0,
     generationButtons: [
       {
         label: directOpenRouterBusy || activeOpenRouterJob ? 'Generating easy...' : 'New Easy Session',
@@ -10211,6 +10323,7 @@ type TrainingViewProps = {
   showAudioElement: boolean;
   currentTextValue: string;
   onTextChange: (value: string) => void;
+  onImmediateTextChange?: (value: string) => void;
   onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   textPlaceholder: string;
   readOnly: boolean;
@@ -10262,6 +10375,7 @@ function TrainingView({
   showAudioElement,
   currentTextValue,
   onTextChange,
+  onImmediateTextChange,
   onTextKeyDown,
   textPlaceholder,
   readOnly,
@@ -10282,12 +10396,39 @@ function TrainingView({
   textCommitDelayMs,
 }: TrainingViewProps) {
   const textInputRef = useRef<LowLatencyTextareaHandle | null>(null);
+  const onTextChangeRef = useRef(onTextChange);
+  const onImmediateTextChangeRef = useRef(onImmediateTextChange);
+  const onTextKeyDownRef = useRef(onTextKeyDown);
   const trainingViewRenderCountRef = useRef(0);
   trainingViewRenderCountRef.current += 1;
 
   useEffect(() => {
+    onTextChangeRef.current = onTextChange;
+  }, [onTextChange]);
+
+  useEffect(() => {
+    onImmediateTextChangeRef.current = onImmediateTextChange;
+  }, [onImmediateTextChange]);
+
+  useEffect(() => {
+    onTextKeyDownRef.current = onTextKeyDown;
+  }, [onTextKeyDown]);
+
+  useEffect(() => {
     perfDiagnostics.recordRender('TrainingView', trainingViewRenderCountRef.current);
   });
+
+  const handleTextChange = useCallback((value: string) => {
+    onTextChangeRef.current(value);
+  }, []);
+
+  const handleImmediateTextChange = useCallback((value: string) => {
+    onImmediateTextChangeRef.current?.(value);
+  }, []);
+
+  const handleTextKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
+    onTextKeyDownRef.current(event);
+  }, []);
 
   function flushTextInput(): string {
     return textInputRef.current?.flush() ?? currentTextValue;
@@ -10342,13 +10483,15 @@ function TrainingView({
           <LowLatencyTextarea
             ref={textInputRef}
             value={currentTextValue}
-            onValueChange={onTextChange}
-            onKeyDown={onTextKeyDown}
+            onValueChange={handleTextChange}
+            onImmediateValueChange={handleImmediateTextChange}
+            onKeyDown={handleTextKeyDown}
             placeholder={textPlaceholder}
             readOnly={readOnly}
             rows={10}
             commitDelayMs={textCommitDelayMs}
             maxCommitDelayMs={Math.max(textCommitDelayMs * 3, 240)}
+            syncKey={`${activeSession?.id ?? 'none'}:${activeSession?.inputMode ?? 'none'}`}
           />
         </label>
       </section>

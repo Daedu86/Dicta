@@ -108,6 +108,62 @@ describe('LowLatencyTextarea', () => {
     expect(commits).toEqual(['antes de salir']);
   });
 
+  it('does not overwrite pending local text during an unrelated parent rerender', () => {
+    const commits: string[] = [];
+    act(() => {
+      root.render(createElement(LowLatencyTextarea, {
+        value: '',
+        onValueChange: (value: string) => commits.push(value),
+        commitDelayMs: 90,
+        syncKey: 'session-a',
+      }));
+    });
+
+    act(() => {
+      input('texto pendiente');
+    });
+
+    act(() => {
+      root.render(createElement(LowLatencyTextarea, {
+        value: '',
+        onValueChange: (value: string) => commits.push(value),
+        commitDelayMs: 90,
+        syncKey: 'session-a',
+      }));
+    });
+
+    expect(textArea().value).toBe('texto pendiente');
+    expect(commits).toEqual([]);
+  });
+
+  it('syncs the visible text when the session key changes', () => {
+    const commits: string[] = [];
+    act(() => {
+      root.render(createElement(LowLatencyTextarea, {
+        value: 'old session text',
+        onValueChange: (value: string) => commits.push(value),
+        commitDelayMs: 90,
+        syncKey: 'session-a',
+      }));
+    });
+
+    act(() => {
+      input('unsaved old edit');
+    });
+
+    act(() => {
+      root.render(createElement(LowLatencyTextarea, {
+        value: '',
+        onValueChange: (value: string) => commits.push(value),
+        commitDelayMs: 90,
+        syncKey: 'session-b',
+      }));
+    });
+
+    expect(textArea().value).toBe('');
+    expect(commits).toEqual(['unsaved old edit']);
+  });
+
   it('reports passive typing diagnostics without changing input behavior', () => {
     const commits: string[] = [];
     act(() => {
