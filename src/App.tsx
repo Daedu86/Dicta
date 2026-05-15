@@ -27,6 +27,7 @@ import { buildLagStabilitySample } from './core/adaptive/lagStability';
 import {
   clampBrowserTtsDeDecisionToRecommendation,
   createEmptyInputLanguageBenchmark,
+  isValidBrowserTtsDeBenchmarkSample,
   normalizeBenchmarkLanguage,
   updateInputLanguageBenchmark,
 } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
@@ -212,6 +213,23 @@ type SessionMetrics = {
   trend: PerformanceTrend;
   score: number;
   points: number;
+};
+
+type DictaDebugSampleAudit = {
+  acceptedForBenchmark: boolean;
+  rejectionReason: string | null;
+  event: AdaptiveTimelinePoint['event'];
+  phraseId?: string;
+  phraseIndex?: number;
+  rawLagSec?: number;
+  lagSec: number;
+  stableLagSec?: number;
+  phraseBoundaryType?: PhraseBoundaryType;
+  semanticCompleteness?: number;
+  accuracy: number;
+  wpm: number;
+  sessionId?: string;
+  timestampMs: number;
 };
 
 type LocalStorageEntry = {
@@ -731,6 +749,90 @@ function App() {
     setPerfDiagnosticsEnabled(enabled);
     return () => perfDiagnostics.dispose();
   }, []);
+
+  useEffect(() => {
+    if (!perfDiagnosticsEnabled && !import.meta.env.DEV) {
+      delete window.__DICTA_DEBUG_EXPORT__;
+      return;
+    }
+    window.__DICTA_DEBUG_EXPORT__ = () => {
+      const inputMode: InputMode = 'browser-tts';
+      const language: LanguageCode = 'de';
+      const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? null;
+      const latestFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
+      const latestSessionId = latestFeedback?.sessionId ?? activeSessionId ?? null;
+      const profileTimeline = profile?.timeline ?? [];
+      const recentTimelinePoints = latestSessionId
+        ? profileTimeline.filter((point) => point.sessionId === latestSessionId).slice(-120)
+        : profileTimeline.slice(-120);
+      const recentPhraseEvents = latestSessionId
+        ? phrasePlaybackEventsRef.current.filter((event) => event.sessionId === latestSessionId).slice(-200)
+        : phrasePlaybackEventsRef.current.slice(-200);
+      const sampleAudit: DictaDebugSampleAudit[] = recentTimelinePoints.map((point) => {
+        const rejectionReason = deriveBrowserTtsDeBenchmarkRejectionReason(point);
+        return {
+          acceptedForBenchmark: rejectionReason === null,
+          rejectionReason,
+          event: point.event,
+          phraseId: point.phraseId,
+          phraseIndex: point.phraseIndex,
+          rawLagSec: point.rawLagSec,
+          lagSec: point.lagSec,
+          stableLagSec: point.stableLagSec,
+          phraseBoundaryType: point.phraseBoundaryType,
+          semanticCompleteness: point.semanticCompleteness,
+          accuracy: point.accuracy,
+          wpm: point.wpm,
+          sessionId: point.sessionId,
+          timestampMs: point.timestampMs,
+        };
+      });
+      const placeholderStartSamples = sampleAudit.filter(
+        (point) => point.wpm === 0 && point.accuracy === 1 && point.lagSec === 0 && point.rawLagSec === 0,
+      );
+      const benchmarkBefore = latestFeedback?.benchmarkBefore;
+      const benchmarkAfter = latestFeedback?.benchmarkAfter;
+      const benchmarkChanged =
+        benchmarkBefore !== undefined && benchmarkAfter !== undefined
+          ? JSON.stringify(benchmarkBefore) !== JSON.stringify(benchmarkAfter)
+          : null;
+      const output = {
+        generatedAt: new Date().toISOString(),
+        inputMode,
+        language,
+        latestSessionId,
+        benchmarkProfile: profile,
+        latestSessionFeedback: latestFeedback,
+        recentAdaptiveTimelinePoints: recentTimelinePoints,
+        recentPhrasePlaybackEvents: recentPhraseEvents,
+        eventCounts: buildAdaptiveEventCounts(recentTimelinePoints, recentPhraseEvents),
+        benchmarkSampleAudit: sampleAudit,
+        placeholderStartSamples: {
+          present: placeholderStartSamples.length > 0,
+          count: placeholderStartSamples.length,
+          samples: placeholderStartSamples.slice(0, 20),
+        },
+        benchmarkBeforeAfter: {
+          available: benchmarkBefore !== undefined && benchmarkAfter !== undefined,
+          changed: benchmarkChanged,
+        },
+        perfDiagnostics:
+          typeof window.__DICTA_PERF__?.snapshot === 'function'
+            ? window.__DICTA_PERF__.snapshot()
+            : null,
+      };
+      console.info('[dicta][debug-export]', output);
+      return output;
+    };
+    return () => {
+      delete window.__DICTA_DEBUG_EXPORT__;
+    };
+  }, [
+    activeSessionId,
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
+    perfDiagnosticsEnabled,
+  ]);
 
   useEffect(() => {
     window.localStorage.setItem(WORKSPACE_MODE_KEY, workspaceMode);
@@ -4528,6 +4630,51 @@ function App() {
     });
     delete sessionBenchmarkBeforeRef.current[activeSession.id];
     delete sessionFeedbackContextRef.current[activeSession.id];
+  }
+
+  function deriveBrowserTtsDeBenchmarkRejectionReason(point: AdaptiveTimelinePoint): string | null {
+    if (isValidBrowserTtsDeBenchmarkSample(point)) return null;
+    const rawLagSec = point.rawLagSec;
+    const stableLagSec = point.stableLagSec;
+    const scoringEvent =
+      point.event === 'phrase_advance' ||
+      point.event === 'rate_change' ||
+      point.event === 'support_entered' ||
+      point.event === 'flow_entered';
+    if (typeof rawLagSec !== 'number' || !Number.isFinite(rawLagSec)) return 'rawLagSec_missing_or_non_finite';
+    if (!Number.isFinite(point.lagSec)) return 'lagSec_non_finite';
+    if (stableLagSec !== undefined && !Number.isFinite(stableLagSec)) return 'stableLagSec_non_finite';
+    if (rawLagSec < -3 || rawLagSec > 6) return 'rawLagSec_out_of_range';
+    if (rawLagSec === -5 || point.lagSec === -5 || stableLagSec === -5) return 'lag_clipped_to_sentinel_-5';
+    if (point.phraseBoundaryType === 'unsafe') return 'unsafe_phrase_boundary';
+    if ((point.semanticCompleteness ?? 1) < 0.7) return 'semantic_completeness_below_0.7';
+    if (!scoringEvent) return 'event_not_scoring';
+    return 'filtered_by_de_scoring_rule';
+  }
+
+  function buildAdaptiveEventCounts(
+    timelinePoints: AdaptiveTimelinePoint[],
+    phraseEvents: PhrasePlaybackEvent[],
+  ): Record<string, number> {
+    const trackedEvents: Array<string> = [
+      'pause',
+      'defer_pause',
+      'phrase_advance',
+      'rate_change',
+      'support_entered',
+      'flow_entered',
+      'phrase_started',
+      'phrase_completed',
+    ];
+    const counts = Object.fromEntries(trackedEvents.map((event) => [event, 0])) as Record<string, number>;
+    for (const point of timelinePoints) {
+      const event = point.event;
+      if (event && event in counts) counts[event] += 1;
+    }
+    for (const event of phraseEvents) {
+      if (event.event in counts) counts[event.event] += 1;
+    }
+    return counts;
   }
 
   function getBenchmarkActiveSessionStatus(profile: InputLanguageBenchmarkMetrics): string | undefined {
@@ -11714,4 +11861,10 @@ async function buildFilePayload(file: File, language: TtsLanguage): Promise<{ fi
     audioBase64,
     language,
   };
+}
+
+declare global {
+  interface Window {
+    __DICTA_DEBUG_EXPORT__?: () => Record<string, unknown>;
+  }
 }
