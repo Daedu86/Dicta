@@ -124,6 +124,7 @@ import {
 import { MiniTrends, SweetSpotGauge, TargetZoneChart } from './components/AdaptiveBenchmarkCharts';
 
 const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
+const SESSION_PERSIST_DEBOUNCE_MS = 1500;
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 const KOKORO_ENABLED_KEY = 'dicta.kokoroEnabled.v1';
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
@@ -590,6 +591,9 @@ function App() {
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
   const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
+  const latestSessionsForPersistenceRef = useRef<StoredSession[]>(sessions);
+  const sessionPersistTimerRef = useRef<number | null>(null);
+  const lastPersistedSessionsJsonRef = useRef<string | null>(null);
   const syncStateRef = useRef<DictaSyncState>(
     buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
   );
@@ -923,17 +927,57 @@ function App() {
     };
   }, [workspaceMode]);
 
+  function clearScheduledSessionPersist(): void {
+    if (sessionPersistTimerRef.current === null) return;
+    window.clearTimeout(sessionPersistTimerRef.current);
+    sessionPersistTimerRef.current = null;
+  }
+
+  function persistSessionsToLocalStorage(nextSessions: StoredSession[], spanName = 'session.localStorage.persist'): void {
+    perfDiagnostics.withSpan(spanName, () => {
+      const json = JSON.stringify(nextSessions.map((session) => normalizeSessionForPersistence(session)));
+      if (json === lastPersistedSessionsJsonRef.current) return;
+      window.localStorage.setItem(SESSION_STORAGE_KEY, json);
+      lastPersistedSessionsJsonRef.current = json;
+    }, { sessionCount: nextSessions.length });
+  }
+
+  function flushScheduledSessionPersist(spanName = 'session.localStorage.flush'): void {
+    clearScheduledSessionPersist();
+    persistSessionsToLocalStorage(latestSessionsForPersistenceRef.current, spanName);
+  }
+
   useEffect(() => {
-    perfDiagnostics.withSpan('session.localStorage.persist', () => {
-      const normalized = sessions.map((session) => normalizeSessionForPersistence(session));
-      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(normalized));
-    }, { sessionCount: sessions.length });
+    latestSessionsForPersistenceRef.current = sessions;
+    clearScheduledSessionPersist();
+    sessionPersistTimerRef.current = window.setTimeout(() => {
+      sessionPersistTimerRef.current = null;
+      persistSessionsToLocalStorage(latestSessionsForPersistenceRef.current);
+    }, SESSION_PERSIST_DEBOUNCE_MS);
   }, [sessions]);
 
+  useEffect(() => {
+    const flushBeforeExit = () => flushScheduledSessionPersist('session.localStorage.flushBeforeExit');
+    const flushWhenHidden = () => {
+      if (document.visibilityState === 'hidden') {
+        flushBeforeExit();
+      }
+    };
+    window.addEventListener('pagehide', flushBeforeExit);
+    window.addEventListener('beforeunload', flushBeforeExit);
+    document.addEventListener('visibilitychange', flushWhenHidden);
+    return () => {
+      flushScheduledSessionPersist();
+      window.removeEventListener('pagehide', flushBeforeExit);
+      window.removeEventListener('beforeunload', flushBeforeExit);
+      document.removeEventListener('visibilitychange', flushWhenHidden);
+    };
+  }, []);
+
   function persistAndPushSessionsNow(nextSessions: StoredSession[]): void {
-    perfDiagnostics.withSpan('session.persistNow.localStorage', () => {
-      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSessions.map((session) => normalizeSessionForPersistence(session))));
-    }, { sessionCount: nextSessions.length });
+    latestSessionsForPersistenceRef.current = nextSessions;
+    clearScheduledSessionPersist();
+    persistSessionsToLocalStorage(nextSessions, 'session.persistNow.localStorage');
     if (!supabaseClient || !syncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
 
     setSupabaseSyncStatus((current) => ({
