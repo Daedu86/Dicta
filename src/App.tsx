@@ -123,7 +123,7 @@ import {
   type MetricsLanguageView,
   type MetricsRangeView,
 } from './core/liveMetrics';
-import { MiniTrends, SweetSpotGauge, TargetZoneChart } from './components/AdaptiveBenchmarkCharts';
+import { LagDistributionChart, MiniTrends, RateAccuracyStrip, SweetSpotGauge, TargetZoneChart } from './components/AdaptiveBenchmarkCharts';
 
 const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
 const SESSION_PERSIST_DEBOUNCE_MS = 1500;
@@ -547,12 +547,12 @@ function App() {
   );
   const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<null | 'sessionFeedback' | 'exports'>(null);
   const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState({
-    decision: true,
-    architecture: true,
-    adapters: true,
-    latest: true,
-    live: true,
-    telemetry: true,
+    decision: false,
+    architecture: false,
+    adapters: false,
+    latest: false,
+    live: false,
+    telemetry: false,
     benchmarks: true,
   });
   const [selectedBenchmarkInputMode, setSelectedBenchmarkInputMode] = useState<InputMode>('kokoro');
@@ -4980,8 +4980,8 @@ function App() {
   const selectedSessionFeedback =
     adaptiveSessionFeedbackByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage]?.[0] ?? null;
   const repeatWordStats = useMemo(
-    () => buildRepeatWordStats({ sessions, language: selectedBenchmarkLanguage, now: new Date() }),
-    [sessions, selectedBenchmarkLanguage],
+    () => buildRepeatWordStats({ sessions, inputMode: selectedBenchmarkInputMode, language: selectedBenchmarkLanguage, now: new Date() }),
+    [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],
   );
   const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
   const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) : null;
@@ -6381,9 +6381,8 @@ function App() {
               <section className="panel workspace-panel adaptive-workspace">
                 <div className="tts-workspace-header">
                   <div>
-                    <p className="dashboard-eyebrow">Central adaptive pace layer</p>
+                    <p className="dashboard-eyebrow">Adaptive cockpit</p>
                     <h2>Adaptive Pace Layer</h2>
-                    <p className="dashboard-meta">One decision engine normalizes telemetry, then each input adapter applies pace control in its own way.</p>
                   </div>
                   <div className="dashboard-header-actions">
                     <button
@@ -9050,9 +9049,8 @@ function AdaptiveBenchmarkSection({
     <section id={id} className="panel workspace-panel adaptive-benchmark-panel">
       <div className="adaptive-section-header">
         <div>
-          <p className="dashboard-eyebrow">Section # 7 - Benchmarks</p>
-          <h3>Profile Benchmarks</h3>
-          <p className="dashboard-meta">Select an input and language to view its benchmark workspace. This is shared across the Adaptive Pace Layer.</p>
+          <p className="dashboard-eyebrow">Overview</p>
+          <h3>Benchmarks</h3>
         </div>
         <button
           type="button"
@@ -9069,8 +9067,8 @@ function AdaptiveBenchmarkSection({
         <>
           <div className="adaptive-section-header adaptive-subsection-header">
             <div>
-              <p className="dashboard-eyebrow">Section # 7.1 - Profile Selector</p>
-              <h4>Choose input + language</h4>
+              <p className="dashboard-eyebrow">4 inputs x 3 languages</p>
+              <h4>Profile matrix</h4>
             </div>
             <button
               type="button"
@@ -9084,29 +9082,18 @@ function AdaptiveBenchmarkSection({
             </button>
           </div>
           {benchmarkSubsectionsExpanded.selector ? (
-            <div className="adaptive-benchmark-card-grid">
-              {adapters.map((adapter) => {
-                const inputMode = mapSessionInputMode(adapter.inputMode);
-                return (
-                  <article key={inputMode} className={`adaptive-benchmark-card ${selectedInputMode === inputMode ? 'adaptive-benchmark-card-active' : ''}`}>
-                    <h4>{adapter.title}</h4>
-                    <p>{benchmarkSubtitle(inputMode)}</p>
-                    <LanguageButtonRow
-                      inputMode={inputMode}
-                      selectedInputMode={selectedInputMode}
-                      selectedLanguage={selectedLanguage}
-                      onSelect={onSelect}
-                    />
-                    <small>{benchmarkSampleSummary(benchmarks[inputMode])}</small>
-                  </article>
-                );
-              })}
-            </div>
+            <AdaptiveProfileMatrix
+              adapters={adapters}
+              benchmarks={benchmarks}
+              selectedInputMode={selectedInputMode}
+              selectedLanguage={selectedLanguage}
+              onSelect={onSelect}
+            />
           ) : null}
 
           <div className="adaptive-section-header adaptive-subsection-header">
             <div>
-              <p className="dashboard-eyebrow">Section # 7.2 - Selected Profile Workspace</p>
+              <p className="dashboard-eyebrow">Selected profile</p>
               <h4>{selectedAdapter?.title ?? selectedInputMode} / {formatBenchmarkLanguage(selectedProfile.language)}</h4>
             </div>
             <button
@@ -9146,34 +9133,63 @@ function AdaptiveBenchmarkSection({
   );
 }
 
-function LanguageButtonRow({
-  inputMode,
+function AdaptiveProfileMatrix({
+  adapters,
+  benchmarks,
   selectedInputMode,
   selectedLanguage,
   onSelect,
 }: {
-  inputMode: InputMode;
+  adapters: AdaptiveAdapterCardConfig[];
+  benchmarks: AdaptiveBenchmarksByInputLanguage;
   selectedInputMode: InputMode;
   selectedLanguage: BenchmarkLanguageButton;
   onSelect: (inputMode: InputMode, language: BenchmarkLanguageButton) => void;
 }) {
+  const languages: BenchmarkLanguageButton[] = ['en', 'es', 'de'];
   return (
-    <div className="adaptive-benchmark-language-row" role="tablist" aria-label={`${inputMode} benchmark language`}>
-      {([
-        ['en', 'English'],
-        ['es', 'Spanish'],
-        ['de', inputMode === 'kokoro' ? 'German (non-native)' : 'German'],
-      ] as const).map(([language, label]) => (
-        <button
-          key={language}
-          type="button"
-          className={`live-metrics-language-tab ${selectedInputMode === inputMode && selectedLanguage === language ? 'live-metrics-language-tab-active' : ''}`}
-          onClick={() => onSelect(inputMode, language)}
-          aria-pressed={selectedInputMode === inputMode && selectedLanguage === language}
-        >
-          {label}
-        </button>
-      ))}
+    <div className="adaptive-profile-matrix" aria-label="Benchmark profile matrix">
+      <div className="adaptive-profile-matrix-header" aria-hidden="true">
+        <span>Input</span>
+        {languages.map((language) => (
+          <span key={language}>{language.toUpperCase()}</span>
+        ))}
+      </div>
+      {adapters.map((adapter) => {
+        const inputMode = mapSessionInputMode(adapter.inputMode);
+        return (
+          <div key={inputMode} className="adaptive-profile-matrix-row">
+            <div className="adaptive-profile-matrix-input">
+              <strong>{adapter.title.replace('Input # ', '#')}</strong>
+              <span>{benchmarkSubtitle(inputMode)}</span>
+            </div>
+            {languages.map((language) => {
+              const profile = benchmarks[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
+              const selected = selectedInputMode === inputMode && selectedLanguage === language;
+              const health = getBenchmarkHealth(profile);
+              return (
+                <button
+                  key={`${inputMode}-${language}`}
+                  type="button"
+                  className={`adaptive-profile-cell adaptive-profile-cell-${health} ${selected ? 'adaptive-profile-cell-selected' : ''}`}
+                  onClick={() => onSelect(inputMode, language)}
+                  aria-pressed={selected}
+                  title={`${inputMode}/${language}: ${formatScore(profile.sweetSpotScore)} sweet spot, ${formatScore(profile.recommendation.confidence)} confidence, ${profile.sampleCount} samples`}
+                >
+                  <span>{formatScore(profile.sweetSpotScore)}</span>
+                  <strong>{profile.sampleCount}</strong>
+                  <small>{formatScore(profile.recommendation.confidence)}</small>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
+      <div className="adaptive-profile-matrix-legend" aria-label="Matrix legend">
+        <span><i className="adaptive-health-dot adaptive-health-strong" /> Strong</span>
+        <span><i className="adaptive-health-dot adaptive-health-watch" /> Watch</span>
+        <span><i className="adaptive-health-dot adaptive-health-empty" /> Not enough data</span>
+      </div>
     </div>
   );
 }
@@ -9224,6 +9240,10 @@ function AdaptiveBenchmarkWorkspace({
   const hasBenchmarkData = profile.sampleCount > 0 || profile.sessionCount > 0;
   const hasSessionFeedback = Boolean(sessionFeedback);
   const repeatWordSummary = repeatWordStats.slice(0, 20);
+  const topRepeatWords = repeatWordStats.slice(0, 8);
+  const maxRepeatWordTotal = Math.max(1, ...topRepeatWords.map((entry) => entry.total));
+  const confidenceState = profile.recommendation.confidence >= 0.55 ? 'Reliable' : profile.recommendation.confidence >= 0.25 ? 'Learning' : 'Collecting data';
+  const weakAreaSummary = profile.weakAreas.slice(0, 4);
   const sequencingClean = sessionFeedback
     ? sessionFeedback.playbackIssues.repeatedPhraseCount === 0 &&
       sessionFeedback.playbackIssues.skippedPhraseCount === 0 &&
@@ -9233,9 +9253,15 @@ function AdaptiveBenchmarkWorkspace({
     : fallbackDiagnostics.repeatedPhraseCount === 0 &&
       fallbackDiagnostics.replayCount === 0 &&
       fallbackDiagnostics.phraseIndexJumpCount === 0;
-  const coachSummary = buildAdaptiveCoachSummary(profile, sessionFeedback, sequencingClean);
+  const feedbackIssueCount = sessionFeedback
+    ? sessionFeedback.playbackIssues.repeatedPhraseCount +
+      sessionFeedback.playbackIssues.skippedPhraseCount +
+      sessionFeedback.playbackIssues.outOfOrderAdvanceCount +
+      sessionFeedback.playbackIssues.replayAdvancedPhraseCount +
+      sessionFeedback.playbackIssues.phraseIndexJumpCount
+    : fallbackDiagnostics.repeatedPhraseCount + fallbackDiagnostics.replayCount + fallbackDiagnostics.phraseIndexJumpCount;
   const [workspaceSubsectionsExpanded, setWorkspaceSubsectionsExpanded] = useState({
-    kpis: true,
+    kpis: false,
     coach: true,
     feedback: true,
     deepMetrics: false,
@@ -9393,62 +9419,76 @@ function AdaptiveBenchmarkWorkspace({
       <section className="adaptive-benchmark-subpanel adaptive-cockpit-panel">
         <div className="adaptive-section-header adaptive-subsection-header">
           <div>
-            <p className="dashboard-eyebrow">Training Cockpit</p>
-            <h4>Active profile and next action</h4>
+            <p className="dashboard-eyebrow">Profile Cockpit</p>
+            <h4>{inputTitle} / {languageLabel}</h4>
           </div>
         </div>
         <div className="adaptive-cockpit-grid">
-          <section className="adaptive-benchmark-subpanel">
-            <h4>Active Profile</h4>
-            <p className="dashboard-meta">All metrics and exports use this profile.</p>
-            <div className="today-summary-grid">
-              <Metric label="Profile" value={`${profile.inputMode}/${profile.language}`} />
-              <Metric label="Sessions" value={String(profile.sessionCount)} />
-              <Metric label="Samples" value={String(profile.sampleCount)} />
-              <Metric label="Updated" value={profile.lastUpdatedAt ? formatSessionDate(profile.lastUpdatedAt) : 'n/a'} />
-              <Metric label="Weak areas" value={profile.weakAreas.length > 0 ? profile.weakAreas.join(', ') : 'none'} />
-              <Metric label="Target rate" value={recommendedRange} />
+          <section className="adaptive-benchmark-subpanel adaptive-profile-hero-card">
+            <div className="adaptive-profile-hero-top">
+              <div>
+                <span className={`adaptive-confidence-pill adaptive-confidence-${getBenchmarkHealth(profile)}`}>{confidenceState}</span>
+                <h4>{formatScore(profile.sweetSpotScore)} sweet spot</h4>
+              </div>
+              <strong>{profile.sampleCount}</strong>
+            </div>
+            <div className="adaptive-profile-hero-metrics">
+              <span><strong>{formatScore(profile.recommendation.confidence)}</strong> confidence</span>
+              <span><strong>{profile.sessionCount}</strong> sessions</span>
+              <span><strong>{profile.lastUpdatedAt ? formatSessionDate(profile.lastUpdatedAt) : 'n/a'}</strong> updated</span>
             </div>
           </section>
 
-          <section className="adaptive-benchmark-subpanel">
-            <h4>Coach Summary</h4>
-            <p className="dashboard-meta">{coachSummary}</p>
-            {sequencingClean ? (
-              <p className="success">Playback sequencing is clean: no repeats, skips, jumps, or replay-advance issues.</p>
-            ) : (
-              <p className="error">Playback issues detected. Review Session Feedback and Diagnostics before generating the next script.</p>
-            )}
+          <section className="adaptive-benchmark-subpanel adaptive-next-action-card">
+            <h4>Next target</h4>
+            <div className="adaptive-target-token-grid">
+              <span><small>Rate</small><strong>{recommendedRange}</strong></span>
+              <span><small>Phrase</small><strong>{profile.recommendation.targetPhraseSize}</strong></span>
+              <span><small>Pause</small><strong>{Math.round(profile.recommendation.targetPauseMs)}ms</strong></span>
+            </div>
+            <div className="adaptive-weak-area-row">
+              {weakAreaSummary.length === 0 ? (
+                <span className="adaptive-weak-area-chip adaptive-weak-area-chip-good">stable</span>
+              ) : (
+                weakAreaSummary.map((area) => <span key={area} className="adaptive-weak-area-chip">{formatWeakAreaLabel(area)}</span>)
+              )}
+            </div>
           </section>
 
-          <section className="adaptive-benchmark-subpanel">
-            <h4>Top words to repeat</h4>
-            <p className="dashboard-meta">Last 30 days · Language: {String(profile.language).toUpperCase()}</p>
+          <section className="adaptive-benchmark-subpanel adaptive-words-widget">
+            <h4>Words to improve</h4>
             {repeatWordSummary.length === 0 ? (
-              <p className="hint">No finished sessions in the last 30 days for {String(profile.language).toUpperCase()}.</p>
+              <p className="hint">No finished sessions for this input/language in the last 30 days.</p>
             ) : (
-              <div className="repeat-words-table" role="table" aria-label="Top words to repeat">
-                <div className="repeat-words-row repeat-words-header" role="row">
-                  <span role="columnheader">Word</span>
-                  <span role="columnheader">Total</span>
-                  <span role="columnheader">Missed</span>
-                  <span role="columnheader">Typos</span>
-                </div>
-                {repeatWordSummary.map((entry) => (
-                  <div key={entry.word} className="repeat-words-row" role="row">
-                    <span role="cell" className="mono">{entry.word}</span>
-                    <span role="cell">{entry.total}</span>
-                    <span role="cell">{entry.missed}</span>
-                    <span role="cell">{entry.typos}</span>
+              <div className="adaptive-word-bars" aria-label="Words to improve">
+                {topRepeatWords.map((entry) => (
+                  <div key={entry.word} className="adaptive-word-bar">
+                    <div>
+                      <strong>{entry.word}</strong>
+                      <small>{entry.missed} missed · {entry.typos} typos</small>
+                    </div>
+                    <span style={{ width: `${Math.max(10, Math.round((entry.total / maxRepeatWordTotal) * 100))}%` }} />
+                    <em>{entry.total}</em>
                   </div>
                 ))}
               </div>
             )}
           </section>
 
-          <section className="adaptive-benchmark-subpanel" id="adaptive-export-copy-actions">
-            <h4>Export / Copy Actions</h4>
-            <p className="dashboard-meta">Exports use: {profile.inputMode}/{profile.language}</p>
+          <section className={`adaptive-benchmark-subpanel adaptive-feedback-status-card ${sequencingClean ? 'adaptive-feedback-status-good' : 'adaptive-feedback-status-watch'}`}>
+            <h4>Latest feedback</h4>
+            <div className="adaptive-feedback-widget-grid">
+              <span><small>Verdict</small><strong>{sessionFeedback?.verdict ?? 'n/a'}</strong></span>
+              <span><small>Issues</small><strong>{feedbackIssueCount}</strong></span>
+              <span><small>Improvement</small><strong>{sessionFeedback ? formatScore(sessionFeedback.improvementDelta.overallImprovementScore) : 'n/a'}</strong></span>
+            </div>
+          </section>
+
+          <details className="adaptive-benchmark-subpanel adaptive-export-panel" id="adaptive-export-copy-actions" open={focusAnchor === 'exports'}>
+            <summary>
+              <span>Advanced exports</span>
+              <small>{profile.inputMode}/{profile.language}</small>
+            </summary>
             <div className="adaptive-export-groups">
               <div>
                 <p className="dashboard-eyebrow">Benchmark JSON</p>
@@ -9693,7 +9733,7 @@ function AdaptiveBenchmarkWorkspace({
                 </div>
               </div>
             ) : null}
-          </section>
+          </details>
         </div>
       </section>
 
@@ -9770,6 +9810,12 @@ function AdaptiveBenchmarkWorkspace({
           </section>
           <section className="dashboard-card adaptive-coach-card adaptive-coach-card-trends">
             <MiniTrends profile={profile} />
+          </section>
+          <section className="dashboard-card adaptive-coach-card adaptive-coach-card-rate">
+            <RateAccuracyStrip profile={profile} />
+          </section>
+          <section className="dashboard-card adaptive-coach-card adaptive-coach-card-lag">
+            <LagDistributionChart profile={profile} />
           </section>
         </div>
       ) : null}
@@ -10204,18 +10250,6 @@ function isTimestampAfterSync(value: string | null | undefined, lastSyncedTime: 
   return Number.isFinite(time) && time > lastSyncedTime;
 }
 
-function buildAdaptiveCoachSummary(
-  profile: InputLanguageBenchmarkMetrics,
-  sessionFeedback: AdaptiveSessionFeedback | null,
-  sequencingClean: boolean,
-): string {
-  const focus = profile.weakAreas.length > 0 ? profile.weakAreas.join(', ') : 'consistency';
-  const recommendation = `${profile.recommendation.targetRateRange[0].toFixed(2)}x-${profile.recommendation.targetRateRange[1].toFixed(2)}x, ${profile.recommendation.targetPhraseSize} phrases, ${Math.round(profile.recommendation.targetPauseMs)}ms pauses`;
-  const verdict = sessionFeedback?.verdict ?? 'no recent feedback';
-  const sequencingText = sequencingClean ? 'Sequencing is clean.' : 'Sequencing issues need attention.';
-  return `Accuracy is ${formatPercent(profile.averageAccuracy)} with average lag ${profile.averageLagSec.toFixed(2)}s and flow stability ${formatScore(profile.flowStabilityScore)}. Focus: ${focus}. Latest verdict: ${verdict}. Next target: ${recommendation}. ${sequencingText}`;
-}
-
 function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummary {
   const localStorageEntries = getDictaLocalStorageEntries();
   const inputModeCounts = sessions.reduce<Record<SessionInputMode, number>>(
@@ -10518,13 +10552,6 @@ function benchmarkSubtitle(inputMode: InputMode): string {
   return 'Cached semantic chunks with browser fallback.';
 }
 
-function benchmarkSampleSummary(profiles?: Record<string, InputLanguageBenchmarkMetrics>): string {
-  if (!profiles) return 'No samples yet';
-  const sampleCount = Object.values(profiles).reduce((sum, profile) => sum + profile.sampleCount, 0);
-  const sessionCount = Object.values(profiles).reduce((sum, profile) => sum + profile.sessionCount, 0);
-  return `${sampleCount} samples · ${sessionCount} sessions`;
-}
-
 function formatBenchmarkLanguage(language: LanguageCode): string {
   if (language === 'en') return 'English';
   if (language === 'es') return 'Spanish';
@@ -10548,6 +10575,18 @@ function normalizeAccuracyForDisplay(value: number): number {
 
 function formatPercent(value: number): string {
   return `${(normalizeAccuracyForDisplay(value) * 100).toFixed(1)}%`;
+}
+
+function getBenchmarkHealth(profile: InputLanguageBenchmarkMetrics): 'empty' | 'watch' | 'strong' {
+  if (profile.sampleCount < 8 || profile.recommendation.confidence < 0.2) return 'empty';
+  if (profile.sweetSpotScore >= 0.72 && normalizeAccuracyForDisplay(profile.averageAccuracy) >= 0.86 && Math.abs(profile.stableAverageLagSec) <= 1.2) {
+    return 'strong';
+  }
+  return 'watch';
+}
+
+function formatWeakAreaLabel(value: string): string {
+  return value.replace(/_/g, ' ');
 }
 
 function formatAdaptiveModeFromSession(session: StoredSession): string {
@@ -11951,16 +11990,19 @@ function buildTextTranscript(text: string): Transcript | null {
 
 function buildRepeatWordStats({
   sessions,
+  inputMode,
   language,
   now,
 }: {
   sessions: StoredSession[];
+  inputMode: InputMode;
   language: BenchmarkLanguageButton;
   now: Date;
 }): RepeatWordStat[] {
   const cutoffMs = now.getTime() - 30 * 24 * 60 * 60 * 1000;
   const withinWindow = sessions.filter((session) => {
     if (session.status !== 'finished') return false;
+    if (mapSessionInputMode(session.inputMode) !== inputMode) return false;
     const resolvedLanguage = resolveSessionLanguage(session);
     if (resolvedLanguage !== language) return false;
     const updatedAtMs = new Date(session.updatedAt).getTime();
