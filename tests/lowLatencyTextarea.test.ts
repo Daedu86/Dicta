@@ -90,6 +90,29 @@ describe('LowLatencyTextarea', () => {
     expect(commits).toEqual(['texto final']);
   });
 
+  it('focuses the textarea through the imperative handle and keeps the caret ready at the end', () => {
+    const ref = createRef<LowLatencyTextareaHandle>();
+    const scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    act(() => {
+      root.render(createElement(LowLatencyTextarea, {
+        ref,
+        value: 'listo',
+        onValueChange: () => undefined,
+        commitDelayMs: 90,
+      }));
+    });
+
+    act(() => {
+      ref.current?.focus();
+    });
+
+    expect(document.activeElement).toBe(textArea());
+    expect(textArea().selectionStart).toBe(5);
+    expect(textArea().selectionEnd).toBe(5);
+    expect(scrollIntoView).toHaveBeenCalled();
+  });
+
   it('flushes on blur so navigation or submit-adjacent focus changes do not lose text', () => {
     const commits: string[] = [];
     act(() => {

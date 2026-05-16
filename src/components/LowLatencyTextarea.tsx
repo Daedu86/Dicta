@@ -12,6 +12,7 @@ import { perfDiagnostics } from '../core/perfDiagnostics';
 
 export type LowLatencyTextareaHandle = {
   flush: () => string;
+  focus: () => void;
 };
 
 type LowLatencyTextareaProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'defaultValue' | 'onChange' | 'value'> & {
@@ -126,7 +127,17 @@ const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLate
     scheduleCommit();
   }
 
-  useImperativeHandle(ref, () => ({ flush: commitNow }), []);
+  useImperativeHandle(ref, () => ({
+    flush: commitNow,
+    focus: () => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const end = textarea.value.length;
+      textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      textarea.focus({ preventScroll: true });
+      textarea.setSelectionRange(end, end);
+    },
+  }), []);
 
   useLayoutEffect(() => {
     const syncKeyChanged = syncKey !== lastSyncKeyRef.current;

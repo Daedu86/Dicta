@@ -6398,10 +6398,18 @@ function App() {
                   </div>
                 </div>
                 <div className="adaptive-workspace-grid">
+                  <details className="adaptive-advanced-shell">
+                    <summary>
+                      <span>
+                        <strong>Advanced diagnostics</strong>
+                        <small>Architecture, adapters, latest run, and debug counters</small>
+                      </span>
+                    </summary>
+                    <div className="adaptive-advanced-grid">
                   <section className="panel workspace-panel adaptive-decision-panel">
                     <div className="adaptive-section-header">
                       <div>
-                        <p className="dashboard-eyebrow">Section # 1 - Training Cockpit</p>
+                        <p className="dashboard-eyebrow">Advanced</p>
                         <h3>Central Brain</h3>
                       </div>
                       <button
@@ -6441,7 +6449,7 @@ function App() {
                   <section className="panel workspace-panel adaptive-architecture-panel">
                     <div className="adaptive-section-header">
                       <div>
-                        <p className="dashboard-eyebrow">Section # 2 - Brain & Adapter Overview</p>
+                        <p className="dashboard-eyebrow">Architecture</p>
                         <h3>Centralized decision, input-specific execution</h3>
                       </div>
                       <button
@@ -6480,7 +6488,7 @@ function App() {
                   <section className="panel workspace-panel adaptive-adapters-panel">
                     <div className="adaptive-section-header">
                       <div>
-                        <p className="dashboard-eyebrow">Section # 3 - Brain & Adapter Overview</p>
+                        <p className="dashboard-eyebrow">Adapters</p>
                         <h3>Execution strategies</h3>
                         <p className="dashboard-meta">Select an input to focus its benchmark profile below.</p>
                       </div>
@@ -6520,7 +6528,7 @@ function App() {
                   <section className="panel workspace-panel adaptive-summary-panel">
                     <div className="adaptive-section-header">
                       <div>
-                        <p className="dashboard-eyebrow">Section # 4 - Latest Session</p>
+                        <p className="dashboard-eyebrow">Session</p>
                         <h3>Most recent run</h3>
                       </div>
                       <button
@@ -6560,7 +6568,7 @@ function App() {
                     <section className="panel workspace-panel adaptive-metrics-panel">
                       <div className="adaptive-section-header">
                         <div>
-                          <p className="dashboard-eyebrow">Section # 5 - Live Adaptive State</p>
+                          <p className="dashboard-eyebrow">Live state</p>
                           <h3>Latest pacing snapshot</h3>
                           <p className="dashboard-meta">Most recent metrics computed from the stored session.</p>
                         </div>
@@ -6623,7 +6631,7 @@ function App() {
                     <section className="panel workspace-panel adaptive-telemetry-panel">
                       <div className="adaptive-section-header">
                         <div>
-                          <p className="dashboard-eyebrow">Section # 6 - Diagnostics</p>
+                          <p className="dashboard-eyebrow">Diagnostics</p>
                           <h3>Debug counters</h3>
                           <p className="dashboard-meta">Most recent live debug counters, semantic pacing signals, and rate distribution.</p>
                         </div>
@@ -6693,6 +6701,8 @@ function App() {
                       ) : null}
                     </section>
                   ) : null}
+                    </div>
+                  </details>
                   <AdaptiveBenchmarkSection
                     id="adaptive-benchmarks"
                     adapters={adaptiveAdapters}
@@ -10883,6 +10893,17 @@ function TrainingView({
     return textInputRef.current?.flush() ?? currentTextValue;
   }
 
+  function focusTextInput(): void {
+    window.requestAnimationFrame(() => {
+      textInputRef.current?.focus();
+    });
+  }
+
+  function handlePlay(): void {
+    onPlay();
+    focusTextInput();
+  }
+
   return (
     <section className="training-view" aria-label="Focused training view">
       <SyncStatusBanner syncStatus={syncStatus} pendingSyncSummary={pendingSyncSummary} isOnline={isOnline} />
@@ -10921,7 +10942,7 @@ function TrainingView({
           />
         ) : null}
         <div className="training-control-grid">
-          <button type="button" onClick={onPlay} disabled={!canPlay}>
+          <button type="button" onClick={handlePlay} disabled={!canPlay}>
             {playLabel}
           </button>
           <button type="button" className="secondary-button" onClick={onReplay} disabled={!canReplay}>
