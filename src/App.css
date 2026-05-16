@@ -81,6 +81,67 @@
   gap: 0.55rem;
 }
 
+.sync-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #b8c9dd;
+  border-radius: 16px;
+  background: #f5f9fe;
+  color: #18324f;
+}
+
+.sync-status-banner-offline,
+.sync-status-banner-error {
+  border-color: #f59e0b;
+  background: #fff7ed;
+  color: #7c2d12;
+}
+
+.sync-status-banner-pulling,
+.sync-status-banner-pushing {
+  border-color: #38bdf8;
+  background: #effaff;
+}
+
+.sync-status-banner-synced {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.sync-status-primary,
+.sync-status-detail {
+  margin: 0;
+}
+
+.sync-status-primary {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.sync-status-detail {
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.82;
+}
+
+.sync-status-count {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .training-pending-session-lane {
   border-radius: 16px;
 }
@@ -252,6 +313,16 @@
 
   .training-pending-session-lane {
     padding: 0.7rem;
+  }
+
+  .sync-status-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sync-status-count {
+    justify-content: center;
+    white-space: normal;
   }
 
   .training-pending-session-lane .pending-session-lane-header {

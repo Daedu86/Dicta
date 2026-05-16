@@ -266,6 +266,11 @@ type SupabaseSyncStatus = {
   pushed: number;
 };
 
+type PendingSyncSummary = {
+  count: number;
+  hasPending: boolean;
+};
+
 type TtsPerformanceSampleResult = {
   metrics: SessionMetrics;
   telemetry: SessionTelemetry;
@@ -565,6 +570,7 @@ function App() {
     imported: 0,
     pushed: 0,
   });
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
   const inputLiveTextRef = useRef('');
@@ -695,6 +701,17 @@ function App() {
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
     [sessions],
   );
+  const pendingSyncSummary = useMemo(
+    () =>
+      countLocalChangesPendingSync({
+        sessions,
+        benchmarks: adaptiveBenchmarksByInputLanguage,
+        feedback: adaptiveSessionFeedbackByInputLanguage,
+        lastSyncedAt: supabaseSyncStatus.lastSyncedAt,
+      }),
+    [sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage, supabaseSyncStatus.lastSyncedAt],
+  );
+  const openRouterOfflineTitle = isOnline ? '' : 'Needs internet. Local practice still works offline and results stay on this device.';
   const recentDictationSessionHints = useMemo(() => {
     return sessions
       .filter((session) => session.sessionSource === 'dictationScript' && Boolean(session.dictationScript))
@@ -1121,6 +1138,17 @@ function App() {
   useEffect(() => {
     syncStateRef.current = buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage);
   }, [sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage]);
+
+  useEffect(() => {
+    const updateOnlineState = () => setIsOnline(navigator.onLine);
+    updateOnlineState();
+    window.addEventListener('online', updateOnlineState);
+    window.addEventListener('offline', updateOnlineState);
+    return () => {
+      window.removeEventListener('online', updateOnlineState);
+      window.removeEventListener('offline', updateOnlineState);
+    };
+  }, []);
 
   useEffect(() => {
     if (!supabaseClient || !syncConfig.enabled) return;
@@ -2271,6 +2299,10 @@ function App() {
 
   function openOpenRouterGenerateForActiveInput(): void {
     if (!activeSession) return;
+    if (!isOnline) {
+      setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
+      return;
+    }
     const inputMode = mapSessionInputMode(activeSession.inputMode);
     const languageCandidate = resolveStoredSessionLanguage(activeSession);
     const language: BenchmarkLanguageButton =
@@ -2300,6 +2332,10 @@ function App() {
     difficultyInstruction?: string;
   }): Promise<void> {
     if (!activeSession || isBusy || activeOpenRouterJob) return;
+    if (!isOnline) {
+      setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
+      return;
+    }
     const model = openRouterDefaultModel.trim();
     const inputMode = mapSessionInputMode(activeSession.inputMode);
     const languageCandidate = resolveStoredSessionLanguage(activeSession);
@@ -5159,30 +5195,33 @@ function App() {
     activeSessionId,
     onOpenPendingSession: openWorkspaceForSession,
     onDeletePendingSession: deleteSession,
+    syncStatus: supabaseSyncStatus,
+    pendingSyncSummary,
+    isOnline,
     generationButtons: [
       {
         label: directOpenRouterBusy || activeOpenRouterJob ? 'Generating easy...' : 'New Easy Session',
         onClick: () => void generateEasyNextSessionFromOpenRouter(),
-        disabled: directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
-        title: openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
+        disabled: !isOnline || directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
+        title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       },
       {
         label: directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating medium...' : 'New Medium Session',
         onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-        disabled: directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
-        title: openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
+        disabled: !isOnline || directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
+        title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       },
       {
         label: directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating hard...' : 'New Hard Session',
         onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-        disabled: directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
-        title: openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.',
+        disabled: !isOnline || directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
+        title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       },
       {
         label: 'New Custom Session',
         onClick: openOpenRouterGenerateForActiveInput,
-        disabled: !activeSession,
-        title: 'Open the existing OpenRouter custom generation workspace.',
+        disabled: !isOnline || !activeSession,
+        title: openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.',
       },
     ],
   };
@@ -5294,8 +5333,9 @@ function App() {
               Sign out
             </button>
             <span className={`brand-sync-status brand-sync-status-${supabaseSyncStatus.state}`}>
-              Sync: {formatSupabaseSyncState(supabaseSyncStatus)}
+              {isOnline ? 'Sync' : 'Offline'}: {isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}
               {supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''}
+              {supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` · ${pendingSyncSummary.count} pending` : ''}
             </span>
           </div>
           {sessionCreationMode ? (
@@ -6074,11 +6114,11 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateNextSessionFromOpenRouter()}
-                        disabled={directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
-                          openRouterDefaultModel.trim()
+                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
-                            : 'Set a default OpenRouter model first.'
+                            : 'Set a default OpenRouter model first.')
                         }
                       >
                         {directOpenRouterBusy || activeOpenRouterJob ? 'Generating...' : 'Generate next session'}
@@ -6087,11 +6127,11 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                        disabled={directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
-                          openRouterDefaultModel.trim()
+                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
-                            : 'Set a default OpenRouter model first.'
+                            : 'Set a default OpenRouter model first.')
                         }
                       >
                         {directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
@@ -6100,11 +6140,11 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                        disabled={directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
-                          openRouterDefaultModel.trim()
+                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
-                            : 'Set a default OpenRouter model first.'
+                            : 'Set a default OpenRouter model first.')
                         }
                       >
                         {directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating advanced...' : 'Generate next session - Advanced'}
@@ -6273,11 +6313,11 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateNextSessionFromOpenRouter()}
-                        disabled={directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
-                          openRouterDefaultModel.trim()
+                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
-                            : 'Set a default OpenRouter model first.'
+                            : 'Set a default OpenRouter model first.')
                         }
                       >
                         {directOpenRouterBusy || activeOpenRouterJob ? 'Generating...' : 'Generate next session'}
@@ -6286,11 +6326,11 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                        disabled={directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
-                          openRouterDefaultModel.trim()
+                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
-                            : 'Set a default OpenRouter model first.'
+                            : 'Set a default OpenRouter model first.')
                         }
                       >
                         {directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
@@ -6299,11 +6339,11 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                        disabled={directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
                         title={
-                          openRouterDefaultModel.trim()
+                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
-                            : 'Set a default OpenRouter model first.'
+                            : 'Set a default OpenRouter model first.')
                         }
                       >
                         {directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating advanced...' : 'Generate next session - Advanced'}
@@ -10117,6 +10157,53 @@ function formatSupabaseSyncState(status: SupabaseSyncStatus): string {
   return 'Ready';
 }
 
+function countLocalChangesPendingSync({
+  sessions,
+  benchmarks,
+  feedback,
+  lastSyncedAt,
+}: {
+  sessions: StoredSession[];
+  benchmarks: AdaptiveBenchmarksByInputLanguage;
+  feedback: AdaptiveSessionFeedbackByInputLanguage;
+  lastSyncedAt: string | null;
+}): PendingSyncSummary {
+  if (!lastSyncedAt) {
+    const totalFeedback = Object.values(feedback).reduce(
+      (inputTotal, byLanguage) => inputTotal + Object.values(byLanguage).reduce((languageTotal, list) => languageTotal + list.length, 0),
+      0,
+    );
+    const totalBenchmarks = Object.values(benchmarks).reduce(
+      (inputTotal, byLanguage) => inputTotal + Object.keys(byLanguage).length,
+      0,
+    );
+    const count = sessions.length + totalBenchmarks + totalFeedback;
+    return { count, hasPending: count > 0 };
+  }
+
+  const lastSyncedTime = new Date(lastSyncedAt).getTime();
+  if (!Number.isFinite(lastSyncedTime)) return { count: 0, hasPending: false };
+
+  let count = sessions.filter((session) => isTimestampAfterSync(session.updatedAt, lastSyncedTime)).length;
+  for (const byLanguage of Object.values(benchmarks)) {
+    for (const benchmark of Object.values(byLanguage)) {
+      if (isTimestampAfterSync(benchmark.lastUpdatedAt, lastSyncedTime)) count += 1;
+    }
+  }
+  for (const byLanguage of Object.values(feedback)) {
+    for (const list of Object.values(byLanguage)) {
+      count += list.filter((item) => isTimestampAfterSync(item.completedAt ?? item.createdAt, lastSyncedTime)).length;
+    }
+  }
+  return { count, hasPending: count > 0 };
+}
+
+function isTimestampAfterSync(value: string | null | undefined, lastSyncedTime: number): boolean {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time > lastSyncedTime;
+}
+
 function buildAdaptiveCoachSummary(
   profile: InputLanguageBenchmarkMetrics,
   sessionFeedback: AdaptiveSessionFeedback | null,
@@ -10527,6 +10614,12 @@ type PendingSessionLaneProps = {
   onDeleteSession: (sessionId: string) => void;
 };
 
+type SyncStatusBannerProps = {
+  syncStatus: SupabaseSyncStatus;
+  pendingSyncSummary: PendingSyncSummary;
+  isOnline: boolean;
+};
+
 type TrainingViewProps = {
   activeSession: StoredSession | null;
   activeInputLabel: string;
@@ -10564,6 +10657,9 @@ type TrainingViewProps = {
   activeSessionId: string | null;
   onOpenPendingSession: (session: StoredSession) => void;
   onDeletePendingSession: (sessionId: string) => void;
+  syncStatus: SupabaseSyncStatus;
+  pendingSyncSummary: PendingSyncSummary;
+  isOnline: boolean;
 };
 
 function PendingSessionLane({
@@ -10616,6 +10712,37 @@ function PendingSessionLane({
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function SyncStatusBanner({ syncStatus, pendingSyncSummary, isOnline }: SyncStatusBannerProps) {
+  const statusClass = !isOnline ? 'offline' : syncStatus.state;
+  const primaryText = !isOnline
+    ? 'Offline - results saved on this device'
+    : syncStatus.enabled
+      ? `Sync ${formatSupabaseSyncState(syncStatus).toLowerCase()}`
+      : 'Cloud sync off';
+  const pendingText = !syncStatus.enabled
+    ? 'Local only'
+    : pendingSyncSummary.hasPending
+      ? `${pendingSyncSummary.count} local change${pendingSyncSummary.count === 1 ? '' : 's'} pending`
+      : 'No local changes pending';
+  const detailText = !syncStatus.enabled
+    ? syncStatus.message
+    : !isOnline
+      ? 'Dictation continues locally. Sync resumes automatically when internet returns.'
+      : syncStatus.lastSyncedAt
+        ? `Last synced ${formatSessionDate(syncStatus.lastSyncedAt)}.`
+        : 'Waiting for first sync.';
+
+  return (
+    <section className={`sync-status-banner sync-status-banner-${statusClass}`} aria-label="Offline and sync status">
+      <div>
+        <p className="sync-status-primary">{primaryText}</p>
+        <p className="sync-status-detail">{detailText}</p>
+      </div>
+      <span className="sync-status-count">{pendingText}</span>
     </section>
   );
 }
@@ -10674,6 +10801,9 @@ function TrainingView({
   activeSessionId,
   onOpenPendingSession,
   onDeletePendingSession,
+  syncStatus,
+  pendingSyncSummary,
+  isOnline,
 }: TrainingViewProps) {
   const textInputRef = useRef<LowLatencyTextareaHandle | null>(null);
   const onTextChangeRef = useRef(onTextChange);
@@ -10716,6 +10846,8 @@ function TrainingView({
 
   return (
     <section className="training-view" aria-label="Focused training view">
+      <SyncStatusBanner syncStatus={syncStatus} pendingSyncSummary={pendingSyncSummary} isOnline={isOnline} />
+
       <PendingSessionLane
         sessions={pendingSessions}
         activeSessionId={activeSessionId}
