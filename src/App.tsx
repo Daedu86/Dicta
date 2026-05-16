@@ -514,6 +514,7 @@ function App() {
   const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => {
     return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
   });
+  const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
   const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => {
     const saved = window.localStorage.getItem(LIVE_METRICS_RANGE_KEY);
     if (saved === 'today' || saved === 'week' || saved === 'twoWeeks' || saved === 'threeWeeks' || saved === 'month') {
@@ -4850,6 +4851,19 @@ function App() {
     }
   }
 
+  async function copyInsightsDiagnosticPackage(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(buildBenchmarkFeedbackPackage(insightsDiagnosticProfile, insightsDiagnosticFeedback, {
+        activeSessionStatus: getBenchmarkActiveSessionStatus(insightsDiagnosticProfile),
+      }), null, 2));
+      setInsightsDiagnosticMessage(
+        `Copied full report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`,
+      );
+    } catch {
+      setInsightsDiagnosticMessage('Could not copy the full report.');
+    }
+  }
+
   async function copyBenchmarkFeedbackPrompt(profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null): Promise<void> {
     try {
       await navigator.clipboard.writeText(buildBenchmarkFeedbackPromptPackage(profile, feedback, buildDictationScriptPrompt(profile), {
@@ -4979,6 +4993,19 @@ function App() {
     createEmptyInputLanguageBenchmark(selectedBenchmarkInputMode, selectedBenchmarkLanguage);
   const selectedSessionFeedback =
     adaptiveSessionFeedbackByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage]?.[0] ?? null;
+  const insightsDiagnosticInputMode: InputMode =
+    workspaceMode === 'kokoro'
+      ? 'kokoro'
+      : workspaceMode === 'tts'
+        ? mapSessionInputMode(activeInputMode)
+        : lastSessionForLanguage
+          ? mapSessionInputMode(lastSessionForLanguage.inputMode)
+          : selectedBenchmarkInputMode;
+  const insightsDiagnosticProfile =
+    adaptiveBenchmarksByInputLanguage[insightsDiagnosticInputMode]?.[metricsLanguageView] ??
+    createEmptyInputLanguageBenchmark(insightsDiagnosticInputMode, metricsLanguageView);
+  const insightsDiagnosticFeedback =
+    adaptiveSessionFeedbackByInputLanguage[insightsDiagnosticInputMode]?.[metricsLanguageView]?.[0] ?? null;
   const repeatWordStats = useMemo(
     () => buildRepeatWordStats({ sessions, inputMode: selectedBenchmarkInputMode, language: selectedBenchmarkLanguage, now: new Date() }),
     [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],
@@ -7105,6 +7132,14 @@ function App() {
               </span>
               <button
                 type="button"
+                className="secondary-button live-metrics-report-button"
+                onClick={() => void copyInsightsDiagnosticPackage()}
+                title={`Copy benchmark + session feedback for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()} so you can paste it into an LLM for performance analysis.`}
+              >
+                Copy full report
+              </button>
+              <button
+                type="button"
                 className="secondary-button live-metrics-collapse-button"
                 onClick={() => setInsightsCollapsed((value) => !value)}
                 aria-expanded={!insightsCollapsed}
@@ -7119,6 +7154,11 @@ function App() {
                 </span>
               </button>
             </div>
+            {insightsDiagnosticMessage ? (
+              <p className={`insights-diagnostic-message ${insightsDiagnosticMessage.toLowerCase().includes('could not') ? 'error' : 'success'}`}>
+                {insightsDiagnosticMessage}
+              </p>
+            ) : null}
             {!insightsCollapsed && (workspaceMode === 'tts' || workspaceMode === 'kokoro') ? (
               <div className="bottom-metrics-player tts-bottom-player live-metrics-section live-metrics-section-player">
                 <span className="bottom-metrics-player-label">{workspaceMode === 'kokoro' ? 'Kokoro local' : 'Browser TTS'}</span>
@@ -9055,6 +9095,15 @@ function AdaptiveBenchmarkSection({
       setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, workspace: true }));
     }
   }, [focusAnchor]);
+
+  function openSelectedProfile(inputMode = selectedInputMode, language = selectedLanguage): void {
+    onSelect(inputMode, language);
+    setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, workspace: true }));
+    window.setTimeout(() => {
+      document.getElementById('adaptive-selected-profile-cockpit')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  }
+
   return (
     <section id={id} className="panel workspace-panel adaptive-benchmark-panel">
       <div className="adaptive-section-header">
@@ -9097,25 +9146,34 @@ function AdaptiveBenchmarkSection({
               benchmarks={benchmarks}
               selectedInputMode={selectedInputMode}
               selectedLanguage={selectedLanguage}
-              onSelect={onSelect}
+              onSelect={openSelectedProfile}
             />
           ) : null}
 
-          <div className="adaptive-section-header adaptive-subsection-header">
+          <div className="adaptive-section-header adaptive-subsection-header" id="adaptive-selected-profile">
             <div>
               <p className="dashboard-eyebrow">Selected profile</p>
               <h4>{selectedAdapter?.title ?? selectedInputMode} / {formatBenchmarkLanguage(selectedProfile.language)}</h4>
             </div>
-            <button
-              type="button"
-              className="secondary-button adaptive-section-toggle"
-              onClick={() => setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, workspace: !prev.workspace }))}
-              aria-expanded={benchmarkSubsectionsExpanded.workspace}
-              aria-label={benchmarkSubsectionsExpanded.workspace ? 'Collapse section' : 'Expand section'}
-              title={benchmarkSubsectionsExpanded.workspace ? 'Collapse' : 'Expand'}
-            >
-              <span className={`adaptive-section-toggle-icon ${benchmarkSubsectionsExpanded.workspace ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-            </button>
+            <div className="adaptive-selected-profile-actions">
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() => openSelectedProfile()}
+              >
+                Open cockpit
+              </button>
+              <button
+                type="button"
+                className="secondary-button adaptive-section-toggle"
+                onClick={() => setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, workspace: !prev.workspace }))}
+                aria-expanded={benchmarkSubsectionsExpanded.workspace}
+                aria-label={benchmarkSubsectionsExpanded.workspace ? 'Collapse section' : 'Expand section'}
+                title={benchmarkSubsectionsExpanded.workspace ? 'Collapse' : 'Expand'}
+              >
+                <span className={`adaptive-section-toggle-icon ${benchmarkSubsectionsExpanded.workspace ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
+              </button>
+            </div>
           </div>
           {benchmarkSubsectionsExpanded.workspace ? (
             <AdaptiveBenchmarkWorkspace
@@ -9280,6 +9338,7 @@ function AdaptiveBenchmarkWorkspace({
   const [humanFeedbackEditorOpen, setHumanFeedbackEditorOpen] = useState(false);
   const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
   const [exportStatusMessage, setExportStatusMessage] = useState('');
+  const [exportPanelOpen, setExportPanelOpen] = useState(focusAnchor === 'exports');
 
   const copyToClipboard = async (label: string, text: string): Promise<void> => {
     try {
@@ -9405,13 +9464,14 @@ function AdaptiveBenchmarkWorkspace({
     if (focusAnchor === 'sessionFeedback') {
       setWorkspaceSubsectionsExpanded((prev) => ({ ...prev, feedback: true }));
     } else if (focusAnchor === 'exports') {
+      setExportPanelOpen(true);
       window.setTimeout(() => {
         document.getElementById('adaptive-export-copy-actions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 0);
     }
   }, [focusAnchor]);
   return (
-    <div className="adaptive-benchmark-workspace">
+    <div className="adaptive-benchmark-workspace" id="adaptive-selected-profile-cockpit">
           <div className="dashboard-card-header">
             <div>
               <h3>{inputTitle} / {languageLabel}</h3>
@@ -9494,10 +9554,18 @@ function AdaptiveBenchmarkWorkspace({
             </div>
           </section>
 
-          <details className="adaptive-benchmark-subpanel adaptive-export-panel" id="adaptive-export-copy-actions" open={focusAnchor === 'exports'}>
+          <details
+            className="adaptive-benchmark-subpanel adaptive-export-panel"
+            id="adaptive-export-copy-actions"
+            open={exportPanelOpen}
+            onToggle={(event) => setExportPanelOpen(event.currentTarget.open)}
+          >
             <summary>
-              <span>Advanced exports</span>
-              <small>{profile.inputMode}/{profile.language}</small>
+              <span>
+                <strong>Advanced exports</strong>
+                <small>{profile.inputMode}/{profile.language}</small>
+              </span>
+              <em>{exportPanelOpen ? 'Hide exports' : 'Show exports'}</em>
             </summary>
             <div className="adaptive-export-groups">
               <div>
@@ -10546,6 +10614,13 @@ function formatSessionInputMode(mode: SessionInputMode): string {
   if (mode === 'input1') return 'Original audio';
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
+  return 'Qwen cache';
+}
+
+function formatInputModeLabel(mode: InputMode): string {
+  if (mode === 'audio') return 'Original audio';
+  if (mode === 'browser-tts') return 'Browser TTS';
+  if (mode === 'kokoro') return 'Kokoro local';
   return 'Qwen cache';
 }
 

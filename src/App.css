@@ -2783,6 +2783,13 @@ textarea[readonly] {
   gap: 0.35rem;
 }
 
+.adaptive-selected-profile-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
 .adaptive-profile-matrix {
   display: grid;
   gap: 0.55rem;
@@ -2860,6 +2867,13 @@ textarea[readonly] {
 
 .adaptive-profile-cell-selected {
   box-shadow: 0 0 0 3px rgba(90, 148, 232, 0.28);
+}
+
+.adaptive-profile-cell-selected::after {
+  content: 'Open cockpit';
+  color: #0f4f8f;
+  font-size: 0.72rem;
+  font-weight: 900;
 }
 
 .adaptive-profile-matrix-legend {
@@ -3035,14 +3049,47 @@ textarea[readonly] {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  min-height: 52px;
   cursor: pointer;
   color: #102f63;
   font-weight: 950;
+  list-style: none;
+}
+
+.adaptive-export-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.adaptive-export-panel summary span {
+  display: grid;
+  gap: 0.15rem;
 }
 
 .adaptive-export-panel summary small {
   color: #6b7a90;
   font-weight: 800;
+}
+
+.adaptive-export-panel summary em {
+  flex: 0 0 auto;
+  border: 1px solid #7db5ff;
+  border-radius: 999px;
+  padding: 0.28rem 0.62rem;
+  background: #e8f3ff;
+  color: #0f4f8f;
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.adaptive-export-panel[open] summary {
+  border-bottom: 1px solid #c5d8ee;
+  padding-bottom: 0.7rem;
+}
+
+.adaptive-export-panel[open] summary em {
+  background: #f8fbff;
+  color: #385273;
 }
 
 .adaptive-score-bars,
@@ -3424,6 +3471,23 @@ textarea[readonly] {
   background: #102f63;
   border-color: #102f63;
   color: #ffffff;
+}
+
+.live-metrics-report-button {
+  width: auto;
+  margin-top: 0;
+  min-height: 34px;
+  padding: 0.35rem 0.65rem;
+  border-color: #5a94e8;
+  background: #e8f3ff;
+  color: #0f4f8f;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.insights-diagnostic-message {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .bottom-metrics-top {
