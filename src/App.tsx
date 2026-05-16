@@ -5155,6 +5155,10 @@ function App() {
     submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
     message: error || exportMessage || openRouterJobStatus || openRouterError,
     textCommitDelayMs: activeInputMode === 'input2' || activeInputMode === 'input4' ? 250 : 0,
+    pendingSessions,
+    activeSessionId,
+    onOpenPendingSession: openWorkspaceForSession,
+    onDeletePendingSession: deleteSession,
     generationButtons: [
       {
         label: directOpenRouterBusy || activeOpenRouterJob ? 'Generating easy...' : 'New Easy Session',
@@ -5826,49 +5830,12 @@ function App() {
 
         <section className="workspace">
           <section className="workspace-shell">
-            {pendingSessions.length > 0 ? (
-              <section className="pending-session-lane" aria-label="Pending sessions">
-                <div className="pending-session-lane-header">
-                  <div>
-                    <p className="dashboard-eyebrow">Pending sessions</p>
-                    <h3>Ready to perform</h3>
-                  </div>
-                  <span className="pending-session-count">{pendingSessions.length}</span>
-                </div>
-                <div className="pending-session-strip">
-                  {pendingSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className={`pending-session-chip ${session.id === activeSessionId ? 'pending-session-chip-active' : ''}`}
-                    >
-                      <button
-                        type="button"
-                        className="pending-session-open-button"
-                        onClick={() => openWorkspaceForSession(session)}
-                        title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
-                      >
-                        <span className="pending-session-title">
-                          <SessionDeviceIcon session={session} />
-                          <span>{getSessionDisplayTitle(session)}</span>
-                        </span>
-                        <span className="pending-session-meta">
-                          {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {getPendingSessionReason(session)}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className="danger-button pending-session-delete-button"
-                        onClick={() => deleteSession(session.id)}
-                        aria-label={`Delete ${getSessionDisplayTitle(session)}`}
-                        title="Delete session"
-                      >
-                        <span aria-hidden="true">✕</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ) : null}
+            <PendingSessionLane
+              sessions={pendingSessions}
+              activeSessionId={activeSessionId}
+              onOpenSession={openWorkspaceForSession}
+              onDeleteSession={deleteSession}
+            />
             {workspaceMode === 'kokoro' ? (
               <section className="panel workspace-panel tts-workspace kokoro-workspace">
                 <div className="tts-workspace-header">
@@ -10552,6 +10519,14 @@ type TrainingGenerationButton = {
   title: string;
 };
 
+type PendingSessionLaneProps = {
+  sessions: StoredSession[];
+  activeSessionId: string | null;
+  className?: string;
+  onOpenSession: (session: StoredSession) => void;
+  onDeleteSession: (sessionId: string) => void;
+};
+
 type TrainingViewProps = {
   activeSession: StoredSession | null;
   activeInputLabel: string;
@@ -10585,7 +10560,65 @@ type TrainingViewProps = {
   message: string;
   generationButtons: TrainingGenerationButton[];
   textCommitDelayMs: number;
+  pendingSessions: StoredSession[];
+  activeSessionId: string | null;
+  onOpenPendingSession: (session: StoredSession) => void;
+  onDeletePendingSession: (sessionId: string) => void;
 };
+
+function PendingSessionLane({
+  sessions,
+  activeSessionId,
+  className = '',
+  onOpenSession,
+  onDeleteSession,
+}: PendingSessionLaneProps) {
+  if (sessions.length === 0) return null;
+
+  return (
+    <section className={`pending-session-lane ${className}`.trim()} aria-label="Pending sessions">
+      <div className="pending-session-lane-header">
+        <div>
+          <p className="dashboard-eyebrow">Pending sessions</p>
+          <h3>Ready to perform</h3>
+        </div>
+        <span className="pending-session-count">{sessions.length}</span>
+      </div>
+      <div className="pending-session-strip">
+        {sessions.map((session) => (
+          <div
+            key={session.id}
+            className={`pending-session-chip ${session.id === activeSessionId ? 'pending-session-chip-active' : ''}`}
+          >
+            <button
+              type="button"
+              className="pending-session-open-button"
+              onClick={() => onOpenSession(session)}
+              title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
+            >
+              <span className="pending-session-title">
+                <SessionDeviceIcon session={session} />
+                <span>{getSessionDisplayTitle(session)}</span>
+              </span>
+              <span className="pending-session-meta">
+                {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {getPendingSessionReason(session)}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="danger-button pending-session-delete-button"
+              onClick={() => onDeleteSession(session.id)}
+              aria-label={`Delete ${getSessionDisplayTitle(session)}`}
+              title="Delete session"
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function TrainingHeader({ onBackToApp }: { onBackToApp: () => void }) {
   return (
@@ -10637,6 +10670,10 @@ function TrainingView({
   message,
   generationButtons,
   textCommitDelayMs,
+  pendingSessions,
+  activeSessionId,
+  onOpenPendingSession,
+  onDeletePendingSession,
 }: TrainingViewProps) {
   const textInputRef = useRef<LowLatencyTextareaHandle | null>(null);
   const onTextChangeRef = useRef(onTextChange);
@@ -10679,6 +10716,14 @@ function TrainingView({
 
   return (
     <section className="training-view" aria-label="Focused training view">
+      <PendingSessionLane
+        sessions={pendingSessions}
+        activeSessionId={activeSessionId}
+        className="training-pending-session-lane"
+        onOpenSession={onOpenPendingSession}
+        onDeleteSession={onDeletePendingSession}
+      />
+
       <section className="training-card training-session-card">
         <p className="training-eyebrow">{activeInputLabel}</p>
         <h2>{activeSession ? getSessionDisplayTitle(activeSession) : 'No active session'}</h2>

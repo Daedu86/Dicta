@@ -81,6 +81,14 @@
   gap: 0.55rem;
 }
 
+.training-pending-session-lane {
+  border-radius: 16px;
+}
+
+.training-pending-session-lane .pending-session-strip {
+  grid-auto-columns: minmax(220px, 1fr);
+}
+
 .training-eyebrow {
   margin: 0;
   color: #6e8199;
@@ -240,6 +248,23 @@
   .training-control-grid,
   .training-generation-grid {
     grid-template-columns: 1fr;
+  }
+
+  .training-pending-session-lane {
+    padding: 0.7rem;
+  }
+
+  .training-pending-session-lane .pending-session-lane-header {
+    align-items: flex-start;
+  }
+
+  .training-pending-session-lane .pending-session-strip {
+    grid-auto-columns: minmax(0, 100%);
+  }
+
+  .training-pending-session-lane .pending-session-chip,
+  .training-pending-session-lane .pending-session-open-button {
+    min-height: 66px;
   }
 
   .training-input-card textarea {
