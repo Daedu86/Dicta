@@ -514,6 +514,7 @@ function App() {
   const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => {
     return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
   });
+  const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
   const [insightsDiagnosticInputMode, setInsightsDiagnosticInputMode] = useState<InputMode>('browser-tts');
   const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
   const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => {
@@ -6860,7 +6861,14 @@ function App() {
             ) : workspaceMode === 'leaderboard' ? (
               <section className="panel workspace-panel leaderboard-workspace">
                 <div className="metrics-header">
-                  <h2>Leaderboard</h2>
+                  <div>
+                    <h2>Leaderboard</h2>
+                    {!leaderboardExpanded ? (
+                      <p className="dashboard-meta">
+                        {leaderboard.length} {leaderboard.length === 1 ? 'session' : 'sessions'} for {leaderboardLanguageView.toUpperCase()}.
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="live-metrics-language-tabs leaderboard-language-tabs" role="tablist" aria-label="Leaderboard language">
                     {([
                       ['en', 'Leaderboard for English'],
@@ -6879,10 +6887,26 @@ function App() {
                       </button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    className="secondary-button leaderboard-collapse-button"
+                    onClick={() => setLeaderboardExpanded((value) => !value)}
+                    aria-expanded={leaderboardExpanded}
+                    aria-label={leaderboardExpanded ? 'Minimize leaderboard' : 'Expand leaderboard'}
+                    title={leaderboardExpanded ? 'Minimize' : 'Expand'}
+                  >
+                    <span
+                      className={`leaderboard-collapse-icon ${leaderboardExpanded ? 'leaderboard-collapse-icon-open' : ''}`}
+                      aria-hidden="true"
+                    >
+                      ⌃
+                    </span>
+                  </button>
                   <button type="button" className="secondary-button" onClick={() => setWorkspaceMode('training')}>
                     Back
                   </button>
                 </div>
+                {leaderboardExpanded ? (
                 <div className="leaderboard-table leaderboard-list-full">
                   <div className="leaderboard-table-header">
                     <span>Position</span>
@@ -6990,6 +7014,7 @@ function App() {
                   );
                   })}
                 </div>
+                ) : null}
               </section>
             ) : (
               <>

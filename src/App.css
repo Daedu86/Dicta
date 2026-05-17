@@ -1896,7 +1896,28 @@ textarea[readonly] {
 }
 
 .leaderboard-workspace {
-  min-height: 640px;
+  min-height: 0;
+}
+
+.leaderboard-collapse-button {
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaderboard-collapse-icon {
+  display: inline-block;
+  transform: rotate(180deg);
+  transition: transform 160ms ease;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.leaderboard-collapse-icon-open {
+  transform: rotate(0deg);
 }
 
 .leaderboard-stats {
