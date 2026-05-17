@@ -423,6 +423,47 @@ describe('session feedback diagnostics', () => {
     expect(payload.benchmarkProfile?.flowStabilityScore).toBeLessThan(1);
     expect(payload.benchmarkProfile?.recommendation?.targetRateRange).toEqual([0.8, 0.85]);
   });
+
+  it('includes browser-tts DE diagnostics in feedback packages when runtime recovery pause exceeds the target', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    profile.recommendation = {
+      ...profile.recommendation,
+      targetPauseMs: 1200,
+    };
+    profile.timeline = [
+      {
+        timestampMs: Date.now(),
+        inputMode: 'browser-tts',
+        language: 'de',
+        mode: 'support',
+        playbackRate: 0.8,
+        accuracy: 0.74,
+        lagSec: 3.2,
+        rawLagSec: 3.2,
+        stableLagSec: 3.2,
+        wpm: 44,
+        pauseMs: 2600,
+        phraseBoundaryType: 'clause',
+        semanticCompleteness: 0.86,
+        decisionReason: 'mode=support, browser-tts-de-recovery-severe',
+        event: 'phrase_completed',
+      },
+    ];
+
+    const payload = buildBenchmarkFeedbackPackage(profile, null) as {
+      browserTtsDeDiagnostics?: {
+        targetPauseMs?: number;
+        runtimeRecoveryPauseMs?: number | null;
+        pauseGapMs?: number;
+        note?: string;
+      };
+    };
+
+    expect(payload.browserTtsDeDiagnostics?.targetPauseMs).toBe(1200);
+    expect(payload.browserTtsDeDiagnostics?.runtimeRecoveryPauseMs).toBe(2600);
+    expect(payload.browserTtsDeDiagnostics?.pauseGapMs).toBe(1400);
+    expect(payload.browserTtsDeDiagnostics?.note).toContain('benchmark target');
+  });
 });
 
 function timelinePoint(

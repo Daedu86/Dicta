@@ -6,7 +6,10 @@ import type {
   LanguageCode,
   PhrasePlaybackEvent,
 } from './types';
-import { normalizeInputLanguageBenchmarkForRecommendation } from './AdaptiveInputLanguageBenchmarkService';
+import {
+  buildBrowserTtsDeDiagnostics,
+  normalizeInputLanguageBenchmarkForRecommendation,
+} from './AdaptiveInputLanguageBenchmarkService';
 
 export type SessionFeedbackBuildArgs = {
   sessionId: string;
@@ -116,6 +119,7 @@ export function buildBenchmarkFeedbackPackage(
   const recentTimelinePoints = normalizedProfile.timeline.slice(-FEEDBACK_EXPORT_TIMELINE_CAP);
   const fallbackDiagnostics = feedback ? null : derivePlaybackDiagnosticsFromTimeline(recentTimelinePoints);
   const sessionFeedbackStatus = buildSessionFeedbackStatus(feedback, options.activeSessionStatus);
+  const browserTtsDeDiagnostics = buildBrowserTtsDeDiagnostics(normalizedProfile, FEEDBACK_EXPORT_TIMELINE_CAP) ?? undefined;
   return {
     inputMode: normalizedProfile.inputMode,
     language: normalizedProfile.language,
@@ -123,6 +127,7 @@ export function buildBenchmarkFeedbackPackage(
     benchmarkProfile: compactBenchmark(normalizedProfile),
     recommendation: normalizedProfile.recommendation,
     weakAreas: normalizedProfile.weakAreas,
+    ...(browserTtsDeDiagnostics ? { browserTtsDeDiagnostics } : {}),
     activitySummary: options.activitySummary ?? null,
     recentTimelinePoints,
     latestSessionFeedback: feedback ? normalizeFeedbackBenchmarkSnapshots(feedback) : buildFeedbackUnavailableSnapshot(sessionFeedbackStatus),

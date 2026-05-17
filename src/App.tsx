@@ -25,9 +25,10 @@ import { AdaptiveDictationController } from './core/adaptive/AdaptiveDictationCo
 import { planSemanticPhrases, type SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import { buildLagStabilitySample } from './core/adaptive/lagStability';
 import {
+  buildBrowserTtsDeDiagnostics,
   clampBrowserTtsDeDecisionToRecommendation,
   createEmptyInputLanguageBenchmark,
-  isValidBrowserTtsDeBenchmarkSample,
+  getBrowserTtsDeBenchmarkRejectionReason,
   normalizeBenchmarkLanguage,
   updateInputLanguageBenchmark,
 } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
@@ -72,7 +73,11 @@ import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor } 
 import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
 import { applyBrowserTtsDeRecoveryPolicy, summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
-import { chooseRandomBrowserTtsVoiceURI, chooseRandomBrowserTtsVoiceURIForSession, resolveBrowserTtsSessionVoice } from './inputs/browserTts/browserTtsVoices';
+import {
+  chooseDiverseBrowserTtsVoiceURIForSession,
+  chooseRandomBrowserTtsVoiceURIForSession,
+  resolveBrowserTtsSessionVoice,
+} from './inputs/browserTts/browserTtsVoices';
 import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
 import { buildQwenCloudTelemetryFrame, buildAdaptiveQwenCloudInput } from './inputs/qwenCloud/qwenCloudTelemetryAdapter';
 import { QwenCloudAudioAdapter, buildQwenCloudPhraseId } from './inputs/qwenCloud/qwenCloudAudioAdapter';
@@ -498,7 +503,17 @@ function App() {
   useEffect(() => {
     if (!('speechSynthesis' in window)) return;
     const speech = window.speechSynthesis;
-    const refreshVoices = () => setBrowserTtsVoices(speech.getVoices());
+    const refreshVoices = () => {
+      const voices = speech.getVoices();
+      setBrowserTtsVoices(voices);
+      perfDiagnostics.recordTtsVoices(voices.map((voice) => ({
+        lang: voice.lang,
+        name: voice.name,
+        voiceURI: voice.voiceURI,
+        default: voice.default,
+        localService: voice.localService,
+      })));
+    };
     refreshVoices();
     speech.addEventListener('voiceschanged', refreshVoices);
     return () => speech.removeEventListener('voiceschanged', refreshVoices);
@@ -508,6 +523,9 @@ function App() {
     if (browserTtsVoices.length === 0) return;
     setSessions((prev) => {
       let changed = false;
+      const usedVoiceURIs = prev
+        .filter((session) => session.inputMode === 'input2' && session.ttsLanguage)
+        .map((session) => session.ttsVoiceURI);
       const next = prev.map((session) => {
         if (
           session.inputMode !== 'input2' ||
@@ -518,8 +536,14 @@ function App() {
         ) {
           return session;
         }
-        const ttsVoiceURI = chooseRandomBrowserTtsVoiceURI(browserTtsVoices, session.ttsLanguage);
+        const ttsVoiceURI = chooseDiverseBrowserTtsVoiceURIForSession(
+          session.inputMode,
+          browserTtsVoices,
+          session.ttsLanguage,
+          usedVoiceURIs,
+        );
         if (!ttsVoiceURI) return session;
+        usedVoiceURIs.push(ttsVoiceURI);
         changed = true;
         return { ...session, ttsVoiceURI };
       });
@@ -842,7 +866,7 @@ function App() {
         ? phrasePlaybackEventsRef.current.filter((event) => event.sessionId === latestSessionId).slice(-200)
         : phrasePlaybackEventsRef.current.slice(-200);
       const sampleAudit: DictaDebugSampleAudit[] = recentTimelinePoints.map((point) => {
-        const rejectionReason = deriveBrowserTtsDeBenchmarkRejectionReason(point);
+        const rejectionReason = getBrowserTtsDeBenchmarkRejectionReason(point);
         return {
           acceptedForBenchmark: rejectionReason === null,
           rejectionReason,
@@ -3320,6 +3344,12 @@ function App() {
         phraseLengthChars: chunk.text.length,
         language: ttsLanguage,
         pacingMode,
+        voiceName: browserTtsVoice?.name,
+        voiceURI: browserTtsVoice?.voiceURI ?? activeSession?.ttsVoiceURI ?? null,
+        voiceLang: browserTtsVoice?.lang,
+        voiceResolved: Boolean(browserTtsVoice),
+        availableVoiceCount: browserTtsVoices.length,
+        matchingVoiceCount: browserTtsVoices.filter((voice) => voice.lang.toLowerCase().startsWith(ttsLanguage)).length,
       });
       utterance.rate = rate;
       utterance.pitch = 1;
@@ -4862,28 +4892,6 @@ function App() {
     });
     delete sessionBenchmarkBeforeRef.current[activeSession.id];
     delete sessionFeedbackContextRef.current[activeSession.id];
-  }
-
-  function deriveBrowserTtsDeBenchmarkRejectionReason(point: AdaptiveTimelinePoint): string | null {
-    if (isValidBrowserTtsDeBenchmarkSample(point)) return null;
-    const rawLagSec = point.rawLagSec;
-    const stableLagSec = point.stableLagSec;
-    const scoringEvent =
-      point.event === 'phrase_advance' ||
-      point.event === 'phrase_completed' ||
-      point.event === 'rate_change' ||
-      point.event === 'support_entered' ||
-      point.event === 'flow_entered';
-    if (typeof rawLagSec !== 'number' || !Number.isFinite(rawLagSec)) return 'rawLagSec_missing_or_non_finite';
-    if (!Number.isFinite(point.lagSec)) return 'lagSec_non_finite';
-    if (stableLagSec !== undefined && !Number.isFinite(stableLagSec)) return 'stableLagSec_non_finite';
-    if (rawLagSec < -3 || rawLagSec > 6) return 'rawLagSec_out_of_range';
-    if (rawLagSec === -5 || point.lagSec === -5 || stableLagSec === -5) return 'lag_clipped_to_sentinel_-5';
-    if (point.wpm <= 0) return 'wpm_not_positive_or_placeholder';
-    if (point.phraseBoundaryType === 'unsafe') return 'unsafe_phrase_boundary';
-    if ((point.semanticCompleteness ?? 1) < 0.7) return 'semantic_completeness_below_0.7';
-    if (!scoringEvent) return 'event_not_scoring';
-    return 'filtered_by_de_scoring_rule';
   }
 
   function buildAdaptiveEventCounts(
@@ -9538,6 +9546,10 @@ function AdaptiveBenchmarkWorkspace({
   const maxRepeatWordTotal = Math.max(1, ...topRepeatWords.map((entry) => entry.total));
   const confidenceState = profile.recommendation.confidence >= 0.55 ? 'Reliable' : profile.recommendation.confidence >= 0.25 ? 'Learning' : 'Collecting data';
   const weakAreaSummary = profile.weakAreas.slice(0, 4);
+  const browserTtsDeDiagnostics = buildBrowserTtsDeDiagnostics(profile);
+  const browserTtsDePauseNote =
+    browserTtsDeDiagnostics && browserTtsDeDiagnostics.pauseGapMs > 0 ? browserTtsDeDiagnostics.note : null;
+  const browserTtsDeSemanticNote = browserTtsDeDiagnostics?.semanticPressureNote ?? null;
   const sequencingClean = sessionFeedback
     ? sessionFeedback.playbackIssues.repeatedPhraseCount === 0 &&
       sessionFeedback.playbackIssues.skippedPhraseCount === 0 &&
@@ -10298,6 +10310,8 @@ function AdaptiveBenchmarkWorkspace({
               <Metric label="Confidence" value={formatScore(profile.recommendation.confidence)} />
             </div>
             <p className="dashboard-meta">{profile.recommendation.summary}</p>
+            {browserTtsDePauseNote ? <p className="hint">{browserTtsDePauseNote}</p> : null}
+            {browserTtsDeSemanticNote ? <p className="hint">{browserTtsDeSemanticNote}</p> : null}
             <p className="hint">Focus: {profile.recommendation.nextTrainingFocus.join(', ')}</p>
             <p className="hint">Weak areas: {profile.weakAreas.length > 0 ? profile.weakAreas.join(', ') : 'none detected'}</p>
           </section>
@@ -11426,7 +11440,12 @@ function createSessionFromScript(
     ...session,
     ttsText: text,
     ttsLanguage: language,
-    ttsVoiceURI: chooseRandomBrowserTtsVoiceURIForSession(inputMode, options.browserTtsVoices ?? [], language),
+    ttsVoiceURI: chooseRandomBrowserTtsVoiceURIForSession(
+      inputMode,
+      options.browserTtsVoices ?? [],
+      language,
+      seededUnitInterval(`${inputMode}:${language}:${index}:${titledScript.title}`),
+    ),
   };
 }
 
@@ -12588,6 +12607,15 @@ function getTtsVoiceLang(language: TtsLanguage): string {
   if (language === 'en') return 'en-US';
   if (language === 'es') return 'es-ES';
   return 'de-DE';
+}
+
+function seededUnitInterval(seed: string): () => number {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return () => (hash >>> 0) / 0x100000000;
 }
 
 function clamp(value: number, min: number, max: number): number {

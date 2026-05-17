@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chooseDiverseBrowserTtsVoiceURIForSession,
   chooseRandomBrowserTtsVoiceURI,
   chooseRandomBrowserTtsVoiceURIForSession,
   resolveBrowserTtsSessionVoice,
@@ -41,6 +42,17 @@ describe('Browser TTS voices', () => {
     expect(chooseRandomBrowserTtsVoiceURIForSession('input2', voices, 'en', () => 0)).toBe('en-a');
     expect(chooseRandomBrowserTtsVoiceURIForSession('input3', voices, 'en', () => 0)).toBeNull();
     expect(chooseRandomBrowserTtsVoiceURIForSession('input4', voices, 'en', () => 0)).toBeNull();
+  });
+
+  it('prefers the least-used compatible voice for Input #2 diversity', () => {
+    expect(chooseDiverseBrowserTtsVoiceURIForSession('input2', voices, 'en', ['en-a'], () => 0)).toBe('en-b');
+    expect(chooseDiverseBrowserTtsVoiceURIForSession('input2', voices, 'en', ['en-a', 'en-b'], () => 0)).toBe('en-a');
+  });
+
+  it('does not apply diverse Browser TTS voice selection to other inputs', () => {
+    expect(chooseDiverseBrowserTtsVoiceURIForSession('input1', voices, 'en', [], () => 0)).toBeNull();
+    expect(chooseDiverseBrowserTtsVoiceURIForSession('input3', voices, 'en', [], () => 0)).toBeNull();
+    expect(chooseDiverseBrowserTtsVoiceURIForSession('input4', voices, 'en', [], () => 0)).toBeNull();
   });
 
   it('uses the saved voice when it still exists on the current device', () => {

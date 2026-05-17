@@ -1,5 +1,9 @@
 import type { InputLanguageBenchmarkMetrics } from './types';
-import { normalizeInputLanguageBenchmarkForRecommendation } from './AdaptiveInputLanguageBenchmarkService';
+import {
+  buildBrowserTtsDeDiagnostics,
+  normalizeInputLanguageBenchmarkForRecommendation,
+  type BrowserTtsDeDiagnostics,
+} from './AdaptiveInputLanguageBenchmarkService';
 
 export type SelectedBenchmarkExportPayload = {
   selectedProfileKey: string;
@@ -41,6 +45,7 @@ export type SelectedBenchmarkExportPayload = {
   rateAccuracyBuckets: InputLanguageBenchmarkMetrics['rateAccuracyBuckets'];
   weakAreas: InputLanguageBenchmarkMetrics['weakAreas'];
   recommendation: InputLanguageBenchmarkMetrics['recommendation'];
+  browserTtsDeDiagnostics?: BrowserTtsDeDiagnostics;
   recentTimelinePoints: InputLanguageBenchmarkMetrics['timeline'];
   debug: {
     currentPhraseIndex: number | null;
@@ -58,6 +63,7 @@ export function buildSelectedBenchmarkExportPayload(profile: InputLanguageBenchm
   const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
   const recentTimelinePoints = normalizedProfile.timeline.slice(-60);
   const latest = recentTimelinePoints[recentTimelinePoints.length - 1] ?? null;
+  const browserTtsDeDiagnostics = buildBrowserTtsDeDiagnostics(normalizedProfile) ?? undefined;
   return {
     selectedProfileKey: `${normalizedProfile.inputMode}/${normalizedProfile.language}`,
     inputMode: normalizedProfile.inputMode,
@@ -99,6 +105,7 @@ export function buildSelectedBenchmarkExportPayload(profile: InputLanguageBenchm
     rateAccuracyBuckets: normalizedProfile.rateAccuracyBuckets,
     weakAreas: normalizedProfile.weakAreas,
     recommendation: normalizedProfile.recommendation,
+    ...(browserTtsDeDiagnostics ? { browserTtsDeDiagnostics } : {}),
     recentTimelinePoints,
     debug: {
       currentPhraseIndex: latest?.phraseIndex ?? null,

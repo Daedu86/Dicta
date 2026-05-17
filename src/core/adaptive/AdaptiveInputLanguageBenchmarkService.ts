@@ -34,6 +34,30 @@ type BrowserTtsDeTimelinePressure = {
   shouldUseConservativeRecommendation: boolean;
 };
 
+export type BrowserTtsDeBenchmarkRejectionReason =
+  | 'stale_tts_progress'
+  | 'rawLagSec_missing_or_non_finite'
+  | 'lagSec_non_finite'
+  | 'stableLagSec_non_finite'
+  | 'lag_clipped_to_sentinel'
+  | 'rawLagSec_out_of_range'
+  | 'wpm_not_positive_or_placeholder'
+  | 'unsafe_phrase_boundary'
+  | 'semantic_completeness_below_0.7'
+  | 'event_not_scoring'
+  | 'filtered_by_de_scoring_rule';
+
+export type BrowserTtsDeDiagnostics = {
+  targetPauseMs: number;
+  runtimeRecoveryPauseMs: number | null;
+  pauseGapMs: number;
+  acceptedRecentTimelineSamples: number;
+  rejectedRecentTimelineSamples: number;
+  rejectionReasonCounts: Partial<Record<BrowserTtsDeBenchmarkRejectionReason, number>>;
+  note: string;
+  semanticPressureNote?: string;
+};
+
 export type InputLanguageBenchmarkUpdateArgs = {
   current?: InputLanguageBenchmarkMetrics | null;
   live: LiveTelemetryFrame;
@@ -306,6 +330,96 @@ export function isValidBrowserTtsDeBenchmarkSample(point: AdaptiveTimelinePoint)
     semanticCompleteness >= 0.7 &&
     isScoringTimelineEvent(point.event)
   );
+}
+
+export function getBrowserTtsDeBenchmarkRejectionReason(
+  point: AdaptiveTimelinePoint,
+): BrowserTtsDeBenchmarkRejectionReason | null {
+  if (!isBrowserTtsDe(point.inputMode, point.language)) return null;
+  if (isValidBrowserTtsDeBenchmarkSample(point)) return null;
+
+  const rawLagSec = point.rawLagSec;
+  const stableLagSec = point.stableLagSec;
+  const hasValidPhrasePosition =
+    (point.phraseIndex === undefined || (Number.isInteger(point.phraseIndex) && point.phraseIndex >= 0)) &&
+    (typeof point.totalSemanticPhrases !== 'number' ||
+      point.phraseIndex === undefined ||
+      point.phraseIndex < point.totalSemanticPhrases);
+
+  if (!hasValidPhrasePosition) return 'stale_tts_progress';
+  if (typeof rawLagSec !== 'number' || !Number.isFinite(rawLagSec)) return 'rawLagSec_missing_or_non_finite';
+  if (!Number.isFinite(point.lagSec)) return 'lagSec_non_finite';
+  if (stableLagSec !== undefined && !Number.isFinite(stableLagSec)) return 'stableLagSec_non_finite';
+  if (
+    rawLagSec === -5 ||
+    rawLagSec === 5 ||
+    point.lagSec === -5 ||
+    point.lagSec === 5 ||
+    stableLagSec === -5 ||
+    stableLagSec === 5
+  ) {
+    return 'lag_clipped_to_sentinel';
+  }
+  if (rawLagSec < BROWSER_TTS_DE_RAW_LAG_MIN_SEC || rawLagSec > BROWSER_TTS_DE_RAW_LAG_MAX_SEC) {
+    return 'rawLagSec_out_of_range';
+  }
+  if (point.wpm <= 0) return 'wpm_not_positive_or_placeholder';
+  if (point.phraseBoundaryType === 'unsafe') return 'unsafe_phrase_boundary';
+  if ((point.semanticCompleteness ?? 1) < 0.7) return 'semantic_completeness_below_0.7';
+  if (!isScoringTimelineEvent(point.event)) return 'event_not_scoring';
+  return 'filtered_by_de_scoring_rule';
+}
+
+export function buildBrowserTtsDeDiagnostics(
+  profile: InputLanguageBenchmarkMetrics,
+  recentPointLimit = 60,
+): BrowserTtsDeDiagnostics | null {
+  if (!isBrowserTtsDe(profile.inputMode, profile.language)) return null;
+
+  const recentTimeline = profile.timeline.slice(-recentPointLimit);
+  const targetPauseMs = Math.round(profile.recommendation?.targetPauseMs ?? profile.preferredPauseAfterPhraseMs ?? BROWSER_TTS_DE_CONSERVATIVE_PAUSE_MS);
+  const runtimeRecoveryPauses = recentTimeline
+    .filter(
+      (point) =>
+        includesDiagnosticReason(point, 'android-speech-rate-fallback') ||
+        includesDiagnosticReason(point, 'browser-tts-de-recovery'),
+    )
+    .map((point) => point.pauseMs)
+    .filter((pauseMs) => Number.isFinite(pauseMs) && pauseMs > 0);
+  const runtimeRecoveryPauseMs = runtimeRecoveryPauses.length > 0 ? Math.max(...runtimeRecoveryPauses) : null;
+  const pauseGapMs = runtimeRecoveryPauseMs === null ? 0 : Math.max(0, runtimeRecoveryPauseMs - targetPauseMs);
+  const rejectionReasonCounts: Partial<Record<BrowserTtsDeBenchmarkRejectionReason, number>> = {};
+  let acceptedRecentTimelineSamples = 0;
+  let rejectedRecentTimelineSamples = 0;
+
+  for (const point of recentTimeline) {
+    const reason = getBrowserTtsDeBenchmarkRejectionReason(point);
+    if (reason === null) {
+      acceptedRecentTimelineSamples += 1;
+    } else {
+      rejectedRecentTimelineSamples += 1;
+      rejectionReasonCounts[reason] = (rejectionReasonCounts[reason] ?? 0) + 1;
+    }
+  }
+
+  const semanticPressureNote =
+    profile.semanticFidelityScore >= 0.95 && profile.weakAreas.includes('unsafe_boundary_pressure')
+      ? 'Semantic Fidelity can stay high because accepted benchmark samples are safe, while unsafe_boundary_pressure is derived from recent runtime pressure and rejected unsafe chunks.'
+      : undefined;
+
+  return {
+    targetPauseMs,
+    runtimeRecoveryPauseMs,
+    pauseGapMs,
+    acceptedRecentTimelineSamples,
+    rejectedRecentTimelineSamples,
+    rejectionReasonCounts,
+    note:
+      pauseGapMs > 0
+        ? `targetPauseMs is the benchmark target; Browser TTS DE runtime recovery observed an executable Android/DE safety pause up to ${runtimeRecoveryPauseMs}ms.`
+        : 'targetPauseMs is the benchmark target; no higher Browser TTS DE runtime recovery pause was observed in the recent timeline.',
+    semanticPressureNote,
+  };
 }
 
 export function clampBrowserTtsDeDecisionToRecommendation(

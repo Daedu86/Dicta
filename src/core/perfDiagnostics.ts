@@ -57,6 +57,12 @@ export type PerfTtsUtterance = {
   phraseLengthChars: number;
   language: string;
   pacingMode: string;
+  voiceName?: string;
+  voiceURI?: string | null;
+  voiceLang?: string;
+  voiceResolved?: boolean;
+  availableVoiceCount?: number;
+  matchingVoiceCount?: number;
   playClickedAt: number;
   speakCalledAt?: number;
   onstartAt?: number;
@@ -88,6 +94,7 @@ export type PerfDiagnosticsSnapshot = {
   };
   tts: {
     latest?: PerfTtsUtterance;
+    voices: PerfTtsVoice[];
   };
   renders: Record<string, number>;
   heap: {
@@ -95,6 +102,14 @@ export type PerfDiagnosticsSnapshot = {
     totalJSHeapSize?: number;
     jsHeapSizeLimit?: number;
   };
+};
+
+export type PerfTtsVoice = {
+  lang: string;
+  name: string;
+  voiceURI: string;
+  default: boolean;
+  localService: boolean;
 };
 
 export function isPerfDiagnosticsEnabled(config: PerfDiagnosticsConfig): boolean {
@@ -140,6 +155,7 @@ export class PerfDiagnostics {
   private ttsPlays = new Map<number, { id: number; clickedAt: number; source: string }>();
   private ttsUtterances: PerfTtsUtterance[] = [];
   private ttsUtterancesById = new Map<number, PerfTtsUtterance>();
+  private ttsVoices: PerfTtsVoice[] = [];
   private renderCounts: Record<string, number> = {};
   private observer: PerformanceObserver | null = null;
 
@@ -169,6 +185,7 @@ export class PerfDiagnostics {
     this.ttsPlays.clear();
     this.ttsUtterances = [];
     this.ttsUtterancesById.clear();
+    this.ttsVoices = [];
     this.renderCounts = {};
   }
 
@@ -241,6 +258,12 @@ export class PerfDiagnostics {
     phraseLengthChars: number;
     language: string;
     pacingMode: string;
+    voiceName?: string;
+    voiceURI?: string | null;
+    voiceLang?: string;
+    voiceResolved?: boolean;
+    availableVoiceCount?: number;
+    matchingVoiceCount?: number;
   }): number {
     if (!this.enabled) return 0;
     const play = this.ttsPlays.get(args.playId);
@@ -254,12 +277,27 @@ export class PerfDiagnostics {
       phraseLengthChars: args.phraseLengthChars,
       language: args.language,
       pacingMode: args.pacingMode,
+      voiceName: args.voiceName,
+      voiceURI: args.voiceURI,
+      voiceLang: args.voiceLang,
+      voiceResolved: args.voiceResolved,
+      availableVoiceCount: args.availableVoiceCount,
+      matchingVoiceCount: args.matchingVoiceCount,
       playClickedAt: play?.clickedAt ?? now(),
     };
     this.ttsUtterancesById.set(id, utterance);
     this.ttsUtterances.push(utterance);
     trimArray(this.ttsUtterances, MAX_RECENT_ITEMS);
     return id;
+  }
+
+  recordTtsVoices(voices: PerfTtsVoice[]): void {
+    this.ttsVoices = voices;
+    if (!this.enabled) return;
+    this.log('tts-voices', {
+      count: voices.length,
+      voices: voices.map((voice) => `${voice.lang} ${voice.name} (${voice.voiceURI})`),
+    });
   }
 
   recordTtsSpeak(utteranceId: number): void {
@@ -359,6 +397,7 @@ export class PerfDiagnostics {
       },
       tts: {
         latest: latestTts,
+        voices: [...this.ttsVoices],
       },
       renders: { ...this.renderCounts },
       heap: getHeapSnapshot(),

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildBrowserTtsDeDiagnostics,
   clampBrowserTtsDeDecisionToRecommendation,
   computeBenchmarkRecommendation,
   computeControlFidelityScore,
   computeSemanticFidelityScore,
   createEmptyInputLanguageBenchmark,
   deriveWeakAreas,
+  getBrowserTtsDeBenchmarkRejectionReason,
   normalizeInputLanguageBenchmarkForRecommendation,
   pickBestRateRange,
   pruneTimelineToRollingWindow,
@@ -67,6 +69,30 @@ function decision(overrides: Partial<PacingDecision> = {}): PacingDecision {
     accuracyScore: 0.9,
     hesitationScore: 0.2,
     confidenceScore: 0.8,
+    ...overrides,
+  };
+}
+
+function timelinePoint(overrides: Partial<AdaptiveTimelinePoint> = {}): AdaptiveTimelinePoint {
+  return {
+    timestampMs: Date.now(),
+    inputMode: 'browser-tts',
+    language: 'de',
+    mode: 'balanced',
+    playbackRate: 0.8,
+    accuracy: 0.9,
+    lagSec: 0.4,
+    rawLagSec: 0.4,
+    stableLagSec: 0.4,
+    wpm: 48,
+    pauseMs: 1200,
+    correctionRate: 0,
+    phraseBoundaryType: 'clause',
+    semanticCompleteness: 0.86,
+    event: 'phrase_completed',
+    phraseIndex: 0,
+    totalSemanticPhrases: 1,
+    sessionId: 'diagnostic-session',
     ...overrides,
   };
 }
@@ -585,6 +611,64 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expect(profile.timeline.some((point) => point.rawLagSec === -55)).toBe(true);
     expect(profile.timeline.every((point) => point.decisionReason?.includes('rejected-benchmark-sample'))).toBe(true);
     expect(profile.timeline.filter((point) => point.rawLagSec === -33 || point.rawLagSec === -55).every((point) => point.decisionReason?.includes('invalid-lag-alignment'))).toBe(true);
+  });
+
+  it('uses shared browser-tts DE benchmark rejection reasons with scoring thresholds', () => {
+    expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ rawLagSec: -1.9, lagSec: -1.9, stableLagSec: -1.9 }))).toBeNull();
+    expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ rawLagSec: -5, lagSec: -5, stableLagSec: -5 }))).toBe('lag_clipped_to_sentinel');
+    expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ rawLagSec: 8.2, lagSec: 4.9, stableLagSec: 4.9 }))).toBe('rawLagSec_out_of_range');
+    expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ phraseBoundaryType: 'unsafe' }))).toBe('unsafe_phrase_boundary');
+    expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ semanticCompleteness: 0.62 }))).toBe('semantic_completeness_below_0.7');
+    expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ event: 'pause' }))).toBe('event_not_scoring');
+    expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ language: 'en', phraseBoundaryType: 'unsafe' }))).toBeNull();
+  });
+
+  it('builds browser-tts DE diagnostics for runtime recovery pause and unsafe pressure', () => {
+    const profile = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'de'),
+      semanticFidelityScore: 0.99,
+      weakAreas: ['unsafe_boundary_pressure' as const],
+      recommendation: {
+        ...createEmptyInputLanguageBenchmark('browser-tts', 'de').recommendation,
+        targetPauseMs: 1200,
+      },
+      timeline: [
+        timelinePoint({ phraseIndex: 0 }),
+        timelinePoint({
+          phraseIndex: 1,
+          totalSemanticPhrases: 2,
+          pauseMs: 2600,
+          phraseBoundaryType: 'unsafe',
+          semanticCompleteness: 0.35,
+          decisionReason: 'mode=support, android-speech-rate-fallback, browser-tts-de-recovery-severe',
+        }),
+      ],
+    };
+
+    const diagnostics = buildBrowserTtsDeDiagnostics(profile);
+
+    expect(diagnostics?.targetPauseMs).toBe(1200);
+    expect(diagnostics?.runtimeRecoveryPauseMs).toBe(2600);
+    expect(diagnostics?.pauseGapMs).toBe(1400);
+    expect(diagnostics?.acceptedRecentTimelineSamples).toBe(1);
+    expect(diagnostics?.rejectedRecentTimelineSamples).toBe(1);
+    expect(diagnostics?.rejectionReasonCounts.unsafe_phrase_boundary).toBe(1);
+    expect(diagnostics?.note).toContain('targetPauseMs is the benchmark target');
+    expect(diagnostics?.semanticPressureNote).toContain('Semantic Fidelity can stay high');
+  });
+
+  it('does not build browser-tts DE diagnostics for neighboring inputs or languages', () => {
+    const profiles = [
+      createEmptyInputLanguageBenchmark('browser-tts', 'en'),
+      createEmptyInputLanguageBenchmark('browser-tts', 'es'),
+      createEmptyInputLanguageBenchmark('audio', 'de'),
+      createEmptyInputLanguageBenchmark('kokoro', 'de'),
+      createEmptyInputLanguageBenchmark('qwen-cloud', 'de'),
+    ];
+
+    for (const profile of profiles) {
+      expect(buildBrowserTtsDeDiagnostics(profile)).toBeNull();
+    }
   });
 
   it('dedupes browser-tts DE phrase_advance and phrase_completed scoring for the same phrase', () => {

@@ -100,6 +100,55 @@ describe('benchmarkJson', () => {
     expect(payload.recommendation.summary).not.toContain('medium-length semantic phrases');
   });
 
+  it('includes browser-tts DE diagnostics for runtime recovery pauses in export', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    profile.recommendation = {
+      ...profile.recommendation,
+      targetPauseMs: 1200,
+    };
+    profile.timeline = [
+      {
+        timestampMs: Date.now(),
+        inputMode: 'browser-tts',
+        language: 'de',
+        mode: 'support',
+        playbackRate: 0.8,
+        accuracy: 0.72,
+        lagSec: 3.4,
+        rawLagSec: 3.4,
+        stableLagSec: 3.4,
+        wpm: 42,
+        pauseMs: 2600,
+        phraseBoundaryType: 'clause',
+        semanticCompleteness: 0.82,
+        decisionReason: 'mode=support, android-speech-rate-fallback, browser-tts-de-recovery-severe',
+        event: 'phrase_completed',
+      },
+    ];
+
+    const payload = buildSelectedBenchmarkExportPayload(profile);
+
+    expect(payload.browserTtsDeDiagnostics?.targetPauseMs).toBe(1200);
+    expect(payload.browserTtsDeDiagnostics?.runtimeRecoveryPauseMs).toBe(2600);
+    expect(payload.browserTtsDeDiagnostics?.pauseGapMs).toBe(1400);
+    expect(payload.browserTtsDeDiagnostics?.note).toContain('executable Android/DE safety pause');
+  });
+
+  it('omits browser-tts DE diagnostics from neighboring export profiles', () => {
+    const profiles = [
+      createEmptyInputLanguageBenchmark('browser-tts', 'en'),
+      createEmptyInputLanguageBenchmark('browser-tts', 'es'),
+      createEmptyInputLanguageBenchmark('audio', 'de'),
+      createEmptyInputLanguageBenchmark('kokoro', 'de'),
+      createEmptyInputLanguageBenchmark('qwen-cloud', 'de'),
+    ];
+
+    for (const profile of profiles) {
+      const payload = buildSelectedBenchmarkExportPayload(profile);
+      expect(payload.browserTtsDeDiagnostics).toBeUndefined();
+    }
+  });
+
   it('builds benchmark filename with input, language, and timestamp', () => {
     const now = new Date('2026-04-30T09:25:30');
     const filename = buildBenchmarkFilename('kokoro', 'en', now);

@@ -1,6 +1,7 @@
 export type BrowserTtsVoiceLike = {
   lang: string;
   voiceURI: string;
+  name?: string;
 };
 
 export type BrowserTtsLanguage = 'en' | 'de' | 'es';
@@ -40,6 +41,29 @@ export function chooseRandomBrowserTtsVoiceURIForSession<TVoice extends BrowserT
 ): string | null {
   if (inputMode !== 'input2') return null;
   return chooseRandomBrowserTtsVoiceURI(voices, language, random);
+}
+
+export function chooseDiverseBrowserTtsVoiceURIForSession<TVoice extends BrowserTtsVoiceLike>(
+  inputMode: BrowserTtsSessionInputMode,
+  voices: readonly TVoice[],
+  language: BrowserTtsLanguage | null | undefined,
+  usedVoiceURIs: readonly (string | null | undefined)[],
+  random: () => number = Math.random,
+): string | null {
+  if (inputMode !== 'input2') return null;
+  const candidates = voicesForBrowserTtsLanguage(voices, language);
+  if (candidates.length === 0) return null;
+
+  const useCounts = new Map<string, number>();
+  for (const voiceURI of usedVoiceURIs) {
+    if (!voiceURI) continue;
+    useCounts.set(voiceURI, (useCounts.get(voiceURI) ?? 0) + 1);
+  }
+
+  const leastUsedCount = Math.min(...candidates.map((voice) => useCounts.get(voice.voiceURI) ?? 0));
+  const leastUsedCandidates = candidates.filter((voice) => (useCounts.get(voice.voiceURI) ?? 0) === leastUsedCount);
+  const index = Math.floor(clamp01(random()) * leastUsedCandidates.length);
+  return leastUsedCandidates[Math.min(index, leastUsedCandidates.length - 1)]?.voiceURI ?? null;
 }
 
 export function resolveBrowserTtsSessionVoice<TVoice extends BrowserTtsVoiceLike>(
