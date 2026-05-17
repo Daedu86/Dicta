@@ -72,6 +72,7 @@ import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor } 
 import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
 import { applyBrowserTtsDeRecoveryPolicy, summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
+import { chooseRandomBrowserTtsVoiceURI, chooseRandomBrowserTtsVoiceURIForSession, resolveBrowserTtsSessionVoice } from './inputs/browserTts/browserTtsVoices';
 import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
 import { buildQwenCloudTelemetryFrame, buildAdaptiveQwenCloudInput } from './inputs/qwenCloud/qwenCloudTelemetryAdapter';
 import { QwenCloudAudioAdapter, buildQwenCloudPhraseId } from './inputs/qwenCloud/qwenCloudAudioAdapter';
@@ -171,6 +172,7 @@ type StoredSession = {
   inputText: string;
   ttsText: string;
   ttsLanguage: TtsLanguage | null;
+  ttsVoiceURI?: string | null;
   ttsPracticeText: string;
   kokoroText: string;
   kokoroLanguage: TtsLanguage | null;
@@ -457,6 +459,7 @@ function App() {
   }, []);
 
   const [ttsLanguage, setTtsLanguage] = useState<TtsLanguage>('de');
+  const [browserTtsVoices, setBrowserTtsVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [ttsPracticeText, setTtsPracticeText] = useState('');
   const [ttsStatus, setTtsStatus] = useState<TtsStatus>('idle');
   const [ttsCurrentChunk, setTtsCurrentChunk] = useState('');
@@ -491,6 +494,38 @@ function App() {
   const [kokoroManualBias, setKokoroManualBias] = useState(0);
   const [kokoroServiceReady, setKokoroServiceReady] = useState<boolean | null>(null);
   const [kokoroEnabled, setKokoroEnabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const speech = window.speechSynthesis;
+    const refreshVoices = () => setBrowserTtsVoices(speech.getVoices());
+    refreshVoices();
+    speech.addEventListener('voiceschanged', refreshVoices);
+    return () => speech.removeEventListener('voiceschanged', refreshVoices);
+  }, []);
+
+  useEffect(() => {
+    if (browserTtsVoices.length === 0) return;
+    setSessions((prev) => {
+      let changed = false;
+      const next = prev.map((session) => {
+        if (
+          session.inputMode !== 'input2' ||
+          !session.inputSettingsLocked ||
+          !session.ttsLanguage ||
+          session.ttsVoiceURI ||
+          !session.ttsText.trim()
+        ) {
+          return session;
+        }
+        const ttsVoiceURI = chooseRandomBrowserTtsVoiceURI(browserTtsVoices, session.ttsLanguage);
+        if (!ttsVoiceURI) return session;
+        changed = true;
+        return { ...session, ttsVoiceURI };
+      });
+      return changed ? next : prev;
+    });
+  }, [browserTtsVoices]);
   const [openRouterDefaultModel, setOpenRouterDefaultModel] = useState('');
 
   useEffect(() => {
@@ -2189,7 +2224,7 @@ function App() {
       return;
     }
 
-    const nextSession = createSessionFromScript(result.script, getNextSessionIndex(sessions), inputMode);
+    const nextSession = createSessionFromScript(result.script, getNextSessionIndex(sessions), inputMode, { browserTtsVoices });
     suppressSidebarAutoSelectRef.current = true;
     setSessions((prev) => [nextSession, ...prev]);
     setActiveSessionId(nextSession.id);
@@ -2223,7 +2258,7 @@ function App() {
     suppressSidebarAutoSelectRef.current = true;
     if (navigateToLeaderboard) {
       const nextSession = {
-        ...createSessionFromScript(script, getNextSessionIndex(sessions), inputMode),
+        ...createSessionFromScript(script, getNextSessionIndex(sessions), inputMode, { browserTtsVoices }),
         generationOrigin,
       };
       setSessions((prev) => [nextSession, ...prev]);
@@ -2234,7 +2269,7 @@ function App() {
     } else {
       setSessions((prev) => {
         const nextSession = {
-          ...createSessionFromScript(script, getNextSessionIndex(prev), inputMode),
+          ...createSessionFromScript(script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
           generationOrigin,
         };
         return [nextSession, ...prev];
@@ -2638,6 +2673,21 @@ function App() {
     setTtsStatus(value.trim().length > 0 ? 'ready' : 'idle');
   }
 
+  function resolveActiveBrowserTtsVoice(): SpeechSynthesisVoice | null {
+    if (!activeSession || activeSession.inputMode !== 'input2') return null;
+    const resolution = resolveBrowserTtsSessionVoice(browserTtsVoices, ttsLanguage, activeSession.ttsVoiceURI);
+    if (resolution.voiceURI && resolution.voiceURI !== activeSession.ttsVoiceURI) {
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === activeSession.id
+            ? { ...session, ttsVoiceURI: resolution.voiceURI, updatedAt: new Date().toISOString() }
+            : session,
+        ),
+      );
+    }
+    return resolution.voice;
+  }
+
   function onTtsPracticeChange(value: string): void {
     if (sessionStatus === 'finished') return;
     if (!telemetryRef.current || !telemetryRef.current.startedAt) {
@@ -3034,6 +3084,7 @@ function App() {
     }
 
     const speech = window.speechSynthesis;
+    const browserTtsVoice = resolveActiveBrowserTtsVoice();
     const clampedStartWordIndex = Math.floor(clamp(startWordIndex, 0, Math.max(0, sourceWords.length - 1)));
     let chunkIndex = clampedStartWordIndex > 0 ? clampedStartWordIndex : 0;
     let macroPhraseIndex = 0;
@@ -3273,6 +3324,9 @@ function App() {
       utterance.pitch = 1;
       utterance.volume = 1;
       utterance.lang = getTtsVoiceLang(ttsLanguage);
+      if (browserTtsVoice) {
+        utterance.voice = browserTtsVoice;
+      }
       ttsUtteranceRef.current = utterance;
       setTtsCurrentChunk(chunk.text);
       setTtsPacingMode(pacingMode);
@@ -11314,6 +11368,7 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', 
     inputText: '',
     ttsText: '',
     ttsLanguage: inputMode === 'input2' || inputMode === 'input4' ? 'de' : null,
+    ttsVoiceURI: null,
     ttsPracticeText: '',
     kokoroText: '',
     kokoroLanguage: inputMode === 'input3' ? 'en' : null,
@@ -11331,7 +11386,12 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', 
   };
 }
 
-function createSessionFromScript(script: DictationScript, index: number, inputMode: SessionInputMode): StoredSession {
+function createSessionFromScript(
+  script: DictationScript,
+  index: number,
+  inputMode: SessionInputMode,
+  options: { browserTtsVoices?: readonly SpeechSynthesisVoice[] } = {},
+): StoredSession {
   const titledScript = normalizeGeneratedDictationScriptTitle(script);
   const text = titledScript.phrases.map((phrase) => phrase.text).join(' ');
   const language = scriptLanguageToTtsLanguage(titledScript.language);
@@ -11364,6 +11424,7 @@ function createSessionFromScript(script: DictationScript, index: number, inputMo
     ...session,
     ttsText: text,
     ttsLanguage: language,
+    ttsVoiceURI: chooseRandomBrowserTtsVoiceURIForSession(inputMode, options.browserTtsVoices ?? [], language),
   };
 }
 
@@ -11532,6 +11593,7 @@ function loadSessions(): StoredSession[] {
         inputText: session.inputText ?? '',
         ttsText: session.ttsText ?? '',
         ttsLanguage: session.ttsLanguage === 'en' || session.ttsLanguage === 'de' || session.ttsLanguage === 'es' ? session.ttsLanguage : null,
+        ttsVoiceURI: inputMode === 'input2' && typeof session.ttsVoiceURI === 'string' ? session.ttsVoiceURI : null,
         ttsPracticeText: session.ttsPracticeText ?? '',
         kokoroText: session.kokoroText ?? '',
         kokoroLanguage:
