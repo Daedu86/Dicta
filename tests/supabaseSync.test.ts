@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildSyncItems, mergeSyncRows, selectPushableSyncRows, toSyncRows, type DictaSyncState } from '../src/core/supabaseSync';
+import {
+  buildSyncItems,
+  latestSyncRowTimestamp,
+  mergeSyncRowSnapshots,
+  mergeSyncRows,
+  selectPushableSyncRows,
+  toSyncRows,
+  type DictaSyncState,
+} from '../src/core/supabaseSync';
 
 const baseState = (): DictaSyncState => ({
   sessions: [
@@ -266,6 +274,31 @@ describe('supabaseSync', () => {
     }]);
 
     expect(selectPushableSyncRows(localRows, remoteRows)).toHaveLength(1);
+  });
+
+  it('merges incremental remote snapshots by sync row identity', () => {
+    const currentRows = toSyncRows('profile-1', buildSyncItems(baseState()));
+    const changedRows = toSyncRows('profile-1', [
+      {
+        itemType: 'session',
+        itemKey: 's1',
+        updatedAt: '2026-05-04T10:00:00.000Z',
+        payload: {
+          id: 's1',
+          updatedAt: '2026-05-04T10:00:00.000Z',
+          inputMode: 'input2',
+          marker: 'changed',
+        },
+      },
+    ]);
+
+    const mergedRows = mergeSyncRowSnapshots(currentRows, changedRows);
+
+    expect(mergedRows).toHaveLength(currentRows.length);
+    expect(mergedRows.find((row) => row.item_type === 'session' && row.item_key === 's1')?.payload).toMatchObject({
+      marker: 'changed',
+    });
+    expect(latestSyncRowTimestamp(mergedRows)).toBe('2026-05-04T10:00:00.000Z');
   });
 
   it('skips malformed rows safely', () => {

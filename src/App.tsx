@@ -103,9 +103,12 @@ import {
   createDictaSupabaseClient,
   deleteSessionSyncRow,
   getDictaSyncConfig,
+  latestSyncRowTimestamp,
+  mergeSyncRowSnapshots,
   mergeSyncRows,
   pullSyncRows,
-  pushSyncRows,
+  pushSyncRowsDetailed,
+  type DictaSyncRow,
   type DictaSyncState,
 } from './core/supabaseSync';
 import {
@@ -627,6 +630,9 @@ function App() {
     buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
   );
   const supabasePullInFlightRef = useRef(false);
+  const supabaseKnownRemoteRowsRef = useRef<DictaSyncRow[]>([]);
+  const supabaseLastRemoteUpdatedAtRef = useRef<string | null>(null);
+  const supabaseLastFullPullAtMsRef = useRef(0);
   const deletedSessionIdsRef = useRef<Set<string>>(loadDeletedSessionIds());
   const consumedOpenRouterJobIdsRef = useRef<Set<string>>(new Set());
   const kokoroSemanticPhrasesRef = useRef<SemanticPhrase[]>([]);
@@ -1113,14 +1119,16 @@ function App() {
       state: 'pushing',
       message: 'Pushing final session to Supabase...',
     }));
-    void pushSyncRows(
-      supabaseClient,
-      syncConfig.profileId,
-      perfDiagnostics.withSpan('supabase.buildSyncState.final', () =>
-        buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
-      ),
-    )
-      .then((pushed) => {
+    const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.final', () =>
+      buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+    );
+    void pushSyncRowsDetailed(supabaseClient, syncConfig.profileId, syncState, {
+      existingRows: supabaseKnownRemoteRowsRef.current,
+    })
+      .then(({ pushed, pushedRows }) => {
+        supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
+        supabaseLastRemoteUpdatedAtRef.current =
+          latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
         setSupabaseSyncStatus((current) => ({
           ...current,
           state: 'synced',
@@ -1167,8 +1175,17 @@ function App() {
         message: reason === 'initial' ? 'Pulling Supabase sync data...' : 'Refreshing Supabase sync data...',
       }));
       try {
-        const rows = await pullSyncRows(client, syncConfig.profileId);
+        const shouldFullPull = reason === 'initial' || Date.now() - supabaseLastFullPullAtMsRef.current > 60 * 60_000;
+        const rows = await pullSyncRows(client, syncConfig.profileId, {
+          updatedAfter: shouldFullPull ? null : supabaseLastRemoteUpdatedAtRef.current,
+        });
         if (cancelled) return;
+        if (shouldFullPull) {
+          supabaseLastFullPullAtMsRef.current = Date.now();
+        }
+        supabaseKnownRemoteRowsRef.current = shouldFullPull ? rows : mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, rows);
+        supabaseLastRemoteUpdatedAtRef.current =
+          latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
         const transientErrorSessionIds = rows
           .filter((row) => row.item_type === 'session' && isTransientGenerationErrorSessionLike(row.payload))
           .map((row) => row.item_key);
@@ -1197,10 +1214,16 @@ function App() {
           }, 0);
         }
 
-        const pushed = await pushSyncRows(client, syncConfig.profileId, {
+        const postMergeState = {
           ...merged,
           sessions: filteredMergedSessions,
+        };
+        const { pushed, pushedRows } = await pushSyncRowsDetailed(client, syncConfig.profileId, postMergeState, {
+          existingRows: supabaseKnownRemoteRowsRef.current,
         });
+        supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
+        supabaseLastRemoteUpdatedAtRef.current =
+          latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
         if (cancelled) return;
         setSupabaseSyncStatus({
           enabled: true,
@@ -1255,14 +1278,16 @@ function App() {
         state: 'pushing',
         message: 'Pushing local changes to Supabase...',
       }));
-      pushSyncRows(
-        supabaseClient,
-        syncConfig.profileId,
-        perfDiagnostics.withSpan('supabase.buildSyncState.background', () =>
-          buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
-        ),
-      )
-        .then((pushed) => {
+      const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.background', () =>
+        buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+      );
+      pushSyncRowsDetailed(supabaseClient, syncConfig.profileId, syncState, {
+        existingRows: supabaseKnownRemoteRowsRef.current,
+      })
+        .then(({ pushed, pushedRows }) => {
+          supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
+          supabaseLastRemoteUpdatedAtRef.current =
+            latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
           setSupabaseSyncStatus((current) => ({
             ...current,
             state: 'synced',
@@ -2243,7 +2268,10 @@ function App() {
         message: 'Deleting session in Supabase...',
       }));
       void deleteSessionSyncRow(supabaseClient, syncConfig.profileId, sessionId)
-        .then(() => {
+        .then((deletedRow) => {
+          supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, [deletedRow]);
+          supabaseLastRemoteUpdatedAtRef.current =
+            latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
           setSupabaseSyncStatus((current) => ({
             ...current,
             state: 'synced',

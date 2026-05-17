@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
+const JOB_RETENTION_DAYS = 14;
 
 function getRequiredEnv(name) {
   const value = process.env[name]?.trim() ?? '';
@@ -113,6 +114,19 @@ function readCreateJobPayload(body) {
   };
 }
 
+async function cleanupOldOpenRouterJobs(supabase, profileId) {
+  const cutoff = new Date(Date.now() - JOB_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await supabase
+    .from(JOB_TABLE)
+    .delete()
+    .eq('profile_id', profileId)
+    .in('status', ['succeeded', 'failed'])
+    .lt('updated_at', cutoff);
+  if (error) {
+    console.warn('OpenRouter job cleanup failed:', error.message);
+  }
+}
+
 async function runOpenRouterJob({ req, supabase, profileId, jobId, requestPayload }) {
   const now = new Date().toISOString();
   await supabase
@@ -186,6 +200,7 @@ async function createJob(req, res) {
   const supabase = createSupabaseAdminClient();
   const profileId = getRequiredEnv('VITE_SUPABASE_SYNC_PROFILE_ID');
   const requestPayload = readCreateJobPayload(req.body);
+  await cleanupOldOpenRouterJobs(supabase, profileId);
   const jobId = randomUUID();
   const now = new Date().toISOString();
   const { error } = await supabase.from(JOB_TABLE).insert({

@@ -204,6 +204,8 @@ Durable mobile OpenRouter generation also uses Supabase from server routes. Crea
 
 Vercel note: `VITE_*` env vars are baked in at build time, so after changing them you must redeploy before your phone sees sync enabled.
 
+To stay inside Supabase's free tier, the browser does one full sync pull at startup and then uses incremental background pulls for rows updated since the last remote timestamp, with a periodic full refresh every hour for clock-skew safety. Durable OpenRouter job rows are pruned opportunistically after 14 days when a new job is created.
+
 CLI helper (Windows): `scripts/setup_supabase_sync.ps1` links a project and applies the SQL after substituting your chosen profile id.
 
 ## Local Ingestion Pipeline (WhisperX)

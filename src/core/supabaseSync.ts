@@ -39,6 +39,19 @@ export type DictaSyncMergeResult = DictaSyncState & {
   deletedSessionIds: string[];
 };
 
+export type PullSyncRowsOptions = {
+  updatedAfter?: string | null;
+};
+
+export type PushSyncRowsResult = {
+  pushed: number;
+  pushedRows: DictaSyncRow[];
+};
+
+export type PushSyncRowsOptions = {
+  existingRows?: DictaSyncRow[] | null;
+};
+
 export function getDictaSyncConfig(env: Record<string, string | undefined>): DictaSyncConfig {
   const url = env.VITE_SUPABASE_URL?.trim() ?? '';
   const anonKey = env.VITE_SUPABASE_ANON_KEY?.trim() ?? '';
@@ -227,28 +240,44 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
   };
 }
 
-export async function pullSyncRows(client: SupabaseClient, profileId: string): Promise<DictaSyncRow[]> {
-  const { data, error } = await client
+export async function pullSyncRows(client: SupabaseClient, profileId: string, options: PullSyncRowsOptions = {}): Promise<DictaSyncRow[]> {
+  let query = client
     .from(DICTA_SYNC_TABLE)
     .select('profile_id,item_type,item_key,payload,updated_at')
-    .eq('profile_id', profileId)
-    .order('updated_at', { ascending: true });
+    .eq('profile_id', profileId);
+
+  const updatedAfter = timestampFrom(options.updatedAfter);
+  if (updatedAfter) {
+    query = query.gt('updated_at', updatedAfter);
+  }
+
+  const { data, error } = await query.order('updated_at', { ascending: true });
 
   if (error) throw error;
   return (data ?? []) as DictaSyncRow[];
 }
 
-export async function pushSyncRows(client: SupabaseClient, profileId: string, state: DictaSyncState): Promise<number> {
+export async function pushSyncRows(client: SupabaseClient, profileId: string, state: DictaSyncState, options: PushSyncRowsOptions = {}): Promise<number> {
+  const result = await pushSyncRowsDetailed(client, profileId, state, options);
+  return result.pushed;
+}
+
+export async function pushSyncRowsDetailed(
+  client: SupabaseClient,
+  profileId: string,
+  state: DictaSyncState,
+  options: PushSyncRowsOptions = {},
+): Promise<PushSyncRowsResult> {
   const rows = toSyncRows(profileId, buildSyncItems(state));
-  if (rows.length === 0) return 0;
-  const existingRows = await pullSyncRows(client, profileId);
+  if (rows.length === 0) return { pushed: 0, pushedRows: [] };
+  const existingRows = options.existingRows ?? (await pullSyncRows(client, profileId));
   const pushableRows = selectPushableSyncRows(rows, existingRows);
-  if (pushableRows.length === 0) return 0;
+  if (pushableRows.length === 0) return { pushed: 0, pushedRows: [] };
   const { error } = await client.from(DICTA_SYNC_TABLE).upsert(pushableRows, {
     onConflict: 'profile_id,item_type,item_key',
   });
   if (error) throw error;
-  return pushableRows.length;
+  return { pushed: pushableRows.length, pushedRows: pushableRows };
 }
 
 export function selectPushableSyncRows(localRows: DictaSyncRow[], remoteRows: DictaSyncRow[]): DictaSyncRow[] {
@@ -272,26 +301,51 @@ export function selectPushableSyncRows(localRows: DictaSyncRow[], remoteRows: Di
   });
 }
 
-export async function deleteSessionSyncRow(client: SupabaseClient, profileId: string, sessionId: string): Promise<void> {
+export function mergeSyncRowSnapshots(currentRows: DictaSyncRow[], changedRows: DictaSyncRow[]): DictaSyncRow[] {
+  if (changedRows.length === 0) return currentRows;
+  const byKey = new Map<string, DictaSyncRow>();
+  for (const row of currentRows) {
+    if (!isValidSyncRow(row)) continue;
+    byKey.set(syncRowIdentity(row), row);
+  }
+  for (const row of changedRows) {
+    if (!isValidSyncRow(row)) continue;
+    byKey.set(syncRowIdentity(row), row);
+  }
+  return [...byKey.values()].sort((a, b) => compareTimestamp(a.updated_at, b.updated_at));
+}
+
+export function latestSyncRowTimestamp(rows: DictaSyncRow[]): string | null {
+  let latest: string | null = null;
+  for (const row of rows) {
+    const timestamp = timestampFrom(row.updated_at);
+    if (!timestamp) continue;
+    if (!latest || compareTimestamp(timestamp, latest) > 0) {
+      latest = timestamp;
+    }
+  }
+  return latest;
+}
+
+export async function deleteSessionSyncRow(client: SupabaseClient, profileId: string, sessionId: string): Promise<DictaSyncRow> {
   const deletedAt = new Date().toISOString();
-  const { error } = await client.from(DICTA_SYNC_TABLE).upsert(
-    {
-      profile_id: profileId,
-      item_type: 'session',
-      item_key: sessionId,
-      payload: {
-        id: sessionId,
-        deleted: true,
-        deletedAt,
-        updatedAt: deletedAt,
-      },
-      updated_at: deletedAt,
+  const row: DictaSyncRow = {
+    profile_id: profileId,
+    item_type: 'session',
+    item_key: sessionId,
+    payload: {
+      id: sessionId,
+      deleted: true,
+      deletedAt,
+      updatedAt: deletedAt,
     },
-    {
-      onConflict: 'profile_id,item_type,item_key',
-    },
-  );
+    updated_at: deletedAt,
+  };
+  const { error } = await client.from(DICTA_SYNC_TABLE).upsert(row, {
+    onConflict: 'profile_id,item_type,item_key',
+  });
   if (error) throw error;
+  return row;
 }
 
 function isValidSyncRow(row: DictaSyncRow): boolean {
