@@ -639,6 +639,43 @@ export default defineConfig(({ mode }) => {
       },
     },
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react-vendor',
+              test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              priority: 40,
+            },
+            {
+              name: 'charts-vendor',
+              test: /node_modules[\\/](recharts|d3-[^\\/]+|d3|victory-vendor)[\\/]/,
+              priority: 30,
+            },
+            {
+              name: 'supabase-vendor',
+              test: /node_modules[\\/](@supabase|@noble|@scure)[\\/]/,
+              priority: 25,
+            },
+            {
+              name: 'adaptive-core',
+              test: /src[\\/]core[\\/]adaptive[\\/]/,
+              priority: 15,
+              minSize: 20 * 1024,
+            },
+            {
+              name: 'runtime-core',
+              test: /src[\\/]core[\\/](supabaseSync|openRouterJobs|perfDiagnostics)\.ts$/,
+              priority: 10,
+              minSize: 10 * 1024,
+            },
+          ],
+        },
+      },
+    },
+  },
   };
 });
 

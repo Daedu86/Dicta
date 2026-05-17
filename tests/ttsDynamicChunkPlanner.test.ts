@@ -105,4 +105,60 @@ describe('planBrowserTtsAdaptiveChunk', () => {
     expect(chunk?.wordCount).toBeLessThanOrEqual(4);
     expect(chunk?.phraseBoundaryType).not.toBe('unsafe');
   });
+
+  it('lets German recovery scan past the short cap to reach a safe sentence boundary', () => {
+    const words = 'Wir hoeren den ersten Satz. Danach schreiben wir langsam weiter.'.split(' ');
+    const chunk = planBrowserTtsAdaptiveChunk({
+      macroWords: words,
+      macroWordOffset: 0,
+      globalStartWordIndex: 0,
+      language: 'de',
+      nextPhraseSize: 'short',
+      boundaryStrictness: 'phrase',
+      germanShortBias: true,
+      maxWordsOverride: 4,
+      recoverySafeBoundary: true,
+    });
+
+    expect(chunk).not.toBeNull();
+    expect(chunk?.wordCount).toBe(5);
+    expect(chunk?.phraseBoundaryType).toBe('sentence');
+    expect(chunk?.semanticCompleteness).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it('keeps normal German short-cap behavior when recovery-safe scanning is off', () => {
+    const words = 'Wir hoeren den ersten Satz. Danach schreiben wir langsam weiter.'.split(' ');
+    const chunk = planBrowserTtsAdaptiveChunk({
+      macroWords: words,
+      macroWordOffset: 0,
+      globalStartWordIndex: 0,
+      language: 'de',
+      nextPhraseSize: 'short',
+      boundaryStrictness: 'phrase',
+      germanShortBias: true,
+      maxWordsOverride: 4,
+    });
+
+    expect(chunk).not.toBeNull();
+    expect(chunk?.wordCount).toBeLessThanOrEqual(4);
+  });
+
+  it('ignores recovery-safe scanning for non-German languages', () => {
+    for (const language of ['en', 'es'] as const) {
+      const words = 'We hear the first sentence. Then we continue slowly.'.split(' ');
+      const chunk = planBrowserTtsAdaptiveChunk({
+        macroWords: words,
+        macroWordOffset: 0,
+        globalStartWordIndex: 0,
+        language,
+        nextPhraseSize: 'short',
+        boundaryStrictness: 'phrase',
+        maxWordsOverride: 4,
+        recoverySafeBoundary: true,
+      });
+
+      expect(chunk).not.toBeNull();
+      expect(chunk?.wordCount).toBeLessThanOrEqual(4);
+    }
+  });
 });

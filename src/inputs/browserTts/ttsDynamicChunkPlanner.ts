@@ -12,6 +12,7 @@ export type PlanBrowserTtsChunkInput = {
   boundaryStrictness: BoundaryStrictness;
   germanShortBias?: boolean;
   maxWordsOverride?: number;
+  recoverySafeBoundary?: boolean;
 };
 
 export type PlannedBrowserTtsChunk = {
@@ -128,14 +129,17 @@ export function planBrowserTtsAdaptiveChunk(input: PlanBrowserTtsChunkInput): Pl
   if (remaining <= 0) return null;
 
   const germanShortBias = Boolean(input.germanShortBias && input.language === 'de');
+  const recoverySafeBoundary = Boolean(input.recoverySafeBoundary && input.language === 'de');
   const targetWords = targetWordsForSize(input.nextPhraseSize, germanShortBias);
   const cappedTargetWords = input.maxWordsOverride ? Math.min(targetWords, input.maxWordsOverride) : targetWords;
   const sizeTarget = Math.min(cappedTargetWords, remaining);
   const minWords = Math.max(2, Math.min(remaining, Math.floor(sizeTarget * 0.65)));
   const uncappedMaxWords = Math.max(minWords, Math.min(remaining, Math.floor(sizeTarget * 1.35)));
   const maxWords = input.maxWordsOverride ? Math.min(uncappedMaxWords, input.maxWordsOverride) : uncappedMaxWords;
-  const scanLimit = Math.min(remaining, input.maxWordsOverride ? maxWords : maxWords + 6);
-  const minBoundary = minimumBoundaryScore(input.boundaryStrictness);
+  const scanLimit = Math.min(remaining, input.maxWordsOverride && !recoverySafeBoundary ? maxWords : maxWords + 6);
+  const minBoundary = recoverySafeBoundary
+    ? Math.max(minimumBoundaryScore(input.boundaryStrictness), boundaryScore('clause'))
+    : minimumBoundaryScore(input.boundaryStrictness);
 
   let bestCut = Math.min(remaining, maxWords);
   let bestBoundary: PhraseBoundaryType = 'unsafe';
@@ -161,6 +165,14 @@ export function planBrowserTtsAdaptiveChunk(input: PlanBrowserTtsChunkInput): Pl
       boundaryScore(effectiveBoundary) * 0.25 -
       scored.phraseDifficulty * 0.45 -
       sizePenalty * 0.35;
+
+    if (recoverySafeBoundary && effectiveBoundary !== 'unsafe' && boundaryScore(effectiveBoundary) >= boundaryScore('clause')) {
+      // During DE recovery, prefer the nearest safe boundary over a shorter unsafe cut.
+      bestScore = score;
+      bestCut = wordsToTake;
+      bestBoundary = effectiveBoundary;
+      break;
+    }
 
     if (score > bestScore) {
       bestScore = score;

@@ -615,6 +615,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
 
   it('uses shared browser-tts DE benchmark rejection reasons with scoring thresholds', () => {
     expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ rawLagSec: -1.9, lagSec: -1.9, stableLagSec: -1.9 }))).toBeNull();
+    expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ rawLagSec: 5.3, lagSec: 4.99, stableLagSec: 4.99 }))).toBeNull();
     expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ rawLagSec: -5, lagSec: -5, stableLagSec: -5 }))).toBe('lag_clipped_to_sentinel');
     expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ rawLagSec: 8.2, lagSec: 4.9, stableLagSec: 4.9 }))).toBe('rawLagSec_out_of_range');
     expect(getBrowserTtsDeBenchmarkRejectionReason(timelinePoint({ phraseBoundaryType: 'unsafe' }))).toBe('unsafe_phrase_boundary');

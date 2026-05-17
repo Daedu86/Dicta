@@ -1,9 +1,62 @@
 import type { PacingMode } from '../../core/adaptive/types';
 import type { PacingDecision } from '../../core/adaptive/types';
+import { buildLagStabilitySample } from '../../core/adaptive/lagStability';
 import type { BrowserTtsAdaptiveProfile } from './browserTtsAdaptiveProfiles';
+
+const BROWSER_TTS_DE_RAW_LAG_MIN_SEC = -2;
+const BROWSER_TTS_DE_RAW_LAG_MAX_SEC = 8;
+const BROWSER_TTS_DE_CONTROL_LAG_MIN_SEC = -1.99;
+const BROWSER_TTS_DE_CONTROL_LAG_MAX_SEC = 4.99;
+
+export type BrowserTtsControlLagSample = {
+  rawLagSec: number;
+  stableLagSec: number;
+  isOutlier: boolean;
+  usedFallbackControlLag: boolean;
+};
 
 function roundRate(value: number): number {
   return Number(value.toFixed(2));
+}
+
+export function buildBrowserTtsControlLagSample(params: {
+  rawLagSec: number;
+  language?: string;
+  previousValidControlLagSec?: number | null;
+}): BrowserTtsControlLagSample {
+  const language = (params.language ?? '').trim().toLowerCase();
+  if (language !== 'de') {
+    return {
+      ...buildLagStabilitySample(params.rawLagSec),
+      usedFallbackControlLag: false,
+    };
+  }
+
+  const rawLagSec = params.rawLagSec;
+  const previousValidControlLagSec =
+    typeof params.previousValidControlLagSec === 'number' && Number.isFinite(params.previousValidControlLagSec)
+      ? Number(params.previousValidControlLagSec)
+      : null;
+  const isRawAcceptedForDe =
+    Number.isFinite(rawLagSec) &&
+    rawLagSec >= BROWSER_TTS_DE_RAW_LAG_MIN_SEC &&
+    rawLagSec <= BROWSER_TTS_DE_RAW_LAG_MAX_SEC;
+
+  if (!isRawAcceptedForDe) {
+    return {
+      rawLagSec,
+      stableLagSec: previousValidControlLagSec ?? 0,
+      isOutlier: true,
+      usedFallbackControlLag: true,
+    };
+  }
+
+  return {
+    rawLagSec,
+    stableLagSec: clamp(rawLagSec, BROWSER_TTS_DE_CONTROL_LAG_MIN_SEC, BROWSER_TTS_DE_CONTROL_LAG_MAX_SEC),
+    isOutlier: Math.abs(rawLagSec) > 5,
+    usedFallbackControlLag: false,
+  };
 }
 
 export function applyBrowserTtsRuntimeRateFloor(params: {
@@ -82,4 +135,8 @@ export function applyBrowserTtsMobilePacingFallback(params: {
     },
     mobileFallbackApplied: true,
   };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }

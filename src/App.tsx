@@ -23,7 +23,6 @@ import { normalizeTranscript, buildTargetWords, normalizeWord } from './core/nor
 import { deriveSyncState, SyncController } from './core/syncController';
 import { AdaptiveDictationController } from './core/adaptive/AdaptiveDictationController';
 import { planSemanticPhrases, type SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
-import { buildLagStabilitySample } from './core/adaptive/lagStability';
 import {
   buildBrowserTtsDeDiagnostics,
   clampBrowserTtsDeDecisionToRecommendation,
@@ -69,7 +68,7 @@ import { HistoricalPerformanceService } from './core/history/HistoricalPerforman
 import { buildAudioTelemetryFrame, buildAdaptiveAudioInput } from './inputs/audio/audioTelemetryAdapter';
 import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
-import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
+import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor, buildBrowserTtsControlLagSample } from './inputs/browserTts/browserTtsRatePolicy';
 import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
 import { applyBrowserTtsDeRecoveryPolicy, summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
@@ -666,6 +665,7 @@ function App() {
   const ttsCompletedSourceWordsRef = useRef(0);
   const ttsPausedAtWordIndexRef = useRef<number | null>(null);
   const ttsLagOutlierCountRef = useRef(0);
+  const ttsLastValidControlLagSecRef = useRef(0);
   const ttsUnsafeChunkCountRef = useRef(0);
   const ttsChunkAccuracyWindowRef = useRef<number[]>([]);
   const ttsLastAccuracySnapshotRef = useRef({ typedWords: 0, matchedWords: 0 });
@@ -2947,11 +2947,18 @@ function App() {
     const nextLagWords = sourceWordCount > 0 ? spokenPosition - typedProgress : 0;
     const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
     const nextRawLagSec = nextLagWords / wordsPerSecond;
-    const lagSample = buildLagStabilitySample(nextRawLagSec);
+    const lagSample = buildBrowserTtsControlLagSample({
+      rawLagSec: nextRawLagSec,
+      language: ttsLanguage,
+      previousValidControlLagSec: ttsLastValidControlLagSecRef.current,
+    });
     if (lagSample.isOutlier) {
       ttsLagOutlierCountRef.current += 1;
     }
     const nextLagSec = lagSample.stableLagSec;
+    if (!lagSample.usedFallbackControlLag && Number.isFinite(nextLagSec)) {
+      ttsLastValidControlLagSecRef.current = nextLagSec;
+    }
     const elapsedMinutes = Math.max(getTtsElapsedSeconds(now) / 60, 1 / 60);
     const nextWpm = practiceWords.length > 0 ? practiceWords.length / elapsedMinutes : 0;
     const nextAccuracy = practiceWords.length > 0 ? visibleAccuracy : 100;
@@ -3135,6 +3142,7 @@ function App() {
     ttsCompletedSourceWordsRef.current = clampedStartWordIndex;
     ttsPausedAtWordIndexRef.current = null;
     ttsLagOutlierCountRef.current = 0;
+    ttsLastValidControlLagSecRef.current = 0;
     ttsUnsafeChunkCountRef.current = 0;
     ttsChunkAccuracyWindowRef.current = [];
     ttsLastAccuracySnapshotRef.current = { typedWords: 0, matchedWords: 0 };
@@ -3170,6 +3178,8 @@ function App() {
         platform: window.navigator.platform,
         maxTouchPoints: window.navigator.maxTouchPoints,
       });
+      const useBrowserTtsDeRecoverySafeChunks =
+        ttsLanguage === 'de' && (browserTtsRecovery.level === 'strong' || browserTtsRecovery.level === 'severe');
       const typedWordsNow = livePracticeEvaluation.typedWords.length;
       const matchedWordsNow = livePracticeEvaluation.matchedWords;
       const typedDelta = Math.max(0, typedWordsNow - ttsLastAccuracySnapshotRef.current.typedWords);
@@ -3210,6 +3220,7 @@ function App() {
           boundaryStrictness: lastBoundaryStrictness,
           germanShortBias,
           maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
+          recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
         }) ??
         planBrowserTtsAdaptiveChunk({
           macroWords,
@@ -3220,6 +3231,7 @@ function App() {
           boundaryStrictness: 'phrase',
           germanShortBias,
           maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
+          recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
         });
 
       if (!candidateChunk) {
@@ -3282,6 +3294,7 @@ function App() {
           boundaryStrictness: decision.boundaryStrictness,
           germanShortBias,
           maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
+          recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
         }) ?? candidateChunk;
 
       const pauseAtBoundary = chunk.canPauseAfter ?? true;

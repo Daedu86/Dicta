@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor, isLikelyAndroidSpeechSynthesisRuntime } from '../src/inputs/browserTts/browserTtsRatePolicy';
+import {
+  applyBrowserTtsMobilePacingFallback,
+  applyBrowserTtsRuntimeRateFloor,
+  buildBrowserTtsControlLagSample,
+  isLikelyAndroidSpeechSynthesisRuntime,
+} from '../src/inputs/browserTts/browserTtsRatePolicy';
 import { resolveBrowserTtsAdaptiveProfile } from '../src/inputs/browserTts/browserTtsAdaptiveProfiles';
 import type { PacingDecision } from '../src/core/adaptive/types';
 
@@ -71,6 +76,59 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
       supportNeeded: true,
       profile: deProfile,
     })).toBe(0.9);
+  });
+});
+
+describe('buildBrowserTtsControlLagSample', () => {
+  it('keeps raw DE lag around 5 seconds diagnostic but avoids sentinel control lag', () => {
+    const sample = buildBrowserTtsControlLagSample({
+      rawLagSec: 5.3,
+      language: 'de',
+      previousValidControlLagSec: 1.2,
+    });
+
+    expect(sample.rawLagSec).toBe(5.3);
+    expect(sample.stableLagSec).toBe(4.99);
+    expect(sample.isOutlier).toBe(true);
+    expect(sample.usedFallbackControlLag).toBe(false);
+  });
+
+  it('falls back for extreme DE raw lag while preserving the diagnostic raw value', () => {
+    const sample = buildBrowserTtsControlLagSample({
+      rawLagSec: -36.48,
+      language: 'de',
+      previousValidControlLagSec: 1.4,
+    });
+
+    expect(sample.rawLagSec).toBe(-36.48);
+    expect(sample.stableLagSec).toBe(1.4);
+    expect(sample.isOutlier).toBe(true);
+    expect(sample.usedFallbackControlLag).toBe(true);
+  });
+
+  it('uses neutral DE fallback when there is no prior valid control lag', () => {
+    const sample = buildBrowserTtsControlLagSample({
+      rawLagSec: 12.8,
+      language: 'de',
+    });
+
+    expect(sample.rawLagSec).toBe(12.8);
+    expect(sample.stableLagSec).toBe(0);
+    expect(sample.isOutlier).toBe(true);
+    expect(sample.usedFallbackControlLag).toBe(true);
+  });
+
+  it('leaves non-DE lag stabilization unchanged', () => {
+    const sample = buildBrowserTtsControlLagSample({
+      rawLagSec: 24.16,
+      language: 'en',
+      previousValidControlLagSec: 1.4,
+    });
+
+    expect(sample.rawLagSec).toBeCloseTo(24.16, 2);
+    expect(sample.stableLagSec).toBe(5);
+    expect(sample.isOutlier).toBe(true);
+    expect(sample.usedFallbackControlLag).toBe(false);
   });
 });
 
