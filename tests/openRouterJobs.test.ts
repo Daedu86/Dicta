@@ -4,6 +4,7 @@ import {
   addActiveOpenRouterJob,
   clearActiveOpenRouterJob,
   extractOpenRouterJobText,
+  extractOpenRouterJobUsage,
   isOpenRouterJobTerminal,
   loadActiveOpenRouterJob,
   loadActiveOpenRouterJobs,
@@ -26,6 +27,24 @@ describe('openRouterJobs', () => {
     ).toBe('{"title":"from payload"}');
   });
 
+  it('extracts OpenRouter token usage from a job result payload', () => {
+    expect(
+      extractOpenRouterJobUsage({
+        payload: {
+          usage: {
+            prompt_tokens: 910,
+            completion_tokens: 2450,
+            total_tokens: 3360,
+          },
+        },
+      }),
+    ).toEqual({
+      promptTokens: 910,
+      completionTokens: 2450,
+      totalTokens: 3360,
+    });
+  });
+
   it('treats only succeeded and failed jobs as terminal', () => {
     expect(isOpenRouterJobTerminal('queued')).toBe(false);
     expect(isOpenRouterJobTerminal('running')).toBe(false);
@@ -43,6 +62,9 @@ describe('openRouterJobs', () => {
       language: 'de',
       durationMinutes: 2,
       targetDifficulty: 'easy',
+      promptMode: 'compact-adaptive-v2',
+      promptCharacterCount: 3600,
+      promptApproximateTokenCount: 900,
       startedAt: '2026-05-17T10:00:00.000Z',
     };
     const hardJob: ActiveOpenRouterJob = {
@@ -57,6 +79,8 @@ describe('openRouterJobs', () => {
     expect(activeJobs.map((job) => job.jobId)).toEqual(['job-easy', 'job-hard']);
     expect(loadActiveOpenRouterJobs().map((job) => job.jobId)).toEqual(['job-easy', 'job-hard']);
     expect(loadActiveOpenRouterJob()?.jobId).toBe('job-easy');
+    expect(loadActiveOpenRouterJob()?.promptMode).toBe('compact-adaptive-v2');
+    expect(loadActiveOpenRouterJob()?.promptApproximateTokenCount).toBe(900);
 
     const remainingJobs = removeActiveOpenRouterJob('job-easy', activeJobs);
     expect(remainingJobs.map((job) => job.jobId)).toEqual(['job-hard']);

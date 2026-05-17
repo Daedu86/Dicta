@@ -14,6 +14,9 @@ export type ActiveOpenRouterJob = {
   language: LanguageCode;
   durationMinutes: 2 | 3 | 4;
   targetDifficulty?: DictationScriptDifficulty;
+  promptMode?: string;
+  promptCharacterCount?: number;
+  promptApproximateTokenCount?: number;
   startedAt: string;
 };
 
@@ -90,6 +93,33 @@ export function extractOpenRouterJobText(result: unknown): string {
   return typeof content === 'string' ? content : '';
 }
 
+export type OpenRouterUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+};
+
+export function extractOpenRouterJobUsage(result: unknown): OpenRouterUsage | null {
+  const record = asRecord(result);
+  const payload = asRecord(record.payload);
+  const usage = asRecord(payload.usage);
+  const promptTokens = Number(usage.prompt_tokens);
+  const completionTokens = Number(usage.completion_tokens);
+  const totalTokens = Number(usage.total_tokens);
+
+  if (!Number.isFinite(promptTokens) && !Number.isFinite(completionTokens) && !Number.isFinite(totalTokens)) {
+    return null;
+  }
+
+  const safePromptTokens = Number.isFinite(promptTokens) ? promptTokens : 0;
+  const safeCompletionTokens = Number.isFinite(completionTokens) ? completionTokens : 0;
+  return {
+    promptTokens: safePromptTokens,
+    completionTokens: safeCompletionTokens,
+    totalTokens: Number.isFinite(totalTokens) ? totalTokens : safePromptTokens + safeCompletionTokens,
+  };
+}
+
 export function isOpenRouterJobTerminal(status: OpenRouterJobStatus): boolean {
   return status === 'succeeded' || status === 'failed';
 }
@@ -109,6 +139,9 @@ function normalizeActiveOpenRouterJob(value: unknown): ActiveOpenRouterJob | nul
   }
 
   const targetDifficulty = stringField(record, 'targetDifficulty');
+  const promptMode = stringField(record, 'promptMode');
+  const promptCharacterCount = finiteNumberField(record, 'promptCharacterCount');
+  const promptApproximateTokenCount = finiteNumberField(record, 'promptApproximateTokenCount');
   return {
     jobId,
     model,
@@ -117,6 +150,9 @@ function normalizeActiveOpenRouterJob(value: unknown): ActiveOpenRouterJob | nul
     language,
     durationMinutes,
     ...(targetDifficulty === 'easy' || targetDifficulty === 'normal' || targetDifficulty === 'hard' ? { targetDifficulty } : {}),
+    ...(promptMode ? { promptMode } : {}),
+    ...(promptCharacterCount !== null ? { promptCharacterCount } : {}),
+    ...(promptApproximateTokenCount !== null ? { promptApproximateTokenCount } : {}),
     startedAt,
   };
 }
@@ -127,6 +163,11 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function stringField(record: Record<string, unknown>, key: string): string {
   return typeof record[key] === 'string' ? record[key] : '';
+}
+
+function finiteNumberField(record: Record<string, unknown>, key: string): number | null {
+  const value = Number(record[key]);
+  return Number.isFinite(value) ? value : null;
 }
 
 function isInputMode(value: string): value is InputMode {
