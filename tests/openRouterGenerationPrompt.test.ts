@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import { buildOpenRouterGenerationPrompt } from '../src/core/adaptive/openRouterGenerationPrompt';
+import { buildOpenRouterGenerationPrompt, estimateOpenRouterPromptSize } from '../src/core/adaptive/openRouterGenerationPrompt';
 import { buildAdaptiveSessionFeedback } from '../src/core/adaptive/sessionFeedback';
 import type { PhrasePlaybackEvent } from '../src/core/adaptive/types';
 
@@ -70,6 +70,148 @@ describe('openRouterGenerationPrompt', () => {
     expect(payload.prompt).toContain('"playbackIssues"');
     expect(payload.prompt).toContain('"repeatedPhraseCount": 1');
     expect(payload.prompt).not.toContain('Compact benchmark context');
+  });
+
+  it('builds compact adaptive v2 with exact target fields and output contract', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'es');
+    profile.weakAreas = ['lag', 'flow_instability'];
+    profile.recommendation = {
+      targetRateRange: [0.85, 0.95],
+      targetPhraseSize: 'short',
+      targetPauseMs: 900,
+      nextTrainingFocus: ['shorter phrases', 'stable recovery'],
+      confidence: 0.62,
+      summary: 'Use shorter phrases with stable recovery pacing.',
+    };
+
+    const payload = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 2,
+    });
+
+    expect(payload.prompt).toContain('inputMode "browser-tts"');
+    expect(payload.prompt).toContain('language "es"');
+    expect(payload.prompt).toContain('Write all phrase text naturally in Spanish.');
+    expect(payload.prompt).toContain('"recommendation"');
+    expect(payload.prompt).toContain('"targetRateRange"');
+    expect(payload.prompt).toContain('"weakAreas"');
+    expect(payload.prompt).toContain('"lag"');
+    expect(payload.prompt).toContain('"title": "Specific content title in the target language"');
+    expect(payload.prompt).toContain('"phrases"');
+    expect(payload.prompt).toContain('"boundaryType": "clause"');
+    expect(payload.prompt).toContain('Create at least 20 phrases');
+    expect(payload.prompt).not.toContain('"latestSessionFeedback"');
+    expect(payload.prompt).not.toContain('Benchmark context:');
+    expect(payload.prompt).not.toContain('LLM prompt:');
+  });
+
+  it('includes compact adaptive v2 feedback only when feedback is provided', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-1',
+      inputMode: 'browser-tts',
+      language: 'de',
+      sourceType: 'dictation_script',
+      createdAt: '2026-05-07T10:00:00.000Z',
+      phraseEvents: [
+        phraseEvent(0, 'p00', 'phrase_started', 1),
+        phraseEvent(0, 'p00', 'phrase_replayed', 2),
+        phraseEvent(0, 'p00', 'phrase_started', 3),
+      ],
+      totalPhrases: 1,
+    });
+
+    const withoutFeedback = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 2,
+    });
+    const withFeedback = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: feedback,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 2,
+    });
+
+    expect(withoutFeedback.prompt).not.toContain('"latestSessionFeedback"');
+    expect(withFeedback.prompt).toContain('"latestSessionFeedback"');
+    expect(withFeedback.prompt).toContain('"repeatedPhraseCount": 1');
+    expect(withFeedback.prompt).toContain('"phraseStats"');
+  });
+
+  it('estimates compact adaptive v2 prompt size and keeps it shorter than v1 for populated context', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    profile.sessionCount = 12;
+    profile.sampleCount = 48;
+    profile.lastUpdatedAt = '2026-05-17T07:39:00.000Z';
+    profile.averageAccuracy = 0.88;
+    profile.averageWpm = 54;
+    profile.averageLagSec = 1.7;
+    profile.sweetSpotScore = 0.61;
+    profile.semanticFidelityScore = 0.78;
+    profile.controlFidelityScore = 0.72;
+    profile.learningEffectivenessScore = 0.57;
+    profile.flowStabilityScore = 0.69;
+    profile.preferredPlaybackRate = 0.9;
+    profile.preferredPhraseSize = 'short';
+    profile.weakAreas = ['lag', 'replay', 'flow_instability'];
+    profile.recommendation = {
+      targetRateRange: [0.82, 0.92],
+      targetPhraseSize: 'short',
+      targetPauseMs: 1000,
+      nextTrainingFocus: ['Reduce lag', 'Use shorter replay-safe phrases', 'Stabilize flow'],
+      confidence: 0.7,
+      summary: 'Use slower short phrases with replay-safe boundaries.',
+    };
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-1',
+      inputMode: 'browser-tts',
+      language: 'de',
+      sourceType: 'dictation_script',
+      createdAt: '2026-05-17T07:39:00.000Z',
+      phraseEvents: [
+        phraseEvent(0, 'p00', 'phrase_started', 1),
+        phraseEvent(0, 'p00', 'phrase_replayed', 2),
+        phraseEvent(1, 'p01', 'phrase_advanced', 3),
+        phraseEvent(3, 'p03', 'phrase_started', 4),
+      ],
+      totalPhrases: 24,
+    });
+    const args = {
+      profile,
+      sessionFeedback: feedback,
+      durationMinutes: 3 as const,
+      targetDifficulty: 'normal' as const,
+      difficultyInstruction: 'Keep phrase-level "difficulty" values in an intermediate range, roughly 0.45-0.65.',
+      diversificationHints: [
+        'Create clearly different content from recent generated scripts.',
+        'Avoid repeating recent openings: Guten Morgen | Heute lernen wir',
+      ],
+    };
+    const v1 = buildOpenRouterGenerationPrompt({ ...args, promptSource: 'compact-adaptive' });
+    const v2 = buildOpenRouterGenerationPrompt({ ...args, promptSource: 'compact-adaptive-v2' });
+    const v1Size = estimateOpenRouterPromptSize(v1.prompt, {
+      promptMode: 'compact-adaptive',
+      durationMinutes: 3,
+      targetDifficulty: 'normal',
+      inputMode: 'browser-tts',
+      language: 'de',
+    });
+    const v2Size = estimateOpenRouterPromptSize(v2.prompt, {
+      promptMode: 'compact-adaptive-v2',
+      durationMinutes: 3,
+      targetDifficulty: 'normal',
+      inputMode: 'browser-tts',
+      language: 'de',
+    });
+
+    expect(v2Size.approximateTokenCount).toBeLessThan(v1Size.approximateTokenCount);
+    expect(v2.prompt).not.toContain('You are generating the next dictation training script for Dicta.');
+    expect(v2.prompt).not.toContain('Benchmark context:');
+    expect(v2.prompt).not.toContain('LLM prompt:');
   });
 
   it('can request an intermediate two-minute compact adaptive script', () => {

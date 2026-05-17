@@ -2465,10 +2465,10 @@ function App() {
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
       const sessionFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
-      const { prompt } = buildOpenRouterGenerationPrompt({
+      const directPromptArgs = {
         profile,
         sessionFeedback,
-        promptSource: 'compact-adaptive',
+        promptSource: 'compact-adaptive-v2' as const,
         durationMinutes,
         targetDifficulty,
         difficultyInstruction,
@@ -2483,7 +2483,8 @@ function App() {
             benchmarkSessionCount: profile.sessionCount,
           }),
         }),
-      });
+      };
+      const { prompt } = buildOpenRouterGenerationPrompt(directPromptArgs);
       const response = await fetch('/api/openrouter/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -7925,6 +7926,7 @@ function OpenRouterWorkspace({
     { value: 'de', label: 'DE' },
   ];
   const generatePromptSourceOptions: Array<{ value: OpenRouterGeneratePromptSource; label: string; description: string }> = [
+    { value: 'compact-adaptive-v2', label: 'Compact adaptive v2', description: 'Reduced-duplication benchmark + feedback prompt.' },
     { value: 'compact-adaptive', label: 'Compact adaptive', description: 'Compact benchmark + compact feedback when available.' },
     { value: 'compact-benchmark-only', label: 'Compact benchmark', description: 'Compact benchmark only; skips latest feedback.' },
     { value: 'compact-base', label: 'Compact base', description: 'Base prompt only; smallest prompt.' },

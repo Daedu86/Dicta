@@ -7,6 +7,7 @@ import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics } from './t
 
 export type OpenRouterGeneratePromptSource =
   | 'compact-adaptive'
+  | 'compact-adaptive-v2'
   | 'compact-benchmark-only'
   | 'compact-base'
   | 'original-adaptive'
@@ -27,6 +28,27 @@ export type OpenRouterGenerationPromptPayload = {
   prompt: string;
   outputTemplate: string;
 };
+
+export type OpenRouterPromptSizeEstimate = {
+  characterCount: number;
+  approximateTokenCount: number;
+  promptMode: OpenRouterGeneratePromptSource;
+  durationMinutes: 2 | 3 | 4;
+  targetDifficulty?: DictationScriptDifficulty;
+  inputMode: InputLanguageBenchmarkMetrics['inputMode'];
+  language: InputLanguageBenchmarkMetrics['language'];
+};
+
+export function estimateOpenRouterPromptSize(
+  prompt: string,
+  metadata: Omit<OpenRouterPromptSizeEstimate, 'characterCount' | 'approximateTokenCount'>,
+): OpenRouterPromptSizeEstimate {
+  return {
+    ...metadata,
+    characterCount: prompt.length,
+    approximateTokenCount: Math.max(1, Math.round(prompt.length / 4)),
+  };
+}
 
 export function buildOpenRouterGenerationPrompt({
   profile,
@@ -95,6 +117,49 @@ export function buildOpenRouterGenerationPrompt({
     null,
     2,
   );
+  const compactAdaptiveV2Context = JSON.stringify(
+    {
+      profileKey: `${normalizedProfile.inputMode}/${normalizedProfile.language}`,
+      inputMode: normalizedProfile.inputMode,
+      language: normalizedProfile.language,
+      sessionCount: normalizedProfile.sessionCount,
+      sampleCount: normalizedProfile.sampleCount,
+      weakAreas: normalizedProfile.weakAreas,
+      recommendation: normalizedProfile.recommendation,
+      kpis: {
+        sweetSpotScore: normalizedProfile.sweetSpotScore,
+        semanticFidelityScore: normalizedProfile.semanticFidelityScore,
+        controlFidelityScore: normalizedProfile.controlFidelityScore,
+        learningEffectivenessScore: normalizedProfile.learningEffectivenessScore,
+        flowStabilityScore: normalizedProfile.flowStabilityScore,
+        averageAccuracy: normalizedProfile.averageAccuracy,
+        averageWpm: normalizedProfile.averageWpm,
+        averageLagSec: normalizedProfile.averageLagSec,
+        preferredPlaybackRate: normalizedProfile.preferredPlaybackRate,
+        preferredPhraseSize: normalizedProfile.preferredPhraseSize,
+      },
+      ...(sessionFeedback
+        ? {
+            latestSessionFeedback: {
+              verdict: sessionFeedback.verdict,
+              improvementDelta: sessionFeedback.improvementDelta,
+              playbackIssues: {
+                repeatedPhraseCount: sessionFeedback.playbackIssues.repeatedPhraseCount,
+                maxRepeatCountForSinglePhrase: sessionFeedback.playbackIssues.maxRepeatCountForSinglePhrase,
+                skippedPhraseCount: sessionFeedback.playbackIssues.skippedPhraseCount,
+                outOfOrderAdvanceCount: sessionFeedback.playbackIssues.outOfOrderAdvanceCount,
+                replayAdvancedPhraseCount: sessionFeedback.playbackIssues.replayAdvancedPhraseCount,
+                phraseIndexJumpCount: sessionFeedback.playbackIssues.phraseIndexJumpCount,
+              },
+              phraseStats: sessionFeedback.phraseStats,
+              notes: sessionFeedback.notes.slice(0, 8),
+            },
+          }
+        : {}),
+    },
+    null,
+    2,
+  );
   const compactBenchmarkOnlyPackage = `Compact benchmark context:\n${compactBenchmark}\n\nLLM prompt:\n${llmPrompt}`;
   const originalBenchmarkOnlyPackage = `Benchmark JSON context:\n${benchmarkJson}\n\nLLM prompt:\n${llmPrompt}`;
   const originalAdaptivePackage = buildBenchmarkFeedbackPromptPackage(normalizedProfile, sessionFeedback, llmPrompt, {
@@ -126,10 +191,46 @@ export function buildOpenRouterGenerationPrompt({
     'Output template:',
     outputTemplate,
   ].join('\n');
+  const languageName =
+    normalizedProfile.language === 'de'
+      ? 'German'
+      : normalizedProfile.language === 'es'
+        ? 'Spanish'
+        : normalizedProfile.language === 'en'
+          ? 'English'
+          : String(normalizedProfile.language);
+  const compactAdaptiveV2Prompt = [
+    'Generate the next Dicta dictation training session.',
+    'Return only valid JSON. Do not use Markdown or code fences.',
+    `Use exactly inputMode "${normalizedProfile.inputMode}" and language "${normalizedProfile.language}".`,
+    `Write all phrase text naturally in ${languageName}.`,
+    ...(targetDifficulty ? [`Set "difficulty" exactly to "${targetDifficulty}".`] : []),
+    ...(difficultyInstruction ? [difficultyInstruction] : []),
+    `Target voice playback duration: ${durationMinutes} minutes; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
+    `Combined spoken phrase text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
+    `Create at least ${minimumPhraseCount} phrases unless phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
+    'Use semantic phrase boundaries. Avoid unsafe mid-grammar splits. Keep phrases replayable independently when possible.',
+    'Use the adaptive context to target weakAreas, recommendation, and latest feedback when present.',
+    'Do not satisfy duration by changing only "estimatedDurationSec"; generate enough phrase text.',
+    ...(diversificationHints && diversificationHints.length > 0
+      ? [
+          'Diversification constraints:',
+          ...diversificationHints.map((hint, index) => `${index + 1}. ${hint}`),
+        ]
+      : []),
+    '',
+    'Required output JSON schema/template:',
+    outputTemplate,
+    '',
+    'Compact adaptive context:',
+    compactAdaptiveV2Context,
+  ].join('\n');
   const sourcePayload = (() => {
     switch (promptSource) {
       case 'compact-adaptive':
         return hasSessionFeedback ? compactPromptPackage : compactBenchmarkOnlyPackage;
+      case 'compact-adaptive-v2':
+        return null;
       case 'compact-benchmark-only':
         return compactBenchmarkOnlyPackage;
       case 'compact-base':
@@ -142,6 +243,13 @@ export function buildOpenRouterGenerationPrompt({
         return llmPrompt;
     }
   })();
+
+  if (promptSource === 'compact-adaptive-v2') {
+    return {
+      prompt: compactAdaptiveV2Prompt,
+      outputTemplate,
+    };
+  }
 
   return {
     prompt: `${hardRules}\n\nGeneration context:\n${sourcePayload}`,
