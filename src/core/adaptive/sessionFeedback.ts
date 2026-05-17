@@ -110,7 +110,7 @@ export function buildSessionFeedbackJsonPayload(
 export function buildBenchmarkFeedbackPackage(
   profile: InputLanguageBenchmarkMetrics,
   feedback: AdaptiveSessionFeedback | null,
-  options: { activeSessionStatus?: string } = {},
+  options: { activeSessionStatus?: string; activitySummary?: unknown } = {},
 ): unknown {
   const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
   const recentTimelinePoints = normalizedProfile.timeline.slice(-FEEDBACK_EXPORT_TIMELINE_CAP);
@@ -123,6 +123,7 @@ export function buildBenchmarkFeedbackPackage(
     benchmarkProfile: compactBenchmark(normalizedProfile),
     recommendation: normalizedProfile.recommendation,
     weakAreas: normalizedProfile.weakAreas,
+    activitySummary: options.activitySummary ?? null,
     recentTimelinePoints,
     latestSessionFeedback: feedback ?? buildFeedbackUnavailableSnapshot(sessionFeedbackStatus),
     playbackDiagnostics: feedback?.playbackIssues ?? fallbackDiagnostics,
@@ -139,7 +140,7 @@ export function buildBenchmarkFeedbackPromptPackage(
   profile: InputLanguageBenchmarkMetrics,
   feedback: AdaptiveSessionFeedback | null,
   llmPrompt: string,
-  options: { activeSessionStatus?: string } = {},
+  options: { activeSessionStatus?: string; activitySummary?: unknown } = {},
 ): string {
   const packageJson = JSON.stringify(buildBenchmarkFeedbackPackage(profile, feedback, options), null, 2);
   return [

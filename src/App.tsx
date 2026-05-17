@@ -4931,6 +4931,7 @@ function App() {
     try {
       await navigator.clipboard.writeText(JSON.stringify(buildBenchmarkFeedbackPackage(profile, feedback, {
         activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
+        activitySummary: buildBenchmarkActivitySummary(sessions, profile),
       }), null, 2));
       setSessionFeedbackMessage('Benchmark + feedback package copied.');
     } catch {
@@ -4942,6 +4943,7 @@ function App() {
     try {
       await navigator.clipboard.writeText(JSON.stringify(buildBenchmarkFeedbackPackage(insightsDiagnosticProfile, insightsDiagnosticFeedback, {
         activeSessionStatus: getBenchmarkActiveSessionStatus(insightsDiagnosticProfile),
+        activitySummary: buildBenchmarkActivitySummary(sessions, insightsDiagnosticProfile),
       }), null, 2));
       setInsightsDiagnosticMessage(
         `Copied full report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`,
@@ -4955,6 +4957,7 @@ function App() {
     try {
       await navigator.clipboard.writeText(buildBenchmarkFeedbackPromptPackage(profile, feedback, buildDictationScriptPrompt(profile), {
         activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
+        activitySummary: buildBenchmarkActivitySummary(sessions, profile),
       }));
       setSessionFeedbackMessage('Benchmark + feedback + LLM prompt copied.');
     } catch {
@@ -4970,6 +4973,7 @@ function App() {
     try {
       const base = buildBenchmarkFeedbackPackage(profile, feedback, {
         activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
+        activitySummary: buildBenchmarkActivitySummary(sessions, profile),
       }) as Record<string, unknown>;
       const payload = {
         ...base,
@@ -11959,6 +11963,44 @@ function buildOpenRouterActivityHints({
     );
   }
   return hints;
+}
+
+function buildBenchmarkActivitySummary(sessions: StoredSession[], profile: InputLanguageBenchmarkMetrics): Record<string, unknown> {
+  const language = String(profile.language);
+  const nowMs = Date.now();
+  const cutoffMs = nowMs - 30 * 24 * 60 * 60 * 1000;
+  const languageSessions = sessions.filter((session) => resolveStoredSessionLanguage(session) === language);
+  const profileSessions = languageSessions.filter((session) => mapSessionInputMode(session.inputMode) === profile.inputMode);
+  const monthLanguageSessions = languageSessions.filter((session) => isSessionUpdatedWithinWindow(session, cutoffMs, nowMs));
+  const monthProfileSessions = profileSessions.filter((session) => isSessionUpdatedWithinWindow(session, cutoffMs, nowMs));
+  const finishedMonthProfileSessions = monthProfileSessions.filter((session) => session.status === 'finished');
+  const averageAccuracy = averageSessionMetric(finishedMonthProfileSessions, 'accuracy');
+  const averageWpm = averageSessionMetric(finishedMonthProfileSessions, 'wpm');
+
+  return {
+    scope: {
+      inputMode: profile.inputMode,
+      language,
+      rangeDays: 30,
+    },
+    savedSessionCounts: {
+      allTimeForLanguage: languageSessions.length,
+      allTimeForInputLanguage: profileSessions.length,
+      last30DaysForLanguage: monthLanguageSessions.length,
+      last30DaysForInputLanguage: monthProfileSessions.length,
+      finishedLast30DaysForInputLanguage: finishedMonthProfileSessions.length,
+    },
+    recentFinishedAverages:
+      averageAccuracy === null && averageWpm === null
+        ? null
+        : {
+            accuracy: averageAccuracy,
+            wpm: averageWpm,
+          },
+    benchmarkCountExplanation:
+      `benchmarkProfile.sessionCount (${profile.sessionCount}) counts unique sessions represented by accepted adaptive telemetry samples for ${profile.inputMode}/${language}; ` +
+      `it is expected to be lower than savedSessionCounts when sessions have no accepted benchmark samples or belong to another input mode.`,
+  };
 }
 
 function isSessionUpdatedWithinWindow(session: StoredSession, cutoffMs: number, nowMs: number): boolean {
