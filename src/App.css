@@ -3454,6 +3454,13 @@ textarea[readonly] {
   margin-left: auto;
 }
 
+.live-metrics-input-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  gap: 0.35rem;
+  width: min(100%, 560px);
+}
+
 .live-metrics-language-tab {
   width: auto;
   margin-top: 0;
@@ -3467,7 +3474,36 @@ textarea[readonly] {
   color: #274767;
 }
 
+.live-metrics-input-tab {
+  display: grid;
+  gap: 0.05rem;
+  width: auto;
+  min-width: 82px;
+  min-height: 42px;
+  margin-top: 0;
+  padding: 0.32rem 0.5rem;
+  border: 1px solid #bfd2e8;
+  border-radius: 10px;
+  background: #eef4fb;
+  color: #274767;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.live-metrics-input-tab small {
+  color: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
 .live-metrics-language-tab-active {
+  background: #102f63;
+  border-color: #102f63;
+  color: #ffffff;
+}
+
+.live-metrics-input-tab-active {
   background: #102f63;
   border-color: #102f63;
   color: #ffffff;
@@ -3869,6 +3905,11 @@ textarea[readonly] {
 
   .live-metrics-range-tabs {
     grid-template-columns: repeat(3, minmax(0, auto));
+  }
+
+  .live-metrics-input-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
   }
 
   .runtime-metrics-grid {

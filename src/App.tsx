@@ -514,6 +514,7 @@ function App() {
   const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => {
     return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
   });
+  const [insightsDiagnosticInputMode, setInsightsDiagnosticInputMode] = useState<InputMode>('browser-tts');
   const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
   const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => {
     const saved = window.localStorage.getItem(LIVE_METRICS_RANGE_KEY);
@@ -4993,14 +4994,6 @@ function App() {
     createEmptyInputLanguageBenchmark(selectedBenchmarkInputMode, selectedBenchmarkLanguage);
   const selectedSessionFeedback =
     adaptiveSessionFeedbackByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage]?.[0] ?? null;
-  const insightsDiagnosticInputMode: InputMode =
-    workspaceMode === 'kokoro'
-      ? 'kokoro'
-      : workspaceMode === 'tts'
-        ? mapSessionInputMode(activeInputMode)
-        : lastSessionForLanguage
-          ? mapSessionInputMode(lastSessionForLanguage.inputMode)
-          : selectedBenchmarkInputMode;
   const insightsDiagnosticProfile =
     adaptiveBenchmarksByInputLanguage[insightsDiagnosticInputMode]?.[metricsLanguageView] ??
     createEmptyInputLanguageBenchmark(insightsDiagnosticInputMode, metricsLanguageView);
@@ -5012,6 +5005,12 @@ function App() {
   );
   const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
   const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) : null;
+  const insightsDiagnosticInputOptions: Array<{ inputMode: InputMode; label: string }> = [
+    { inputMode: 'audio', label: 'Input 1' },
+    { inputMode: 'browser-tts', label: 'Input 2' },
+    { inputMode: 'kokoro', label: 'Input 3' },
+    { inputMode: 'qwen-cloud', label: 'Input 4' },
+  ];
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedProgressLabel =
     activeInputMode === 'input1'
@@ -7130,6 +7129,21 @@ function App() {
               <span className={`trend trend-${trend}`}>
                 {trend === 'improving' ? 'Improving' : trend === 'declining' ? 'Needs adjustment' : 'Stable'}
               </span>
+              <div className="live-metrics-input-tabs" role="tablist" aria-label="Adaptive report input">
+                {insightsDiagnosticInputOptions.map((option) => (
+                  <button
+                    key={option.inputMode}
+                    type="button"
+                    className={`live-metrics-input-tab ${insightsDiagnosticInputMode === option.inputMode ? 'live-metrics-input-tab-active' : ''}`}
+                    onClick={() => setInsightsDiagnosticInputMode(option.inputMode)}
+                    aria-pressed={insightsDiagnosticInputMode === option.inputMode}
+                    title={`${formatInputModeLabel(option.inputMode)} report`}
+                  >
+                    <span>{option.label}</span>
+                    <small>{formatInputModeLabel(option.inputMode)}</small>
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 className="secondary-button live-metrics-report-button"
