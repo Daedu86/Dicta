@@ -169,7 +169,7 @@ describe('openRouterGenerationPrompt', () => {
       durationMinutes: 3,
     });
 
-    expect(payload.prompt).toContain('"targetRateRange": [\n      0.95,\n      1\n    ]');
+    expect(payload.prompt).toContain('"targetRateRange": [\n      0.8,\n      0.85\n    ]');
     expect(payload.prompt).toContain('"targetPauseMs": 1200');
     expect(payload.prompt).toContain('"support_dependency"');
     expect(payload.prompt).not.toContain('"targetRateRange": [\n      1.05,\n      1.05\n    ]');

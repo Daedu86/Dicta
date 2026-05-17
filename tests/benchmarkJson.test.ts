@@ -91,7 +91,7 @@ describe('benchmarkJson', () => {
 
     const payload = buildSelectedBenchmarkExportPayload(profile);
 
-    expect(payload.recommendation.targetRateRange).toEqual([0.95, 1]);
+    expect(payload.recommendation.targetRateRange).toEqual([0.8, 0.85]);
     expect(payload.recommendation.targetPauseMs).toBe(1200);
     expect(payload.weakAreas).toEqual(
       expect.arrayContaining(['support_dependency', 'unsafe_boundary_pressure', 'lag_instability', 'accuracy_instability']),

@@ -399,14 +399,14 @@ describe('session feedback diagnostics', () => {
       weakAreas?: string[];
     };
 
-    expect(payload.recommendation?.targetRateRange).toEqual([0.95, 1]);
+    expect(payload.recommendation?.targetRateRange).toEqual([0.8, 0.85]);
     expect(payload.recommendation?.targetPauseMs).toBe(1200);
     expect(payload.recommendation?.summary).not.toContain('medium-length semantic phrases');
     expect(payload.weakAreas).toEqual(
       expect.arrayContaining(['support_dependency', 'unsafe_boundary_pressure', 'lag_instability', 'accuracy_instability']),
     );
     expect(payload.benchmarkProfile?.flowStabilityScore).toBeLessThan(1);
-    expect(payload.benchmarkProfile?.recommendation?.targetRateRange).toEqual([0.95, 1]);
+    expect(payload.benchmarkProfile?.recommendation?.targetRateRange).toEqual([0.8, 0.85]);
   });
 });
 

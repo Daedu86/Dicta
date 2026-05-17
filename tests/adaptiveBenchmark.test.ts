@@ -432,8 +432,8 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expect(profile.sweetSpotScore).toBe(0);
     expect(profile.weakAreas).toEqual(expect.arrayContaining(['lag_instability', 'unsafe_boundary_pressure']));
     expect(profile.weakAreas).not.toContain('low_accuracy');
-    expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.3);
-    expect(profile.recommendation.targetRateRange).toEqual([0.95, 1]);
+    expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.2);
+    expect(profile.recommendation.targetRateRange).toEqual([0.8, 0.85]);
   });
 
   it('rejects missing rawLagSec and clipped browser-tts DE lag values', () => {
@@ -482,7 +482,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expect(profile.averageAccuracy).toBe(0);
     expect(profile.averageLagSec).toBe(0);
     expect(profile.weakAreas).toEqual([]);
-    expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.3);
+    expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.2);
     expect(profile.recommendation.targetRateRange).toEqual([0.95, 1]);
   });
 
@@ -553,6 +553,8 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const base = Date.now();
     const invalidSamples: Array<Partial<LiveTelemetryFrame>> = [
       { lagSec: 0, rawLagSec: 0, stableLagSec: 0, accuracy: 1, wpm: 0 },
+      { lagSec: -5, rawLagSec: -33, stableLagSec: -5, accuracy: 0.7, wpm: 44 },
+      { lagSec: -5, rawLagSec: -55, stableLagSec: -5, accuracy: 0.7, wpm: 44 },
       { lagSec: -5, rawLagSec: -84, stableLagSec: -5, accuracy: 0.7, wpm: 44 },
       { lagSec: -5, rawLagSec: -95, stableLagSec: -5, accuracy: 0.7, wpm: 44 },
       { lagSec: -5, rawLagSec: -45, stableLagSec: -5, accuracy: 0.7, wpm: 44 },
@@ -579,20 +581,56 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expect(profile.averageLagSec).toBe(0);
     expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.3);
     expect(profile.rateAccuracyBuckets).toEqual([]);
+    expect(profile.timeline.some((point) => point.rawLagSec === -33)).toBe(true);
+    expect(profile.timeline.some((point) => point.rawLagSec === -55)).toBe(true);
+    expect(profile.timeline.every((point) => point.decisionReason?.includes('rejected-benchmark-sample'))).toBe(true);
+    expect(profile.timeline.filter((point) => point.rawLagSec === -33 || point.rawLagSec === -55).every((point) => point.decisionReason?.includes('invalid-lag-alignment'))).toBe(true);
+  });
+
+  it('dedupes browser-tts DE phrase_advance and phrase_completed scoring for the same phrase', () => {
+    let profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const base = Date.now();
+    profile = updateInputLanguageBenchmark({
+      current: profile,
+      live: live({ language: 'de', phraseId: 'semantic-0', lagSec: 1.4, rawLagSec: 1.4, stableLagSec: 1.4, accuracy: 0.78 }),
+      decision: decision({ playbackRate: 0.82 }),
+      event: 'phrase_advance',
+      timestampMs: base,
+      sessionId: 'dedupe-session',
+      phraseIndex: 0,
+      totalSemanticPhrases: 1,
+    });
+    profile = updateInputLanguageBenchmark({
+      current: profile,
+      live: live({ language: 'de', phraseId: 'semantic-0', lagSec: 0.4, rawLagSec: 0.4, stableLagSec: 0.4, accuracy: 0.92 }),
+      decision: decision({ playbackRate: 0.84 }),
+      event: 'phrase_completed',
+      timestampMs: base + 1000,
+      sessionId: 'dedupe-session',
+      phraseIndex: 0,
+      totalSemanticPhrases: 1,
+    });
+
+    expect(profile.timeline).toHaveLength(2);
+    expect(profile.sampleCount).toBe(1);
+    expect(profile.averageLagSec).toBeCloseTo(0.4);
+    expect(profile.averageAccuracy).toBeCloseTo(0.92);
+    expect(profile.rateAccuracyBuckets).toHaveLength(1);
+    expect(profile.rateAccuracyBuckets[0].rate).toBe(0.84);
   });
 
   it('keeps browser-tts DE recommendation conservative when playback is clean but timeline pressure is high', () => {
     const profile = buildBrowserTtsDePressureProfile();
 
     expect(profile.sampleCount).toBeLessThan(30);
-    expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.3);
-    expect(profile.recommendation.targetRateRange).toEqual([0.95, 1]);
+    expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.2);
+    expect(profile.recommendation.targetRateRange).toEqual([0.8, 0.85]);
     expect(profile.recommendation.targetPauseMs).toBe(1200);
     expect(profile.recommendation.targetPhraseSize).toBe('short');
     expect(profile.recommendation.nextTrainingFocus).toEqual(
       expect.arrayContaining(['accuracy stability', 'lag control', 'safe semantic boundaries', 'reduce support dependency']),
     );
-    expect(profile.recommendation.summary).toContain('Playback was stable');
+    expect(profile.recommendation.summary).toContain('Browser TTS DE');
   });
 
   it('derives browser-tts DE pressure weak areas from support, unsafe boundaries, lag, and low accuracy', () => {
@@ -608,9 +646,54 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
 
     expect(profile.timeline.some((point) => typeof point.rawLagSec === 'number' && point.rawLagSec < -10)).toBe(true);
     expect(profile.recommendation.targetRateRange).not.toEqual([1.05, 1.05]);
-    expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.3);
+    expect(profile.recommendation.confidence).toBeLessThanOrEqual(0.2);
     expect(profile.weakAreas).toContain('lag_instability');
     expect(profile.flowStabilityScore).toBeLessThan(1);
+  });
+
+  it('does not recommend fast rates during browser-tts DE recovery-severe pressure', () => {
+    const base = Date.now();
+    const profile: InputLanguageBenchmarkMetrics = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'de'),
+      sessionCount: 1,
+      sampleCount: 12,
+      sweetSpotScore: 0.8,
+      recommendation: {
+        targetRateRange: [0.95, 1],
+        targetPhraseSize: 'medium',
+        targetPauseMs: 750,
+        nextTrainingFocus: ['Maintain stable pace'],
+        confidence: 0.6,
+        summary: 'Fast recommendation before pressure normalization.',
+      },
+      timeline: Array.from({ length: 8 }, (_, index) => ({
+        timestampMs: base + index * 1000,
+        inputMode: 'browser-tts' as const,
+        language: 'de',
+        mode: 'support' as const,
+        playbackRate: 0.8,
+        accuracy: 0.74,
+        lagSec: 3.2,
+        rawLagSec: 3.2,
+        stableLagSec: 3.2,
+        wpm: 42,
+        pauseMs: 2600,
+        phraseBoundaryType: 'clause' as const,
+        semanticCompleteness: 0.86,
+        decisionReason: 'mode=support, support-needed, browser-tts-de-recovery-severe',
+        event: 'phrase_completed' as const,
+        sessionId: 'recovery-severe',
+        phraseIndex: index,
+        totalSemanticPhrases: 8,
+      })),
+    };
+
+    const normalized = normalizeInputLanguageBenchmarkForRecommendation(profile);
+
+    expect(normalized.recommendation.targetRateRange).toEqual([0.8, 0.85]);
+    expect(normalized.recommendation.targetRateRange).not.toEqual([0.95, 1]);
+    expect(normalized.recommendation.confidence).toBeLessThanOrEqual(0.2);
+    expect(normalized.recommendation.summary).toContain('severe recovery pressure');
   });
 
   it('normalizes stale browser-tts DE low-confidence pressure profiles before recommendation output', () => {
@@ -618,9 +701,9 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const normalized = normalizeInputLanguageBenchmarkForRecommendation(staleProfile);
 
     expect(normalized.recommendation.targetRateRange).not.toEqual([1.05, 1.05]);
-    expect(normalized.recommendation.targetRateRange).toEqual([0.95, 1]);
+    expect(normalized.recommendation.targetRateRange).toEqual([0.8, 0.85]);
     expect(normalized.recommendation.targetPauseMs).toBe(1200);
-    expect(normalized.recommendation.confidence).toBeLessThanOrEqual(0.3);
+    expect(normalized.recommendation.confidence).toBeLessThanOrEqual(0.2);
     expect(normalized.flowStabilityScore).toBeLessThan(1);
     expect(normalized.sweetSpotScore).toBeLessThan(staleProfile.sweetSpotScore);
     expect(normalized.weakAreas).toEqual(
@@ -634,7 +717,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expect(normalized.recommendation.nextTrainingFocus).toEqual(
       expect.arrayContaining(['accuracy stability', 'lag control', 'safe semantic boundaries', 'reduce support dependency']),
     );
-    expect(normalized.recommendation.summary).toContain('Playback was stable');
+    expect(normalized.recommendation.summary).toContain('Browser TTS DE');
     expect(normalized.recommendation.summary).not.toContain('medium-length semantic phrases');
   });
 
@@ -673,7 +756,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const kokoro = buildPressureProfile('kokoro', 'de');
     const qwen = buildPressureProfile('qwen-cloud', 'de');
 
-    expect(de.recommendation.targetRateRange).toEqual([0.95, 1]);
+    expect(de.recommendation.targetRateRange).toEqual([0.8, 0.85]);
     expect(de.recommendation.targetPauseMs).toBe(1200);
     for (const profile of [en, es, audio, kokoro, qwen]) {
       expect(profile.recommendation.targetRateRange).not.toEqual([0.95, 1]);
