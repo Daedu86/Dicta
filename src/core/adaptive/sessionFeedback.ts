@@ -387,13 +387,21 @@ function buildFeedbackUnavailableSnapshot(status: string): { status: string; mes
   };
 }
 
-function compactBenchmark(profile: InputLanguageBenchmarkMetrics): Partial<InputLanguageBenchmarkMetrics> {
+function compactBenchmark(profile: InputLanguageBenchmarkMetrics): Partial<InputLanguageBenchmarkMetrics> & {
+  benchmarkSessionCount: number;
+  acceptedTelemetrySamples: number;
+  countSemantics: string;
+} {
   const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
   return {
     inputMode: normalizedProfile.inputMode,
     language: normalizedProfile.language,
     sessionCount: normalizedProfile.sessionCount,
     sampleCount: normalizedProfile.sampleCount,
+    benchmarkSessionCount: normalizedProfile.sessionCount,
+    acceptedTelemetrySamples: normalizedProfile.sampleCount,
+    countSemantics:
+      'sessionCount/benchmarkSessionCount count unique sessions represented by accepted adaptive telemetry samples; sampleCount/acceptedTelemetrySamples count accepted timeline samples, not all saved sessions.',
     lastUpdatedAt: normalizedProfile.lastUpdatedAt,
     sweetSpotScore: normalizedProfile.sweetSpotScore,
     semanticFidelityScore: normalizedProfile.semanticFidelityScore,

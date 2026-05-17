@@ -8,6 +8,9 @@ export type SelectedBenchmarkExportPayload = {
   rollingWindowDays: number;
   sessionCount: number;
   sampleCount: number;
+  benchmarkSessionCount: number;
+  acceptedTelemetrySamples: number;
+  countSemantics: string;
   lastUpdatedAt: string | null;
   sweetSpotScore: number;
   semanticFidelityScore: number;
@@ -62,6 +65,10 @@ export function buildSelectedBenchmarkExportPayload(profile: InputLanguageBenchm
     rollingWindowDays: normalizedProfile.rollingWindowDays,
     sessionCount: normalizedProfile.sessionCount,
     sampleCount: normalizedProfile.sampleCount,
+    benchmarkSessionCount: normalizedProfile.sessionCount,
+    acceptedTelemetrySamples: normalizedProfile.sampleCount,
+    countSemantics:
+      'sessionCount/benchmarkSessionCount count unique sessions represented by accepted adaptive telemetry samples; sampleCount/acceptedTelemetrySamples count accepted timeline samples, not all saved sessions.',
     lastUpdatedAt: normalizedProfile.lastUpdatedAt,
     sweetSpotScore: normalizedProfile.sweetSpotScore,
     semanticFidelityScore: normalizedProfile.semanticFidelityScore,

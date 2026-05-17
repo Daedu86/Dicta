@@ -139,12 +139,19 @@ describe('session feedback diagnostics', () => {
     });
 
     const payload = buildBenchmarkFeedbackPackage(profile, feedback) as {
-      benchmarkProfile?: unknown;
+      benchmarkProfile?: {
+        benchmarkSessionCount?: number;
+        acceptedTelemetrySamples?: number;
+        countSemantics?: string;
+      };
       latestSessionFeedback?: unknown;
       playbackDiagnostics?: unknown;
     };
 
     expect(payload.benchmarkProfile).toBeTruthy();
+    expect(payload.benchmarkProfile?.benchmarkSessionCount).toBe(profile.sessionCount);
+    expect(payload.benchmarkProfile?.acceptedTelemetrySamples).toBe(profile.sampleCount);
+    expect(payload.benchmarkProfile?.countSemantics).toContain('not all saved sessions');
     expect(payload.latestSessionFeedback).toBe(feedback);
     expect(payload.playbackDiagnostics).toEqual(feedback.playbackIssues);
   });

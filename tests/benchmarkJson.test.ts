@@ -29,6 +29,9 @@ describe('benchmarkJson', () => {
     expect(payload.inputMode).toBe('kokoro');
     expect(payload.language).toBe('en');
     expect(payload.sampleCount).toBe(3);
+    expect(payload.acceptedTelemetrySamples).toBe(3);
+    expect(payload.benchmarkSessionCount).toBe(payload.sessionCount);
+    expect(payload.countSemantics).toContain('not all saved sessions');
     expect(payload.recommendation).toBeDefined();
     expect(payload.rateAccuracyBuckets).toBeDefined();
     expect(payload.recentTimelinePoints.length).toBe(1);
