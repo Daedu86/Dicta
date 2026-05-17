@@ -2437,6 +2437,12 @@ function App() {
           durationMinutes,
           targetDifficulty,
           recentSessions: recentDictationSessionHints,
+          activityHints: buildOpenRouterActivityHints({
+            sessions,
+            inputMode,
+            language,
+            benchmarkSessionCount: profile.sessionCount,
+          }),
         }),
       });
       const response = await fetch('/api/openrouter/jobs', {
@@ -11883,13 +11889,16 @@ function buildOpenRouterDiversificationHints({
   durationMinutes,
   targetDifficulty,
   recentSessions,
+  activityHints = [],
 }: {
   durationMinutes: 2 | 3 | 4;
   targetDifficulty?: DictationScriptDifficulty;
   recentSessions: Array<{ title: string; opener: string }>;
+  activityHints?: string[];
 }): string[] {
   const hints: string[] = [
     `Create clearly different content from the last generated scripts while keeping the requested ${durationMinutes}-minute length.`,
+    ...activityHints,
   ];
   if (targetDifficulty === 'hard') {
     hints.push('Use advanced grammar and vocabulary; avoid reusing simpler beginner sentence patterns.');
@@ -11913,6 +11922,56 @@ function buildOpenRouterDiversificationHints({
     hints.push(`Avoid repeating these recent themes/titles: ${recentTitles.join(' | ')}`);
   }
   return hints;
+}
+
+function buildOpenRouterActivityHints({
+  sessions,
+  inputMode,
+  language,
+  benchmarkSessionCount,
+}: {
+  sessions: StoredSession[];
+  inputMode: InputMode;
+  language: BenchmarkLanguageButton;
+  benchmarkSessionCount: number;
+}): string[] {
+  const nowMs = Date.now();
+  const cutoffMs = nowMs - 30 * 24 * 60 * 60 * 1000;
+  const languageSessions = sessions.filter((session) => resolveStoredSessionLanguage(session) === language);
+  const profileSessions = languageSessions.filter((session) => mapSessionInputMode(session.inputMode) === inputMode);
+  const monthLanguageSessions = languageSessions.filter((session) => isSessionUpdatedWithinWindow(session, cutoffMs, nowMs));
+  const monthProfileSessions = profileSessions.filter((session) => isSessionUpdatedWithinWindow(session, cutoffMs, nowMs));
+  const finishedMonthProfileSessions = monthProfileSessions.filter((session) => session.status === 'finished');
+  const avgAccuracy = averageSessionMetric(finishedMonthProfileSessions, 'accuracy');
+  const avgWpm = averageSessionMetric(finishedMonthProfileSessions, 'wpm');
+  const hints = [
+    `User activity context: ${monthLanguageSessions.length} ${language.toUpperCase()} session(s) in the last 30 days; ${monthProfileSessions.length} match ${inputMode}/${language}.`,
+  ];
+
+  if (benchmarkSessionCount !== monthProfileSessions.length) {
+    hints.push(
+      `Adaptive benchmark sessionCount is ${benchmarkSessionCount} because it counts accepted ${inputMode}/${language} telemetry samples, not every saved monthly session.`,
+    );
+  }
+  if (avgAccuracy !== null || avgWpm !== null) {
+    hints.push(
+      `Recent finished ${inputMode}/${language} activity averages: ${avgAccuracy === null ? 'accuracy unavailable' : `${avgAccuracy.toFixed(1)}% accuracy`}, ${avgWpm === null ? 'WPM unavailable' : `${avgWpm.toFixed(1)} WPM`}.`,
+    );
+  }
+  return hints;
+}
+
+function isSessionUpdatedWithinWindow(session: StoredSession, cutoffMs: number, nowMs: number): boolean {
+  const updatedAtMs = new Date(session.updatedAt || session.createdAt).getTime();
+  return Number.isFinite(updatedAtMs) && updatedAtMs >= cutoffMs && updatedAtMs <= nowMs;
+}
+
+function averageSessionMetric(sessions: StoredSession[], metric: 'accuracy' | 'wpm'): number | null {
+  const values = sessions
+    .map((session) => session.metrics[metric])
+    .filter((value): value is number => Number.isFinite(value) && value > 0);
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function buildCoachingInsights(session: StoredSession, goals: DashboardGoals): string[] {
