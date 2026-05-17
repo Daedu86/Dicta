@@ -386,6 +386,21 @@ describe('session feedback diagnostics', () => {
     expect(payload.playbackDiagnostics?.replayCount).toBe(1);
   });
 
+  it('exports up to the latest 120 timeline points in full feedback packages', () => {
+    const profile = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'en'),
+      timeline: Array.from({ length: 140 }, (_, index) => timelinePoint(index, 'sample', index + 1)),
+    };
+
+    const payload = buildBenchmarkFeedbackPackage(profile, null) as {
+      recentTimelinePoints?: AdaptiveTimelinePoint[];
+    };
+
+    expect(payload.recentTimelinePoints).toHaveLength(120);
+    expect(payload.recentTimelinePoints?.[0]?.phraseIndex).toBe(20);
+    expect(payload.recentTimelinePoints?.[119]?.phraseIndex).toBe(139);
+  });
+
   it('normalizes stale browser-tts DE benchmark recommendations in feedback packages', () => {
     const profile = staleBrowserTtsDePressureProfile();
 

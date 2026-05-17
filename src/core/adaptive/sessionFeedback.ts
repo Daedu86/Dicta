@@ -23,7 +23,7 @@ export type SessionFeedbackBuildArgs = {
   totalPhrases?: number;
 };
 
-const FEEDBACK_EXPORT_TIMELINE_CAP = 60;
+const FEEDBACK_EXPORT_TIMELINE_CAP = 120;
 
 export type TimelinePlaybackDiagnostics = {
   source: 'formal_feedback' | 'timeline_fallback';

@@ -12080,6 +12080,47 @@ function buildBenchmarkActivitySummary(sessions: StoredSession[], profile: Input
   const finishedMonthProfileSessions = monthProfileSessions.filter((session) => session.status === 'finished');
   const averageAccuracy = averageSessionMetric(finishedMonthProfileSessions, 'accuracy');
   const averageWpm = averageSessionMetric(finishedMonthProfileSessions, 'wpm');
+  const recentSessionsForInputLanguage = [...profileSessions]
+    .sort((a, b) => getSessionUpdatedAtMs(b) - getSessionUpdatedAtMs(a))
+    .slice(0, 5)
+    .map((session) => ({
+      id: session.id,
+      name: session.name,
+      status: session.status,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      sessionSource: session.sessionSource,
+      generationOrigin: session.generationOrigin,
+      difficulty: session.difficulty,
+      dictationScript: session.dictationScript
+        ? {
+            title: session.dictationScript.title,
+            difficulty: session.dictationScript.difficulty,
+            estimatedDurationSec: session.dictationScript.estimatedDurationSec,
+            phraseCount: session.dictationScript.phrases.length,
+          }
+        : null,
+      metrics: {
+        accuracy: session.metrics.accuracy,
+        wpm: session.metrics.wpm,
+        lagSec: session.metrics.lagSec,
+        rate: session.metrics.rate,
+        score: session.metrics.score,
+        points: session.metrics.points,
+        trend: session.metrics.trend,
+      },
+      telemetry: {
+        lagSamples: session.telemetry.lagSeries.length,
+        wpmSamples: session.telemetry.wpmSeries.length,
+        accuracySamples: session.telemetry.accuracySeries.length,
+        actionCount: session.telemetry.actions.length,
+        ttsChunkCount: session.telemetry.ttsChunks.length,
+        repeatCount: session.telemetry.repeatCount,
+        rateDistributionBuckets: session.telemetry.rateDistribution.length,
+        startedAt: session.telemetry.startedAt,
+        finishedAt: session.telemetry.finishedAt ?? null,
+      },
+    }));
 
   return {
     scope: {
@@ -12101,14 +12142,20 @@ function buildBenchmarkActivitySummary(sessions: StoredSession[], profile: Input
             accuracy: averageAccuracy,
             wpm: averageWpm,
           },
+    recentSessionsForInputLanguage,
     benchmarkCountExplanation:
       `benchmarkProfile.sessionCount (${profile.sessionCount}) counts unique sessions represented by accepted adaptive telemetry samples for ${profile.inputMode}/${language}; ` +
       `it is expected to be lower than savedSessionCounts when sessions have no accepted benchmark samples or belong to another input mode.`,
   };
 }
 
-function isSessionUpdatedWithinWindow(session: StoredSession, cutoffMs: number, nowMs: number): boolean {
+function getSessionUpdatedAtMs(session: StoredSession): number {
   const updatedAtMs = new Date(session.updatedAt || session.createdAt).getTime();
+  return Number.isFinite(updatedAtMs) ? updatedAtMs : 0;
+}
+
+function isSessionUpdatedWithinWindow(session: StoredSession, cutoffMs: number, nowMs: number): boolean {
+  const updatedAtMs = getSessionUpdatedAtMs(session);
   return Number.isFinite(updatedAtMs) && updatedAtMs >= cutoffMs && updatedAtMs <= nowMs;
 }
 
