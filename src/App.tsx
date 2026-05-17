@@ -38,11 +38,11 @@ import {
   type OpenRouterGeneratePromptSource,
 } from './core/adaptive/openRouterGenerationPrompt';
 import {
-  clearActiveOpenRouterJob,
+  addActiveOpenRouterJob,
   extractOpenRouterJobText,
   isOpenRouterJobTerminal,
-  loadActiveOpenRouterJob,
-  persistActiveOpenRouterJob,
+  loadActiveOpenRouterJobs,
+  removeActiveOpenRouterJob,
   type ActiveOpenRouterJob,
   type OpenRouterJobResponse,
 } from './core/openRouterJobs';
@@ -193,6 +193,15 @@ type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 type SessionSource = 'plainText' | 'dictationScript';
 type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
+type OpenRouterJobNotification = {
+  jobId: string;
+  slotLabel: string;
+  model: string;
+  startedAt: string;
+  status: 'running' | 'succeeded' | 'failed';
+  completedAt?: string;
+  error?: string;
+};
 type TtsLanguage = 'en' | 'de' | 'es';
 type TypingLanguage = 'en' | 'de' | 'es';
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
@@ -501,7 +510,8 @@ function App() {
   const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name?: string; context_length?: number }>>([]);
   const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [openRouterError, setOpenRouterError] = useState('');
-  const [activeOpenRouterJob, setActiveOpenRouterJob] = useState<ActiveOpenRouterJob | null>(() => loadActiveOpenRouterJob());
+  const [activeOpenRouterJobs, setActiveOpenRouterJobs] = useState<ActiveOpenRouterJob[]>(() => loadActiveOpenRouterJobs());
+  const [, setOpenRouterJobNotifications] = useState<Record<string, OpenRouterJobNotification>>({});
   const [openRouterJobStatus, setOpenRouterJobStatus] = useState('');
   const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
   const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
@@ -908,71 +918,91 @@ function App() {
   }, [kokoroEnabled, kokoroText, kokoroStatus]);
 
   useEffect(() => {
-    if (!activeOpenRouterJob) {
-      setOpenRouterJobStatus('');
+    if (activeOpenRouterJobs.length === 0) {
       return;
     }
 
-    const trackedJob = activeOpenRouterJob;
     let cancelled = false;
     let intervalId = 0;
 
-    async function pollOpenRouterJob(): Promise<void> {
-      try {
-        const response = await fetch(`/api/openrouter/jobs?id=${encodeURIComponent(trackedJob.jobId)}`);
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(text || `OpenRouter job status failed (${response.status}).`);
-        }
-        const job = (await response.json()) as OpenRouterJobResponse;
-        if (cancelled) return;
+    async function pollOpenRouterJobs(): Promise<void> {
+      const settledJobIds: string[] = [];
+      const notifications: OpenRouterJobNotification[] = [];
 
-        const elapsedSec = Math.max(0, Math.round((Date.now() - new Date(trackedJob.startedAt).getTime()) / 1000));
-        if (!isOpenRouterJobTerminal(job.status)) {
-          setOpenRouterJobStatus(`Generating with OpenRouter... safe to refresh. Model: ${trackedJob.model}. Elapsed: ${elapsedSec}s.`);
-          return;
-        }
+      await Promise.all(
+        activeOpenRouterJobs.map(async (trackedJob) => {
+          try {
+            const response = await fetch(`/api/openrouter/jobs?id=${encodeURIComponent(trackedJob.jobId)}`);
+            if (!response.ok) {
+              const text = await response.text();
+              throw new Error(text || `OpenRouter job status failed (${response.status}).`);
+            }
+            const job = (await response.json()) as OpenRouterJobResponse;
+            if (cancelled) return;
 
-        clearActiveOpenRouterJob();
-        setActiveOpenRouterJob(null);
-        setOpenRouterJobStatus('');
+            const notification = buildOpenRouterJobNotification(trackedJob, job);
+            notifications.push(notification);
+            if (!isOpenRouterJobTerminal(job.status)) return;
 
-        if (job.status === 'failed') {
-          setOpenRouterError(job.error || 'OpenRouter job failed.');
-          return;
-        }
+            settledJobIds.push(trackedJob.jobId);
+            if (job.status === 'failed') {
+              setOpenRouterError(job.error || 'OpenRouter job failed.');
+              return;
+            }
 
-        if (consumedOpenRouterJobIdsRef.current.has(trackedJob.jobId)) return;
-        consumedOpenRouterJobIdsRef.current.add(trackedJob.jobId);
+            if (consumedOpenRouterJobIdsRef.current.has(trackedJob.jobId)) return;
+            consumedOpenRouterJobIdsRef.current.add(trackedJob.jobId);
 
-        const text = extractOpenRouterJobText(job.result);
-        if (!text.trim()) {
-          setOpenRouterError('OpenRouter job finished without usable text.');
-          return;
-        }
+            const text = extractOpenRouterJobText(job.result);
+            if (!text.trim()) {
+              setOpenRouterError('OpenRouter job finished without usable text.');
+              return;
+            }
 
-        const validation = validateGeneratedScriptForTarget(stripJsonFence(text), trackedJob.inputMode, trackedJob.language as BenchmarkLanguageButton);
-        if (validation.ok) {
-          createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
-        } else {
-          setOpenRouterError(validation.errors.join(' ') || 'Generated script did not validate.');
-        }
-      } catch (error) {
-        if (cancelled) return;
-        setOpenRouterError(error instanceof Error ? error.message : 'OpenRouter job polling failed.');
+            const validation = validateGeneratedScriptForTarget(stripJsonFence(text), trackedJob.inputMode, trackedJob.language as BenchmarkLanguageButton);
+            if (validation.ok) {
+              createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
+            } else {
+              setOpenRouterError(validation.errors.join(' ') || 'Generated script did not validate.');
+            }
+          } catch (error) {
+            if (cancelled) return;
+            const message = error instanceof Error ? error.message : 'OpenRouter job polling failed.';
+            notifications.push(buildOpenRouterJobNotification(trackedJob, null, message));
+            setOpenRouterError(message);
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      if (notifications.length > 0) {
+        setOpenRouterJobNotifications((current) => {
+          const next = { ...current };
+          notifications.forEach((notification) => {
+            next[notification.jobId] = notification;
+          });
+          const status = formatOpenRouterJobNotifications(next);
+          setOpenRouterJobStatus(status);
+          return next;
+        });
+      }
+      if (settledJobIds.length > 0) {
+        setActiveOpenRouterJobs((current) => {
+          return settledJobIds.reduce((jobs, jobId) => removeActiveOpenRouterJob(jobId, jobs), current);
+        });
       }
     }
 
-    void pollOpenRouterJob();
+    void pollOpenRouterJobs();
     intervalId = window.setInterval(() => {
-      void pollOpenRouterJob();
+      void pollOpenRouterJobs();
     }, 3000);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [activeOpenRouterJob]);
+  }, [activeOpenRouterJobs]);
 
   useEffect(() => {
     window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, dictaLanguageView);
@@ -2186,17 +2216,26 @@ function App() {
       return;
     }
 
-    const nextSession = {
-      ...createSessionFromScript(script, getNextSessionIndex(sessions), inputMode),
-      generationOrigin,
-    };
     suppressSidebarAutoSelectRef.current = true;
-    setSessions((prev) => [nextSession, ...prev]);
-    setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
     if (navigateToLeaderboard) {
+      const nextSession = {
+        ...createSessionFromScript(script, getNextSessionIndex(sessions), inputMode),
+        generationOrigin,
+      };
+      setSessions((prev) => [nextSession, ...prev]);
+      setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
       setActiveSessionId(nextSession.id);
       setWorkspaceMode('leaderboard');
       setDashboardSessionId(null);
+    } else {
+      setSessions((prev) => {
+        const nextSession = {
+          ...createSessionFromScript(script, getNextSessionIndex(prev), inputMode),
+          generationOrigin,
+        };
+        return [nextSession, ...prev];
+      });
+      setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
     }
     setSessionCreationMode(null);
     setSessionCreationSource('plainText');
@@ -2362,7 +2401,7 @@ function App() {
     targetDifficulty?: DictationScriptDifficulty;
     difficultyInstruction?: string;
   }): Promise<void> {
-    if (!activeSession || isBusy || activeOpenRouterJob) return;
+    if (!activeSession || isBusy) return;
     if (!isOnline) {
       setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
       return;
@@ -2431,9 +2470,21 @@ function App() {
         ...(targetDifficulty ? { targetDifficulty } : {}),
         startedAt: new Date().toISOString(),
       };
-      persistActiveOpenRouterJob(activeJob);
-      setActiveOpenRouterJob(activeJob);
-      setOpenRouterJobStatus(`Generating with OpenRouter... safe to refresh. Model: ${model}. Elapsed: 0s.`);
+      setActiveOpenRouterJobs((current) => addActiveOpenRouterJob(activeJob, current));
+      setOpenRouterJobNotifications((current) => {
+        const next = {
+          ...current,
+          [activeJob.jobId]: {
+            jobId: activeJob.jobId,
+            slotLabel: activeJob.slotLabel,
+            model: activeJob.model,
+            startedAt: activeJob.startedAt,
+            status: 'running' as const,
+          },
+        };
+        setOpenRouterJobStatus(formatOpenRouterJobNotifications(next));
+        return next;
+      });
     } catch (err) {
       const message =
         err instanceof TypeError
@@ -5244,7 +5295,7 @@ function App() {
             }
           : (latestTextValue?: string) => submitTtsSession(latestTextValue),
     submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
-    message: error || exportMessage || openRouterJobStatus || openRouterError,
+    message: error || [exportMessage, openRouterJobStatus, openRouterError].filter(Boolean).join(' '),
     textCommitDelayMs: activeInputMode === 'input2' || activeInputMode === 'input4' ? 250 : 0,
     pendingSessions,
     activeSessionId,
@@ -5255,21 +5306,21 @@ function App() {
     isOnline,
     generationButtons: [
       {
-        label: directOpenRouterBusy || activeOpenRouterJob ? 'Generating easy...' : 'New Easy Session',
+        label: directOpenRouterBusy ? 'Requesting easy...' : 'New Easy Session',
         onClick: () => void generateEasyNextSessionFromOpenRouter(),
-        disabled: !isOnline || directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
+        disabled: !isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       },
       {
-        label: directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating medium...' : 'New Medium Session',
+        label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : 'New Medium Session',
         onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-        disabled: !isOnline || directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
+        disabled: !isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       },
       {
-        label: directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating hard...' : 'New Hard Session',
+        label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : 'New Hard Session',
         onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-        disabled: !isOnline || directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim(),
+        disabled: !isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       },
       {
@@ -6169,40 +6220,40 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
                             : 'Set a default OpenRouter model first.')
                         }
                       >
-                        {directOpenRouterBusy || activeOpenRouterJob ? 'Generating...' : 'Generate next session'}
+                        {directOpenRouterBusy ? 'Requesting...' : 'Generate next session'}
                       </button>
                       <button
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
                             : 'Set a default OpenRouter model first.')
                         }
                       >
-                        {directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
+                        {directIntermediateOpenRouterBusy ? 'Requesting intermediate...' : 'Generate next session - Intermediate'}
                       </button>
                       <button
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
                             : 'Set a default OpenRouter model first.')
                         }
                       >
-                        {directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating advanced...' : 'Generate next session - Advanced'}
+                        {directAdvancedOpenRouterBusy ? 'Requesting advanced...' : 'Generate next session - Advanced'}
                       </button>
                       <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
                         OpenRouter script
@@ -6368,40 +6419,40 @@ function App() {
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
                             : 'Set a default OpenRouter model first.')
                         }
                       >
-                        {directOpenRouterBusy || activeOpenRouterJob ? 'Generating...' : 'Generate next session'}
+                        {directOpenRouterBusy ? 'Requesting...' : 'Generate next session'}
                       </button>
                       <button
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directIntermediateOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
                             : 'Set a default OpenRouter model first.')
                         }
                       >
-                        {directIntermediateOpenRouterBusy || activeOpenRouterJob ? 'Generating intermediate...' : 'Generate next session - Intermediate'}
+                        {directIntermediateOpenRouterBusy ? 'Requesting intermediate...' : 'Generate next session - Intermediate'}
                       </button>
                       <button
                         type="button"
                         className="secondary-button"
                         onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directAdvancedOpenRouterBusy || Boolean(activeOpenRouterJob) || !activeSession || !openRouterDefaultModel.trim()}
+                        disabled={!isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
                         title={
                           openRouterOfflineTitle || (openRouterDefaultModel.trim()
                             ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
                             : 'Set a default OpenRouter model first.')
                         }
                       >
-                        {directAdvancedOpenRouterBusy || activeOpenRouterJob ? 'Generating advanced...' : 'Generate next session - Advanced'}
+                        {directAdvancedOpenRouterBusy ? 'Requesting advanced...' : 'Generate next session - Advanced'}
                       </button>
                       <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
                         OpenRouter script
@@ -10337,6 +10388,52 @@ function formatDuration(seconds: number): string {
 function formatElapsedMs(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function buildOpenRouterJobNotification(
+  trackedJob: ActiveOpenRouterJob,
+  job: OpenRouterJobResponse | null,
+  error?: string,
+): OpenRouterJobNotification {
+  const status: OpenRouterJobNotification['status'] = error
+    ? 'failed'
+    : job?.status === 'succeeded' || job?.status === 'failed'
+      ? job.status
+      : 'running';
+  return {
+    jobId: trackedJob.jobId,
+    slotLabel: trackedJob.slotLabel,
+    model: trackedJob.model,
+    startedAt: trackedJob.startedAt,
+    status,
+    ...(status === 'running' ? {} : { completedAt: job?.completedAt || job?.updatedAt || new Date().toISOString() }),
+    ...(error || job?.error ? { error: error || job?.error } : {}),
+  };
+}
+
+function formatOpenRouterJobNotifications(notifications: Record<string, OpenRouterJobNotification>): string {
+  const ordered = Object.values(notifications)
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+    .slice(0, 4);
+  if (ordered.length === 0) return '';
+
+  return ordered
+    .map((notification) => {
+      const startedMs = new Date(notification.startedAt).getTime();
+      const elapsedMs =
+        notification.completedAt
+          ? new Date(notification.completedAt).getTime() - startedMs
+          : Date.now() - startedMs;
+      const elapsed = formatElapsedMs(Math.max(0, Number.isFinite(elapsedMs) ? elapsedMs : 0));
+      if (notification.status === 'succeeded') {
+        return `${notification.slotLabel} finished with ${notification.model} in ${elapsed}.`;
+      }
+      if (notification.status === 'failed') {
+        return `${notification.slotLabel} failed with ${notification.model} after ${elapsed}${notification.error ? `: ${notification.error}` : '.'}`;
+      }
+      return `${notification.slotLabel} running with ${notification.model}; elapsed ${elapsed}.`;
+    })
+    .join(' ');
 }
 
 function formatSupabaseSyncState(status: SupabaseSyncStatus): string {
