@@ -144,7 +144,19 @@ describe('session feedback diagnostics', () => {
         acceptedTelemetrySamples?: number;
         countSemantics?: string;
       };
-      latestSessionFeedback?: unknown;
+      latestSessionFeedback?: {
+        sessionId?: string;
+        benchmarkBefore?: {
+          benchmarkSessionCount?: number;
+          acceptedTelemetrySamples?: number;
+          countSemantics?: string;
+        };
+        benchmarkAfter?: {
+          benchmarkSessionCount?: number;
+          acceptedTelemetrySamples?: number;
+          countSemantics?: string;
+        };
+      };
       playbackDiagnostics?: unknown;
     };
 
@@ -152,8 +164,60 @@ describe('session feedback diagnostics', () => {
     expect(payload.benchmarkProfile?.benchmarkSessionCount).toBe(profile.sessionCount);
     expect(payload.benchmarkProfile?.acceptedTelemetrySamples).toBe(profile.sampleCount);
     expect(payload.benchmarkProfile?.countSemantics).toContain('not all saved sessions');
-    expect(payload.latestSessionFeedback).toBe(feedback);
+    expect(payload.latestSessionFeedback?.sessionId).toBe(feedback.sessionId);
     expect(payload.playbackDiagnostics).toEqual(feedback.playbackIssues);
+  });
+
+  it('adds benchmark count aliases to legacy feedback snapshots in exported packages', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-legacy',
+      inputMode: 'browser-tts',
+      language: 'de',
+      sourceType: 'dictation_script',
+      createdAt: '2026-05-16T08:00:00.000Z',
+      benchmarkBefore: { ...profile, sessionCount: 3, sampleCount: 30 },
+      benchmarkAfter: { ...profile, sessionCount: 3, sampleCount: 43 },
+      phraseEvents: [phraseEvent(0, 'p00', 'phrase_started', 1)],
+      totalPhrases: 1,
+    });
+    const legacyFeedback = {
+      ...feedback,
+      benchmarkBefore: {
+        inputMode: 'browser-tts' as const,
+        language: 'de' as const,
+        sessionCount: 3,
+        sampleCount: 30,
+      },
+      benchmarkAfter: {
+        inputMode: 'browser-tts' as const,
+        language: 'de' as const,
+        sessionCount: 3,
+        sampleCount: 43,
+      },
+    };
+
+    const payload = buildBenchmarkFeedbackPackage(profile, legacyFeedback) as {
+      latestSessionFeedback?: {
+        benchmarkBefore?: {
+          benchmarkSessionCount?: number;
+          acceptedTelemetrySamples?: number;
+          countSemantics?: string;
+        };
+        benchmarkAfter?: {
+          benchmarkSessionCount?: number;
+          acceptedTelemetrySamples?: number;
+          countSemantics?: string;
+        };
+      };
+    };
+
+    expect(payload.latestSessionFeedback?.benchmarkBefore?.benchmarkSessionCount).toBe(3);
+    expect(payload.latestSessionFeedback?.benchmarkBefore?.acceptedTelemetrySamples).toBe(30);
+    expect(payload.latestSessionFeedback?.benchmarkBefore?.countSemantics).toContain('not all saved sessions');
+    expect(payload.latestSessionFeedback?.benchmarkAfter?.benchmarkSessionCount).toBe(3);
+    expect(payload.latestSessionFeedback?.benchmarkAfter?.acceptedTelemetrySamples).toBe(43);
+    expect(payload.latestSessionFeedback?.benchmarkAfter?.countSemantics).toContain('not all saved sessions');
   });
 
   it('keeps clean browser-tts DE playback verdict stable even when benchmark recommendation is conservative', () => {

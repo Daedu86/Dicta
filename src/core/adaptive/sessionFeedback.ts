@@ -125,7 +125,7 @@ export function buildBenchmarkFeedbackPackage(
     weakAreas: normalizedProfile.weakAreas,
     activitySummary: options.activitySummary ?? null,
     recentTimelinePoints,
-    latestSessionFeedback: feedback ?? buildFeedbackUnavailableSnapshot(sessionFeedbackStatus),
+    latestSessionFeedback: feedback ? normalizeFeedbackBenchmarkSnapshots(feedback) : buildFeedbackUnavailableSnapshot(sessionFeedbackStatus),
     playbackDiagnostics: feedback?.playbackIssues ?? fallbackDiagnostics,
     dictationScript: feedback?.scriptTitle
       ? {
@@ -134,6 +134,33 @@ export function buildBenchmarkFeedbackPackage(
         }
       : null,
   };
+}
+
+function normalizeFeedbackBenchmarkSnapshots(feedback: AdaptiveSessionFeedback): AdaptiveSessionFeedback {
+  return {
+    ...feedback,
+    benchmarkBefore: addBenchmarkCountSemantics(feedback.benchmarkBefore),
+    benchmarkAfter: addBenchmarkCountSemantics(feedback.benchmarkAfter),
+  };
+}
+
+function addBenchmarkCountSemantics<T extends Partial<InputLanguageBenchmarkMetrics> | undefined>(
+  benchmark: T,
+): T extends undefined
+  ? undefined
+  : Partial<InputLanguageBenchmarkMetrics> & {
+      benchmarkSessionCount: number;
+      acceptedTelemetrySamples: number;
+      countSemantics: string;
+    } {
+  if (!benchmark) return undefined as never;
+  return {
+    ...benchmark,
+    benchmarkSessionCount: benchmark.sessionCount ?? 0,
+    acceptedTelemetrySamples: benchmark.sampleCount ?? 0,
+    countSemantics:
+      'sessionCount/benchmarkSessionCount count unique sessions represented by accepted adaptive telemetry samples; sampleCount/acceptedTelemetrySamples count accepted timeline samples, not all saved sessions.',
+  } as never;
 }
 
 export function buildBenchmarkFeedbackPromptPackage(
