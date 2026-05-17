@@ -2108,14 +2108,6 @@ function App() {
     setExportMessage('Input settings locked for this session.');
   }
 
-  function createSession(): void {
-    setSessionCreationMode('input1');
-    setSessionCreationSource('plainText');
-    setSessionCreationName('');
-    setDictationScriptJson('');
-    setDictationScriptValidation(null);
-  }
-
   async function signOut(): Promise<void> {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -2162,6 +2154,18 @@ function App() {
     setTtsExpanded(true);
     setQwenExpanded(true);
     setKokoroExpanded(true);
+  }
+
+  function createManualInput1SessionFromAdmin(name: string): void {
+    const nextSession = createStoredSession(getNextSessionIndex(sessions), 'input1', name);
+    suppressSidebarAutoSelectRef.current = true;
+    setSessions((prev) => [nextSession, ...prev]);
+    setActiveSessionId(nextSession.id);
+    setWorkspaceMode('training');
+    setDashboardSessionId(null);
+    setSetupExpanded(true);
+    setError('');
+    setExportMessage('Manual Input #1 session created.');
   }
 
   function validateScriptImport(): void {
@@ -5373,15 +5377,8 @@ function App() {
                 </span>
               </span>
             </div>
-          </div>
+        </div>
           <div className="brand-header-actions">
-            <button
-              type="button"
-              className="secondary-button brand-new-session-button"
-              onClick={createSession}
-            >
-              + New session
-            </button>
             <button
               type="button"
               className="secondary-button brand-leaderboard-button"
@@ -6944,6 +6941,7 @@ function App() {
                 onCopyLocalStorage={() => void copyDictaLocalStorage(setExportMessage)}
                 onExportLocalStorage={downloadDictaLocalStorage}
                 onImportLocalStorage={importDictaLocalStorageSnapshot}
+                onCreateManualInput1Session={createManualInput1SessionFromAdmin}
                 onExportSession={downloadSessionSnapshot}
                 onCopySession={(session) => void copySessionSnapshot(session, setExportMessage)}
               />
@@ -8272,23 +8270,23 @@ function OpenRouterWorkspace({
                   className="secondary-button adaptive-recommended-action"
                   onClick={() => {
                     onCopyBenchmarkFeedbackPrompt(exportProfile, exportSessionFeedback);
-                    setExportStatusMessage(`Copied: Generate next adaptive script · ${exportProfile.inputMode}/${exportProfile.language}`);
+                    setExportStatusMessage(`Copied: Next adaptive script prompt · ${exportProfile.inputMode}/${exportProfile.language}`);
                   }}
                   disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
-                  title={`Copies a ready-to-use prompt package (benchmark + latest session feedback).\n${formatPromptSizeHint(exportPayloads.promptPackage)}`}
+                  title={`Copies a ready-to-use prompt package (benchmark + latest session feedback). This does not generate a session.\n${formatPromptSizeHint(exportPayloads.promptPackage)}`}
                 >
-                  Generate next adaptive script
+                  Copy next adaptive script prompt
                 </button>
                 <button
                   type="button"
                   className="secondary-button compact-button adaptive-recommended-action"
                   onClick={() => {
-                    void copyToClipboard('Generate next adaptive script (compact)', exportPayloads.compactPromptPackage);
+                    void copyToClipboard('Next adaptive script prompt (compact)', exportPayloads.compactPromptPackage);
                   }}
                   disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
-                  title={`Compact version: JSON package (benchmark summary + feedback summary + base prompt).\n${formatPromptSizeHint(exportPayloads.compactPromptPackage)}`}
+                  title={`Compact version: JSON package (benchmark summary + feedback summary + base prompt). This does not generate a session.\n${formatPromptSizeHint(exportPayloads.compactPromptPackage)}`}
                 >
-                  Generate
+                  Copy prompt
                 </button>
                 <button
                   type="button"
@@ -8297,7 +8295,7 @@ function OpenRouterWorkspace({
                   disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
                   title={`Opens a notes editor, then copies JSON payload including your notes.\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
                 >
-                  Generate next script with my notes
+                  Copy prompt with my notes
                 </button>
                 <button
                   type="button"
@@ -8306,30 +8304,30 @@ function OpenRouterWorkspace({
                   disabled={!exportHasBenchmarkData || !exportHasSessionFeedback}
                   title={`Compact version: open notes editor (submit copies compact payload).\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
                 >
-                  Notes
+                  Notes prompt
                 </button>
                 <button
                   type="button"
                   className="secondary-button"
                   onClick={() => {
                     onCopyBenchmarkWithScriptPrompt(exportProfile);
-                    setExportStatusMessage(`Copied: Generate from benchmark only · ${exportProfile.inputMode}/${exportProfile.language}`);
+                    setExportStatusMessage(`Copied: Benchmark-only script prompt · ${exportProfile.inputMode}/${exportProfile.language}`);
                   }}
                   disabled={!exportHasBenchmarkData}
-                  title={`Copies benchmark JSON context + base LLM prompt.\n${formatPromptSizeHint(exportPayloads.benchmarkOnlyPackage)}`}
+                  title={`Copies benchmark JSON context + base LLM prompt. This does not generate a session.\n${formatPromptSizeHint(exportPayloads.benchmarkOnlyPackage)}`}
                 >
-                  Generate from benchmark only
+                  Copy benchmark-only prompt
                 </button>
                 <button
                   type="button"
                   className="secondary-button compact-button"
                   onClick={() => {
-                    void copyToClipboard('Benchmark only (compact)', exportPayloads.compactBenchmark);
+                    void copyToClipboard('Benchmark-only prompt context (compact)', exportPayloads.compactBenchmark);
                   }}
                   disabled={!exportHasBenchmarkData}
                   title={`Compact version: copies benchmark summary only.\n${formatPromptSizeHint(exportPayloads.compactBenchmark)}`}
                 >
-                  Benchmark
+                  Copy benchmark
                 </button>
               </div>
               {!exportHasBenchmarkData ? <p className="hint">No benchmark available for this profile yet.</p> : null}
@@ -8459,7 +8457,7 @@ function OpenRouterWorkspace({
                   onClick={() => {
                     onCopyBenchmarkFeedbackPromptWithHumanFeedback(exportProfile, exportSessionFeedback, humanFeedbackDraft);
                     setExportStatusMessage(
-                      `Copied: Generate next script with my notes · ${exportProfile.inputMode}/${exportProfile.language} · human notes included`,
+                      `Copied: Script prompt with my notes · ${exportProfile.inputMode}/${exportProfile.language} · human notes included`,
                     );
                     setHumanFeedbackEditorOpen(false);
                     setHumanFeedbackDraft('');
@@ -8685,6 +8683,7 @@ function AdminWorkspace({
   onCopyLocalStorage,
   onExportLocalStorage,
   onImportLocalStorage,
+  onCreateManualInput1Session,
   onExportSession,
   onCopySession,
 }: {
@@ -8700,16 +8699,25 @@ function AdminWorkspace({
   onCopyLocalStorage: () => void;
   onExportLocalStorage: () => void;
   onImportLocalStorage: (rawJson: string) => void;
+  onCreateManualInput1Session: (name: string) => void;
   onExportSession: (session: StoredSession) => void;
   onCopySession: (session: StoredSession) => void;
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [manualInput1Name, setManualInput1Name] = useState('');
 
   async function onImportFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0] ?? null;
     event.target.value = '';
     if (!file) return;
     onImportLocalStorage(await file.text());
+  }
+
+  function submitManualInput1Session(): void {
+    const name = manualInput1Name.trim();
+    if (!name) return;
+    onCreateManualInput1Session(name);
+    setManualInput1Name('');
   }
 
   return (
@@ -8760,6 +8768,40 @@ function AdminWorkspace({
       </div>
 
       <div className="admin-grid">
+        <section className="dashboard-card admin-card">
+          <div className="admin-card-header">
+            <div>
+              <h3>Manual Input #1 session</h3>
+              <p>Create an original-audio dictation session. OpenRouter generation stays in Training/OpenRouter.</p>
+            </div>
+          </div>
+          <label>
+            Session name
+            <input
+              value={manualInput1Name}
+              onChange={(event) => setManualInput1Name(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  submitManualInput1Session();
+                }
+              }}
+              placeholder="Original audio practice"
+            />
+          </label>
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={submitManualInput1Session}
+              disabled={manualInput1Name.trim().length === 0}
+            >
+              Create Input #1 session
+            </button>
+          </div>
+          <p className="hint">After creation, load the audio/transcript in the training workspace.</p>
+        </section>
+
         <section className="dashboard-card admin-card">
           <div className="admin-card-header">
             <div>
@@ -9741,23 +9783,23 @@ function AdaptiveBenchmarkWorkspace({
                     className="secondary-button adaptive-recommended-action"
                     onClick={() => {
                       onCopyBenchmarkFeedbackPrompt(profile, sessionFeedback);
-                      setExportStatusMessage(`Copied: Generate next adaptive script · ${profile.inputMode}/${profile.language}`);
+                      setExportStatusMessage(`Copied: Next adaptive script prompt · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasBenchmarkData || !hasSessionFeedback}
-                    title={`Copy a ready-to-use prompt package for generating the next adaptive script (includes benchmark + latest session feedback).\n${formatPromptSizeHint(exportPayloads.promptPackage)}`}
+                    title={`Copy a ready-to-use prompt package for the next adaptive script (includes benchmark + latest session feedback). This does not generate a session.\n${formatPromptSizeHint(exportPayloads.promptPackage)}`}
                   >
-                    Generate next adaptive script
+                    Copy next adaptive script prompt
                   </button>
                   <button
                     type="button"
                     className="secondary-button compact-button adaptive-recommended-action"
                     onClick={() => {
-                      void copyToClipboard('Generate next adaptive script (compact)', exportPayloads.compactPromptPackage);
+                      void copyToClipboard('Next adaptive script prompt (compact)', exportPayloads.compactPromptPackage);
                     }}
                     disabled={!hasBenchmarkData || !hasSessionFeedback}
-                    title={`Compact version: JSON package (benchmark summary + feedback summary + base prompt).\n${formatPromptSizeHint(exportPayloads.compactPromptPackage)}`}
+                    title={`Compact version: JSON package (benchmark summary + feedback summary + base prompt). This does not generate a session.\n${formatPromptSizeHint(exportPayloads.compactPromptPackage)}`}
                   >
-                    Generate
+                    Copy prompt
                   </button>
                   <button
                     type="button"
@@ -9766,7 +9808,7 @@ function AdaptiveBenchmarkWorkspace({
                     disabled={!hasBenchmarkData || !hasSessionFeedback}
                     title={`Add your notes, then copy a prompt package for generating the next script (includes your notes).\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
                   >
-                    Generate next script with my notes
+                    Copy prompt with my notes
                   </button>
                   <button
                     type="button"
@@ -9775,30 +9817,30 @@ function AdaptiveBenchmarkWorkspace({
                     disabled={!hasBenchmarkData || !hasSessionFeedback}
                     title={`Compact version: open notes editor.\n${formatPromptSizeHint(exportPayloads.humanNotesPackage)}`}
                   >
-                    Notes
+                    Notes prompt
                   </button>
                   <button
                     type="button"
                     className="secondary-button"
                     onClick={() => {
                       onCopyBenchmarkWithScriptPrompt(profile);
-                      setExportStatusMessage(`Copied: Generate from benchmark only · ${profile.inputMode}/${profile.language}`);
+                      setExportStatusMessage(`Copied: Benchmark-only script prompt · ${profile.inputMode}/${profile.language}`);
                     }}
                     disabled={!hasBenchmarkData}
-                    title={`Copy a prompt package that uses only benchmark data (no latest session feedback required).\n${formatPromptSizeHint(exportPayloads.benchmarkOnlyPackage)}`}
+                    title={`Copy a prompt package that uses only benchmark data (no latest session feedback required). This does not generate a session.\n${formatPromptSizeHint(exportPayloads.benchmarkOnlyPackage)}`}
                   >
-                    Generate from benchmark only
+                    Copy benchmark-only prompt
                   </button>
                   <button
                     type="button"
                     className="secondary-button compact-button"
                     onClick={() => {
-                      void copyToClipboard('Benchmark only (compact)', exportPayloads.compactBenchmark);
+                      void copyToClipboard('Benchmark-only prompt context (compact)', exportPayloads.compactBenchmark);
                     }}
                     disabled={!hasBenchmarkData}
                     title={`Compact version: copies benchmark summary only.\n${formatPromptSizeHint(exportPayloads.compactBenchmark)}`}
                   >
-                    Benchmark
+                    Copy benchmark
                   </button>
                 </div>
                 {!hasBenchmarkData ? <p className="hint">No benchmark available for this profile yet.</p> : null}
@@ -9927,7 +9969,7 @@ function AdaptiveBenchmarkWorkspace({
                     type="button"
                     onClick={() => {
                       onCopyBenchmarkFeedbackPromptWithHumanFeedback(profile, sessionFeedback, humanFeedbackDraft);
-                      setExportStatusMessage(`Copied: Generate next script with my notes · ${profile.inputMode}/${profile.language} · human notes included`);
+                      setExportStatusMessage(`Copied: Script prompt with my notes · ${profile.inputMode}/${profile.language} · human notes included`);
                       setHumanFeedbackEditorOpen(false);
                       setHumanFeedbackDraft('');
                     }}
