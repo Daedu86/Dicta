@@ -93,8 +93,16 @@ import {
   startCosyVoiceCacheSidecar,
 } from './core/cosyvoiceCacheClient';
 import { buildKokoroSourceWords, type KokoroPhraseChunk } from './core/kokoroPhraseChunking';
-import { KOKORO_GERMAN_WARNING, getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
+import { getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
 import { cloneTelemetry, hasFinalizedAttemptTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
+import {
+  LANGUAGE_LABELS,
+  SUPPORTED_LANGUAGES,
+  formatSupportedLanguage,
+  getDefaultSpeechSynthesisLang,
+  isSupportedLanguage,
+  type SupportedLanguage,
+} from './core/languages';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from './components/LowLatencyTextarea';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { perfDiagnostics } from './core/perfDiagnostics';
@@ -208,8 +216,8 @@ type OpenRouterJobNotification = {
   completedAt?: string;
   error?: string;
 };
-type TtsLanguage = 'en' | 'de' | 'es';
-type TypingLanguage = 'en' | 'de' | 'es';
+type TtsLanguage = SupportedLanguage;
+type TypingLanguage = SupportedLanguage;
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
 type WorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter';
 type ThemeMode = 'light' | 'dark';
@@ -334,7 +342,7 @@ type AdaptiveAdapterCardConfig = {
 
 type AdaptiveBenchmarksByInputLanguage = Record<string, Record<string, InputLanguageBenchmarkMetrics>>;
 type AdaptiveSessionFeedbackByInputLanguage = Record<string, Record<string, AdaptiveSessionFeedback[]>>;
-type BenchmarkLanguageButton = 'en' | 'es' | 'de';
+type BenchmarkLanguageButton = SupportedLanguage;
 type RepeatWordStat = { word: string; total: number; missed: number; typos: number };
 
 function stripJsonFence(value: string): string {
@@ -2431,7 +2439,7 @@ function App() {
     if (language === 'es') {
       return 'es-virtual';
     }
-    if (language === 'en' || language === 'de') {
+    if (language === 'en' || language === 'de' || language === 'fr') {
       return 'de-keyboard';
     }
     return null;
@@ -2445,8 +2453,7 @@ function App() {
     }
     const inputMode = mapSessionInputMode(activeSession.inputMode);
     const languageCandidate = resolveStoredSessionLanguage(activeSession);
-    const language: BenchmarkLanguageButton =
-      languageCandidate === 'en' || languageCandidate === 'es' || languageCandidate === 'de' ? languageCandidate : 'en';
+    const language: BenchmarkLanguageButton = isSupportedLanguage(languageCandidate) ? languageCandidate : 'en';
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     setBenchmarkExportMessage('');
@@ -2479,8 +2486,7 @@ function App() {
     const model = openRouterDefaultModel.trim();
     const inputMode = mapSessionInputMode(activeSession.inputMode);
     const languageCandidate = resolveStoredSessionLanguage(activeSession);
-    const language: BenchmarkLanguageButton =
-      languageCandidate === 'en' || languageCandidate === 'es' || languageCandidate === 'de' ? languageCandidate : 'en';
+    const language: BenchmarkLanguageButton = isSupportedLanguage(languageCandidate) ? languageCandidate : 'en';
 
     if (!model) {
       setOpenRouterError('Set a default OpenRouter model before generating the next session.');
@@ -2633,8 +2639,7 @@ function App() {
     if (!activeSession) return;
     const inputMode = mapSessionInputMode(activeSession.inputMode);
     const languageCandidate = resolveStoredSessionLanguage(activeSession);
-    const language: BenchmarkLanguageButton =
-      languageCandidate === 'en' || languageCandidate === 'es' || languageCandidate === 'de' ? languageCandidate : 'en';
+    const language: BenchmarkLanguageButton = isSupportedLanguage(languageCandidate) ? languageCandidate : 'en';
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     setBenchmarkExportMessage('');
@@ -4436,7 +4441,7 @@ function App() {
       return;
     }
     if (isKokoroLanguageBlocked(kokoroLanguage)) {
-      setError(KOKORO_GERMAN_WARNING);
+      setError(getKokoroLanguageWarning(kokoroLanguage));
       return;
     }
 
@@ -4471,7 +4476,7 @@ function App() {
       setKokoroStatus(kokoroText.trim() ? 'ready' : 'idle');
       setRunning(false);
       setSessionStatus((current) => (current === 'finished' ? current : 'ready'));
-      setError(KOKORO_GERMAN_WARNING);
+      setError(getKokoroLanguageWarning(kokoroLanguage));
       return;
     }
     if (currentPhraseIndex >= semanticPhrases.length || wordIndex >= sourceWords.length) {
@@ -5153,7 +5158,7 @@ function App() {
               { label: 'Source', value: kokoroHasText ? `${kokoroTranscript?.words.length ?? 0} words` : 'Not set' },
               { label: 'Text length', value: kokoroHasText ? `${kokoroText.length} chars` : 'Not set' },
               { label: 'Language', value: kokoroLanguage ?? 'Not set' },
-              { label: 'Native support', value: kokoroLanguage === 'de' ? 'Experimental / not native' : 'Native' },
+              { label: 'Native support', value: isKokoroLanguageBlocked(kokoroLanguage) ? 'Experimental / not native' : 'Native' },
               { label: 'Voice', value: kokoroVoice.trim() || 'default' },
               { label: 'Service', value: kokoroServiceReady === false ? 'Offline' : kokoroServiceReady ? 'Ready' : 'Not checked' },
             ];
@@ -5722,9 +5727,9 @@ function App() {
                       <label>
                         Transcription language
                         <select value={transcriptionLanguage} disabled={setupLocked} onChange={(e) => setTranscriptionLanguage(e.target.value as TtsLanguage)}>
-                          <option value="de">de</option>
-                          <option value="en">en</option>
-                          <option value="es">es</option>
+                          {SUPPORTED_LANGUAGES.map((language) => (
+                            <option key={language} value={language}>{language}</option>
+                          ))}
                         </select>
                         <button type="button" onClick={() => void generateTranscriptFromAudio()} disabled={!canGenerateTranscript || transcribing || setupLocked}>
                           {transcribing ? 'Generating transcription...' : 'Get transcription'}
@@ -5795,9 +5800,9 @@ function App() {
                     <label>
                       TTS processing language
                       <select value={ttsLanguage} disabled={setupLocked} onChange={(e) => setTtsLanguage(e.target.value as TtsLanguage)}>
-                        <option value="en">en</option>
-                        <option value="de">de</option>
-                        <option value="es">es</option>
+                        {SUPPORTED_LANGUAGES.map((language) => (
+                          <option key={language} value={language}>{language}</option>
+                        ))}
                       </select>
                     </label>
                     <div className={`tts-visor ${ttsHasText ? 'tts-visor-ready' : ''}`} aria-live="polite">
@@ -5866,9 +5871,9 @@ function App() {
                     <label>
                       CosyVoice2 language
                       <select value={ttsLanguage} disabled={setupLocked} onChange={(e) => setTtsLanguage(e.target.value as TtsLanguage)}>
-                        <option value="en">en</option>
-                        <option value="de">de</option>
-                        <option value="es">es</option>
+                        {SUPPORTED_LANGUAGES.map((language) => (
+                          <option key={language} value={language}>{language}</option>
+                        ))}
                       </select>
                     </label>
                     <div className={`tts-visor ${ttsHasText ? 'tts-visor-ready' : ''}`} aria-live="polite">
@@ -6024,6 +6029,7 @@ function App() {
                         <option value="en">English</option>
                         <option value="es">Spanish</option>
                         <option value="de">German (experimental / not native)</option>
+                        <option value="fr">French (experimental / not native)</option>
                       </select>
                     </label>
                     <label>
@@ -7042,18 +7048,14 @@ function App() {
                     ) : null}
                   </div>
                   <div className="live-metrics-language-tabs leaderboard-language-tabs" role="tablist" aria-label="Leaderboard language">
-                    {([
-                      ['en', 'Leaderboard for English'],
-                      ['es', 'Leaderboard for Spanish'],
-                      ['de', 'Leaderboard for German'],
-                    ] as const).map(([code, label]) => (
+                    {SUPPORTED_LANGUAGES.map((code) => (
                       <button
                         key={code}
                         type="button"
                         className={`live-metrics-language-tab ${leaderboardLanguageView === code ? 'live-metrics-language-tab-active' : ''}`}
                         onClick={() => setLeaderboardLanguageView(code)}
                         aria-pressed={leaderboardLanguageView === code}
-                        title={label}
+                        title={`Leaderboard for ${LANGUAGE_LABELS[code]}`}
                       >
                         {code.toUpperCase()}
                       </button>
@@ -7306,18 +7308,14 @@ function App() {
             <div className="metrics-header bottom-metrics-header live-metrics-section live-metrics-section-header">
               <h2>Insights</h2>
               <div className="live-metrics-language-tabs" role="tablist" aria-label="Live metrics language">
-                {([
-                  ['en', 'Live Metrics for English'],
-                  ['es', 'Live Metrics for Spanish'],
-                  ['de', 'Live Metrics for German'],
-                ] as const).map(([code, label]) => (
+                {SUPPORTED_LANGUAGES.map((code) => (
                   <button
                     key={code}
                     type="button"
                     className={`live-metrics-language-tab ${metricsLanguageView === code ? 'live-metrics-language-tab-active' : ''}`}
                     onClick={() => setMetricsLanguageView(code)}
                     aria-pressed={metricsLanguageView === code}
-                    title={label}
+                    title={`Live Metrics for ${LANGUAGE_LABELS[code]}`}
                   >
                     {code.toUpperCase()}
                   </button>
@@ -7939,8 +7937,7 @@ function OpenRouterWorkspace({
 
   const exportHasBenchmarkData = exportProfile.sampleCount > 0 || exportProfile.sessionCount > 0;
   const exportHasSessionFeedback = Boolean(exportSessionFeedback);
-  const exportLanguage: BenchmarkLanguageButton =
-    exportProfile.language === 'en' || exportProfile.language === 'es' || exportProfile.language === 'de' ? exportProfile.language : 'en';
+  const exportLanguage: BenchmarkLanguageButton = isSupportedLanguage(exportProfile.language) ? exportProfile.language : 'en';
   const profileInputModeOptions: Array<{ value: InputMode; label: string; description: string }> = [
     { value: 'audio', label: 'Input #1', description: 'Audio' },
     { value: 'browser-tts', label: 'Input #2', description: 'Browser TTS' },
@@ -7950,11 +7947,10 @@ function OpenRouterWorkspace({
   const generateInputModeOptions = LOCAL_DEV_FEATURES_AVAILABLE
     ? profileInputModeOptions
     : profileInputModeOptions.filter((option) => option.value === 'browser-tts');
-  const profileLanguageOptions: Array<{ value: BenchmarkLanguageButton; label: string }> = [
-    { value: 'es', label: 'ES' },
-    { value: 'en', label: 'EN' },
-    { value: 'de', label: 'DE' },
-  ];
+  const profileLanguageOptions: Array<{ value: BenchmarkLanguageButton; label: string }> = SUPPORTED_LANGUAGES.map((language) => ({
+    value: language,
+    label: language.toUpperCase(),
+  }));
   const generatePromptSourceOptions: Array<{ value: OpenRouterGeneratePromptSource; label: string; description: string }> = [
     { value: 'compact-adaptive-v2', label: 'Compact adaptive v2', description: 'Reduced-duplication benchmark + feedback prompt.' },
     { value: 'compact-adaptive', label: 'Compact adaptive', description: 'Compact benchmark + compact feedback when available.' },
@@ -8814,18 +8810,14 @@ function AdminWorkspace({
           <h2>Admin</h2>
           <p className="dashboard-meta">Read-only project storage, session, transcript, and telemetry overview.</p>
           <div className="live-metrics-language-tabs admin-language-tabs" role="tablist" aria-label="Admin language">
-            {([
-              ['en', 'Admin view for English sessions'],
-              ['es', 'Admin view for Spanish sessions'],
-              ['de', 'Admin view for German sessions'],
-            ] as const).map(([code, label]) => (
+            {SUPPORTED_LANGUAGES.map((code) => (
               <button
                 key={code}
                 type="button"
                 className={`live-metrics-language-tab ${languageView === code ? 'live-metrics-language-tab-active' : ''}`}
                 onClick={() => onChangeLanguage(code)}
                 aria-pressed={languageView === code}
-                title={label}
+                title={`Admin view for ${LANGUAGE_LABELS[code]} sessions`}
               >
                 {code.toUpperCase()}
               </button>
@@ -9382,7 +9374,7 @@ function AdaptiveBenchmarkSection({
         <>
           <div className="adaptive-section-header adaptive-subsection-header">
             <div>
-              <p className="dashboard-eyebrow">4 inputs x 3 languages</p>
+              <p className="dashboard-eyebrow">4 inputs x 4 languages</p>
               <h4>Profile matrix</h4>
             </div>
             <button
@@ -9470,7 +9462,7 @@ function AdaptiveProfileMatrix({
   selectedLanguage: BenchmarkLanguageButton;
   onSelect: (inputMode: InputMode, language: BenchmarkLanguageButton) => void;
 }) {
-  const languages: BenchmarkLanguageButton[] = ['en', 'es', 'de'];
+  const languages: BenchmarkLanguageButton[] = [...SUPPORTED_LANGUAGES];
   return (
     <div className="adaptive-profile-matrix" aria-label="Benchmark profile matrix">
       <div className="adaptive-profile-matrix-header" aria-hidden="true">
@@ -9737,7 +9729,9 @@ function AdaptiveBenchmarkWorkspace({
               <h3>{inputTitle} / {languageLabel}</h3>
               <p className="dashboard-meta">
                 Profile key: {profile.inputMode}/{profile.language}
-                {profile.inputMode === 'kokoro' && profile.language === 'de' ? ' · Kokoro German is non-native/blocked by default.' : ''}
+                {profile.inputMode === 'kokoro' && isSupportedLanguage(profile.language) && isKokoroLanguageBlocked(profile.language)
+                  ? ` · Kokoro ${formatSupportedLanguage(profile.language)} is non-native/blocked by default.`
+                  : ''}
               </p>
             </div>
           </div>
@@ -10721,7 +10715,7 @@ function loadPersistedDictaLanguageView(): MetricsLanguageView {
   const keys = [LEADERBOARD_LANGUAGE_KEY, LIVE_METRICS_LANGUAGE_KEY, ADMIN_LANGUAGE_KEY];
   for (const key of keys) {
     const saved = window.localStorage.getItem(key);
-    if (saved === 'en' || saved === 'es' || saved === 'de') {
+    if (isSupportedLanguage(saved)) {
       return saved;
     }
   }
@@ -10863,7 +10857,7 @@ function isAdaptiveInputMode(value: unknown): value is InputMode {
 }
 
 function isBenchmarkLanguageButton(value: unknown): value is BenchmarkLanguageButton {
-  return value === 'en' || value === 'es' || value === 'de';
+  return isSupportedLanguage(value);
 }
 
 function downloadDictaLocalStorage(): void {
@@ -10941,16 +10935,13 @@ function formatSessionGenerationOrigin(origin: GenerationOrigin): string {
 function benchmarkSubtitle(inputMode: InputMode): string {
   if (inputMode === 'audio') return 'Real-world uploaded or recorded audio with transcript alignment.';
   if (inputMode === 'browser-tts') return 'Browser or OS voice baseline and fallback execution.';
-  if (inputMode === 'kokoro') return 'Local model execution with native EN/ES support.';
+  if (inputMode === 'kokoro') return 'Local model execution with native EN/ES support and experimental DE/FR entries.';
   return 'Cached semantic chunks with browser fallback.';
 }
 
 function formatBenchmarkLanguage(language: LanguageCode): string {
-  if (language === 'en') return 'English';
-  if (language === 'es') return 'Spanish';
-  if (language === 'de') return 'German';
   if (language === 'unknown') return 'Unknown language';
-  return String(language).toUpperCase();
+  return formatSupportedLanguage(language);
 }
 
 function formatScore(value: number): string {
@@ -11551,7 +11542,7 @@ function buildFallbackDictationScriptTitle(script: DictationScript): string {
     return truncateTitle(titleWords.join(' '));
   }
 
-  const language = script.language === 'de' ? 'German' : script.language === 'es' ? 'Spanish' : script.language === 'en' ? 'English' : String(script.language).toUpperCase();
+  const language = formatSupportedLanguage(script.language);
   return `${language} ${String(script.inputMode)} practice`;
 }
 
@@ -11575,7 +11566,7 @@ function getWorkspaceModeForSessionInput(inputMode: SessionInputMode): Workspace
 }
 
 function scriptLanguageToTtsLanguage(language: string): TtsLanguage {
-  if (language === 'en' || language === 'de' || language === 'es') return language;
+  if (isSupportedLanguage(language)) return language;
   return 'en';
 }
 
@@ -11641,19 +11632,15 @@ function loadSessions(): StoredSession[] {
         audioUrl: session.audioUrl ?? '',
         audioSourceUrlInput: session.audioSourceUrlInput ?? '',
         audioLabel: session.audioLabel ?? '',
-        transcriptionLanguage:
-          session.transcriptionLanguage === 'en' || session.transcriptionLanguage === 'de' || session.transcriptionLanguage === 'es'
-            ? session.transcriptionLanguage
-            : null,
+        transcriptionLanguage: isSupportedLanguage(session.transcriptionLanguage) ? session.transcriptionLanguage : null,
         transcript: session.transcript ?? null,
         inputText: session.inputText ?? '',
         ttsText: session.ttsText ?? '',
-        ttsLanguage: session.ttsLanguage === 'en' || session.ttsLanguage === 'de' || session.ttsLanguage === 'es' ? session.ttsLanguage : null,
+        ttsLanguage: isSupportedLanguage(session.ttsLanguage) ? session.ttsLanguage : null,
         ttsVoiceURI: inputMode === 'input2' && typeof session.ttsVoiceURI === 'string' ? session.ttsVoiceURI : null,
         ttsPracticeText: session.ttsPracticeText ?? '',
         kokoroText: session.kokoroText ?? '',
-        kokoroLanguage:
-          session.kokoroLanguage === 'en' || session.kokoroLanguage === 'de' || session.kokoroLanguage === 'es' ? session.kokoroLanguage : null,
+        kokoroLanguage: isSupportedLanguage(session.kokoroLanguage) ? session.kokoroLanguage : null,
         kokoroVoice: session.kokoroVoice ?? 'default',
         kokoroPracticeText: session.kokoroPracticeText ?? '',
         kokoroChunks: session.kokoroChunks ?? [],
@@ -12639,9 +12626,7 @@ function buildRepeatWordStats({
 }
 
 function getTtsVoiceLang(language: TtsLanguage): string {
-  if (language === 'en') return 'en-US';
-  if (language === 'es') return 'es-ES';
-  return 'de-DE';
+  return getDefaultSpeechSynthesisLang(language);
 }
 
 function seededUnitInterval(seed: string): () => number {

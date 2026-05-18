@@ -1,5 +1,6 @@
 import type { DictationScriptDifficulty } from './adaptive/dictationScriptValidation';
 import type { InputMode, LanguageCode } from './adaptive/types';
+import { isSupportedLanguage } from './languages';
 
 export const OPENROUTER_ACTIVE_JOB_STORAGE_KEY = 'dicta.openrouterActiveJob.v1';
 export const OPENROUTER_ACTIVE_JOBS_STORAGE_KEY = 'dicta.openrouterActiveJobs.v1';
@@ -175,7 +176,7 @@ function isInputMode(value: string): value is InputMode {
 }
 
 function isLanguage(value: string): value is LanguageCode {
-  return value === 'en' || value === 'es' || value === 'de';
+  return isSupportedLanguage(value);
 }
 
 function isDuration(value: number): value is 2 | 3 | 4 {

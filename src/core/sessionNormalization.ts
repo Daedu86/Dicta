@@ -1,9 +1,10 @@
 import type { SessionTelemetry } from '../types/dictation';
 import { getKokoroProcessedLanguage, isKokoroNativeLanguage } from './kokoroSupport';
+import { isSupportedLanguage, type SupportedLanguage } from './languages';
 
 export type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
-export type Input1Language = 'en' | 'de' | 'es';
-export type Input2Language = 'en' | 'de' | 'es';
+export type Input1Language = SupportedLanguage;
+export type Input2Language = SupportedLanguage;
 
 export type SessionLanguageFields = {
   inputMode: SessionInputMode;
@@ -47,11 +48,11 @@ function isInputMode(value: unknown): value is SessionInputMode {
 }
 
 function isInput1Language(value: unknown): value is Input1Language {
-  return value === 'en' || value === 'de' || value === 'es';
+  return isSupportedLanguage(value);
 }
 
 function isInput2Language(value: unknown): value is Input2Language {
-  return value === 'en' || value === 'de' || value === 'es';
+  return isSupportedLanguage(value);
 }
 
 function numberOr(value: unknown, fallback: number): number {

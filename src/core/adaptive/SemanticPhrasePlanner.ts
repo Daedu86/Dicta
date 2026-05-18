@@ -25,16 +25,20 @@ export interface SemanticPhrasePlaybackState {
 
 const SENTENCE_END_RE = /[.!?]["')\]]*$/;
 const CLAUSE_END_RE = /[,;:]["')\]]*$|--$|[–—]$/;
-const DISCOURSE_MARKERS: Record<string, string[]> = {
+type PlannerLanguage = 'en' | 'es' | 'de' | 'fr';
+
+const DISCOURSE_MARKERS: Record<PlannerLanguage, string[]> = {
   en: ['and', 'but', 'because', 'however', 'therefore', 'then', 'so', 'while'],
   es: ['y', 'pero', 'porque', 'sin', 'embargo', 'entonces', 'asi', 'ademas', 'aunque'],
   de: ['und', 'aber', 'weil', 'doch', 'dann', 'deshalb', 'wahrend', 'obwohl'],
+  fr: ['et', 'mais', 'parce', 'que', 'cependant', 'donc', 'alors', 'pendant', 'bien', 'que', 'quoique'],
 };
 
-const UNSAFE_WORDS: Record<string, string[]> = {
+const UNSAFE_WORDS: Record<PlannerLanguage, string[]> = {
   en: ['a', 'an', 'the', 'to', 'of', 'in', 'on', 'at', 'for', 'with', 'is', 'are', 'was', 'were', 'be', 'been', 'being'],
   es: ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'al', 'a', 'en', 'con', 'por', 'para', 'es', 'son', 'ser', 'estar', 'se'],
   de: ['der', 'die', 'das', 'ein', 'eine', 'zu', 'mit', 'von', 'im', 'am', 'ist', 'sind', 'war', 'sein', 'haben'],
+  fr: ['le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'au', 'aux', 'a', 'en', 'avec', 'pour', 'par', 'est', 'sont', 'etre', 'se'],
 };
 
 const WORD_WEIGHTS = {
@@ -43,8 +47,8 @@ const WORD_WEIGHTS = {
   syntax: 0.5,
 };
 
-function normalizeLanguage(language?: string): 'en' | 'es' | 'de' {
-  if (language === 'es' || language === 'de') return language;
+function normalizeLanguage(language?: string): PlannerLanguage {
+  if (language === 'es' || language === 'de' || language === 'fr') return language;
   return 'en';
 }
 
@@ -58,7 +62,7 @@ function makeBoundaryType(word: string): PhraseBoundaryType {
   return 'minor';
 }
 
-function isUnsafePair(leftWord: string, rightWord: string, language: 'en' | 'es' | 'de'): boolean {
+function isUnsafePair(leftWord: string, rightWord: string, language: PlannerLanguage): boolean {
   if (!leftWord || !rightWord) return false;
   const unsafe = UNSAFE_WORDS[language];
   if (unsafe.includes(leftWord)) return true;
@@ -68,10 +72,13 @@ function isUnsafePair(leftWord: string, rightWord: string, language: 'en' | 'es'
   if (language === 'es' && /^(me|te|se|lo|la|le|nos|os|los|las|les)$/.test(leftWord)) {
     return true;
   }
+  if (language === 'fr' && /^(me|te|se|nous|vous|le|la|les|l|ne|n)$/.test(leftWord)) {
+    return true;
+  }
   return false;
 }
 
-function scorePhrase(words: string[], language: 'en' | 'es' | 'de', boundaryType: PhraseBoundaryType): Omit<SemanticPhrase, 'id' | 'text' | 'language' | 'canPauseAfter' | 'canReplayIndependently'> {
+function scorePhrase(words: string[], language: PlannerLanguage, boundaryType: PhraseBoundaryType): Omit<SemanticPhrase, 'id' | 'text' | 'language' | 'canPauseAfter' | 'canReplayIndependently'> {
   const cleanWords = words.map(normalizeWord).filter(Boolean);
   const wordCount = cleanWords.length;
   const text = words.join(' ');

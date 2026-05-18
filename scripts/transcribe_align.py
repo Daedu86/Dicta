@@ -67,7 +67,7 @@ def main() -> None:
     parser.add_argument('--audio', required=True, help='Input audio file path')
     parser.add_argument('--output', required=True, help='Output transcript JSON path')
     parser.add_argument('--model', default='small', help='Whisper model size (tiny/base/small/medium/large-v3)')
-    parser.add_argument('--language', default='en', help='Language code for transcription/alignment, e.g. en, de')
+    parser.add_argument('--language', default='en', help='Language code for transcription/alignment, e.g. en, es, de, fr')
     parser.add_argument('--dry-run', action='store_true', help='Skip WhisperX and emit fixture transcript for smoke tests')
     args = parser.parse_args()
 

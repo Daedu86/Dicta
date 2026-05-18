@@ -301,9 +301,11 @@ describe('SemanticPhrasePlanner heuristics', () => {
     const en = planSemanticPhrases('We start slowly, then we speed up. Finally we review.', 'en', 'medium');
     const es = planSemanticPhrases('Primero escuchamos, luego escribimos. Al final revisamos.', 'es', 'medium');
     const de = planSemanticPhrases('Zuerst horen wir zu, dann schreiben wir. Danach prufen wir.', 'de', 'medium');
+    const fr = planSemanticPhrases('D abord nous ecoutons, puis nous ecrivons. Ensuite nous relisons.', 'fr', 'medium');
     expect(en.some((item) => item.boundaryType === 'sentence' || item.boundaryType === 'clause')).toBe(true);
     expect(es.some((item) => item.boundaryType === 'sentence' || item.boundaryType === 'clause')).toBe(true);
     expect(de.some((item) => item.boundaryType === 'sentence' || item.boundaryType === 'clause')).toBe(true);
+    expect(fr.some((item) => item.language === 'fr' && (item.boundaryType === 'sentence' || item.boundaryType === 'clause'))).toBe(true);
   });
 
   it('avoids unsafe determiner+noun split when obvious', () => {

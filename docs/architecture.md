@@ -282,7 +282,7 @@ The transcription API exists only inside the Vite development server plugin in `
 
 1. The frontend posts either an uploaded audio file encoded as base64 or a remote audio URL.
 2. The Vite middleware writes the audio to a temporary local file.
-3. The middleware runs `python scripts/transcribe_align.py --audio <temp-audio> --output <temp-json> --language <en|de>`.
+3. The middleware runs `python scripts/transcribe_align.py --audio <temp-audio> --output <temp-json> --language <en|es|de|fr>`.
 4. The Python script runs WhisperX, validates the transcript shape, and writes JSON.
 5. The middleware reads the JSON, deletes temporary files, and returns the transcript to the frontend.
 

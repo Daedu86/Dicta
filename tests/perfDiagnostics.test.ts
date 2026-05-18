@@ -65,6 +65,11 @@ describe('perf diagnostics', () => {
     diagnostics.recordInputCommit(inputId, 170);
     diagnostics.recordLongTask({ name: 'self', startTime: 10, duration: 88 });
     diagnostics.recordRender('TrainingView', 4);
+    diagnostics.recordTtsVoices([
+      { lang: 'en-US', name: 'English', voiceURI: 'en', default: false, localService: true },
+      { lang: 'fr-FR', name: 'French France', voiceURI: 'fr-fr', default: false, localService: true },
+      { lang: 'fr-CA', name: 'French Canada', voiceURI: 'fr-ca', default: false, localService: true },
+    ]);
 
     vi.spyOn(performance, 'now')
       .mockReturnValueOnce(200)
@@ -83,5 +88,6 @@ describe('perf diagnostics', () => {
     expect(snapshot.renders.TrainingView).toBe(4);
     expect(snapshot.slowSpans.count).toBe(1);
     expect(snapshot.slowSpans.latest?.name).toBe('slow-work');
+    expect(snapshot.tts.voiceCounts).toMatchObject({ total: 3, en: 1, fr: 2 });
   });
 });

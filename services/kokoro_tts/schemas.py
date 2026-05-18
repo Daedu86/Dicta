@@ -10,7 +10,7 @@ ProcessedLanguage = Literal["en", "es"]
 class TtsChunkRequest(BaseModel):
     text: str = Field(min_length=1, max_length=600)
     voice: str = Field(default="default", min_length=1, max_length=80)
-    language: str = Field(default="en", pattern="^(en|de|es)$")
+    language: str = Field(default="en", pattern="^(en|de|es|fr)$")
     baseSpeed: float = Field(default=1.0, ge=0.5, le=1.5)
 
 

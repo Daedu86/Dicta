@@ -1,10 +1,12 @@
+import type { SupportedLanguage } from '../../core/languages';
+
 export type BrowserTtsVoiceLike = {
   lang: string;
   voiceURI: string;
   name?: string;
 };
 
-export type BrowserTtsLanguage = 'en' | 'de' | 'es';
+export type BrowserTtsLanguage = SupportedLanguage;
 export type BrowserTtsSessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 
 export type BrowserTtsVoiceResolution<TVoice extends BrowserTtsVoiceLike> = {

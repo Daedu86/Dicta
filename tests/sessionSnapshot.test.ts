@@ -39,6 +39,20 @@ describe('Session modeData schema', () => {
     });
   });
 
+  it('input2 French export preserves fr language in modeData', () => {
+    const modeData = normalizeSessionModeData({
+      inputMode: 'input2',
+      ttsLanguage: 'fr',
+      ttsText: 'bonjour tout le monde',
+    });
+
+    expect(modeData).toEqual({
+      input1: null,
+      input2: { type: 'builtInTts', language: 'fr', textLength: 21 },
+      input3: null,
+    });
+  });
+
   it('input3 creates only modeData.input3', () => {
     const modeData = normalizeSessionModeData({
       inputMode: 'input3',

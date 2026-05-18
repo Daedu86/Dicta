@@ -4,6 +4,7 @@ import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './dict
 import { buildBenchmarkFeedbackPromptPackage } from './sessionFeedback';
 import { normalizeInputLanguageBenchmarkForRecommendation } from './AdaptiveInputLanguageBenchmarkService';
 import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics } from './types';
+import { formatSupportedLanguage } from '../languages';
 
 export type OpenRouterGeneratePromptSource =
   | 'compact-adaptive'
@@ -191,14 +192,7 @@ export function buildOpenRouterGenerationPrompt({
     'Output template:',
     outputTemplate,
   ].join('\n');
-  const languageName =
-    normalizedProfile.language === 'de'
-      ? 'German'
-      : normalizedProfile.language === 'es'
-        ? 'Spanish'
-        : normalizedProfile.language === 'en'
-          ? 'English'
-          : String(normalizedProfile.language);
+  const languageName = formatSupportedLanguage(normalizedProfile.language);
   const compactAdaptiveV2Prompt = [
     'Generate the next Dicta dictation training session.',
     'Return only valid JSON. Do not use Markdown or code fences.',

@@ -95,6 +95,7 @@ export type PerfDiagnosticsSnapshot = {
   tts: {
     latest?: PerfTtsUtterance;
     voices: PerfTtsVoice[];
+    voiceCounts: Record<'total' | 'en' | 'es' | 'de' | 'fr', number>;
   };
   renders: Record<string, number>;
   heap: {
@@ -398,6 +399,7 @@ export class PerfDiagnostics {
       tts: {
         latest: latestTts,
         voices: [...this.ttsVoices],
+        voiceCounts: summarizeVoiceCounts(this.ttsVoices),
       },
       renders: { ...this.renderCounts },
       heap: getHeapSnapshot(),
@@ -489,4 +491,16 @@ function getUserAgent(): string {
 function getStandaloneMode(): boolean {
   if (typeof window === 'undefined') return false;
   return window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
+function summarizeVoiceCounts(voices: PerfTtsVoice[]): Record<'total' | 'en' | 'es' | 'de' | 'fr', number> {
+  const countPrefix = (prefix: string): number =>
+    voices.filter((voice) => voice.lang.toLowerCase().startsWith(prefix)).length;
+  return {
+    total: voices.length,
+    en: countPrefix('en'),
+    es: countPrefix('es'),
+    de: countPrefix('de'),
+    fr: countPrefix('fr'),
+  };
 }

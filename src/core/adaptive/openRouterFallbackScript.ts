@@ -1,5 +1,6 @@
 import type { DictationScript, DictationScriptDifficulty, DictationScriptIntonationHint } from './dictationScriptValidation';
 import type { InputMode, LanguageCode, PhraseBoundaryType, PhraseSize } from './types';
+import { formatSupportedLanguage } from '../languages';
 
 type FallbackScriptOptions = {
   inputMode: InputMode;
@@ -42,6 +43,16 @@ const FALLBACK_PHRASES: Record<LanguageCode, string[]> = {
     'Una transcripcion fiable necesita paciencia, puntuacion y atencion constante.',
     'Al final, revisa nombres, numeros y los verbos mas importantes otra vez.',
   ],
+  fr: [
+    'Cette seance utilise des phrases claires, un rythme stable et des pauses courtes.',
+    'Concentre-toi d abord sur la precision, puis augmente la vitesse peu a peu.',
+    'Apres chaque phrase, verifie les mots avant de continuer.',
+    'Si une phrase semble difficile, fais une pause et repete toute l idee.',
+    'Le rapport du matin presente les plans, les notes et les priorites du jour.',
+    'Pendant la reunion, l equipe compare les options et note les prochaines actions.',
+    'Une transcription fiable demande de la patience, de la ponctuation et une attention constante.',
+    'A la fin, revise les noms, les nombres et les verbes les plus importants.',
+  ],
 };
 
 const HARD_FALLBACK_PHRASES: Record<LanguageCode, string[]> = {
@@ -62,6 +73,12 @@ const HARD_FALLBACK_PHRASES: Record<LanguageCode, string[]> = {
     'El analisis compara varias propuestas antes de formular un compromiso practico.',
     'Las frases largas, los cambios de enfasis y los terminos tecnicos aumentan la dificultad.',
     'La nota final separa causas, consecuencias y proximos pasos concretos para el equipo.',
+  ],
+  fr: [
+    'Bien que le calendrier reste serre, les decisions principales doivent etre documentees avec precision.',
+    'L analyse compare plusieurs propositions avant de formuler un compromis vraiment praticable.',
+    'Les longues propositions, les changements d accent et les termes techniques rendent l exercice plus exigeant.',
+    'La note finale separe les causes, les consequences et les prochaines etapes concretes pour l equipe.',
   ],
 };
 
@@ -131,7 +148,7 @@ export function isTransientGenerationErrorSessionLike(value: unknown): boolean {
 }
 
 function buildFallbackTitle(language: LanguageCode, durationMinutes: number, difficulty: DictationScriptDifficulty): string {
-  const languageName = language === 'de' ? 'German' : language === 'es' ? 'Spanish' : 'English';
+  const languageName = formatSupportedLanguage(language);
   const level = difficulty === 'hard' ? 'advanced' : difficulty === 'easy' ? 'easy' : 'steady';
   return `Local ${languageName} ${level} practice (${durationMinutes} min)`;
 }
@@ -161,6 +178,8 @@ function buildTopicSuffix(language: LanguageCode, seed: number): string {
       ? ['Cafe', 'Projektplanung', 'Alltag', 'Reise', 'Teammeeting', 'Markt']
       : language === 'es'
         ? ['cafe', 'planificacion', 'rutina', 'viaje', 'reunion', 'mercado']
+        : language === 'fr'
+          ? ['cafe', 'planification', 'routine', 'voyage', 'reunion', 'marche']
         : ['cafe', 'planning', 'daily flow', 'travel', 'meeting', 'market'];
   return topics[seed % topics.length];
 }

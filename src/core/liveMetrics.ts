@@ -1,12 +1,14 @@
-export type MetricsLanguageView = 'en' | 'es' | 'de';
+import type { SupportedLanguage } from './languages';
+
+export type MetricsLanguageView = SupportedLanguage;
 export type MetricsRangeView = 'today' | 'week' | 'twoWeeks' | 'threeWeeks' | 'month';
 export type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 
 export type SessionLanguageLike = {
   inputMode: SessionInputMode;
-  transcriptionLanguage?: 'en' | 'de' | 'es' | null;
-  ttsLanguage?: 'en' | 'de' | 'es' | null;
-  kokoroLanguage?: 'en' | 'de' | 'es' | null;
+  transcriptionLanguage?: SupportedLanguage | null;
+  ttsLanguage?: SupportedLanguage | null;
+  kokoroLanguage?: SupportedLanguage | null;
 };
 
 export type SessionForMetrics = SessionLanguageLike & {

@@ -19,6 +19,7 @@ export function PerfDiagnosticsOverlay({ enabled }: { enabled: boolean }) {
   const latestTts = snapshot.tts.latest;
   const heapMb = snapshot.heap.usedJSHeapSize ? `${(snapshot.heap.usedJSHeapSize / 1024 / 1024).toFixed(1)} MB` : 'n/a';
   const latestVoice = latestTts?.voiceName || latestTts?.voiceURI || (latestTts?.voiceResolved === false ? 'unresolved' : 'n/a');
+  const frenchVoices = snapshot.tts.voices.filter((voice) => voice.lang.toLowerCase().startsWith('fr')).slice(0, 3);
 
   return (
     <aside className={`perf-overlay ${expanded ? 'perf-overlay-expanded' : ''}`} aria-label="Performance diagnostics">
@@ -35,6 +36,8 @@ export function PerfDiagnosticsOverlay({ enabled }: { enabled: boolean }) {
           <div><span>TTS chunk</span><strong>{latestTts?.startToEndMs === undefined ? 'n/a' : `${latestTts.startToEndMs.toFixed(0)}ms`}</strong></div>
           <div><span>TTS voice</span><strong>{latestVoice}</strong></div>
           <div><span>TTS voices</span><strong>{latestTts ? `${latestTts.matchingVoiceCount ?? 0}/${latestTts.availableVoiceCount ?? snapshot.tts.voices.length}` : snapshot.tts.voices.length}</strong></div>
+          <div><span>FR voices</span><strong>{snapshot.tts.voiceCounts.fr}/{snapshot.tts.voiceCounts.total}</strong></div>
+          <div><span>FR names</span><strong>{frenchVoices.length > 0 ? frenchVoices.map((voice) => `${voice.lang} ${voice.name}`).join(', ') : 'none'}</strong></div>
           <div><span>Textarea renders</span><strong>{snapshot.renders.LowLatencyTextarea ?? 0}</strong></div>
           <div><span>Heap</span><strong>{heapMb}</strong></div>
           <div><span>Last input</span><strong>{latestInput ? `${latestInput.valueLength} chars` : 'none'}</strong></div>

@@ -454,7 +454,8 @@ export default defineConfig(({ mode }) => {
               return;
             }
 
-            const safeLanguage = parsed.language === 'de' ? 'de' : 'en';
+            const supportedTranscriptionLanguages = new Set(['en', 'es', 'de', 'fr']);
+            const safeLanguage = supportedTranscriptionLanguages.has(String(parsed.language)) ? String(parsed.language) : 'en';
             const resolvedExt = parsed.fileName
               ? path.extname(parsed.fileName)
               : path.extname(new URL(parsed.audioUrl as string).pathname);

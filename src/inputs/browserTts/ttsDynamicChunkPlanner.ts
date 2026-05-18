@@ -1,7 +1,7 @@
 import type { PhraseBoundaryType, PhraseSize } from '../../core/adaptive/types';
 
 export type BoundaryStrictness = 'sentence' | 'clause' | 'phrase';
-export type SupportedLanguage = 'en' | 'es' | 'de';
+export type SupportedLanguage = 'en' | 'es' | 'de' | 'fr';
 
 export type PlanBrowserTtsChunkInput = {
   macroWords: string[];
@@ -36,12 +36,14 @@ const DISCOURSE_MARKERS: Record<SupportedLanguage, string[]> = {
   en: ['and', 'but', 'because', 'however', 'therefore', 'then', 'so', 'while'],
   es: ['y', 'pero', 'porque', 'sin', 'embargo', 'entonces', 'asi', 'ademas', 'aunque'],
   de: ['und', 'aber', 'weil', 'doch', 'dann', 'deshalb', 'wahrend', 'obwohl'],
+  fr: ['et', 'mais', 'parce', 'que', 'cependant', 'donc', 'alors', 'pendant', 'bien', 'que', 'quoique'],
 };
 
 const UNSAFE_WORDS: Record<SupportedLanguage, string[]> = {
   en: ['a', 'an', 'the', 'to', 'of', 'in', 'on', 'at', 'for', 'with', 'is', 'are', 'was', 'were', 'be', 'been', 'being'],
   es: ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'al', 'a', 'en', 'con', 'por', 'para', 'es', 'son', 'ser', 'estar', 'se'],
   de: ['der', 'die', 'das', 'ein', 'eine', 'zu', 'mit', 'von', 'im', 'am', 'ist', 'sind', 'war', 'sein', 'haben'],
+  fr: ['le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'au', 'aux', 'a', 'en', 'avec', 'pour', 'par', 'est', 'sont', 'etre', 'se'],
 };
 
 const WORD_WEIGHTS = {
@@ -91,6 +93,9 @@ function isUnsafePair(leftWord: string, rightWord: string, language: SupportedLa
     return true;
   }
   if (language === 'es' && /^(me|te|se|lo|la|le|nos|os|los|las|les)$/.test(leftWord)) {
+    return true;
+  }
+  if (language === 'fr' && /^(me|te|se|nous|vous|le|la|les|l|ne|n)$/.test(leftWord)) {
     return true;
   }
   return false;

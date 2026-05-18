@@ -14,7 +14,7 @@ Before finishing code changes, run `npm run test` and `npm run build` unless the
 
 ## Adaptive Pace Layer Rules
 
-The Adaptive Pace Layer is shared across 4 inputs and 3 languages. Benchmarks, telemetry, recommendations, and session feedback are scoped per:
+The Adaptive Pace Layer is shared across 4 inputs and 4 languages. Benchmarks, telemetry, recommendations, and session feedback are scoped per:
 
 `(inputMode, language)`
 
@@ -30,6 +30,7 @@ Languages:
 - `en`
 - `es`
 - `de`
+- `fr`
 
 When fixing benchmark, telemetry, recommendation, feedback, lag, pacing, or phrase-boundary behavior for one input/language pair, do not change the others unless the request explicitly says to. Prefer guards such as:
 

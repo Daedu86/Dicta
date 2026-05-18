@@ -26,6 +26,7 @@ LANG_TO_SPACY_MODEL = {
     "en": "en_core_web_sm",
     "de": "de_core_news_sm",
     "es": "es_core_news_sm",
+    "fr": "fr_core_news_sm",
 }
 
 
@@ -62,8 +63,10 @@ def synthesize_to_wav(request: TtsChunkRequest, output_path: Path) -> SynthesisR
     if not behavior["native"]:
         if fallback_enabled():
             return _write_fallback_wav(request, output_path)
+        language_name = "French" if request.language == "fr" else "German"
+        input_label = "French" if request.language == "fr" else "German"
         raise RuntimeError(
-            "German is not natively supported by Kokoro. Use browser TTS/Input 2 for German, or enable an experimental fallback."
+            f"{language_name} is not natively supported by Kokoro. Use browser TTS/Input 2 for {input_label}, or enable an experimental fallback."
         )
 
     errors: list[str] = []
@@ -100,6 +103,8 @@ def resolve_language_behavior(language: str) -> dict[str, str | bool | None]:
     if language == "es":
         return {"native": True, "processed_language": "es", "generation_code": "es", "pipeline_code": "e", "fallback": None}
     if language == "de":
+        return {"native": False, "processed_language": None, "generation_code": None, "pipeline_code": None, "fallback": None}
+    if language == "fr":
         return {"native": False, "processed_language": None, "generation_code": None, "pipeline_code": None, "fallback": None}
     raise RuntimeError(f"Unsupported Kokoro language: {language}")
 
@@ -207,7 +212,7 @@ def _write_fallback_wav(request: TtsChunkRequest, output_path: Path) -> Synthesi
     duration_sec = max(0.7, min(8.0, words * 0.42 / max(request.baseSpeed, 0.5)))
     sample_rate = 24_000
     total_samples = int(sample_rate * duration_sec)
-    frequency = {"en": 440, "de": 392, "es": 466}.get(request.language, 440)
+    frequency = {"en": 440, "de": 392, "es": 466, "fr": 415}.get(request.language, 440)
     envelope = np.linspace(0.15, 0.05, total_samples)
     samples = np.sin(2 * math.pi * frequency * np.arange(total_samples) / sample_rate) * envelope
     pcm = np.int16(samples * 32767)

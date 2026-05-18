@@ -202,14 +202,17 @@ function buildStaleBrowserTtsDePressureProfile(): InputLanguageBenchmarkMetrics 
 }
 
 describe('AdaptiveInputLanguageBenchmarkService', () => {
-  it('creates separate profiles for browser-tts/en and browser-tts/es', () => {
+  it('creates separate profiles for browser-tts/en, browser-tts/es, and browser-tts/fr', () => {
     const en = updateInputLanguageBenchmark({ live: live({ language: 'en' }), decision: decision(), sessionId: 's1' });
     const es = updateInputLanguageBenchmark({ live: live({ language: 'es' }), decision: decision(), sessionId: 's2' });
+    const fr = updateInputLanguageBenchmark({ live: live({ language: 'fr' }), decision: decision(), sessionId: 's3' });
     expect(en.inputMode).toBe('browser-tts');
     expect(en.language).toBe('en');
     expect(es.language).toBe('es');
+    expect(fr.language).toBe('fr');
     expect(en.sampleCount).toBe(1);
     expect(es.sampleCount).toBe(1);
+    expect(fr.sampleCount).toBe(1);
   });
 
   it('updating kokoro/en does not modify kokoro/de', () => {

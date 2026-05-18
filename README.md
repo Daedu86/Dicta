@@ -130,13 +130,14 @@ At a high level, on each phrase/tick it does:
 - Next phrase size (short/medium/long) based on overload, difficulty, and semantic completeness.
 - Boundary strictness (sentence/clause/phrase) to avoid unsafe cuts in different languages.
 
-### Inputs (4) x Languages (3)
+### Inputs (4) x Languages (4)
 
-Dicta's brain is shared across **4 input modes** and scoped by **language** (EN/ES/DE). Practically, that means the benchmarks, recommendations, and session feedback are tracked per:
+Dicta's brain is shared across **4 input modes** and scoped by **language** (EN/ES/DE/FR). Practically, that means the benchmarks, recommendations, and session feedback are tracked per:
 
 `(inputMode, language)`
 
 So "Browser TTS in German" is a different adaptive profile than "Browser TTS in English".
+French (`fr`) is a first-class language for sessions, Browser TTS, transcription, generated scripts, sync, diagnostics, and adaptive profiles. Kokoro keeps French as a non-native/experimental entry, like German, until a native model path is confirmed.
 
 ### Why Language Matters
 

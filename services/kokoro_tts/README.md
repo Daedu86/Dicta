@@ -6,8 +6,8 @@ Native Kokoro languages in this project:
 - `en`
 - `es`
 
-German (`de`) is not treated as native Kokoro support. The app should direct
-German users to Input #2 browser TTS unless an experimental fallback is added.
+German (`de`) and French (`fr`) are not treated as native Kokoro support. The app should direct
+German and French users to Input #2 browser TTS unless an experimental fallback is added.
 
 ## Run locally
 
@@ -19,6 +19,7 @@ pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 python -m spacy download de_core_news_sm
 python -m spacy download es_core_news_sm
+python -m spacy download fr_core_news_sm
 uvicorn app:app --host 127.0.0.1 --port 8787
 ```
 
@@ -36,7 +37,7 @@ are disabled by default so real Kokoro setup errors are visible.
 Language handling:
 - `en` uses native English Kokoro processing
 - `es` uses native Spanish Kokoro processing
-- `de` is rejected as non-native unless an explicit fallback path is enabled in a future change
+- `de` and `fr` are rejected as non-native unless an explicit fallback path is enabled in a future change
 
 The default voice maps to `af_sarah`. You can pass another installed Kokoro
 voice from the Input #3 sidebar.

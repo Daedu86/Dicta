@@ -17,12 +17,22 @@ class KokoroLanguageBehaviorTests(unittest.TestCase):
         self.assertIsNone(behavior["pipeline_code"])
         self.assertIsNone(behavior["processed_language"])
 
+    def test_french_is_not_silently_mapped_to_american_english(self) -> None:
+        behavior = resolve_language_behavior("fr")
+        self.assertFalse(behavior["native"])
+        self.assertIsNone(behavior["pipeline_code"])
+        self.assertIsNone(behavior["processed_language"])
+
     def test_german_fails_clearly_without_fallback(self) -> None:
         request = TtsChunkRequest(text="Guten Tag", voice="default", language="de", baseSpeed=1.0)
         with self.assertRaisesRegex(RuntimeError, "German is not natively supported by Kokoro"):
             synthesize_to_wav(request, output_path=__import__("pathlib").Path("ignored.wav"))
 
+    def test_french_fails_clearly_without_fallback(self) -> None:
+        request = TtsChunkRequest(text="Bonjour", voice="default", language="fr", baseSpeed=1.0)
+        with self.assertRaisesRegex(RuntimeError, "French is not natively supported by Kokoro"):
+            synthesize_to_wav(request, output_path=__import__("pathlib").Path("ignored.wav"))
+
 
 if __name__ == "__main__":
     unittest.main()
-
