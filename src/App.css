@@ -222,6 +222,10 @@
   border-radius: 12px;
 }
 
+.training-reset-button {
+  grid-column: 1 / -1;
+}
+
 .training-input-card label {
   display: grid;
   gap: 0.6rem;

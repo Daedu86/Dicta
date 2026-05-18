@@ -2068,7 +2068,8 @@ function App() {
     completeAdaptiveSessionFeedback();
   }
 
-  function resetSession(): void {
+  function resetSession(options: { preserveInputSettingsLock?: boolean } = {}): void {
+    const nextInputSettingsLocked = options.preserveInputSettingsLock ? inputSettingsLocked : false;
     engineRef.current?.reset();
     stopTtsPlayback();
     stopKokoroPlayback();
@@ -2123,15 +2124,17 @@ function App() {
       trend: 'stable',
     };
     setSessionStatus('ready');
-    setInputSettingsLocked(false);
-    if (activeInputMode === 'input1') {
-      setSetupExpanded(true);
-    } else if (activeInputMode === 'input2') {
-      setTtsExpanded(true);
-    } else if (activeInputMode === 'input4') {
-      setQwenExpanded(true);
-    } else {
-      setKokoroExpanded(true);
+    setInputSettingsLocked(nextInputSettingsLocked);
+    if (!nextInputSettingsLocked) {
+      if (activeInputMode === 'input1') {
+        setSetupExpanded(true);
+      } else if (activeInputMode === 'input2') {
+        setTtsExpanded(true);
+      } else if (activeInputMode === 'input4') {
+        setQwenExpanded(true);
+      } else {
+        setKokoroExpanded(true);
+      }
     }
     telemetryRef.current = null;
     phrasePlaybackEventsRef.current = [];
@@ -2144,6 +2147,10 @@ function App() {
     setTranscriptReadyMessage(
       transcript ? `Transcript loaded (${transcript.words.length} words).` : '',
     );
+  }
+
+  function resetFocusedTrainingAttempt(): void {
+    resetSession({ preserveInputSettingsLock: true });
   }
 
   function lockInputSettings(): void {
@@ -5366,6 +5373,8 @@ function App() {
               if (latestTextValue !== undefined && latestTextValue !== ttsPracticeText) onTtsPracticeChange(latestTextValue);
               stopTtsPlayback('stop');
             },
+    canReset: Boolean(activeSession),
+    onReset: resetFocusedTrainingAttempt,
     canSubmit:
       activeInputMode === 'input1'
         ? canFinishSession
@@ -6341,7 +6350,7 @@ function App() {
                       <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
                         OpenRouter script
                       </button>
-                      <button type="button" className="secondary-button" onClick={resetSession}>
+                      <button type="button" className="secondary-button" onClick={() => resetSession()}>
                         Reset
                       </button>
                     </div>
@@ -6540,7 +6549,7 @@ function App() {
                       <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
                         OpenRouter script
                       </button>
-                      <button type="button" className="secondary-button" onClick={resetSession}>
+                      <button type="button" className="secondary-button" onClick={() => resetSession()}>
                         Reset
                       </button>
                     </div>
@@ -7225,7 +7234,7 @@ function App() {
                         <button onClick={() => void startSession()} disabled={!canStartSession}>Start</button>
                         <button onClick={pauseSession} disabled={!canPauseSession}>Pause</button>
                         <button onClick={finishSession} disabled={!canFinishSession}>Finish</button>
-                        <button onClick={resetSession}>Reset</button>
+                        <button onClick={() => resetSession()}>Reset</button>
                       </div>
                       <div className={`session-ready-banner ${canStartSession ? 'session-ready-banner-active' : ''}`} aria-live="polite">
                         <strong>
@@ -11070,6 +11079,8 @@ type TrainingViewProps = {
   onReplay: () => void;
   canStop: boolean;
   onStop: (latestTextValue?: string) => void;
+  canReset: boolean;
+  onReset: () => void;
   canSubmit: boolean;
   onSubmit: (latestTextValue?: string) => void;
   submitLabel: string;
@@ -11214,6 +11225,8 @@ function TrainingView({
   onReplay,
   canStop,
   onStop,
+  canReset,
+  onReset,
   canSubmit,
   onSubmit,
   submitLabel,
@@ -11327,6 +11340,15 @@ function TrainingView({
           </button>
           <button type="button" className="secondary-button" onClick={() => onStop(flushTextInput())} disabled={!canStop}>
             Stop
+          </button>
+          <button
+            type="button"
+            className="secondary-button training-reset-button"
+            onClick={onReset}
+            disabled={!canReset}
+            title="Clear this attempt and return playback to the beginning"
+          >
+            Reset
           </button>
         </div>
       </section>
