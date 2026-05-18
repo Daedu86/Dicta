@@ -94,7 +94,7 @@ import {
 } from './core/cosyvoiceCacheClient';
 import { buildKokoroSourceWords, type KokoroPhraseChunk } from './core/kokoroPhraseChunking';
 import { KOKORO_GERMAN_WARNING, getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
-import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
+import { cloneTelemetry, hasFinalizedAttemptTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from './components/LowLatencyTextarea';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { perfDiagnostics } from './core/perfDiagnostics';
@@ -11861,7 +11861,7 @@ function getSessionDisplayTitle(session: StoredSession): string {
 }
 
 function hasSubmittedSessionStats(session: StoredSession): boolean {
-  return session.telemetry.actions.some((entry) => entry.action === 'submit');
+  return hasFinalizedAttemptTelemetry(session.telemetry);
 }
 
 function isSessionReadyForTraining(session: StoredSession): boolean {

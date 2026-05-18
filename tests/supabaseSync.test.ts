@@ -216,6 +216,34 @@ describe('supabaseSync', () => {
     expect(merged.sessions[0]).toMatchObject({ marker: 'phone-submitted', status: 'finished' });
   });
 
+  it('imports a finalized remote session over a newer local pending copy when submit action is missing', () => {
+    const local = baseState();
+    local.sessions = [{
+      id: 's1',
+      updatedAt: '2026-05-03T10:00:00.000Z',
+      inputMode: 'input2',
+      status: 'ready',
+      marker: 'phone-pending',
+    }];
+
+    const remote = baseState();
+    remote.sessions = [{
+      id: 's1',
+      updatedAt: '2026-05-02T10:00:00.000Z',
+      inputMode: 'input2',
+      status: 'finished',
+      telemetry: {
+        finishedAt: '2026-05-02T10:00:00.000Z',
+        actions: [],
+      },
+      marker: 'desktop-finalized',
+    }];
+
+    const merged = mergeSyncRows(local, toSyncRows('profile-1', buildSyncItems(remote)));
+
+    expect(merged.sessions[0]).toMatchObject({ marker: 'desktop-finalized', status: 'finished' });
+  });
+
   it('does not push a stale local pending session over a submitted remote session', () => {
     const localRows = toSyncRows('profile-1', [{
       itemType: 'session',
@@ -240,6 +268,39 @@ describe('supabaseSync', () => {
         status: 'finished',
         telemetry: { actions: [{ action: 'submit' }] },
         marker: 'phone-submitted',
+      },
+    }]);
+
+    expect(selectPushableSyncRows(localRows, remoteRows)).toEqual([]);
+  });
+
+  it('does not push a stale local pending session over a finalized remote session without submit action', () => {
+    const localRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-03T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-03T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'ready',
+        marker: 'phone-pending',
+      },
+    }]);
+    const remoteRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-02T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-02T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'finished',
+        telemetry: {
+          finishedAt: '2026-05-02T10:00:00.000Z',
+          actions: [],
+        },
+        marker: 'desktop-finalized',
       },
     }]);
 

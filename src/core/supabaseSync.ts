@@ -383,6 +383,7 @@ function isSubmittedFinishedSession(payload: unknown): boolean {
   const record = asRecord(payload);
   if (record.status !== 'finished') return false;
   const telemetry = asRecord(record.telemetry);
+  if (timestampFrom(telemetry.finishedAt)) return true;
   const actions = telemetry.actions;
   return Array.isArray(actions) && actions.some((entry) => asRecord(entry).action === 'submit');
 }

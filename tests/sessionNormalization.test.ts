@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { cloneTelemetry, normalizeRateDistribution, normalizeSessionForPersistence } from '../src/core/sessionNormalization';
+import {
+  cloneTelemetry,
+  hasFinalizedAttemptTelemetry,
+  normalizeRateDistribution,
+  normalizeSessionForPersistence,
+} from '../src/core/sessionNormalization';
 
 describe('sessionNormalization', () => {
   it('input1 only keeps transcriptionLanguage', () => {
@@ -86,5 +91,23 @@ describe('sessionNormalization', () => {
       { rate: 0.97, seconds: 79 },
     ]);
   });
-});
 
+  it('treats finishedAt as finalized attempt telemetry even when submit action is missing', () => {
+    expect(
+      hasFinalizedAttemptTelemetry({
+        startedAt: '2026-05-18T10:00:00.000Z',
+        finishedAt: '2026-05-18T10:05:00.000Z',
+        actions: [],
+      }),
+    ).toBe(true);
+  });
+
+  it('does not treat unfinished TTS telemetry as finalized without submit or finishedAt', () => {
+    expect(
+      hasFinalizedAttemptTelemetry({
+        startedAt: '2026-05-18T10:00:00.000Z',
+        actions: [{ t: 1, action: 'play', rate: 1 }],
+      }),
+    ).toBe(false);
+  });
+});

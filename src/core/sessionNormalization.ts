@@ -127,6 +127,11 @@ export function cloneTelemetry(telemetry: unknown): SessionTelemetry {
   };
 }
 
+export function hasFinalizedAttemptTelemetry(telemetry: unknown): boolean {
+  const normalized = cloneTelemetry(telemetry);
+  return Boolean(normalized.finishedAt || normalized.actions.some((entry) => entry.action === 'submit'));
+}
+
 export function normalizeSessionLanguages(
   session: Pick<SessionLanguageFields, 'inputMode' | 'transcriptionLanguage' | 'ttsLanguage' | 'kokoroLanguage'>,
 ): {
