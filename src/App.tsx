@@ -112,6 +112,7 @@ import {
 } from './core/sessionStatusNormalization';
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { sessionSnapshotJson } from './core/sessionSnapshot';
+import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
   createDictaSupabaseClient,
   deleteSessionSyncRow,
@@ -5150,10 +5151,9 @@ function App() {
     (activeInputMode === 'input2' || activeInputMode === 'input4') &&
     sessionStatus !== 'finished' &&
     sessionStatus !== 'error' &&
-    ttsHasText &&
-    ttsPracticeWords.length > 0;
+    ttsHasText;
   const canSubmitKokoroSession =
-    activeInputMode === 'input3' && sessionStatus !== 'finished' && sessionStatus !== 'error' && kokoroHasText && kokoroPracticeWords.length > 0;
+    activeInputMode === 'input3' && sessionStatus !== 'finished' && sessionStatus !== 'error' && kokoroHasText;
   const ttsPlayerWordCount = ttsTranscript?.words.length ?? 0;
   const ttsPlayerCurrentWord = ttsHasText ? estimateTtsSpokenWordIndex() : 0;
   const ttsPlayerWordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
@@ -11934,23 +11934,6 @@ function getSessionDisplayTitle(session: StoredSession): string {
 
 function hasSubmittedSessionStats(session: StoredSession): boolean {
   return isSubmittedFinishedAttempt(session);
-}
-
-function buildTrainingSubmitMessage(sessions: StoredSession[], sessionId: string): string {
-  const submittedSession = sessions.find((session) => session.id === sessionId);
-  if (!submittedSession) return 'Submitted to leaderboard.';
-
-  const language = resolveSessionLanguage(submittedSession);
-  const rankedByLanguage = [...sessions]
-    .filter((session) => resolveSessionLanguage(session) === language)
-    .sort((a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy);
-  const rank = rankedByLanguage.findIndex((session) => session.id === sessionId) + 1;
-  const languageLabel = String(language).toUpperCase();
-
-  if (rank <= 0) {
-    return `Submitted to leaderboard (${languageLabel}).`;
-  }
-  return `Submitted to leaderboard. Position #${rank} (${languageLabel}).`;
 }
 
 function isSessionReadyForTraining(session: StoredSession): boolean {
