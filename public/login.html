@@ -102,9 +102,19 @@
           error.textContent = 'Invalid password.';
           return;
         }
-        const next = new URLSearchParams(window.location.search).get('next') || '/';
+        const rawNext = new URLSearchParams(window.location.search).get('next') || '/training';
+        const next = sanitizeNextPath(rawNext);
         window.location.href = next;
       });
+
+      function sanitizeNextPath(value) {
+        if (typeof value !== 'string' || !value.startsWith('/')) return '/training';
+        if (value.startsWith('/api/')) return '/training';
+        if (value.startsWith('/assets/')) return '/training';
+        if (value === '/login.html') return '/training';
+        if (/\.[a-z0-9]+($|\?)/i.test(value)) return '/training';
+        return value;
+      }
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

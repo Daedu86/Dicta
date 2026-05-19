@@ -54,5 +54,5 @@ export default async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/((?!.*\\..*).*)', '/api/:path*', '/assets/:path*', '/favicon.svg'],
+  matcher: ['/((?!.*\\..*).*)', '/api/:path*', '/favicon.svg'],
 };
