@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cloneTelemetry,
   hasFinalizedAttemptTelemetry,
+  isSubmittedFinishedAttempt,
   normalizeRateDistribution,
   normalizeSessionForPersistence,
 } from '../src/core/sessionNormalization';
@@ -137,6 +138,32 @@ describe('sessionNormalization', () => {
       hasFinalizedAttemptTelemetry({
         startedAt: '2026-05-18T10:00:00.000Z',
         actions: [{ t: 1, action: 'play', rate: 1 }],
+      }),
+    ).toBe(false);
+  });
+
+  it('treats finished browser TTS sessions with source and attempt text as submitted when telemetry markers are missing', () => {
+    expect(
+      isSubmittedFinishedAttempt({
+        inputMode: 'input2',
+        status: 'finished',
+        ttsText: 'Bonjour tout le monde',
+        ttsPracticeText: 'Bonjour tout le monde',
+        metrics: { wpm: 42, points: 0, score: 0 },
+        telemetry: { actions: [] },
+      }),
+    ).toBe(true);
+  });
+
+  it('does not treat finished browser TTS sessions as submitted when attempt text is empty', () => {
+    expect(
+      isSubmittedFinishedAttempt({
+        inputMode: 'input2',
+        status: 'finished',
+        ttsText: 'Bonjour tout le monde',
+        ttsPracticeText: '   ',
+        metrics: { wpm: 42, points: 0, score: 0 },
+        telemetry: { actions: [] },
       }),
     ).toBe(false);
   });

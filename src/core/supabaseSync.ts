@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { isSubmittedFinishedAttempt } from './sessionNormalization';
 
 export const DICTA_SYNC_TABLE = 'dicta_sync_items';
 
@@ -380,12 +381,7 @@ function localSubmittedSessionOutranksRemote(localPayload: unknown, remotePayloa
 }
 
 function isSubmittedFinishedSession(payload: unknown): boolean {
-  const record = asRecord(payload);
-  if (record.status !== 'finished') return false;
-  const telemetry = asRecord(record.telemetry);
-  if (timestampFrom(telemetry.finishedAt)) return true;
-  const actions = telemetry.actions;
-  return Array.isArray(actions) && actions.some((entry) => asRecord(entry).action === 'submit');
+  return isSubmittedFinishedAttempt(payload);
 }
 
 function getFeedbackTimestamp(value: unknown): string {
