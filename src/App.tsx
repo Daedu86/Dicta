@@ -94,7 +94,7 @@ import {
 } from './core/cosyvoiceCacheClient';
 import { buildKokoroSourceWords, type KokoroPhraseChunk } from './core/kokoroPhraseChunking';
 import { getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
-import { cloneTelemetry, hasFinalizedAttemptTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
+import { cloneTelemetry, isSubmittedFinishedAttempt, normalizeSessionForPersistence } from './core/sessionNormalization';
 import {
   LANGUAGE_LABELS,
   SUPPORTED_LANGUAGES,
@@ -428,6 +428,7 @@ function App() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState('');
   const [exportMessage, setExportMessage] = useState('');
+  const [trainingSubmitMessage, setTrainingSubmitMessage] = useState('');
   const [inputSettingsLocked, setInputSettingsLocked] = useState(false);
   const [sessionCreationMode, setSessionCreationMode] = useState<SessionInputMode | null>(null);
   const [sessionCreationSource, setSessionCreationSource] = useState<SessionSource>('plainText');
@@ -1721,6 +1722,7 @@ function App() {
     telemetryRef.current = cloneTelemetry(activeSession.telemetry);
     setExportMessage('');
     setError('');
+    setTrainingSubmitMessage('');
     previousLagRef.current = 0;
     previousAccuracyRef.current = 100;
     trackerRef.current.reset();
@@ -2132,6 +2134,7 @@ function App() {
       trend: 'stable',
     };
     setSessionStatus('ready');
+    setTrainingSubmitMessage('');
     setInputSettingsLocked(nextInputSettingsLocked);
     if (!nextInputSettingsLocked) {
       if (activeInputMode === 'input1') {
@@ -3058,6 +3061,7 @@ function App() {
     const endPerfSpan = perfDiagnostics.startSpan('tts.submit', { inputMode: activeInputMode });
     if (!ttsHasText || !latestPracticeText.trim()) {
       setError('Paste TTS text and type your attempt before submitting.');
+      setTrainingSubmitMessage('');
       endPerfSpan();
       return;
     }
@@ -3088,6 +3092,9 @@ function App() {
       setTtsStatus('finished');
       completeAdaptiveSessionFeedback();
       setError('');
+      if (activeSessionId) {
+        setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
+      }
     } finally {
       endPerfSpan();
     }
@@ -4363,7 +4370,9 @@ function App() {
     }
   }
 
-  function applyKokoroPerformanceSample(options: { action?: ControlAction; finalize?: boolean } = {}): void {
+  function applyKokoroPerformanceSample(
+    options: { action?: ControlAction; finalize?: boolean } = {},
+  ): { metrics: SessionMetrics; telemetry: SessionTelemetry } {
     const now = performance.now();
     if (kokoroStartedAtMsRef.current === null) {
       kokoroStartedAtMsRef.current = now;
@@ -4378,6 +4387,17 @@ function App() {
     const elapsedMinutes = Math.max(getKokoroElapsedSeconds(now) / 60, 1 / 60);
     const nextWpm = kokoroPracticeWords.length > 0 ? kokoroPracticeWords.length / elapsedMinutes : 0;
     const nextAccuracy = kokoroPracticeWords.length > 0 ? kokoroVisibleAccuracy : 100;
+    const nextPoints = kokoroPracticeEvaluation.points;
+    const nextScore =
+      sourceWordCount > 0
+        ? computeSessionScore({
+            accuracy: nextAccuracy,
+            lagSec: nextLagSec,
+            wpm: nextWpm,
+            rate: kokoroSpeechRate,
+            points: nextPoints,
+          })
+        : 0;
     const nextControllerAction = deriveTtsControlAction({
       accuracy: nextAccuracy,
       lagSec: nextLagSec,
@@ -4423,6 +4443,20 @@ function App() {
     }
 
     telemetryRef.current = nextTelemetry;
+    return {
+      metrics: {
+        controllerState: nextControllerAction,
+        rate: kokoroSpeechRate,
+        lagSec: nextLagSec,
+        lagWords: nextLagWords,
+        wpm: nextWpm,
+        accuracy: nextAccuracy,
+        trend: nextTrend,
+        score: nextScore,
+        points: nextPoints,
+      },
+      telemetry: nextTelemetry,
+    };
   }
 
   applyKokoroPerformanceSampleRef.current = applyKokoroPerformanceSample;
@@ -4767,15 +4801,35 @@ function App() {
   function submitKokoroSession(): void {
     if (!canSubmitKokoroSession) {
       setError('Paste Kokoro text and type your attempt before submitting.');
+      setTrainingSubmitMessage('');
       return;
     }
-    applyKokoroPerformanceSample({ action: 'submit', finalize: true });
+
+    const finalSample = applyKokoroPerformanceSample({ action: 'submit', finalize: true });
+    const finishedAt = new Date().toISOString();
+    const nextSessions = sessions.map((session) =>
+      session.id === activeSessionId
+        ? {
+            ...session,
+            kokoroPracticeText,
+            status: 'finished' as const,
+            metrics: finalSample.metrics,
+            telemetry: finalSample.telemetry,
+            updatedAt: finishedAt,
+          }
+        : session,
+    );
+    setSessions(nextSessions);
+    persistAndPushSessionsNow(nextSessions);
     stopKokoroPlayback();
     setRunning(false);
     setSessionStatus('finished');
     setKokoroStatus('finished');
     completeAdaptiveSessionFeedback();
     setError('');
+    if (activeSessionId) {
+      setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
+    }
   }
 
   function recordAdaptiveBenchmark(
@@ -5264,6 +5318,12 @@ function App() {
       : activeInputMode === 'input3'
         ? onKokoroPracticeKeyDown
         : onTtsPracticeKeyDown;
+  const focusedTrainingMessage = error || trainingSubmitMessage || [exportMessage, openRouterJobStatus, openRouterError].filter(Boolean).join(' ');
+  const focusedTrainingMessageTone: 'error' | 'success' | 'hint' = error
+    ? 'error'
+    : trainingSubmitMessage
+      ? 'success'
+      : 'hint';
 
   function replayFocusedAudio(): void {
     const currentTime = engineRef.current?.getCurrentTime() ?? audioRef.current?.currentTime ?? 0;
@@ -5399,7 +5459,8 @@ function App() {
             }
           : (latestTextValue?: string) => submitTtsSession(latestTextValue),
     submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
-    message: error || [exportMessage, openRouterJobStatus, openRouterError].filter(Boolean).join(' '),
+    message: focusedTrainingMessage,
+    messageTone: focusedTrainingMessageTone,
     textCommitDelayMs: activeInputMode === 'input2' || activeInputMode === 'input4' ? 250 : 0,
     pendingSessions,
     activeSessionId,
@@ -11076,6 +11137,7 @@ type TrainingViewProps = {
   onSubmit: (latestTextValue?: string) => void;
   submitLabel: string;
   message: string;
+  messageTone?: 'error' | 'success' | 'hint';
   generationButtons: TrainingGenerationButton[];
   textCommitDelayMs: number;
   pendingSessions: StoredSession[];
@@ -11222,6 +11284,7 @@ function TrainingView({
   onSubmit,
   submitLabel,
   message,
+  messageTone,
   generationButtons,
   textCommitDelayMs,
   pendingSessions,
@@ -11367,7 +11430,7 @@ function TrainingView({
         <button type="button" className="training-submit-button" onClick={() => onSubmit(flushTextInput())} disabled={!canSubmit}>
           {submitLabel}
         </button>
-        {message ? <p className={message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') ? 'error' : 'hint'}>{message}</p> : null}
+        {message ? <p className={messageTone ?? (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') ? 'error' : 'hint')}>{message}</p> : null}
       </section>
 
       <section className="training-card training-generation-card" aria-label="Generate new sessions">
@@ -11870,7 +11933,24 @@ function getSessionDisplayTitle(session: StoredSession): string {
 }
 
 function hasSubmittedSessionStats(session: StoredSession): boolean {
-  return hasFinalizedAttemptTelemetry(session.telemetry);
+  return isSubmittedFinishedAttempt(session);
+}
+
+function buildTrainingSubmitMessage(sessions: StoredSession[], sessionId: string): string {
+  const submittedSession = sessions.find((session) => session.id === sessionId);
+  if (!submittedSession) return 'Submitted to leaderboard.';
+
+  const language = resolveSessionLanguage(submittedSession);
+  const rankedByLanguage = [...sessions]
+    .filter((session) => resolveSessionLanguage(session) === language)
+    .sort((a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy);
+  const rank = rankedByLanguage.findIndex((session) => session.id === sessionId) + 1;
+  const languageLabel = String(language).toUpperCase();
+
+  if (rank <= 0) {
+    return `Submitted to leaderboard (${languageLabel}).`;
+  }
+  return `Submitted to leaderboard. Position #${rank} (${languageLabel}).`;
 }
 
 function isSessionReadyForTraining(session: StoredSession): boolean {

@@ -133,6 +133,33 @@ export function hasFinalizedAttemptTelemetry(telemetry: unknown): boolean {
   return Boolean(normalized.finishedAt || normalized.actions.some((entry) => entry.action === 'submit'));
 }
 
+function hasNonEmptyText(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+export function isSubmittedFinishedAttempt(payload: unknown): boolean {
+  const session = asRecord(payload);
+  if (session.status !== 'finished') return false;
+
+  const inputMode = session.inputMode;
+  if (inputMode === 'input1') return true;
+  if (hasFinalizedAttemptTelemetry(session.telemetry)) return true;
+  if (inputMode !== 'input2' && inputMode !== 'input3' && inputMode !== 'input4') return false;
+
+  const sourceText = inputMode === 'input3' ? session.kokoroText : session.ttsText;
+  const attemptText = inputMode === 'input3' ? session.kokoroPracticeText : session.ttsPracticeText;
+  if (!hasNonEmptyText(sourceText) || !hasNonEmptyText(attemptText)) return false;
+
+  const metrics = asRecord(session.metrics);
+  const points = numberOr(metrics.points, 0);
+  const score = numberOr(metrics.score, 0);
+  const wpm = numberOr(metrics.wpm, 0);
+  if (points > 0 || score > 0 || wpm > 0) return true;
+
+  const telemetry = cloneTelemetry(session.telemetry);
+  return telemetry.lagSeries.length > 0 || telemetry.wpmSeries.length > 0 || telemetry.accuracySeries.length > 0;
+}
+
 export function normalizeSessionLanguages(
   session: Pick<SessionLanguageFields, 'inputMode' | 'transcriptionLanguage' | 'ttsLanguage' | 'kokoroLanguage'>,
 ): {
