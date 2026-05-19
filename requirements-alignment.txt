@@ -1,5 +1,5 @@
 -r requirements.txt
 
 # Optional full local alignment pipeline
-whisperx>=3.1.0
+whisperx>=3.2.0
 torch>=2.1
