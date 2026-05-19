@@ -2,7 +2,7 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 pydantic>=2.8.0
 numpy>=1.26.0
-soundfile>=0.12.1
+soundfile>=0.13.1
 pykokoro>=0.6.3
 
 # Optional fallback engine (only versions <0.8 currently support Python 3.13):
