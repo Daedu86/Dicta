@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dicta-shell-v3';
+const CACHE_NAME = 'dicta-shell-v4';
 const SHELL_ASSETS = [
   '/login.html',
   '/manifest.webmanifest',
@@ -39,13 +39,15 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response.ok) {
+          if (isCacheableAssetResponse(request, response)) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return response;
         })
-        .catch(() => caches.match(request)),
+        .catch(() =>
+          caches.match(request).then((cached) => (isCacheableAssetResponse(request, cached) ? cached : undefined)),
+        ),
     );
     return;
   }
@@ -62,3 +64,11 @@ self.addEventListener('fetch', (event) => {
     ),
   );
 });
+
+function isCacheableAssetResponse(request, response) {
+  if (!response || !response.ok) return false;
+  if (request.method !== 'GET') return false;
+  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+  if (contentType.includes('text/html')) return false;
+  return true;
+}
