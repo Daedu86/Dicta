@@ -146,10 +146,6 @@ export function isSubmittedFinishedAttempt(payload: unknown): boolean {
   if (hasFinalizedAttemptTelemetry(session.telemetry)) return true;
   if (inputMode !== 'input2' && inputMode !== 'input3' && inputMode !== 'input4') return false;
 
-  const sourceText = inputMode === 'input3' ? session.kokoroText : session.ttsText;
-  const attemptText = inputMode === 'input3' ? session.kokoroPracticeText : session.ttsPracticeText;
-  if (!hasNonEmptyText(sourceText) || !hasNonEmptyText(attemptText)) return false;
-
   const metrics = asRecord(session.metrics);
   const points = numberOr(metrics.points, 0);
   const score = numberOr(metrics.score, 0);
@@ -157,7 +153,13 @@ export function isSubmittedFinishedAttempt(payload: unknown): boolean {
   if (points > 0 || score > 0 || wpm > 0) return true;
 
   const telemetry = cloneTelemetry(session.telemetry);
-  return telemetry.lagSeries.length > 0 || telemetry.wpmSeries.length > 0 || telemetry.accuracySeries.length > 0;
+  if (telemetry.lagSeries.length > 0 || telemetry.wpmSeries.length > 0 || telemetry.accuracySeries.length > 0) return true;
+
+  // Legacy/mobile payloads may miss practice text even after a successful submit.
+  // If there are no stronger telemetry/metric signals, require both source and attempt text.
+  const sourceText = inputMode === 'input3' ? session.kokoroText : session.ttsText;
+  const attemptText = inputMode === 'input3' ? session.kokoroPracticeText : session.ttsPracticeText;
+  return hasNonEmptyText(sourceText) && hasNonEmptyText(attemptText);
 }
 
 export function normalizeSessionLanguages(

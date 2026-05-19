@@ -340,6 +340,39 @@ describe('supabaseSync', () => {
     expect(selectPushableSyncRows(localRows, remoteRows)).toEqual([]);
   });
 
+  it('does not push a stale local pending session over a finished remote TTS session with score signals but empty practice text', () => {
+    const localRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-03T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-03T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'ready',
+        marker: 'desktop-pending',
+      },
+    }]);
+    const remoteRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-02T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-02T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'finished',
+        ttsText: 'Alltägliche Erlebnisse im Park',
+        ttsPracticeText: '',
+        metrics: { points: 78, score: 297, wpm: 31.2 },
+        telemetry: { actions: [] },
+        marker: 'mobile-finished-score-signals',
+      },
+    }]);
+
+    expect(selectPushableSyncRows(localRows, remoteRows)).toEqual([]);
+  });
+
   it('allows a submitted local phone session to repair a newer remote pending copy', () => {
     const localRows = toSyncRows('profile-1', [{
       itemType: 'session',

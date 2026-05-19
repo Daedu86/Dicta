@@ -162,9 +162,22 @@ describe('sessionNormalization', () => {
         status: 'finished',
         ttsText: 'Bonjour tout le monde',
         ttsPracticeText: '   ',
-        metrics: { wpm: 42, points: 0, score: 0 },
+        metrics: { wpm: 0, points: 0, score: 0 },
         telemetry: { actions: [] },
       }),
     ).toBe(false);
+  });
+
+  it('treats finished browser TTS sessions with real score signals as submitted even when practice text is missing', () => {
+    expect(
+      isSubmittedFinishedAttempt({
+        inputMode: 'input2',
+        status: 'finished',
+        ttsText: 'Alltägliche Erlebnisse im Park',
+        ttsPracticeText: '',
+        metrics: { points: 78, score: 297, wpm: 31.2 },
+        telemetry: { actions: [] },
+      }),
+    ).toBe(true);
   });
 });
