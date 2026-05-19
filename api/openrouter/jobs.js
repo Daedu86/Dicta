@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 import { createClient } from '@supabase/supabase-js';
+import { resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
 
 const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
@@ -198,7 +199,7 @@ async function runOpenRouterJob({ req, supabase, profileId, jobId, requestPayloa
 
 async function createJob(req, res) {
   const supabase = createSupabaseAdminClient();
-  const profileId = getRequiredEnv('VITE_SUPABASE_SYNC_PROFILE_ID');
+  const { profileId } = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
   const requestPayload = readCreateJobPayload(req.body);
   await cleanupOldOpenRouterJobs(supabase, profileId);
   const jobId = randomUUID();
@@ -230,7 +231,7 @@ async function createJob(req, res) {
 
 async function getJob(req, res) {
   const supabase = createSupabaseAdminClient();
-  const profileId = getRequiredEnv('VITE_SUPABASE_SYNC_PROFILE_ID');
+  const { profileId } = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
   const url = new URL(req.url, `https://${req.headers.host ?? 'dicta.local'}`);
   const jobId = url.searchParams.get('id')?.trim() ?? '';
   if (!jobId) {
@@ -266,6 +267,6 @@ export default async function handler(req, res) {
     }
     res.status(405).send('Method not allowed');
   } catch (error) {
-    res.status(500).send(error instanceof Error ? error.message : 'OpenRouter job request failed.');
+    sendApiError(res, error, 'OpenRouter job request failed.');
   }
 }

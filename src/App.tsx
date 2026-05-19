@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
+import type { ChangeEvent, FormEvent, KeyboardEvent, RefObject } from 'react';
+import type { Session as SupabaseAuthSession } from '@supabase/supabase-js';
 import './App.css';
 import type { ControlAction, SessionTelemetry, Transcript, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
 import type {
@@ -114,6 +115,7 @@ import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { sessionSnapshotJson } from './core/sessionSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
+  DICTA_SYNC_TABLE,
   createDictaSupabaseClient,
   deleteSessionSyncRow,
   getDictaSyncConfig,
@@ -125,6 +127,14 @@ import {
   type DictaSyncRow,
   type DictaSyncState,
 } from './core/supabaseSync';
+import {
+  isDictaAdmin,
+  loadDictaAppProfile,
+  loadVisibleDictaAppProfiles,
+  resolveEffectiveSyncProfileId,
+  type DictaAppProfile,
+  type DictaAppRole,
+} from './core/appProfiles';
 import {
   detectCreatedDeviceMetadata,
   formatCreatedDeviceIcon,
@@ -646,10 +656,34 @@ function App() {
   const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
   const syncConfig = useMemo(() => getDictaSyncConfig(import.meta.env), []);
   const supabaseClient = useMemo(() => createDictaSupabaseClient(syncConfig), [syncConfig]);
+  const [authSession, setAuthSession] = useState<SupabaseAuthSession | null>(null);
+  const [authLoading, setAuthLoading] = useState(() => Boolean(syncConfig.authRequired));
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [appProfile, setAppProfile] = useState<DictaAppProfile | null>(null);
+  const [appProfileError, setAppProfileError] = useState('');
+  const [visibleProfiles, setVisibleProfiles] = useState<DictaAppProfile[]>([]);
+  const [adminProfileFilter, setAdminProfileFilter] = useState<string>('self');
+  const [adminRemoteSessions, setAdminRemoteSessions] = useState<StoredSession[]>([]);
+  const [adminRemoteStatus, setAdminRemoteStatus] = useState('');
+  const effectiveProfileId = resolveEffectiveSyncProfileId({
+    authRequired: syncConfig.authRequired,
+    profile: appProfile,
+    legacyProfileId: syncConfig.legacyProfileId,
+  });
+  const effectiveSyncConfig = useMemo(
+    () => ({
+      ...syncConfig,
+      enabled: Boolean(syncConfig.url && syncConfig.anonKey && effectiveProfileId),
+      profileId: effectiveProfileId,
+    }),
+    [syncConfig, effectiveProfileId],
+  );
   const [supabaseSyncStatus, setSupabaseSyncStatus] = useState<SupabaseSyncStatus>({
-    enabled: syncConfig.enabled,
-    state: syncConfig.enabled ? 'idle' : 'disabled',
-    message: syncConfig.enabled ? 'Supabase sync ready.' : 'Set Supabase env vars to enable cross-device sync.',
+    enabled: effectiveSyncConfig.enabled,
+    state: effectiveSyncConfig.enabled ? 'idle' : 'disabled',
+    message: effectiveSyncConfig.enabled ? 'Supabase sync ready.' : 'Sign in with Supabase Auth to enable cross-device sync.',
     lastSyncedAt: null,
     imported: 0,
     pushed: 0,
@@ -697,7 +731,8 @@ function App() {
   const sessionFeedbackContextRef = useRef<Record<string, { inputMode: InputMode; language: LanguageCode }>>({});
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
-  const supabaseInitialPullCompleteRef = useRef(!syncConfig.enabled);
+  const allowFinishedSessionResetRef = useRef<string | null>(null);
+  const supabaseInitialPullCompleteRef = useRef(!effectiveSyncConfig.enabled);
   const supabaseApplyingRemoteRef = useRef(false);
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
@@ -737,6 +772,141 @@ function App() {
     accuracy: 100,
     trend: 'stable',
   });
+
+  useEffect(() => {
+    if (!supabaseClient || !syncConfig.authRequired) {
+      setAuthLoading(false);
+      return;
+    }
+    let cancelled = false;
+
+    supabaseClient.auth.getSession().then(({ data }) => {
+      if (!cancelled) {
+        setAuthSession(data.session ?? null);
+        setAuthLoading(false);
+      }
+    });
+
+    const { data: listener } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      setAuthSession(session);
+      if (!session) {
+        setAppProfile(null);
+        setVisibleProfiles([]);
+        setAdminProfileFilter('self');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      listener.subscription.unsubscribe();
+    };
+  }, [supabaseClient, syncConfig.authRequired]);
+
+  useEffect(() => {
+    if (!supabaseClient || !syncConfig.authRequired || !authSession?.user) return;
+    let cancelled = false;
+
+    setAppProfileError('');
+    loadDictaAppProfile(supabaseClient, authSession.user)
+      .then((profile) => {
+        if (cancelled) return;
+        setAppProfile(profile);
+        if (!profile) {
+          setAppProfileError('Your Dicta account exists, but no app profile is mapped yet. Create a dicta_app_profiles row for this user.');
+        } else if (!profile.active) {
+          setAppProfileError('This Dicta profile is inactive.');
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setAppProfile(null);
+          setAppProfileError(error instanceof Error ? error.message : 'Failed to load Dicta profile.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authSession?.user, supabaseClient, syncConfig.authRequired]);
+
+  useEffect(() => {
+    if (!supabaseClient || !isDictaAdmin(appProfile)) {
+      setVisibleProfiles(appProfile ? [appProfile] : []);
+      return;
+    }
+    let cancelled = false;
+    loadVisibleDictaAppProfiles(supabaseClient)
+      .then((profiles) => {
+        if (!cancelled) setVisibleProfiles(profiles);
+      })
+      .catch(() => {
+        if (!cancelled) setVisibleProfiles(appProfile ? [appProfile] : []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appProfile, supabaseClient]);
+
+  useEffect(() => {
+    if (adminProfileFilter === 'self') {
+      setAdminRemoteSessions([]);
+      setAdminRemoteStatus('');
+      return;
+    }
+    if (!supabaseClient || !isDictaAdmin(appProfile)) return;
+    let cancelled = false;
+
+    setAdminRemoteStatus('Loading remote admin sessions...');
+    let query = supabaseClient
+      .from(DICTA_SYNC_TABLE)
+      .select('profile_id,item_key,payload,updated_at')
+      .eq('item_type', 'session')
+      .order('updated_at', { ascending: false });
+    if (adminProfileFilter !== 'all') {
+      query = query.eq('profile_id', adminProfileFilter);
+    }
+    void (async () => {
+      try {
+        const { data, error } = await query;
+        if (cancelled) return;
+        if (error) throw error;
+        const nextSessions = (data ?? [])
+          .map((row) => asAdminRemoteStoredSession(row.payload))
+          .filter((session): session is StoredSession => Boolean(session));
+        setAdminRemoteSessions(nextSessions);
+        setAdminRemoteStatus(`Loaded ${nextSessions.length} remote session${nextSessions.length === 1 ? '' : 's'} for admin view.`);
+      } catch (error) {
+        if (!cancelled) {
+          setAdminRemoteSessions([]);
+          setAdminRemoteStatus(error instanceof Error ? error.message : 'Failed to load remote admin sessions.');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adminProfileFilter, appProfile, supabaseClient]);
+
+  useEffect(() => {
+    supabaseInitialPullCompleteRef.current = !effectiveSyncConfig.enabled;
+    supabaseKnownRemoteRowsRef.current = [];
+    supabaseLastRemoteUpdatedAtRef.current = null;
+    supabaseLastFullPullAtMsRef.current = 0;
+    setSupabaseSyncStatus({
+      enabled: effectiveSyncConfig.enabled,
+      state: effectiveSyncConfig.enabled ? 'idle' : 'disabled',
+      message: effectiveSyncConfig.enabled
+        ? `Supabase sync ready for ${appProfile?.displayName ?? effectiveSyncConfig.profileId}.`
+        : syncConfig.authRequired
+          ? 'Sign in with Supabase Auth to enable cross-device sync.'
+          : 'Set Supabase env vars to enable cross-device sync.',
+      lastSyncedAt: null,
+      imported: 0,
+      pushed: 0,
+    });
+  }, [appProfile?.displayName, effectiveSyncConfig.enabled, effectiveSyncConfig.profileId, syncConfig.authRequired]);
+
   const config = useMemo(() => configForDifficulty(difficulty), [difficulty]);
   const controllerRef = useRef(new SyncController(config));
   const activeSession = useMemo(
@@ -830,8 +1000,11 @@ function App() {
     [sessions, leaderboardLanguageView],
   );
   const adminSessions = useMemo(
-    () => [...sessions].filter((session) => resolveSessionLanguage(session) === adminLanguageView),
-    [sessions, adminLanguageView],
+    () => {
+      const source = adminProfileFilter === 'self' ? sessions : adminRemoteSessions;
+      return [...source].filter((session) => resolveSessionLanguage(session) === adminLanguageView);
+    },
+    [adminProfileFilter, adminRemoteSessions, sessions, adminLanguageView],
   );
   const adminStorageSummary = useMemo(() => buildAdminStorageSummary(adminSessions), [adminSessions]);
   const transcriptSegments = useMemo(() => buildTranscriptSegments(transcript), [transcript]);
@@ -1001,7 +1174,9 @@ function App() {
       await Promise.all(
         activeOpenRouterJobs.map(async (trackedJob) => {
           try {
-            const response = await fetch(`/api/openrouter/jobs?id=${encodeURIComponent(trackedJob.jobId)}`);
+            const response = await fetch(`/api/openrouter/jobs?id=${encodeURIComponent(trackedJob.jobId)}`, {
+              headers: getAuthHeaders(),
+            });
             if (!response.ok) {
               const text = await response.text();
               throw new Error(text || `OpenRouter job status failed (${response.status}).`);
@@ -1211,7 +1386,7 @@ function App() {
     latestSessionsForPersistenceRef.current = nextSessions;
     clearScheduledSessionPersist();
     persistSessionsToLocalStorage(nextSessions, 'session.persistNow.localStorage');
-    if (!supabaseClient || !syncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
+    if (!supabaseClient || !effectiveSyncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
 
     setSupabaseSyncStatus((current) => ({
       ...current,
@@ -1221,7 +1396,7 @@ function App() {
     const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.final', () =>
       buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
     );
-    void pushSyncRowsDetailed(supabaseClient, syncConfig.profileId, syncState, {
+    void pushSyncRowsDetailed(supabaseClient, effectiveSyncConfig.profileId, syncState, {
       existingRows: supabaseKnownRemoteRowsRef.current,
     })
       .then(({ pushed, pushedRows }) => {
@@ -1261,7 +1436,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!supabaseClient || !syncConfig.enabled) return;
+    if (!supabaseClient || !effectiveSyncConfig.enabled) return;
     const client = supabaseClient;
     let cancelled = false;
 
@@ -1275,7 +1450,7 @@ function App() {
       }));
       try {
         const shouldFullPull = reason === 'initial' || Date.now() - supabaseLastFullPullAtMsRef.current > 60 * 60_000;
-        const rows = await pullSyncRows(client, syncConfig.profileId, {
+        const rows = await pullSyncRows(client, effectiveSyncConfig.profileId, {
           updatedAfter: shouldFullPull ? null : supabaseLastRemoteUpdatedAtRef.current,
         });
         if (cancelled) return;
@@ -1291,7 +1466,7 @@ function App() {
         if (transientErrorSessionIds.length > 0) {
           transientErrorSessionIds.forEach((sessionId) => deletedSessionIdsRef.current.add(sessionId));
           persistDeletedSessionIds(deletedSessionIdsRef.current);
-          void Promise.allSettled(transientErrorSessionIds.map((sessionId) => deleteSessionSyncRow(client, syncConfig.profileId, sessionId)));
+          void Promise.allSettled(transientErrorSessionIds.map((sessionId) => deleteSessionSyncRow(client, effectiveSyncConfig.profileId, sessionId)));
         }
         const merged = mergeSyncRows(syncStateRef.current, rows);
         if (merged.deletedSessionIds.length > 0) {
@@ -1317,7 +1492,7 @@ function App() {
           ...merged,
           sessions: filteredMergedSessions,
         };
-        const { pushed, pushedRows } = await pushSyncRowsDetailed(client, syncConfig.profileId, postMergeState, {
+        const { pushed, pushedRows } = await pushSyncRowsDetailed(client, effectiveSyncConfig.profileId, postMergeState, {
           existingRows: supabaseKnownRemoteRowsRef.current,
         });
         supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
@@ -1366,10 +1541,10 @@ function App() {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('online', onOnline);
     };
-  }, [supabaseClient, syncConfig.enabled, syncConfig.profileId]);
+  }, [supabaseClient, effectiveSyncConfig.enabled, effectiveSyncConfig.profileId]);
 
   useEffect(() => {
-    if (!supabaseClient || !syncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
+    if (!supabaseClient || !effectiveSyncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
 
     const timeout = window.setTimeout(() => {
       setSupabaseSyncStatus((current) => ({
@@ -1380,7 +1555,7 @@ function App() {
       const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.background', () =>
         buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
       );
-      pushSyncRowsDetailed(supabaseClient, syncConfig.profileId, syncState, {
+      pushSyncRowsDetailed(supabaseClient, effectiveSyncConfig.profileId, syncState, {
         existingRows: supabaseKnownRemoteRowsRef.current,
       })
         .then(({ pushed, pushedRows }) => {
@@ -1410,8 +1585,8 @@ function App() {
     adaptiveSessionFeedbackByInputLanguage,
     sessions,
     supabaseClient,
-    syncConfig.enabled,
-    syncConfig.profileId,
+    effectiveSyncConfig.enabled,
+    effectiveSyncConfig.profileId,
   ]);
 
   useEffect(() => {
@@ -1767,11 +1942,6 @@ function App() {
         if (session.id !== activeSession.id) {
           return session;
         }
-        // Opening a finished session should be read-only and must not rewrite updatedAt.
-        if (session.status === 'finished' && sessionStatus === 'finished') {
-          return session;
-        }
-
         const nextAudioLabel = audioFile
           ? `Local file selected: ${audioFile.name} (re-attach after reload)`
           : loadedAudioFromUrl
@@ -1780,6 +1950,18 @@ function App() {
         const nextAudioUrl = audioFile ? '' : audioUrl;
         const nextTelemetry = cloneTelemetry(telemetryRef.current);
         const nextStatus = normalizeLiveSessionStatusForPersistence(sessionStatus, nextTelemetry, running);
+        const isExplicitFinishedReset = allowFinishedSessionResetRef.current === session.id && nextStatus !== 'finished';
+        // A remote sync import can mark the active session as finished before the visible
+        // form state has hydrated. Do not let stale form state downgrade that result.
+        if (session.status === 'finished' && nextStatus !== 'finished' && !isExplicitFinishedReset) {
+          return session;
+        }
+        if (isExplicitFinishedReset) {
+          allowFinishedSessionResetRef.current = null;
+        }
+        if (session.status === 'finished' && nextStatus === 'finished') {
+          return session;
+        }
         const changed =
           session.audioUrl !== nextAudioUrl ||
           session.audioSourceUrlInput !== audioSourceUrlInput ||
@@ -2081,6 +2263,9 @@ function App() {
 
   function resetSession(options: { preserveInputSettingsLock?: boolean } = {}): void {
     const nextInputSettingsLocked = options.preserveInputSettingsLock ? inputSettingsLocked : false;
+    if (activeSession?.status === 'finished') {
+      allowFinishedSessionResetRef.current = activeSession.id;
+    }
     engineRef.current?.reset();
     stopTtsPlayback();
     stopKokoroPlayback();
@@ -2186,11 +2371,37 @@ function App() {
     setExportMessage('Input settings locked for this session.');
   }
 
+  function getAuthHeaders(): Record<string, string> {
+    const token = authSession?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  async function signInWithSupabase(event?: FormEvent<HTMLFormElement>): Promise<void> {
+    event?.preventDefault();
+    if (!supabaseClient) return;
+    setAuthError('');
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email: authEmail.trim(),
+      password: authPassword,
+    });
+    if (error) {
+      setAuthError(error.message);
+      return;
+    }
+    setAuthPassword('');
+  }
+
   async function signOut(): Promise<void> {
     try {
+      await supabaseClient?.auth.signOut();
       await fetch('/api/auth/logout', { method: 'POST' });
     } finally {
-      window.location.href = '/login.html';
+      if (syncConfig.authRequired) {
+        setAuthSession(null);
+        setAppProfile(null);
+      } else {
+        window.location.href = '/login.html';
+      }
     }
   }
 
@@ -2382,13 +2593,13 @@ function App() {
     deletedSessionIdsRef.current.add(sessionId);
     persistDeletedSessionIds(deletedSessionIdsRef.current);
     setSessions((prev) => prev.filter((session) => session.id !== sessionId));
-    if (supabaseClient && syncConfig.enabled) {
+    if (supabaseClient && effectiveSyncConfig.enabled) {
       setSupabaseSyncStatus((current) => ({
         ...current,
         state: 'pushing',
         message: 'Deleting session in Supabase...',
       }));
-      void deleteSessionSyncRow(supabaseClient, syncConfig.profileId, sessionId)
+      void deleteSessionSyncRow(supabaseClient, effectiveSyncConfig.profileId, sessionId)
         .then((deletedRow) => {
           supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, [deletedRow]);
           supabaseLastRemoteUpdatedAtRef.current =
@@ -2528,7 +2739,7 @@ function App() {
       const { prompt } = buildOpenRouterGenerationPrompt(directPromptArgs);
       const response = await fetch('/api/openrouter/jobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           model,
           prompt,
@@ -5497,6 +5708,57 @@ function App() {
     ],
   };
 
+  if (syncConfig.authRequired && (authLoading || !authSession || !appProfile || appProfileError)) {
+    return (
+      <main className={`app auth-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
+        <section className="auth-panel">
+          <div className="brand-mark auth-brand-mark">
+            <span className="brand-mark-icon" aria-hidden="true">D</span>
+          </div>
+          <div>
+            <p className="dashboard-eyebrow">Dicta access</p>
+            <h1>Sign in</h1>
+            <p className="dashboard-meta">Use the Supabase account assigned to your Dicta profile.</p>
+          </div>
+          {authLoading ? (
+            <p className="hint">Checking session...</p>
+          ) : authSession && !appProfile && !appProfileError ? (
+            <p className="hint">Loading Dicta profile...</p>
+          ) : authSession && appProfileError ? (
+            <>
+              <p className="error">{appProfileError}</p>
+              <button type="button" className="secondary-button" onClick={() => void signOut()}>
+                Sign out
+              </button>
+            </>
+          ) : (
+            <form className="auth-form" onSubmit={(event) => void signInWithSupabase(event)}>
+              <label>
+                Email
+                <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" required />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(event) => setAuthPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <button type="submit" className="secondary-button" disabled={!authEmail.trim() || !authPassword}>
+                Sign in
+              </button>
+              {authError ? <p className="error">{authError}</p> : null}
+            </form>
+          )}
+        </section>
+        <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />
+      </main>
+    );
+  }
+
   if (isFocusedTrainingRoute) {
     return (
       <main className={`app training-route-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
@@ -5558,16 +5820,18 @@ function App() {
           >
             🧠 Adaptive Pace Layer
           </button>
-            <button
-              type="button"
-              className="secondary-button brand-admin-button"
-              onClick={() => {
-                setWorkspaceMode('admin');
-                setDashboardSessionId(null);
-              }}
-            >
-              Admin
-            </button>
+            {isDictaAdmin(appProfile) || !syncConfig.authRequired ? (
+              <button
+                type="button"
+                className="secondary-button brand-admin-button"
+                onClick={() => {
+                  setWorkspaceMode('admin');
+                  setDashboardSessionId(null);
+                }}
+              >
+                Admin
+              </button>
+            ) : null}
             <button
               type="button"
               className="secondary-button brand-openrouter-button"
@@ -7005,6 +7269,7 @@ function App() {
             ) : workspaceMode === 'openrouter' ? (
               <OpenRouterWorkspace
                 defaultModel={openRouterDefaultModel}
+                authHeaders={getAuthHeaders()}
                 onSetDefaultModel={(value) => {
                   setOpenRouterDefaultModel(value);
                   window.localStorage.setItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(value));
@@ -7016,7 +7281,7 @@ function App() {
                   setOpenRouterStatus('loading');
                   setOpenRouterError('');
                   try {
-                    const response = await fetch('/api/openrouter/models');
+                    const response = await fetch('/api/openrouter/models', { headers: getAuthHeaders() });
                     if (!response.ok) {
                       const text = await response.text();
                       throw new Error(text || `OpenRouter request failed (${response.status}).`);
@@ -7080,7 +7345,7 @@ function App() {
                 }
               />
             ) : workspaceMode === 'admin' ? (
-              <AdminWorkspace
+              isDictaAdmin(appProfile) || !syncConfig.authRequired ? <AdminWorkspace
                 sessions={adminSessions}
                 summary={adminStorageSummary}
                 fileInventory={adminFileInventory}
@@ -7096,7 +7361,17 @@ function App() {
                 onCreateManualInput1Session={createManualInput1SessionFromAdmin}
                 onExportSession={downloadSessionSnapshot}
                 onCopySession={(session) => void copySessionSnapshot(session, setExportMessage)}
-              />
+                appProfile={appProfile}
+                visibleProfiles={visibleProfiles}
+                selectedProfileFilter={adminProfileFilter}
+                onChangeProfileFilter={setAdminProfileFilter}
+                authHeaders={getAuthHeaders()}
+                remoteAdminStatus={adminRemoteStatus}
+              /> : (
+                <section className="panel workspace-panel">
+                  <p className="error">Admin access required.</p>
+                </section>
+              )
             ) : workspaceMode === 'leaderboard' ? (
               <section className="panel workspace-panel leaderboard-workspace">
                 <div className="metrics-header">
@@ -7558,6 +7833,7 @@ type OpenRouterGenerationSlots = Record<OpenRouterGenerationSlotId, OpenRouterGe
 
 function OpenRouterWorkspace({
   defaultModel,
+  authHeaders,
   onSetDefaultModel,
   models,
   status,
@@ -7586,6 +7862,7 @@ function OpenRouterWorkspace({
   onCopyBenchmarkFeedbackPromptWithHumanFeedback,
 }: {
   defaultModel: string;
+  authHeaders: Record<string, string>;
   onSetDefaultModel: (value: string) => void;
   models: Array<{ id: string; name?: string; context_length?: number }>;
   status: 'idle' | 'loading' | 'ready' | 'error';
@@ -7739,7 +8016,7 @@ function OpenRouterWorkspace({
     try {
       const response = await fetch('/api/openrouter/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ model: slotModel, prompt: slotPrompt, maxTokens: slotMaxTokens }),
       });
       if (!response.ok) {
@@ -8133,7 +8410,7 @@ function OpenRouterWorkspace({
                   try {
                     const response = await fetch('/api/openrouter/key', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: { 'Content-Type': 'application/json', ...authHeaders },
                       body: JSON.stringify({ apiKey: nextKey }),
                     });
                     if (!response.ok) {
@@ -8829,6 +9106,12 @@ function AdminWorkspace({
   onCreateManualInput1Session,
   onExportSession,
   onCopySession,
+  appProfile,
+  visibleProfiles,
+  selectedProfileFilter,
+  onChangeProfileFilter,
+  authHeaders,
+  remoteAdminStatus,
 }: {
   sessions: StoredSession[];
   summary: AdminStorageSummary;
@@ -8845,9 +9128,22 @@ function AdminWorkspace({
   onCreateManualInput1Session: (name: string) => void;
   onExportSession: (session: StoredSession) => void;
   onCopySession: (session: StoredSession) => void;
+  appProfile: DictaAppProfile | null;
+  visibleProfiles: DictaAppProfile[];
+  selectedProfileFilter: string;
+  onChangeProfileFilter: (value: string) => void;
+  authHeaders: Record<string, string>;
+  remoteAdminStatus: string;
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [manualInput1Name, setManualInput1Name] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserDisplayName, setNewUserDisplayName] = useState('');
+  const [newUserProfileId, setNewUserProfileId] = useState('');
+  const [newUserRole, setNewUserRole] = useState<DictaAppRole>('member');
+  const [newUserMessage, setNewUserMessage] = useState('');
+  const [newUserBusy, setNewUserBusy] = useState(false);
 
   async function onImportFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0] ?? null;
@@ -8863,6 +9159,39 @@ function AdminWorkspace({
     setManualInput1Name('');
   }
 
+  async function createDictaUser(): Promise<void> {
+    setNewUserBusy(true);
+    setNewUserMessage('');
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({
+          email: newUserEmail,
+          password: newUserPassword,
+          displayName: newUserDisplayName,
+          profileId: newUserProfileId,
+          role: newUserRole,
+        }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `User creation failed (${response.status}).`);
+      }
+      const payload = (await response.json()) as { displayName?: string; profileId?: string };
+      setNewUserMessage(`Created ${payload.displayName ?? newUserEmail} · profile ${payload.profileId ?? newUserProfileId}. Refresh Admin to see the profile list.`);
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setNewUserDisplayName('');
+      setNewUserProfileId('');
+      setNewUserRole('member');
+    } catch (error) {
+      setNewUserMessage(error instanceof Error ? error.message : 'User creation failed.');
+    } finally {
+      setNewUserBusy(false);
+    }
+  }
+
   return (
     <section className="panel workspace-panel admin-workspace">
       <div className="tts-workspace-header">
@@ -8870,6 +9199,11 @@ function AdminWorkspace({
           <p className="dashboard-eyebrow">Storage control</p>
           <h2>Admin</h2>
           <p className="dashboard-meta">Read-only project storage, session, transcript, and telemetry overview.</p>
+          {appProfile ? (
+            <p className="dashboard-meta">
+              Signed in as {appProfile.displayName} · {appProfile.role} · profile {appProfile.profileId}
+            </p>
+          ) : null}
           <div className="live-metrics-language-tabs admin-language-tabs" role="tablist" aria-label="Admin language">
             {SUPPORTED_LANGUAGES.map((code) => (
               <button
@@ -8907,6 +9241,92 @@ function AdminWorkspace({
       </div>
 
       <div className="admin-grid">
+        {visibleProfiles.length > 0 ? (
+          <section className="dashboard-card admin-card">
+            <div className="admin-card-header">
+              <div>
+                <h3>Users</h3>
+                <p>Profiles visible to this account. Session sync remains scoped to the active signed-in profile.</p>
+              </div>
+            </div>
+            <label>
+              Admin profile filter
+              <select value={selectedProfileFilter} onChange={(event) => onChangeProfileFilter(event.target.value)}>
+                <option value="self">Current profile</option>
+                <option value="all">All profiles</option>
+                {visibleProfiles.map((profile) => (
+                  <option key={profile.profileId} value={profile.profileId}>
+                    {profile.displayName} · {profile.role}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {remoteAdminStatus ? <p className={remoteAdminStatus.toLowerCase().includes('failed') ? 'error' : 'hint'}>{remoteAdminStatus}</p> : null}
+            <div className="admin-table">
+              <div className="admin-table-row admin-table-header">
+                <span>Name</span>
+                <span>Role</span>
+                <span>Profile</span>
+              </div>
+              {visibleProfiles.map((profile) => (
+                <div key={profile.profileId} className="admin-table-row">
+                  <span>{profile.displayName}</span>
+                  <span>{profile.active ? profile.role : 'inactive'}</span>
+                  <span>{profile.profileId}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="dashboard-card admin-card">
+          <div className="admin-card-header">
+            <div>
+              <h3>Create user</h3>
+              <p>Create an invite-only Supabase Auth user and map it to a separate Dicta profile.</p>
+            </div>
+          </div>
+          <label>
+            Email
+            <input value={newUserEmail} onChange={(event) => setNewUserEmail(event.target.value)} placeholder="mama@example.com" />
+          </label>
+          <label>
+            Temporary password
+            <input
+              type="password"
+              value={newUserPassword}
+              onChange={(event) => setNewUserPassword(event.target.value)}
+              placeholder="At least 8 characters"
+            />
+          </label>
+          <label>
+            Display name
+            <input value={newUserDisplayName} onChange={(event) => setNewUserDisplayName(event.target.value)} placeholder="Mama" />
+          </label>
+          <label>
+            Profile id
+            <input value={newUserProfileId} onChange={(event) => setNewUserProfileId(event.target.value)} placeholder="mama" />
+          </label>
+          <label>
+            Role
+            <select value={newUserRole} onChange={(event) => setNewUserRole(event.target.value === 'admin' ? 'admin' : 'member')}>
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={newUserBusy || !newUserEmail.trim() || newUserPassword.length < 8}
+              onClick={() => void createDictaUser()}
+            >
+              {newUserBusy ? 'Creating...' : 'Create user'}
+            </button>
+          </div>
+          {newUserMessage ? <p className={newUserMessage.toLowerCase().includes('failed') || newUserMessage.toLowerCase().includes('required') ? 'error' : 'success'}>{newUserMessage}</p> : null}
+        </section>
+
         <section className="dashboard-card admin-card">
           <div className="admin-card-header">
             <div>
@@ -10730,6 +11150,52 @@ function buildCurrentSyncState(
     benchmarks,
     feedback,
   };
+}
+
+function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Partial<StoredSession> & { deleted?: boolean };
+  if (record.deleted === true || typeof record.id !== 'string') return null;
+  const inputMode: SessionInputMode =
+    record.inputMode === 'input2' || record.inputMode === 'input3' || record.inputMode === 'input4' ? record.inputMode : 'input1';
+  const scriptResult = validateDictationScript(record.dictationScript);
+  return normalizeRestoredStoredSession({
+    id: record.id,
+    name: record.name ?? 'Remote session',
+    createdAt: record.createdAt ?? new Date(0).toISOString(),
+    updatedAt: record.updatedAt ?? new Date(0).toISOString(),
+    inputMode,
+    inputSettingsLocked: Boolean(record.inputSettingsLocked),
+    audioUrl: record.audioUrl ?? '',
+    audioSourceUrlInput: record.audioSourceUrlInput ?? '',
+    audioLabel: record.audioLabel ?? '',
+    transcriptionLanguage: isSupportedLanguage(record.transcriptionLanguage) ? record.transcriptionLanguage : null,
+    transcript: record.transcript ?? null,
+    inputText: record.inputText ?? '',
+    ttsText: record.ttsText ?? '',
+    ttsLanguage: isSupportedLanguage(record.ttsLanguage) ? record.ttsLanguage : null,
+    ttsVoiceURI: inputMode === 'input2' && typeof record.ttsVoiceURI === 'string' ? record.ttsVoiceURI : null,
+    ttsPracticeText: record.ttsPracticeText ?? '',
+    kokoroText: record.kokoroText ?? '',
+    kokoroLanguage: isSupportedLanguage(record.kokoroLanguage) ? record.kokoroLanguage : null,
+    kokoroVoice: record.kokoroVoice ?? 'default',
+    kokoroPracticeText: record.kokoroPracticeText ?? '',
+    kokoroChunks: record.kokoroChunks ?? [],
+    difficulty: record.difficulty ?? 'normal',
+    status: normalizeRestoredSessionStatus(isSessionStatus(record.status) ? record.status : 'ready', cloneTelemetry(record.telemetry)),
+    metrics: {
+      ...createDefaultMetrics(),
+      ...record.metrics,
+    },
+    telemetry: cloneTelemetry(record.telemetry),
+    sessionSource: record.sessionSource === 'dictationScript' && scriptResult.ok ? 'dictationScript' : 'plainText',
+    generationOrigin:
+      record.generationOrigin === 'openrouter' || record.generationOrigin === 'fallback-template' ? record.generationOrigin : 'manual',
+    createdDeviceKind: normalizeCreatedDeviceKind(record.createdDeviceKind),
+    createdDeviceLabel: typeof record.createdDeviceLabel === 'string' ? record.createdDeviceLabel : undefined,
+    dictationScript: scriptResult.ok ? scriptResult.script : null,
+    generationError: typeof record.generationError === 'string' ? record.generationError : undefined,
+  });
 }
 
 function getDictaLocalStorageEntries(): LocalStorageEntry[] {

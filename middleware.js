@@ -30,6 +30,9 @@ function isApiPath(pathname) {
 }
 
 export default async function middleware(request) {
+  const supabaseAuthEnabled = Boolean(process.env.VITE_SUPABASE_URL?.trim() && process.env.VITE_SUPABASE_ANON_KEY?.trim());
+  if (supabaseAuthEnabled) return next();
+
   const password = process.env.DICTA_APP_PASSWORD?.trim();
   if (!password) return next();
 

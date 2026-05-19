@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSyncItems,
+  getDictaSyncConfig,
   latestSyncRowTimestamp,
   mergeSyncRowSnapshots,
   mergeSyncRows,
@@ -42,6 +43,18 @@ const baseState = (): DictaSyncState => ({
 });
 
 describe('supabaseSync', () => {
+  it('treats Supabase URL and anon key as auth-capable even before a profile is resolved', () => {
+    const config = getDictaSyncConfig({
+      VITE_SUPABASE_URL: 'https://example.supabase.co',
+      VITE_SUPABASE_ANON_KEY: 'anon-key',
+      VITE_SUPABASE_SYNC_PROFILE_ID: '',
+    });
+
+    expect(config.authRequired).toBe(true);
+    expect(config.enabled).toBe(false);
+    expect(config.legacyProfileId).toBe('');
+  });
+
   it('serializes sessions, benchmarks, and feedback to sync rows', () => {
     const items = buildSyncItems(baseState());
     expect(items.map((item) => `${item.itemType}:${item.itemKey}`)).toEqual([

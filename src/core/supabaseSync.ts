@@ -22,9 +22,11 @@ export type DictaSyncItem = {
 
 export type DictaSyncConfig = {
   enabled: boolean;
+  authRequired: boolean;
   url: string;
   anonKey: string;
   profileId: string;
+  legacyProfileId: string;
 };
 
 export type DictaSyncState = {
@@ -59,18 +61,20 @@ export function getDictaSyncConfig(env: Record<string, string | undefined>): Dic
   const profileId = env.VITE_SUPABASE_SYNC_PROFILE_ID?.trim() ?? '';
   return {
     enabled: Boolean(url && anonKey && profileId),
+    authRequired: Boolean(url && anonKey),
     url,
     anonKey,
     profileId,
+    legacyProfileId: profileId,
   };
 }
 
 export function createDictaSupabaseClient(config: DictaSyncConfig): SupabaseClient | null {
-  if (!config.enabled) return null;
+  if (!config.url || !config.anonKey) return null;
   return createClient(config.url, config.anonKey, {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      persistSession: true,
+      autoRefreshToken: true,
       detectSessionInUrl: false,
     },
   });

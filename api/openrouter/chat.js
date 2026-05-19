@@ -1,3 +1,5 @@
+import { resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+
 function getOpenRouterApiKey() {
   return process.env.OPENROUTER_API_KEY?.trim() ?? '';
 }
@@ -55,6 +57,13 @@ async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeo
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).send('Method not allowed');
+    return;
+  }
+
+  try {
+    await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+  } catch (error) {
+    sendApiError(res, error, 'OpenRouter chat request failed.');
     return;
   }
 

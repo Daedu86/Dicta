@@ -193,7 +193,9 @@ Dicta stores everything in browser local storage for the MVP:
 
 OpenRouter credentials are intentionally **not** stored in `localStorage`. The dev server proxies OpenRouter requests using `OPENROUTER_API_KEY` from `.env.local`.
 
-Optional Supabase sync keeps these same browser stores synced across devices for one private profile. Create the `dicta_sync_items` table with `docs/supabase-sync.sql`, replace the policy profile id, and set these env vars locally and in Vercel:
+Optional Supabase sync keeps these same browser stores synced across devices. The original setup in `docs/supabase-sync.sql` is single-profile; the multiuser setup uses Supabase Auth plus `dicta_app_profiles` and RLS from `supabase/migrations/20260519000000_dicta_multiuser_auth.sql`. See `docs/supabase-multiuser-auth.md` before enabling family accounts.
+
+Set these env vars locally and in Vercel:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
