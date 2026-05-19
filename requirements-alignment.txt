@@ -2,4 +2,4 @@
 
 # Optional full local alignment pipeline
 whisperx>=3.1.0
-torch>=2.1
+torch>=2.12.0
