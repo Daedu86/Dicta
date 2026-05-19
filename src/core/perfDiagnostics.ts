@@ -408,7 +408,6 @@ export class PerfDiagnostics {
 
   log(event: string, payload: unknown): void {
     if (!this.enabled) return;
-    // eslint-disable-next-line no-console
     console.info('[DictaPerf]', event, payload);
   }
 
