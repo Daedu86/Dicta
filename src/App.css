@@ -249,6 +249,12 @@
   gap: 0.7rem;
 }
 
+.training-generation-action {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
 .training-control-grid button,
 .training-generation-button,
 .training-submit-button {
@@ -281,6 +287,30 @@
 .training-submit-button,
 .training-generation-button {
   width: 100%;
+}
+
+.training-generation-notice {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #c9d9e9;
+  border-radius: 10px;
+  background: #f4f8fd;
+  color: #24415f;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.training-generation-notice-success {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.training-generation-notice-error {
+  border-color: #f59e0b;
+  background: #fff7ed;
+  color: #7c2d12;
 }
 
 .perf-overlay {

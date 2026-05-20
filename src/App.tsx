@@ -227,6 +227,19 @@ type OpenRouterJobNotification = {
   completedAt?: string;
   error?: string;
 };
+type TrainingGenerationNotice = {
+  slotLabel: string;
+  displayLabel: string;
+  model: string;
+  startedAt: string;
+  status: 'running' | 'succeeded' | 'failed';
+  completedAt?: string;
+  error?: string;
+};
+type TrainingGenerationNoticeView = {
+  message: string;
+  tone: 'hint' | 'success' | 'error';
+};
 type TtsLanguage = SupportedLanguage;
 type TypingLanguage = SupportedLanguage;
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
@@ -589,8 +602,10 @@ function App() {
   const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [openRouterError, setOpenRouterError] = useState('');
   const [activeOpenRouterJobs, setActiveOpenRouterJobs] = useState<ActiveOpenRouterJob[]>(() => loadActiveOpenRouterJobs());
-  const [, setOpenRouterJobNotifications] = useState<Record<string, OpenRouterJobNotification>>({});
+  const [openRouterJobNotifications, setOpenRouterJobNotifications] = useState<Record<string, OpenRouterJobNotification>>({});
   const [openRouterJobStatus, setOpenRouterJobStatus] = useState('');
+  const [trainingGenerationNotices, setTrainingGenerationNotices] = useState<Record<string, TrainingGenerationNotice>>({});
+  const [trainingGenerationNowMs, setTrainingGenerationNowMs] = useState(() => Date.now());
   const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
   const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
   const [dictaLanguageView, setDictaLanguageView] = useState<MetricsLanguageView>(() =>
@@ -1132,6 +1147,18 @@ function App() {
   }, [kokoroEnabled]);
 
   useEffect(() => {
+    const hasRunningGenerationNotice = Object.values(trainingGenerationNotices).some((notice) => notice.status === 'running');
+    if (!hasRunningGenerationNotice && activeOpenRouterJobs.length === 0) return;
+
+    setTrainingGenerationNowMs(Date.now());
+    const intervalId = window.setInterval(() => {
+      setTrainingGenerationNowMs(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [activeOpenRouterJobs.length, trainingGenerationNotices]);
+
+  useEffect(() => {
     const storedModel = window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY);
     if (storedModel) {
       try {
@@ -1191,7 +1218,20 @@ function App() {
 
             settledJobIds.push(trackedJob.jobId);
             if (job.status === 'failed') {
-              setOpenRouterError(job.error || 'OpenRouter job failed.');
+              const message = job.error || 'OpenRouter job failed.';
+              setOpenRouterError(message);
+              setTrainingGenerationNotices((current) => ({
+                ...current,
+                [trackedJob.slotLabel]: {
+                  slotLabel: trackedJob.slotLabel,
+                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
+                  model: trackedJob.model,
+                  startedAt: trackedJob.startedAt,
+                  status: 'failed',
+                  completedAt: job.completedAt || job.updatedAt || new Date().toISOString(),
+                  error: message,
+                },
+              }));
               return;
             }
 
@@ -1200,21 +1240,70 @@ function App() {
 
             const text = extractOpenRouterJobText(job.result);
             if (!text.trim()) {
-              setOpenRouterError('OpenRouter job finished without usable text.');
+              const message = 'OpenRouter job finished without usable text.';
+              setOpenRouterError(message);
+              setTrainingGenerationNotices((current) => ({
+                ...current,
+                [trackedJob.slotLabel]: {
+                  slotLabel: trackedJob.slotLabel,
+                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
+                  model: trackedJob.model,
+                  startedAt: trackedJob.startedAt,
+                  status: 'failed',
+                  completedAt: job.completedAt || job.updatedAt || new Date().toISOString(),
+                  error: message,
+                },
+              }));
               return;
             }
 
             const validation = validateGeneratedScriptForTarget(stripJsonFence(text), trackedJob.inputMode, trackedJob.language as BenchmarkLanguageButton);
             if (validation.ok) {
               createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
+              setTrainingGenerationNotices((current) => ({
+                ...current,
+                [trackedJob.slotLabel]: {
+                  slotLabel: trackedJob.slotLabel,
+                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
+                  model: trackedJob.model,
+                  startedAt: trackedJob.startedAt,
+                  status: 'succeeded',
+                  completedAt: job.completedAt || job.updatedAt || new Date().toISOString(),
+                },
+              }));
             } else {
-              setOpenRouterError(validation.errors.join(' ') || 'Generated script did not validate.');
+              const message = validation.errors.join(' ') || 'Generated script did not validate.';
+              setOpenRouterError(message);
+              setTrainingGenerationNotices((current) => ({
+                ...current,
+                [trackedJob.slotLabel]: {
+                  slotLabel: trackedJob.slotLabel,
+                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
+                  model: trackedJob.model,
+                  startedAt: trackedJob.startedAt,
+                  status: 'failed',
+                  completedAt: job.completedAt || job.updatedAt || new Date().toISOString(),
+                  error: message,
+                },
+              }));
             }
           } catch (error) {
             if (cancelled) return;
             const message = error instanceof Error ? error.message : 'OpenRouter job polling failed.';
             notifications.push(buildOpenRouterJobNotification(trackedJob, null, message));
             setOpenRouterError(message);
+            setTrainingGenerationNotices((current) => ({
+              ...current,
+              [trackedJob.slotLabel]: {
+                slotLabel: trackedJob.slotLabel,
+                displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
+                model: trackedJob.model,
+                startedAt: trackedJob.startedAt,
+                status: 'failed',
+                completedAt: new Date().toISOString(),
+                error: message,
+              },
+            }));
           }
         }),
       );
@@ -2747,6 +2836,7 @@ function App() {
 
   async function generateDirectSessionFromOpenRouter({
     slotLabel,
+    displayLabel,
     durationMinutes,
     isBusy,
     setBusy,
@@ -2754,6 +2844,7 @@ function App() {
     difficultyInstruction,
   }: {
     slotLabel: string;
+    displayLabel: string;
     durationMinutes: 2 | 3 | 4;
     isBusy: boolean;
     setBusy: (value: boolean) => void;
@@ -2776,8 +2867,19 @@ function App() {
     }
 
     const endPerfSpan = perfDiagnostics.startSpan('openrouter.generateDirectSession', { targetDifficulty, durationMinutes });
+    const generationStartedAt = new Date().toISOString();
     setBusy(true);
     setOpenRouterError('');
+    setTrainingGenerationNotices((current) => ({
+      ...current,
+      [slotLabel]: {
+        slotLabel,
+        displayLabel,
+        model,
+        startedAt: generationStartedAt,
+        status: 'running',
+      },
+    }));
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
@@ -2833,7 +2935,7 @@ function App() {
         language,
         durationMinutes,
         ...(targetDifficulty ? { targetDifficulty } : {}),
-        startedAt: new Date().toISOString(),
+        startedAt: generationStartedAt,
       };
       setActiveOpenRouterJobs((current) => addActiveOpenRouterJob(activeJob, current));
       setOpenRouterJobNotifications((current) => {
@@ -2857,6 +2959,18 @@ function App() {
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
+      setTrainingGenerationNotices((current) => ({
+        ...current,
+        [slotLabel]: {
+          slotLabel,
+          displayLabel,
+          model,
+          startedAt: generationStartedAt,
+          status: 'failed',
+          completedAt: new Date().toISOString(),
+          error: message,
+        },
+      }));
       if (isTransientOpenRouterGenerationError(message)) {
         setOpenRouterError(formatInterruptedOpenRouterMessage(message));
       } else if (shouldCreatePersistentGenerationErrorSession(message)) {
@@ -2878,6 +2992,7 @@ function App() {
   async function generateNextSessionFromOpenRouter(): Promise<void> {
     await generateDirectSessionFromOpenRouter({
       slotLabel: 'Direct session',
+      displayLabel: 'Direct session',
       durationMinutes: 3,
       isBusy: directOpenRouterBusy,
       setBusy: setDirectOpenRouterBusy,
@@ -2887,6 +3002,7 @@ function App() {
   async function generateEasyNextSessionFromOpenRouter(): Promise<void> {
     await generateDirectSessionFromOpenRouter({
       slotLabel: 'Easy direct session',
+      displayLabel: 'Easy session',
       durationMinutes: 2,
       isBusy: directOpenRouterBusy,
       setBusy: setDirectOpenRouterBusy,
@@ -2898,6 +3014,7 @@ function App() {
   async function generateIntermediateNextSessionFromOpenRouter(): Promise<void> {
     await generateDirectSessionFromOpenRouter({
       slotLabel: 'Intermediate direct session',
+      displayLabel: 'Medium session',
       durationMinutes: 2,
       isBusy: directIntermediateOpenRouterBusy,
       setBusy: setDirectIntermediateOpenRouterBusy,
@@ -2909,6 +3026,7 @@ function App() {
   async function generateAdvancedNextSessionFromOpenRouter(): Promise<void> {
     await generateDirectSessionFromOpenRouter({
       slotLabel: 'Advanced direct session',
+      displayLabel: 'Hard session',
       durationMinutes: 2,
       isBusy: directAdvancedOpenRouterBusy,
       setBusy: setDirectAdvancedOpenRouterBusy,
@@ -5612,6 +5730,30 @@ function App() {
     : trainingSubmitMessage
       ? 'success'
       : 'hint';
+  const easyGenerationNotice = buildTrainingGenerationButtonNotice({
+    slotLabel: 'Easy direct session',
+    displayLabel: 'Easy session',
+    notices: trainingGenerationNotices,
+    jobNotifications: openRouterJobNotifications,
+    activeJobs: activeOpenRouterJobs,
+    nowMs: trainingGenerationNowMs,
+  });
+  const mediumGenerationNotice = buildTrainingGenerationButtonNotice({
+    slotLabel: 'Intermediate direct session',
+    displayLabel: 'Medium session',
+    notices: trainingGenerationNotices,
+    jobNotifications: openRouterJobNotifications,
+    activeJobs: activeOpenRouterJobs,
+    nowMs: trainingGenerationNowMs,
+  });
+  const hardGenerationNotice = buildTrainingGenerationButtonNotice({
+    slotLabel: 'Advanced direct session',
+    displayLabel: 'Hard session',
+    notices: trainingGenerationNotices,
+    jobNotifications: openRouterJobNotifications,
+    activeJobs: activeOpenRouterJobs,
+    nowMs: trainingGenerationNowMs,
+  });
 
   function replayFocusedAudio(): void {
     const currentTime = engineRef.current?.getCurrentTime() ?? audioRef.current?.currentTime ?? 0;
@@ -5640,7 +5782,7 @@ function App() {
     audioRef,
     audioUrl,
     onAudioTimeUpdate: () => setCurrentAudioTime(audioRef.current?.currentTime ?? 0),
-    onAudioEnded: finishSession,
+    onAudioEnded: () => finishSession(),
     showAudioElement: activeInputMode === 'input1' && Boolean(audioUrl),
     currentTextValue: focusedTextValue,
     onTextChange: focusedInputHandler,
@@ -5715,7 +5857,7 @@ function App() {
       activeInputMode === 'input1'
         ? (latestTextValue?: string) => {
             if (latestTextValue !== undefined && latestTextValue !== inputText) onTypingChange(latestTextValue);
-            finishSession();
+            finishSession(latestTextValue);
           }
         : activeInputMode === 'input3'
           ? (latestTextValue?: string) => {
@@ -5755,24 +5897,34 @@ function App() {
     isOnline,
     generationButtons: [
       {
+        id: 'easy',
         label: directOpenRouterBusy ? 'Requesting easy...' : 'New Easy Session',
         onClick: () => void generateEasyNextSessionFromOpenRouter(),
         disabled: !isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        statusMessage: easyGenerationNotice?.message,
+        statusTone: easyGenerationNotice?.tone,
       },
       {
+        id: 'medium',
         label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : 'New Medium Session',
         onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
         disabled: !isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        statusMessage: mediumGenerationNotice?.message,
+        statusTone: mediumGenerationNotice?.tone,
       },
       {
+        id: 'hard',
         label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : 'New Hard Session',
         onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
         disabled: !isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
         title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        statusMessage: hardGenerationNotice?.message,
+        statusTone: hardGenerationNotice?.tone,
       },
       {
+        id: 'custom',
         label: 'New Custom Session',
         onClick: openOpenRouterGenerateForActiveInput,
         disabled: !isOnline || !activeSession,
@@ -11136,6 +11288,102 @@ function formatOpenRouterJobNotifications(notifications: Record<string, OpenRout
     .join(' ');
 }
 
+function buildTrainingGenerationButtonNotice({
+  slotLabel,
+  displayLabel,
+  notices,
+  jobNotifications,
+  activeJobs,
+  nowMs,
+}: {
+  slotLabel: string;
+  displayLabel: string;
+  notices: Record<string, TrainingGenerationNotice>;
+  jobNotifications: Record<string, OpenRouterJobNotification>;
+  activeJobs: ActiveOpenRouterJob[];
+  nowMs: number;
+}): TrainingGenerationNoticeView | null {
+  const localNotice = notices[slotLabel];
+  if (localNotice && localNotice.status !== 'running') {
+    return formatTrainingGenerationNotice(localNotice, nowMs);
+  }
+
+  const activeJob = [...activeJobs]
+    .filter((job) => job.slotLabel === slotLabel)
+    .sort((a, b) => parseTimestampMs(b.startedAt, nowMs) - parseTimestampMs(a.startedAt, nowMs))[0];
+  if (activeJob) {
+    return formatTrainingGenerationNotice({
+      slotLabel,
+      displayLabel,
+      model: activeJob.model,
+      startedAt: activeJob.startedAt,
+      status: 'running',
+    }, nowMs);
+  }
+
+  const jobNotification = Object.values(jobNotifications)
+    .filter((notification) => notification.slotLabel === slotLabel)
+    .sort((a, b) => parseTimestampMs(b.startedAt, nowMs) - parseTimestampMs(a.startedAt, nowMs))[0];
+  if (jobNotification) {
+    return formatTrainingGenerationNotice({
+      slotLabel,
+      displayLabel,
+      model: jobNotification.model,
+      startedAt: jobNotification.startedAt,
+      status: jobNotification.status,
+      completedAt: jobNotification.completedAt,
+      error: jobNotification.error,
+    }, nowMs);
+  }
+
+  if (localNotice) {
+    return formatTrainingGenerationNotice(localNotice, nowMs);
+  }
+
+  return null;
+}
+
+function formatTrainingGenerationNotice(
+  notice: TrainingGenerationNotice,
+  nowMs: number,
+): TrainingGenerationNoticeView {
+  const startedMs = parseTimestampMs(notice.startedAt, nowMs);
+  const completedMs = notice.completedAt ? parseTimestampMs(notice.completedAt, nowMs) : nowMs;
+  const elapsed = formatElapsedMs(Math.max(0, completedMs - startedMs));
+
+  if (notice.status === 'succeeded') {
+    return {
+      tone: 'success',
+      message: `${notice.displayLabel} created in ${elapsed}.`,
+    };
+  }
+
+  if (notice.status === 'failed') {
+    return {
+      tone: 'error',
+      message: `${notice.displayLabel} could not be created after ${elapsed}${notice.error ? `: ${notice.error}` : '.'}`,
+    };
+  }
+
+  return {
+    tone: 'hint',
+    message: `${notice.displayLabel} is being created... elapsed ${elapsed}.`,
+  };
+}
+
+function formatGenerationDisplayLabel(slotLabel: string): string {
+  const normalized = slotLabel.toLowerCase();
+  if (normalized.includes('easy')) return 'Easy session';
+  if (normalized.includes('intermediate')) return 'Medium session';
+  if (normalized.includes('advanced')) return 'Hard session';
+  return slotLabel;
+}
+
+function parseTimestampMs(value: string, fallbackMs: number): number {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : fallbackMs;
+}
+
 function formatSupabaseSyncState(status: SupabaseSyncStatus): string {
   if (!status.enabled) return 'Off';
   if (status.state === 'pulling') return 'Pulling';
@@ -11631,10 +11879,13 @@ function SessionDeviceIcon({ session }: { session: StoredSession }) {
 }
 
 type TrainingGenerationButton = {
+  id: string;
   label: string;
   onClick: () => void;
   disabled: boolean;
   title: string;
+  statusMessage?: string;
+  statusTone?: 'hint' | 'success' | 'error';
 };
 
 type PendingSessionLaneProps = {
@@ -11983,16 +12234,22 @@ function TrainingView({
       <section className="training-card training-generation-card" aria-label="Generate new sessions">
         <div className="training-generation-grid">
           {generationButtons.map((button) => (
-            <button
-              key={button.label}
-              type="button"
-              className="training-generation-button"
-              onClick={button.onClick}
-              disabled={button.disabled}
-              title={button.title}
-            >
-              {button.label}
-            </button>
+            <div key={button.id} className="training-generation-action">
+              <button
+                type="button"
+                className="training-generation-button"
+                onClick={button.onClick}
+                disabled={button.disabled}
+                title={button.title}
+              >
+                {button.label}
+              </button>
+              {button.statusMessage ? (
+                <p className={`training-generation-notice training-generation-notice-${button.statusTone ?? 'hint'}`} aria-live="polite">
+                  {button.statusMessage}
+                </p>
+              ) : null}
+            </div>
           ))}
         </div>
       </section>
