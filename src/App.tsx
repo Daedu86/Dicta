@@ -940,6 +940,7 @@ function App() {
       : activeInputMode === 'input2' || activeInputMode === 'input4'
         ? 'tts'
         : 'kokoro';
+  const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
   const brandActionLabel =
     workspaceMode === 'leaderboard' ||
     workspaceMode === 'dashboard' ||
@@ -1784,7 +1785,7 @@ function App() {
   }, [running, transcript, targetWords.length, config.tickMs]);
 
   useEffect(() => {
-    if (activeInputMode !== 'input2' || sessionStatus === 'finished' || !ttsHasText) {
+    if (activeInputMode !== 'input2' || activeSessionFinished || !ttsHasText) {
       return;
     }
 
@@ -1800,13 +1801,13 @@ function App() {
   }, [
     activeInputMode,
     config.tickMs,
-    sessionStatus,
+    activeSessionFinished,
     ttsHasText,
     ttsStatus,
   ]);
 
   useEffect(() => {
-    if (activeInputMode !== 'input3' || sessionStatus === 'finished' || !kokoroHasText || kokoroStatus !== 'playing') {
+    if (activeInputMode !== 'input3' || activeSessionFinished || !kokoroHasText || kokoroStatus !== 'playing') {
       return;
     }
 
@@ -1877,14 +1878,15 @@ function App() {
         : '',
     );
     setRunning(false);
-    setRate(1);
-    setLagSec(0);
-    setLagWords(0);
-    setWpm(0);
-    setAccuracy(100);
+    const hydratedMetrics = activeSession.status === 'finished' ? activeSession.metrics : null;
+    setRate(hydratedMetrics?.rate ?? 1);
+    setLagSec(hydratedMetrics?.lagSec ?? 0);
+    setLagWords(hydratedMetrics?.lagWords ?? 0);
+    setWpm(hydratedMetrics?.wpm ?? 0);
+    setAccuracy(hydratedMetrics?.accuracy ?? 100);
     setCurrentAudioTime(0);
-    setTrend('stable');
-    setControllerState('hold');
+    setTrend(hydratedMetrics?.trend ?? 'stable');
+    setControllerState(hydratedMetrics?.controllerState ?? 'hold');
     ttsUiLastPublishedAtRef.current = 0;
     ttsPublishedUiRef.current = {
       controllerState: 'hold',
@@ -1898,7 +1900,7 @@ function App() {
     telemetryRef.current = cloneTelemetry(activeSession.telemetry);
     setExportMessage('');
     setError('');
-    setTrainingSubmitMessage('');
+    setTrainingSubmitMessage(activeSession.status === 'finished' ? buildTrainingSubmitMessage(sessions, activeSession.id) : '');
     previousLagRef.current = 0;
     previousAccuracyRef.current = 100;
     trackerRef.current.reset();
@@ -1929,6 +1931,29 @@ function App() {
     delete sessionFeedbackContextRef.current[activeSessionId];
     kokoroEngineRef.current?.stop();
   }, [activeSessionId]);
+
+  useEffect(() => {
+    if (!activeSession || activeSession.status !== 'finished' || sessionStatus === 'finished') return;
+
+    setRunning(false);
+    setSessionStatus('finished');
+    if (activeSession.inputMode === 'input2' || activeSession.inputMode === 'input4') {
+      setTtsStatus('finished');
+    }
+    if (activeSession.inputMode === 'input3') {
+      setKokoroStatus('finished');
+    }
+    setControllerState(activeSession.metrics.controllerState);
+    setRate(activeSession.metrics.rate);
+    setLagSec(activeSession.metrics.lagSec);
+    setLagWords(activeSession.metrics.lagWords);
+    setWpm(activeSession.metrics.wpm);
+    setAccuracy(activeSession.metrics.accuracy);
+    setTrend(activeSession.metrics.trend);
+    telemetryRef.current = cloneTelemetry(activeSession.telemetry);
+    setError('');
+    setTrainingSubmitMessage(buildTrainingSubmitMessage(sessions, activeSession.id));
+  }, [activeSession, sessionStatus, sessions]);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -2223,7 +2248,7 @@ function App() {
   }
 
   async function startSession(): Promise<void> {
-    if (!engineRef.current || !transcript || sessionStatus === 'finished') {
+    if (!engineRef.current || !transcript || activeSessionFinished) {
       setError('Load audio and transcript before starting.');
       return;
     }
@@ -2244,21 +2269,63 @@ function App() {
   }
 
   function pauseSession(): void {
-    if (sessionStatus === 'finished') return;
+    if (activeSessionFinished) return;
     engineRef.current?.pause();
     setRunning(false);
     setSessionStatus('paused');
   }
 
-  function finishSession(): void {
-    if (sessionStatus === 'finished') return;
+  function finishSession(latestInputText = inputText): void {
+    if (activeSessionFinished) return;
+    if (latestInputText !== inputText) {
+      inputLiveTextRef.current = latestInputText;
+      setInputText(latestInputText);
+      const audioTime = engineRef.current?.getCurrentTime() ?? currentAudioTime;
+      trackerRef.current.onInput(latestInputText, audioTime, targetWords);
+    }
     engineRef.current?.pause();
     setRunning(false);
+    const finishedAt = new Date().toISOString();
+    const finalTelemetry = { ...ensureAttemptTelemetry(), finishedAt };
+    telemetryRef.current = finalTelemetry;
+    const finalEvaluation = evaluateTranscriptAttempt(latestInputText, transcript);
+    const finalTypedWords = finalEvaluation.typedWords;
+    const finalAccuracy = finalTypedWords.length > 0 && targetWords.length > 0 ? finalEvaluation.accuracy : 0;
+    const finalScore =
+      finalTypedWords.length > 0 && targetWords.length > 0
+        ? computeSessionScore({ accuracy: finalAccuracy, lagSec, wpm, rate, points: finalEvaluation.points })
+        : 0;
+    const finalMetrics: SessionMetrics = {
+      controllerState,
+      rate,
+      lagSec,
+      lagWords,
+      wpm,
+      accuracy: finalAccuracy,
+      trend,
+      score: finalScore,
+      points: finalEvaluation.points,
+    };
+    const nextSessions = sessions.map((session) =>
+      session.id === activeSessionId
+        ? {
+            ...session,
+            inputText: latestInputText,
+            status: 'finished' as const,
+            metrics: finalMetrics,
+            telemetry: finalTelemetry,
+            updatedAt: finishedAt,
+          }
+        : session,
+    );
+    setSessions(nextSessions);
+    persistAndPushSessionsNow(nextSessions);
     setSessionStatus('finished');
-    telemetryRef.current = telemetryRef.current
-      ? { ...telemetryRef.current, finishedAt: new Date().toISOString() }
-      : telemetryRef.current;
     completeAdaptiveSessionFeedback();
+    setError('');
+    if (activeSessionId) {
+      setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
+    }
   }
 
   function resetSession(options: { preserveInputSettingsLock?: boolean } = {}): void {
@@ -2908,7 +2975,7 @@ function App() {
   }
 
   function onTypingChange(value: string): void {
-    if (sessionStatus === 'finished') return;
+    if (activeSessionFinished) return;
     inputLiveTextRef.current = value;
     setInputText(value);
     const audioTime = engineRef.current?.getCurrentTime() ?? 0;
@@ -2920,7 +2987,7 @@ function App() {
   }
 
   function onTtsTextChange(value: string): void {
-    if (inputSettingsLocked || sessionStatus === 'finished') return;
+    if (inputSettingsLocked || activeSessionFinished) return;
     setTtsText(value);
     setTtsStatus(value.trim().length > 0 ? 'ready' : 'idle');
   }
@@ -2941,7 +3008,7 @@ function App() {
   }
 
   function onTtsPracticeChange(value: string): void {
-    if (sessionStatus === 'finished') return;
+    if (activeSessionFinished) return;
     if (!telemetryRef.current || !telemetryRef.current.startedAt) {
       telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
     }
@@ -2957,13 +3024,13 @@ function App() {
   }
 
   function onKokoroTextChange(value: string): void {
-    if (inputSettingsLocked || sessionStatus === 'finished') return;
+    if (inputSettingsLocked || activeSessionFinished) return;
     setKokoroText(value);
     setKokoroStatus(value.trim().length > 0 ? 'ready' : 'idle');
   }
 
   function onKokoroPracticeChange(value: string): void {
-    if (sessionStatus === 'finished') return;
+    if (activeSessionFinished) return;
     if (!telemetryRef.current || !telemetryRef.current.startedAt) {
       telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
     }
@@ -3318,7 +3385,7 @@ function App() {
   }
 
   function playTtsFromWord(startWordIndex: number, perfPlayId = perfDiagnostics.beginTtsPlay('browser-tts-direct')): void {
-    if (sessionStatus === 'finished') {
+    if (activeSessionFinished) {
       setError('Reset the finished session before playing TTS again.');
       return;
     }
@@ -3989,7 +4056,7 @@ function App() {
   }
 
   async function playQwenCloud(): Promise<void> {
-    if (sessionStatus === 'finished') {
+    if (activeSessionFinished) {
       setError('Reset the finished session before playing Input #4 cached audio again.');
       return;
     }
@@ -4561,7 +4628,7 @@ function App() {
   }
 
   function seekTtsPlayback(percent: number): void {
-    if (activeInputMode !== 'input2' || !ttsHasText || sessionStatus === 'finished') return;
+    if (activeInputMode !== 'input2' || !ttsHasText || activeSessionFinished) return;
     const wordCount = ttsTranscript?.words.length ?? 0;
     if (wordCount === 0) return;
     const targetWordIndex = Math.floor(clamp(percent, 0, 1) * Math.max(0, wordCount - 1));
@@ -4583,23 +4650,29 @@ function App() {
   }
 
   function applyKokoroPerformanceSample(
-    options: { action?: ControlAction; finalize?: boolean } = {},
+    options: { action?: ControlAction; finalize?: boolean; practiceTextOverride?: string } = {},
   ): { metrics: SessionMetrics; telemetry: SessionTelemetry } {
     const now = performance.now();
     if (kokoroStartedAtMsRef.current === null) {
       kokoroStartedAtMsRef.current = now;
     }
 
+    const practiceEvaluation = options.practiceTextOverride === undefined
+      ? kokoroPracticeEvaluation
+      : evaluateTranscriptAttempt(options.practiceTextOverride, kokoroTranscript);
+    const practiceWords = practiceEvaluation.typedWords;
+    const visiblePracticeAccuracy =
+      practiceWords.length > 0 && (kokoroTranscript?.words.length ?? 0) > 0 ? practiceEvaluation.accuracy : 0;
     const sourceWordCount = kokoroTranscript?.words.length ?? 0;
-    const typedProgress = Math.max(0, kokoroPracticeEvaluation.lastMatchedTargetIndex + 1);
+    const typedProgress = Math.max(0, practiceEvaluation.lastMatchedTargetIndex + 1);
     const spokenPosition = estimateKokoroSpokenWordIndex(now);
     const nextLagWords = sourceWordCount > 0 ? spokenPosition - typedProgress : 0;
     const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * kokoroSpeechRate);
     const nextLagSec = nextLagWords / wordsPerSecond;
     const elapsedMinutes = Math.max(getKokoroElapsedSeconds(now) / 60, 1 / 60);
-    const nextWpm = kokoroPracticeWords.length > 0 ? kokoroPracticeWords.length / elapsedMinutes : 0;
-    const nextAccuracy = kokoroPracticeWords.length > 0 ? kokoroVisibleAccuracy : 100;
-    const nextPoints = kokoroPracticeEvaluation.points;
+    const nextWpm = practiceWords.length > 0 ? practiceWords.length / elapsedMinutes : 0;
+    const nextAccuracy = practiceWords.length > 0 ? visiblePracticeAccuracy : 100;
+    const nextPoints = practiceEvaluation.points;
     const nextScore =
       sourceWordCount > 0
         ? computeSessionScore({
@@ -4614,7 +4687,7 @@ function App() {
       accuracy: nextAccuracy,
       lagSec: nextLagSec,
       wpm: nextWpm,
-      typedWords: kokoroPracticeWords.length,
+      typedWords: practiceWords.length,
     });
     const nextTrend = derivePerformanceTrend(nextLagSec, nextAccuracy, previousLagRef.current, previousAccuracyRef.current);
 
@@ -4678,7 +4751,7 @@ function App() {
       setError('Kokoro TTS is disabled. Turn it on with the toggle.');
       return;
     }
-    if (sessionStatus === 'finished') {
+    if (activeSessionFinished) {
       setError('Reset the finished session before playing Kokoro audio again.');
       return;
     }
@@ -5010,20 +5083,24 @@ function App() {
     recordKokoroTelemetryAction('reset_pace', 1);
   }
 
-  function submitKokoroSession(): void {
-    if (!canSubmitKokoroSession) {
+  function submitKokoroSession(latestPracticeText = kokoroPracticeText): void {
+    if (!canSubmitKokoroSession || !latestPracticeText.trim()) {
       setError('Paste Kokoro text and type your attempt before submitting.');
       setTrainingSubmitMessage('');
       return;
     }
 
-    const finalSample = applyKokoroPerformanceSample({ action: 'submit', finalize: true });
+    if (latestPracticeText !== kokoroPracticeText) {
+      kokoroPracticeLiveTextRef.current = latestPracticeText;
+      setKokoroPracticeText(latestPracticeText);
+    }
+    const finalSample = applyKokoroPerformanceSample({ action: 'submit', finalize: true, practiceTextOverride: latestPracticeText });
     const finishedAt = new Date().toISOString();
     const nextSessions = sessions.map((session) =>
       session.id === activeSessionId
         ? {
             ...session,
-            kokoroPracticeText,
+            kokoroPracticeText: latestPracticeText,
             status: 'finished' as const,
             metrics: finalSample.metrics,
             telemetry: finalSample.telemetry,
@@ -5212,7 +5289,7 @@ function App() {
   }
 
   function getBenchmarkActiveSessionStatus(profile: InputLanguageBenchmarkMetrics): string | undefined {
-    if (!activeSession || sessionStatus === 'finished') return undefined;
+    if (!activeSession || activeSessionFinished) return undefined;
     const activeInputMode = mapSessionInputMode(activeSession.inputMode);
     const activeLanguage = normalizeBenchmarkLanguage(getActiveTypingLanguage() ?? resolveStoredSessionLanguage(activeSession));
     if (profile.inputMode !== activeInputMode || profile.language !== activeLanguage) return undefined;
@@ -5348,23 +5425,23 @@ function App() {
   const transcriptPreviewStart = Math.max(0, attemptEvaluation.lastMatchedTargetIndex + 1);
   const transcriptPreview = targetWords.slice(transcriptPreviewStart, transcriptPreviewStart + 12).join(' ');
   const canGenerateTranscript = Boolean(audioFile || loadedAudioFromUrl);
-  const canStartSession = Boolean(audioReady && transcript && transcript.words.length > 0 && sessionStatus !== 'finished' && sessionStatus !== 'error');
+  const canStartSession = Boolean(audioReady && transcript && transcript.words.length > 0 && !activeSessionFinished && sessionStatus !== 'error');
   const canPauseSession = running && sessionStatus === 'running';
-  const canFinishSession = sessionStatus !== 'finished' && sessionStatus !== 'error' && (running || typedWords.length > 0 || currentAudioTime > 0);
+  const canFinishSession = !activeSessionFinished && sessionStatus !== 'error' && (running || typedWords.length > 0 || currentAudioTime > 0);
   const inputSettingsReady =
     activeInputMode === 'input1'
       ? Boolean(audioReady && transcript && transcript.words.length > 0)
       : activeInputMode === 'input2' || activeInputMode === 'input4'
         ? ttsHasText
         : kokoroHasText;
-  const setupLocked = sessionStatus === 'finished' || sessionStatus === 'error' || inputSettingsLocked;
+  const setupLocked = activeSessionFinished || sessionStatus === 'error' || inputSettingsLocked;
   const canSubmitTtsSession =
     (activeInputMode === 'input2' || activeInputMode === 'input4') &&
-    sessionStatus !== 'finished' &&
+    !activeSessionFinished &&
     sessionStatus !== 'error' &&
     ttsHasText;
   const canSubmitKokoroSession =
-    activeInputMode === 'input3' && sessionStatus !== 'finished' && sessionStatus !== 'error' && kokoroHasText;
+    activeInputMode === 'input3' && !activeSessionFinished && sessionStatus !== 'error' && kokoroHasText;
   const ttsPlayerWordCount = ttsTranscript?.words.length ?? 0;
   const ttsPlayerCurrentWord = ttsHasText ? estimateTtsSpokenWordIndex() : 0;
   const ttsPlayerWordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
@@ -5494,7 +5571,7 @@ function App() {
         ? kokoroPracticeText
         : ttsPracticeText;
   const focusedTextPlaceholder =
-    sessionStatus === 'finished'
+    activeSessionFinished
       ? 'Session submitted.'
       : activeInputMode === 'input1'
         ? 'Type what you hear...'
@@ -5570,13 +5647,13 @@ function App() {
     onImmediateTextChange: focusedImmediateInputHandler,
     onTextKeyDown: focusedKeyDownHandler,
     textPlaceholder: focusedTextPlaceholder,
-    readOnly: sessionStatus === 'finished',
+    readOnly: activeSessionFinished,
     canPlay:
       activeInputMode === 'input1'
         ? canStartSession
-        : activeInputMode === 'input3'
-          ? kokoroHasText && kokoroStatus !== 'playing' && sessionStatus !== 'finished'
-          : ttsHasText && ttsStatus !== 'playing' && sessionStatus !== 'finished',
+      : activeInputMode === 'input3'
+          ? kokoroHasText && kokoroStatus !== 'playing' && !activeSessionFinished
+          : ttsHasText && ttsStatus !== 'playing' && !activeSessionFinished,
     playLabel:
       activeInputMode === 'input1'
         ? sessionStatus === 'paused'
@@ -5659,14 +5736,10 @@ function App() {
           : canSubmitTtsSession,
     onSubmit:
       activeInputMode === 'input1'
-        ? (latestTextValue?: string) => {
-            if (latestTextValue !== undefined && latestTextValue !== inputText) onTypingChange(latestTextValue);
-            finishSession();
-          }
+        ? (latestTextValue?: string) => finishSession(latestTextValue)
         : activeInputMode === 'input3'
           ? (latestTextValue?: string) => {
-              if (latestTextValue !== undefined && latestTextValue !== kokoroPracticeText) onKokoroPracticeChange(latestTextValue);
-              submitKokoroSession();
+              submitKokoroSession(latestTextValue);
             }
           : (latestTextValue?: string) => submitTtsSession(latestTextValue),
     submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
@@ -6620,8 +6693,8 @@ function App() {
                       value={kokoroPracticeText}
                       onChange={(e) => onKokoroPracticeChange(e.target.value)}
                       onKeyDown={onKokoroPracticeKeyDown}
-                      placeholder={sessionStatus === 'finished' ? 'Session submitted.' : 'Type the Kokoro audio here...'}
-                      readOnly={sessionStatus === 'finished'}
+                      placeholder={activeSessionFinished ? 'Session submitted.' : 'Type the Kokoro audio here...'}
+                      readOnly={activeSessionFinished}
                       rows={12}
                     />
                     <RuntimeMetricsPanel
@@ -6633,7 +6706,7 @@ function App() {
                       accuracy={kokoroVisibleAccuracy}
                     />
                     <div className="tts-submit-row">
-                      <button type="button" onClick={submitKokoroSession} disabled={!canSubmitKokoroSession}>
+                      <button type="button" onClick={() => submitKokoroSession()} disabled={!canSubmitKokoroSession}>
                         Submit statistics
                       </button>
                       <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
@@ -6685,8 +6758,10 @@ function App() {
                         Reset
                       </button>
                     </div>
-                    {sessionStatus === 'finished' ? (
-                      <p className="success">Kokoro attempt submitted. Typing is locked until reset.</p>
+                    {activeSessionFinished ? (
+                      <p className="success">
+                        {trainingSubmitMessage || 'Kokoro attempt submitted. Typing is locked until reset.'}
+                      </p>
                     ) : null}
                     <div className="tts-practice-summary">
                       <Metric label="Correct" value={String(kokoroPracticeEvaluation.matchedWords)} />
@@ -6819,8 +6894,8 @@ function App() {
                       value={ttsPracticeText}
                       onChange={(e) => onTtsPracticeChange(e.target.value)}
                       onKeyDown={onTtsPracticeKeyDown}
-                      placeholder={sessionStatus === 'finished' ? 'Session submitted.' : 'Type the TTS text here...'}
-                      readOnly={sessionStatus === 'finished'}
+                      placeholder={activeSessionFinished ? 'Session submitted.' : 'Type the TTS text here...'}
+                      readOnly={activeSessionFinished}
                       rows={12}
                     />
                     <RuntimeMetricsPanel
@@ -6884,8 +6959,10 @@ function App() {
                         Reset
                       </button>
                     </div>
-                    {sessionStatus === 'finished' ? (
-                      <p className="success">TTS attempt submitted. Typing is locked until reset.</p>
+                    {activeSessionFinished ? (
+                      <p className="success">
+                        {trainingSubmitMessage || 'TTS attempt submitted. Typing is locked until reset.'}
+                      </p>
                     ) : null}
                     <div className="tts-practice-summary">
                       <Metric label="Correct" value={String(ttsPracticeEvaluation.matchedWords)} />
@@ -7541,7 +7618,7 @@ function App() {
                         src={audioUrl}
                         className="audio"
                         onTimeUpdate={() => setCurrentAudioTime(audioRef.current?.currentTime ?? 0)}
-                        onEnded={finishSession}
+                        onEnded={() => finishSession()}
                       />
                     </div>
                     <h3>Whisper transcript</h3>
@@ -7571,12 +7648,12 @@ function App() {
                       <div className="controls">
                         <button onClick={() => void startSession()} disabled={!canStartSession}>Start</button>
                         <button onClick={pauseSession} disabled={!canPauseSession}>Pause</button>
-                        <button onClick={finishSession} disabled={!canFinishSession}>Finish</button>
+                        <button onClick={() => finishSession()} disabled={!canFinishSession}>Finish</button>
                         <button onClick={() => resetSession()}>Reset</button>
                       </div>
                       <div className={`session-ready-banner ${canStartSession ? 'session-ready-banner-active' : ''}`} aria-live="polite">
                         <strong>
-                          {sessionStatus === 'finished'
+                          {activeSessionFinished
                             ? 'Session finished'
                             : canStartSession
                               ? 'Session ready to start'
@@ -7594,8 +7671,12 @@ function App() {
                         </div>
                       </div>
                       {exportMessage ? <p className="success">{exportMessage}</p> : null}
-                      {sessionStatus === 'finished' ? <p className="success">Attempt completed. Input is locked until you reset.</p> : null}
-                      {sessionStatus !== 'finished' && !canStartSession ? <p className="hint">Load audio and transcript to enable Start.</p> : null}
+                      {activeSessionFinished ? (
+                        <p className="success">
+                          {trainingSubmitMessage || 'Attempt completed. Input is locked until you reset.'}
+                        </p>
+                      ) : null}
+                      {!activeSessionFinished && !canStartSession ? <p className="hint">Load audio and transcript to enable Start.</p> : null}
                       <div className="typing-cue-stack">
                         <div className="target target-active">
                           <strong>{activeTranscriptSegment ? formatTimestamp(activeTranscriptSegment.start) : '--:--'}</strong>
@@ -7617,8 +7698,8 @@ function App() {
                         value={inputText}
                         onChange={(e) => onTypingChange(e.target.value)}
                         onKeyDown={onTypingKeyDown}
-                        placeholder={sessionStatus === 'finished' ? 'Session finished.' : 'Type what you hear...'}
-                        readOnly={sessionStatus === 'finished'}
+                        placeholder={activeSessionFinished ? 'Session finished.' : 'Type what you hear...'}
+                        readOnly={activeSessionFinished}
                         rows={8}
                       />
                       <RuntimeMetricsPanel
