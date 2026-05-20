@@ -94,8 +94,9 @@ describe('benchmarkJson', () => {
     expect(payload.recommendation.targetRateRange).toEqual([0.8, 0.85]);
     expect(payload.recommendation.targetPauseMs).toBe(1200);
     expect(payload.weakAreas).toEqual(
-      expect.arrayContaining(['support_dependency', 'unsafe_boundary_pressure', 'lag_instability', 'accuracy_instability']),
+      expect.arrayContaining(['support_dependency', 'unsafe_boundary_pressure', 'accuracy_instability']),
     );
+    expect(payload.weakAreas).not.toContain('lag_instability');
     expect(payload.flowStabilityScore).toBeLessThan(1);
     expect(payload.recommendation.summary).not.toContain('medium-length semantic phrases');
   });
