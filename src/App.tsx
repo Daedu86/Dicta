@@ -65,6 +65,7 @@ import {
   buildSessionFeedbackJsonPayload,
   derivePlaybackDiagnosticsFromTimeline,
   selectLatestAdaptiveSessionFeedback,
+  type SessionFeedbackReference,
 } from './core/adaptive/sessionFeedback';
 import { HistoricalPerformanceService } from './core/history/HistoricalPerformanceService';
 import { buildAudioTelemetryFrame, buildAdaptiveAudioInput } from './inputs/audio/audioTelemetryAdapter';
@@ -770,6 +771,7 @@ function App() {
   const latestSessionsForPersistenceRef = useRef<StoredSession[]>(sessions);
   const sessionPersistTimerRef = useRef<number | null>(null);
   const lastPersistedSessionsJsonRef = useRef<string | null>(null);
+  const adaptiveSessionFeedbackRef = useRef<AdaptiveSessionFeedbackByInputLanguage>(adaptiveSessionFeedbackByInputLanguage);
   const syncStateRef = useRef<DictaSyncState>(
     buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
   );
@@ -1380,6 +1382,7 @@ function App() {
   }, [adaptiveBenchmarksByInputLanguage]);
 
   useEffect(() => {
+    adaptiveSessionFeedbackRef.current = adaptiveSessionFeedbackByInputLanguage;
     window.localStorage.setItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(adaptiveSessionFeedbackByInputLanguage));
   }, [adaptiveSessionFeedbackByInputLanguage]);
 
@@ -1525,6 +1528,44 @@ function App() {
           ...current,
           state: 'error',
           message: error instanceof Error ? error.message : 'Supabase sync failed.',
+        }));
+      });
+  }
+
+  function persistAndPushAdaptiveSessionFeedbackNow(nextFeedback: AdaptiveSessionFeedbackByInputLanguage): void {
+    adaptiveSessionFeedbackRef.current = nextFeedback;
+    window.localStorage.setItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(nextFeedback));
+    const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.feedbackFinal', () =>
+      buildCurrentSyncState(latestSessionsForPersistenceRef.current, adaptiveBenchmarksRef.current, nextFeedback),
+    );
+    syncStateRef.current = syncState;
+    if (!supabaseClient || !effectiveSyncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
+
+    setSupabaseSyncStatus((current) => ({
+      ...current,
+      state: 'pushing',
+      message: 'Pushing completed session feedback to Supabase...',
+    }));
+    void pushSyncRowsDetailed(supabaseClient, effectiveSyncConfig.profileId, syncState, {
+      existingRows: supabaseKnownRemoteRowsRef.current,
+    })
+      .then(({ pushed, pushedRows }) => {
+        supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
+        supabaseLastRemoteUpdatedAtRef.current =
+          latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
+        setSupabaseSyncStatus((current) => ({
+          ...current,
+          state: 'synced',
+          message: 'Completed session feedback synced to Supabase.',
+          lastSyncedAt: new Date().toISOString(),
+          pushed,
+        }));
+      })
+      .catch((error) => {
+        setSupabaseSyncStatus((current) => ({
+          ...current,
+          state: 'error',
+          message: error instanceof Error ? error.message : 'Supabase feedback sync failed.',
         }));
       });
   }
@@ -5387,18 +5428,14 @@ function App() {
       phraseEvents: phrasePlaybackEventsRef.current,
       totalPhrases: phrasePlaybackTotalPhrasesRef.current || undefined,
     });
-    setAdaptiveSessionFeedbackByInputLanguage((current) => {
-      const inputFeedback = current[inputMode] ?? {};
-      const languageFeedback = inputFeedback[language] ?? [];
-      const nextLanguageFeedback = [feedback, ...languageFeedback.filter((item) => item.sessionId !== feedback.sessionId)].slice(0, 12);
-      return {
-        ...current,
-        [inputMode]: {
-          ...inputFeedback,
-          [language]: nextLanguageFeedback,
-        },
-      };
-    });
+    const nextFeedbackState = upsertAdaptiveSessionFeedback(
+      adaptiveSessionFeedbackRef.current,
+      inputMode,
+      language,
+      feedback,
+    );
+    setAdaptiveSessionFeedbackByInputLanguage(nextFeedbackState);
+    persistAndPushAdaptiveSessionFeedbackNow(nextFeedbackState);
     delete sessionBenchmarkBeforeRef.current[activeSession.id];
     delete sessionFeedbackContextRef.current[activeSession.id];
   }
@@ -5493,9 +5530,11 @@ function App() {
 
   async function copySessionFeedbackJson(profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null): Promise<void> {
     try {
+      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, profile);
       await navigator.clipboard.writeText(JSON.stringify(buildSessionFeedbackJsonPayload(profile.inputMode, profile.language, feedback, {
         activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
         fallbackDiagnostics: derivePlaybackDiagnosticsFromTimeline(profile.timeline.slice(-60)),
+        latestFinishedSession,
       }), null, 2));
       setSessionFeedbackMessage('Session feedback JSON copied.');
     } catch {
@@ -5505,9 +5544,11 @@ function App() {
 
   async function copyBenchmarkFeedbackJson(profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null): Promise<void> {
     try {
+      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, profile);
       await navigator.clipboard.writeText(JSON.stringify(buildBenchmarkFeedbackPackage(profile, feedback, {
         activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
         activitySummary: buildBenchmarkActivitySummary(sessions, profile),
+        latestFinishedSession,
       }), null, 2));
       setSessionFeedbackMessage('Benchmark + feedback package copied.');
     } catch {
@@ -5517,9 +5558,11 @@ function App() {
 
   async function copyInsightsDiagnosticPackage(): Promise<void> {
     try {
+      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, insightsDiagnosticProfile);
       await navigator.clipboard.writeText(JSON.stringify(buildBenchmarkFeedbackPackage(insightsDiagnosticProfile, insightsDiagnosticFeedback, {
         activeSessionStatus: getBenchmarkActiveSessionStatus(insightsDiagnosticProfile),
         activitySummary: buildBenchmarkActivitySummary(sessions, insightsDiagnosticProfile),
+        latestFinishedSession,
       }), null, 2));
       setInsightsDiagnosticMessage(
         `Copied full report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`,
@@ -5531,9 +5574,11 @@ function App() {
 
   async function copyBenchmarkFeedbackPrompt(profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null): Promise<void> {
     try {
+      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, profile);
       await navigator.clipboard.writeText(buildBenchmarkFeedbackPromptPackage(profile, feedback, buildDictationScriptPrompt(profile), {
         activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
         activitySummary: buildBenchmarkActivitySummary(sessions, profile),
+        latestFinishedSession,
       }));
       setSessionFeedbackMessage('Benchmark + feedback + LLM prompt copied.');
     } catch {
@@ -5547,9 +5592,11 @@ function App() {
     humanFeedback: string,
   ): Promise<void> {
     try {
+      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, profile);
       const base = buildBenchmarkFeedbackPackage(profile, feedback, {
         activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
         activitySummary: buildBenchmarkActivitySummary(sessions, profile),
+        latestFinishedSession,
       }) as Record<string, unknown>;
       const payload = {
         ...base,
@@ -11556,6 +11603,24 @@ function buildCurrentSyncState(
   };
 }
 
+function upsertAdaptiveSessionFeedback(
+  current: AdaptiveSessionFeedbackByInputLanguage,
+  inputMode: InputMode,
+  language: LanguageCode,
+  feedback: AdaptiveSessionFeedback,
+): AdaptiveSessionFeedbackByInputLanguage {
+  const inputFeedback = current[inputMode] ?? {};
+  const languageFeedback = inputFeedback[language] ?? [];
+  const nextLanguageFeedback = [feedback, ...languageFeedback.filter((item) => item.sessionId !== feedback.sessionId)].slice(0, 12);
+  return {
+    ...current,
+    [inputMode]: {
+      ...inputFeedback,
+      [language]: nextLanguageFeedback,
+    },
+  };
+}
+
 function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Partial<StoredSession> & { deleted?: boolean };
@@ -13132,6 +13197,33 @@ function buildBenchmarkActivitySummary(sessions: StoredSession[], profile: Input
       `benchmarkProfile.sessionCount (${profile.sessionCount}) counts unique sessions represented by accepted adaptive telemetry samples for ${profile.inputMode}/${language}; ` +
       `it is expected to be lower than savedSessionCounts when sessions have no accepted benchmark samples or belong to another input mode.`,
   };
+}
+
+function buildLatestFinishedSessionFeedbackReference(
+  sessions: StoredSession[],
+  profile: InputLanguageBenchmarkMetrics,
+): SessionFeedbackReference | null {
+  const language = String(profile.language);
+  const latestSession = sessions
+    .filter((session) => session.status === 'finished')
+    .filter((session) => resolveStoredSessionLanguage(session) === language)
+    .filter((session) => mapSessionInputMode(session.inputMode) === profile.inputMode)
+    .sort((a, b) => getSessionFinishedAtMs(b) - getSessionFinishedAtMs(a))[0];
+  if (!latestSession) return null;
+  return {
+    sessionId: latestSession.id,
+    createdAt: latestSession.createdAt,
+    updatedAt: latestSession.updatedAt,
+    finishedAt: latestSession.telemetry.finishedAt ?? latestSession.updatedAt,
+    completedAt: latestSession.telemetry.finishedAt ?? latestSession.updatedAt,
+    scriptId: latestSession.dictationScript ? `${latestSession.id}:${latestSession.dictationScript.title}` : undefined,
+    scriptTitle: latestSession.dictationScript?.title ?? latestSession.name,
+  };
+}
+
+function getSessionFinishedAtMs(session: StoredSession): number {
+  const finishedAtMs = new Date(session.telemetry.finishedAt ?? session.updatedAt ?? session.createdAt).getTime();
+  return Number.isFinite(finishedAtMs) ? finishedAtMs : 0;
 }
 
 function getSessionUpdatedAtMs(session: StoredSession): number {

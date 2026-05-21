@@ -26,6 +26,16 @@ export type SessionFeedbackBuildArgs = {
   totalPhrases?: number;
 };
 
+export type SessionFeedbackReference = {
+  sessionId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  finishedAt?: string;
+  completedAt?: string;
+  scriptId?: string;
+  scriptTitle?: string;
+};
+
 const FEEDBACK_EXPORT_TIMELINE_CAP = 120;
 
 export function selectLatestAdaptiveSessionFeedback(
@@ -140,48 +150,71 @@ export function buildSessionFeedbackJsonPayload(
   inputMode: InputMode,
   language: LanguageCode,
   feedback: AdaptiveSessionFeedback | null,
-  options: { activeSessionStatus?: string; fallbackDiagnostics?: TimelinePlaybackDiagnostics } = {},
+  options: {
+    activeSessionStatus?: string;
+    fallbackDiagnostics?: TimelinePlaybackDiagnostics;
+    latestFinishedSession?: SessionFeedbackReference | null;
+  } = {},
 ): unknown {
-  const sessionFeedbackStatus = buildSessionFeedbackStatus(feedback, options.activeSessionStatus);
+  const recency = buildSessionFeedbackRecency(feedback, options.latestFinishedSession);
+  const currentFeedback = recency?.status === 'stale_for_latest_finished_session' ? null : feedback;
+  const sessionFeedbackStatus = buildSessionFeedbackStatus(currentFeedback, options.activeSessionStatus, recency);
   return {
     inputMode,
     language,
     sessionFeedbackStatus,
-    latestSessionFeedback: feedback ?? buildFeedbackUnavailableSnapshot(sessionFeedbackStatus),
-    playbackIssues: feedback?.playbackIssues ?? null,
-    fallbackPlaybackDiagnostics: feedback ? null : (options.fallbackDiagnostics ?? null),
-    improvementDelta: feedback?.improvementDelta ?? null,
-    phraseStats: feedback?.phraseStats ?? null,
+    ...(recency ? { sessionFeedbackRecency: recency } : {}),
+    latestSessionFeedback: currentFeedback ?? buildFeedbackUnavailableSnapshot(sessionFeedbackStatus, recency),
+    staleSessionFeedback: recency?.status === 'stale_for_latest_finished_session' ? summarizeFeedbackForRecency(feedback) : null,
+    playbackIssues: currentFeedback?.playbackIssues ?? null,
+    fallbackPlaybackDiagnostics: currentFeedback ? null : (options.fallbackDiagnostics ?? null),
+    improvementDelta: currentFeedback?.improvementDelta ?? null,
+    phraseStats: currentFeedback?.phraseStats ?? null,
   };
 }
 
 export function buildBenchmarkFeedbackPackage(
   profile: InputLanguageBenchmarkMetrics,
   feedback: AdaptiveSessionFeedback | null,
-  options: { activeSessionStatus?: string; activitySummary?: unknown } = {},
+  options: { activeSessionStatus?: string; activitySummary?: unknown; latestFinishedSession?: SessionFeedbackReference | null } = {},
 ): unknown {
   const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
   const recentTimelinePoints = normalizedProfile.timeline.slice(-FEEDBACK_EXPORT_TIMELINE_CAP);
-  const fallbackDiagnostics = feedback ? null : derivePlaybackDiagnosticsFromTimeline(recentTimelinePoints);
-  const sessionFeedbackStatus = buildSessionFeedbackStatus(feedback, options.activeSessionStatus);
+  const recency = buildSessionFeedbackRecency(feedback, options.latestFinishedSession);
+  const currentFeedback = recency?.status === 'stale_for_latest_finished_session' ? null : feedback;
+  const fallbackDiagnostics = currentFeedback ? null : derivePlaybackDiagnosticsFromTimeline(recentTimelinePoints);
+  const sessionFeedbackStatus = buildSessionFeedbackStatus(currentFeedback, options.activeSessionStatus, recency);
   const browserTtsDeDiagnostics = buildBrowserTtsDeDiagnostics(normalizedProfile, FEEDBACK_EXPORT_TIMELINE_CAP) ?? undefined;
   return {
     inputMode: normalizedProfile.inputMode,
     language: normalizedProfile.language,
     sessionFeedbackStatus,
+    ...(recency ? { sessionFeedbackRecency: recency } : {}),
     benchmarkProfile: compactBenchmark(normalizedProfile),
     recommendation: normalizedProfile.recommendation,
     weakAreas: normalizedProfile.weakAreas,
     ...(browserTtsDeDiagnostics ? { browserTtsDeDiagnostics } : {}),
     activitySummary: options.activitySummary ?? null,
     recentTimelinePoints,
-    latestSessionFeedback: feedback ? normalizeFeedbackBenchmarkSnapshots(feedback) : buildFeedbackUnavailableSnapshot(sessionFeedbackStatus),
-    playbackDiagnostics: feedback?.playbackIssues ?? fallbackDiagnostics,
-    dictationScript: feedback?.scriptTitle
+    latestSessionFeedback: currentFeedback
+      ? normalizeFeedbackBenchmarkSnapshots(currentFeedback)
+      : buildFeedbackUnavailableSnapshot(sessionFeedbackStatus, recency),
+    staleSessionFeedback: recency?.status === 'stale_for_latest_finished_session' ? summarizeFeedbackForRecency(feedback) : null,
+    playbackDiagnostics: currentFeedback?.playbackIssues ?? fallbackDiagnostics,
+    dictationScript: currentFeedback?.scriptTitle
       ? {
-          scriptId: feedback.scriptId,
-          scriptTitle: feedback.scriptTitle,
+          status: 'current_feedback_script',
+          scriptId: currentFeedback.scriptId,
+          scriptTitle: currentFeedback.scriptTitle,
         }
+      : recency?.status === 'stale_for_latest_finished_session' && feedback?.scriptTitle
+        ? {
+            status: 'stale_feedback_script',
+            scriptId: feedback.scriptId,
+            scriptTitle: feedback.scriptTitle,
+            feedbackSessionId: feedback.sessionId,
+            latestFinishedSessionId: recency.latestFinishedSession?.sessionId ?? null,
+          }
       : null,
   };
 }
@@ -217,7 +250,7 @@ export function buildBenchmarkFeedbackPromptPackage(
   profile: InputLanguageBenchmarkMetrics,
   feedback: AdaptiveSessionFeedback | null,
   llmPrompt: string,
-  options: { activeSessionStatus?: string; activitySummary?: unknown } = {},
+  options: { activeSessionStatus?: string; activitySummary?: unknown; latestFinishedSession?: SessionFeedbackReference | null } = {},
 ): string {
   const packageJson = JSON.stringify(buildBenchmarkFeedbackPackage(profile, feedback, options), null, 2);
   return [
@@ -449,7 +482,10 @@ function buildFeedbackNotes(
 function buildSessionFeedbackStatus(
   feedback: AdaptiveSessionFeedback | null,
   activeSessionStatus?: string,
+  recency?: SessionFeedbackRecency | null,
 ): string {
+  if (recency?.status === 'stale_for_latest_finished_session') return 'stale_completed_feedback_for_latest_finished_session';
+  if (recency?.status === 'missing_for_latest_finished_session') return 'latest_finished_session_no_completed_feedback_yet';
   if (feedback) return 'completed_feedback_available';
   if (activeSessionStatus === 'running' || activeSessionStatus === 'paused' || activeSessionStatus === 'ready') {
     return `session_${activeSessionStatus}_no_completed_feedback_yet`;
@@ -457,10 +493,68 @@ function buildSessionFeedbackStatus(
   return 'no_completed_feedback_available';
 }
 
-function buildFeedbackUnavailableSnapshot(status: string): { status: string; message: string } {
+type SessionFeedbackRecency = {
+  status: 'current_for_latest_finished_session' | 'stale_for_latest_finished_session' | 'missing_for_latest_finished_session';
+  latestFinishedSession: SessionFeedbackReference | null;
+  feedbackSession: ReturnType<typeof summarizeFeedbackForRecency>;
+  message: string;
+};
+
+function buildSessionFeedbackRecency(
+  feedback: AdaptiveSessionFeedback | null,
+  latestFinishedSession: SessionFeedbackReference | null | undefined,
+): SessionFeedbackRecency | null {
+  if (!latestFinishedSession?.sessionId) return null;
+  const feedbackSession = summarizeFeedbackForRecency(feedback);
+  if (!feedback) {
+    return {
+      status: 'missing_for_latest_finished_session',
+      latestFinishedSession,
+      feedbackSession,
+      message: 'No formal session feedback exists for the latest finished session in this input/language scope.',
+    };
+  }
+  if (feedback.sessionId === latestFinishedSession.sessionId) {
+    return {
+      status: 'current_for_latest_finished_session',
+      latestFinishedSession,
+      feedbackSession,
+      message: 'Formal session feedback matches the latest finished session in this input/language scope.',
+    };
+  }
+  return {
+    status: 'stale_for_latest_finished_session',
+    latestFinishedSession,
+    feedbackSession,
+    message: 'The newest saved session is newer than the newest available formal session feedback; stale feedback is diagnostic only.',
+  };
+}
+
+function summarizeFeedbackForRecency(feedback: AdaptiveSessionFeedback | null): {
+  sessionId: string | null;
+  completedAt: string | null;
+  createdAt: string | null;
+  scriptId: string | null;
+  scriptTitle: string | null;
+} {
+  return {
+    sessionId: feedback?.sessionId ?? null,
+    completedAt: feedback?.completedAt ?? null,
+    createdAt: feedback?.createdAt ?? null,
+    scriptId: feedback?.scriptId ?? null,
+    scriptTitle: feedback?.scriptTitle ?? null,
+  };
+}
+
+function buildFeedbackUnavailableSnapshot(
+  status: string,
+  recency?: SessionFeedbackRecency | null,
+): { status: string; message: string; latestFinishedSession?: SessionFeedbackReference | null; staleFeedback?: ReturnType<typeof summarizeFeedbackForRecency> } {
   return {
     status,
-    message: 'Formal completed-session feedback is not available for this selected input/language profile yet.',
+    message: recency?.message ?? 'Formal completed-session feedback is not available for this selected input/language profile yet.',
+    ...(recency?.latestFinishedSession ? { latestFinishedSession: recency.latestFinishedSession } : {}),
+    ...(recency?.status === 'stale_for_latest_finished_session' ? { staleFeedback: recency.feedbackSession } : {}),
   };
 }
 

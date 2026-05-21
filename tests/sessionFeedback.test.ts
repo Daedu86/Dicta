@@ -522,6 +522,113 @@ describe('session feedback diagnostics', () => {
     expect(payload.playbackDiagnostics?.replayCount).toBe(1);
   });
 
+  it('marks completed feedback as stale when a newer finished session exists for the export scope', () => {
+    const profile = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'de'),
+      timeline: [timelinePoint(0, 'phrase_completed', 1)],
+    };
+    const staleFeedback = {
+      ...feedbackRecord({
+        sessionId: '324aa46a-f9cd-447f-abca-48fb64f2f7ee',
+        inputMode: 'browser-tts',
+        language: 'de',
+        createdAt: '2026-05-17T23:08:39.293Z',
+        completedAt: '2026-05-17T23:18:39.293Z',
+      }),
+      scriptId: '324aa46a-f9cd-447f-abca-48fb64f2f7ee:Alltagsbeobachtungen im Stadtpark bei leichtem Regen',
+      scriptTitle: 'Alltagsbeobachtungen im Stadtpark bei leichtem Regen',
+    };
+
+    const payload = buildBenchmarkFeedbackPackage(profile, staleFeedback, {
+      latestFinishedSession: {
+        sessionId: '48c16590-52cc-4738-b441-1c831e4cb646',
+        updatedAt: '2026-05-21T07:57:33.023Z',
+        finishedAt: '2026-05-21T07:57:33.023Z',
+        scriptTitle: 'Alltägliche Szenen im Park und zu Hause',
+      },
+    }) as {
+      sessionFeedbackStatus?: string;
+      latestSessionFeedback?: { status?: string; staleFeedback?: { sessionId?: string | null } };
+      staleSessionFeedback?: { sessionId?: string | null; scriptTitle?: string | null };
+      sessionFeedbackRecency?: { status?: string; latestFinishedSession?: { sessionId?: string } };
+      dictationScript?: { status?: string; scriptTitle?: string; latestFinishedSessionId?: string | null } | null;
+      playbackDiagnostics?: { source?: string };
+    };
+
+    expect(payload.sessionFeedbackStatus).toBe('stale_completed_feedback_for_latest_finished_session');
+    expect(payload.sessionFeedbackRecency?.status).toBe('stale_for_latest_finished_session');
+    expect(payload.sessionFeedbackRecency?.latestFinishedSession?.sessionId).toBe('48c16590-52cc-4738-b441-1c831e4cb646');
+    expect(payload.latestSessionFeedback?.status).toBe('stale_completed_feedback_for_latest_finished_session');
+    expect(payload.latestSessionFeedback?.staleFeedback?.sessionId).toBe('324aa46a-f9cd-447f-abca-48fb64f2f7ee');
+    expect(payload.staleSessionFeedback?.sessionId).toBe('324aa46a-f9cd-447f-abca-48fb64f2f7ee');
+    expect(payload.dictationScript?.status).toBe('stale_feedback_script');
+    expect(payload.dictationScript?.latestFinishedSessionId).toBe('48c16590-52cc-4738-b441-1c831e4cb646');
+    expect(payload.playbackDiagnostics?.source).toBe('timeline_fallback');
+  });
+
+  it('keeps completed feedback current when it matches the latest finished session', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const feedback = {
+      ...feedbackRecord({
+        sessionId: '48c16590-52cc-4738-b441-1c831e4cb646',
+        inputMode: 'browser-tts',
+        language: 'de',
+        createdAt: '2026-05-21T07:50:00.000Z',
+        completedAt: '2026-05-21T07:57:33.023Z',
+      }),
+      scriptId: '48c16590-52cc-4738-b441-1c831e4cb646:Alltägliche Szenen im Park und zu Hause',
+      scriptTitle: 'Alltägliche Szenen im Park und zu Hause',
+    };
+
+    const payload = buildBenchmarkFeedbackPackage(profile, feedback, {
+      latestFinishedSession: {
+        sessionId: '48c16590-52cc-4738-b441-1c831e4cb646',
+        updatedAt: '2026-05-21T07:57:33.023Z',
+        finishedAt: '2026-05-21T07:57:33.023Z',
+      },
+    }) as {
+      sessionFeedbackStatus?: string;
+      latestSessionFeedback?: { sessionId?: string };
+      staleSessionFeedback?: unknown;
+      dictationScript?: { status?: string; scriptTitle?: string } | null;
+    };
+
+    expect(payload.sessionFeedbackStatus).toBe('completed_feedback_available');
+    expect(payload.latestSessionFeedback?.sessionId).toBe('48c16590-52cc-4738-b441-1c831e4cb646');
+    expect(payload.staleSessionFeedback).toBeNull();
+    expect(payload.dictationScript?.status).toBe('current_feedback_script');
+    expect(payload.dictationScript?.scriptTitle).toBe('Alltägliche Szenen im Park und zu Hause');
+  });
+
+  it('reports missing feedback for the latest finished session without selecting stale script metadata', () => {
+    const profile = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'de'),
+      timeline: [timelinePoint(0, 'phrase_completed', 1)],
+    };
+
+    const payload = buildBenchmarkFeedbackPackage(profile, null, {
+      latestFinishedSession: {
+        sessionId: '48c16590-52cc-4738-b441-1c831e4cb646',
+        updatedAt: '2026-05-21T07:57:33.023Z',
+        finishedAt: '2026-05-21T07:57:33.023Z',
+        scriptTitle: 'Alltägliche Szenen im Park und zu Hause',
+      },
+    }) as {
+      sessionFeedbackStatus?: string;
+      latestSessionFeedback?: { status?: string; latestFinishedSession?: { sessionId?: string } };
+      staleSessionFeedback?: unknown;
+      dictationScript?: unknown;
+      playbackDiagnostics?: { source?: string };
+    };
+
+    expect(payload.sessionFeedbackStatus).toBe('latest_finished_session_no_completed_feedback_yet');
+    expect(payload.latestSessionFeedback?.status).toBe('latest_finished_session_no_completed_feedback_yet');
+    expect(payload.latestSessionFeedback?.latestFinishedSession?.sessionId).toBe('48c16590-52cc-4738-b441-1c831e4cb646');
+    expect(payload.staleSessionFeedback).toBeNull();
+    expect(payload.dictationScript).toBeNull();
+    expect(payload.playbackDiagnostics?.source).toBe('timeline_fallback');
+  });
+
   it('exports up to the latest 120 timeline points in full feedback packages', () => {
     const profile = {
       ...createEmptyInputLanguageBenchmark('browser-tts', 'en'),
