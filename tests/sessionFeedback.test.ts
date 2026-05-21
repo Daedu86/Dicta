@@ -5,6 +5,7 @@ import {
   computeImprovementDelta,
   derivePlaybackDiagnosticsFromTimeline,
   detectPlaybackIssues,
+  hasAdaptiveSessionFeedbackForSession,
   selectLatestAdaptiveSessionFeedback,
   upsertAdaptiveSessionFeedbackByInputLanguage,
 } from '../src/core/adaptive/sessionFeedback';
@@ -319,6 +320,79 @@ describe('session feedback diagnostics', () => {
     expect(next['browser-tts']?.de?.[0]?.sessionId).toBe('4968d38d-ca63-4d6c-bc00-20b4013d94ad');
     expect(next.audio?.de).toBeUndefined();
     expect(next['browser-tts']?.en).toBeUndefined();
+  });
+
+  it('detects existing browser-tts DE feedback by session id before backfilling', () => {
+    const feedback = feedbackRecord({
+      sessionId: '178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-21T08:38:00.000Z',
+      completedAt: '2026-05-21T08:42:04.706Z',
+    });
+
+    expect(
+      hasAdaptiveSessionFeedbackForSession(
+        [feedback],
+        'browser-tts',
+        'de',
+        '178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not treat feedback under the wrong inputMode or language as a browser-tts DE match', () => {
+    const sameSessionWrongInput = feedbackRecord({
+      sessionId: '178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f',
+      inputMode: 'audio',
+      language: 'de',
+      createdAt: '2026-05-21T08:38:00.000Z',
+      completedAt: '2026-05-21T08:42:04.706Z',
+    });
+    const sameSessionWrongLanguage = feedbackRecord({
+      sessionId: '178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f',
+      inputMode: 'browser-tts',
+      language: 'en',
+      createdAt: '2026-05-21T08:38:00.000Z',
+      completedAt: '2026-05-21T08:42:04.706Z',
+    });
+
+    expect(
+      hasAdaptiveSessionFeedbackForSession(
+        [sameSessionWrongInput, sameSessionWrongLanguage],
+        'browser-tts',
+        'de',
+        '178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f',
+      ),
+    ).toBe(false);
+  });
+
+  it('keeps browser-tts DE feedback idempotent when a backfill reruns for the same session', () => {
+    const first = feedbackRecord({
+      sessionId: '178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-21T08:38:00.000Z',
+      completedAt: '2026-05-21T08:42:04.706Z',
+    });
+    const regenerated = {
+      ...feedbackRecord({
+        sessionId: '178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f',
+        inputMode: 'browser-tts',
+        language: 'de',
+        createdAt: '2026-05-21T08:38:00.000Z',
+        completedAt: '2026-05-21T08:42:04.706Z',
+      }),
+      notes: ['Backfill reran.'],
+    };
+
+    const withFirst = upsertAdaptiveSessionFeedbackByInputLanguage({}, 'browser-tts', 'de', first);
+    const withRegenerated = upsertAdaptiveSessionFeedbackByInputLanguage(withFirst, 'browser-tts', 'de', regenerated);
+
+    expect(withRegenerated['browser-tts']?.de).toHaveLength(1);
+    expect(withRegenerated['browser-tts']?.de?.[0]?.sessionId).toBe('178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f');
+    expect(withRegenerated.audio?.de).toBeUndefined();
+    expect(withRegenerated['browser-tts']?.en).toBeUndefined();
   });
 
   it('replaces stale browser-tts DE feedback with newer generated feedback and survives reload serialization', () => {

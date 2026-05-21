@@ -61,6 +61,22 @@ export function selectLatestAdaptiveSessionFeedback(
   return latest;
 }
 
+export function hasAdaptiveSessionFeedbackForSession(
+  feedbackList: readonly AdaptiveSessionFeedback[] | null | undefined,
+  inputMode: InputMode,
+  language: LanguageCode,
+  sessionId: string,
+): boolean {
+  if (!sessionId) return false;
+  const targetLanguage = normalizeFeedbackLanguage(language);
+  return (feedbackList ?? []).some(
+    (feedback) =>
+      feedback.sessionId === sessionId &&
+      feedback.inputMode === inputMode &&
+      normalizeFeedbackLanguage(feedback.language) === targetLanguage,
+  );
+}
+
 export function upsertAdaptiveSessionFeedbackByInputLanguage<T extends Record<string, Record<string, AdaptiveSessionFeedback[]>>>(
   current: T,
   inputMode: InputMode,

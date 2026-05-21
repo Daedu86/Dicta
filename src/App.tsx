@@ -64,6 +64,7 @@ import {
   buildBenchmarkFeedbackPromptPackage,
   buildSessionFeedbackJsonPayload,
   derivePlaybackDiagnosticsFromTimeline,
+  hasAdaptiveSessionFeedbackForSession,
   selectLatestAdaptiveSessionFeedback,
   upsertAdaptiveSessionFeedbackByInputLanguage,
   type SessionFeedbackReference,
@@ -1386,6 +1387,10 @@ function App() {
     adaptiveSessionFeedbackRef.current = adaptiveSessionFeedbackByInputLanguage;
     window.localStorage.setItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(adaptiveSessionFeedbackByInputLanguage));
   }, [adaptiveSessionFeedbackByInputLanguage]);
+
+  useEffect(() => {
+    ensureLatestBrowserTtsDeDictationScriptFeedback(sessions);
+  }, [activeSessionId, adaptiveSessionFeedbackByInputLanguage, sessions]);
 
   useEffect(() => {
     if (sessions.length === 0) {
@@ -5411,11 +5416,28 @@ function App() {
     ].slice(-500);
   }
 
-  function completeAdaptiveSessionFeedback(completedSession = activeSession): void {
+  function completeAdaptiveSessionFeedback(
+    completedSession = activeSession,
+    options: { phraseEvents?: PhrasePlaybackEvent[]; totalPhrases?: number } = {},
+  ): void {
     if (!completedSession) return;
     const context = sessionFeedbackContextRef.current[completedSession.id];
     const inputMode = context?.inputMode ?? mapSessionInputMode(completedSession.inputMode);
     const language = normalizeBenchmarkLanguage(context?.language ?? resolveStoredSessionLanguage(completedSession));
+    if (
+      inputMode === 'browser-tts' &&
+      language === 'de' &&
+      hasAdaptiveSessionFeedbackForSession(
+        adaptiveSessionFeedbackRef.current[inputMode]?.[language],
+        inputMode,
+        language,
+        completedSession.id,
+      )
+    ) {
+      delete sessionBenchmarkBeforeRef.current[completedSession.id];
+      delete sessionFeedbackContextRef.current[completedSession.id];
+      return;
+    }
     const before = sessionBenchmarkBeforeRef.current[completedSession.id] ?? getBenchmarkSnapshot(inputMode, language);
     const after = getBenchmarkSnapshot(inputMode, language);
     const feedback = buildAdaptiveSessionFeedback({
@@ -5429,8 +5451,8 @@ function App() {
       scriptTitle: completedSession.dictationScript?.title,
       benchmarkBefore: before,
       benchmarkAfter: after,
-      phraseEvents: phrasePlaybackEventsRef.current,
-      totalPhrases: phrasePlaybackTotalPhrasesRef.current || undefined,
+      phraseEvents: options.phraseEvents ?? phrasePlaybackEventsRef.current,
+      totalPhrases: options.totalPhrases ?? (phrasePlaybackTotalPhrasesRef.current || undefined),
     });
     const nextFeedbackState = upsertAdaptiveSessionFeedbackByInputLanguage(
       adaptiveSessionFeedbackRef.current,
@@ -5442,6 +5464,47 @@ function App() {
     persistAndPushAdaptiveSessionFeedbackNow(nextFeedbackState);
     delete sessionBenchmarkBeforeRef.current[completedSession.id];
     delete sessionFeedbackContextRef.current[completedSession.id];
+  }
+
+  function ensureLatestBrowserTtsDeDictationScriptFeedback(sourceSessions: StoredSession[]): void {
+    const latestSession = findLatestFinishedBrowserTtsDeDictationScriptSession(sourceSessions);
+    if (!latestSession) return;
+    const inputMode: InputMode = 'browser-tts';
+    const language: LanguageCode = 'de';
+    if (
+      hasAdaptiveSessionFeedbackForSession(
+        adaptiveSessionFeedbackRef.current[inputMode]?.[language],
+        inputMode,
+        language,
+        latestSession.id,
+      )
+    ) {
+      return;
+    }
+    completeAdaptiveSessionFeedback(latestSession, {
+      phraseEvents: activeSessionId === latestSession.id ? phrasePlaybackEventsRef.current : [],
+      totalPhrases:
+        activeSessionId === latestSession.id && phrasePlaybackTotalPhrasesRef.current > 0
+          ? phrasePlaybackTotalPhrasesRef.current
+          : latestSession.dictationScript?.phrases.length,
+    });
+  }
+
+  function findLatestFinishedBrowserTtsDeDictationScriptSession(sourceSessions: StoredSession[]): StoredSession | null {
+    return (
+      sourceSessions
+        .filter(isFinishedBrowserTtsDeDictationScriptSession)
+        .sort((a, b) => getSessionFinishedAtMs(b) - getSessionFinishedAtMs(a))[0] ?? null
+    );
+  }
+
+  function isFinishedBrowserTtsDeDictationScriptSession(session: StoredSession): boolean {
+    return (
+      session.status === 'finished' &&
+      session.sessionSource === 'dictationScript' &&
+      mapSessionInputMode(session.inputMode) === 'browser-tts' &&
+      normalizeBenchmarkLanguage(resolveStoredSessionLanguage(session)) === 'de'
+    );
   }
 
   function buildAdaptiveEventCounts(
