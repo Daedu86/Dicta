@@ -65,6 +65,7 @@ import {
   buildSessionFeedbackJsonPayload,
   derivePlaybackDiagnosticsFromTimeline,
   selectLatestAdaptiveSessionFeedback,
+  upsertAdaptiveSessionFeedbackByInputLanguage,
   type SessionFeedbackReference,
 } from './core/adaptive/sessionFeedback';
 import { HistoricalPerformanceService } from './core/history/HistoricalPerformanceService';
@@ -2467,10 +2468,11 @@ function App() {
           }
         : session,
     );
+    const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
     setSessions(nextSessions);
     persistAndPushSessionsNow(nextSessions);
     setSessionStatus('finished');
-    completeAdaptiveSessionFeedback();
+    completeAdaptiveSessionFeedback(finalizedSession);
     setError('');
     if (activeSessionId) {
       setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
@@ -3545,13 +3547,14 @@ function App() {
             }
           : session,
       );
+      const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
       setSessions(nextSessions);
       persistAndPushSessionsNow(nextSessions);
       stopTtsPlayback();
       setRunning(false);
       setSessionStatus('finished');
       setTtsStatus('finished');
-      completeAdaptiveSessionFeedback();
+      completeAdaptiveSessionFeedback(finalizedSession);
       setError('');
       if (activeSessionId) {
         setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
@@ -5290,13 +5293,14 @@ function App() {
           }
         : session,
     );
+    const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
     setSessions(nextSessions);
     persistAndPushSessionsNow(nextSessions);
     stopKokoroPlayback();
     setRunning(false);
     setSessionStatus('finished');
     setKokoroStatus('finished');
-    completeAdaptiveSessionFeedback();
+    completeAdaptiveSessionFeedback(finalizedSession);
     setError('');
     if (activeSessionId) {
       setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
@@ -5407,28 +5411,28 @@ function App() {
     ].slice(-500);
   }
 
-  function completeAdaptiveSessionFeedback(): void {
-    if (!activeSession) return;
-    const context = sessionFeedbackContextRef.current[activeSession.id];
-    const inputMode = context?.inputMode ?? mapSessionInputMode(activeSession.inputMode);
-    const language = normalizeBenchmarkLanguage(context?.language ?? resolveStoredSessionLanguage(activeSession));
-    const before = sessionBenchmarkBeforeRef.current[activeSession.id] ?? getBenchmarkSnapshot(inputMode, language);
+  function completeAdaptiveSessionFeedback(completedSession = activeSession): void {
+    if (!completedSession) return;
+    const context = sessionFeedbackContextRef.current[completedSession.id];
+    const inputMode = context?.inputMode ?? mapSessionInputMode(completedSession.inputMode);
+    const language = normalizeBenchmarkLanguage(context?.language ?? resolveStoredSessionLanguage(completedSession));
+    const before = sessionBenchmarkBeforeRef.current[completedSession.id] ?? getBenchmarkSnapshot(inputMode, language);
     const after = getBenchmarkSnapshot(inputMode, language);
     const feedback = buildAdaptiveSessionFeedback({
-      sessionId: activeSession.id,
+      sessionId: completedSession.id,
       inputMode,
       language,
-      sourceType: activeSession.sessionSource === 'dictationScript' ? 'dictation_script' : 'plain_text',
-      createdAt: activeSession.createdAt,
-      completedAt: new Date().toISOString(),
-      scriptId: activeSession.dictationScript ? `${activeSession.id}:${activeSession.dictationScript.title}` : undefined,
-      scriptTitle: activeSession.dictationScript?.title,
+      sourceType: completedSession.sessionSource === 'dictationScript' ? 'dictation_script' : 'plain_text',
+      createdAt: completedSession.createdAt,
+      completedAt: completedSession.telemetry.finishedAt ?? completedSession.updatedAt ?? new Date().toISOString(),
+      scriptId: completedSession.dictationScript ? `${completedSession.id}:${completedSession.dictationScript.title}` : undefined,
+      scriptTitle: completedSession.dictationScript?.title,
       benchmarkBefore: before,
       benchmarkAfter: after,
       phraseEvents: phrasePlaybackEventsRef.current,
       totalPhrases: phrasePlaybackTotalPhrasesRef.current || undefined,
     });
-    const nextFeedbackState = upsertAdaptiveSessionFeedback(
+    const nextFeedbackState = upsertAdaptiveSessionFeedbackByInputLanguage(
       adaptiveSessionFeedbackRef.current,
       inputMode,
       language,
@@ -5436,8 +5440,8 @@ function App() {
     );
     setAdaptiveSessionFeedbackByInputLanguage(nextFeedbackState);
     persistAndPushAdaptiveSessionFeedbackNow(nextFeedbackState);
-    delete sessionBenchmarkBeforeRef.current[activeSession.id];
-    delete sessionFeedbackContextRef.current[activeSession.id];
+    delete sessionBenchmarkBeforeRef.current[completedSession.id];
+    delete sessionFeedbackContextRef.current[completedSession.id];
   }
 
   function buildAdaptiveEventCounts(
@@ -11600,24 +11604,6 @@ function buildCurrentSyncState(
     sessions: sessions.map((session) => normalizeSessionForPersistence(session)),
     benchmarks,
     feedback,
-  };
-}
-
-function upsertAdaptiveSessionFeedback(
-  current: AdaptiveSessionFeedbackByInputLanguage,
-  inputMode: InputMode,
-  language: LanguageCode,
-  feedback: AdaptiveSessionFeedback,
-): AdaptiveSessionFeedbackByInputLanguage {
-  const inputFeedback = current[inputMode] ?? {};
-  const languageFeedback = inputFeedback[language] ?? [];
-  const nextLanguageFeedback = [feedback, ...languageFeedback.filter((item) => item.sessionId !== feedback.sessionId)].slice(0, 12);
-  return {
-    ...current,
-    [inputMode]: {
-      ...inputFeedback,
-      [language]: nextLanguageFeedback,
-    },
   };
 }
 

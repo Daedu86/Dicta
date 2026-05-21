@@ -61,6 +61,25 @@ export function selectLatestAdaptiveSessionFeedback(
   return latest;
 }
 
+export function upsertAdaptiveSessionFeedbackByInputLanguage<T extends Record<string, Record<string, AdaptiveSessionFeedback[]>>>(
+  current: T,
+  inputMode: InputMode,
+  language: LanguageCode,
+  feedback: AdaptiveSessionFeedback,
+  limit = 12,
+): T {
+  const inputFeedback = current[inputMode] ?? {};
+  const languageFeedback = inputFeedback[language] ?? [];
+  const nextLanguageFeedback = [feedback, ...languageFeedback.filter((item) => item.sessionId !== feedback.sessionId)].slice(0, limit);
+  return {
+    ...current,
+    [inputMode]: {
+      ...inputFeedback,
+      [language]: nextLanguageFeedback,
+    },
+  };
+}
+
 export type TimelinePlaybackDiagnostics = {
   source: 'formal_feedback' | 'timeline_fallback';
   repeatedPhraseIndices: Array<{

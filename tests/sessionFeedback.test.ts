@@ -6,6 +6,7 @@ import {
   derivePlaybackDiagnosticsFromTimeline,
   detectPlaybackIssues,
   selectLatestAdaptiveSessionFeedback,
+  upsertAdaptiveSessionFeedbackByInputLanguage,
 } from '../src/core/adaptive/sessionFeedback';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import type { AdaptiveSessionFeedback, AdaptiveTimelinePoint, InputMode, LanguageCode, PhrasePlaybackEvent } from '../src/core/adaptive/types';
@@ -302,6 +303,48 @@ describe('session feedback diagnostics', () => {
     });
 
     expect(selectLatestAdaptiveSessionFeedback([unrelated], 'browser-tts', 'de')).toBeNull();
+  });
+
+  it('stores generated browser-tts DE feedback under the browser-tts/de bucket', () => {
+    const feedback = feedbackRecord({
+      sessionId: '4968d38d-ca63-4d6c-bc00-20b4013d94ad',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-21T08:16:36.500Z',
+      completedAt: '2026-05-21T08:20:52.399Z',
+    });
+
+    const next = upsertAdaptiveSessionFeedbackByInputLanguage({}, 'browser-tts', 'de', feedback);
+
+    expect(next['browser-tts']?.de?.[0]?.sessionId).toBe('4968d38d-ca63-4d6c-bc00-20b4013d94ad');
+    expect(next.audio?.de).toBeUndefined();
+    expect(next['browser-tts']?.en).toBeUndefined();
+  });
+
+  it('replaces stale browser-tts DE feedback with newer generated feedback and survives reload serialization', () => {
+    const stale = feedbackRecord({
+      sessionId: '324aa46a-f9cd-447f-abca-48fb64f2f7ee',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-17T23:08:39.293Z',
+      completedAt: '2026-05-17T23:18:39.293Z',
+    });
+    const fresh = feedbackRecord({
+      sessionId: '4968d38d-ca63-4d6c-bc00-20b4013d94ad',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-21T08:16:36.500Z',
+      completedAt: '2026-05-21T08:20:52.399Z',
+    });
+    const withStale = upsertAdaptiveSessionFeedbackByInputLanguage({}, 'browser-tts', 'de', stale);
+    const withFresh = upsertAdaptiveSessionFeedbackByInputLanguage(withStale, 'browser-tts', 'de', fresh);
+    const restored = JSON.parse(JSON.stringify(withFresh)) as typeof withFresh;
+
+    const selected = selectLatestAdaptiveSessionFeedback(restored['browser-tts']?.de, 'browser-tts', 'de');
+
+    expect(restored['browser-tts']?.de).toHaveLength(2);
+    expect(restored['browser-tts']?.de?.[0]?.sessionId).toBe('4968d38d-ca63-4d6c-bc00-20b4013d94ad');
+    expect(selected?.sessionId).toBe('4968d38d-ca63-4d6c-bc00-20b4013d94ad');
   });
 
   it('adds benchmark count aliases to legacy feedback snapshots in exported packages', () => {
