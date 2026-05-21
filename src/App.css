@@ -207,6 +207,27 @@
   flex-wrap: wrap;
 }
 
+.training-session-submission-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem 0.5rem;
+  flex-wrap: wrap;
+  color: #31506e;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.training-session-submission-meta span {
+  white-space: nowrap;
+}
+
+.training-session-submission-meta span + span::before {
+  content: '·';
+  margin-right: 0.5rem;
+  color: #6e8199;
+}
+
 .training-session-meta span,
 .training-audio-status strong {
   display: inline-flex;

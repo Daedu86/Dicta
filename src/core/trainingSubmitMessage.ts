@@ -1,6 +1,7 @@
 import { resolveSessionLanguage, type SessionLanguageLike } from './liveMetrics';
+import { estimateSessionVoiceDurationSec, type SessionDurationInput } from './sessionDuration';
 
-type TrainingSubmitSession = SessionLanguageLike & {
+type TrainingSubmitSession = SessionLanguageLike & SessionDurationInput & {
   id: string;
   metrics: {
     points: number;
@@ -27,7 +28,7 @@ export function buildTrainingSubmitMessage(sessions: TrainingSubmitSession[], se
     `Score ${formatScore(submittedSession.metrics.score)}`,
     `Accuracy ${formatAccuracy(submittedSession.metrics.accuracy)}`,
     `Points ${formatPoints(submittedSession.metrics.points)}`,
-    `Duration ${formatTelemetryDuration(submittedSession.telemetry)}`,
+    `Duration ${formatDuration(estimateSessionVoiceDurationSec(submittedSession))}`,
   ].join(', ');
 
   if (rank <= 0) {
@@ -37,8 +38,9 @@ export function buildTrainingSubmitMessage(sessions: TrainingSubmitSession[], se
 }
 
 function formatScore(value: number): string {
-  const normalized = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
-  return `${Math.round(normalized * 100)}%`;
+  const normalized = Number.isFinite(value) ? Math.max(0, value) : 0;
+  if (Number.isInteger(normalized)) return String(normalized);
+  return normalized.toFixed(2).replace(/\.?0+$/, '');
 }
 
 function formatAccuracy(value: number): string {
@@ -50,12 +52,11 @@ function formatPoints(value: number): string {
   return String(Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
 }
 
-function formatTelemetryDuration(telemetry: TrainingSubmitSession['telemetry']): string {
-  const started = telemetry?.startedAt ? Date.parse(telemetry.startedAt) : Number.NaN;
-  const finished = telemetry?.finishedAt ? Date.parse(telemetry.finishedAt) : Number.NaN;
-  if (!Number.isFinite(started) || !Number.isFinite(finished) || finished < started) return 'n/a';
-  const seconds = Math.max(0, Math.round((finished - started) / 1000));
-  const minutes = Math.floor(seconds / 60);
-  const remainder = seconds % 60;
-  return minutes > 0 ? `${minutes}m ${remainder}s` : `${remainder}s`;
+function formatDuration(seconds: number | null): string {
+  if (seconds === null) return 'n/a';
+  const roundedSeconds = Math.max(0, Math.round(seconds));
+  if (roundedSeconds < 60) return `${roundedSeconds}s`;
+  const minutes = Math.floor(roundedSeconds / 60);
+  const remainder = roundedSeconds % 60;
+  return `${minutes}m ${remainder}s`;
 }

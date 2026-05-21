@@ -2,8 +2,9 @@ import type { SessionTelemetry } from '../types/dictation';
 
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 
-type SessionDurationInput = {
+export type SessionDurationInput = {
   inputMode?: string;
+  voiceDurationSec?: number | null;
   transcript?: { words?: Array<{ end?: number }> } | null;
   ttsText?: string;
   kokoroText?: string;
@@ -13,6 +14,9 @@ type SessionDurationInput = {
 };
 
 export function estimateSessionVoiceDurationSec(session: SessionDurationInput): number | null {
+  const explicitDuration = finitePositiveOrNull(session.voiceDurationSec);
+  if (explicitDuration !== null) return explicitDuration;
+
   if (session.inputMode === 'input1') {
     const words = session.transcript?.words ?? [];
     return finitePositiveOrNull(words[words.length - 1]?.end);

@@ -258,6 +258,14 @@ type TrainingGenerationNoticeView = {
   message: string;
   tone: 'hint' | 'success' | 'error';
 };
+type TrainingSessionSubmissionMeta = {
+  positionLabel: string;
+  scoreLabel: string;
+  accuracyLabel: string;
+  pointsLabel: string;
+  durationLabel: string;
+  submittedAtLabel: string;
+};
 type TtsLanguage = SupportedLanguage;
 type TypingLanguage = SupportedLanguage;
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
@@ -987,6 +995,10 @@ function App() {
     if (sessions.length === 0) return null;
     return [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
   }, [sessions]);
+  const activeTrainingSubmissionMeta = useMemo(
+    () => buildTrainingSessionSubmissionMeta(sessions, activeSession),
+    [activeSession, sessions],
+  );
   const pendingSessions = useMemo(
     () =>
       [...sessions]
@@ -5912,6 +5924,7 @@ function App() {
 
   const focusedTrainingProps: TrainingViewProps = {
     activeSession,
+    submissionMeta: activeTrainingSubmissionMeta,
     activeInputLabel,
     sessionStatus,
     sourceLabel: focusedSourceLabel,
@@ -11384,9 +11397,10 @@ function RuntimeMetricsPanel({
 }
 
 function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remaining = Math.round(seconds % 60);
+  const roundedSeconds = Math.max(0, Math.round(seconds));
+  if (roundedSeconds < 60) return `${roundedSeconds}s`;
+  const minutes = Math.floor(roundedSeconds / 60);
+  const remaining = roundedSeconds % 60;
   return `${minutes}m ${remaining}s`;
 }
 
@@ -12093,6 +12107,7 @@ type SyncStatusBannerProps = {
 
 type TrainingViewProps = {
   activeSession: StoredSession | null;
+  submissionMeta: TrainingSessionSubmissionMeta | null;
   activeInputLabel: string;
   sessionStatus: SessionStatus;
   sourceLabel: string;
@@ -12240,6 +12255,7 @@ function TrainingHeader({ onBackToApp }: { onBackToApp: () => void }) {
 
 function TrainingView({
   activeSession,
+  submissionMeta,
   activeInputLabel,
   sessionStatus,
   sourceLabel,
@@ -12347,6 +12363,16 @@ function TrainingView({
       <section className="training-card training-session-card">
         <p className="training-eyebrow">{activeInputLabel}</p>
         <h2>{activeSession ? getSessionDisplayTitle(activeSession) : 'No active session'}</h2>
+        {submissionMeta ? (
+          <div className="training-session-submission-meta" aria-label="Submitted session metadata">
+            <span>Position {submissionMeta.positionLabel}</span>
+            <span>Score {submissionMeta.scoreLabel}</span>
+            <span>Accuracy {submissionMeta.accuracyLabel}</span>
+            <span>Points {submissionMeta.pointsLabel}</span>
+            <span>Duration {submissionMeta.durationLabel}</span>
+            <span>Submitted {submissionMeta.submittedAtLabel}</span>
+          </div>
+        ) : null}
         <div className="training-session-meta" aria-label="Current session info">
           <span>{progressLabel}</span>
           <span>{sourceLabel}</span>
@@ -12791,6 +12817,35 @@ function formatSessionDate(value: string): string {
 function formatSessionPlaybackDuration(session: StoredSession): string {
   const durationSec = getSessionVoiceDurationSec(session);
   return durationSec !== null ? formatDuration(durationSec) : 'n/a';
+}
+
+function buildTrainingSessionSubmissionMeta(
+  sessions: StoredSession[],
+  activeSession: StoredSession | null,
+): TrainingSessionSubmissionMeta | null {
+  if (!activeSession || activeSession.status !== 'finished' || !hasSubmittedSessionStats(activeSession)) {
+    return null;
+  }
+
+  const language = resolveSessionLanguage(activeSession);
+  const rankedByLanguage = [...sessions]
+    .filter((session) => resolveSessionLanguage(session) === language)
+    .sort((a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy);
+  const rank = rankedByLanguage.findIndex((session) => session.id === activeSession.id) + 1;
+  const submittedAt = activeSession.telemetry.finishedAt ?? activeSession.updatedAt;
+
+  return {
+    positionLabel: rank > 0 ? `#${rank}` : 'n/a',
+    scoreLabel: String(activeSession.metrics.score),
+    accuracyLabel: `${activeSession.metrics.accuracy.toFixed(1)}%`,
+    pointsLabel: String(activeSession.metrics.points),
+    durationLabel: formatSessionPlaybackDuration(activeSession),
+    submittedAtLabel: formatSubmittedAt(submittedAt),
+  };
+}
+
+function formatSubmittedAt(value: string): string {
+  return Number.isFinite(Date.parse(value)) ? formatSessionDate(value) : 'n/a';
 }
 
 function getSessionVoiceDurationSec(session: StoredSession): number | null {
