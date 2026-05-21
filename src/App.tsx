@@ -153,6 +153,17 @@ import {
 } from './core/liveMetrics';
 import { LagDistributionChart, MiniTrends, RateAccuracyStrip, SweetSpotGauge, TargetZoneChart } from './components/AdaptiveBenchmarkCharts';
 
+type DictaBuildInfo = {
+  branch: string;
+  commitSha: string;
+  shortCommitSha: string;
+  commitTimestamp: string;
+  commitMessage: string;
+  buildTimestamp: string;
+};
+
+declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
+
 const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
 const SESSION_PERSIST_DEBOUNCE_MS = 1500;
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
@@ -171,6 +182,9 @@ const OPENROUTER_GENERATED_SCRIPT_KEY = 'dicta.openrouterGeneratedScript.v1';
 const OPENROUTER_GENERATED_VARIANTS_KEY = 'dicta.openrouterGeneratedVariants.v1';
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
+const DICTA_BUILD_INFO = __DICTA_BUILD_INFO__;
+const DICTA_BUILD_INFO_LABEL = buildBuildInfoLabel(DICTA_BUILD_INFO);
+const DICTA_BUILD_INFO_TITLE = buildBuildInfoTitle(DICTA_BUILD_INFO);
 const DashboardLineChart = lazy(() =>
   import('./components/DashboardCharts').then((module) => ({ default: module.DashboardLineChart })),
 );
@@ -6020,17 +6034,23 @@ function App() {
             <div className="brand-copy">
               <h1>Dicta MVP</h1>
               <p>Adaptive real-time dictation training</p>
-              <span
-                className={`brand-llm-status ${openRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
-                title={openRouterDefaultModel.trim() ? `Selected OpenRouter model: ${openRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
-              >
-                <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
-                <span className="brand-llm-status-text">
-                  {openRouterDefaultModel.trim() ? `Model set: ${openRouterDefaultModel.trim()}` : 'No model set'}
+              <div className="brand-status-row">
+                <span
+                  className={`brand-llm-status ${openRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
+                  title={openRouterDefaultModel.trim() ? `Selected OpenRouter model: ${openRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
+                >
+                  <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
+                  <span className="brand-llm-status-text">
+                    {openRouterDefaultModel.trim() ? `Model set: ${openRouterDefaultModel.trim()}` : 'No model set'}
+                  </span>
                 </span>
-              </span>
+                <span className="brand-build-status" title={DICTA_BUILD_INFO_TITLE}>
+                  <span className="brand-build-status-icon" aria-hidden="true">Git</span>
+                  <span className="brand-build-status-text">{DICTA_BUILD_INFO_LABEL}</span>
+                </span>
+              </div>
             </div>
-        </div>
+          </div>
           <div className="brand-header-actions">
             <button
               type="button"
@@ -11259,6 +11279,42 @@ function formatDuration(seconds: number): string {
 function formatElapsedMs(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function buildBuildInfoLabel(info: DictaBuildInfo): string {
+  const branch = info.branch.trim() || 'local';
+  const commit = info.shortCommitSha.trim() || 'unknown';
+  const timestamp = formatBuildInfoTimestamp(info.commitTimestamp || info.buildTimestamp);
+  return `${branch} commit: ${commit} · ${timestamp}`;
+}
+
+function buildBuildInfoTitle(info: DictaBuildInfo): string {
+  const branch = info.branch.trim() || 'local';
+  const commitSha = info.commitSha.trim() || 'unknown';
+  const commitTimestamp = formatBuildInfoTimestamp(info.commitTimestamp);
+  const buildTimestamp = formatBuildInfoTimestamp(info.buildTimestamp);
+  return [
+    `Branch: ${branch}`,
+    `Commit: ${commitSha}`,
+    `Commit timestamp: ${commitTimestamp}`,
+    `Build timestamp: ${buildTimestamp}`,
+    info.commitMessage.trim() ? `Message: ${info.commitMessage.trim()}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+function formatBuildInfoTimestamp(value: string): string {
+  if (!value) return 'unavailable';
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return 'unavailable';
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsed);
 }
 
 function buildOpenRouterJobNotification(

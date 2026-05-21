@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { execFile, spawn, type ChildProcess } from 'node:child_process';
+import { execFile, execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -640,6 +640,9 @@ export default defineConfig(({ mode }) => {
       },
     },
   ],
+  define: {
+    __DICTA_BUILD_INFO__: JSON.stringify(buildDictaBuildInfo()),
+  },
   build: {
     rolldownOptions: {
       output: {
@@ -679,6 +682,38 @@ export default defineConfig(({ mode }) => {
   },
   };
 });
+
+function buildDictaBuildInfo(): {
+  branch: string;
+  commitSha: string;
+  shortCommitSha: string;
+  commitTimestamp: string;
+  commitMessage: string;
+  buildTimestamp: string;
+} {
+  const commitSha = process.env.VERCEL_GIT_COMMIT_SHA?.trim() || readGitValue(['rev-parse', 'HEAD']);
+  const branch = process.env.VERCEL_GIT_COMMIT_REF?.trim() || readGitValue(['rev-parse', '--abbrev-ref', 'HEAD']);
+  const commitTimestamp = commitSha ? readGitValue(['show', '-s', '--format=%cI', commitSha]) : '';
+  const commitMessage =
+    process.env.VERCEL_GIT_COMMIT_MESSAGE?.trim() || (commitSha ? readGitValue(['show', '-s', '--format=%s', commitSha]) : '');
+
+  return {
+    branch,
+    commitSha,
+    shortCommitSha: commitSha.slice(0, 7),
+    commitTimestamp,
+    commitMessage,
+    buildTimestamp: new Date().toISOString(),
+  };
+}
+
+function readGitValue(args: string[]): string {
+  try {
+    return execFileSync('git', args, { cwd: process.cwd(), encoding: 'utf8' }).trim();
+  } catch {
+    return '';
+  }
+}
 
 async function ensureKokoroVenvReady(kokoroDir: string): Promise<void> {
   const venvPython =
