@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 export const DICTA_APP_PROFILES_TABLE = 'dicta_app_profiles';
+export const DEFAULT_MEMBER_SESSION_LIMIT = 15;
 
 export type DictaAppRole = 'admin' | 'member';
 
@@ -10,6 +11,8 @@ export type DictaAppProfile = {
   displayName: string;
   role: DictaAppRole;
   active: boolean;
+  canAccessOpenRouter: boolean;
+  sessionLimit: number | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -20,30 +23,82 @@ type DictaAppProfileRow = {
   display_name: string | null;
   role: string;
   active: boolean | null;
+  can_access_openrouter?: boolean | null;
+  session_limit?: number | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type DictaSessionQuotaStatus = {
+  limit: number | null;
+  used: number;
+  remaining: number | null;
+  blocked: boolean;
+  message: string;
 };
 
 export function isDictaAdmin(profile: DictaAppProfile | null): boolean {
   return profile?.role === 'admin' && profile.active;
 }
 
+export function canDictaProfileAccessOpenRouter(profile: DictaAppProfile | null): boolean {
+  return Boolean(profile?.active && (profile.role === 'admin' || profile.canAccessOpenRouter));
+}
+
+export function getDictaSessionLimit(profile: DictaAppProfile | null): number | null {
+  if (!profile || profile.role === 'admin') return null;
+  return normalizeSessionLimit(profile.sessionLimit, profile.role);
+}
+
+export function getDictaSessionQuotaStatus(profile: DictaAppProfile | null, sessionCount: number): DictaSessionQuotaStatus {
+  const used = Math.max(0, Math.floor(sessionCount));
+  const limit = getDictaSessionLimit(profile);
+  if (limit === null) {
+    return { limit, used, remaining: null, blocked: false, message: '' };
+  }
+  const remaining = Math.max(0, limit - used);
+  const blocked = used >= limit;
+  return {
+    limit,
+    used,
+    remaining,
+    blocked,
+    message: blocked
+      ? `Session limit reached (${used}/${limit}). Contact the admin to unlock more dictation sessions.`
+      : '',
+  };
+}
+
 export function normalizeDictaAppProfile(row: DictaAppProfileRow): DictaAppProfile {
+  const role: DictaAppRole = row.role === 'admin' ? 'admin' : 'member';
   return {
     userId: row.user_id,
     profileId: row.profile_id,
     displayName: row.display_name?.trim() || row.profile_id,
-    role: row.role === 'admin' ? 'admin' : 'member',
+    role,
     active: row.active !== false,
+    canAccessOpenRouter: role === 'admin' || row.can_access_openrouter === true,
+    sessionLimit: normalizeSessionLimit(row.session_limit, role),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
+function normalizeSessionLimit(value: unknown, role: DictaAppRole): number | null {
+  if (value === null || value === undefined) {
+    return role === 'admin' ? null : DEFAULT_MEMBER_SESSION_LIMIT;
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric >= 0) {
+    return Math.floor(numeric);
+  }
+  return role === 'admin' ? null : DEFAULT_MEMBER_SESSION_LIMIT;
+}
+
 export async function loadDictaAppProfile(client: SupabaseClient, user: User): Promise<DictaAppProfile | null> {
   const { data, error } = await client
     .from(DICTA_APP_PROFILES_TABLE)
-    .select('user_id,profile_id,display_name,role,active,created_at,updated_at')
+    .select('user_id,profile_id,display_name,role,active,can_access_openrouter,session_limit,created_at,updated_at')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -54,7 +109,7 @@ export async function loadDictaAppProfile(client: SupabaseClient, user: User): P
 export async function loadVisibleDictaAppProfiles(client: SupabaseClient): Promise<DictaAppProfile[]> {
   const { data, error } = await client
     .from(DICTA_APP_PROFILES_TABLE)
-    .select('user_id,profile_id,display_name,role,active,created_at,updated_at')
+    .select('user_id,profile_id,display_name,role,active,can_access_openrouter,session_limit,created_at,updated_at')
     .order('display_name', { ascending: true });
 
   if (error) throw error;

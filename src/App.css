@@ -2163,6 +2163,41 @@ textarea[readonly] {
   font-size: 0.75rem;
 }
 
+.admin-access-table {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-access-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(130px, 0.8fr) minmax(110px, 0.6fr) minmax(90px, 0.45fr);
+  gap: 0.65rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #24384f;
+}
+
+.admin-access-row span,
+.admin-access-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-access-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.admin-access-toggle input {
+  width: auto;
+}
+
 .admin-session-card {
   display: grid;
   grid-template-columns: minmax(160px, 0.8fr) minmax(0, 1.5fr) auto;
@@ -4207,7 +4242,8 @@ textarea[readonly] {
     flex-direction: column;
   }
 
-  .admin-table-row {
+  .admin-table-row,
+  .admin-access-row {
     grid-template-columns: 1fr;
   }
 }

@@ -36,5 +36,7 @@ Server-only vars:
 - Users sign in with Supabase email/password.
 - Each user is mapped to exactly one `dicta_app_profiles.profile_id`.
 - Regular members can sync only their own `dicta_sync_items`.
+- Regular members default to no OpenRouter access and a 15-session creation limit; the app blocks creation and RLS rejects new synced session rows over quota.
+- Admin can change member OpenRouter access and session limits from the Admin workspace.
 - Admin can read all profiles and all sync rows through RLS.
 - Session deletes remain tombstones in `dicta_sync_items`; do not hard-delete rows as the normal delete path.

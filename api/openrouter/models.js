@@ -1,4 +1,4 @@
-import { resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { assertOpenRouterAccess, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
 
 function getOpenRouterApiKey() {
   return process.env.OPENROUTER_API_KEY?.trim() ?? '';
@@ -11,7 +11,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+    const requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+    assertOpenRouterAccess(requester);
   } catch (error) {
     sendApiError(res, error, 'OpenRouter model request failed.');
     return;

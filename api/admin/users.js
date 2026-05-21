@@ -1,5 +1,7 @@
 import { createSupabaseServiceClient, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
 
+const DEFAULT_MEMBER_SESSION_LIMIT = 15;
+
 function normalizeBody(body) {
   if (!body) return {};
   if (typeof body === 'string') {
@@ -28,6 +30,16 @@ function slugProfileId(value) {
     .slice(0, 64);
 }
 
+function normalizeMemberSessionLimit(value) {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric >= 0) return Math.floor(numeric);
+  return DEFAULT_MEMBER_SESSION_LIMIT;
+}
+
+function profileSelect() {
+  return 'user_id,profile_id,display_name,role,active,can_access_openrouter,session_limit,created_at,updated_at';
+}
+
 export default async function handler(req, res) {
   try {
     const requester = await resolveRequestProfile(req);
@@ -41,7 +53,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const { data, error } = await supabase
         .from('dicta_app_profiles')
-        .select('user_id,profile_id,display_name,role,active,created_at,updated_at')
+        .select(profileSelect())
         .order('display_name', { ascending: true });
       if (error) throw error;
       res.status(200).json({ profiles: data ?? [] });
@@ -55,6 +67,9 @@ export default async function handler(req, res) {
       const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
       const requestedProfileId = typeof body.profileId === 'string' ? slugProfileId(body.profileId) : '';
       const role = body.role === 'admin' ? 'admin' : 'member';
+      const canAccessOpenRouter =
+        role === 'admin' ? true : typeof body.canAccessOpenRouter === 'boolean' ? body.canAccessOpenRouter : false;
+      const sessionLimit = role === 'admin' ? null : normalizeMemberSessionLimit(body.sessionLimit);
 
       if (!email || !email.includes('@')) {
         res.status(400).send('Valid email is required.');
@@ -81,6 +96,8 @@ export default async function handler(req, res) {
           display_name: displayName || email,
           role,
           active: true,
+          can_access_openrouter: canAccessOpenRouter,
+          session_limit: sessionLimit,
         },
         { onConflict: 'user_id' },
       );
@@ -92,7 +109,46 @@ export default async function handler(req, res) {
         profileId,
         displayName: displayName || email,
         role,
+        canAccessOpenRouter,
+        sessionLimit,
       });
+      return;
+    }
+
+    if (req.method === 'PATCH') {
+      const body = normalizeBody(req.body);
+      const userId = typeof body.userId === 'string' ? body.userId.trim() : '';
+      const profileId = typeof body.profileId === 'string' ? body.profileId.trim() : '';
+      if (!userId && !profileId) {
+        res.status(400).send('userId or profileId is required.');
+        return;
+      }
+
+      const patch = { updated_at: new Date().toISOString() };
+      if (typeof body.canAccessOpenRouter === 'boolean') {
+        patch.can_access_openrouter = body.canAccessOpenRouter;
+      }
+      if ('sessionLimit' in body) {
+        patch.session_limit = normalizeMemberSessionLimit(body.sessionLimit);
+      }
+
+      if (!('can_access_openrouter' in patch) && !('session_limit' in patch)) {
+        res.status(400).send('No supported profile access fields were provided.');
+        return;
+      }
+
+      let query = supabase
+        .from('dicta_app_profiles')
+        .update(patch)
+        .select(profileSelect());
+      query = userId ? query.eq('user_id', userId) : query.eq('profile_id', profileId);
+      const { data, error } = await query.maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        res.status(404).send('Dicta profile not found.');
+        return;
+      }
+      res.status(200).json({ profile: data });
       return;
     }
 

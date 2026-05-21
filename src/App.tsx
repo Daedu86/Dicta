@@ -40,6 +40,7 @@ import {
 } from './core/adaptive/openRouterGenerationPrompt';
 import {
   addActiveOpenRouterJob,
+  clearActiveOpenRouterJob,
   extractOpenRouterJobText,
   isOpenRouterJobTerminal,
   loadActiveOpenRouterJobs,
@@ -132,9 +133,12 @@ import {
   type DictaSyncState,
 } from './core/supabaseSync';
 import {
+  canDictaProfileAccessOpenRouter,
+  getDictaSessionQuotaStatus,
   isDictaAdmin,
   loadDictaAppProfile,
   loadVisibleDictaAppProfiles,
+  normalizeDictaAppProfile,
   resolveEffectiveSyncProfileId,
   type DictaAppProfile,
   type DictaAppRole,
@@ -983,6 +987,9 @@ function App() {
         ? 'tts'
         : 'kokoro';
   const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
+  const openRouterAccessAllowed = !syncConfig.authRequired || canDictaProfileAccessOpenRouter(appProfile);
+  const openRouterAccessMessage = 'OpenRouter access is disabled for this Dicta account. Contact the admin.';
+  const sessionQuotaStatus = getDictaSessionQuotaStatus(syncConfig.authRequired ? appProfile : null, sessions.length);
   const brandActionLabel =
     workspaceMode === 'leaderboard' ||
     workspaceMode === 'dashboard' ||
@@ -1168,6 +1175,20 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(WORKSPACE_MODE_KEY, workspaceMode);
   }, [workspaceMode]);
+
+  useEffect(() => {
+    if (workspaceMode !== 'openrouter' || openRouterAccessAllowed) return;
+    setWorkspaceMode('leaderboard');
+    setOpenRouterError(openRouterAccessMessage);
+  }, [openRouterAccessAllowed, workspaceMode]);
+
+  useEffect(() => {
+    if (openRouterAccessAllowed || activeOpenRouterJobs.length === 0) return;
+    clearActiveOpenRouterJob();
+    setActiveOpenRouterJobs([]);
+    setOpenRouterJobNotifications({});
+    setOpenRouterJobStatus('');
+  }, [activeOpenRouterJobs.length, openRouterAccessAllowed]);
 
   useEffect(() => {
     window.localStorage.setItem(KOKORO_ENABLED_KEY, JSON.stringify(kokoroEnabled));
@@ -2611,6 +2632,58 @@ function App() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  async function updateAdminProfileAccess(
+    profile: DictaAppProfile,
+    patch: { canAccessOpenRouter: boolean; sessionLimit: number },
+  ): Promise<DictaAppProfile> {
+    const response = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({
+        userId: profile.userId,
+        canAccessOpenRouter: patch.canAccessOpenRouter,
+        sessionLimit: patch.sessionLimit,
+      }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `Profile access update failed (${response.status}).`);
+    }
+    const payload = (await response.json()) as {
+      profile?: {
+        user_id: string;
+        profile_id: string;
+        display_name: string | null;
+        role: string;
+        active: boolean | null;
+        can_access_openrouter?: boolean | null;
+        session_limit?: number | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+    };
+    if (!payload.profile) throw new Error('Profile access update did not return a profile.');
+    const updated = normalizeDictaAppProfile(payload.profile);
+    setVisibleProfiles((current) => current.map((item) => (item.userId === updated.userId ? updated : item)));
+    if (appProfile?.userId === updated.userId) {
+      setAppProfile(updated);
+    }
+    return updated;
+  }
+
+  function ensureCanCreateDictationSession(messageTarget: 'error' | 'openrouter' | 'export' = 'error'): boolean {
+    if (!sessionQuotaStatus.blocked) return true;
+    const message = sessionQuotaStatus.message;
+    if (messageTarget === 'openrouter') {
+      setOpenRouterError(message);
+    } else if (messageTarget === 'export') {
+      setExportMessage(message);
+    } else {
+      setError(message);
+    }
+    return false;
+  }
+
   async function signInWithSupabase(event?: FormEvent<HTMLFormElement>): Promise<void> {
     event?.preventDefault();
     if (!supabaseClient) return;
@@ -2648,6 +2721,7 @@ function App() {
   }
 
   function createSessionWithMode(inputMode: SessionInputMode): void {
+    if (!ensureCanCreateDictationSession('error')) return;
     const name = sessionCreationName.trim();
     if (!name) {
       setError('Enter a session name before creating the session.');
@@ -2681,6 +2755,7 @@ function App() {
   }
 
   function createManualInput1SessionFromAdmin(name: string): void {
+    if (!ensureCanCreateDictationSession('export')) return;
     const nextSession = createStoredSession(getNextSessionIndex(sessions), 'input1', name);
     suppressSidebarAutoSelectRef.current = true;
     setSessions((prev) => [nextSession, ...prev]);
@@ -2697,6 +2772,7 @@ function App() {
   }
 
   function createSessionFromDictationScript(): void {
+    if (!ensureCanCreateDictationSession('error')) return;
     const result = dictationScriptValidation?.ok ? dictationScriptValidation : parseDictationScriptJson(dictationScriptJson);
     setDictationScriptValidation(result);
     if (!result.ok) {
@@ -2736,6 +2812,7 @@ function App() {
     script: DictationScript,
     options: { navigateToLeaderboard?: boolean; generationOrigin?: GenerationOrigin } = {},
   ): void {
+    if (!ensureCanCreateDictationSession('openrouter')) return;
     const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
     const generationOrigin = options.generationOrigin ?? 'openrouter';
     const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
@@ -2790,6 +2867,7 @@ function App() {
     language: BenchmarkLanguageButton;
     message: string;
   }, options: { navigateToLeaderboard?: boolean } = {}): void {
+    if (!ensureCanCreateDictationSession('openrouter')) return;
     const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
     const sessionInputMode = mapDictationScriptInputModeToSession(inputMode) ?? 'input2';
     const nextSession = createGeneratedErrorSession({
@@ -2897,6 +2975,11 @@ function App() {
 
   function openOpenRouterGenerateForActiveInput(): void {
     if (!activeSession) return;
+    if (!openRouterAccessAllowed) {
+      setOpenRouterError(openRouterAccessMessage);
+      return;
+    }
+    if (!ensureCanCreateDictationSession('openrouter')) return;
     if (!isOnline) {
       setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
       return;
@@ -2931,6 +3014,11 @@ function App() {
     difficultyInstruction?: string;
   }): Promise<void> {
     if (!activeSession || isBusy) return;
+    if (!openRouterAccessAllowed) {
+      setOpenRouterError(openRouterAccessMessage);
+      return;
+    }
+    if (!ensureCanCreateDictationSession('openrouter')) return;
     if (!isOnline) {
       setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
       return;
@@ -5729,7 +5817,7 @@ function App() {
   void ttsPlayerProgressTick;
   void kokoroPlayerProgressTick;
   const sessionCreationNameTrimmed = sessionCreationName.trim();
-  const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0;
+  const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
   const readyChecklist = [
     { label: 'Audio loaded', ready: audioReady },
@@ -6051,13 +6139,15 @@ function App() {
     syncStatus: supabaseSyncStatus,
     pendingSyncSummary,
     isOnline,
-    generationButtons: [
+    generationButtons: openRouterAccessAllowed ? [
       {
         id: 'easy',
         label: directOpenRouterBusy ? 'Requesting easy...' : 'New Easy Session',
         onClick: () => void generateEasyNextSessionFromOpenRouter(),
-        disabled: !isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
-        title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        disabled: !isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        title: sessionQuotaStatus.blocked
+          ? sessionQuotaStatus.message
+          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         statusMessage: easyGenerationNotice?.message,
         statusTone: easyGenerationNotice?.tone,
       },
@@ -6065,8 +6155,10 @@ function App() {
         id: 'medium',
         label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : 'New Medium Session',
         onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-        disabled: !isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
-        title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        disabled: !isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        title: sessionQuotaStatus.blocked
+          ? sessionQuotaStatus.message
+          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         statusMessage: mediumGenerationNotice?.message,
         statusTone: mediumGenerationNotice?.tone,
       },
@@ -6074,8 +6166,10 @@ function App() {
         id: 'hard',
         label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : 'New Hard Session',
         onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-        disabled: !isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim(),
-        title: openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        disabled: !isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        title: sessionQuotaStatus.blocked
+          ? sessionQuotaStatus.message
+          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         statusMessage: hardGenerationNotice?.message,
         statusTone: hardGenerationNotice?.tone,
       },
@@ -6083,10 +6177,10 @@ function App() {
         id: 'custom',
         label: 'New Custom Session',
         onClick: openOpenRouterGenerateForActiveInput,
-        disabled: !isOnline || !activeSession,
-        title: openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.',
+        disabled: !isOnline || !activeSession || sessionQuotaStatus.blocked,
+        title: sessionQuotaStatus.blocked ? sessionQuotaStatus.message : openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.',
       },
-    ],
+    ] : [],
   };
 
   if (syncConfig.authRequired && (authLoading || !authSession || !appProfile || appProfileError)) {
@@ -6162,15 +6256,17 @@ function App() {
               <h1>Dicta MVP</h1>
               <p>Adaptive real-time dictation training</p>
               <div className="brand-status-row">
-                <span
-                  className={`brand-llm-status ${openRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
-                  title={openRouterDefaultModel.trim() ? `Selected OpenRouter model: ${openRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
-                >
-                  <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
-                  <span className="brand-llm-status-text">
-                    {openRouterDefaultModel.trim() ? `Model set: ${openRouterDefaultModel.trim()}` : 'No model set'}
+                {openRouterAccessAllowed ? (
+                  <span
+                    className={`brand-llm-status ${openRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
+                    title={openRouterDefaultModel.trim() ? `Selected OpenRouter model: ${openRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
+                  >
+                    <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
+                    <span className="brand-llm-status-text">
+                      {openRouterDefaultModel.trim() ? `Model set: ${openRouterDefaultModel.trim()}` : 'No model set'}
+                    </span>
                   </span>
-                </span>
+                ) : null}
                 <span className="brand-build-status" title={DICTA_BUILD_INFO_TITLE}>
                   <span className="brand-build-status-icon" aria-hidden="true">Git</span>
                   <span className="brand-build-status-text">{DICTA_BUILD_INFO_LABEL}</span>
@@ -6219,17 +6315,19 @@ function App() {
                 Admin
               </button>
             ) : null}
-            <button
-              type="button"
-              className="secondary-button brand-openrouter-button"
-              onClick={() => {
-                setWorkspaceMode('openrouter');
-                setDashboardSessionId(null);
-              }}
-              title="Configure OpenRouter API key and choose a default free model"
-            >
-              OpenRouter
-            </button>
+            {openRouterAccessAllowed ? (
+              <button
+                type="button"
+                className="secondary-button brand-openrouter-button"
+                onClick={() => {
+                  setWorkspaceMode('openrouter');
+                  setDashboardSessionId(null);
+                }}
+                title="Configure OpenRouter API key and choose a default free model"
+              >
+                OpenRouter
+              </button>
+            ) : null}
             <button
               type="button"
               className="secondary-button theme-toggle-button"
@@ -6256,6 +6354,13 @@ function App() {
           {sessionCreationMode ? (
             <div className="sidebar-card session-create-card brand-session-create-card" role="dialog" aria-label="Choose input">
               <p className="sidebar-copy">Choose the source for this new session.</p>
+              {sessionQuotaStatus.limit !== null ? (
+                <p className={sessionQuotaStatus.blocked ? 'error' : 'session-create-hint'}>
+                  {sessionQuotaStatus.blocked
+                    ? sessionQuotaStatus.message
+                    : `Sessions available: ${sessionQuotaStatus.used}/${sessionQuotaStatus.limit}.`}
+                </p>
+              ) : null}
               <label>
                 Session Source
                 <select
@@ -6286,6 +6391,7 @@ function App() {
                       className="secondary-button"
                       onClick={() => createSessionWithMode('input1')}
                       disabled={!canCreateSessionFromDialog}
+                      title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
                     >
                       Input # 1 - Original Audio
                     </button>
@@ -6294,6 +6400,7 @@ function App() {
                       className="secondary-button"
                       onClick={() => createSessionWithMode('input2')}
                       disabled={!canCreateSessionFromDialog}
+                      title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
                     >
                       Input # 2 - Text to Speech (TTS)
                     </button>
@@ -6302,7 +6409,13 @@ function App() {
                       className="secondary-button"
                       onClick={() => createSessionWithMode('input3')}
                       disabled={!canCreateSessionFromDialog || !LOCAL_DEV_FEATURES_AVAILABLE}
-                      title={LOCAL_DEV_FEATURES_AVAILABLE ? 'Create a local Kokoro session.' : 'Kokoro is local-only and unavailable in the Vercel build.'}
+                      title={
+                        sessionQuotaStatus.blocked
+                          ? sessionQuotaStatus.message
+                          : LOCAL_DEV_FEATURES_AVAILABLE
+                            ? 'Create a local Kokoro session.'
+                            : 'Kokoro is local-only and unavailable in the Vercel build.'
+                      }
                     >
                       Input # 3 - Kokoro TTS Local
                     </button>
@@ -6312,7 +6425,9 @@ function App() {
                       onClick={() => createSessionWithMode('input4')}
                       disabled={!canCreateSessionFromDialog || !LOCAL_DEV_FEATURES_AVAILABLE}
                       title={
-                        LOCAL_DEV_FEATURES_AVAILABLE
+                        sessionQuotaStatus.blocked
+                          ? sessionQuotaStatus.message
+                          : LOCAL_DEV_FEATURES_AVAILABLE
                           ? 'Create a local CosyVoice2 cache session.'
                           : 'Input #4 cache generation is local-only and not part of the Vercel build.'
                       }
@@ -6346,7 +6461,8 @@ function App() {
                       type="button"
                       className="secondary-button"
                       onClick={createSessionFromDictationScript}
-                      disabled={!validatedDictationScript}
+                      disabled={!validatedDictationScript || sessionQuotaStatus.blocked}
+                      title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
                     >
                       Create Session
                     </button>
@@ -7026,48 +7142,64 @@ function App() {
                       <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
                         Adaptive Pace Layer
                       </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void generateNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
-                        title={
-                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                            ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
-                            : 'Set a default OpenRouter model first.')
-                        }
-                      >
-                        {directOpenRouterBusy ? 'Requesting...' : 'Generate next session'}
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
-                        title={
-                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                            ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
-                            : 'Set a default OpenRouter model first.')
-                        }
-                      >
-                        {directIntermediateOpenRouterBusy ? 'Requesting intermediate...' : 'Generate next session - Intermediate'}
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
-                        title={
-                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                            ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
-                            : 'Set a default OpenRouter model first.')
-                        }
-                      >
-                        {directAdvancedOpenRouterBusy ? 'Requesting advanced...' : 'Generate next session - Advanced'}
-                      </button>
-                      <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
-                        OpenRouter script
-                      </button>
+                      {openRouterAccessAllowed ? (
+                        <>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void generateNextSessionFromOpenRouter()}
+                            disabled={!isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
+                            title={
+                              sessionQuotaStatus.blocked
+                                ? sessionQuotaStatus.message
+                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
+                                  ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
+                                  : 'Set a default OpenRouter model first.')
+                            }
+                          >
+                            {directOpenRouterBusy ? 'Requesting...' : 'Generate next session'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
+                            disabled={!isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
+                            title={
+                              sessionQuotaStatus.blocked
+                                ? sessionQuotaStatus.message
+                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
+                                  ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
+                                  : 'Set a default OpenRouter model first.')
+                            }
+                          >
+                            {directIntermediateOpenRouterBusy ? 'Requesting intermediate...' : 'Generate next session - Intermediate'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
+                            disabled={!isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
+                            title={
+                              sessionQuotaStatus.blocked
+                                ? sessionQuotaStatus.message
+                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
+                                  ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
+                                  : 'Set a default OpenRouter model first.')
+                            }
+                          >
+                            {directAdvancedOpenRouterBusy ? 'Requesting advanced...' : 'Generate next session - Advanced'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={openOpenRouterGenerateForActiveInput}
+                            disabled={sessionQuotaStatus.blocked}
+                            title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
+                          >
+                            OpenRouter script
+                          </button>
+                        </>
+                      ) : null}
                       <button type="button" className="secondary-button" onClick={() => resetSession()}>
                         Reset
                       </button>
@@ -7227,48 +7359,64 @@ function App() {
                       <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
                         Adaptive Pace Layer
                       </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void generateNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
-                        title={
-                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                            ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
-                            : 'Set a default OpenRouter model first.')
-                        }
-                      >
-                        {directOpenRouterBusy ? 'Requesting...' : 'Generate next session'}
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
-                        title={
-                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                            ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
-                            : 'Set a default OpenRouter model first.')
-                        }
-                      >
-                        {directIntermediateOpenRouterBusy ? 'Requesting intermediate...' : 'Generate next session - Intermediate'}
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                        disabled={!isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim()}
-                        title={
-                          openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                            ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
-                            : 'Set a default OpenRouter model first.')
-                        }
-                      >
-                        {directAdvancedOpenRouterBusy ? 'Requesting advanced...' : 'Generate next session - Advanced'}
-                      </button>
-                      <button type="button" className="secondary-button" onClick={openOpenRouterGenerateForActiveInput}>
-                        OpenRouter script
-                      </button>
+                      {openRouterAccessAllowed ? (
+                        <>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void generateNextSessionFromOpenRouter()}
+                            disabled={!isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
+                            title={
+                              sessionQuotaStatus.blocked
+                                ? sessionQuotaStatus.message
+                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
+                                  ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
+                                  : 'Set a default OpenRouter model first.')
+                            }
+                          >
+                            {directOpenRouterBusy ? 'Requesting...' : 'Generate next session'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
+                            disabled={!isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
+                            title={
+                              sessionQuotaStatus.blocked
+                                ? sessionQuotaStatus.message
+                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
+                                  ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
+                                  : 'Set a default OpenRouter model first.')
+                            }
+                          >
+                            {directIntermediateOpenRouterBusy ? 'Requesting intermediate...' : 'Generate next session - Intermediate'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
+                            disabled={!isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
+                            title={
+                              sessionQuotaStatus.blocked
+                                ? sessionQuotaStatus.message
+                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
+                                  ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
+                                  : 'Set a default OpenRouter model first.')
+                            }
+                          >
+                            {directAdvancedOpenRouterBusy ? 'Requesting advanced...' : 'Generate next session - Advanced'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={openOpenRouterGenerateForActiveInput}
+                            disabled={sessionQuotaStatus.blocked}
+                            title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
+                          >
+                            OpenRouter script
+                          </button>
+                        </>
+                      ) : null}
                       <button type="button" className="secondary-button" onClick={() => resetSession()}>
                         Reset
                       </button>
@@ -7658,6 +7806,11 @@ function App() {
                 </div>
               </section>
             ) : workspaceMode === 'openrouter' ? (
+              !openRouterAccessAllowed ? (
+                <section className="panel workspace-panel">
+                  <p className="error">{openRouterAccessMessage}</p>
+                </section>
+              ) : (
               <OpenRouterWorkspace
                 defaultModel={openRouterDefaultModel}
                 authHeaders={getAuthHeaders()}
@@ -7735,6 +7888,7 @@ function App() {
                   void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback)
                 }
               />
+              )
             ) : workspaceMode === 'admin' ? (
               isDictaAdmin(appProfile) || !syncConfig.authRequired ? <AdminWorkspace
                 sessions={adminSessions}
@@ -7756,6 +7910,7 @@ function App() {
                 visibleProfiles={visibleProfiles}
                 selectedProfileFilter={adminProfileFilter}
                 onChangeProfileFilter={setAdminProfileFilter}
+                onUpdateProfileAccess={updateAdminProfileAccess}
                 authHeaders={getAuthHeaders()}
                 remoteAdminStatus={adminRemoteStatus}
               /> : (
@@ -9509,6 +9664,7 @@ function AdminWorkspace({
   visibleProfiles,
   selectedProfileFilter,
   onChangeProfileFilter,
+  onUpdateProfileAccess,
   authHeaders,
   remoteAdminStatus,
 }: {
@@ -9531,6 +9687,10 @@ function AdminWorkspace({
   visibleProfiles: DictaAppProfile[];
   selectedProfileFilter: string;
   onChangeProfileFilter: (value: string) => void;
+  onUpdateProfileAccess: (
+    profile: DictaAppProfile,
+    patch: { canAccessOpenRouter: boolean; sessionLimit: number },
+  ) => Promise<DictaAppProfile>;
   authHeaders: Record<string, string>;
   remoteAdminStatus: string;
 }) {
@@ -9543,6 +9703,26 @@ function AdminWorkspace({
   const [newUserRole, setNewUserRole] = useState<DictaAppRole>('member');
   const [newUserMessage, setNewUserMessage] = useState('');
   const [newUserBusy, setNewUserBusy] = useState(false);
+  const [accessDrafts, setAccessDrafts] = useState<Record<string, { canAccessOpenRouter: boolean; sessionLimit: string }>>({});
+  const [accessBusyProfileId, setAccessBusyProfileId] = useState('');
+  const [accessMessage, setAccessMessage] = useState('');
+  const memberProfiles = visibleProfiles.filter((profile) => profile.role === 'member');
+
+  useEffect(() => {
+    setAccessDrafts((current) => {
+      const next = { ...current };
+      for (const profile of visibleProfiles) {
+        if (profile.role !== 'member') continue;
+        if (!next[profile.profileId]) {
+          next[profile.profileId] = {
+            canAccessOpenRouter: profile.canAccessOpenRouter,
+            sessionLimit: String(profile.sessionLimit ?? 15),
+          };
+        }
+      }
+      return next;
+    });
+  }, [visibleProfiles]);
 
   async function onImportFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0] ?? null;
@@ -9588,6 +9768,38 @@ function AdminWorkspace({
       setNewUserMessage(error instanceof Error ? error.message : 'User creation failed.');
     } finally {
       setNewUserBusy(false);
+    }
+  }
+
+  async function saveProfileAccess(profile: DictaAppProfile): Promise<void> {
+    const draft = accessDrafts[profile.profileId] ?? {
+      canAccessOpenRouter: profile.canAccessOpenRouter,
+      sessionLimit: String(profile.sessionLimit ?? 15),
+    };
+    const sessionLimitNumber = Number(draft.sessionLimit);
+    if (!Number.isFinite(sessionLimitNumber) || sessionLimitNumber < 0) {
+      setAccessMessage('Session limit must be zero or higher.');
+      return;
+    }
+    setAccessBusyProfileId(profile.profileId);
+    setAccessMessage('');
+    try {
+      const updated = await onUpdateProfileAccess(profile, {
+        canAccessOpenRouter: draft.canAccessOpenRouter,
+        sessionLimit: Math.floor(sessionLimitNumber),
+      });
+      setAccessDrafts((current) => ({
+        ...current,
+        [updated.profileId]: {
+          canAccessOpenRouter: updated.canAccessOpenRouter,
+          sessionLimit: String(updated.sessionLimit ?? 15),
+        },
+      }));
+      setAccessMessage(`Updated ${updated.displayName}.`);
+    } catch (error) {
+      setAccessMessage(error instanceof Error ? error.message : 'Profile access update failed.');
+    } finally {
+      setAccessBusyProfileId('');
     }
   }
 
@@ -9671,12 +9883,89 @@ function AdminWorkspace({
                 <div key={profile.profileId} className="admin-table-row">
                   <span>{profile.displayName}</span>
                   <span>{profile.active ? profile.role : 'inactive'}</span>
-                  <span>{profile.profileId}</span>
+                  <span>
+                    {profile.profileId}
+                    <small>
+                      OpenRouter {profile.canAccessOpenRouter ? 'enabled' : 'disabled'} · sessions{' '}
+                      {profile.role === 'admin' ? 'unlimited' : profile.sessionLimit ?? 15}
+                    </small>
+                  </span>
                 </div>
               ))}
             </div>
           </section>
         ) : null}
+
+        <section className="dashboard-card admin-card">
+          <div className="admin-card-header">
+            <div>
+              <h3>Member access</h3>
+              <p>Control OpenRouter and dictation-session quota for non-admin accounts.</p>
+            </div>
+          </div>
+          {memberProfiles.length > 0 ? (
+            <div className="admin-access-table">
+              <div className="admin-access-row admin-table-header">
+                <span>Member</span>
+                <span>OpenRouter</span>
+                <span>Session limit</span>
+                <span>Action</span>
+              </div>
+              {memberProfiles.map((profile) => {
+                const draft = accessDrafts[profile.profileId] ?? {
+                  canAccessOpenRouter: profile.canAccessOpenRouter,
+                  sessionLimit: String(profile.sessionLimit ?? 15),
+                };
+                const busy = accessBusyProfileId === profile.profileId;
+                return (
+                  <div key={profile.profileId} className="admin-access-row">
+                    <span>
+                      {profile.displayName}
+                      <small>{profile.profileId}</small>
+                    </span>
+                    <label className="admin-access-toggle">
+                      <input
+                        type="checkbox"
+                        checked={draft.canAccessOpenRouter}
+                        onChange={(event) =>
+                          setAccessDrafts((current) => ({
+                            ...current,
+                            [profile.profileId]: {
+                              ...draft,
+                              canAccessOpenRouter: event.target.checked,
+                            },
+                          }))
+                        }
+                      />
+                      <span>{draft.canAccessOpenRouter ? 'Allowed' : 'Blocked'}</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={draft.sessionLimit}
+                      onChange={(event) =>
+                        setAccessDrafts((current) => ({
+                          ...current,
+                          [profile.profileId]: {
+                            ...draft,
+                            sessionLimit: event.target.value,
+                          },
+                        }))
+                      }
+                    />
+                    <button type="button" className="secondary-button" disabled={busy} onClick={() => void saveProfileAccess(profile)}>
+                      {busy ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="hint">No member profiles are visible yet.</p>
+          )}
+          {accessMessage ? <p className={accessMessage.toLowerCase().includes('failed') || accessMessage.toLowerCase().includes('required') || accessMessage.toLowerCase().includes('must') ? 'error' : 'success'}>{accessMessage}</p> : null}
+        </section>
 
         <section className="dashboard-card admin-card">
           <div className="admin-card-header">
@@ -12446,28 +12735,30 @@ function TrainingView({
         {message ? <p className={messageTone ?? (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') ? 'error' : 'hint')}>{message}</p> : null}
       </section>
 
-      <section className="training-card training-generation-card" aria-label="Generate new sessions">
-        <div className="training-generation-grid">
-          {generationButtons.map((button) => (
-            <div key={button.id} className="training-generation-action">
-              <button
-                type="button"
-                className="training-generation-button"
-                onClick={button.onClick}
-                disabled={button.disabled}
-                title={button.title}
-              >
-                {button.label}
-              </button>
-              {button.statusMessage ? (
-                <p className={`training-generation-notice training-generation-notice-${button.statusTone ?? 'hint'}`} aria-live="polite">
-                  {button.statusMessage}
-                </p>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </section>
+      {generationButtons.length > 0 ? (
+        <section className="training-card training-generation-card" aria-label="Generate new sessions">
+          <div className="training-generation-grid">
+            {generationButtons.map((button) => (
+              <div key={button.id} className="training-generation-action">
+                <button
+                  type="button"
+                  className="training-generation-button"
+                  onClick={button.onClick}
+                  disabled={button.disabled}
+                  title={button.title}
+                >
+                  {button.label}
+                </button>
+                {button.statusMessage ? (
+                  <p className={`training-generation-notice training-generation-notice-${button.statusTone ?? 'hint'}`} aria-live="polite">
+                    {button.statusMessage}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }

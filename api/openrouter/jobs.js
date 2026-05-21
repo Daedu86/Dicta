@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 import { createClient } from '@supabase/supabase-js';
-import { resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { assertOpenRouterAccess, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
 
 const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
@@ -199,7 +199,9 @@ async function runOpenRouterJob({ req, supabase, profileId, jobId, requestPayloa
 
 async function createJob(req, res) {
   const supabase = createSupabaseAdminClient();
-  const { profileId } = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+  const requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+  assertOpenRouterAccess(requester);
+  const { profileId } = requester;
   const requestPayload = readCreateJobPayload(req.body);
   await cleanupOldOpenRouterJobs(supabase, profileId);
   const jobId = randomUUID();
@@ -231,7 +233,9 @@ async function createJob(req, res) {
 
 async function getJob(req, res) {
   const supabase = createSupabaseAdminClient();
-  const { profileId } = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+  const requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+  assertOpenRouterAccess(requester);
+  const { profileId } = requester;
   const url = new URL(req.url, `https://${req.headers.host ?? 'dicta.local'}`);
   const jobId = url.searchParams.get('id')?.trim() ?? '';
   if (!jobId) {
