@@ -64,6 +64,7 @@ import {
   buildBenchmarkFeedbackPromptPackage,
   buildSessionFeedbackJsonPayload,
   derivePlaybackDiagnosticsFromTimeline,
+  selectLatestAdaptiveSessionFeedback,
 } from './core/adaptive/sessionFeedback';
 import { HistoricalPerformanceService } from './core/history/HistoricalPerformanceService';
 import { buildAudioTelemetryFrame, buildAdaptiveAudioInput } from './inputs/audio/audioTelemetryAdapter';
@@ -1055,7 +1056,11 @@ function App() {
       const inputMode: InputMode = 'browser-tts';
       const language: LanguageCode = 'de';
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? null;
-      const latestFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
+      const latestFeedback = selectLatestAdaptiveSessionFeedback(
+        adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language],
+        inputMode,
+        language,
+      );
       const latestSessionId = latestFeedback?.sessionId ?? activeSessionId ?? null;
       const profileTimeline = profile?.timeline ?? [];
       const recentTimelinePoints = latestSessionId
@@ -2885,7 +2890,11 @@ function App() {
     const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
-      const sessionFeedback = adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language]?.[0] ?? null;
+      const sessionFeedback = selectLatestAdaptiveSessionFeedback(
+        adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language],
+        inputMode,
+        language,
+      );
       const directPromptArgs = {
         profile,
         sessionFeedback,
@@ -5634,13 +5643,19 @@ function App() {
   const selectedBenchmarkProfile =
     adaptiveBenchmarksByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage] ??
     createEmptyInputLanguageBenchmark(selectedBenchmarkInputMode, selectedBenchmarkLanguage);
-  const selectedSessionFeedback =
-    adaptiveSessionFeedbackByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage]?.[0] ?? null;
+  const selectedSessionFeedback = selectLatestAdaptiveSessionFeedback(
+    adaptiveSessionFeedbackByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage],
+    selectedBenchmarkInputMode,
+    selectedBenchmarkLanguage,
+  );
   const insightsDiagnosticProfile =
     adaptiveBenchmarksByInputLanguage[insightsDiagnosticInputMode]?.[metricsLanguageView] ??
     createEmptyInputLanguageBenchmark(insightsDiagnosticInputMode, metricsLanguageView);
-  const insightsDiagnosticFeedback =
-    adaptiveSessionFeedbackByInputLanguage[insightsDiagnosticInputMode]?.[metricsLanguageView]?.[0] ?? null;
+  const insightsDiagnosticFeedback = selectLatestAdaptiveSessionFeedback(
+    adaptiveSessionFeedbackByInputLanguage[insightsDiagnosticInputMode]?.[metricsLanguageView],
+    insightsDiagnosticInputMode,
+    metricsLanguageView,
+  );
   const repeatWordStats = useMemo(
     () => buildRepeatWordStats({ sessions, inputMode: selectedBenchmarkInputMode, language: selectedBenchmarkLanguage, now: new Date() }),
     [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],
@@ -8438,7 +8453,11 @@ function OpenRouterWorkspace({
 
   const generateProfile =
     benchmarks[generateInputMode]?.[generateLanguage] ?? createEmptyInputLanguageBenchmark(generateInputMode, generateLanguage);
-  const generateSessionFeedback = sessionFeedbackByInputLanguage[generateInputMode]?.[generateLanguage]?.[0] ?? null;
+  const generateSessionFeedback = selectLatestAdaptiveSessionFeedback(
+    sessionFeedbackByInputLanguage[generateInputMode]?.[generateLanguage],
+    generateInputMode,
+    generateLanguage,
+  );
   const generateHasBenchmarkData = generateProfile.sampleCount > 0 || generateProfile.sessionCount > 0;
   const generateHasSessionFeedback = Boolean(generateSessionFeedback);
   const generatePayloads = useMemo(

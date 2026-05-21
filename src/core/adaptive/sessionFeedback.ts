@@ -28,6 +28,29 @@ export type SessionFeedbackBuildArgs = {
 
 const FEEDBACK_EXPORT_TIMELINE_CAP = 120;
 
+export function selectLatestAdaptiveSessionFeedback(
+  feedbackList: readonly AdaptiveSessionFeedback[] | null | undefined,
+  inputMode: InputMode,
+  language: LanguageCode,
+): AdaptiveSessionFeedback | null {
+  const targetLanguage = normalizeFeedbackLanguage(language);
+  let latest: AdaptiveSessionFeedback | null = null;
+  let latestTimestamp = Number.NEGATIVE_INFINITY;
+
+  for (const feedback of feedbackList ?? []) {
+    if (feedback.inputMode !== inputMode) continue;
+    if (normalizeFeedbackLanguage(feedback.language) !== targetLanguage) continue;
+
+    const timestamp = getFeedbackRecencyTimestampMs(feedback);
+    if (!latest || timestamp > latestTimestamp) {
+      latest = feedback;
+      latestTimestamp = timestamp;
+    }
+  }
+
+  return latest;
+}
+
 export type TimelinePlaybackDiagnostics = {
   source: 'formal_feedback' | 'timeline_fallback';
   repeatedPhraseIndices: Array<{
@@ -77,6 +100,28 @@ export function buildAdaptiveSessionFeedback(args: SessionFeedbackBuildArgs): Ad
 
 function shouldScopeFeedbackToSession(inputMode: InputMode, language: LanguageCode): boolean {
   return inputMode === 'browser-tts' && String(language).toLowerCase() === 'de';
+}
+
+function normalizeFeedbackLanguage(language: LanguageCode): string {
+  return String(language).toLowerCase();
+}
+
+function getFeedbackRecencyTimestampMs(feedback: AdaptiveSessionFeedback): number {
+  const record = feedback as AdaptiveSessionFeedback & {
+    finishedAt?: string;
+    updatedAt?: string;
+  };
+  for (const timestamp of [record.completedAt, record.finishedAt, record.updatedAt, record.createdAt]) {
+    const parsed = parseFeedbackTimestampMs(timestamp);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return Number.NEGATIVE_INFINITY;
+}
+
+function parseFeedbackTimestampMs(value: string | null | undefined): number {
+  if (!value) return Number.NEGATIVE_INFINITY;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
 function deriveSessionCountDroppedReason(

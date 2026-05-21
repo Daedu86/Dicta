@@ -5,10 +5,10 @@ import {
   computeImprovementDelta,
   derivePlaybackDiagnosticsFromTimeline,
   detectPlaybackIssues,
+  selectLatestAdaptiveSessionFeedback,
 } from '../src/core/adaptive/sessionFeedback';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import type { PhrasePlaybackEvent } from '../src/core/adaptive/types';
-import type { AdaptiveTimelinePoint } from '../src/core/adaptive/types';
+import type { AdaptiveSessionFeedback, AdaptiveTimelinePoint, InputMode, LanguageCode, PhrasePlaybackEvent } from '../src/core/adaptive/types';
 
 function phraseEvent(
   phraseIndex: number,
@@ -26,6 +26,41 @@ function phraseEvent(
     inputMode: 'kokoro',
     language: 'en',
   };
+}
+
+function feedbackRecord({
+  sessionId,
+  inputMode,
+  language,
+  createdAt,
+  completedAt,
+}: {
+  sessionId: string;
+  inputMode: InputMode;
+  language: LanguageCode;
+  createdAt: string;
+  completedAt?: string;
+}): AdaptiveSessionFeedback {
+  const profile = createEmptyInputLanguageBenchmark(inputMode, language);
+  return buildAdaptiveSessionFeedback({
+    sessionId,
+    inputMode,
+    language,
+    sourceType: 'dictation_script',
+    createdAt,
+    completedAt,
+    benchmarkBefore: profile,
+    benchmarkAfter: profile,
+    phraseEvents: [
+      {
+        ...phraseEvent(0, `${sessionId}-p0`, 'phrase_completed', 1),
+        sessionId,
+        inputMode,
+        language,
+      },
+    ],
+    totalPhrases: 1,
+  });
 }
 
 describe('session feedback diagnostics', () => {
@@ -166,6 +201,107 @@ describe('session feedback diagnostics', () => {
     expect(payload.benchmarkProfile?.countSemantics).toContain('not all saved sessions');
     expect(payload.latestSessionFeedback?.sessionId).toBe(feedback.sessionId);
     expect(payload.playbackDiagnostics).toEqual(feedback.playbackIssues);
+  });
+
+  it('selects the newest matching feedback for exported benchmark packages even when the list is stale-ordered', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const stale = feedbackRecord({
+      sessionId: 'session-2026-05-17',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-17T23:08:39.293Z',
+      completedAt: '2026-05-17T23:18:39.293Z',
+    });
+    const fresh = feedbackRecord({
+      sessionId: 'session-2026-05-21',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-21T06:44:54.671Z',
+      completedAt: '2026-05-21T06:54:54.671Z',
+    });
+
+    const selected = selectLatestAdaptiveSessionFeedback([stale, fresh], 'browser-tts', 'de');
+    const payload = buildBenchmarkFeedbackPackage(profile, selected) as {
+      latestSessionFeedback?: { sessionId?: string };
+    };
+
+    expect(selected?.sessionId).toBe('session-2026-05-21');
+    expect(payload.latestSessionFeedback?.sessionId).toBe('session-2026-05-21');
+  });
+
+  it('filters latest feedback by inputMode before selecting by recency', () => {
+    const browserTtsDe = feedbackRecord({
+      sessionId: 'browser-tts-de-older',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-20T08:00:00.000Z',
+      completedAt: '2026-05-20T08:10:00.000Z',
+    });
+    const newerAudioDe = feedbackRecord({
+      sessionId: 'audio-de-newer',
+      inputMode: 'audio',
+      language: 'de',
+      createdAt: '2026-05-21T08:00:00.000Z',
+      completedAt: '2026-05-21T08:10:00.000Z',
+    });
+
+    const selected = selectLatestAdaptiveSessionFeedback([newerAudioDe, browserTtsDe], 'browser-tts', 'de');
+
+    expect(selected?.sessionId).toBe('browser-tts-de-older');
+  });
+
+  it('filters latest feedback by language before selecting by recency', () => {
+    const browserTtsDe = feedbackRecord({
+      sessionId: 'browser-tts-de-older',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-20T08:00:00.000Z',
+      completedAt: '2026-05-20T08:10:00.000Z',
+    });
+    const newerBrowserTtsEn = feedbackRecord({
+      sessionId: 'browser-tts-en-newer',
+      inputMode: 'browser-tts',
+      language: 'en',
+      createdAt: '2026-05-21T08:00:00.000Z',
+      completedAt: '2026-05-21T08:10:00.000Z',
+    });
+
+    const selected = selectLatestAdaptiveSessionFeedback([newerBrowserTtsEn, browserTtsDe], 'browser-tts', 'de');
+
+    expect(selected?.sessionId).toBe('browser-tts-de-older');
+  });
+
+  it('falls back to the latest available matching feedback instead of selecting unrelated newer records', () => {
+    const olderBrowserTtsDe = feedbackRecord({
+      sessionId: 'browser-tts-de-latest-available',
+      inputMode: 'browser-tts',
+      language: 'de',
+      createdAt: '2026-05-17T08:00:00.000Z',
+      completedAt: '2026-05-17T08:10:00.000Z',
+    });
+    const newerKokoroDe = feedbackRecord({
+      sessionId: 'kokoro-de-newer',
+      inputMode: 'kokoro',
+      language: 'de',
+      createdAt: '2026-05-21T08:00:00.000Z',
+      completedAt: '2026-05-21T08:10:00.000Z',
+    });
+
+    const selected = selectLatestAdaptiveSessionFeedback([olderBrowserTtsDe, newerKokoroDe], 'browser-tts', 'de');
+
+    expect(selected?.sessionId).toBe('browser-tts-de-latest-available');
+  });
+
+  it('returns null when no feedback matches the requested inputMode and language', () => {
+    const unrelated = feedbackRecord({
+      sessionId: 'browser-tts-en-only',
+      inputMode: 'browser-tts',
+      language: 'en',
+      createdAt: '2026-05-21T08:00:00.000Z',
+      completedAt: '2026-05-21T08:10:00.000Z',
+    });
+
+    expect(selectLatestAdaptiveSessionFeedback([unrelated], 'browser-tts', 'de')).toBeNull();
   });
 
   it('adds benchmark count aliases to legacy feedback snapshots in exported packages', () => {
