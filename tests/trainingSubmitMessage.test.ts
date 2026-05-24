@@ -10,14 +10,14 @@ describe('buildTrainingSubmitMessage', () => {
           inputMode: 'input2',
           ttsLanguage: 'en',
           ttsText: 'one two three four five',
-          metrics: { points: 120, score: 411, accuracy: 96.2 },
+          metrics: { points: 5, score: 411, accuracy: 96.2 },
         },
         {
           id: 'submitted',
           inputMode: 'input2',
           ttsLanguage: 'en',
           ttsText: 'one two three four five six',
-          metrics: { points: 100, score: 297, accuracy: 93.4 },
+          metrics: { points: 4, score: 297, accuracy: 93.4 },
           telemetry: { startedAt: '2026-05-20T20:00:00.000Z', finishedAt: '2026-05-20T20:04:12.000Z' },
         },
         {
@@ -31,7 +31,7 @@ describe('buildTrainingSubmitMessage', () => {
       'submitted',
     );
 
-    expect(message).toBe('Submitted to leaderboard. Position #2 (EN). Score 297, Accuracy 93.4%, Points 100, Duration 2s.');
+    expect(message).toBe('Submitted to leaderboard. Position #2 (EN). Score 297, Accuracy 93.4%, Points 4/6, Duration 2s.');
   });
 
   it('normalizes fractional accuracy values from legacy sessions without treating score as a percent', () => {

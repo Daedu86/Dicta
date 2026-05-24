@@ -1,7 +1,8 @@
 import { resolveSessionLanguage, type SessionLanguageLike } from './liveMetrics';
 import { estimateSessionVoiceDurationSec, type SessionDurationInput } from './sessionDuration';
+import { formatSessionPointsForSession, type SessionPointsSource } from './evaluation';
 
-type TrainingSubmitSession = SessionLanguageLike & SessionDurationInput & {
+type TrainingSubmitSession = SessionLanguageLike & SessionDurationInput & SessionPointsSource & {
   id: string;
   metrics: {
     points: number;
@@ -27,7 +28,7 @@ export function buildTrainingSubmitMessage(sessions: TrainingSubmitSession[], se
   const resultSummary = [
     `Score ${formatScore(submittedSession.metrics.score)}`,
     `Accuracy ${formatAccuracy(submittedSession.metrics.accuracy)}`,
-    `Points ${formatPoints(submittedSession.metrics.points)}`,
+    `Points ${formatSessionPointsForSession(submittedSession.metrics.points, submittedSession)}`,
     `Duration ${formatDuration(estimateSessionVoiceDurationSec(submittedSession))}`,
   ].join(', ');
 
@@ -46,10 +47,6 @@ function formatScore(value: number): string {
 function formatAccuracy(value: number): string {
   const normalized = Number.isFinite(value) ? (value > 1 ? value : value * 100) : 0;
   return `${Math.max(0, Math.min(100, normalized)).toFixed(1)}%`;
-}
-
-function formatPoints(value: number): string {
-  return String(Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
 }
 
 function formatDuration(seconds: number | null): string {

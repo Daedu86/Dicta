@@ -18,8 +18,16 @@ import type {
   PacingMode,
 } from './core/adaptive/types';
 import { AudioEngine } from './core/audioEngine';
-import { configForDifficulty, type Difficulty } from './core/config';
-import { evaluateTranscriptAttempt, alignWordPairs } from './core/evaluation';
+import { configForDifficulty, formatDifficultyLabel, type Difficulty } from './core/config';
+import {
+  evaluateTranscriptAttempt,
+  alignWordPairs,
+  buildSessionPointsHelpText,
+  computeSessionMaxPoints,
+  formatSessionPointsForSession,
+  formatSessionPointsLabel,
+} from './core/evaluation';
+import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
 import { normalizeTranscript, buildTargetWords, normalizeWord } from './core/normalization';
 import { deriveSyncState, SyncController } from './core/syncController';
 import { AdaptiveDictationController } from './core/adaptive/AdaptiveDictationController';
@@ -265,8 +273,10 @@ type TrainingGenerationNoticeView = {
 type TrainingSessionSubmissionMeta = {
   positionLabel: string;
   scoreLabel: string;
+  scoreHelpText: string;
   accuracyLabel: string;
   pointsLabel: string;
+  pointsHelpText: string;
   durationLabel: string;
   submittedAtLabel: string;
 };
@@ -1797,6 +1807,11 @@ function App() {
     () => findLastSessionForLanguage(sessionsWithVoiceDuration, metricsLanguageView),
     [sessionsWithVoiceDuration, metricsLanguageView],
   );
+  const lastSessionScoreHelpText = useMemo(() => {
+    if (!lastSessionForLanguage?.id) return undefined;
+    const fullSession = sessions.find((session) => session.id === lastSessionForLanguage.id);
+    return fullSession ? buildSessionScoreHelpText(fullSession.metrics) : undefined;
+  }, [lastSessionForLanguage?.id, sessions]);
   const languageTodaySummary = useMemo(
     () => buildRangeSummaryForLanguage(sessionsWithVoiceDuration, metricsLanguageView, metricsRangeView),
     [sessionsWithVoiceDuration, metricsLanguageView, metricsRangeView],
@@ -1861,6 +1876,27 @@ function App() {
       : activeInputMode === 'input3'
         ? kokoroVisibleScore
         : visibleScore;
+  const activeMaxPoints = useMemo(
+    () =>
+      computeSessionMaxPoints({
+        inputMode: activeInputMode,
+        transcript,
+        ttsText,
+        kokoroText,
+      }),
+    [activeInputMode, kokoroText, transcript, ttsText],
+  );
+  const activeLivePointsLabel = formatSessionPointsLabel(activePoints, activeMaxPoints);
+  const activeLiveScoreHelpText = buildSessionScoreHelpText({
+    accuracy: activeVisibleAccuracy,
+    lagSec,
+    wpm,
+    rate,
+    points: activePoints,
+    score: activeVisibleScore,
+  });
+  const activeLivePointsHelpText = buildSessionPointsHelpText(activeMaxPoints);
+  const activeLiveAccuracyHelpText = 'Accuracy is matched target words divided by typed words, including exact and one-character typo matches.';
 
   useEffect(() => {
     if (!running || !transcript || !engineRef.current || targetWords.length === 0) {
@@ -6066,6 +6102,15 @@ function App() {
     onImmediateTextChange: focusedImmediateInputHandler,
     onTextKeyDown: focusedKeyDownHandler,
     textPlaceholder: focusedTextPlaceholder,
+    liveScoreLabel: String(activeVisibleScore),
+    liveScoreHelpText: activeLiveScoreHelpText,
+    livePointsLabel: activeLivePointsLabel,
+    livePointsHelpText: activeLivePointsHelpText,
+    liveAccuracyLabel: `${activeVisibleAccuracy.toFixed(1)}%`,
+    liveAccuracyHelpText: activeLiveAccuracyHelpText,
+    liveLagLabel: `${lagSec.toFixed(2)}s`,
+    liveLagHelpText:
+      'Lag compares typed progress with expected playback progress. Positive means you are behind; negative means you are ahead.',
     readOnly: activeSessionFinished,
     canPlay:
       activeInputMode === 'input1'
@@ -7664,8 +7709,12 @@ function App() {
                           <Metric label="Adapter" value={latestInputAdapter?.adapter ?? 'Not set'} />
                           <Metric label="Updated" value={new Date(latestSession.updatedAt).toLocaleString()} />
                           <Metric label="Duration" value={formatSessionPlaybackDuration(latestSession)} />
-                          <Metric label="Score" value={String(latestSession.metrics.score)} />
-                          <Metric label="Points" value={String(latestSession.metrics.points)} />
+                          <Metric
+                            label="Score"
+                            value={String(latestSession.metrics.score)}
+                            title={buildSessionScoreHelpText(latestSession.metrics)}
+                          />
+                          <Metric label="Points" value={formatSessionPointsForSession(latestSession.metrics.points, latestSession)} />
                         </div>
                       ) : (
                         <p className="hint">No session data available yet.</p>
@@ -8037,6 +8086,7 @@ function App() {
                           : 'leaderboard-table-row-not-ready';
                     const statusLabel = formatLeaderboardSessionStatus(session);
                     const statusTitle = session.generationError ? `${statusLabel}: ${session.generationError}` : statusLabel;
+                    const scoreHelpText = buildSessionScoreHelpText(session.metrics);
                     return (
                     <div
                       key={session.id}
@@ -8047,8 +8097,19 @@ function App() {
                         <SessionDeviceIcon session={session} />
                         <span>{getSessionDisplayTitle(session)}</span>
                       </span>
-                      <span className="leaderboard-cell leaderboard-cell-points">{session.metrics.points}</span>
-                      <span className="leaderboard-cell leaderboard-cell-score">{session.metrics.score}</span>
+                      <span
+                        className="leaderboard-cell leaderboard-cell-points"
+                        title={buildSessionPointsHelpText(computeSessionMaxPoints(session))}
+                      >
+                        {formatSessionPointsForSession(session.metrics.points, session)}
+                      </span>
+                      <span
+                        className="leaderboard-cell leaderboard-cell-score"
+                        title={scoreHelpText}
+                        aria-label={`Score ${session.metrics.score}. ${scoreHelpText}`}
+                      >
+                        {session.metrics.score}
+                      </span>
                       <span className="leaderboard-cell leaderboard-cell-accuracy">{session.metrics.accuracy.toFixed(1)}%</span>
                       <span className="leaderboard-cell leaderboard-cell-wpm">{session.metrics.wpm.toFixed(1)}</span>
                       <span className="leaderboard-cell leaderboard-cell-lag">{session.metrics.lagSec.toFixed(2)}s</span>
@@ -8325,7 +8386,11 @@ function App() {
                 <div className="bottom-summary-grid">
                   <Metric label="Name" value={lastSessionForLanguage?.name ?? '—'} />
                   <Metric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode) : '—'} />
-                  <Metric label="Score" value={lastSessionForLanguage ? String(lastSessionForLanguage.metrics.score) : '—'} />
+                  <Metric
+                    label="Score"
+                    value={lastSessionForLanguage ? String(lastSessionForLanguage.metrics.score) : '—'}
+                    title={lastSessionScoreHelpText}
+                  />
                   <Metric label="Accuracy" value={lastSessionForLanguage ? `${lastSessionForLanguage.metrics.accuracy.toFixed(1)}%` : '—'} />
                   <Metric
                     label="Duration"
@@ -10278,12 +10343,14 @@ function SessionDashboard({
   const insights = buildCoachingInsights(session, goals);
   const duration = formatSessionPlaybackDuration(session);
   const transcriptReview = buildTranscriptReview(session);
+  const pointsLabel = formatSessionPointsForSession(session.metrics.points, session);
+  const scoreHelpText = buildSessionScoreHelpText(session.metrics);
   const kpiSectionTooltip = 'Session KPI summary with score, points, accuracy, speed, lag, rate, repeats, and voice duration.';
   const kpiSectionCopyText =
     `Widget #0 - Session KPIs: ` +
     [
       `Score=${session.metrics.score}`,
-      `Points=${session.metrics.points}`,
+      `Points=${pointsLabel}`,
       `Accuracy=${session.metrics.accuracy.toFixed(1)}%`,
       `WPM=${session.metrics.wpm.toFixed(1)}`,
       `Lag=${session.metrics.lagSec.toFixed(2)}s`,
@@ -10318,8 +10385,8 @@ function SessionDashboard({
           <WidgetTools tooltip={kpiSectionTooltip} copyText={kpiSectionCopyText} />
         </div>
         <div className="dashboard-kpis">
-          <DashboardKpi label="Score" value={String(session.metrics.score)} />
-          <DashboardKpi label="Points" value={String(session.metrics.points)} />
+          <DashboardKpi label="Score" value={String(session.metrics.score)} helpText={scoreHelpText} />
+          <DashboardKpi label="Points" value={pointsLabel} />
           <DashboardKpi label="Accuracy" value={`${session.metrics.accuracy.toFixed(1)}%`} target={`${goals.accuracy.toFixed(0)}% goal`} />
           <DashboardKpi label="WPM" value={session.metrics.wpm.toFixed(1)} target={`${goals.wpmMin}-${goals.wpmMax} goal`} />
           <DashboardKpi label="Lag" value={`${session.metrics.lagSec.toFixed(2)}s`} target={`${goals.lagMin}-${goals.lagMax}s goal`} />
@@ -10401,11 +10468,11 @@ function SessionDashboard({
   );
 }
 
-function DashboardKpi({ label, value, target }: { label: string; value: string; target?: string }) {
-  const tooltip = kpiHelpText(label);
+function DashboardKpi({ label, value, target, helpText }: { label: string; value: string; target?: string; helpText?: string }) {
+  const tooltip = helpText ?? kpiHelpText(label);
   const copyText = `${label}: ${value}${target ? ` (${target})` : ''}`;
   return (
-    <div className="dashboard-kpi">
+    <div className="dashboard-kpi" title={tooltip ?? undefined} aria-label={tooltip ? `${label}: ${value}. ${tooltip}` : undefined}>
       {tooltip ? <WidgetTools tooltip={tooltip} copyText={copyText} /> : null}
       <span>{label}</span>
       <strong>{value}</strong>
@@ -10419,6 +10486,8 @@ function TranscriptReviewWidget({ review }: { review: TranscriptReview }) {
     'Compares what you typed against the target text. Input 1 uses Whisper transcript, Input 2 uses pasted TTS text, and Input 3 uses Kokoro source text.';
   const typedWords = review.tokens.length;
   const totalPoints = review.tokens.reduce((sum, token) => sum + token.points, 0);
+  const maxPoints = totalPoints + review.missed;
+  const totalPointsLabel = formatSessionPointsLabel(totalPoints, maxPoints > 0 ? maxPoints : null);
   const exactPoints = review.tokens
     .filter((token) => token.status === 'correct')
     .reduce((sum, token) => sum + token.points, 0);
@@ -10433,7 +10502,7 @@ function TranscriptReviewWidget({ review }: { review: TranscriptReview }) {
     `Wrong/extra=${review.extra}`,
     `Missed=${review.missed}`,
     `Typed words=${typedWords}`,
-    `Total points=${totalPoints}`,
+    `Total points=${totalPointsLabel}`,
     `Exact-match points=${exactPoints}`,
     `Review points=${reviewPoints}`,
     `Zero-point words=${zeroPointWords}`,
@@ -10458,7 +10527,7 @@ function TranscriptReviewWidget({ review }: { review: TranscriptReview }) {
         </div>
         <div className="transcript-review-stats transcript-review-analytics">
           <Metric label="Typed words" value={String(typedWords)} />
-          <Metric label="Total points" value={String(totalPoints)} />
+          <Metric label="Total points" value={totalPointsLabel} />
           <Metric label="Exact points" value={String(exactPoints)} />
           <Metric label="Review points" value={String(reviewPoints)} />
           <Metric label="Zero-point words" value={String(zeroPointWords)} />
@@ -11716,9 +11785,9 @@ function chartHelpText(title: string): string | null {
   return map[title] ?? null;
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div className="metric">
+    <div className="metric" title={title} aria-label={title ? `${label}: ${value}. ${title}` : undefined}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -12515,6 +12584,14 @@ type TrainingViewProps = {
   onImmediateTextChange?: (value: string) => void;
   onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   textPlaceholder: string;
+  liveScoreLabel: string;
+  liveScoreHelpText: string;
+  livePointsLabel: string;
+  livePointsHelpText: string;
+  liveAccuracyLabel: string;
+  liveAccuracyHelpText: string;
+  liveLagLabel: string;
+  liveLagHelpText: string;
   readOnly: boolean;
   canPlay: boolean;
   playLabel: string;
@@ -12578,7 +12655,7 @@ function PendingSessionLane({
                 <span>{getSessionDisplayTitle(session)}</span>
               </span>
               <span className="pending-session-meta">
-                {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {getPendingSessionReason(session)}
+                {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {formatDifficultyLabel(session.difficulty)} · {getPendingSessionReason(session)}
               </span>
             </button>
             <button
@@ -12663,6 +12740,14 @@ function TrainingView({
   onImmediateTextChange,
   onTextKeyDown,
   textPlaceholder,
+  liveScoreLabel,
+  liveScoreHelpText,
+  livePointsLabel,
+  livePointsHelpText,
+  liveAccuracyLabel,
+  liveAccuracyHelpText,
+  liveLagLabel,
+  liveLagHelpText,
   readOnly,
   canPlay,
   playLabel,
@@ -12740,6 +12825,8 @@ function TrainingView({
     focusTextInput();
   }
 
+  const textAreaId = 'training-dictation-input';
+
   return (
     <section className="training-view" aria-label="Focused training view">
       <SyncStatusBanner syncStatus={syncStatus} pendingSyncSummary={pendingSyncSummary} isOnline={isOnline} />
@@ -12758,9 +12845,19 @@ function TrainingView({
         {submissionMeta ? (
           <div className="training-session-submission-meta" aria-label="Submitted session metadata">
             <span>Position {submissionMeta.positionLabel}</span>
-            <span>Score {submissionMeta.scoreLabel}</span>
+            <span
+              title={submissionMeta.scoreHelpText}
+              aria-label={`Score ${submissionMeta.scoreLabel}. ${submissionMeta.scoreHelpText}`}
+            >
+              Score {submissionMeta.scoreLabel}
+            </span>
             <span>Accuracy {submissionMeta.accuracyLabel}</span>
-            <span>Points {submissionMeta.pointsLabel}</span>
+            <span
+              title={submissionMeta.pointsHelpText}
+              aria-label={`Points ${submissionMeta.pointsLabel}. ${submissionMeta.pointsHelpText}`}
+            >
+              Points {submissionMeta.pointsLabel}
+            </span>
             <span>Duration {submissionMeta.durationLabel}</span>
             <span>Submitted {submissionMeta.submittedAtLabel}</span>
           </div>
@@ -12813,22 +12910,41 @@ function TrainingView({
       </section>
 
       <section className="training-card training-input-card" aria-label="Dictation input">
-        <label>
-          <span>Type what you hear</span>
-          <LowLatencyTextarea
-            ref={textInputRef}
-            value={currentTextValue}
-            onValueChange={handleTextChange}
-            onImmediateValueChange={handleImmediateTextChange}
-            onKeyDown={handleTextKeyDown}
-            placeholder={textPlaceholder}
-            readOnly={readOnly}
-            rows={10}
-            commitDelayMs={textCommitDelayMs}
-            maxCommitDelayMs={Math.max(textCommitDelayMs * 3, 240)}
-            syncKey={`${activeSession?.id ?? 'none'}:${activeSession?.inputMode ?? 'none'}`}
-          />
-        </label>
+        <div className="training-input-header">
+          <label className="training-input-heading" htmlFor={textAreaId}>Type what you hear</label>
+          <div className="training-live-metrics" aria-label="Live session score, points, accuracy, and lag">
+            <span title={liveScoreHelpText} aria-label={`Live score ${liveScoreLabel}. ${liveScoreHelpText}`}>
+              <small>Score</small>
+              <strong>{liveScoreLabel}</strong>
+            </span>
+            <span title={livePointsHelpText} aria-label={`Live points ${livePointsLabel}. ${livePointsHelpText}`}>
+              <small>Points</small>
+              <strong>{livePointsLabel}</strong>
+            </span>
+            <span title={liveAccuracyHelpText} aria-label={`Live accuracy ${liveAccuracyLabel}. ${liveAccuracyHelpText}`}>
+              <small>Accuracy</small>
+              <strong>{liveAccuracyLabel}</strong>
+            </span>
+            <span title={liveLagHelpText} aria-label={`Live lag ${liveLagLabel}. ${liveLagHelpText}`}>
+              <small>Lag</small>
+              <strong>{liveLagLabel}</strong>
+            </span>
+          </div>
+        </div>
+        <LowLatencyTextarea
+          id={textAreaId}
+          ref={textInputRef}
+          value={currentTextValue}
+          onValueChange={handleTextChange}
+          onImmediateValueChange={handleImmediateTextChange}
+          onKeyDown={handleTextKeyDown}
+          placeholder={textPlaceholder}
+          readOnly={readOnly}
+          rows={10}
+          commitDelayMs={textCommitDelayMs}
+          maxCommitDelayMs={Math.max(textCommitDelayMs * 3, 240)}
+          syncKey={`${activeSession?.id ?? 'none'}:${activeSession?.inputMode ?? 'none'}`}
+        />
       </section>
 
       <section className="training-card training-submit-card">
@@ -13227,12 +13343,15 @@ function buildTrainingSessionSubmissionMeta(
     .sort((a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy);
   const rank = rankedByLanguage.findIndex((session) => session.id === activeSession.id) + 1;
   const submittedAt = activeSession.telemetry.finishedAt ?? activeSession.updatedAt;
+  const maxPoints = computeSessionMaxPoints(activeSession);
 
   return {
     positionLabel: rank > 0 ? `#${rank}` : 'n/a',
     scoreLabel: String(activeSession.metrics.score),
+    scoreHelpText: buildSessionScoreHelpText(activeSession.metrics),
     accuracyLabel: `${activeSession.metrics.accuracy.toFixed(1)}%`,
-    pointsLabel: String(activeSession.metrics.points),
+    pointsLabel: formatSessionPointsLabel(activeSession.metrics.points, maxPoints),
+    pointsHelpText: buildSessionPointsHelpText(maxPoints),
     durationLabel: formatSessionPlaybackDuration(activeSession),
     submittedAtLabel: formatSubmittedAt(submittedAt),
   };
@@ -13312,27 +13431,6 @@ function createDefaultMetrics(): SessionMetrics {
 
 function telemetryEquals(a: SessionTelemetry | null | undefined, b: SessionTelemetry | null | undefined): boolean {
   return JSON.stringify(cloneTelemetry(a)) === JSON.stringify(cloneTelemetry(b));
-}
-
-function computeSessionScore({
-  accuracy,
-  lagSec,
-  wpm,
-  rate,
-  points,
-}: {
-  accuracy: number;
-  lagSec: number;
-  wpm: number;
-  rate: number;
-  points: number;
-}): number {
-  const lagPenalty = Math.abs(lagSec) * 8;
-  const accuracyWeight = accuracy * 0.65;
-  const paceWeight = Math.min(wpm, 120) * 0.35;
-  const pointsWeight = points * 3;
-  const rateWeight = Math.abs(rate - 1) < 0.01 ? 4 : 0;
-  return Math.max(0, Math.round(pointsWeight + accuracyWeight + paceWeight + rateWeight - lagPenalty));
 }
 
 function formatSessionStatus(value: SessionStatus): string {

@@ -19,6 +19,13 @@ export interface WordAlignmentPair {
   exact: boolean;
 }
 
+export type SessionPointsSource = {
+  inputMode?: 'input1' | 'input2' | 'input3' | 'input4';
+  transcript?: Transcript | null;
+  ttsText?: string | null;
+  kokoroText?: string | null;
+};
+
 export function evaluateTranscriptAttempt(input: string, transcript: Transcript | null): AttemptEvaluation {
   const typedWords = input
     .split(/\s+/)
@@ -57,6 +64,35 @@ export function evaluateTranscriptAttempt(input: string, transcript: Transcript 
   };
 }
 
+export function computeSessionMaxPoints(session: SessionPointsSource | null | undefined): number | null {
+  if (!session) return null;
+
+  let maxPoints = 0;
+  if (session.inputMode === 'input1') {
+    maxPoints = countTranscriptWords(session.transcript);
+  } else if (session.inputMode === 'input2' || session.inputMode === 'input4') {
+    maxPoints = countNormalizedTextWords(session.ttsText ?? '');
+  } else if (session.inputMode === 'input3') {
+    maxPoints = countNormalizedTextWords(session.kokoroText ?? '');
+  }
+
+  return maxPoints > 0 ? maxPoints : null;
+}
+
+export function formatSessionPointsLabel(points: number, maxPoints: number | null): string {
+  const earned = Number.isFinite(points) ? Math.max(0, Math.round(points)) : 0;
+  return maxPoints !== null ? `${earned}/${maxPoints}` : String(earned);
+}
+
+export function formatSessionPointsForSession(points: number, session: SessionPointsSource | null | undefined): string {
+  return formatSessionPointsLabel(points, computeSessionMaxPoints(session));
+}
+
+export function buildSessionPointsHelpText(maxPoints: number | null): string {
+  const totalText = maxPoints !== null ? ` Maximum ${maxPoints} points for this session.` : '';
+  return `1 point per matched target word; exact and one-character typo matches count; missed/extra words do not.${totalText}`;
+}
+
 export function alignWordPairs(typedWords: string[], targetWords: string[]): WordAlignmentPair[] {
   const rows = typedWords.length;
   const cols = targetWords.length;
@@ -92,6 +128,17 @@ export function alignWordPairs(typedWords: string[], targetWords: string[]): Wor
   }
 
   return pairs;
+}
+
+function countTranscriptWords(transcript: Transcript | null | undefined): number {
+  return transcript?.words.filter((word) => normalizeWord(word.word).length > 0).length ?? 0;
+}
+
+function countNormalizedTextWords(text: string): number {
+  return text
+    .split(/\s+/)
+    .map((word) => normalizeWord(word))
+    .filter(Boolean).length;
 }
 
 function wordsMatch(a: string, b: string): boolean {

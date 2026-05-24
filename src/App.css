@@ -288,11 +288,51 @@
   grid-column: 1 / -1;
 }
 
-.training-input-card label {
-  display: grid;
-  gap: 0.6rem;
+.training-input-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.training-input-heading {
   color: #24415f;
   font-weight: 800;
+}
+
+.training-live-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.training-live-metrics span {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-height: 32px;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid #c9d9e9;
+  border-radius: 999px;
+  background: #f4f8fd;
+  color: #24415f;
+  white-space: nowrap;
+}
+
+.training-live-metrics small {
+  color: #60758d;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.training-live-metrics strong {
+  font-size: 0.88rem;
+  font-weight: 900;
 }
 
 .training-input-card textarea {
@@ -426,6 +466,17 @@
   .training-pending-session-lane .pending-session-chip,
   .training-pending-session-lane .pending-session-open-button {
     min-height: 66px;
+  }
+
+  .training-input-header,
+  .training-live-metrics {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .training-live-metrics span {
+    flex: 1 1 42%;
+    justify-content: center;
   }
 
   .training-input-card textarea {

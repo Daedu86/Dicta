@@ -12,6 +12,7 @@ export type SessionLanguageLike = {
 };
 
 export type SessionForMetrics = SessionLanguageLike & {
+  id?: string;
   name?: string;
   updatedAt: string;
   voiceDurationSec?: number | null;
