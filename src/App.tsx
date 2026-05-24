@@ -997,14 +997,6 @@ function App() {
   const openRouterAccessAllowed = openRouterAccessState === 'allowed';
   const openRouterAccessMessage = 'OpenRouter access is disabled for this Dicta account. Contact the admin.';
   const sessionQuotaStatus = getDictaSessionQuotaStatus(syncConfig.authRequired ? appProfile : null, sessions.length);
-  const brandActionLabel =
-    workspaceMode === 'leaderboard' ||
-    workspaceMode === 'dashboard' ||
-    workspaceMode === 'adaptive' ||
-    workspaceMode === 'admin' ||
-    workspaceMode === 'openrouter'
-      ? 'Back to training'
-      : 'Leaderboard';
   const latestSession = useMemo<StoredSession | null>(() => {
     if (sessions.length === 0) return null;
     return [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
@@ -6299,11 +6291,21 @@ function App() {
               type="button"
               className="secondary-button brand-leaderboard-button"
               onClick={() => {
-                setWorkspaceMode((value) => (value === 'leaderboard' ? 'training' : 'leaderboard'));
+                setWorkspaceMode('leaderboard');
                 setDashboardSessionId(null);
               }}
             >
-              {brandActionLabel}
+              Leaderboard
+            </button>
+            <button
+              type="button"
+              className="secondary-button brand-training-desktop-button"
+              onClick={() => {
+                setWorkspaceMode('training');
+                setDashboardSessionId(null);
+              }}
+            >
+              Training Mode (desktop ver)
             </button>
             <button
               type="button"
@@ -6311,18 +6313,18 @@ function App() {
               onClick={() => navigateAppRoute('/training')}
               title="Open the focused mobile training view"
             >
-              Training Mode
+              Training Mode (Mobile ver)
             </button>
-          <button
-            type="button"
-            className="secondary-button brand-adaptive-button"
-            onClick={() => {
-              setWorkspaceMode('adaptive');
-              setDashboardSessionId(null);
-            }}
-          >
-            🧠 Adaptive Pace Layer
-          </button>
+            <button
+              type="button"
+              className="secondary-button brand-adaptive-button"
+              onClick={() => {
+                setWorkspaceMode('adaptive');
+                setDashboardSessionId(null);
+              }}
+            >
+              🧠 Adaptive Pace Layer
+            </button>
             {isDictaAdmin(appProfile) || !syncConfig.authRequired ? (
               <button
                 type="button"
