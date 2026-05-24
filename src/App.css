@@ -289,11 +289,21 @@
 }
 
 .training-input-header {
+  position: sticky;
+  top: 5.75rem;
+  z-index: 18;
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: 0.7rem;
   flex-wrap: wrap;
+  margin: -0.35rem -0.35rem 0;
+  padding: 0.35rem;
+  border: 1px solid rgba(201, 217, 233, 0.86);
+  border-radius: 12px;
+  background: rgba(244, 248, 253, 0.96);
+  box-shadow: 0 14px 28px -26px rgba(16, 47, 99, 0.65);
+  backdrop-filter: blur(10px);
 }
 
 .training-input-heading {
