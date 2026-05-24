@@ -36,11 +36,11 @@ import { buildBenchmarkFilename, buildSelectedBenchmarkExportPayload } from './c
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './core/adaptive/dictationScriptPrompt';
 import {
   buildOpenRouterGenerationPrompt,
+  estimateOpenRouterPromptSize,
   type OpenRouterGeneratePromptSource,
 } from './core/adaptive/openRouterGenerationPrompt';
 import {
   addActiveOpenRouterJob,
-  clearActiveOpenRouterJob,
   extractOpenRouterJobText,
   isOpenRouterJobTerminal,
   loadActiveOpenRouterJobs,
@@ -133,12 +133,12 @@ import {
   type DictaSyncState,
 } from './core/supabaseSync';
 import {
-  canDictaProfileAccessOpenRouter,
   getDictaSessionQuotaStatus,
   isDictaAdmin,
   loadDictaAppProfile,
   loadVisibleDictaAppProfiles,
   normalizeDictaAppProfile,
+  resolveOpenRouterAccessState,
   resolveEffectiveSyncProfileId,
   type DictaAppProfile,
   type DictaAppRole,
@@ -987,7 +987,14 @@ function App() {
         ? 'tts'
         : 'kokoro';
   const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
-  const openRouterAccessAllowed = !syncConfig.authRequired || canDictaProfileAccessOpenRouter(appProfile);
+  const openRouterAccessState = resolveOpenRouterAccessState({
+    authRequired: syncConfig.authRequired,
+    authLoading,
+    hasAuthSession: Boolean(authSession),
+    profile: appProfile,
+    profileError: appProfileError,
+  });
+  const openRouterAccessAllowed = openRouterAccessState === 'allowed';
   const openRouterAccessMessage = 'OpenRouter access is disabled for this Dicta account. Contact the admin.';
   const sessionQuotaStatus = getDictaSessionQuotaStatus(syncConfig.authRequired ? appProfile : null, sessions.length);
   const brandActionLabel =
@@ -1177,18 +1184,10 @@ function App() {
   }, [workspaceMode]);
 
   useEffect(() => {
-    if (workspaceMode !== 'openrouter' || openRouterAccessAllowed) return;
+    if (workspaceMode !== 'openrouter' || openRouterAccessState !== 'denied') return;
     setWorkspaceMode('leaderboard');
     setOpenRouterError(openRouterAccessMessage);
-  }, [openRouterAccessAllowed, workspaceMode]);
-
-  useEffect(() => {
-    if (openRouterAccessAllowed || activeOpenRouterJobs.length === 0) return;
-    clearActiveOpenRouterJob();
-    setActiveOpenRouterJobs([]);
-    setOpenRouterJobNotifications({});
-    setOpenRouterJobStatus('');
-  }, [activeOpenRouterJobs.length, openRouterAccessAllowed]);
+  }, [openRouterAccessState, workspaceMode]);
 
   useEffect(() => {
     window.localStorage.setItem(KOKORO_ENABLED_KEY, JSON.stringify(kokoroEnabled));
@@ -1244,7 +1243,7 @@ function App() {
   }, [kokoroEnabled, kokoroText, kokoroStatus]);
 
   useEffect(() => {
-    if (activeOpenRouterJobs.length === 0) {
+    if (activeOpenRouterJobs.length === 0 || openRouterAccessState !== 'allowed') {
       return;
     }
 
@@ -1276,6 +1275,7 @@ function App() {
             if (job.status === 'failed') {
               const message = job.error || 'OpenRouter job failed.';
               setOpenRouterError(message);
+              createCustomOpenRouterErrorSessionForJob(trackedJob, message);
               setTrainingGenerationNotices((current) => ({
                 ...current,
                 [trackedJob.slotLabel]: {
@@ -1298,6 +1298,7 @@ function App() {
             if (!text.trim()) {
               const message = 'OpenRouter job finished without usable text.';
               setOpenRouterError(message);
+              createCustomOpenRouterErrorSessionForJob(trackedJob, message);
               setTrainingGenerationNotices((current) => ({
                 ...current,
                 [trackedJob.slotLabel]: {
@@ -1330,6 +1331,7 @@ function App() {
             } else {
               const message = validation.errors.join(' ') || 'Generated script did not validate.';
               setOpenRouterError(message);
+              createCustomOpenRouterErrorSessionForJob(trackedJob, message);
               setTrainingGenerationNotices((current) => ({
                 ...current,
                 [trackedJob.slotLabel]: {
@@ -1392,7 +1394,7 @@ function App() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [activeOpenRouterJobs]);
+  }, [activeOpenRouterJobs, openRouterAccessState]);
 
   useEffect(() => {
     window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, dictaLanguageView);
@@ -2632,6 +2634,24 @@ function App() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  function trackOpenRouterJob(activeJob: ActiveOpenRouterJob): void {
+    setActiveOpenRouterJobs((current) => addActiveOpenRouterJob(activeJob, current));
+    setOpenRouterJobNotifications((current) => {
+      const next = {
+        ...current,
+        [activeJob.jobId]: {
+          jobId: activeJob.jobId,
+          slotLabel: activeJob.slotLabel,
+          model: activeJob.model,
+          startedAt: activeJob.startedAt,
+          status: 'running' as const,
+        },
+      };
+      setOpenRouterJobStatus(formatOpenRouterJobNotifications(next));
+      return next;
+    });
+  }
+
   async function updateAdminProfileAccess(
     profile: DictaAppProfile,
     patch: { canAccessOpenRouter: boolean; sessionLimit: number },
@@ -2889,6 +2909,16 @@ function App() {
     setOpenRouterError(message);
   }
 
+  function createCustomOpenRouterErrorSessionForJob(trackedJob: ActiveOpenRouterJob, message: string): void {
+    if (trackedJob.origin !== 'custom-workspace' || !shouldCreatePersistentGenerationErrorSession(message)) return;
+    createOpenRouterErrorSession({
+      slotLabel: trackedJob.slotLabel,
+      inputMode: trackedJob.inputMode,
+      language: trackedJob.language as BenchmarkLanguageButton,
+      message,
+    }, { navigateToLeaderboard: false });
+  }
+
   function buildSemanticPhrasesForCurrentSession(text: string, language: string | undefined, mode: TtsPacingMode): SemanticPhrase[] {
     if (activeSession?.sessionSource === 'dictationScript' && activeSession.dictationScript) {
       return buildSemanticPhrasesFromDictationScript(activeSession.dictationScript);
@@ -3037,16 +3067,6 @@ function App() {
     const generationStartedAt = new Date().toISOString();
     setBusy(true);
     setOpenRouterError('');
-    setTrainingGenerationNotices((current) => ({
-      ...current,
-      [slotLabel]: {
-        slotLabel,
-        displayLabel,
-        model,
-        startedAt: generationStartedAt,
-        status: 'running',
-      },
-    }));
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
@@ -3077,6 +3097,13 @@ function App() {
         }),
       };
       const { prompt } = buildOpenRouterGenerationPrompt(directPromptArgs);
+      const promptSize = estimateOpenRouterPromptSize(prompt, {
+        promptMode: 'compact-adaptive-v2',
+        durationMinutes,
+        ...(targetDifficulty ? { targetDifficulty } : {}),
+        inputMode,
+        language,
+      });
       const response = await fetch('/api/openrouter/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
@@ -3106,23 +3133,13 @@ function App() {
         language,
         durationMinutes,
         ...(targetDifficulty ? { targetDifficulty } : {}),
+        promptMode: promptSize.promptMode,
+        promptCharacterCount: promptSize.characterCount,
+        promptApproximateTokenCount: promptSize.approximateTokenCount,
+        origin: 'direct-training',
         startedAt: generationStartedAt,
       };
-      setActiveOpenRouterJobs((current) => addActiveOpenRouterJob(activeJob, current));
-      setOpenRouterJobNotifications((current) => {
-        const next = {
-          ...current,
-          [activeJob.jobId]: {
-            jobId: activeJob.jobId,
-            slotLabel: activeJob.slotLabel,
-            model: activeJob.model,
-            startedAt: activeJob.startedAt,
-            status: 'running' as const,
-          },
-        };
-        setOpenRouterJobStatus(formatOpenRouterJobNotifications(next));
-        return next;
-      });
+      trackOpenRouterJob(activeJob);
     } catch (err) {
       const message =
         err instanceof TypeError
@@ -5997,6 +6014,9 @@ function App() {
     activeJobs: activeOpenRouterJobs,
     nowMs: trainingGenerationNowMs,
   });
+  const easyDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Easy direct session');
+  const mediumDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Intermediate direct session');
+  const hardDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Advanced direct session');
 
   function replayFocusedAudio(): void {
     const currentTime = engineRef.current?.getCurrentTime() ?? audioRef.current?.currentTime ?? 0;
@@ -6142,9 +6162,9 @@ function App() {
     generationButtons: openRouterAccessAllowed ? [
       {
         id: 'easy',
-        label: directOpenRouterBusy ? 'Requesting easy...' : 'New Easy Session',
+        label: directOpenRouterBusy ? 'Requesting easy...' : easyDirectGenerationRunning ? 'Generating easy...' : 'New Easy Session',
         onClick: () => void generateEasyNextSessionFromOpenRouter(),
-        disabled: !isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || directOpenRouterBusy || easyDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
           : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
@@ -6153,9 +6173,9 @@ function App() {
       },
       {
         id: 'medium',
-        label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : 'New Medium Session',
+        label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : mediumDirectGenerationRunning ? 'Generating medium...' : 'New Medium Session',
         onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-        disabled: !isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || directIntermediateOpenRouterBusy || mediumDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
           : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
@@ -6164,9 +6184,9 @@ function App() {
       },
       {
         id: 'hard',
-        label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : 'New Hard Session',
+        label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : hardDirectGenerationRunning ? 'Generating hard...' : 'New Hard Session',
         onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-        disabled: !isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || directAdvancedOpenRouterBusy || hardDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
           : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
@@ -7806,9 +7826,11 @@ function App() {
                 </div>
               </section>
             ) : workspaceMode === 'openrouter' ? (
-              !openRouterAccessAllowed ? (
+              openRouterAccessState !== 'allowed' ? (
                 <section className="panel workspace-panel">
-                  <p className="error">{openRouterAccessMessage}</p>
+                  <p className={openRouterAccessState === 'pending' ? 'hint' : 'error'}>
+                    {openRouterAccessState === 'pending' ? 'Checking OpenRouter access...' : openRouterAccessMessage}
+                  </p>
                 </section>
               ) : (
               <OpenRouterWorkspace
@@ -7874,7 +7896,10 @@ function App() {
                 defaultGenerateInputMode={selectedBenchmarkInputMode}
                 defaultGenerateLanguage={selectedBenchmarkLanguage}
                 focusGenerateRequest={openRouterGenerateFocusRequest}
-                onCreateGeneratedSession={createSessionFromOpenRouterScript}
+                activeJobs={activeOpenRouterJobs}
+                jobNotifications={openRouterJobNotifications}
+                generationNowMs={trainingGenerationNowMs}
+                onTrackJob={trackOpenRouterJob}
                 onCreateGenerationErrorSession={createOpenRouterErrorSession}
                 onCopyBenchmark={(profile) => void copySelectedBenchmarkJson(profile)}
                 onExportBenchmark={(profile) => downloadSelectedBenchmarkJson(profile)}
@@ -8399,7 +8424,10 @@ function OpenRouterWorkspace({
   defaultGenerateInputMode,
   defaultGenerateLanguage,
   focusGenerateRequest,
-  onCreateGeneratedSession,
+  activeJobs,
+  jobNotifications,
+  generationNowMs,
+  onTrackJob,
   onCreateGenerationErrorSession,
   onCopyBenchmark,
   onExportBenchmark,
@@ -8428,7 +8456,10 @@ function OpenRouterWorkspace({
   defaultGenerateInputMode: InputMode;
   defaultGenerateLanguage: BenchmarkLanguageButton;
   focusGenerateRequest: number;
-  onCreateGeneratedSession: (script: DictationScript, options?: { generationOrigin?: GenerationOrigin }) => void;
+  activeJobs: ActiveOpenRouterJob[];
+  jobNotifications: Record<string, OpenRouterJobNotification>;
+  generationNowMs: number;
+  onTrackJob: (job: ActiveOpenRouterJob) => void;
   onCreateGenerationErrorSession: (args: {
     slotLabel: string;
     inputMode: InputMode;
@@ -8545,6 +8576,9 @@ function OpenRouterWorkspace({
     const slot = generationSlots[slotId];
     const slotModel = defaultModel;
     const slotLabel = getOpenRouterSlotLabel(slotId);
+    const existingJob = activeJobs.some((job) => job.origin === 'custom-workspace' && job.customSlotId === slotId);
+    if (existingJob || generateBusySlots[slotId]) return;
+
     if (!slotModel) {
       const message = `Set a model for ${slotLabel} first.`;
       updateGenerationSlot(slotId, { error: message });
@@ -8561,63 +8595,61 @@ function OpenRouterWorkspace({
     updateGenerationSlot(slotId, { error: '' });
     const slotPrompt = buildVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
     const slotMaxTokens = generateDurationMinutes === 2 ? 1000 : generateDurationMinutes === 3 ? 1300 : 1600;
-    const startedAt = performance.now();
+    const generationStartedAt = new Date().toISOString();
+    const promptSize = estimateOpenRouterPromptSize(slotPrompt, {
+      promptMode: generatePromptSource,
+      durationMinutes: generateDurationMinutes,
+      inputMode: generateInputMode,
+      language: generateLanguage,
+    });
     const wakeLock = await requestOpenRouterWakeLock();
     try {
-      const response = await fetch('/api/openrouter/chat', {
+      const response = await fetch('/api/openrouter/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({ model: slotModel, prompt: slotPrompt, maxTokens: slotMaxTokens }),
+        body: JSON.stringify({
+          model: slotModel,
+          prompt: slotPrompt,
+          maxTokens: slotMaxTokens,
+          slotLabel,
+          inputMode: generateInputMode,
+          language: generateLanguage,
+          durationMinutes: generateDurationMinutes,
+        }),
       });
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || `Generation request failed (${response.status}).`);
       }
-      const payload = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-        usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-      };
-      const text = typeof payload.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
-      if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
-      const elapsedMs = Math.max(0, Math.round(performance.now() - startedAt));
-      const cleaned = stripJsonFence(text);
-      const validation = validateGeneratedScriptForTarget(cleaned, generateInputMode, generateLanguage);
-      const usage = payload.usage ?? {};
-      const promptTokens = Number(usage.prompt_tokens ?? 0);
-      const completionTokens = Number(usage.completion_tokens ?? 0);
-      const totalTokens = Number(usage.total_tokens ?? promptTokens + completionTokens);
-      const nextUsage = {
-        promptTokens: Number.isFinite(promptTokens) ? promptTokens : 0,
-        completionTokens: Number.isFinite(completionTokens) ? completionTokens : 0,
-        totalTokens: Number.isFinite(totalTokens) ? totalTokens : 0,
-      };
-      const nextSlot = {
-        text,
-        json: cleaned,
+      const payload = (await response.json()) as OpenRouterJobResponse;
+      const jobId = payload.jobId;
+      if (!jobId) throw new Error('OpenRouter job did not return an id.');
+      const activeJob: ActiveOpenRouterJob = {
+        jobId,
+        model: slotModel,
+        slotLabel,
         inputMode: generateInputMode,
         language: generateLanguage,
-        usage: nextUsage,
-        elapsedMs,
-        generatedAt: new Date().toISOString(),
-        model: slotModel,
-        error: validation.ok ? '' : validation.errors.join(' '),
+        durationMinutes: generateDurationMinutes,
+        promptMode: promptSize.promptMode,
+        promptCharacterCount: promptSize.characterCount,
+        promptApproximateTokenCount: promptSize.approximateTokenCount,
+        origin: 'custom-workspace',
+        customSlotId: slotId,
+        startedAt: generationStartedAt,
       };
-      updateGenerationSlot(slotId, nextSlot);
-      if (validation.ok) {
-        onCreateGeneratedSession(validation.script, { generationOrigin: 'openrouter' });
-        clearGeneratedScriptDraft(slotId);
-      } else {
-        onCreateGenerationErrorSession({
-          slotLabel,
-          inputMode: generateInputMode,
-          language: generateLanguage,
-          message: nextSlot.error || 'Generated script did not validate.',
-        });
-      }
+      onTrackJob(activeJob);
+      updateGenerationSlot(slotId, {
+        inputMode: generateInputMode,
+        language: generateLanguage,
+        generatedAt: generationStartedAt,
+        model: slotModel,
+        error: '',
+      });
     } catch (err) {
       const message =
         err instanceof TypeError
-          ? 'Failed to reach OpenRouter endpoint. Refresh and retry with a free model.'
+          ? 'Failed to reach OpenRouter endpoint. Refresh the page and try a free model such as openrouter/free.'
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
@@ -8782,6 +8814,41 @@ function OpenRouterWorkspace({
     if (!activeGenerateSlot.json || !activeGenerateSlot.inputMode || !activeGenerateSlot.language) return null;
     return validateGeneratedScriptForTarget(activeGenerateSlot.json, activeGenerateSlot.inputMode, activeGenerateSlot.language);
   }, [activeGenerateSlot.inputMode, activeGenerateSlot.json, activeGenerateSlot.language]);
+  const activeGenerateSlotJob = useMemo(
+    () =>
+      [...activeJobs]
+        .filter((job) => job.origin === 'custom-workspace' && job.customSlotId === activeGenerateSlotId)
+        .sort((a, b) => parseTimestampMs(b.startedAt, generationNowMs) - parseTimestampMs(a.startedAt, generationNowMs))[0] ?? null,
+    [activeGenerateSlotId, activeJobs, generationNowMs],
+  );
+  const activeGenerateSlotJobNotice = useMemo<TrainingGenerationNoticeView | null>(() => {
+    if (activeGenerateSlotJob) {
+      return formatTrainingGenerationNotice({
+        slotLabel: activeGenerateSlotJob.slotLabel,
+        displayLabel: activeGenerateSlotJob.slotLabel,
+        model: activeGenerateSlotJob.model,
+        startedAt: activeGenerateSlotJob.startedAt,
+        status: 'running',
+      }, generationNowMs);
+    }
+
+    const latestNotification =
+      Object.values(jobNotifications)
+        .filter((notification) => notification.slotLabel === getOpenRouterSlotLabel(activeGenerateSlotId))
+        .sort((a, b) => parseTimestampMs(b.startedAt, generationNowMs) - parseTimestampMs(a.startedAt, generationNowMs))[0] ?? null;
+    if (!latestNotification) return null;
+
+    return formatTrainingGenerationNotice({
+      slotLabel: latestNotification.slotLabel,
+      displayLabel: latestNotification.slotLabel,
+      model: latestNotification.model,
+      startedAt: latestNotification.startedAt,
+      status: latestNotification.status,
+      completedAt: latestNotification.completedAt,
+      error: latestNotification.error,
+    }, generationNowMs);
+  }, [activeGenerateSlotId, activeGenerateSlotJob, generationNowMs, jobNotifications]);
+  const activeGenerateSlotBusy = generateBusySlots[activeGenerateSlotId] || Boolean(activeGenerateSlotJob);
 
   const refreshApiKeyStatus = async (): Promise<void> => {
     if (!LOCAL_DEV_FEATURES_AVAILABLE) {
@@ -9580,13 +9647,22 @@ function OpenRouterWorkspace({
               <button
                 type="button"
                 className="secondary-button"
-                disabled={generateBusySlots[activeGenerateSlotId] || !activeGenerateSlotModel}
+                disabled={activeGenerateSlotBusy || !activeGenerateSlotModel}
                 onClick={() => void generateOpenRouterSlot(activeGenerateSlotId)}
               >
-                {generateBusySlots[activeGenerateSlotId] ? 'Generating...' : `Generate ${getOpenRouterSlotLabel(activeGenerateSlotId)}`}
+                {generateBusySlots[activeGenerateSlotId]
+                  ? 'Requesting...'
+                  : activeGenerateSlotJob
+                    ? 'Generating...'
+                    : `Generate ${getOpenRouterSlotLabel(activeGenerateSlotId)}`}
               </button>
               <span className="hint">{activeGenerateSlotModel ? `Using: ${activeGenerateSlotModel}` : 'Set a default model first (Section #2).'}</span>
             </div>
+            {activeGenerateSlotJobNotice ? (
+              <p className={activeGenerateSlotJobNotice.tone === 'error' ? 'error' : activeGenerateSlotJobNotice.tone === 'success' ? 'success' : 'hint'}>
+                {activeGenerateSlotJobNotice.message}
+              </p>
+            ) : null}
 
             {activeGenerateSlot.usage ? (
               <p className="hint">
@@ -11796,10 +11872,6 @@ function buildTrainingGenerationButtonNotice({
   nowMs: number;
 }): TrainingGenerationNoticeView | null {
   const localNotice = notices[slotLabel];
-  if (localNotice && localNotice.status !== 'running') {
-    return formatTrainingGenerationNotice(localNotice, nowMs);
-  }
-
   const activeJob = [...activeJobs]
     .filter((job) => job.slotLabel === slotLabel)
     .sort((a, b) => parseTimestampMs(b.startedAt, nowMs) - parseTimestampMs(a.startedAt, nowMs))[0];
@@ -11811,6 +11883,10 @@ function buildTrainingGenerationButtonNotice({
       startedAt: activeJob.startedAt,
       status: 'running',
     }, nowMs);
+  }
+
+  if (localNotice && localNotice.status !== 'running') {
+    return formatTrainingGenerationNotice(localNotice, nowMs);
   }
 
   const jobNotification = Object.values(jobNotifications)

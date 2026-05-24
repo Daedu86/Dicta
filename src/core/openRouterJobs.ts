@@ -6,6 +6,8 @@ export const OPENROUTER_ACTIVE_JOB_STORAGE_KEY = 'dicta.openrouterActiveJob.v1';
 export const OPENROUTER_ACTIVE_JOBS_STORAGE_KEY = 'dicta.openrouterActiveJobs.v1';
 
 export type OpenRouterJobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+export type OpenRouterJobOrigin = 'direct-training' | 'custom-workspace';
+export type OpenRouterCustomSlotId = 'prompt1' | 'prompt2';
 
 export type ActiveOpenRouterJob = {
   jobId: string;
@@ -18,6 +20,8 @@ export type ActiveOpenRouterJob = {
   promptMode?: string;
   promptCharacterCount?: number;
   promptApproximateTokenCount?: number;
+  origin?: OpenRouterJobOrigin;
+  customSlotId?: OpenRouterCustomSlotId;
   startedAt: string;
 };
 
@@ -143,6 +147,8 @@ function normalizeActiveOpenRouterJob(value: unknown): ActiveOpenRouterJob | nul
   const promptMode = stringField(record, 'promptMode');
   const promptCharacterCount = finiteNumberField(record, 'promptCharacterCount');
   const promptApproximateTokenCount = finiteNumberField(record, 'promptApproximateTokenCount');
+  const origin = stringField(record, 'origin');
+  const customSlotId = stringField(record, 'customSlotId');
   return {
     jobId,
     model,
@@ -154,6 +160,8 @@ function normalizeActiveOpenRouterJob(value: unknown): ActiveOpenRouterJob | nul
     ...(promptMode ? { promptMode } : {}),
     ...(promptCharacterCount !== null ? { promptCharacterCount } : {}),
     ...(promptApproximateTokenCount !== null ? { promptApproximateTokenCount } : {}),
+    ...(origin === 'direct-training' || origin === 'custom-workspace' ? { origin } : {}),
+    ...(customSlotId === 'prompt1' || customSlotId === 'prompt2' ? { customSlotId } : {}),
     startedAt,
   };
 }

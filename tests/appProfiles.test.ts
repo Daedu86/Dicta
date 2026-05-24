@@ -4,6 +4,7 @@ import {
   getDictaSessionQuotaStatus,
   normalizeDictaAppProfile,
   resolveEffectiveSyncProfileId,
+  resolveOpenRouterAccessState,
 } from '../src/core/appProfiles';
 
 describe('appProfiles', () => {
@@ -85,5 +86,76 @@ describe('appProfiles', () => {
       remaining: null,
       blocked: false,
     });
+  });
+
+  it('keeps OpenRouter access pending while Supabase auth or app profile is hydrating', () => {
+    expect(
+      resolveOpenRouterAccessState({
+        authRequired: true,
+        authLoading: true,
+        hasAuthSession: false,
+        profile: null,
+      }),
+    ).toBe('pending');
+
+    expect(
+      resolveOpenRouterAccessState({
+        authRequired: true,
+        authLoading: false,
+        hasAuthSession: true,
+        profile: null,
+      }),
+    ).toBe('pending');
+  });
+
+  it('allows legacy OpenRouter generation and denies inactive or unauthorized profiles', () => {
+    const member = normalizeDictaAppProfile({
+      user_id: 'user-2',
+      profile_id: 'mama',
+      display_name: 'Mama',
+      role: 'member',
+      active: true,
+      can_access_openrouter: false,
+    });
+    const admin = normalizeDictaAppProfile({
+      user_id: 'user-1',
+      profile_id: 'admin-profile',
+      display_name: 'Admin',
+      role: 'admin',
+      active: true,
+    });
+
+    expect(
+      resolveOpenRouterAccessState({
+        authRequired: false,
+        authLoading: false,
+        hasAuthSession: false,
+        profile: null,
+      }),
+    ).toBe('allowed');
+    expect(
+      resolveOpenRouterAccessState({
+        authRequired: true,
+        authLoading: false,
+        hasAuthSession: true,
+        profile: admin,
+      }),
+    ).toBe('allowed');
+    expect(
+      resolveOpenRouterAccessState({
+        authRequired: true,
+        authLoading: false,
+        hasAuthSession: true,
+        profile: member,
+      }),
+    ).toBe('denied');
+    expect(
+      resolveOpenRouterAccessState({
+        authRequired: true,
+        authLoading: false,
+        hasAuthSession: false,
+        profile: null,
+      }),
+    ).toBe('denied');
   });
 });

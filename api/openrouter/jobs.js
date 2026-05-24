@@ -5,6 +5,7 @@ import { assertOpenRouterAccess, resolveRequestProfile, sendApiError } from '../
 
 const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
+const VALID_LANGUAGES = new Set(['en', 'es', 'de', 'fr']);
 const JOB_RETENTION_DAYS = 14;
 
 function getRequiredEnv(name) {
@@ -86,7 +87,7 @@ function normalizeJobRow(row) {
   };
 }
 
-function readCreateJobPayload(body) {
+export function readCreateJobPayload(body) {
   const payload = normalizeRequestBody(body);
   const model = typeof payload.model === 'string' ? payload.model.trim() : '';
   const prompt = typeof payload.prompt === 'string' ? payload.prompt.trim() : '';
@@ -100,7 +101,7 @@ function readCreateJobPayload(body) {
 
   if (!model || !prompt) throw new Error('Missing model or prompt.');
   if (!['audio', 'browser-tts', 'kokoro', 'qwen-cloud'].includes(inputMode)) throw new Error('Invalid inputMode.');
-  if (!['en', 'es', 'de'].includes(language)) throw new Error('Invalid language.');
+  if (!VALID_LANGUAGES.has(language)) throw new Error('Invalid language.');
   if (![2, 3, 4].includes(durationMinutes)) throw new Error('Invalid durationMinutes.');
 
   return {

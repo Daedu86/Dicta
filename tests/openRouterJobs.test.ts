@@ -8,6 +8,7 @@ import {
   isOpenRouterJobTerminal,
   loadActiveOpenRouterJob,
   loadActiveOpenRouterJobs,
+  OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
   removeActiveOpenRouterJob,
   type ActiveOpenRouterJob,
 } from '../src/core/openRouterJobs';
@@ -85,6 +86,54 @@ describe('openRouterJobs', () => {
     const remainingJobs = removeActiveOpenRouterJob('job-easy', activeJobs);
     expect(remainingJobs.map((job) => job.jobId)).toEqual(['job-hard']);
     expect(loadActiveOpenRouterJobs().map((job) => job.jobId)).toEqual(['job-hard']);
+    clearActiveOpenRouterJob();
+  });
+
+  it('restores legacy direct jobs and custom workspace slot metadata from localStorage', () => {
+    clearActiveOpenRouterJob();
+    window.localStorage.setItem(
+      OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
+      JSON.stringify([
+        {
+          jobId: 'job-legacy',
+          model: 'openrouter/free',
+          slotLabel: 'Easy direct session',
+          inputMode: 'browser-tts',
+          language: 'fr',
+          durationMinutes: 2,
+          startedAt: '2026-05-17T10:00:00.000Z',
+        },
+        {
+          jobId: 'job-custom',
+          model: 'openrouter/free',
+          slotLabel: 'Session 2',
+          inputMode: 'qwen-cloud',
+          language: 'es',
+          durationMinutes: 4,
+          promptMode: 'compact-adaptive',
+          promptCharacterCount: 4200,
+          promptApproximateTokenCount: 1050,
+          origin: 'custom-workspace',
+          customSlotId: 'prompt2',
+          startedAt: '2026-05-17T10:01:00.000Z',
+        },
+      ]),
+    );
+
+    const restoredJobs = loadActiveOpenRouterJobs();
+    expect(restoredJobs[0]).toMatchObject({
+      jobId: 'job-legacy',
+      language: 'fr',
+    });
+    expect(restoredJobs[0]).not.toHaveProperty('origin');
+    expect(restoredJobs[0]).not.toHaveProperty('customSlotId');
+    expect(restoredJobs[1]).toMatchObject({
+      jobId: 'job-custom',
+      origin: 'custom-workspace',
+      customSlotId: 'prompt2',
+      promptMode: 'compact-adaptive',
+      promptApproximateTokenCount: 1050,
+    });
     clearActiveOpenRouterJob();
   });
 });

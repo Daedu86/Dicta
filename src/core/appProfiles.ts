@@ -37,12 +37,34 @@ export type DictaSessionQuotaStatus = {
   message: string;
 };
 
+export type OpenRouterAccessState = 'pending' | 'allowed' | 'denied';
+
 export function isDictaAdmin(profile: DictaAppProfile | null): boolean {
   return profile?.role === 'admin' && profile.active;
 }
 
 export function canDictaProfileAccessOpenRouter(profile: DictaAppProfile | null): boolean {
   return Boolean(profile?.active && (profile.role === 'admin' || profile.canAccessOpenRouter));
+}
+
+export function resolveOpenRouterAccessState({
+  authRequired,
+  authLoading,
+  hasAuthSession,
+  profile,
+  profileError,
+}: {
+  authRequired: boolean;
+  authLoading: boolean;
+  hasAuthSession: boolean;
+  profile: DictaAppProfile | null;
+  profileError?: string;
+}): OpenRouterAccessState {
+  if (!authRequired) return 'allowed';
+  if (authLoading) return 'pending';
+  if (!hasAuthSession) return 'denied';
+  if (!profile && !profileError) return 'pending';
+  return canDictaProfileAccessOpenRouter(profile) ? 'allowed' : 'denied';
 }
 
 export function getDictaSessionLimit(profile: DictaAppProfile | null): number | null {
