@@ -278,6 +278,10 @@ type ThemeMode = 'light' | 'dark';
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
 
+function isMobileViewport(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
+}
+
 type KokoroGeneratedChunk = KokoroPhraseChunk &
   KokoroChunkResponse & {
     pacingMode: TtsPacingMode;
@@ -685,15 +689,15 @@ function App() {
     loadAdaptiveSessionFeedback(),
   );
   const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<null | 'sessionFeedback' | 'exports'>(null);
-  const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState({
+  const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState(() => ({
     decision: false,
     architecture: false,
     adapters: false,
     latest: false,
     live: false,
     telemetry: false,
-    benchmarks: true,
-  });
+    benchmarks: !isMobileViewport(),
+  }));
   const [selectedBenchmarkInputMode, setSelectedBenchmarkInputMode] = useState<InputMode>('kokoro');
   const selectedBenchmarkLanguage: BenchmarkLanguageButton = dictaLanguageView;
   const setSelectedBenchmarkLanguage = setDictaLanguageView;
@@ -3226,6 +3230,23 @@ function App() {
     setSessionFeedbackMessage('');
     setAdaptiveBenchmarksFocusAnchor('exports');
     setAdaptiveSectionExpanded((prev) => ({ ...prev, benchmarks: true }));
+    setWorkspaceMode('adaptive');
+    setDashboardSessionId(null);
+  }
+
+  function openAdaptiveWorkspaceFromHeader(): void {
+    if (isMobileViewport()) {
+      setAdaptiveSectionExpanded((prev) => ({
+        ...prev,
+        decision: false,
+        architecture: false,
+        adapters: false,
+        latest: false,
+        live: false,
+        telemetry: false,
+        benchmarks: false,
+      }));
+    }
     setWorkspaceMode('adaptive');
     setDashboardSessionId(null);
   }
@@ -6318,10 +6339,7 @@ function App() {
             <button
               type="button"
               className="secondary-button brand-adaptive-button"
-              onClick={() => {
-                setWorkspaceMode('adaptive');
-                setDashboardSessionId(null);
-              }}
+              onClick={openAdaptiveWorkspaceFromHeader}
             >
               🧠 Adaptive Pace Layer
             </button>
@@ -10580,10 +10598,10 @@ function AdaptiveBenchmarkSection({
   ) => void;
 }) {
   const selectedAdapter = adapters.find((adapter) => mapSessionInputMode(adapter.inputMode) === selectedInputMode);
-  const [benchmarkSubsectionsExpanded, setBenchmarkSubsectionsExpanded] = useState({
+  const [benchmarkSubsectionsExpanded, setBenchmarkSubsectionsExpanded] = useState(() => ({
     selector: true,
-    workspace: true,
-  });
+    workspace: !isMobileViewport(),
+  }));
 
   useEffect(() => {
     if (focusAnchor === 'sessionFeedback' || focusAnchor === 'exports') {
@@ -10838,6 +10856,7 @@ function AdaptiveBenchmarkWorkspace({
   const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
   const [exportStatusMessage, setExportStatusMessage] = useState('');
   const [exportPanelOpen, setExportPanelOpen] = useState(focusAnchor === 'exports');
+  const shouldBuildExportPayloads = exportPanelOpen || humanFeedbackEditorOpen;
 
   const copyToClipboard = async (label: string, text: string): Promise<void> => {
     try {
@@ -10858,6 +10877,8 @@ function AdaptiveBenchmarkWorkspace({
   };
 
   const exportPayloads = useMemo(() => {
+    if (!shouldBuildExportPayloads) return null;
+
     const activeSessionStatus = undefined;
     const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(profile), null, 2);
     const llmPrompt = buildDictationScriptPrompt(profile);
@@ -10957,7 +10978,7 @@ function AdaptiveBenchmarkWorkspace({
       compactSessionFeedback,
       compactPromptPackage,
     };
-  }, [fallbackDiagnostics, humanFeedbackDraft, profile, sessionFeedback]);
+  }, [fallbackDiagnostics, humanFeedbackDraft, profile, sessionFeedback, shouldBuildExportPayloads]);
 
   useEffect(() => {
     if (focusAnchor === 'sessionFeedback') {
@@ -11068,6 +11089,8 @@ function AdaptiveBenchmarkWorkspace({
               </span>
               <em>{exportPanelOpen ? 'Hide exports' : 'Show exports'}</em>
             </summary>
+            {exportPanelOpen && exportPayloads ? (
+              <>
             <div className="adaptive-export-groups">
               <div>
                 <p className="dashboard-eyebrow">Benchmark JSON</p>
@@ -11311,6 +11334,8 @@ function AdaptiveBenchmarkWorkspace({
                   </button>
                 </div>
               </div>
+            ) : null}
+              </>
             ) : null}
           </details>
         </div>
