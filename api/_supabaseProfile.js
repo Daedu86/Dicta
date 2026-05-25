@@ -30,7 +30,7 @@ export async function resolveRequestProfile(req, options = {}) {
   if (!token) {
     if (options.allowLegacyEnvProfile) {
       const profileId = getEnv('VITE_SUPABASE_SYNC_PROFILE_ID');
-      if (profileId || !supabaseAuthConfigured) {
+      if (!supabaseAuthConfigured) {
         return {
           profileId: profileId || 'legacy-local',
           role: 'admin',

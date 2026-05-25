@@ -2,35 +2,16 @@ import { randomUUID } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 import { createClient } from '@supabase/supabase-js';
 import { assertOpenRouterAccess, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { OPENROUTER_ACTIVE_JOB_LIMIT, readOpenRouterJobPayload } from './_request.js';
 
 const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
-const VALID_LANGUAGES = new Set(['en', 'es', 'de', 'fr']);
 const JOB_RETENTION_DAYS = 14;
 
 function getRequiredEnv(name) {
   const value = process.env[name]?.trim() ?? '';
   if (!value) throw new Error(`Missing ${name}.`);
   return value;
-}
-
-function normalizeRequestBody(body) {
-  if (!body) return {};
-  if (typeof body === 'string') {
-    try {
-      return JSON.parse(body);
-    } catch {
-      return {};
-    }
-  }
-  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(body)) {
-    try {
-      return JSON.parse(body.toString('utf8'));
-    } catch {
-      return {};
-    }
-  }
-  return body;
 }
 
 function createSupabaseAdminClient() {
@@ -58,7 +39,7 @@ async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeo
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: prompt }],
-        ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        max_tokens: maxTokens,
       }),
       signal: controller.signal,
     });
@@ -88,32 +69,7 @@ function normalizeJobRow(row) {
 }
 
 export function readCreateJobPayload(body) {
-  const payload = normalizeRequestBody(body);
-  const model = typeof payload.model === 'string' ? payload.model.trim() : '';
-  const prompt = typeof payload.prompt === 'string' ? payload.prompt.trim() : '';
-  const maxTokensRaw = Number(payload.maxTokens);
-  const maxTokens = Number.isFinite(maxTokensRaw) ? Math.max(128, Math.min(1800, Math.round(maxTokensRaw))) : undefined;
-  const inputMode = typeof payload.inputMode === 'string' ? payload.inputMode : '';
-  const language = typeof payload.language === 'string' ? payload.language : '';
-  const slotLabel = typeof payload.slotLabel === 'string' ? payload.slotLabel.trim() : 'OpenRouter session';
-  const durationMinutes = Number(payload.durationMinutes);
-  const targetDifficulty = typeof payload.targetDifficulty === 'string' ? payload.targetDifficulty : '';
-
-  if (!model || !prompt) throw new Error('Missing model or prompt.');
-  if (!['audio', 'browser-tts', 'kokoro', 'qwen-cloud'].includes(inputMode)) throw new Error('Invalid inputMode.');
-  if (!VALID_LANGUAGES.has(language)) throw new Error('Invalid language.');
-  if (![2, 3, 4].includes(durationMinutes)) throw new Error('Invalid durationMinutes.');
-
-  return {
-    model,
-    prompt,
-    maxTokens,
-    inputMode,
-    language,
-    slotLabel,
-    durationMinutes,
-    ...(targetDifficulty ? { targetDifficulty } : {}),
-  };
+  return readOpenRouterJobPayload(body);
 }
 
 async function cleanupOldOpenRouterJobs(supabase, profileId) {
@@ -126,6 +82,20 @@ async function cleanupOldOpenRouterJobs(supabase, profileId) {
     .lt('updated_at', cutoff);
   if (error) {
     console.warn('OpenRouter job cleanup failed:', error.message);
+  }
+}
+
+async function enforceActiveOpenRouterJobLimit(supabase, profileId) {
+  const { count, error } = await supabase
+    .from(JOB_TABLE)
+    .select('job_id', { count: 'exact', head: true })
+    .eq('profile_id', profileId)
+    .in('status', ['queued', 'running']);
+  if (error) throw error;
+  if (Number(count ?? 0) >= OPENROUTER_ACTIVE_JOB_LIMIT) {
+    throw Object.assign(new Error(`Too many active OpenRouter jobs. Wait for one of the ${OPENROUTER_ACTIVE_JOB_LIMIT} active jobs to finish.`), {
+      statusCode: 429,
+    });
   }
 }
 
@@ -205,6 +175,7 @@ async function createJob(req, res) {
   const { profileId } = requester;
   const requestPayload = readCreateJobPayload(req.body);
   await cleanupOldOpenRouterJobs(supabase, profileId);
+  await enforceActiveOpenRouterJobLimit(supabase, profileId);
   const jobId = randomUUID();
   const now = new Date().toISOString();
   const { error } = await supabase.from(JOB_TABLE).insert({

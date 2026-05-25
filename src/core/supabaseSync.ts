@@ -166,7 +166,11 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
         skipped += 1;
         continue;
       }
-      if (remote.deleted === true) {
+      if (hasMalformedDeletedFlag(remote)) {
+        skipped += 1;
+        continue;
+      }
+      if (isSessionTombstonePayload(remote)) {
         const localSession = sessionsById.get(id);
         if (localSession && isRemoteNewer(row, localSession, ['updatedAt'])) {
           deletedSessionIds.add(id);
@@ -296,6 +300,9 @@ export function selectPushableSyncRows(localRows: DictaSyncRow[], remoteRows: Di
     if (!isValidSyncRow(localRow)) return false;
     const remoteRow = remoteByKey.get(syncRowIdentity(localRow));
     if (!remoteRow) return true;
+    if (localRow.item_type === 'session' && isSessionTombstonePayload(remoteRow.payload)) {
+      return compareTimestamp(localRow.updated_at, remoteRow.updated_at) > 0;
+    }
     if (localRow.item_type === 'session' && localSubmittedSessionOutranksRemote(localRow.payload, remoteRow.payload)) {
       return true;
     }
@@ -382,6 +389,14 @@ function remoteSubmittedSessionOutranksLocal(remotePayload: unknown, localPayloa
 
 function localSubmittedSessionOutranksRemote(localPayload: unknown, remotePayload: unknown): boolean {
   return isSubmittedFinishedSession(localPayload) && !isSubmittedFinishedSession(remotePayload);
+}
+
+function isSessionTombstonePayload(payload: unknown): boolean {
+  return asRecord(payload).deleted === true;
+}
+
+function hasMalformedDeletedFlag(payload: Record<string, unknown>): boolean {
+  return Object.prototype.hasOwnProperty.call(payload, 'deleted') && typeof payload.deleted !== 'boolean';
 }
 
 function isSubmittedFinishedSession(payload: unknown): boolean {

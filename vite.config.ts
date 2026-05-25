@@ -29,6 +29,56 @@ export default defineConfig(({ mode }) => {
       name: 'local-transcribe-api',
       configureServer(server) {
         const envLocalPath = path.resolve(process.cwd(), '.env.local');
+        const maxJsonBodyBytes = 64 * 1024;
+        const maxOpenRouterKeyBytes = 4096;
+        const maxTranscribeBodyBytes = 36 * 1024 * 1024;
+        const maxTranscribeAudioBytes = 25 * 1024 * 1024;
+        const openRouterFreeRouterModel = 'openrouter/free';
+        const openRouterPromptMaxChars = 32_000;
+        const openRouterModelMaxChars = 160;
+        const openRouterActiveJobLimit = 3;
+        const supportedAudioExtensions = new Set(['.mp3', '.wav', '.m4a', '.webm', '.ogg', '.flac']);
+
+        const httpError = (message: string, statusCode: number): Error & { statusCode: number } =>
+          Object.assign(new Error(message), { statusCode });
+
+        const sendLocalError = (res: { statusCode: number; end: (body?: string) => void }, error: unknown, fallback: string): void => {
+          const statusCode = Number((error as { statusCode?: unknown } | null)?.statusCode);
+          res.statusCode = Number.isFinite(statusCode) ? statusCode : 500;
+          res.end(error instanceof Error ? error.message : fallback);
+        };
+
+        const readRequestBody = async (req: NodeJS.ReadableStream, maxBytes: number): Promise<string> =>
+          new Promise((resolve, reject) => {
+            let data = '';
+            let bytes = 0;
+            let settled = false;
+            const settle = (fn: () => void): void => {
+              if (settled) return;
+              settled = true;
+              fn();
+            };
+            req.on('data', (chunk: Buffer | string) => {
+              if (settled) return;
+              bytes += typeof chunk === 'string' ? Buffer.byteLength(chunk) : chunk.length;
+              if (bytes > maxBytes) {
+                settle(() => reject(httpError(`Request body too large. Limit is ${maxBytes} bytes.`, 413)));
+                return;
+              }
+              data += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+            });
+            req.on('end', () => settle(() => resolve(data)));
+            req.on('error', (error) => settle(() => reject(error)));
+          });
+
+        const readJsonRequestBody = async <T>(req: NodeJS.ReadableStream, maxBytes: number): Promise<T> => {
+          const body = await readRequestBody(req, maxBytes);
+          try {
+            return JSON.parse(body) as T;
+          } catch {
+            throw httpError('Invalid JSON request body.', 400);
+          }
+        };
 
         const maskApiKeySuffix = (value: string): string => {
           const trimmed = value.trim();
@@ -49,8 +99,15 @@ export default defineConfig(({ mode }) => {
         const parseEnvValue = (rawValue: string): string => {
           const trimmed = rawValue.trim();
           if (!trimmed) return '';
+          if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
+            try {
+              const parsed = JSON.parse(trimmed) as unknown;
+              return typeof parsed === 'string' ? parsed : '';
+            } catch {
+              return trimmed.slice(1, -1);
+            }
+          }
           if (
-            (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) ||
             (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2)
           ) {
             return trimmed.slice(1, -1);
@@ -71,9 +128,17 @@ export default defineConfig(({ mode }) => {
           return parseEnvValue(line.slice('OPENROUTER_API_KEY='.length)).trim();
         };
 
-        const upsertOpenRouterApiKey = async (apiKey: string): Promise<void> => {
+        const validateOpenRouterApiKey = (apiKey: string): string => {
           const cleaned = apiKey.trim();
-          const nextLine = `OPENROUTER_API_KEY=${cleaned}`;
+          if (!cleaned) throw httpError('Missing apiKey.', 400);
+          if (/[\r\n]/.test(cleaned)) throw httpError('OpenRouter API key cannot contain line breaks.', 400);
+          if (cleaned.length > maxOpenRouterKeyBytes) throw httpError('OpenRouter API key is too large.', 400);
+          return cleaned;
+        };
+
+        const upsertOpenRouterApiKey = async (apiKey: string): Promise<void> => {
+          const cleaned = validateOpenRouterApiKey(apiKey);
+          const nextLine = `OPENROUTER_API_KEY=${JSON.stringify(cleaned)}`;
           const envText = await readEnvLocal();
           const lines = envText ? envText.split(/\r?\n/) : [];
           let replaced = false;
@@ -91,6 +156,39 @@ export default defineConfig(({ mode }) => {
             nextLines.push(nextLine);
           }
           await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
+        };
+
+        const normalizeOpenRouterModel = (value: unknown): string => {
+          const model = typeof value === 'string' ? value.trim() : '';
+          if (!model) return '';
+          if (model.length > openRouterModelMaxChars || !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model)) {
+            throw httpError('Invalid OpenRouter model id.', 400);
+          }
+          if (model !== openRouterFreeRouterModel && !model.endsWith(':free')) {
+            throw httpError('OpenRouter model must be openrouter/free or a :free model variant.', 400);
+          }
+          return model;
+        };
+
+        const normalizeOpenRouterPrompt = (value: unknown): string => {
+          const prompt = typeof value === 'string' ? value.trim() : '';
+          if (!prompt) return '';
+          if (prompt.length > openRouterPromptMaxChars) {
+            throw httpError(`Prompt is too large. Limit is ${openRouterPromptMaxChars} characters.`, 400);
+          }
+          return prompt;
+        };
+
+        const normalizeOpenRouterMaxTokens = (value: unknown, fallback: number): number => {
+          const hasValue = value !== undefined && value !== null && value !== '';
+          const numeric = hasValue ? Number(value) : fallback;
+          const bounded = Number.isFinite(numeric) ? numeric : fallback;
+          return Math.max(128, Math.min(1800, Math.round(bounded)));
+        };
+
+        const normalizeAudioExtension = (value: string): string => {
+          const ext = path.extname(value).toLowerCase();
+          return supportedAudioExtensions.has(ext) ? ext : '.mp3';
         };
 
         const removeOpenRouterApiKey = async (): Promise<boolean> => {
@@ -156,15 +254,7 @@ export default defineConfig(({ mode }) => {
         server.middlewares.use('/api/openrouter/key', async (req, res) => {
           if (req.method === 'POST') {
             try {
-              const body = await new Promise<string>((resolve, reject) => {
-                let data = '';
-                req.on('data', (chunk) => {
-                  data += chunk;
-                });
-                req.on('end', () => resolve(data));
-                req.on('error', reject);
-              });
-              const parsed = JSON.parse(body) as { apiKey?: string };
+              const parsed = await readJsonRequestBody<{ apiKey?: string }>(req, maxOpenRouterKeyBytes);
               const nextKey = parsed.apiKey?.trim() ?? '';
               if (!nextKey) {
                 res.statusCode = 400;
@@ -177,8 +267,7 @@ export default defineConfig(({ mode }) => {
               res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
               return;
             } catch (error) {
-              res.statusCode = 500;
-              res.end(error instanceof Error ? error.message : 'Failed to save OpenRouter key.');
+              sendLocalError(res, error, 'Failed to save OpenRouter key.');
               return;
             }
           }
@@ -215,17 +304,10 @@ export default defineConfig(({ mode }) => {
           }
 
           try {
-            const body = await new Promise<string>((resolve, reject) => {
-              let data = '';
-              req.on('data', (chunk) => {
-                data += chunk;
-              });
-              req.on('end', () => resolve(data));
-              req.on('error', reject);
-            });
-            const parsed = JSON.parse(body) as { model?: string; prompt?: string };
-            const model = parsed.model?.trim() ?? '';
-            const prompt = parsed.prompt?.trim() ?? '';
+            const parsed = await readJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
+            const model = normalizeOpenRouterModel(parsed.model);
+            const prompt = normalizeOpenRouterPrompt(parsed.prompt);
+            const maxTokens = normalizeOpenRouterMaxTokens(parsed.maxTokens, 600);
             if (!model || !prompt) {
               res.statusCode = 400;
               res.end('Missing model or prompt.');
@@ -243,6 +325,7 @@ export default defineConfig(({ mode }) => {
               body: JSON.stringify({
                 model,
                 messages: [{ role: 'user', content: prompt }],
+                max_tokens: maxTokens,
               }),
             });
 
@@ -251,8 +334,7 @@ export default defineConfig(({ mode }) => {
             res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
             res.end(responseBody);
           } catch (error) {
-            res.statusCode = 500;
-            res.end(error instanceof Error ? error.message : 'OpenRouter test request failed.');
+            sendLocalError(res, error, 'OpenRouter test request failed.');
           }
         });
 
@@ -285,15 +367,7 @@ export default defineConfig(({ mode }) => {
           }
 
           try {
-            const body = await new Promise<string>((resolve, reject) => {
-              let data = '';
-              req.on('data', (chunk) => {
-                data += chunk;
-              });
-              req.on('end', () => resolve(data));
-              req.on('error', reject);
-            });
-            const parsed = JSON.parse(body) as {
+            const parsed = await readJsonRequestBody<{
               model?: string;
               prompt?: string;
               maxTokens?: number;
@@ -302,21 +376,30 @@ export default defineConfig(({ mode }) => {
               slotLabel?: string;
               durationMinutes?: number;
               targetDifficulty?: string;
-            };
-            const model = parsed.model?.trim() ?? '';
-            const prompt = parsed.prompt?.trim() ?? '';
+            }>(req, maxJsonBodyBytes);
+            const model = normalizeOpenRouterModel(parsed.model);
+            const prompt = normalizeOpenRouterPrompt(parsed.prompt);
             if (!model || !prompt) {
               res.statusCode = 400;
               res.end('Missing model or prompt.');
               return;
             }
+            const activeJobCount = [...localOpenRouterJobs.values()].filter((job) => job.status === 'queued' || job.status === 'running').length;
+            if (activeJobCount >= openRouterActiveJobLimit) {
+              res.statusCode = 429;
+              res.end(`Too many active OpenRouter jobs. Wait for one of the ${openRouterActiveJobLimit} active jobs to finish.`);
+              return;
+            }
 
             const now = new Date().toISOString();
             const jobId = randomUUID();
+            const durationMinutes = Number(parsed.durationMinutes);
+            const fallbackMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : durationMinutes === 4 ? 1600 : 600;
+            const maxTokens = normalizeOpenRouterMaxTokens(parsed.maxTokens, fallbackMaxTokens);
             const requestPayload = {
               model,
               prompt,
-              maxTokens: parsed.maxTokens,
+              maxTokens,
               inputMode: parsed.inputMode,
               language: parsed.language,
               slotLabel: parsed.slotLabel,
@@ -350,7 +433,7 @@ export default defineConfig(({ mode }) => {
                   body: JSON.stringify({
                     model,
                     messages: [{ role: 'user', content: prompt }],
-                    ...(parsed.maxTokens ? { max_tokens: parsed.maxTokens } : {}),
+                    max_tokens: maxTokens,
                   }),
                 });
                 const responseBody = await response.text();
@@ -382,8 +465,7 @@ export default defineConfig(({ mode }) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(job));
           } catch (error) {
-            res.statusCode = 500;
-            res.end(error instanceof Error ? error.message : 'OpenRouter job request failed.');
+            sendLocalError(res, error, 'OpenRouter job request failed.');
           }
         });
 
@@ -433,21 +515,12 @@ export default defineConfig(({ mode }) => {
           }
 
           try {
-            const body = await new Promise<string>((resolve, reject) => {
-              let data = '';
-              req.on('data', (chunk) => {
-                data += chunk;
-              });
-              req.on('end', () => resolve(data));
-              req.on('error', reject);
-            });
-
-            const parsed = JSON.parse(body) as {
+            const parsed = await readJsonRequestBody<{
               fileName?: string;
               audioBase64?: string;
               audioUrl?: string;
               language?: string;
-            };
+            }>(req, maxTranscribeBodyBytes);
             if ((!parsed.audioBase64 || !parsed.fileName) && !parsed.audioUrl) {
               res.statusCode = 400;
               res.end('Missing audio payload.');
@@ -457,13 +530,16 @@ export default defineConfig(({ mode }) => {
             const supportedTranscriptionLanguages = new Set(['en', 'es', 'de', 'fr']);
             const safeLanguage = supportedTranscriptionLanguages.has(String(parsed.language)) ? String(parsed.language) : 'en';
             const resolvedExt = parsed.fileName
-              ? path.extname(parsed.fileName)
-              : path.extname(new URL(parsed.audioUrl as string).pathname);
-            const ext = resolvedExt || '.mp3';
+              ? normalizeAudioExtension(parsed.fileName)
+              : normalizeAudioExtension(new URL(normalizeRemoteAudioUrl(parsed.audioUrl as string)).pathname);
+            const ext = resolvedExt;
             const id = randomUUID();
             const audioPath = path.join(os.tmpdir(), `dicta-${id}${ext}`);
             const outputPath = path.join(os.tmpdir(), `dicta-${id}.json`);
             if (parsed.audioBase64) {
+              if (Buffer.byteLength(parsed.audioBase64, 'base64') > maxTranscribeAudioBytes) {
+                throw httpError(`Audio payload too large. Limit is ${maxTranscribeAudioBytes} bytes.`, 413);
+              }
               await fs.writeFile(audioPath, Buffer.from(parsed.audioBase64, 'base64'));
             } else {
               const remoteUrl = normalizeRemoteAudioUrl(parsed.audioUrl as string);
@@ -485,7 +561,14 @@ export default defineConfig(({ mode }) => {
                 res.end(`URL did not return audio content (received: ${contentType || 'unknown'}).`);
                 return;
               }
+              const contentLength = Number(response.headers.get('content-length') ?? NaN);
+              if (Number.isFinite(contentLength) && contentLength > maxTranscribeAudioBytes) {
+                throw httpError(`Remote audio is too large. Limit is ${maxTranscribeAudioBytes} bytes.`, 413);
+              }
               const arrayBuffer = await response.arrayBuffer();
+              if (arrayBuffer.byteLength > maxTranscribeAudioBytes) {
+                throw httpError(`Remote audio is too large. Limit is ${maxTranscribeAudioBytes} bytes.`, 413);
+              }
               await fs.writeFile(audioPath, Buffer.from(arrayBuffer));
             }
 
@@ -512,8 +595,7 @@ export default defineConfig(({ mode }) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(transcript);
           } catch (error) {
-            res.statusCode = 500;
-            res.end(error instanceof Error ? error.message : 'Transcription server error');
+            sendLocalError(res, error, 'Transcription server error');
           }
         });
 
@@ -925,6 +1007,12 @@ async function waitForCosyVoiceSidecarReady(timeoutMs = 10_000): Promise<boolean
 function normalizeRemoteAudioUrl(rawUrl: string): string {
   try {
     const url = new URL(rawUrl);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw httpError('Remote audio URL must use http or https.', 400);
+    }
+    if (isBlockedRemoteAudioHostname(url.hostname)) {
+      throw httpError('Remote audio URL host is not allowed for local transcription.', 400);
+    }
     if (url.hostname.includes('archive.org') && url.pathname.startsWith('/details/')) {
       const parts = url.pathname.split('/').filter(Boolean);
       if (parts.length >= 3) {
@@ -935,7 +1023,43 @@ function normalizeRemoteAudioUrl(rawUrl: string): string {
       }
     }
     return url.toString();
-  } catch {
-    return rawUrl;
+  } catch (error) {
+    if (error instanceof Error && 'statusCode' in error) throw error;
+    throw httpError('Invalid remote audio URL.', 400);
   }
+}
+
+function isBlockedRemoteAudioHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().replace(/^\[/, '').replace(/\]$/, '').replace(/\.$/, '');
+  if (!normalized) return true;
+  if (
+    normalized === 'localhost' ||
+    normalized === 'metadata.google.internal' ||
+    normalized.endsWith('.localhost') ||
+    normalized.endsWith('.local')
+  ) {
+    return true;
+  }
+  if (normalized === '::1' || normalized === '::' || normalized.startsWith('fe80:') || normalized.startsWith('fc') || normalized.startsWith('fd')) {
+    return true;
+  }
+
+  const ipv4 = normalized.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!ipv4) return false;
+  const [a, b, c, d] = ipv4.slice(1).map(Number);
+  if ([a, b, c, d].some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    a === 169 && b === 254 ||
+    a === 172 && b >= 16 && b <= 31 ||
+    a === 192 && b === 168 ||
+    a === 100 && b >= 64 && b <= 127 ||
+    a >= 224
+  );
+}
+
+function httpError(message: string, statusCode: number): Error & { statusCode: number } {
+  return Object.assign(new Error(message), { statusCode });
 }
