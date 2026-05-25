@@ -15,11 +15,13 @@ export type OpenRouterGeneratePromptSource =
   | 'original-benchmark-only'
   | 'original-base';
 
+export type OpenRouterDurationMinutes = 1 | 2 | 3 | 4;
+
 export type OpenRouterGenerationPromptArgs = {
   profile: InputLanguageBenchmarkMetrics;
   sessionFeedback: AdaptiveSessionFeedback | null;
   promptSource: OpenRouterGeneratePromptSource;
-  durationMinutes: 2 | 3 | 4;
+  durationMinutes: OpenRouterDurationMinutes;
   targetDifficulty?: DictationScriptDifficulty;
   difficultyInstruction?: string;
   diversificationHints?: string[];
@@ -34,7 +36,7 @@ export type OpenRouterPromptSizeEstimate = {
   characterCount: number;
   approximateTokenCount: number;
   promptMode: OpenRouterGeneratePromptSource;
-  durationMinutes: 2 | 3 | 4;
+  durationMinutes: OpenRouterDurationMinutes;
   targetDifficulty?: DictationScriptDifficulty;
   inputMode: InputLanguageBenchmarkMetrics['inputMode'];
   language: InputLanguageBenchmarkMetrics['language'];
@@ -170,14 +172,15 @@ export function buildOpenRouterGenerationPrompt({
   const minSpokenWords = Math.round(targetSpokenWords * 0.85);
   const maxSpokenWords = Math.round(targetSpokenWords * 1.1);
   const minimumPhraseCount = durationMinutes * 10;
+  const durationLabel = formatDurationMinutes(durationMinutes);
   const hardRules = [
     'Return only a single JSON object. Do not wrap it in Markdown.',
     `The returned JSON field "inputMode" must be exactly "${normalizedProfile.inputMode}".`,
     `The returned JSON field "language" must be exactly "${normalizedProfile.language}".`,
     ...(targetDifficulty ? [`The returned JSON field "difficulty" must be exactly "${targetDifficulty}".`] : []),
     ...(difficultyInstruction ? [difficultyInstruction] : []),
-    `Generate a training script with voice playback duration of ${durationMinutes} minutes and set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
-    `The combined spoken text across all phrases should be ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total, so the actual dictation lasts about ${durationMinutes} minutes.`,
+    `Generate a training script with voice playback duration of ${durationLabel} and set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
+    `The combined spoken text across all phrases should be ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total, so the actual dictation lasts about ${durationLabel}.`,
     `Create at least ${minimumPhraseCount} phrases unless the phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
     'If unsure, prefer a slightly longer script over a short one. Do not satisfy the duration by changing only "estimatedDurationSec"; generate enough phrase text to match the requested audio length.',
     '"estimatedDurationSec" means the expected time the learner hears the voice/audio, not total attempt or typing time.',
@@ -200,7 +203,7 @@ export function buildOpenRouterGenerationPrompt({
     `Write all phrase text naturally in ${languageName}.`,
     ...(targetDifficulty ? [`Set "difficulty" exactly to "${targetDifficulty}".`] : []),
     ...(difficultyInstruction ? [difficultyInstruction] : []),
-    `Target voice playback duration: ${durationMinutes} minutes; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
+    `Target voice playback duration: ${durationLabel}; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
     `Combined spoken phrase text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
     `Create at least ${minimumPhraseCount} phrases unless phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
     'Use semantic phrase boundaries. Avoid unsafe mid-grammar splits. Keep phrases replayable independently when possible.',
@@ -249,4 +252,8 @@ export function buildOpenRouterGenerationPrompt({
     prompt: `${hardRules}\n\nGeneration context:\n${sourcePayload}`,
     outputTemplate,
   };
+}
+
+function formatDurationMinutes(minutes: OpenRouterDurationMinutes): string {
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
 }

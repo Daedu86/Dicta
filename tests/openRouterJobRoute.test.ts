@@ -22,6 +22,23 @@ describe('openRouter jobs route payload validation', () => {
     });
   });
 
+  it('accepts one-minute express durable generation jobs', () => {
+    expect(
+      readCreateJobPayload({
+        model: 'openrouter/free',
+        prompt: 'Generate a short express Dicta session.',
+        inputMode: 'browser-tts',
+        language: 'de',
+        slotLabel: 'Express easy direct session',
+        durationMinutes: 1,
+      }),
+    ).toMatchObject({
+      maxTokens: 800,
+      slotLabel: 'Express easy direct session',
+      durationMinutes: 1,
+    });
+  });
+
   it('rejects unsupported durable job languages', () => {
     expect(() =>
       readCreateJobPayload({

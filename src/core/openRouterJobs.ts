@@ -1,4 +1,5 @@
 import type { DictationScriptDifficulty } from './adaptive/dictationScriptValidation';
+import type { OpenRouterDurationMinutes } from './adaptive/openRouterGenerationPrompt';
 import type { InputMode, LanguageCode } from './adaptive/types';
 import { isSupportedLanguage } from './languages';
 
@@ -15,7 +16,7 @@ export type ActiveOpenRouterJob = {
   slotLabel: string;
   inputMode: InputMode;
   language: LanguageCode;
-  durationMinutes: 2 | 3 | 4;
+  durationMinutes: OpenRouterDurationMinutes;
   targetDifficulty?: DictationScriptDifficulty;
   promptMode?: string;
   promptCharacterCount?: number;
@@ -187,6 +188,6 @@ function isLanguage(value: string): value is LanguageCode {
   return isSupportedLanguage(value);
 }
 
-function isDuration(value: number): value is 2 | 3 | 4 {
-  return value === 2 || value === 3 || value === 4;
+function isDuration(value: number): value is OpenRouterDurationMinutes {
+  return value === 1 || value === 2 || value === 3 || value === 4;
 }

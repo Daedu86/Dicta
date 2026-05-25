@@ -22,6 +22,19 @@ describe('OpenRouter fallback script helpers', () => {
     expect(validateDictationScript(script).ok).toBe(true);
   });
 
+  it('builds a shorter one-minute fallback session', () => {
+    const script = buildFallbackOpenRouterSessionScript({
+      inputMode: 'browser-tts',
+      language: 'en',
+      durationMinutes: 1,
+      targetDifficulty: 'easy',
+    });
+
+    expect(script.estimatedDurationSec).toBe(60);
+    expect(script.phrases).toHaveLength(6);
+    expect(validateDictationScript(script).ok).toBe(true);
+  });
+
   it('produces varied fallback scripts for different seeds', () => {
     const a = buildFallbackOpenRouterSessionScript({
       inputMode: 'browser-tts',

@@ -234,6 +234,26 @@ describe('openRouterGenerationPrompt', () => {
     expect(payload.prompt).toContain('Compact benchmark context');
   });
 
+  it('can request an express one-minute compact adaptive v2 script', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    const payload = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 1,
+      targetDifficulty: 'easy',
+      difficultyInstruction: 'Use easy content and keep phrase-level "difficulty" values low, roughly 0.25-0.45.',
+    });
+
+    expect(payload.prompt).toContain('Target voice playback duration: 1 minute');
+    expect(payload.prompt).toContain('set "estimatedDurationSec" close to 60');
+    expect(payload.prompt).toContain('133-172 words');
+    expect(payload.prompt).toContain('approximately 156 words total');
+    expect(payload.prompt).toContain('Create at least 10 phrases');
+    expect(payload.prompt).toContain('Set "difficulty" exactly to "easy"');
+    expect(payload.prompt).toContain('0.25-0.45');
+  });
+
   it('can request an advanced two-minute compact adaptive script', () => {
     const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
     const payload = buildOpenRouterGenerationPrompt({

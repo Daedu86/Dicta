@@ -10,8 +10,9 @@ export const OPENROUTER_TARGET_DIFFICULTY_MAX_CHARS = 40;
 
 const VALID_LANGUAGES = new Set(['en', 'es', 'de', 'fr']);
 const VALID_INPUT_MODES = new Set(['audio', 'browser-tts', 'kokoro', 'qwen-cloud']);
-const VALID_DURATIONS = new Set([2, 3, 4]);
+const VALID_DURATIONS = new Set([1, 2, 3, 4]);
 const DEFAULT_JOB_MAX_TOKENS_BY_DURATION = new Map([
+  [1, 800],
   [2, 1_000],
   [3, 1_300],
   [4, 1_600],

@@ -1,11 +1,12 @@
 import type { DictationScript, DictationScriptDifficulty, DictationScriptIntonationHint } from './dictationScriptValidation';
+import type { OpenRouterDurationMinutes } from './openRouterGenerationPrompt';
 import type { InputMode, LanguageCode, PhraseBoundaryType, PhraseSize } from './types';
 import { formatSupportedLanguage } from '../languages';
 
 type FallbackScriptOptions = {
   inputMode: InputMode;
   language: LanguageCode;
-  durationMinutes: 2 | 3 | 4;
+  durationMinutes: OpenRouterDurationMinutes;
   targetDifficulty?: DictationScriptDifficulty;
   seed?: string;
 };
@@ -90,7 +91,7 @@ export function buildFallbackOpenRouterSessionScript(options: FallbackScriptOpti
     ? [...FALLBACK_PHRASES[options.language], ...HARD_FALLBACK_PHRASES[options.language]]
     : [...FALLBACK_PHRASES[options.language]];
   const rotatedPhrases = rotate(basePhrases, seedInt % Math.max(1, basePhrases.length));
-  const phraseCount = options.durationMinutes === 4 ? 24 : options.durationMinutes === 3 ? 18 : 12;
+  const phraseCount = options.durationMinutes * 6;
   const difficultyScore = difficulty === 'hard' ? 0.78 : difficulty === 'easy' ? 0.35 : 0.55;
   const topicSuffix = buildTopicSuffix(options.language, seedInt);
   const recommendedPauseMs = options.language === 'de' ? 760 + (seedInt % 140) : 620 + (seedInt % 120);

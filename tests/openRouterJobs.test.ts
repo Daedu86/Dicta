@@ -97,10 +97,10 @@ describe('openRouterJobs', () => {
         {
           jobId: 'job-legacy',
           model: 'openrouter/free',
-          slotLabel: 'Easy direct session',
+          slotLabel: 'Express easy direct session',
           inputMode: 'browser-tts',
           language: 'fr',
-          durationMinutes: 2,
+          durationMinutes: 1,
           startedAt: '2026-05-17T10:00:00.000Z',
         },
         {
@@ -124,6 +124,7 @@ describe('openRouterJobs', () => {
     expect(restoredJobs[0]).toMatchObject({
       jobId: 'job-legacy',
       language: 'fr',
+      durationMinutes: 1,
     });
     expect(restoredJobs[0]).not.toHaveProperty('origin');
     expect(restoredJobs[0]).not.toHaveProperty('customSlotId');

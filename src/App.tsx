@@ -45,6 +45,7 @@ import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './core
 import {
   buildOpenRouterGenerationPrompt,
   estimateOpenRouterPromptSize,
+  type OpenRouterDurationMinutes,
   type OpenRouterGeneratePromptSource,
 } from './core/adaptive/openRouterGenerationPrompt';
 import { buildAdaptiveUserSystemReport } from './core/adaptive/adaptiveUserSystemReport';
@@ -304,6 +305,54 @@ type WorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro'
 type ThemeMode = 'light' | 'dark';
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
+type LeaderboardSessionLength = 'express' | 'standard';
+type LeaderboardSectionId =
+  | 'easy-express'
+  | 'medium-express'
+  | 'hard-express'
+  | 'easy-standard'
+  | 'medium-standard'
+  | 'hard-standard';
+type LeaderboardRangeMetric = {
+  range: MetricsRangeView;
+  label: string;
+  sessionCount: number;
+  durationLabel: string;
+  avgPointsLabel: string;
+  avgScoreLabel: string;
+  avgAccuracyLabel: string;
+  avgWpmLabel: string;
+};
+type LeaderboardSection = {
+  id: LeaderboardSectionId;
+  label: string;
+  difficulty: Difficulty;
+  length: LeaderboardSessionLength;
+  sessions: Array<{ rank: number; session: StoredSession }>;
+  rangeMetrics: LeaderboardRangeMetric[];
+};
+
+const LEADERBOARD_SECTION_DEFINITIONS: Array<{
+  id: LeaderboardSectionId;
+  label: string;
+  difficulty: Difficulty;
+  length: LeaderboardSessionLength;
+}> = [
+  { id: 'easy-express', label: 'Easy Express', difficulty: 'easy', length: 'express' },
+  { id: 'medium-express', label: 'Medium Express', difficulty: 'normal', length: 'express' },
+  { id: 'hard-express', label: 'Hard Express', difficulty: 'hard', length: 'express' },
+  { id: 'easy-standard', label: 'Easy Standard', difficulty: 'easy', length: 'standard' },
+  { id: 'medium-standard', label: 'Medium Standard', difficulty: 'normal', length: 'standard' },
+  { id: 'hard-standard', label: 'Hard Standard', difficulty: 'hard', length: 'standard' },
+];
+
+const LEADERBOARD_RANGE_DEFINITIONS: Array<{ range: MetricsRangeView; label: string }> = [
+  { range: 'today', label: 'Today' },
+  { range: 'week', label: 'Week' },
+  { range: 'twoWeeks', label: '2 Weeks' },
+  { range: 'threeWeeks', label: '3 Weeks' },
+  { range: 'month', label: 'Month' },
+];
 
 function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
@@ -659,6 +708,9 @@ function App() {
   const [directOpenRouterBusy, setDirectOpenRouterBusy] = useState(false);
   const [directIntermediateOpenRouterBusy, setDirectIntermediateOpenRouterBusy] = useState(false);
   const [directAdvancedOpenRouterBusy, setDirectAdvancedOpenRouterBusy] = useState(false);
+  const [expressEasyOpenRouterBusy, setExpressEasyOpenRouterBusy] = useState(false);
+  const [expressIntermediateOpenRouterBusy, setExpressIntermediateOpenRouterBusy] = useState(false);
+  const [expressAdvancedOpenRouterBusy, setExpressAdvancedOpenRouterBusy] = useState(false);
   const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name?: string; context_length?: number }>>([]);
   const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [openRouterError, setOpenRouterError] = useState('');
@@ -681,7 +733,15 @@ function App() {
   const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => {
     return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
   });
-  const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
+  const [leaderboardExpanded, setLeaderboardExpanded] = useState(true);
+  const [leaderboardSectionExpanded, setLeaderboardSectionExpanded] = useState<Record<LeaderboardSectionId, boolean>>({
+    'easy-express': false,
+    'medium-express': false,
+    'hard-express': false,
+    'easy-standard': false,
+    'medium-standard': false,
+    'hard-standard': false,
+  });
   const [insightsDiagnosticInputMode, setInsightsDiagnosticInputMode] = useState<InputMode>('browser-tts');
   const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
   const [insightsDiagnosticFallbackReport, setInsightsDiagnosticFallbackReport] = useState('');
@@ -1128,11 +1188,16 @@ function App() {
   );
   const leaderboard = useMemo(
     () =>
-      [...sessions]
+      sortLeaderboardSessions(
+        sessionsWithVoiceDuration
         .filter((session) => resolveSessionLanguage(session) === leaderboardLanguageView)
-        .sort((a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy)
+      )
         .map((session, index) => ({ rank: index + 1, session })),
-    [sessions, leaderboardLanguageView],
+    [sessionsWithVoiceDuration, leaderboardLanguageView],
+  );
+  const leaderboardSections = useMemo(
+    () => buildLeaderboardSections(sessionsWithVoiceDuration, leaderboardLanguageView),
+    [sessionsWithVoiceDuration, leaderboardLanguageView],
   );
   const adminSessions = useMemo(
     () => {
@@ -3140,7 +3205,7 @@ function App() {
   }: {
     slotLabel: string;
     displayLabel: string;
-    durationMinutes: 2 | 3 | 4;
+    durationMinutes: OpenRouterDurationMinutes;
     isBusy: boolean;
     setBusy: (value: boolean) => void;
     targetDifficulty?: DictationScriptDifficulty;
@@ -3172,7 +3237,7 @@ function App() {
     setOpenRouterError('');
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
-    const targetMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
+    const targetMaxTokens = durationMinutes === 1 ? 800 : durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
       const sessionFeedback = selectLatestAdaptiveSessionFeedback(
@@ -3321,6 +3386,42 @@ function App() {
       durationMinutes: 2,
       isBusy: directAdvancedOpenRouterBusy,
       setBusy: setDirectAdvancedOpenRouterBusy,
+      targetDifficulty: 'hard',
+      difficultyInstruction: 'Use advanced content and keep phrase-level "difficulty" values high, roughly 0.70-0.90.',
+    });
+  }
+
+  async function generateExpressEasyNextSessionFromOpenRouter(): Promise<void> {
+    await generateDirectSessionFromOpenRouter({
+      slotLabel: 'Express easy direct session',
+      displayLabel: 'Express easy session',
+      durationMinutes: 1,
+      isBusy: expressEasyOpenRouterBusy,
+      setBusy: setExpressEasyOpenRouterBusy,
+      targetDifficulty: 'easy',
+      difficultyInstruction: 'Use easy content and keep phrase-level "difficulty" values low, roughly 0.25-0.45.',
+    });
+  }
+
+  async function generateExpressIntermediateNextSessionFromOpenRouter(): Promise<void> {
+    await generateDirectSessionFromOpenRouter({
+      slotLabel: 'Express intermediate direct session',
+      displayLabel: 'Express medium session',
+      durationMinutes: 1,
+      isBusy: expressIntermediateOpenRouterBusy,
+      setBusy: setExpressIntermediateOpenRouterBusy,
+      targetDifficulty: 'normal',
+      difficultyInstruction: 'Keep phrase-level "difficulty" values in an intermediate range, roughly 0.45-0.65.',
+    });
+  }
+
+  async function generateExpressAdvancedNextSessionFromOpenRouter(): Promise<void> {
+    await generateDirectSessionFromOpenRouter({
+      slotLabel: 'Express advanced direct session',
+      displayLabel: 'Express hard session',
+      durationMinutes: 1,
+      isBusy: expressAdvancedOpenRouterBusy,
+      setBusy: setExpressAdvancedOpenRouterBusy,
       targetDifficulty: 'hard',
       difficultyInstruction: 'Use advanced content and keep phrase-level "difficulty" values high, roughly 0.70-0.90.',
     });
@@ -6170,9 +6271,36 @@ function App() {
     activeJobs: activeOpenRouterJobs,
     nowMs: trainingGenerationNowMs,
   });
+  const expressEasyGenerationNotice = buildTrainingGenerationButtonNotice({
+    slotLabel: 'Express easy direct session',
+    displayLabel: 'Express easy session',
+    notices: trainingGenerationNotices,
+    jobNotifications: openRouterJobNotifications,
+    activeJobs: activeOpenRouterJobs,
+    nowMs: trainingGenerationNowMs,
+  });
+  const expressMediumGenerationNotice = buildTrainingGenerationButtonNotice({
+    slotLabel: 'Express intermediate direct session',
+    displayLabel: 'Express medium session',
+    notices: trainingGenerationNotices,
+    jobNotifications: openRouterJobNotifications,
+    activeJobs: activeOpenRouterJobs,
+    nowMs: trainingGenerationNowMs,
+  });
+  const expressHardGenerationNotice = buildTrainingGenerationButtonNotice({
+    slotLabel: 'Express advanced direct session',
+    displayLabel: 'Express hard session',
+    notices: trainingGenerationNotices,
+    jobNotifications: openRouterJobNotifications,
+    activeJobs: activeOpenRouterJobs,
+    nowMs: trainingGenerationNowMs,
+  });
   const easyDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Easy direct session');
   const mediumDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Intermediate direct session');
   const hardDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Advanced direct session');
+  const expressEasyGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express easy direct session');
+  const expressMediumGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express intermediate direct session');
+  const expressHardGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express advanced direct session');
 
   function replayFocusedAudio(): void {
     const currentTime = engineRef.current?.getCurrentTime() ?? audioRef.current?.currentTime ?? 0;
@@ -6333,8 +6461,21 @@ function App() {
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
           : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
         statusMessage: easyGenerationNotice?.message,
         statusTone: easyGenerationNotice?.tone,
+      },
+      {
+        id: 'express-easy',
+        label: expressEasyOpenRouterBusy ? 'Requesting express easy...' : expressEasyGenerationRunning ? 'Generating express easy...' : 'Express Easy Session',
+        onClick: () => void generateExpressEasyNextSessionFromOpenRouter(),
+        disabled: !isOnline || expressEasyOpenRouterBusy || expressEasyGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        title: sessionQuotaStatus.blocked
+          ? sessionQuotaStatus.message
+          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
+        statusMessage: expressEasyGenerationNotice?.message,
+        statusTone: expressEasyGenerationNotice?.tone,
       },
       {
         id: 'medium',
@@ -6344,8 +6485,21 @@ function App() {
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
           : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
         statusMessage: mediumGenerationNotice?.message,
         statusTone: mediumGenerationNotice?.tone,
+      },
+      {
+        id: 'express-medium',
+        label: expressIntermediateOpenRouterBusy ? 'Requesting express medium...' : expressMediumGenerationRunning ? 'Generating express medium...' : 'Express Medium Session',
+        onClick: () => void generateExpressIntermediateNextSessionFromOpenRouter(),
+        disabled: !isOnline || expressIntermediateOpenRouterBusy || expressMediumGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        title: sessionQuotaStatus.blocked
+          ? sessionQuotaStatus.message
+          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
+        statusMessage: expressMediumGenerationNotice?.message,
+        statusTone: expressMediumGenerationNotice?.tone,
       },
       {
         id: 'hard',
@@ -6355,8 +6509,21 @@ function App() {
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
           : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
         statusMessage: hardGenerationNotice?.message,
         statusTone: hardGenerationNotice?.tone,
+      },
+      {
+        id: 'express-hard',
+        label: expressAdvancedOpenRouterBusy ? 'Requesting express hard...' : expressHardGenerationRunning ? 'Generating express hard...' : 'Express Hard Session',
+        onClick: () => void generateExpressAdvancedNextSessionFromOpenRouter(),
+        disabled: !isOnline || expressAdvancedOpenRouterBusy || expressHardGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        title: sessionQuotaStatus.blocked
+          ? sessionQuotaStatus.message
+          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
+        statusMessage: expressHardGenerationNotice?.message,
+        statusTone: expressHardGenerationNotice?.tone,
       },
       {
         id: 'custom',
@@ -8126,11 +8293,9 @@ function App() {
                 <div className="metrics-header">
                   <div>
                     <h2>Leaderboard</h2>
-                    {!leaderboardExpanded ? (
-                      <p className="dashboard-meta">
-                        {leaderboard.length} {leaderboard.length === 1 ? 'session' : 'sessions'} for {leaderboardLanguageView.toUpperCase()}.
-                      </p>
-                    ) : null}
+                    <p className="dashboard-meta">
+                      {leaderboard.length} {leaderboard.length === 1 ? 'session' : 'sessions'} for {leaderboardLanguageView.toUpperCase()}.
+                    </p>
                   </div>
                   <div className="live-metrics-language-tabs leaderboard-language-tabs" role="tablist" aria-label="Leaderboard language">
                     {SUPPORTED_LANGUAGES.map((code) => (
@@ -8166,125 +8331,179 @@ function App() {
                   </button>
                 </div>
                 {leaderboardExpanded ? (
-                <div className="leaderboard-table leaderboard-list-full">
-                  <div className="leaderboard-table-header">
-                    <span>Position</span>
-                    <span>Name</span>
-                    <span>Points</span>
-                    <span>Score</span>
-                    <span>Accuracy</span>
-                    <span>WPM</span>
-                    <span>Lag</span>
-                    <span>Rate</span>
-                    <span>Status</span>
-                    <span>Duration</span>
-                    <span>Updated</span>
-                    <span>Action</span>
+                  <div className="leaderboard-sections">
+                    {leaderboard.length === 0 ? (
+                      <div className="leaderboard-empty">
+                        No sessions yet for {leaderboardLanguageView.toUpperCase()}. Finish a session in that language to populate this leaderboard.
+                      </div>
+                    ) : null}
+                    {leaderboardSections.map((section) => {
+                      const sectionExpanded = Boolean(leaderboardSectionExpanded[section.id]);
+                      return (
+                        <section key={section.id} className="leaderboard-difficulty-section">
+                          <button
+                            type="button"
+                            className="leaderboard-section-header"
+                            onClick={() =>
+                              setLeaderboardSectionExpanded((current) => ({
+                                ...current,
+                                [section.id]: !current[section.id],
+                              }))
+                            }
+                            aria-expanded={sectionExpanded}
+                          >
+                            <span>
+                              <strong>{section.label}</strong>
+                              <small>
+                                {section.sessions.length} {section.sessions.length === 1 ? 'session' : 'sessions'}
+                              </small>
+                            </span>
+                            <span className={`leaderboard-section-chevron ${sectionExpanded ? 'leaderboard-section-chevron-open' : ''}`} aria-hidden="true">
+                              ⌄
+                            </span>
+                          </button>
+                          {sectionExpanded ? (
+                            <div className="leaderboard-section-body">
+                              <div className="leaderboard-range-metrics" aria-label={`${section.label} average metrics`}>
+                                {section.rangeMetrics.map((rangeMetric) => (
+                                  <section key={rangeMetric.range} className="leaderboard-range-panel">
+                                    <h4>{rangeMetric.label}</h4>
+                                    <div className="leaderboard-range-grid">
+                                      <Metric label="Sessions" value={String(rangeMetric.sessionCount)} />
+                                      <Metric label="Duration" value={rangeMetric.durationLabel} />
+                                      <Metric label="Avg points" value={rangeMetric.avgPointsLabel} />
+                                      <Metric label="Avg score" value={rangeMetric.avgScoreLabel} />
+                                      <Metric label="Avg accuracy" value={rangeMetric.avgAccuracyLabel} />
+                                      <Metric label="Avg WPM" value={rangeMetric.avgWpmLabel} />
+                                    </div>
+                                  </section>
+                                ))}
+                              </div>
+                              <div className="leaderboard-table leaderboard-list-full">
+                                <div className="leaderboard-table-header">
+                                  <span>Position</span>
+                                  <span>Name</span>
+                                  <span>Points</span>
+                                  <span>Score</span>
+                                  <span>Accuracy</span>
+                                  <span>WPM</span>
+                                  <span>Lag</span>
+                                  <span>Rate</span>
+                                  <span>Status</span>
+                                  <span>Duration</span>
+                                  <span>Updated</span>
+                                  <span>Action</span>
+                                </div>
+                                {section.sessions.length === 0 ? (
+                                  <div className="leaderboard-empty">
+                                    No {section.label.toLowerCase()} sessions yet for {leaderboardLanguageView.toUpperCase()}.
+                                  </div>
+                                ) : null}
+                                {section.sessions.map(({ rank, session }) => {
+                                  const readinessClass =
+                                    session.status === 'error'
+                                      ? 'leaderboard-table-row-error'
+                                      : isSessionReadyForTraining(session)
+                                        ? 'leaderboard-table-row-ready'
+                                        : 'leaderboard-table-row-not-ready';
+                                  const statusLabel = formatLeaderboardSessionStatus(session);
+                                  const statusTitle = session.generationError ? `${statusLabel}: ${session.generationError}` : statusLabel;
+                                  const scoreHelpText = buildSessionScoreHelpText(session.metrics);
+                                  return (
+                                    <div
+                                      key={session.id}
+                                      className={`leaderboard-table-row ${readinessClass} ${session.id === activeSessionId ? 'leaderboard-table-row-active' : ''}`}
+                                    >
+                                      <span className="leaderboard-cell leaderboard-cell-rank">#{rank}</span>
+                                      <span className="leaderboard-cell leaderboard-cell-name" title={getSessionDisplayTitle(session)}>
+                                        <SessionDeviceIcon session={session} />
+                                        <span>{getSessionDisplayTitle(session)}</span>
+                                      </span>
+                                      <span
+                                        className="leaderboard-cell leaderboard-cell-points"
+                                        title={buildSessionPointsHelpText(computeSessionMaxPoints(session))}
+                                      >
+                                        {formatSessionPointsForSession(session.metrics.points, session)}
+                                      </span>
+                                      <span
+                                        className="leaderboard-cell leaderboard-cell-score"
+                                        title={scoreHelpText}
+                                        aria-label={`Score ${session.metrics.score}. ${scoreHelpText}`}
+                                      >
+                                        {session.metrics.score}
+                                      </span>
+                                      <span className="leaderboard-cell leaderboard-cell-accuracy">{session.metrics.accuracy.toFixed(1)}%</span>
+                                      <span className="leaderboard-cell leaderboard-cell-wpm">{session.metrics.wpm.toFixed(1)}</span>
+                                      <span className="leaderboard-cell leaderboard-cell-lag">{session.metrics.lagSec.toFixed(2)}s</span>
+                                      <span className="leaderboard-cell leaderboard-cell-rate">{session.metrics.rate.toFixed(2)}x</span>
+                                      <span className="leaderboard-cell leaderboard-cell-status" title={statusTitle}>
+                                        {statusLabel}
+                                        <small>{formatSessionGenerationOrigin(session.generationOrigin)}</small>
+                                        {session.generationError ? <small>{session.generationError}</small> : null}
+                                      </span>
+                                      <span className="leaderboard-cell leaderboard-cell-duration">{formatSessionPlaybackDuration(session)}</span>
+                                      <span className="leaderboard-cell leaderboard-cell-date">{formatSessionDate(session.updatedAt)}</span>
+                                      <span className="leaderboard-cell leaderboard-cell-action">
+                                        <div className="leaderboard-action-buttons" aria-label={`Actions for ${getSessionDisplayTitle(session)}`}>
+                                          <button
+                                            type="button"
+                                            className="secondary-button leaderboard-action-button"
+                                            onClick={() => openWorkspaceForSession(session)}
+                                            aria-label={`Open training workspace for ${getSessionDisplayTitle(session)}`}
+                                            title="Open in input workspace"
+                                          >
+                                            <span aria-hidden="true">⟵</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="secondary-button leaderboard-action-button"
+                                            onClick={() => openDashboardForSession(session.id)}
+                                            aria-label={`Open dashboard for ${getSessionDisplayTitle(session)}`}
+                                            title="Dashboard"
+                                          >
+                                            <span aria-hidden="true">◫</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="secondary-button leaderboard-action-button"
+                                            onClick={() => downloadSessionSnapshot(session)}
+                                            aria-label={`Export JSON for ${getSessionDisplayTitle(session)}`}
+                                            title="Export JSON"
+                                          >
+                                            <span aria-hidden="true">⇩</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="secondary-button leaderboard-action-button"
+                                            onClick={() => {
+                                              void copySessionSnapshot(session, setExportMessage);
+                                            }}
+                                            aria-label={`Copy JSON for ${getSessionDisplayTitle(session)}`}
+                                            title="Copy JSON"
+                                          >
+                                            <span aria-hidden="true">⧉</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="danger-button leaderboard-action-button leaderboard-action-button-danger"
+                                            onClick={() => deleteSession(session.id)}
+                                            aria-label={`Delete ${getSessionDisplayTitle(session)}`}
+                                            title="Delete session"
+                                          >
+                                            <span aria-hidden="true">✕</span>
+                                          </button>
+                                        </div>
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null}
+                        </section>
+                      );
+                    })}
                   </div>
-                  {leaderboard.length === 0 ? (
-                    <div className="leaderboard-empty">
-                      No sessions yet for {leaderboardLanguageView.toUpperCase()}. Finish a session in that language to populate this leaderboard.
-                    </div>
-                  ) : null}
-                  {leaderboard.map(({ rank, session }) => {
-                    const readinessClass =
-                      session.status === 'error'
-                        ? 'leaderboard-table-row-error'
-                        : isSessionReadyForTraining(session)
-                          ? 'leaderboard-table-row-ready'
-                          : 'leaderboard-table-row-not-ready';
-                    const statusLabel = formatLeaderboardSessionStatus(session);
-                    const statusTitle = session.generationError ? `${statusLabel}: ${session.generationError}` : statusLabel;
-                    const scoreHelpText = buildSessionScoreHelpText(session.metrics);
-                    return (
-                    <div
-                      key={session.id}
-                      className={`leaderboard-table-row ${readinessClass} ${session.id === activeSessionId ? 'leaderboard-table-row-active' : ''}`}
-                    >
-                      <span className="leaderboard-cell leaderboard-cell-rank">#{rank}</span>
-                      <span className="leaderboard-cell leaderboard-cell-name" title={getSessionDisplayTitle(session)}>
-                        <SessionDeviceIcon session={session} />
-                        <span>{getSessionDisplayTitle(session)}</span>
-                      </span>
-                      <span
-                        className="leaderboard-cell leaderboard-cell-points"
-                        title={buildSessionPointsHelpText(computeSessionMaxPoints(session))}
-                      >
-                        {formatSessionPointsForSession(session.metrics.points, session)}
-                      </span>
-                      <span
-                        className="leaderboard-cell leaderboard-cell-score"
-                        title={scoreHelpText}
-                        aria-label={`Score ${session.metrics.score}. ${scoreHelpText}`}
-                      >
-                        {session.metrics.score}
-                      </span>
-                      <span className="leaderboard-cell leaderboard-cell-accuracy">{session.metrics.accuracy.toFixed(1)}%</span>
-                      <span className="leaderboard-cell leaderboard-cell-wpm">{session.metrics.wpm.toFixed(1)}</span>
-                      <span className="leaderboard-cell leaderboard-cell-lag">{session.metrics.lagSec.toFixed(2)}s</span>
-                      <span className="leaderboard-cell leaderboard-cell-rate">{session.metrics.rate.toFixed(2)}x</span>
-                      <span className="leaderboard-cell leaderboard-cell-status" title={statusTitle}>
-                        {statusLabel}
-                        <small>{formatSessionGenerationOrigin(session.generationOrigin)}</small>
-                        {session.generationError ? <small>{session.generationError}</small> : null}
-                      </span>
-                      <span className="leaderboard-cell leaderboard-cell-duration">{formatSessionPlaybackDuration(session)}</span>
-                      <span className="leaderboard-cell leaderboard-cell-date">{formatSessionDate(session.updatedAt)}</span>
-                      <span className="leaderboard-cell leaderboard-cell-action">
-                        <div className="leaderboard-action-buttons" aria-label={`Actions for ${getSessionDisplayTitle(session)}`}>
-                          <button
-                            type="button"
-                            className="secondary-button leaderboard-action-button"
-                            onClick={() => openWorkspaceForSession(session)}
-                            aria-label={`Open training workspace for ${getSessionDisplayTitle(session)}`}
-                            title="Open in input workspace"
-                          >
-                            <span aria-hidden="true">⟵</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button leaderboard-action-button"
-                            onClick={() => openDashboardForSession(session.id)}
-                            aria-label={`Open dashboard for ${getSessionDisplayTitle(session)}`}
-                            title="Dashboard"
-                          >
-                            <span aria-hidden="true">◫</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button leaderboard-action-button"
-                            onClick={() => downloadSessionSnapshot(session)}
-                            aria-label={`Export JSON for ${getSessionDisplayTitle(session)}`}
-                            title="Export JSON"
-                          >
-                            <span aria-hidden="true">⇩</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button leaderboard-action-button"
-                            onClick={() => {
-                              void copySessionSnapshot(session, setExportMessage);
-                            }}
-                            aria-label={`Copy JSON for ${getSessionDisplayTitle(session)}`}
-                            title="Copy JSON"
-                          >
-                            <span aria-hidden="true">⧉</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="danger-button leaderboard-action-button leaderboard-action-button-danger"
-                            onClick={() => deleteSession(session.id)}
-                            aria-label={`Delete ${getSessionDisplayTitle(session)}`}
-                            title="Delete session"
-                          >
-                            <span aria-hidden="true">✕</span>
-                          </button>
-                        </div>
-                      </span>
-                    </div>
-                  );
-                  })}
-                </div>
                 ) : null}
               </section>
             ) : (
@@ -8512,6 +8731,7 @@ function App() {
                 <div className="bottom-summary-grid">
                   <Metric label="Name" value={lastSessionForLanguage?.name ?? '—'} />
                   <Metric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode) : '—'} />
+                  <Metric label="Difficulty" value={lastSessionForLanguage?.difficulty ? formatDifficultyLabel(lastSessionForLanguage.difficulty) : '—'} />
                   <Metric
                     label="Score"
                     value={lastSessionForLanguage ? String(lastSessionForLanguage.metrics.score) : '—'}
@@ -11857,12 +12077,12 @@ function WidgetTools({ tooltip, copyText }: { tooltip: string; copyText: string 
   );
 }
 
-function HelpIcon({ tooltip }: { tooltip: string }) {
+function HelpIcon({ tooltip, ariaLabel = 'Help' }: { tooltip: string; ariaLabel?: string }) {
   return (
     <button
       type="button"
       className="help-icon"
-      aria-label="Help"
+      aria-label={ariaLabel}
       data-tooltip={tooltip}
       onClick={(event) => event.preventDefault()}
     >
@@ -12163,6 +12383,9 @@ function formatTrainingGenerationNotice(
 
 function formatGenerationDisplayLabel(slotLabel: string): string {
   const normalized = slotLabel.toLowerCase();
+  if (normalized.includes('express') && normalized.includes('easy')) return 'Express easy session';
+  if (normalized.includes('express') && normalized.includes('intermediate')) return 'Express medium session';
+  if (normalized.includes('express') && normalized.includes('advanced')) return 'Express hard session';
   if (normalized.includes('easy')) return 'Easy session';
   if (normalized.includes('intermediate')) return 'Medium session';
   if (normalized.includes('advanced')) return 'Hard session';
@@ -12700,6 +12923,7 @@ type TrainingGenerationButton = {
   onClick: () => void;
   disabled: boolean;
   title: string;
+  helpText?: string;
   statusMessage?: string;
   statusTone?: 'hint' | 'success' | 'error';
 };
@@ -12978,6 +13202,7 @@ function TrainingView({
   }
 
   const textAreaId = 'training-dictation-input';
+  const activeDifficultyLabel = activeSession ? formatDifficultyLabel(activeSession.difficulty) : '—';
 
   return (
     <section className="training-view" aria-label="Focused training view">
@@ -12997,6 +13222,7 @@ function TrainingView({
         {submissionMeta ? (
           <div className="training-session-submission-meta" aria-label="Submitted session metadata">
             <span>Position {submissionMeta.positionLabel}</span>
+            <span>Difficulty {activeDifficultyLabel}</span>
             <span
               title={submissionMeta.scoreHelpText}
               aria-label={`Score ${submissionMeta.scoreLabel}. ${submissionMeta.scoreHelpText}`}
@@ -13017,6 +13243,7 @@ function TrainingView({
         <div className="training-session-meta" aria-label="Current session info">
           <span>{progressLabel}</span>
           <span>{sourceLabel}</span>
+          {!submissionMeta ? <span>Difficulty {activeDifficultyLabel}</span> : null}
           <span>{formatSessionStatus(sessionStatus)}</span>
         </div>
       </section>
@@ -13110,16 +13337,19 @@ function TrainingView({
         <section className="training-card training-generation-card" aria-label="Generate new sessions">
           <div className="training-generation-grid">
             {generationButtons.map((button) => (
-              <div key={button.id} className="training-generation-action">
-                <button
-                  type="button"
-                  className="training-generation-button"
-                  onClick={button.onClick}
-                  disabled={button.disabled}
-                  title={button.title}
-                >
-                  {button.label}
-                </button>
+              <div key={button.id} className={`training-generation-action ${button.id === 'custom' ? 'training-generation-action-wide' : ''}`.trim()}>
+                <div className="training-generation-button-row">
+                  <button
+                    type="button"
+                    className="training-generation-button"
+                    onClick={button.onClick}
+                    disabled={button.disabled}
+                    title={button.title}
+                  >
+                    {button.label}
+                  </button>
+                  {button.helpText ? <HelpIcon tooltip={button.helpText} ariaLabel={`Help for ${button.label}`} /> : null}
+                </div>
                 {button.statusMessage ? (
                   <p className={`training-generation-notice training-generation-notice-${button.statusTone ?? 'hint'}`} aria-live="polite">
                     {button.statusMessage}
@@ -13600,6 +13830,59 @@ function formatSessionStatus(value: SessionStatus): string {
   }
 }
 
+function sortLeaderboardSessions<T extends StoredSession>(sessions: T[]): T[] {
+  return [...sessions].sort(
+    (a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy,
+  );
+}
+
+function buildLeaderboardSections(
+  sessions: Array<StoredSession & { voiceDurationSec?: number | null }>,
+  language: MetricsLanguageView,
+): LeaderboardSection[] {
+  const languageSessions = sortLeaderboardSessions(sessions.filter((session) => resolveSessionLanguage(session) === language));
+  return LEADERBOARD_SECTION_DEFINITIONS.map((definition) => {
+    const sectionSessions = languageSessions.filter((session) => {
+      return session.difficulty === definition.difficulty && getLeaderboardSessionLength(session) === definition.length;
+    });
+    return {
+      ...definition,
+      sessions: sectionSessions.map((session, index) => ({ rank: index + 1, session })),
+      rangeMetrics: buildLeaderboardRangeMetrics(sectionSessions, language),
+    };
+  });
+}
+
+function getLeaderboardSessionLength(session: StoredSession & { voiceDurationSec?: number | null }): LeaderboardSessionLength {
+  const scriptDurationSec = session.dictationScript?.estimatedDurationSec;
+  if (typeof scriptDurationSec === 'number' && Number.isFinite(scriptDurationSec) && scriptDurationSec > 0) {
+    return scriptDurationSec <= 90 ? 'express' : 'standard';
+  }
+  const voiceDurationSec = typeof session.voiceDurationSec === 'number' ? session.voiceDurationSec : getSessionVoiceDurationSec(session);
+  return typeof voiceDurationSec === 'number' && Number.isFinite(voiceDurationSec) && voiceDurationSec > 0 && voiceDurationSec <= 90
+    ? 'express'
+    : 'standard';
+}
+
+function buildLeaderboardRangeMetrics(
+  sessions: Array<StoredSession & { voiceDurationSec?: number | null }>,
+  language: MetricsLanguageView,
+): LeaderboardRangeMetric[] {
+  return LEADERBOARD_RANGE_DEFINITIONS.map(({ range, label }) => {
+    const summary = buildRangeSummaryForLanguage(sessions, language, range);
+    return {
+      range,
+      label,
+      sessionCount: summary.sessionsInRange.length,
+      durationLabel: formatDuration(summary.durationSeconds),
+      avgPointsLabel: summary.avgPoints !== null ? summary.avgPoints.toFixed(1) : '—',
+      avgScoreLabel: summary.avgScore !== null ? summary.avgScore.toFixed(1) : '—',
+      avgAccuracyLabel: summary.avgAccuracy !== null ? `${summary.avgAccuracy.toFixed(1)}%` : '—',
+      avgWpmLabel: summary.avgWpm !== null ? summary.avgWpm.toFixed(1) : '—',
+    };
+  });
+}
+
 function formatLeaderboardSessionStatus(session: StoredSession): string {
   if (session.status === 'finished' && session.inputMode !== 'input1' && !hasSubmittedSessionStats(session)) {
     return 'Not submitted';
@@ -13797,7 +14080,7 @@ function buildOpenRouterDiversificationHints({
   recentSessions,
   activityHints = [],
 }: {
-  durationMinutes: 2 | 3 | 4;
+  durationMinutes: OpenRouterDurationMinutes;
   targetDifficulty?: DictationScriptDifficulty;
   recentSessions: Array<{ title: string; opener: string }>;
   activityHints?: string[];

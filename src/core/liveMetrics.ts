@@ -1,3 +1,4 @@
+import type { Difficulty } from './config';
 import type { SupportedLanguage } from './languages';
 
 export type MetricsLanguageView = SupportedLanguage;
@@ -14,6 +15,7 @@ export type SessionLanguageLike = {
 export type SessionForMetrics = SessionLanguageLike & {
   id?: string;
   name?: string;
+  difficulty?: Difficulty;
   updatedAt: string;
   voiceDurationSec?: number | null;
   metrics: {

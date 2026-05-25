@@ -276,6 +276,29 @@
   align-content: start;
 }
 
+.training-generation-action-wide {
+  grid-column: 1 / -1;
+}
+
+.training-generation-button-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.training-generation-button-row .training-generation-button {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.training-generation-button-row .help-icon {
+  width: 42px;
+  height: auto;
+  min-height: 54px;
+  flex: 0 0 42px;
+}
+
 .training-control-grid button,
 .training-generation-button,
 .training-submit-button {
@@ -1851,6 +1874,112 @@ textarea[readonly] {
 
 .leaderboard-list-full {
   margin-top: 0.5rem;
+}
+
+.leaderboard-sections {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+}
+
+.leaderboard-difficulty-section {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+  border: 1px solid #d7e2ee;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fcfdff, #f6f9fc);
+  padding: 0.55rem;
+}
+
+.leaderboard-section-header {
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 9px;
+  text-align: left;
+}
+
+.leaderboard-section-header > span:first-child {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.leaderboard-section-header strong,
+.leaderboard-section-header small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-section-header small {
+  color: #60758d;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.leaderboard-section-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  transition: transform 0.16s ease;
+}
+
+.leaderboard-section-chevron-open {
+  transform: rotate(180deg);
+}
+
+.leaderboard-section-body {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.leaderboard-range-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.leaderboard-range-panel {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.leaderboard-range-panel h4 {
+  margin: 0;
+  color: #173d71;
+  font-size: 0.84rem;
+}
+
+.leaderboard-range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.leaderboard-range-grid .metric {
+  min-width: 0;
+  padding: 0.5rem;
+  border-radius: 8px;
+}
+
+.leaderboard-range-grid .metric span {
+  font-size: 0.72rem;
+}
+
+.leaderboard-range-grid .metric strong {
+  font-size: 0.9rem;
 }
 
 .leaderboard-table {
@@ -4156,6 +4285,10 @@ textarea[readonly] {
 }
 
 @media (max-width: 1360px) {
+  .leaderboard-range-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .leaderboard-table-header {
     display: none;
   }
@@ -4312,6 +4445,8 @@ textarea[readonly] {
   .adaptive-input-workspace,
   .adaptive-workspace-grid,
   .leaderboard-stats,
+  .leaderboard-range-metrics,
+  .leaderboard-range-grid,
   .admin-grid,
   .admin-kpi-grid,
   .admin-session-card,
