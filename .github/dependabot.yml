@@ -33,6 +33,27 @@ updates:
       time: "05:10"
       timezone: "Europe/Paris"
     open-pull-requests-limit: 5
+    ignore:
+      # Keep the optional alignment stack installable on Python 3.13.
+      - dependency-name: "numpy"
+        versions:
+          - "2.4.6"
+      - dependency-name: "torch"
+        versions:
+          - "2.12.0"
+    groups:
+      python-core-minor-patch:
+        patterns:
+          - "jsonschema"
+        update-types:
+          - "minor"
+          - "patch"
+      python-alignment-minor-patch:
+        patterns:
+          - "whisperx"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "python"
@@ -47,6 +68,13 @@ updates:
       time: "05:20"
       timezone: "Europe/Paris"
     open-pull-requests-limit: 5
+    groups:
+      kokoro-python-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "python"
@@ -62,6 +90,13 @@ updates:
       time: "05:30"
       timezone: "Europe/Paris"
     open-pull-requests-limit: 5
+    groups:
+      cosyvoice-python-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "python"
