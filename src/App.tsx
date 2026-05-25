@@ -53,6 +53,8 @@ import {
   extractOpenRouterJobText,
   isOpenRouterJobTerminal,
   loadActiveOpenRouterJobs,
+  OPENROUTER_ACTIVE_JOB_STORAGE_KEY,
+  OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
   removeActiveOpenRouterJob,
   type ActiveOpenRouterJob,
   type OpenRouterJobResponse,
@@ -153,6 +155,10 @@ import {
   type DictaAppRole,
 } from './core/appProfiles';
 import {
+  readActiveSyncStorageProfileId,
+  switchProfileScopedStorage,
+} from './core/profileScopedStorage';
+import {
   detectCreatedDeviceMetadata,
   formatCreatedDeviceIcon,
   formatCreatedDeviceTooltip,
@@ -196,6 +202,16 @@ const ADAPTIVE_BENCHMARKS_KEY = 'dicta.adaptiveBenchmarks.v1';
 const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
 const OPENROUTER_GENERATED_SCRIPT_KEY = 'dicta.openrouterGeneratedScript.v1';
 const OPENROUTER_GENERATED_VARIANTS_KEY = 'dicta.openrouterGeneratedVariants.v1';
+const PROFILE_SCOPED_DICTA_STORAGE_KEYS = [
+  SESSION_STORAGE_KEY,
+  DELETED_SESSION_IDS_KEY,
+  ADAPTIVE_BENCHMARKS_KEY,
+  ADAPTIVE_SESSION_FEEDBACK_KEY,
+  OPENROUTER_GENERATED_SCRIPT_KEY,
+  OPENROUTER_GENERATED_VARIANTS_KEY,
+  OPENROUTER_ACTIVE_JOB_STORAGE_KEY,
+  OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
+] as const;
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 const DICTA_BUILD_INFO = __DICTA_BUILD_INFO__;
@@ -733,13 +749,18 @@ function App() {
     profile: appProfile,
     legacyProfileId: syncConfig.legacyProfileId,
   });
+  const [activeLocalSyncProfileId, setActiveLocalSyncProfileId] = useState(() =>
+    readActiveSyncStorageProfileId(window.localStorage),
+  );
+  const localStorageReadyForEffectiveProfile =
+    !syncConfig.authRequired || !effectiveProfileId || activeLocalSyncProfileId === effectiveProfileId;
   const effectiveSyncConfig = useMemo(
     () => ({
       ...syncConfig,
-      enabled: Boolean(syncConfig.url && syncConfig.anonKey && effectiveProfileId),
+      enabled: Boolean(syncConfig.url && syncConfig.anonKey && effectiveProfileId && localStorageReadyForEffectiveProfile),
       profileId: effectiveProfileId,
     }),
-    [syncConfig, effectiveProfileId],
+    [syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile],
   );
   const [supabaseSyncStatus, setSupabaseSyncStatus] = useState<SupabaseSyncStatus>({
     enabled: effectiveSyncConfig.enabled,
@@ -834,6 +855,51 @@ function App() {
     accuracy: 100,
     trend: 'stable',
   });
+
+  useEffect(() => {
+    if (!syncConfig.authRequired) return;
+
+    const result = switchProfileScopedStorage(window.localStorage, PROFILE_SCOPED_DICTA_STORAGE_KEYS, effectiveProfileId);
+    if (!result.changed) {
+      if (activeLocalSyncProfileId !== result.activeProfileId) {
+        setActiveLocalSyncProfileId(result.activeProfileId);
+      }
+      return;
+    }
+
+    setActiveLocalSyncProfileId(result.activeProfileId);
+    clearScheduledSessionPersist();
+
+    const restoredSessions = loadSessions();
+    latestSessionsForPersistenceRef.current = restoredSessions;
+    lastPersistedSessionsJsonRef.current = null;
+    setSessions(restoredSessions);
+    setActiveSessionId(restoredSessions[0]?.id ?? '');
+    setDashboardSessionId(null);
+
+    const restoredBenchmarks = loadAdaptiveBenchmarks();
+    adaptiveBenchmarksRef.current = restoredBenchmarks;
+    setAdaptiveBenchmarksByInputLanguage(restoredBenchmarks);
+
+    const restoredFeedback = loadAdaptiveSessionFeedback();
+    adaptiveSessionFeedbackRef.current = restoredFeedback;
+    setAdaptiveSessionFeedbackByInputLanguage(restoredFeedback);
+
+    deletedSessionIdsRef.current = loadDeletedSessionIds();
+    syncStateRef.current = buildCurrentSyncState(restoredSessions, restoredBenchmarks, restoredFeedback);
+    supabaseApplyingRemoteRef.current = false;
+    supabaseInitialPullCompleteRef.current = !result.activeProfileId;
+    supabasePullInFlightRef.current = false;
+    supabaseKnownRemoteRowsRef.current = [];
+    supabaseLastRemoteUpdatedAtRef.current = null;
+    supabaseLastFullPullAtMsRef.current = 0;
+
+    consumedOpenRouterJobIdsRef.current = new Set();
+    setActiveOpenRouterJobs(loadActiveOpenRouterJobs());
+    setOpenRouterJobNotifications({});
+    setOpenRouterJobStatus('');
+    setTrainingGenerationNotices({});
+  }, [activeLocalSyncProfileId, effectiveProfileId, syncConfig.authRequired]);
 
   useEffect(() => {
     if (!supabaseClient || !syncConfig.authRequired) {
@@ -1251,7 +1317,7 @@ function App() {
   }, [kokoroEnabled, kokoroText, kokoroStatus]);
 
   useEffect(() => {
-    if (activeOpenRouterJobs.length === 0 || openRouterAccessState !== 'allowed') {
+    if (!localStorageReadyForEffectiveProfile || activeOpenRouterJobs.length === 0 || openRouterAccessState !== 'allowed') {
       return;
     }
 
@@ -1402,7 +1468,7 @@ function App() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [activeOpenRouterJobs, openRouterAccessState]);
+  }, [activeOpenRouterJobs, localStorageReadyForEffectiveProfile, openRouterAccessState]);
 
   useEffect(() => {
     window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, dictaLanguageView);
@@ -1419,8 +1485,9 @@ function App() {
   }, [insightsCollapsed]);
 
   useEffect(() => {
+    if (!localStorageReadyForEffectiveProfile) return;
     window.localStorage.setItem(ADAPTIVE_BENCHMARKS_KEY, JSON.stringify(adaptiveBenchmarksByInputLanguage));
-  }, [adaptiveBenchmarksByInputLanguage]);
+  }, [adaptiveBenchmarksByInputLanguage, localStorageReadyForEffectiveProfile]);
 
   useEffect(() => {
     adaptiveBenchmarksRef.current = adaptiveBenchmarksByInputLanguage;
@@ -1428,8 +1495,9 @@ function App() {
 
   useEffect(() => {
     adaptiveSessionFeedbackRef.current = adaptiveSessionFeedbackByInputLanguage;
+    if (!localStorageReadyForEffectiveProfile) return;
     window.localStorage.setItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(adaptiveSessionFeedbackByInputLanguage));
-  }, [adaptiveSessionFeedbackByInputLanguage]);
+  }, [adaptiveSessionFeedbackByInputLanguage, localStorageReadyForEffectiveProfile]);
 
   useEffect(() => {
     ensureLatestBrowserTtsDeDictationScriptFeedback(sessions);
@@ -1518,12 +1586,13 @@ function App() {
 
   useEffect(() => {
     latestSessionsForPersistenceRef.current = sessions;
+    if (!localStorageReadyForEffectiveProfile) return;
     clearScheduledSessionPersist();
     sessionPersistTimerRef.current = window.setTimeout(() => {
       sessionPersistTimerRef.current = null;
       persistSessionsToLocalStorage(latestSessionsForPersistenceRef.current);
     }, SESSION_PERSIST_DEBOUNCE_MS);
-  }, [sessions]);
+  }, [localStorageReadyForEffectiveProfile, sessions]);
 
   useEffect(() => {
     const flushBeforeExit = () => flushScheduledSessionPersist('session.localStorage.flushBeforeExit');
@@ -6299,7 +6368,7 @@ function App() {
     ] : [],
   };
 
-  if (syncConfig.authRequired && (authLoading || !authSession || !appProfile || appProfileError)) {
+  if (syncConfig.authRequired && (authLoading || !authSession || !appProfile || appProfileError || !localStorageReadyForEffectiveProfile)) {
     return (
       <main className={`app auth-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
         <section className="auth-panel">
@@ -6315,6 +6384,8 @@ function App() {
             <p className="hint">Checking session...</p>
           ) : authSession && !appProfile && !appProfileError ? (
             <p className="hint">Loading Dicta profile...</p>
+          ) : authSession && appProfile && !localStorageReadyForEffectiveProfile ? (
+            <p className="hint">Preparing local storage for {appProfile.displayName ?? effectiveProfileId}...</p>
           ) : authSession && appProfileError ? (
             <>
               <p className="error">{appProfileError}</p>
