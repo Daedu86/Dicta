@@ -9299,7 +9299,7 @@ function OpenRouterWorkspace({
                   try {
                     const response = await fetch('/api/openrouter/chat', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: { 'Content-Type': 'application/json', ...authHeaders },
                       body: JSON.stringify({ model: defaultModel, prompt, maxTokens: 600 }),
                     });
                     if (!response.ok) {

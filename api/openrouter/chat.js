@@ -1,26 +1,8 @@
 import { assertOpenRouterAccess, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { readOpenRouterChatPayload } from './_request.js';
 
 function getOpenRouterApiKey() {
   return process.env.OPENROUTER_API_KEY?.trim() ?? '';
-}
-
-function normalizeRequestBody(body) {
-  if (!body) return {};
-  if (typeof body === 'string') {
-    try {
-      return JSON.parse(body);
-    } catch {
-      return {};
-    }
-  }
-  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(body)) {
-    try {
-      return JSON.parse(body.toString('utf8'));
-    } catch {
-      return {};
-    }
-  }
-  return body;
 }
 
 async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
@@ -38,7 +20,7 @@ async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeo
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: prompt }],
-        ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        max_tokens: maxTokens,
       }),
       signal: controller.signal,
     });
@@ -74,14 +56,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  const payload = normalizeRequestBody(req.body);
-  const model = typeof payload.model === 'string' ? payload.model.trim() : '';
-  const prompt = typeof payload.prompt === 'string' ? payload.prompt.trim() : '';
-  const maxTokensRaw = Number(payload.maxTokens);
-  const maxTokens = Number.isFinite(maxTokensRaw) ? Math.max(128, Math.min(1800, Math.round(maxTokensRaw))) : undefined;
-
-  if (!model || !prompt) {
-    res.status(400).send('Missing model or prompt.');
+  let requestPayload;
+  try {
+    requestPayload = readOpenRouterChatPayload(req.body);
+  } catch (error) {
+    sendApiError(res, error, 'OpenRouter chat request failed.');
     return;
   }
 
@@ -89,20 +68,20 @@ export default async function handler(req, res) {
     const response = await postChatCompletion({
       apiKey,
       req,
-      model,
-      prompt,
-      maxTokens,
+      model: requestPayload.model,
+      prompt: requestPayload.prompt,
+      maxTokens: requestPayload.maxTokens,
       timeoutMs: 290_000,
     });
 
     res.status(response.status);
     res.setHeader('Content-Type', response.contentType);
-    res.setHeader('X-Dicta-OpenRouter-Model', model);
+    res.setHeader('X-Dicta-OpenRouter-Model', requestPayload.model);
     res.send(response.body);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'OpenRouter chat request failed.';
     if (message.toLowerCase().includes('aborted')) {
-      res.status(504).send(`Selected OpenRouter model "${model}" timed out after 290 seconds.`);
+      res.status(504).send(`Selected OpenRouter model "${requestPayload.model}" timed out after 290 seconds.`);
       return;
     }
     res.status(500).send(message);

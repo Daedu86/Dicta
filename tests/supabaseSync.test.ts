@@ -174,6 +174,28 @@ describe('supabaseSync', () => {
     expect(nextItems.some((item) => item.itemType === 'session' && item.itemKey === 's1')).toBe(false);
   });
 
+  it('skips malformed string tombstones instead of importing them as sessions', () => {
+    const rows = toSyncRows('profile-1', [
+      {
+        itemType: 'session',
+        itemKey: 's1',
+        payload: {
+          id: 's1',
+          deleted: 'true',
+          deletedAt: '2026-05-02T10:00:00.000Z',
+          updatedAt: '2026-05-02T10:00:00.000Z',
+        },
+        updatedAt: '2026-05-02T10:00:00.000Z',
+      },
+    ]);
+
+    const merged = mergeSyncRows({ sessions: [], benchmarks: {}, feedback: {} }, rows);
+
+    expect(merged.sessions).toHaveLength(0);
+    expect(merged.skipped).toBe(1);
+    expect(merged.deletedSessionIds).toEqual([]);
+  });
+
   it('keeps newer local session and imports newer remote benchmark and feedback', () => {
     const local = baseState();
     local.sessions = [{ id: 's1', updatedAt: '2026-05-03T10:00:00.000Z', inputMode: 'input2', marker: 'local' }];
@@ -414,6 +436,35 @@ describe('supabaseSync', () => {
     }]);
 
     expect(selectPushableSyncRows(localRows, remoteRows)).toHaveLength(1);
+  });
+
+  it('does not push a stale submitted local session over a newer remote tombstone', () => {
+    const localRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-02T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-02T10:00:00.000Z',
+        inputMode: 'input2',
+        status: 'finished',
+        telemetry: { actions: [{ action: 'submit' }] },
+        marker: 'phone-submitted',
+      },
+    }]);
+    const remoteRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-03T10:00:00.000Z',
+      payload: {
+        id: 's1',
+        deleted: true,
+        deletedAt: '2026-05-03T10:00:00.000Z',
+        updatedAt: '2026-05-03T10:00:00.000Z',
+      },
+    }]);
+
+    expect(selectPushableSyncRows(localRows, remoteRows)).toEqual([]);
   });
 
   it('merges incremental remote snapshots by sync row identity', () => {
