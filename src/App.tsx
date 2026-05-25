@@ -47,6 +47,7 @@ import {
   estimateOpenRouterPromptSize,
   type OpenRouterGeneratePromptSource,
 } from './core/adaptive/openRouterGenerationPrompt';
+import { buildAdaptiveUserSystemReport } from './core/adaptive/adaptiveUserSystemReport';
 import {
   addActiveOpenRouterJob,
   extractOpenRouterJobText,
@@ -667,6 +668,7 @@ function App() {
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
   const [insightsDiagnosticInputMode, setInsightsDiagnosticInputMode] = useState<InputMode>('browser-tts');
   const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
+  const [insightsDiagnosticFallbackReport, setInsightsDiagnosticFallbackReport] = useState('');
   const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => {
     const saved = window.localStorage.getItem(LIVE_METRICS_RANGE_KEY);
     if (saved === 'today' || saved === 'week' || saved === 'twoWeeks' || saved === 'threeWeeks' || saved === 'month') {
@@ -5792,17 +5794,53 @@ function App() {
   async function copyInsightsDiagnosticPackage(): Promise<void> {
     try {
       const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, insightsDiagnosticProfile);
-      await navigator.clipboard.writeText(JSON.stringify(buildBenchmarkFeedbackPackage(insightsDiagnosticProfile, insightsDiagnosticFeedback, {
+      const latestFinishedFullSession = findLatestFinishedSessionForProfile(sessions, insightsDiagnosticProfile);
+      const technicalDebugData = buildBenchmarkFeedbackPackage(insightsDiagnosticProfile, insightsDiagnosticFeedback, {
         activeSessionStatus: getBenchmarkActiveSessionStatus(insightsDiagnosticProfile),
         activitySummary: buildBenchmarkActivitySummary(sessions, insightsDiagnosticProfile),
         latestFinishedSession,
-      }), null, 2));
-      setInsightsDiagnosticMessage(
-        `Copied full report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`,
-      );
-    } catch {
-      setInsightsDiagnosticMessage('Could not copy the full report.');
+      });
+      const report = buildAdaptiveUserSystemReport({
+        profile: insightsDiagnosticProfile,
+        feedback: insightsDiagnosticFeedback,
+        technicalDebugData,
+        inputModeLabel: formatInputModeLabel(insightsDiagnosticInputMode),
+        languageLabel: metricsLanguageView.toUpperCase(),
+        latestSession: latestFinishedFullSession
+          ? {
+              ...latestFinishedFullSession,
+              inputModeLabel: formatSessionInputMode(latestFinishedFullSession.inputMode),
+              language: String(resolveStoredSessionLanguage(latestFinishedFullSession)),
+              durationLabel: formatSessionPlaybackDuration(latestFinishedFullSession),
+            }
+          : null,
+      });
+      const reportJson = JSON.stringify(report, null, 2);
+      const copied = await writeTextToClipboard(reportJson);
+      if (copied) {
+        setInsightsDiagnosticFallbackReport('');
+        setInsightsDiagnosticMessage(
+          `Copied adaptive user/system report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`,
+        );
+        return;
+      }
+
+      setInsightsDiagnosticFallbackReport(reportJson);
+      setInsightsDiagnosticMessage('Clipboard access is blocked. Report generated below; select it and press Ctrl+C.');
+      window.setTimeout(selectInsightsDiagnosticFallbackReport, 0);
+    } catch (error) {
+      console.error('Copy full report failed.', error);
+      const message = error instanceof Error ? error.message : String(error);
+      setInsightsDiagnosticFallbackReport('');
+      setInsightsDiagnosticMessage(`Could not prepare the full report. ${message}`);
     }
+  }
+
+  function selectInsightsDiagnosticFallbackReport(): void {
+    const textarea = document.getElementById('insights-diagnostic-fallback-report') as HTMLTextAreaElement | null;
+    if (!textarea) return;
+    textarea.focus();
+    textarea.select();
   }
 
   async function copyBenchmarkFeedbackPrompt(profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null): Promise<void> {
@@ -8335,7 +8373,7 @@ function App() {
                 type="button"
                 className="secondary-button live-metrics-report-button"
                 onClick={() => void copyInsightsDiagnosticPackage()}
-                title={`Copy benchmark + session feedback for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()} so you can paste it into an LLM for performance analysis.`}
+                title={`Copy user progress summary + adaptive system diagnosis + technical debug data for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`}
               >
                 Copy full report
               </button>
@@ -8359,6 +8397,23 @@ function App() {
               <p className={`insights-diagnostic-message ${insightsDiagnosticMessage.toLowerCase().includes('could not') ? 'error' : 'success'}`}>
                 {insightsDiagnosticMessage}
               </p>
+            ) : null}
+            {insightsDiagnosticFallbackReport ? (
+              <div className="insights-report-fallback">
+                <div className="insights-report-fallback-header">
+                  <strong>Adaptive report ready</strong>
+                  <button type="button" className="secondary-button" onClick={selectInsightsDiagnosticFallbackReport}>
+                    Select report
+                  </button>
+                </div>
+                <textarea
+                  id="insights-diagnostic-fallback-report"
+                  readOnly
+                  value={insightsDiagnosticFallbackReport}
+                  rows={8}
+                  aria-label="Generated adaptive user and system report"
+                />
+              </div>
             ) : null}
             {!insightsCollapsed && (workspaceMode === 'tts' || workspaceMode === 'kokoro') ? (
               <div className="bottom-metrics-player tts-bottom-player live-metrics-section live-metrics-section-player">
@@ -12399,6 +12454,32 @@ async function copyDictaLocalStorage(setExportMessage: React.Dispatch<React.SetS
   setExportMessage('Dicta localStorage JSON copied.');
 }
 
+async function writeTextToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Some embedded browsers expose the Clipboard API but reject writes.
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    const copied = document.execCommand('copy');
+    return copied;
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 function countTelemetrySamples(telemetry: SessionTelemetry): number {
   return Math.max(
     telemetry.lagSeries.length,
@@ -13799,12 +13880,7 @@ function buildLatestFinishedSessionFeedbackReference(
   sessions: StoredSession[],
   profile: InputLanguageBenchmarkMetrics,
 ): SessionFeedbackReference | null {
-  const language = String(profile.language);
-  const latestSession = sessions
-    .filter((session) => session.status === 'finished')
-    .filter((session) => resolveStoredSessionLanguage(session) === language)
-    .filter((session) => mapSessionInputMode(session.inputMode) === profile.inputMode)
-    .sort((a, b) => getSessionFinishedAtMs(b) - getSessionFinishedAtMs(a))[0];
+  const latestSession = findLatestFinishedSessionForProfile(sessions, profile);
   if (!latestSession) return null;
   return {
     sessionId: latestSession.id,
@@ -13815,6 +13891,18 @@ function buildLatestFinishedSessionFeedbackReference(
     scriptId: latestSession.dictationScript ? `${latestSession.id}:${latestSession.dictationScript.title}` : undefined,
     scriptTitle: latestSession.dictationScript?.title ?? latestSession.name,
   };
+}
+
+function findLatestFinishedSessionForProfile(
+  sessions: StoredSession[],
+  profile: InputLanguageBenchmarkMetrics,
+): StoredSession | null {
+  const language = String(profile.language);
+  return sessions
+    .filter((session) => session.status === 'finished')
+    .filter((session) => resolveStoredSessionLanguage(session) === language)
+    .filter((session) => mapSessionInputMode(session.inputMode) === profile.inputMode)
+    .sort((a, b) => getSessionFinishedAtMs(b) - getSessionFinishedAtMs(a))[0] ?? null;
 }
 
 function getSessionFinishedAtMs(session: StoredSession): number {

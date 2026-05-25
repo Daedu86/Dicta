@@ -3838,6 +3838,41 @@ textarea[readonly] {
   margin: 0;
 }
 
+.insights-report-fallback {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.65rem;
+  border: 1px solid #9dccff;
+  border-radius: 12px;
+  background: rgba(232, 243, 255, 0.72);
+}
+
+.insights-report-fallback-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #24415f;
+}
+
+.insights-report-fallback-header button {
+  width: auto;
+  margin-top: 0;
+  min-height: 34px;
+  padding: 0.35rem 0.65rem;
+}
+
+.insights-report-fallback textarea {
+  width: 100%;
+  min-height: 150px;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .bottom-metrics-top {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 520px);
