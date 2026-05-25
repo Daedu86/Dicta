@@ -37,7 +37,7 @@ updates:
       # Keep the optional alignment stack installable on Python 3.13.
       - dependency-name: "numpy"
         versions:
-          - "2.4.6"
+          - ">=2.3.0"
       - dependency-name: "torch"
         versions:
           - "2.12.0"
