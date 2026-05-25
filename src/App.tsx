@@ -5898,10 +5898,10 @@ function App() {
       setInsightsDiagnosticMessage('Clipboard access is blocked. Report generated below; select it and press Ctrl+C.');
       window.setTimeout(selectInsightsDiagnosticFallbackReport, 0);
     } catch (error) {
-      console.error('Copy full report failed.', error);
+      console.error('Copy insights report failed.', error);
       const message = error instanceof Error ? error.message : String(error);
       setInsightsDiagnosticFallbackReport('');
-      setInsightsDiagnosticMessage(`Could not prepare the full report. ${message}`);
+      setInsightsDiagnosticMessage(`Could not prepare the insights report. ${message}`);
     }
   }
 
@@ -8446,7 +8446,7 @@ function App() {
                 onClick={() => void copyInsightsDiagnosticPackage()}
                 title={`Copy user progress summary + adaptive system diagnosis + technical debug data for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`}
               >
-                Copy full report
+                Copy insights report
               </button>
               <button
                 type="button"
