@@ -47,6 +47,22 @@
   font-weight: 800;
 }
 
+.auth-text-button {
+  border: 0;
+  background: transparent;
+  color: #1a5fa8;
+  font: inherit;
+  font-weight: 800;
+  justify-self: center;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
+.auth-text-button:hover {
+  color: #0f4278;
+  text-decoration: underline;
+}
+
 .training-header {
   position: sticky;
   top: 0.5rem;

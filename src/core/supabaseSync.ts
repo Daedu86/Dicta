@@ -35,6 +35,12 @@ export type DictaSyncState = {
   feedback: Record<string, Record<string, unknown[]>>;
 };
 
+export const DICTA_SUPABASE_AUTH_OPTIONS = {
+  persistSession: true,
+  autoRefreshToken: true,
+  detectSessionInUrl: true,
+} as const;
+
 export type DictaSyncMergeResult = DictaSyncState & {
   changed: boolean;
   imported: number;
@@ -72,11 +78,7 @@ export function getDictaSyncConfig(env: Record<string, string | undefined>): Dic
 export function createDictaSupabaseClient(config: DictaSyncConfig): SupabaseClient | null {
   if (!config.url || !config.anonKey) return null;
   return createClient(config.url, config.anonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-    },
+    auth: DICTA_SUPABASE_AUTH_OPTIONS,
   });
 }
 

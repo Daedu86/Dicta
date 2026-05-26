@@ -270,6 +270,7 @@ type StoredSession = {
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 type SessionSource = 'plainText' | 'dictationScript';
+type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
 type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
 type OpenRouterJobNotification = {
   jobId: string;
@@ -803,6 +804,15 @@ function App() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authView, setAuthView] = useState<AuthView>(() => {
+    const authParams = `${window.location.hash}${window.location.search}`;
+    return authParams.includes('type=recovery') || authParams.includes('type%3Drecovery') ? 'updatePassword' : 'signIn';
+  });
+  const [authNewPassword, setAuthNewPassword] = useState('');
+  const [authNewPasswordConfirm, setAuthNewPasswordConfirm] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
+  const [authMessageTone, setAuthMessageTone] = useState<'hint' | 'success' | 'error'>('hint');
+  const [authBusy, setAuthBusy] = useState(false);
   const [appProfile, setAppProfile] = useState<DictaAppProfile | null>(null);
   const [appProfileError, setAppProfileError] = useState('');
   const [visibleProfiles, setVisibleProfiles] = useState<DictaAppProfile[]>([]);
@@ -980,8 +990,14 @@ function App() {
       }
     });
 
-    const { data: listener } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabaseClient.auth.onAuthStateChange((event, session) => {
       setAuthSession(session);
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthView('updatePassword');
+        setAuthError('');
+        setAuthMessage('Enter a new password to finish recovery.');
+        setAuthMessageTone('hint');
+      }
       if (!session) {
         setAppProfile(null);
         setVisibleProfiles([]);
@@ -2882,6 +2898,7 @@ function App() {
     event?.preventDefault();
     if (!supabaseClient) return;
     setAuthError('');
+    setAuthMessage('');
     const { error } = await supabaseClient.auth.signInWithPassword({
       email: authEmail.trim(),
       password: authPassword,
@@ -2893,6 +2910,80 @@ function App() {
     setAuthPassword('');
   }
 
+  function showAuthView(view: AuthView): void {
+    setAuthView(view);
+    setAuthError('');
+    setAuthMessage('');
+    if (view !== 'updatePassword') {
+      setAuthNewPassword('');
+      setAuthNewPasswordConfirm('');
+    }
+  }
+
+  async function requestSupabasePasswordReset(event?: FormEvent<HTMLFormElement>): Promise<void> {
+    event?.preventDefault();
+    if (!supabaseClient) return;
+    const email = authEmail.trim();
+    if (!email) {
+      setAuthError('Enter the account email first.');
+      return;
+    }
+    setAuthBusy(true);
+    setAuthError('');
+    setAuthMessage('');
+    try {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/training`,
+      });
+      if (error) throw error;
+      setAuthMessage(`Password reset email sent to ${email}. Open the newest email on this device.`);
+      setAuthMessageTone('success');
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Failed to send password reset email.');
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function updateSupabasePassword(event?: FormEvent<HTMLFormElement>): Promise<void> {
+    event?.preventDefault();
+    if (!supabaseClient) return;
+    if (!authSession) {
+      setAuthError('Open the latest password reset email again, then set a new password.');
+      return;
+    }
+    if (authNewPassword.length < 8) {
+      setAuthError('Password must be at least 8 characters.');
+      return;
+    }
+    if (authNewPassword !== authNewPasswordConfirm) {
+      setAuthError('Passwords do not match.');
+      return;
+    }
+    const email = authSession.user.email ?? authEmail;
+    setAuthBusy(true);
+    setAuthError('');
+    setAuthMessage('');
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ password: authNewPassword });
+      if (error) throw error;
+      await supabaseClient.auth.signOut();
+      setAuthSession(null);
+      setAppProfile(null);
+      setAuthEmail(email);
+      setAuthPassword('');
+      setAuthNewPassword('');
+      setAuthNewPasswordConfirm('');
+      setAuthView('signIn');
+      setAuthMessage('Password updated. Sign in with the new password.');
+      setAuthMessageTone('success');
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Failed to update password.');
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
   async function signOut(): Promise<void> {
     try {
       await supabaseClient?.auth.signOut();
@@ -2901,6 +2992,10 @@ function App() {
       if (syncConfig.authRequired) {
         setAuthSession(null);
         setAppProfile(null);
+        setAuthView('signIn');
+        setAuthPassword('');
+        setAuthNewPassword('');
+        setAuthNewPasswordConfirm('');
       } else {
         window.location.href = '/login.html';
       }
@@ -6595,7 +6690,7 @@ function App() {
     ] : [],
   };
 
-  if (syncConfig.authRequired && (authLoading || !authSession || !appProfile || appProfileError || !localStorageReadyForEffectiveProfile)) {
+  if (syncConfig.authRequired && (authLoading || authView === 'updatePassword' || !authSession || !appProfile || appProfileError || !localStorageReadyForEffectiveProfile)) {
     return (
       <main className={`app auth-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
         <section className="auth-panel">
@@ -6620,6 +6715,62 @@ function App() {
                 Sign out
               </button>
             </>
+          ) : authView === 'updatePassword' ? (
+            <>
+              <form className="auth-form" onSubmit={(event) => void updateSupabasePassword(event)}>
+                <label>
+                  New password
+                  <input
+                    type="password"
+                    value={authNewPassword}
+                    onChange={(event) => setAuthNewPassword(event.target.value)}
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                  />
+                </label>
+                <label>
+                  Confirm password
+                  <input
+                    type="password"
+                    value={authNewPasswordConfirm}
+                    onChange={(event) => setAuthNewPasswordConfirm(event.target.value)}
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="secondary-button"
+                  disabled={authBusy || authNewPassword.length < 8 || authNewPasswordConfirm.length < 8}
+                >
+                  {authBusy ? 'Saving...' : 'Save new password'}
+                </button>
+                <button type="button" className="auth-text-button" onClick={() => showAuthView('signIn')}>
+                  Back to sign in
+                </button>
+              </form>
+              {authMessage ? <p className={authMessageTone === 'success' ? 'success' : authMessageTone === 'error' ? 'error' : 'hint'}>{authMessage}</p> : null}
+              {authError ? <p className="error">{authError}</p> : null}
+            </>
+          ) : authView === 'forgotPassword' ? (
+            <>
+              <form className="auth-form" onSubmit={(event) => void requestSupabasePasswordReset(event)}>
+                <label>
+                  Email
+                  <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" required />
+                </label>
+                <button type="submit" className="secondary-button" disabled={authBusy || !authEmail.trim()}>
+                  {authBusy ? 'Sending...' : 'Send reset email'}
+                </button>
+                <button type="button" className="auth-text-button" onClick={() => showAuthView('signIn')}>
+                  Back to sign in
+                </button>
+              </form>
+              {authMessage ? <p className={authMessageTone === 'success' ? 'success' : authMessageTone === 'error' ? 'error' : 'hint'}>{authMessage}</p> : null}
+              {authError ? <p className="error">{authError}</p> : null}
+            </>
           ) : (
             <form className="auth-form" onSubmit={(event) => void signInWithSupabase(event)}>
               <label>
@@ -6639,6 +6790,10 @@ function App() {
               <button type="submit" className="secondary-button" disabled={!authEmail.trim() || !authPassword}>
                 Sign in
               </button>
+              <button type="button" className="auth-text-button" onClick={() => showAuthView('forgotPassword')}>
+                Forgot password?
+              </button>
+              {authMessage ? <p className={authMessageTone === 'success' ? 'success' : authMessageTone === 'error' ? 'error' : 'hint'}>{authMessage}</p> : null}
               {authError ? <p className="error">{authError}</p> : null}
             </form>
           )}

@@ -40,3 +40,12 @@ Server-only vars:
 - Admin can change member OpenRouter access and session limits from the Admin workspace.
 - Admin can read all profiles and all sync rows through RLS.
 - Session deletes remain tombstones in `dicta_sync_items`; do not hard-delete rows as the normal delete path.
+
+## Password recovery
+
+Dicta handles Supabase password recovery from the sign-in screen. Configure Supabase Auth URL settings so recovery emails can return to the hosted app:
+
+- Site URL: the production Dicta URL.
+- Redirect URLs: include the production `/training` URL, or the production URL with a wildcard that covers `/training`.
+
+When a user opens the newest recovery email, Supabase redirects back to Dicta and the app shows a new-password form. The old password cannot be viewed because Supabase stores it hashed.

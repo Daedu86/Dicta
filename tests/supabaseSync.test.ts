@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSyncItems,
+  DICTA_SUPABASE_AUTH_OPTIONS,
   getDictaSyncConfig,
   latestSyncRowTimestamp,
   mergeSyncRowSnapshots,
@@ -53,6 +54,14 @@ describe('supabaseSync', () => {
     expect(config.authRequired).toBe(true);
     expect(config.enabled).toBe(false);
     expect(config.legacyProfileId).toBe('');
+  });
+
+  it('lets Supabase consume password recovery links from the current URL', () => {
+    expect(DICTA_SUPABASE_AUTH_OPTIONS).toMatchObject({
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    });
   });
 
   it('serializes sessions, benchmarks, and feedback to sync rows', () => {
