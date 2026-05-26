@@ -507,6 +507,12 @@
     justify-content: stretch;
   }
 
+  .training-input-header {
+    position: static;
+    z-index: auto;
+    margin: 0;
+  }
+
   .training-live-metrics span {
     flex: 1 1 42%;
     justify-content: center;
@@ -514,6 +520,7 @@
 
   .training-input-card textarea {
     min-height: 38vh;
+    scroll-margin-top: 7rem;
   }
 }
 
