@@ -3345,16 +3345,6 @@ function App() {
     }
   }
 
-  async function generateNextSessionFromOpenRouter(): Promise<void> {
-    await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Direct session',
-      displayLabel: 'Direct session',
-      durationMinutes: 3,
-      isBusy: directOpenRouterBusy,
-      setBusy: setDirectOpenRouterBusy,
-    });
-  }
-
   async function generateEasyNextSessionFromOpenRouter(): Promise<void> {
     await generateDirectSessionFromOpenRouter({
       slotLabel: 'Easy direct session',
@@ -6301,6 +6291,68 @@ function App() {
   const expressEasyGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express easy direct session');
   const expressMediumGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express intermediate direct session');
   const expressHardGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express advanced direct session');
+  const desktopOpenRouterGenerationButtons: TrainingGenerationButton[] = openRouterAccessAllowed ? [
+    {
+      id: 'easy',
+      label: directOpenRouterBusy ? 'Requesting easy...' : easyDirectGenerationRunning ? 'Generating easy...' : 'New Easy Session',
+      onClick: () => void generateEasyNextSessionFromOpenRouter(),
+      disabled: !isOnline || directOpenRouterBusy || easyDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      title: sessionQuotaStatus.blocked
+        ? sessionQuotaStatus.message
+        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+      helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
+    },
+    {
+      id: 'medium',
+      label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : mediumDirectGenerationRunning ? 'Generating medium...' : 'New Medium Session',
+      onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
+      disabled: !isOnline || directIntermediateOpenRouterBusy || mediumDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      title: sessionQuotaStatus.blocked
+        ? sessionQuotaStatus.message
+        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+      helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
+    },
+    {
+      id: 'hard',
+      label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : hardDirectGenerationRunning ? 'Generating hard...' : 'New Hard Session',
+      onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
+      disabled: !isOnline || directAdvancedOpenRouterBusy || hardDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      title: sessionQuotaStatus.blocked
+        ? sessionQuotaStatus.message
+        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+      helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
+    },
+    {
+      id: 'express-easy',
+      label: expressEasyOpenRouterBusy ? 'Requesting express easy...' : expressEasyGenerationRunning ? 'Generating express easy...' : 'Express Easy Session',
+      onClick: () => void generateExpressEasyNextSessionFromOpenRouter(),
+      disabled: !isOnline || expressEasyOpenRouterBusy || expressEasyGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      title: sessionQuotaStatus.blocked
+        ? sessionQuotaStatus.message
+        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+      helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
+    },
+    {
+      id: 'express-medium',
+      label: expressIntermediateOpenRouterBusy ? 'Requesting express medium...' : expressMediumGenerationRunning ? 'Generating express medium...' : 'Express Medium Session',
+      onClick: () => void generateExpressIntermediateNextSessionFromOpenRouter(),
+      disabled: !isOnline || expressIntermediateOpenRouterBusy || expressMediumGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      title: sessionQuotaStatus.blocked
+        ? sessionQuotaStatus.message
+        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+      helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
+    },
+    {
+      id: 'express-hard',
+      label: expressAdvancedOpenRouterBusy ? 'Requesting express hard...' : expressHardGenerationRunning ? 'Generating express hard...' : 'Express Hard Session',
+      onClick: () => void generateExpressAdvancedNextSessionFromOpenRouter(),
+      disabled: !isOnline || expressAdvancedOpenRouterBusy || expressHardGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      title: sessionQuotaStatus.blocked
+        ? sessionQuotaStatus.message
+        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+      helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
+    },
+  ] : [];
 
   function replayFocusedAudio(): void {
     const currentTime = engineRef.current?.getCurrentTime() ?? audioRef.current?.currentTime ?? 0;
@@ -7503,63 +7555,30 @@ function App() {
                       <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
                         Adaptive Pace Layer
                       </button>
+                      {desktopOpenRouterGenerationButtons.map((button) => (
+                        <div key={button.id} className="tts-generation-button-row">
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={button.onClick}
+                            disabled={button.disabled}
+                            title={button.title}
+                          >
+                            {button.label}
+                          </button>
+                          {button.helpText ? <HelpIcon tooltip={button.helpText} ariaLabel={`Help for ${button.label}`} /> : null}
+                        </div>
+                      ))}
                       {openRouterAccessAllowed ? (
-                        <>
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void generateNextSessionFromOpenRouter()}
-                            disabled={!isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
-                            title={
-                              sessionQuotaStatus.blocked
-                                ? sessionQuotaStatus.message
-                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                                  ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
-                                  : 'Set a default OpenRouter model first.')
-                            }
-                          >
-                            {directOpenRouterBusy ? 'Requesting...' : 'Generate next session'}
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                            disabled={!isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
-                            title={
-                              sessionQuotaStatus.blocked
-                                ? sessionQuotaStatus.message
-                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                                  ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
-                                  : 'Set a default OpenRouter model first.')
-                            }
-                          >
-                            {directIntermediateOpenRouterBusy ? 'Requesting intermediate...' : 'Generate next session - Intermediate'}
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                            disabled={!isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
-                            title={
-                              sessionQuotaStatus.blocked
-                                ? sessionQuotaStatus.message
-                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                                  ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
-                                  : 'Set a default OpenRouter model first.')
-                            }
-                          >
-                            {directAdvancedOpenRouterBusy ? 'Requesting advanced...' : 'Generate next session - Advanced'}
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={openOpenRouterGenerateForActiveInput}
-                            disabled={sessionQuotaStatus.blocked}
-                            title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
-                          >
-                            OpenRouter script
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={openOpenRouterGenerateForActiveInput}
+                          disabled={sessionQuotaStatus.blocked}
+                          title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.'}
+                        >
+                          New Custom Session
+                        </button>
                       ) : null}
                       <button type="button" className="secondary-button" onClick={() => resetSession()}>
                         Reset
@@ -7720,63 +7739,30 @@ function App() {
                       <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
                         Adaptive Pace Layer
                       </button>
+                      {desktopOpenRouterGenerationButtons.map((button) => (
+                        <div key={button.id} className="tts-generation-button-row">
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={button.onClick}
+                            disabled={button.disabled}
+                            title={button.title}
+                          >
+                            {button.label}
+                          </button>
+                          {button.helpText ? <HelpIcon tooltip={button.helpText} ariaLabel={`Help for ${button.label}`} /> : null}
+                        </div>
+                      ))}
                       {openRouterAccessAllowed ? (
-                        <>
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void generateNextSessionFromOpenRouter()}
-                            disabled={!isOnline || directOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
-                            title={
-                              sessionQuotaStatus.blocked
-                                ? sessionQuotaStatus.message
-                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                                  ? 'Generate the next pending session with the compact adaptive OpenRouter prompt.'
-                                  : 'Set a default OpenRouter model first.')
-                            }
-                          >
-                            {directOpenRouterBusy ? 'Requesting...' : 'Generate next session'}
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void generateIntermediateNextSessionFromOpenRouter()}
-                            disabled={!isOnline || directIntermediateOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
-                            title={
-                              sessionQuotaStatus.blocked
-                                ? sessionQuotaStatus.message
-                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                                  ? 'Generate a 2-minute intermediate session with the compact adaptive OpenRouter prompt.'
-                                  : 'Set a default OpenRouter model first.')
-                            }
-                          >
-                            {directIntermediateOpenRouterBusy ? 'Requesting intermediate...' : 'Generate next session - Intermediate'}
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void generateAdvancedNextSessionFromOpenRouter()}
-                            disabled={!isOnline || directAdvancedOpenRouterBusy || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked}
-                            title={
-                              sessionQuotaStatus.blocked
-                                ? sessionQuotaStatus.message
-                                : openRouterOfflineTitle || (openRouterDefaultModel.trim()
-                                  ? 'Generate a 2-minute advanced session with enough spoken text for the requested duration.'
-                                  : 'Set a default OpenRouter model first.')
-                            }
-                          >
-                            {directAdvancedOpenRouterBusy ? 'Requesting advanced...' : 'Generate next session - Advanced'}
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={openOpenRouterGenerateForActiveInput}
-                            disabled={sessionQuotaStatus.blocked}
-                            title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
-                          >
-                            OpenRouter script
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={openOpenRouterGenerateForActiveInput}
+                          disabled={sessionQuotaStatus.blocked}
+                          title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.'}
+                        >
+                          New Custom Session
+                        </button>
                       ) : null}
                       <button type="button" className="secondary-button" onClick={() => resetSession()}>
                         Reset

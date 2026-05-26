@@ -1537,6 +1537,26 @@ button {
   align-items: center;
 }
 
+.tts-generation-button-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.tts-generation-button-row .secondary-button {
+  min-width: 0;
+  flex: 1 1 auto;
+  margin-top: 0;
+}
+
+.tts-generation-button-row .help-icon {
+  width: 40px;
+  height: auto;
+  min-height: 44px;
+  flex: 0 0 40px;
+}
+
 .kokoro-toggle-row {
   display: flex;
   flex-wrap: nowrap;
