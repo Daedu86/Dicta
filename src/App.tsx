@@ -174,6 +174,11 @@ import {
   type MetricsLanguageView,
   type MetricsRangeView,
 } from './core/liveMetrics';
+import {
+  buildGeneratedTrainingSessionNotification,
+  requestTrainingNotificationPermission,
+  showGeneratedTrainingSessionNotification,
+} from './core/trainingNotifications';
 import { LagDistributionChart, MiniTrends, RateAccuracyStrip, SweetSpotGauge, TargetZoneChart } from './components/AdaptiveBenchmarkCharts';
 
 type DictaBuildInfo = {
@@ -1456,6 +1461,7 @@ function App() {
             const validation = validateGeneratedScriptForTarget(stripJsonFence(text), trackedJob.inputMode, trackedJob.language as BenchmarkLanguageButton);
             if (validation.ok) {
               createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
+              void showGeneratedTrainingSessionNotification(buildGeneratedTrainingSessionNotification(validation.script, trackedJob));
               setTrainingGenerationNotices((current) => ({
                 ...current,
                 [trackedJob.slotLabel]: {
@@ -3230,6 +3236,8 @@ function App() {
       setOpenRouterError('Set a default OpenRouter model before generating the next session.');
       return;
     }
+
+    void requestTrainingNotificationPermission();
 
     const endPerfSpan = perfDiagnostics.startSpan('openrouter.generateDirectSession', { targetDifficulty, durationMinutes });
     const generationStartedAt = new Date().toISOString();
@@ -9007,6 +9015,8 @@ function OpenRouterWorkspace({
       });
       return;
     }
+
+    void requestTrainingNotificationPermission();
 
     setGenerateBusySlots((current) => ({ ...current, [slotId]: true }));
     updateGenerationSlot(slotId, { error: '' });
