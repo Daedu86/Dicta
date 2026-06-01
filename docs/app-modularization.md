@@ -73,11 +73,13 @@ Watch points:
 - `onImmediateValueChange` still supports Browser TTS live evaluation.
 - Props remain explicit; no context/global state was introduced.
 
-### 3. Pending session lane and small training subcomponents
+### 3. Training UI card components
 
 Boundary: browser UI.
 
-Status: in progress.
+Status: complete enough.
+
+Training UI extraction is complete enough. `TrainingView` now acts mostly as an orchestration layer for focused training cards.
 
 Completed extractions now live under:
 
@@ -86,24 +88,44 @@ src/components/training/PendingSessionLane.tsx
 src/components/training/SyncStatusBanner.tsx
 src/components/training/TrainingAudioCard.tsx
 src/components/training/TrainingInputCard.tsx
+src/components/training/TrainingSubmitCard.tsx
+src/components/training/TrainingGenerationCard.tsx
+src/components/training/TrainingSessionCard.tsx
 ```
 
-Recommended next extraction:
+Preserved behavior:
 
-- Move `TrainingSubmitCard` into a small training UI component module.
-- Keep the component presentational and stateless where possible.
-- Keep `TrainingView` props and runtime behavior unchanged.
-- Do not change session persistence, sync behavior, TTS behavior, OpenRouter, or adaptive pacing.
+- `LowLatencyTextarea` stays uncontrolled and protected by `tests/LowLatencyTextareaContract.test.ts`.
+- `flushTextInput()` is still evaluated on pause, stop, and submit interactions.
+- Play still focuses the textarea through `TrainingView` ownership of the text input ref.
+- Training cards remain presentational and receive explicit props.
+- Session persistence, sync behavior, TTS behavior, OpenRouter behavior, and adaptive pacing stayed unchanged.
+
+Stop condition:
+
+- Do not keep extracting training UI unless `TrainingView` accumulates new unrelated responsibilities.
+- Prefer measuring file sizes before further splitting.
+- Avoid turning small static markup into unnecessary microcomponents.
 
 ### 4. OpenRouter workspace UI
 
 Boundary: browser UI + server route clients.
 
-Only after the training surface is stable, extract OpenRouter workspace rendering into a component module. Do not change prompt-building logic, durable job behavior, active-job storage, or server route contracts in this step.
+Status: planned.
+
+Next recommended block: create a dedicated plan before moving code, for example:
+
+```text
+docs/openrouter-workspace-modularization.md
+```
+
+OpenRouter workspace extraction is riskier than training UI because it mixes prompt generation, model access, durable jobs, job polling, local storage, slot state, mobile flow, and error handling. Start with a plan and keep server route contracts unchanged.
 
 ### 5. Admin workspace UI
 
 Boundary: browser UI + Supabase/admin route clients.
+
+Status: later.
 
 Extract admin rendering separately from OpenRouter. Keep `api/admin/users.js` and `api/_securityEvents.js` behavior unchanged.
 
