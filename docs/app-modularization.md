@@ -77,19 +77,21 @@ Watch points:
 
 Boundary: browser UI.
 
-Status: next recommended code patch.
+Status: in progress.
 
-`PendingSessionLane` and `SyncStatusBanner` now live near `TrainingView` in:
+Completed extractions now live under:
 
 ```text
-src/components/TrainingView.tsx
+src/components/training/PendingSessionLane.tsx
+src/components/training/SyncStatusBanner.tsx
+src/components/training/TrainingAudioCard.tsx
+src/components/training/TrainingInputCard.tsx
 ```
 
 Recommended next extraction:
 
-- Move `PendingSessionLane` into a small training UI component module.
-- Move `SyncStatusBanner` into a small training UI component module.
-- Keep both components presentational and stateless where possible.
+- Move `TrainingSubmitCard` into a small training UI component module.
+- Keep the component presentational and stateless where possible.
 - Keep `TrainingView` props and runtime behavior unchanged.
 - Do not change session persistence, sync behavior, TTS behavior, OpenRouter, or adaptive pacing.
 
