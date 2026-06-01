@@ -10,6 +10,20 @@ function createSecurityClient(requester) {
   return requester?.legacy ? null : createSupabaseServiceClient();
 }
 
+function auditChatEvent(eventType, requester, details = {}) {
+  console.warn('[dicta-security-event]', JSON.stringify({
+    eventType,
+    route: '/api/openrouter/chat',
+    profileId: requester?.profileId ?? null,
+    role: requester?.legacy ? 'legacy' : requester?.role ?? null,
+    severity: details.severity ?? 'warn',
+    statusCode: details.statusCode ?? null,
+    model: details.model ?? null,
+    reason: details.reason ?? '',
+    createdAt: new Date().toISOString(),
+  }));
+}
+
 async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -54,12 +68,14 @@ export default async function handler(req, res) {
     securityClient = createSecurityClient(requester);
     assertOpenRouterAccess(requester);
   } catch (error) {
+    auditChatEvent('openrouter_chat_access_rejected', requester, { statusCode: error?.statusCode, reason: error instanceof Error ? error.message : 'access rejected' });
     sendApiError(res, error, 'OpenRouter chat request failed.');
     return;
   }
 
   const apiKey = getOpenRouterApiKey();
   if (!apiKey) {
+    auditChatEvent('openrouter_chat_missing_key', requester, { statusCode: 500, severity: 'error' });
     res.status(500).send('Missing OPENROUTER_API_KEY. Add it in Vercel project environment variables.');
     return;
   }
@@ -77,6 +93,11 @@ export default async function handler(req, res) {
       allowInMemoryFallback: requester.legacy === true,
     });
   } catch (error) {
+    auditChatEvent(error?.statusCode === 429 ? 'openrouter_chat_rate_limited' : 'openrouter_chat_rejected', requester, {
+      statusCode: error?.statusCode,
+      model: requestPayload?.model,
+      reason: error instanceof Error ? error.message : 'request rejected',
+    });
     sendApiError(res, error, 'OpenRouter chat request failed.');
     return;
   }
@@ -91,13 +112,24 @@ export default async function handler(req, res) {
       timeoutMs: 290_000,
     });
 
+    if (!response.ok) {
+      auditChatEvent('openrouter_chat_provider_error', requester, { statusCode: response.status, model: requestPayload.model });
+    }
+
     res.status(response.status);
     res.setHeader('Content-Type', response.contentType);
     res.setHeader('X-Dicta-OpenRouter-Model', requestPayload.model);
     res.send(response.body);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'OpenRouter chat request failed.';
-    if (message.toLowerCase().includes('aborted')) {
+    const statusCode = message.toLowerCase().includes('aborted') ? 504 : 500;
+    auditChatEvent(statusCode === 504 ? 'openrouter_chat_timeout' : 'openrouter_chat_failed', requester, {
+      statusCode,
+      severity: 'error',
+      model: requestPayload.model,
+      reason: message,
+    });
+    if (statusCode === 504) {
       res.status(504).send(`Selected OpenRouter model "${requestPayload.model}" timed out after 290 seconds.`);
       return;
     }
