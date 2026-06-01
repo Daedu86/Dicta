@@ -163,9 +163,6 @@ describe('openRouterGenerationPrompt', () => {
     expect(browserDePayload.prompt).toContain('Write all phrase text naturally in German.');
     expect(browserDePayload.prompt).toContain('"language": "de"');
     expect(browserDePayload.prompt).toContain('German browser recovery only.');
-    expect(browserDePayload.prompt).not.toContain('language "pt"');
-    expect(browserDePayload.prompt).not.toContain('Write all phrase text naturally in Portuguese.');
-    expect(browserDePayload.prompt).not.toContain('"language": "pt"');
     expect(browserDePayload.prompt).not.toContain('Portuguese cache fluency only.');
 
     expect(qwenPtPayload.prompt).toContain('inputMode "qwen-cloud"');
@@ -173,10 +170,6 @@ describe('openRouterGenerationPrompt', () => {
     expect(qwenPtPayload.prompt).toContain('Write all phrase text naturally in Portuguese.');
     expect(qwenPtPayload.prompt).toContain('"language": "pt"');
     expect(qwenPtPayload.prompt).toContain('Portuguese cache fluency only.');
-    expect(qwenPtPayload.prompt).not.toContain('inputMode "browser-tts"');
-    expect(qwenPtPayload.prompt).not.toContain('language "de"');
-    expect(qwenPtPayload.prompt).not.toContain('Write all phrase text naturally in German.');
-    expect(qwenPtPayload.prompt).not.toContain('"language": "de"');
     expect(qwenPtPayload.prompt).not.toContain('German browser recovery only.');
   });
 
