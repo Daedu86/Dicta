@@ -70,6 +70,25 @@ function setRateLimitHeaders(res, rateLimit) {
   }
 }
 
+function auditLegacyLoginEvent(eventType, req, details = {}) {
+  const severity = details.severity === 'error' ? 'error' : details.severity === 'info' ? 'info' : 'warn';
+  const logMethod = severity === 'error' ? console.error : console.warn;
+  logMethod('[dicta-security-event]', JSON.stringify({
+    eventType,
+    route: '/api/auth/login',
+    role: 'legacy',
+    legacy: true,
+    severity,
+    statusCode: details.statusCode ?? null,
+    reason: details.reason ?? '',
+    metadata: {
+      clientIpHash: hashPassword(getClientIp(req)),
+      ...(details.metadata && typeof details.metadata === 'object' ? details.metadata : {}),
+    },
+    createdAt: new Date().toISOString(),
+  }));
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).send('Method not allowed');
@@ -78,6 +97,11 @@ export default async function handler(req, res) {
 
   const configuredPassword = process.env.DICTA_APP_PASSWORD?.trim();
   if (!configuredPassword) {
+    auditLegacyLoginEvent('legacy_login_missing_config', req, {
+      severity: 'error',
+      statusCode: 500,
+      reason: 'DICTA_APP_PASSWORD is not configured.',
+    });
     res.status(500).send('DICTA_APP_PASSWORD is not configured. Use Supabase Auth for public beta deployments.');
     return;
   }
@@ -85,12 +109,30 @@ export default async function handler(req, res) {
   const rateLimit = checkLegacyLoginRateLimit(req);
   setRateLimitHeaders(res, rateLimit);
   if (!rateLimit.allowed) {
+    auditLegacyLoginEvent('legacy_login_rate_limited', req, {
+      statusCode: 429,
+      reason: 'Too many legacy login attempts.',
+      metadata: {
+        limit: rateLimit.limit,
+        remaining: rateLimit.remaining,
+        resetAt: rateLimit.resetAt,
+      },
+    });
     res.status(429).send('Too many login attempts. Try again later.');
     return;
   }
 
   const password = readPassword(req.body);
   if (password !== configuredPassword) {
+    auditLegacyLoginEvent('legacy_login_failed', req, {
+      statusCode: 401,
+      reason: 'Invalid legacy password.',
+      metadata: {
+        limit: rateLimit.limit,
+        remaining: rateLimit.remaining,
+        resetAt: rateLimit.resetAt,
+      },
+    });
     res.status(401).send('Invalid password.');
     return;
   }
