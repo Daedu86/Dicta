@@ -1,37 +1,18 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
-import { createClient } from '@supabase/supabase-js';
-import { assertOpenRouterAccess, assertOpenRouterModelAllowed, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { createSupabaseServiceClient, assertOpenRouterAccess, assertOpenRouterModelAllowed, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
 import { OPENROUTER_ACTIVE_JOB_LIMIT, readOpenRouterJobPayload } from './_request.js';
+import { auditSecurityEvent, enforceOpenRouterRateLimit, getOpenRouterLimit, OPENROUTER_RATE_LIMIT_SCOPES } from './_security.js';
 
 const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
 const JOB_RETENTION_DAYS = 14;
-const OPENROUTER_RATE_LIMIT_SCOPE = 'openrouter_jobs';
-const OPENROUTER_RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
-const OPENROUTER_MEMBER_JOBS_PER_HOUR = 20;
-const OPENROUTER_ADMIN_JOBS_PER_HOUR = 120;
+const JOB_ROUTE = '/api/openrouter/jobs';
 
 function getRequiredEnv(name) {
   const value = process.env[name]?.trim() ?? '';
   if (!value) throw new Error(`Missing ${name}.`);
   return value;
-}
-
-function getPositiveIntEnv(name, fallback, min, max) {
-  const numeric = Number(process.env[name]);
-  const normalized = Number.isFinite(numeric) ? Math.floor(numeric) : fallback;
-  return Math.max(min, Math.min(max, normalized));
-}
-
-function createSupabaseAdminClient() {
-  return createClient(getRequiredEnv('VITE_SUPABASE_URL'), getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
 }
 
 async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
@@ -82,6 +63,21 @@ export function readCreateJobPayload(body) {
   return readOpenRouterJobPayload(body);
 }
 
+async function auditOpenRouterJobEvent(supabase, eventType, requester, details = {}) {
+  await auditSecurityEvent(supabase, {
+    eventType,
+    profileId: requester?.profileId,
+    role: requester?.legacy ? 'legacy' : requester?.role,
+    legacy: requester?.legacy,
+    severity: details.severity ?? 'warn',
+    statusCode: details.statusCode,
+    route: JOB_ROUTE,
+    model: details.model,
+    reason: details.reason,
+    metadata: details.metadata,
+  });
+}
+
 async function cleanupOldOpenRouterJobs(supabase, profileId) {
   const cutoff = new Date(Date.now() - JOB_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { error } = await supabase
@@ -109,40 +105,7 @@ async function enforceActiveOpenRouterJobLimit(supabase, profileId) {
   }
 }
 
-async function enforceOpenRouterJobRateLimit(supabase, requester, res) {
-  const limit = requester.role === 'admin'
-    ? getPositiveIntEnv('DICTA_OPENROUTER_ADMIN_JOBS_PER_HOUR', OPENROUTER_ADMIN_JOBS_PER_HOUR, 1, 1000)
-    : getPositiveIntEnv('DICTA_OPENROUTER_MEMBER_JOBS_PER_HOUR', OPENROUTER_MEMBER_JOBS_PER_HOUR, 1, 1000);
-  const identifierHash = createHash('sha256').update(`profile:${requester.profileId}`).digest('hex');
-  const { data, error } = await supabase.rpc('dicta_check_rate_limit', {
-    p_scope: OPENROUTER_RATE_LIMIT_SCOPE,
-    p_identifier_hash: identifierHash,
-    p_limit: limit,
-    p_window_seconds: OPENROUTER_RATE_LIMIT_WINDOW_SECONDS,
-  });
-  if (error) {
-    throw Object.assign(
-      new Error(`OpenRouter rate limit check failed. Apply docs/supabase-openrouter-jobs.sql before enabling public beta jobs. ${error.message}`),
-      { statusCode: 500 },
-    );
-  }
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row) {
-    throw Object.assign(new Error('OpenRouter rate limit check returned no result.'), { statusCode: 500 });
-  }
-  const resetAt = row.reset_at ? new Date(row.reset_at).toISOString() : new Date(Date.now() + OPENROUTER_RATE_LIMIT_WINDOW_SECONDS * 1000).toISOString();
-  const remaining = Math.max(0, Number(row.remaining ?? 0));
-  res.setHeader('X-RateLimit-Limit', String(limit));
-  res.setHeader('X-RateLimit-Remaining', String(remaining));
-  res.setHeader('X-RateLimit-Reset', resetAt);
-  if (row.allowed !== true) {
-    const retryAfter = Math.max(1, Math.ceil((new Date(resetAt).getTime() - Date.now()) / 1000));
-    res.setHeader('Retry-After', String(retryAfter));
-    throw Object.assign(new Error('OpenRouter job rate limit exceeded. Try again later.'), { statusCode: 429 });
-  }
-}
-
-async function runOpenRouterJob({ req, supabase, profileId, jobId, requestPayload }) {
+async function runOpenRouterJob({ req, supabase, requester, profileId, jobId, requestPayload }) {
   const now = new Date().toISOString();
   await supabase
     .from(JOB_TABLE)
@@ -165,7 +128,10 @@ async function runOpenRouterJob({ req, supabase, profileId, jobId, requestPayloa
     });
 
     if (!response.ok) {
-      throw new Error(response.body || `OpenRouter request failed (${response.status}).`);
+      throw Object.assign(new Error(response.body || `OpenRouter request failed (${response.status}).`), {
+        statusCode: response.status,
+        providerError: true,
+      });
     }
 
     let payload = null;
@@ -196,13 +162,30 @@ async function runOpenRouterJob({ req, supabase, profileId, jobId, requestPayloa
       .eq('profile_id', profileId)
       .eq('job_id', jobId);
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'OpenRouter job failed.';
+    const statusCode = Number(error?.statusCode);
+    const isTimeout = error?.name === 'AbortError' || message.toLowerCase().includes('aborted');
+    const eventType = isTimeout
+      ? 'openrouter_job_timeout'
+      : error?.providerError === true
+        ? 'openrouter_job_provider_error'
+        : 'openrouter_job_failed';
+
+    await auditOpenRouterJobEvent(supabase, eventType, requester, {
+      statusCode: isTimeout ? 504 : Number.isFinite(statusCode) ? statusCode : null,
+      severity: 'error',
+      model: requestPayload.model,
+      reason: message,
+      metadata: { jobId },
+    });
+
     const completedAt = new Date().toISOString();
     await supabase
       .from(JOB_TABLE)
       .update({
         status: 'failed',
         result: null,
-        error: error instanceof Error ? error.message : 'OpenRouter job failed.',
+        error: message,
         updated_at: completedAt,
         completed_at: completedAt,
       })
@@ -212,44 +195,64 @@ async function runOpenRouterJob({ req, supabase, profileId, jobId, requestPayloa
 }
 
 async function createJob(req, res) {
-  const supabase = createSupabaseAdminClient();
-  const requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
-  assertOpenRouterAccess(requester);
-  const { profileId } = requester;
-  const requestPayload = readCreateJobPayload(req.body);
-  assertOpenRouterModelAllowed(requester, requestPayload.model);
-  await cleanupOldOpenRouterJobs(supabase, profileId);
-  await enforceOpenRouterJobRateLimit(supabase, requester, res);
-  await enforceActiveOpenRouterJobLimit(supabase, profileId);
-  const jobId = randomUUID();
-  const now = new Date().toISOString();
-  const { error } = await supabase.from(JOB_TABLE).insert({
-    profile_id: profileId,
-    job_id: jobId,
-    status: 'queued',
-    request: requestPayload,
-    result: null,
-    error: null,
-    created_at: now,
-    updated_at: now,
-    completed_at: null,
-  });
-  if (error) throw error;
+  const supabase = createSupabaseServiceClient();
+  let requester;
+  let requestPayload;
 
-  waitUntil(runOpenRouterJob({ req, supabase, profileId, jobId, requestPayload }));
+  try {
+    requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+    assertOpenRouterAccess(requester);
+    const { profileId } = requester;
+    requestPayload = readCreateJobPayload(req.body);
+    assertOpenRouterModelAllowed(requester, requestPayload.model);
+    await cleanupOldOpenRouterJobs(supabase, profileId);
+    await enforceOpenRouterRateLimit({
+      supabase,
+      requester,
+      res,
+      scope: OPENROUTER_RATE_LIMIT_SCOPES.jobs,
+      limit: getOpenRouterLimit('jobs', requester),
+      allowInMemoryFallback: requester.legacy === true,
+    });
+    await enforceActiveOpenRouterJobLimit(supabase, profileId);
+    const jobId = randomUUID();
+    const now = new Date().toISOString();
+    const { error } = await supabase.from(JOB_TABLE).insert({
+      profile_id: profileId,
+      job_id: jobId,
+      status: 'queued',
+      request: requestPayload,
+      result: null,
+      error: null,
+      created_at: now,
+      updated_at: now,
+      completed_at: null,
+    });
+    if (error) throw error;
 
-  res.status(202).json({
-    jobId,
-    status: 'queued',
-    request: requestPayload,
-    createdAt: now,
-    updatedAt: now,
-    completedAt: null,
-  });
+    waitUntil(runOpenRouterJob({ req, supabase, requester, profileId, jobId, requestPayload }));
+
+    res.status(202).json({
+      jobId,
+      status: 'queued',
+      request: requestPayload,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode);
+    await auditOpenRouterJobEvent(supabase, Number.isFinite(statusCode) && statusCode === 429 ? 'openrouter_job_rate_limited' : 'openrouter_job_rejected', requester, {
+      statusCode: Number.isFinite(statusCode) ? statusCode : null,
+      model: requestPayload?.model,
+      reason: error instanceof Error ? error.message : 'OpenRouter job rejected.',
+    });
+    throw error;
+  }
 }
 
 async function getJob(req, res) {
-  const supabase = createSupabaseAdminClient();
+  const supabase = createSupabaseServiceClient();
   const requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
   assertOpenRouterAccess(requester);
   const { profileId } = requester;
