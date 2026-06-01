@@ -13,8 +13,8 @@
     "ingest:dryrun": "python scripts/transcribe_align.py --audio fixtures/dummy.wav --output fixtures/sample-transcript.json --dry-run"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.1",
-    "@vercel/functions": "^3.5.1",
+    "@supabase/supabase-js": "^2.106.2",
+    "@vercel/functions": "^3.6.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-is": "^19.2.5",
