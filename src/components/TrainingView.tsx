@@ -9,6 +9,7 @@ import type { LowLatencyTextareaHandle } from './LowLatencyTextarea';
 import { PendingSessionLane } from './training/PendingSessionLane';
 import { SyncStatusBanner } from './training/SyncStatusBanner';
 import { TrainingAudioCard } from './training/TrainingAudioCard';
+import { TrainingGenerationCard, type TrainingGenerationButton } from './training/TrainingGenerationCard';
 import { TrainingInputCard } from './training/TrainingInputCard';
 import { TrainingSubmitCard } from './training/TrainingSubmitCard';
 
@@ -24,17 +25,6 @@ type TrainingSessionSubmissionMeta = {
   pointsHelpText: string;
   durationLabel: string;
   submittedAtLabel: string;
-};
-
-type TrainingGenerationButton = {
-  id: string;
-  label: string;
-  onClick: () => void;
-  disabled: boolean;
-  title: string;
-  helpText?: string;
-  statusMessage?: string;
-  statusTone?: 'hint' | 'success' | 'error';
 };
 
 type SupabaseSyncStatus = {
@@ -319,48 +309,8 @@ export function TrainingView<Session extends TrainingViewSession>({
         messageTone={messageTone}
       />
 
-      {generationButtons.length > 0 ? (
-        <section className="training-card training-generation-card" aria-label="Generate new sessions">
-          <div className="training-generation-grid">
-            {generationButtons.map((button) => (
-              <div key={button.id} className={`training-generation-action ${button.id === 'custom' ? 'training-generation-action-wide' : ''}`.trim()}>
-                <div className="training-generation-button-row">
-                  <button
-                    type="button"
-                    className="training-generation-button"
-                    onClick={button.onClick}
-                    disabled={button.disabled}
-                    title={button.title}
-                  >
-                    {button.label}
-                  </button>
-                  {button.helpText ? <HelpIcon tooltip={button.helpText} ariaLabel={`Help for ${button.label}`} /> : null}
-                </div>
-                {button.statusMessage ? (
-                  <p className={`training-generation-notice training-generation-notice-${button.statusTone ?? 'hint'}`} aria-live="polite">
-                    {button.statusMessage}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <TrainingGenerationCard generationButtons={generationButtons} />
     </section>
-  );
-}
-
-function HelpIcon({ tooltip, ariaLabel = 'Help' }: { tooltip: string; ariaLabel?: string }) {
-  return (
-    <button
-      type="button"
-      className="help-icon"
-      aria-label={ariaLabel}
-      data-tooltip={tooltip}
-      onClick={(event) => event.preventDefault()}
-    >
-      ?
-    </button>
   );
 }
 
