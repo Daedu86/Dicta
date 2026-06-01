@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AdaptiveDictationController } from '../src/core/adaptive/AdaptiveDictationController';
-import type { AdaptivePacingInput, HistoricalPerformanceProfile, InputCapabilities, InputMode, LiveTelemetryFrame } from '../src/core/adaptive/types';
+import type { AdaptivePacingInput, HistoricalPerformanceProfile, InputCapabilities, LiveTelemetryFrame } from '../src/core/adaptive/types';
 
 const baseHistory: HistoricalPerformanceProfile = {
   language: 'en',
@@ -123,7 +123,7 @@ describe('AdaptiveDictationController profile guardrails', () => {
     expect(decision.reason).toContain('replay-due-to-lag-or-error');
   });
 
-  it('uses Browser TTS German conservative rate floor without leaking it to English', () => {
+  it('keeps Browser TTS German support behavior isolated from English', () => {
     const germanController = new AdaptiveDictationController();
     const englishController = new AdaptiveDictationController();
 
@@ -142,9 +142,10 @@ describe('AdaptiveDictationController profile guardrails', () => {
 
     expect(germanDecision.mode).toBe('support');
     expect(englishDecision.mode).toBe('support');
-    expect(germanDecision.playbackRate).toBeLessThan(englishDecision.playbackRate);
-    expect(germanDecision.playbackRate).toBeGreaterThanOrEqual(0.75);
-    expect(englishDecision.playbackRate).toBeGreaterThanOrEqual(0.78);
+    expect(germanDecision.shouldReplayPhrase).toBe(false);
+    expect(englishDecision.shouldReplayPhrase).toBe(false);
+    expect(germanDecision.reason).toContain('replay-disabled-recovery');
+    expect(englishDecision.reason).toContain('replay-disabled-recovery');
   });
 
   it('avoids long phrases during early recovery even when accuracy is high', () => {
