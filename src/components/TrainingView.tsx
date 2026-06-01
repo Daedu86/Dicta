@@ -10,6 +10,7 @@ import { PendingSessionLane } from './training/PendingSessionLane';
 import { SyncStatusBanner } from './training/SyncStatusBanner';
 import { TrainingAudioCard } from './training/TrainingAudioCard';
 import { TrainingInputCard } from './training/TrainingInputCard';
+import { TrainingSubmitCard } from './training/TrainingSubmitCard';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
@@ -310,12 +311,13 @@ export function TrainingView<Session extends TrainingViewSession>({
         liveLagHelpText={liveLagHelpText}
       />
 
-      <section className="training-card training-submit-card">
-        <button type="button" className="training-submit-button" onClick={() => onSubmit(flushTextInput())} disabled={!canSubmit}>
-          {submitLabel}
-        </button>
-        {message ? <p className={messageTone ?? (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') ? 'error' : 'hint')}>{message}</p> : null}
-      </section>
+      <TrainingSubmitCard
+        canSubmit={canSubmit}
+        submitLabel={submitLabel}
+        onSubmit={() => onSubmit(flushTextInput())}
+        message={message}
+        messageTone={messageTone}
+      />
 
       {generationButtons.length > 0 ? (
         <section className="training-card training-generation-card" aria-label="Generate new sessions">
