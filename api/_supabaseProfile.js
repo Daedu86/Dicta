@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeOpenRouterModelId } from './openrouter/_request.js';
 
+const AUTH_COOKIE = 'dicta_auth';
 const PROFILE_TABLE = 'dicta_app_profiles';
 const DEFAULT_MEMBER_SESSION_LIMIT = 15;
 
@@ -31,7 +33,7 @@ export async function resolveRequestProfile(req, options = {}) {
   if (!token) {
     if (options.allowLegacyEnvProfile) {
       const profileId = getEnv('VITE_SUPABASE_SYNC_PROFILE_ID');
-      if (!supabaseAuthConfigured) {
+      if (!supabaseAuthConfigured && legacyEnvProfileAllowed(req)) {
         return {
           profileId: profileId || 'legacy-local',
           role: 'admin',
@@ -109,4 +111,53 @@ function normalizeMemberSessionLimit(value) {
   const numeric = Number(value);
   if (Number.isFinite(numeric) && numeric >= 0) return Math.floor(numeric);
   return DEFAULT_MEMBER_SESSION_LIMIT;
+}
+
+function legacyEnvProfileAllowed(req) {
+  if (isLocalHostRequest(req)) return true;
+
+  const password = getEnv('DICTA_APP_PASSWORD');
+  if (!password) return false;
+
+  return getCookie(req, AUTH_COOKIE) === hashPassword(password);
+}
+
+function isLocalHostRequest(req) {
+  if (getEnv('VERCEL') || getEnv('VERCEL_ENV') || getEnv('NODE_ENV') === 'production') return false;
+  const rawHost = getHeader(req, 'host') || getHeader(req, 'x-forwarded-host');
+  const host = normalizeHostName(rawHost);
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.localhost');
+}
+
+function normalizeHostName(rawHost) {
+  const host = rawHost.split(',')[0].trim().toLowerCase();
+  if (!host) return '';
+  if (host === '::1') return host;
+  if (host.startsWith('[')) {
+    const closeIndex = host.indexOf(']');
+    return closeIndex > 0 ? host.slice(1, closeIndex) : '';
+  }
+  return host.split(':')[0];
+}
+
+function getCookie(req, name) {
+  const cookie = getHeader(req, 'cookie');
+  const pairs = cookie.split(';').map((part) => part.trim());
+  const match = pairs.find((part) => part.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : '';
+}
+
+function getHeader(req, name) {
+  const headers = req?.headers;
+  if (!headers) return '';
+  if (typeof headers.get === 'function') {
+    return headers.get(name) ?? '';
+  }
+  const direct = headers[name] ?? headers[name.toLowerCase()] ?? headers[name.toUpperCase()];
+  if (Array.isArray(direct)) return direct[0] ?? '';
+  return typeof direct === 'string' ? direct : '';
+}
+
+function hashPassword(value) {
+  return createHash('sha256').update(value).digest('hex');
 }

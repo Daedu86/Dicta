@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from fastapi import FastAPI
 from fastapi import HTTPException
@@ -13,6 +14,7 @@ from schemas import TtsChunkRequest, TtsChunkResponse
 
 logger = logging.getLogger("dicta.kokoro")
 app = FastAPI(title="Dicta Kokoro TTS Local")
+CACHE_KEY_RE = re.compile(r"^[a-f0-9]{32}$")
 
 app.add_middleware(
     CORSMiddleware,
@@ -107,4 +109,9 @@ def generate_chunk(request: TtsChunkRequest) -> TtsChunkResponse:
 @app.get("/audio/{filename}")
 def get_audio(filename: str) -> FileResponse:
     key = filename.removesuffix(".wav")
-    return FileResponse(audio_path(key), media_type="audio/wav", filename=filename)
+    if filename != f"{key}.wav" or not CACHE_KEY_RE.fullmatch(key):
+        raise HTTPException(status_code=404, detail="Audio not found.")
+    path = audio_path(key)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Audio not found.")
+    return FileResponse(path, media_type="audio/wav", filename=filename)
