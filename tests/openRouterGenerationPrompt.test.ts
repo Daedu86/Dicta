@@ -122,6 +122,64 @@ describe('openRouterGenerationPrompt', () => {
     expect(payload.prompt).toContain('"language": "pt"');
   });
 
+  it('keeps compact adaptive v2 context isolated between input-language profiles', () => {
+    const browserDeProfile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    browserDeProfile.weakAreas = ['lag'];
+    browserDeProfile.recommendation = {
+      targetRateRange: [0.8, 0.85],
+      targetPhraseSize: 'short',
+      targetPauseMs: 1200,
+      nextTrainingFocus: ['German browser recovery only'],
+      confidence: 0.8,
+      summary: 'German browser recovery only.',
+    };
+
+    const qwenPtProfile = createEmptyInputLanguageBenchmark('qwen-cloud', 'pt');
+    qwenPtProfile.weakAreas = ['flow_instability'];
+    qwenPtProfile.recommendation = {
+      targetRateRange: [0.9, 1],
+      targetPhraseSize: 'medium',
+      targetPauseMs: 700,
+      nextTrainingFocus: ['Portuguese cache fluency only'],
+      confidence: 0.7,
+      summary: 'Portuguese cache fluency only.',
+    };
+
+    const browserDePayload = buildOpenRouterGenerationPrompt({
+      profile: browserDeProfile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 3,
+    });
+    const qwenPtPayload = buildOpenRouterGenerationPrompt({
+      profile: qwenPtProfile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 1,
+    });
+
+    expect(browserDePayload.prompt).toContain('inputMode "browser-tts"');
+    expect(browserDePayload.prompt).toContain('language "de"');
+    expect(browserDePayload.prompt).toContain('Write all phrase text naturally in German.');
+    expect(browserDePayload.prompt).toContain('"language": "de"');
+    expect(browserDePayload.prompt).toContain('German browser recovery only.');
+    expect(browserDePayload.prompt).not.toContain('language "pt"');
+    expect(browserDePayload.prompt).not.toContain('Write all phrase text naturally in Portuguese.');
+    expect(browserDePayload.prompt).not.toContain('"language": "pt"');
+    expect(browserDePayload.prompt).not.toContain('Portuguese cache fluency only.');
+
+    expect(qwenPtPayload.prompt).toContain('inputMode "qwen-cloud"');
+    expect(qwenPtPayload.prompt).toContain('language "pt"');
+    expect(qwenPtPayload.prompt).toContain('Write all phrase text naturally in Portuguese.');
+    expect(qwenPtPayload.prompt).toContain('"language": "pt"');
+    expect(qwenPtPayload.prompt).toContain('Portuguese cache fluency only.');
+    expect(qwenPtPayload.prompt).not.toContain('inputMode "browser-tts"');
+    expect(qwenPtPayload.prompt).not.toContain('language "de"');
+    expect(qwenPtPayload.prompt).not.toContain('Write all phrase text naturally in German.');
+    expect(qwenPtPayload.prompt).not.toContain('"language": "de"');
+    expect(qwenPtPayload.prompt).not.toContain('German browser recovery only.');
+  });
+
   it('includes compact adaptive v2 feedback only when feedback is provided', () => {
     const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
     const feedback = buildAdaptiveSessionFeedback({
