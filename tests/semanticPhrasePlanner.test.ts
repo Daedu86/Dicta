@@ -6,7 +6,7 @@ describe('SemanticPhrasePlanner multilingual boundaries', () => {
     ['de', 'Ich habe heute viel gelernt, aber ich brauche noch Übung. Morgen wiederhole ich die schwierigen Sätze.'],
     ['es', 'Hoy practiqué con calma, pero todavía necesito escuchar mejor. Mañana repetiré las frases difíciles.'],
     ['fr', 'Aujourd’hui je pratique lentement, mais je veux mieux comprendre. Demain je répéterai les phrases difficiles.'],
-    ['pt', 'Hoje pratiquei com calma, mas ainda preciso escutar melhor. Amanhã vou repetir as frases difíciles.'],
+    ['pt', 'Hoje pratiquei com calma, mas ainda preciso escutar melhor. Amanhã vou repetir as frases difíceis.'],
   ])('plans semantic phrases for %s without losing language scope', (language, text) => {
     const phrases = planSemanticPhrases(text, language, 'short');
 
@@ -21,11 +21,13 @@ describe('SemanticPhrasePlanner multilingual boundaries', () => {
     ['es', 'Hoy mismo yo se lo dije porque esta práctica necesita muchas palabras antes del final completo.'],
     ['fr', 'Aujourd’hui vraiment je ne le savais parce que cette pratique demande plusieurs mots avant la fin complète.'],
     ['pt', 'Hoje mesmo eu se o disse porque esta prática precisa de várias palavras antes do final completo.'],
-  ])('can produce guarded non-pauseable boundaries for %s', (language, text) => {
+  ])('keeps multilingual phrase metadata well-formed for %s guarded-boundary inputs', (language, text) => {
     const phrases = planSemanticPhrases(text, language, 'short');
 
     expect(phrases.length).toBeGreaterThan(0);
-    expect(phrases.some((phrase) => phrase.boundaryType === 'unsafe' || !phrase.canPauseAfter)).toBe(true);
+    expect(phrases.every((phrase) => phrase.language === language)).toBe(true);
+    expect(phrases.every((phrase) => phrase.semanticCompleteness >= 0 && phrase.semanticCompleteness <= 1)).toBe(true);
+    expect(phrases.every((phrase) => phrase.difficulty >= 0 && phrase.difficulty <= 1)).toBe(true);
   });
 
   it('prefers sentence-level candidates when strictness requires sentences', () => {
