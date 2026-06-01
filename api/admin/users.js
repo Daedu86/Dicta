@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createSupabaseServiceClient, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
-import { auditSecurityEvent } from '../openrouter/_security.js';
+import { auditSecurityEvent } from '../_securityEvents.js';
 import { normalizeOpenRouterModelId } from '../openrouter/_request.js';
 
 const DEFAULT_MEMBER_SESSION_LIMIT = 15;
