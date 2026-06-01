@@ -23,9 +23,9 @@ Read first:
 
 Boundary: browser UI display only.
 
-Status: helper module prepared.
+Status: done.
 
-Prepared files:
+Files:
 
 ```text
 src/core/buildInfo.ts
@@ -38,7 +38,7 @@ Prepared exports:
 - `buildBuildInfoLabel`
 - `buildBuildInfoTitle`
 
-Remaining local patch:
+Completed patch:
 
 - Import the prepared exports from `src/core/buildInfo.ts` in `src/App.tsx`.
 - Remove the duplicate `DictaBuildInfo` type and build-info formatting helpers from `src/App.tsx`.
@@ -56,26 +56,42 @@ Why first:
 
 Boundary: browser UI.
 
-Move the already-isolated `TrainingView` component and `TrainingViewProps` into:
+Status: done.
+
+Moved `TrainingView` and `TrainingViewProps` into:
 
 ```text
 src/components/TrainingView.tsx
 ```
 
-Keep `LowLatencyTextarea` behavior unchanged. The existing `tests/LowLatencyTextareaContract.test.ts` should protect the key uncontrolled-textarea contract.
+`LowLatencyTextarea` behavior stayed unchanged. The existing `tests/LowLatencyTextareaContract.test.ts` protects the key uncontrolled-textarea contract.
 
 Watch points:
 
-- Preserve `flushTextInput()` on pause, stop, and submit.
-- Preserve focus behavior after play.
-- Preserve `onImmediateValueChange` for Browser TTS live evaluation.
-- Keep props explicit; do not introduce context/global state.
+- `flushTextInput()` is still used on pause, stop, and submit.
+- Focus behavior after play is still owned by `TrainingView`.
+- `onImmediateValueChange` still supports Browser TTS live evaluation.
+- Props remain explicit; no context/global state was introduced.
 
 ### 3. Pending session lane and small training subcomponents
 
 Boundary: browser UI.
 
-If still inside `App.tsx`, extract small presentational components used by `TrainingView`, such as pending-session display or status banners. Keep them stateless where possible.
+Status: next recommended code patch.
+
+`PendingSessionLane` and `SyncStatusBanner` now live near `TrainingView` in:
+
+```text
+src/components/TrainingView.tsx
+```
+
+Recommended next extraction:
+
+- Move `PendingSessionLane` into a small training UI component module.
+- Move `SyncStatusBanner` into a small training UI component module.
+- Keep both components presentational and stateless where possible.
+- Keep `TrainingView` props and runtime behavior unchanged.
+- Do not change session persistence, sync behavior, TTS behavior, OpenRouter, or adaptive pacing.
 
 ### 4. OpenRouter workspace UI
 
@@ -89,9 +105,9 @@ Boundary: browser UI + Supabase/admin route clients.
 
 Extract admin rendering separately from OpenRouter. Keep `api/admin/users.js` and `api/_securityEvents.js` behavior unchanged.
 
-## First local patch checklist
+## Per-patch checklist
 
-For the first actual `App.tsx` extraction patch:
+Before each extraction patch:
 
 ```bash
 git status
@@ -100,11 +116,11 @@ npm run test -- --reporter=verbose
 npm run build
 ```
 
-Then make only the build-info extraction and rerun:
+Then make only the scoped extraction and rerun:
 
 ```bash
 npm run test -- --reporter=verbose
 npm run build
 ```
 
-If that passes, commit before extracting `TrainingView`.
+If that passes, commit before starting the next extraction.
