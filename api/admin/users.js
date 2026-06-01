@@ -1,7 +1,10 @@
+import { createHash } from 'node:crypto';
 import { createSupabaseServiceClient, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { auditSecurityEvent } from '../openrouter/_security.js';
 import { normalizeOpenRouterModelId } from '../openrouter/_request.js';
 
 const DEFAULT_MEMBER_SESSION_LIMIT = 15;
+const ADMIN_USERS_ROUTE = '/api/admin/users';
 
 function normalizeBody(body) {
   if (!body) return {};
@@ -46,15 +49,38 @@ function profileSelect() {
   return 'user_id,profile_id,display_name,role,active,can_access_openrouter,assigned_openrouter_model,session_limit,created_at,updated_at';
 }
 
+function hashValue(value) {
+  return createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+async function auditAdminUserEvent(supabase, eventType, requester, details = {}) {
+  await auditSecurityEvent(supabase, {
+    eventType,
+    profileId: requester?.profileId,
+    role: requester?.role,
+    legacy: requester?.legacy,
+    severity: details.severity ?? 'warn',
+    statusCode: details.statusCode,
+    route: ADMIN_USERS_ROUTE,
+    reason: details.reason,
+    metadata: details.metadata,
+  });
+}
+
 export default async function handler(req, res) {
+  let requester;
+  let supabase = null;
   try {
-    const requester = await resolveRequestProfile(req);
+    requester = await resolveRequestProfile(req);
+    supabase = createSupabaseServiceClient();
     if (requester.role !== 'admin') {
+      await auditAdminUserEvent(supabase, 'admin_users_access_rejected', requester, {
+        statusCode: 403,
+        reason: 'Admin access required.',
+      });
       res.status(403).send('Admin access required.');
       return;
     }
-
-    const supabase = createSupabaseServiceClient();
 
     if (req.method === 'GET') {
       const { data, error } = await supabase
@@ -111,6 +137,21 @@ export default async function handler(req, res) {
       );
       if (profileError) throw profileError;
 
+      await auditAdminUserEvent(supabase, 'admin_user_created', requester, {
+        severity: 'info',
+        statusCode: 201,
+        reason: 'Admin created a Dicta user profile.',
+        metadata: {
+          targetUserIdHash: hashValue(created.user.id),
+          targetEmailHash: hashValue(email),
+          targetProfileId: profileId,
+          targetRole: role,
+          canAccessOpenRouter,
+          assignedOpenRouterModel,
+          sessionLimit,
+        },
+      });
+
       res.status(201).json({
         userId: created.user.id,
         email,
@@ -160,12 +201,30 @@ export default async function handler(req, res) {
         res.status(404).send('Dicta profile not found.');
         return;
       }
+
+      await auditAdminUserEvent(supabase, 'admin_user_access_updated', requester, {
+        severity: 'info',
+        statusCode: 200,
+        reason: 'Admin updated Dicta profile access fields.',
+        metadata: {
+          targetUserIdHash: data.user_id ? hashValue(data.user_id) : null,
+          targetProfileId: data.profile_id,
+          updatedFields: Object.keys(patch).filter((key) => key !== 'updated_at'),
+        },
+      });
+
       res.status(200).json({ profile: data });
       return;
     }
 
     res.status(405).send('Method not allowed');
   } catch (error) {
+    await auditAdminUserEvent(supabase, 'admin_users_request_failed', requester, {
+      severity: 'error',
+      statusCode: error?.statusCode,
+      reason: error instanceof Error ? error.message : 'Dicta admin user request failed.',
+      metadata: { method: req.method },
+    });
     sendApiError(res, error, 'Dicta admin user request failed.');
   }
 }
