@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 import { createClient } from '@supabase/supabase-js';
 import { assertOpenRouterAccess, assertOpenRouterModelAllowed, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
@@ -7,11 +7,21 @@ import { OPENROUTER_ACTIVE_JOB_LIMIT, readOpenRouterJobPayload } from './_reques
 const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
 const JOB_RETENTION_DAYS = 14;
+const OPENROUTER_RATE_LIMIT_SCOPE = 'openrouter_jobs';
+const OPENROUTER_RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
+const OPENROUTER_MEMBER_JOBS_PER_HOUR = 20;
+const OPENROUTER_ADMIN_JOBS_PER_HOUR = 120;
 
 function getRequiredEnv(name) {
   const value = process.env[name]?.trim() ?? '';
   if (!value) throw new Error(`Missing ${name}.`);
   return value;
+}
+
+function getPositiveIntEnv(name, fallback, min, max) {
+  const numeric = Number(process.env[name]);
+  const normalized = Number.isFinite(numeric) ? Math.floor(numeric) : fallback;
+  return Math.max(min, Math.min(max, normalized));
 }
 
 function createSupabaseAdminClient() {
@@ -99,6 +109,39 @@ async function enforceActiveOpenRouterJobLimit(supabase, profileId) {
   }
 }
 
+async function enforceOpenRouterJobRateLimit(supabase, requester, res) {
+  const limit = requester.role === 'admin'
+    ? getPositiveIntEnv('DICTA_OPENROUTER_ADMIN_JOBS_PER_HOUR', OPENROUTER_ADMIN_JOBS_PER_HOUR, 1, 1000)
+    : getPositiveIntEnv('DICTA_OPENROUTER_MEMBER_JOBS_PER_HOUR', OPENROUTER_MEMBER_JOBS_PER_HOUR, 1, 1000);
+  const identifierHash = createHash('sha256').update(`profile:${requester.profileId}`).digest('hex');
+  const { data, error } = await supabase.rpc('dicta_check_rate_limit', {
+    p_scope: OPENROUTER_RATE_LIMIT_SCOPE,
+    p_identifier_hash: identifierHash,
+    p_limit: limit,
+    p_window_seconds: OPENROUTER_RATE_LIMIT_WINDOW_SECONDS,
+  });
+  if (error) {
+    throw Object.assign(
+      new Error(`OpenRouter rate limit check failed. Apply docs/supabase-openrouter-jobs.sql before enabling public beta jobs. ${error.message}`),
+      { statusCode: 500 },
+    );
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    throw Object.assign(new Error('OpenRouter rate limit check returned no result.'), { statusCode: 500 });
+  }
+  const resetAt = row.reset_at ? new Date(row.reset_at).toISOString() : new Date(Date.now() + OPENROUTER_RATE_LIMIT_WINDOW_SECONDS * 1000).toISOString();
+  const remaining = Math.max(0, Number(row.remaining ?? 0));
+  res.setHeader('X-RateLimit-Limit', String(limit));
+  res.setHeader('X-RateLimit-Remaining', String(remaining));
+  res.setHeader('X-RateLimit-Reset', resetAt);
+  if (row.allowed !== true) {
+    const retryAfter = Math.max(1, Math.ceil((new Date(resetAt).getTime() - Date.now()) / 1000));
+    res.setHeader('Retry-After', String(retryAfter));
+    throw Object.assign(new Error('OpenRouter job rate limit exceeded. Try again later.'), { statusCode: 429 });
+  }
+}
+
 async function runOpenRouterJob({ req, supabase, profileId, jobId, requestPayload }) {
   const now = new Date().toISOString();
   await supabase
@@ -176,6 +219,7 @@ async function createJob(req, res) {
   const requestPayload = readCreateJobPayload(req.body);
   assertOpenRouterModelAllowed(requester, requestPayload.model);
   await cleanupOldOpenRouterJobs(supabase, profileId);
+  await enforceOpenRouterJobRateLimit(supabase, requester, res);
   await enforceActiveOpenRouterJobLimit(supabase, profileId);
   const jobId = randomUUID();
   const now = new Date().toISOString();
