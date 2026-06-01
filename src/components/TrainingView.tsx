@@ -8,6 +8,7 @@ import type { CreatedDeviceKind } from '../core/sessionDevice';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from './LowLatencyTextarea';
 import { PendingSessionLane } from './training/PendingSessionLane';
 import { SyncStatusBanner } from './training/SyncStatusBanner';
+import { TrainingAudioCard } from './training/TrainingAudioCard';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
@@ -267,45 +268,25 @@ export function TrainingView<Session extends TrainingViewSession>({
         </div>
       </section>
 
-      <section className="training-card training-audio-card" aria-label="Media player and audio controls">
-        <div className="training-audio-status">
-          <span>Media player</span>
-          <strong>{statusLabel}</strong>
-        </div>
-        {showAudioElement ? (
-          <audio
-            ref={audioRef}
-            controls
-            src={audioUrl}
-            className="training-native-audio"
-            onTimeUpdate={onAudioTimeUpdate}
-            onEnded={onAudioEnded}
-          />
-        ) : null}
-        <div className="training-control-grid">
-          <button type="button" onClick={handlePlay} disabled={!canPlay}>
-            {playLabel}
-          </button>
-          <button type="button" className="secondary-button" onClick={onReplay} disabled={!canReplay}>
-            Replay
-          </button>
-          <button type="button" className="secondary-button" onClick={() => onPause(flushTextInput())} disabled={!canPause}>
-            Pause
-          </button>
-          <button type="button" className="secondary-button" onClick={() => onStop(flushTextInput())} disabled={!canStop}>
-            Stop
-          </button>
-          <button
-            type="button"
-            className="secondary-button training-reset-button"
-            onClick={onReset}
-            disabled={!canReset}
-            title="Clear this attempt and return playback to the beginning"
-          >
-            Reset
-          </button>
-        </div>
-      </section>
+      <TrainingAudioCard
+        statusLabel={statusLabel}
+        audioRef={audioRef}
+        audioUrl={audioUrl}
+        onAudioTimeUpdate={onAudioTimeUpdate}
+        onAudioEnded={onAudioEnded}
+        showAudioElement={showAudioElement}
+        canPlay={canPlay}
+        playLabel={playLabel}
+        onPlay={handlePlay}
+        canPause={canPause}
+        onPause={() => onPause(flushTextInput())}
+        canReplay={canReplay}
+        onReplay={onReplay}
+        canStop={canStop}
+        onStop={() => onStop(flushTextInput())}
+        canReset={canReset}
+        onReset={onReset}
+      />
 
       <section className="training-card training-input-card" aria-label="Dictation input">
         <div className="training-input-header">
