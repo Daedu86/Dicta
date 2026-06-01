@@ -1,6 +1,8 @@
 -- Dicta durable OpenRouter job setup.
 -- Run this in the Supabase SQL editor before enabling durable mobile generation.
--- Jobs are accessed only by server routes using SUPABASE_SERVICE_ROLE_KEY.
+-- Jobs and rate limits are accessed only by server routes using SUPABASE_SERVICE_ROLE_KEY.
+-- Security event storage for these server routes lives in docs/supabase-events.sql.
+-- Keep dicta_security_events server-only/service-role: do not add browser/member RLS policies.
 
 create table if not exists public.dicta_openrouter_jobs (
   profile_id text not null,
