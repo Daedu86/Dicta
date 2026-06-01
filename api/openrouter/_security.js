@@ -44,6 +44,23 @@ export async function enforceOpenRouterRateLimit({
 
   setRateLimitHeaders(res, result);
   if (!result.allowed) {
+    await auditSecurityEvent(supabase, {
+      eventType: `${scope}_rate_limited`,
+      profileId: requester?.profileId,
+      role: requester?.legacy ? 'legacy' : requester?.role,
+      legacy: requester?.legacy,
+      severity: 'warn',
+      statusCode: 429,
+      route: scope === OPENROUTER_RATE_LIMIT_SCOPES.chat ? '/api/openrouter/chat' : '/api/openrouter/jobs',
+      reason: 'OpenRouter rate limit exceeded.',
+      metadata: {
+        scope,
+        limit: result.limit,
+        count: result.count,
+        resetAt: result.resetAt,
+        persisted: result.persisted,
+      },
+    });
     throw Object.assign(new Error('OpenRouter rate limit exceeded. Try again later.'), { statusCode: 429, rateLimit: result });
   }
   return result;
