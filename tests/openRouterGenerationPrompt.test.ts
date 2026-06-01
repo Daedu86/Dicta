@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildOpenRouterGenerationPrompt, estimateOpenRouterPromptSize } from '../src/core/adaptive/openRouterGenerationPrompt';
 import { buildAdaptiveSessionFeedback } from '../src/core/adaptive/sessionFeedback';
-import type { PhrasePlaybackEvent } from '../src/core/adaptive/types';
+import type { AdaptiveTimelinePoint, PhrasePlaybackEvent } from '../src/core/adaptive/types';
 
 function phraseEvent(
   phraseIndex: number,
@@ -19,6 +19,27 @@ function phraseEvent(
     timestampMs,
     inputMode: 'browser-tts',
     language: 'de',
+  };
+}
+
+function browserTtsDeScoringPoint(index: number): AdaptiveTimelinePoint {
+  return {
+    timestampMs: 1_800_000_000_000 + index,
+    inputMode: 'browser-tts',
+    language: 'de',
+    mode: 'balanced',
+    playbackRate: 0.85,
+    accuracy: 0.92,
+    lagSec: 0.4,
+    rawLagSec: 0.4,
+    stableLagSec: 0.4,
+    wpm: 52,
+    pauseMs: 700,
+    phraseBoundaryType: 'sentence',
+    semanticCompleteness: 1,
+    phraseIndex: index,
+    totalSemanticPhrases: 30,
+    event: 'phrase_completed',
   };
 }
 
@@ -124,6 +145,9 @@ describe('openRouterGenerationPrompt', () => {
 
   it('keeps compact adaptive v2 context isolated between input-language profiles', () => {
     const browserDeProfile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    browserDeProfile.sessionCount = 30;
+    browserDeProfile.sampleCount = 30;
+    browserDeProfile.timeline = Array.from({ length: 30 }, (_, index) => browserTtsDeScoringPoint(index));
     browserDeProfile.weakAreas = ['lag'];
     browserDeProfile.recommendation = {
       targetRateRange: [0.8, 0.85],
