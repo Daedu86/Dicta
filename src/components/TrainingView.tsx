@@ -4,9 +4,10 @@ import type { LanguageCode } from '../core/adaptive/types';
 import { formatDifficultyLabel, type Difficulty } from '../core/config';
 import { formatSupportedLanguage } from '../core/languages';
 import { perfDiagnostics } from '../core/perfDiagnostics';
-import { formatCreatedDeviceIcon, formatCreatedDeviceTooltip, type CreatedDeviceKind } from '../core/sessionDevice';
-import { isSubmittedFinishedAttempt } from '../core/sessionNormalization';
+import type { CreatedDeviceKind } from '../core/sessionDevice';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from './LowLatencyTextarea';
+import { PendingSessionLane } from './training/PendingSessionLane';
+import { SyncStatusBanner } from './training/SyncStatusBanner';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
@@ -115,105 +116,6 @@ export type TrainingViewProps<Session extends TrainingViewSession = TrainingView
   pendingSyncSummary: PendingSyncSummary;
   isOnline: boolean;
 };
-
-type PendingSessionLaneProps<Session extends TrainingViewSession> = {
-  sessions: Session[];
-  activeSessionId: string | null;
-  className?: string;
-  onOpenSession: (session: Session) => void;
-  onDeleteSession: (sessionId: string) => void;
-};
-
-type SyncStatusBannerProps = {
-  syncStatus: SupabaseSyncStatus;
-  pendingSyncSummary: PendingSyncSummary;
-  isOnline: boolean;
-};
-
-function PendingSessionLane<Session extends TrainingViewSession>({
-  sessions,
-  activeSessionId,
-  className = '',
-  onOpenSession,
-  onDeleteSession,
-}: PendingSessionLaneProps<Session>) {
-  if (sessions.length === 0) return null;
-
-  return (
-    <section className={`pending-session-lane ${className}`.trim()} aria-label="Pending sessions">
-      <div className="pending-session-lane-header">
-        <div>
-          <p className="dashboard-eyebrow">Pending sessions</p>
-          <h3>Ready to perform</h3>
-        </div>
-        <span className="pending-session-count">{sessions.length}</span>
-      </div>
-      <div className="pending-session-strip">
-        {sessions.map((session) => (
-          <div
-            key={session.id}
-            className={`pending-session-chip ${session.id === activeSessionId ? 'pending-session-chip-active' : ''}`}
-          >
-            <button
-              type="button"
-              className="pending-session-open-button"
-              onClick={() => onOpenSession(session)}
-              title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
-            >
-              <span className="pending-session-title">
-                <SessionDeviceIcon session={session} />
-                <span>{getSessionDisplayTitle(session)}</span>
-              </span>
-              <span className="pending-session-meta">
-                {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {formatDifficultyLabel(session.difficulty)} · {getPendingSessionReason(session)}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="danger-button pending-session-delete-button"
-              onClick={() => onDeleteSession(session.id)}
-              aria-label={`Delete ${getSessionDisplayTitle(session)}`}
-              title="Delete session"
-            >
-              <span aria-hidden="true">✕</span>
-            </button>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function SyncStatusBanner({ syncStatus, pendingSyncSummary, isOnline }: SyncStatusBannerProps) {
-  const statusClass = !isOnline ? 'offline' : syncStatus.state;
-  const primaryText = !isOnline
-    ? 'Offline - results saved on this device'
-    : syncStatus.enabled
-      ? `Sync ${formatSupabaseSyncState(syncStatus).toLowerCase()}`
-      : 'Cloud sync off';
-  const pendingText = !syncStatus.enabled
-    ? 'Local only'
-    : pendingSyncSummary.hasPending
-      ? `${pendingSyncSummary.count} local change${pendingSyncSummary.count === 1 ? '' : 's'} pending`
-      : 'No local changes pending';
-  const detailText = !syncStatus.enabled
-    ? syncStatus.message
-    : !isOnline
-      ? 'Dictation continues locally. Sync resumes automatically when internet returns.'
-      : syncStatus.lastSyncedAt
-        ? `Last synced ${formatSessionDate(syncStatus.lastSyncedAt)}.`
-        : 'Waiting for first sync.';
-
-  return (
-    <section className={`sync-status-banner sync-status-banner-${statusClass}`} aria-label="Offline and sync status">
-      <div>
-        <p className="sync-status-primary">{primaryText}</p>
-        <p className="sync-status-detail">{detailText}</p>
-      </div>
-      <span className="sync-status-count">{pendingText}</span>
-    </section>
-  );
-}
 
 export function TrainingView<Session extends TrainingViewSession>({
   activeSession,
@@ -495,39 +397,6 @@ function HelpIcon({ tooltip, ariaLabel = 'Help' }: { tooltip: string; ariaLabel?
   );
 }
 
-function SessionDeviceIcon({ session }: { session: TrainingViewSession }) {
-  const icon = formatCreatedDeviceIcon(session.createdDeviceKind);
-  if (!icon) return null;
-  return (
-    <span className="session-device-icon" title={formatCreatedDeviceTooltip(session.createdDeviceKind, session.createdDeviceLabel)} aria-label={formatCreatedDeviceTooltip(session.createdDeviceKind, session.createdDeviceLabel)}>
-      {icon}
-    </span>
-  );
-}
-
-function formatSessionInputMode(mode: SessionInputMode): string {
-  if (mode === 'input1') return 'Original audio';
-  if (mode === 'input2') return 'Browser TTS';
-  if (mode === 'input3') return 'Kokoro local';
-  return 'Qwen cache';
-}
-
-function formatSupabaseSyncState(status: SupabaseSyncStatus): string {
-  if (!status.enabled) return 'Off';
-  if (status.state === 'pulling') return 'Pulling';
-  if (status.state === 'pushing') return 'Pushing';
-  if (status.state === 'error') return 'Error';
-  if (status.state === 'synced') return 'Synced';
-  return 'Ready';
-}
-
-function formatSessionDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
-
 function formatSessionStatus(value: SessionStatus): string {
   switch (value) {
     case 'running':
@@ -543,28 +412,11 @@ function formatSessionStatus(value: SessionStatus): string {
   }
 }
 
-function getPendingSessionReason(session: TrainingViewSession): string {
-  if (session.status === 'finished' && session.inputMode !== 'input1' && !isSubmittedFinishedAttempt(session)) {
-    return 'stats pending';
-  }
-  if (!session.inputSettingsLocked) return 'setup pending';
-  if (session.status === 'running') return 'running';
-  if (session.status === 'paused') return 'paused';
-  return 'perform pending';
-}
-
 function getSessionDisplayTitle(session: TrainingViewSession): string {
   if (session.dictationScript) {
     return normalizeGeneratedDictationScriptTitle(session.dictationScript).title;
   }
   return session.name || 'Untitled session';
-}
-
-function resolveStoredSessionLanguage(session: TrainingViewSession): LanguageCode {
-  if (session.inputMode === 'input1') return session.transcriptionLanguage ?? 'unknown';
-  if (session.inputMode === 'input2' || session.inputMode === 'input4') return session.ttsLanguage ?? 'unknown';
-  if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
-  return 'unknown';
 }
 
 function normalizeGeneratedDictationScriptTitle(script: DictationScript): DictationScript {
