@@ -28,10 +28,12 @@ describe('resolveSessionLanguage', () => {
   it('uses tts language for input2 and input4', () => {
     expect(resolveSessionLanguage(session({ inputMode: 'input2', ttsLanguage: 'es' }))).toBe('es');
     expect(resolveSessionLanguage(session({ inputMode: 'input4', ttsLanguage: 'en' }))).toBe('en');
+    expect(resolveSessionLanguage(session({ inputMode: 'input4', ttsLanguage: 'pt' }))).toBe('pt');
   });
 
   it('uses kokoro language for input3', () => {
     expect(resolveSessionLanguage(session({ inputMode: 'input3', kokoroLanguage: 'en' }))).toBe('en');
+    expect(resolveSessionLanguage(session({ inputMode: 'input3', kokoroLanguage: 'pt' }))).toBe('pt');
   });
 
   it('returns null for missing language', () => {

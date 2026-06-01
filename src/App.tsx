@@ -3311,7 +3311,7 @@ function App() {
     if (language === 'es') {
       return 'es-virtual';
     }
-    if (language === 'en' || language === 'de' || language === 'fr') {
+    if (language === 'en' || language === 'de' || language === 'fr' || language === 'pt') {
       return 'de-keyboard';
     }
     return null;
@@ -7475,10 +7475,12 @@ function App() {
                     <label>
                       Kokoro language
                       <select value={kokoroLanguage} disabled={setupLocked} onChange={(e) => setKokoroLanguage(e.target.value as TtsLanguage)}>
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="de">German (experimental / not native)</option>
-                        <option value="fr">French (experimental / not native)</option>
+                        {SUPPORTED_LANGUAGES.map((language) => (
+                          <option key={language} value={language}>
+                            {formatSupportedLanguage(language)}
+                            {isKokoroLanguageBlocked(language) ? ' (experimental / not native)' : ''}
+                          </option>
+                        ))}
                       </select>
                     </label>
                     <label>
@@ -11290,7 +11292,7 @@ function AdaptiveBenchmarkSection({
         <>
           <div className="adaptive-section-header adaptive-subsection-header">
             <div>
-              <p className="dashboard-eyebrow">4 inputs x 4 languages</p>
+              <p className="dashboard-eyebrow">4 inputs x 5 languages</p>
               <h4>Profile matrix</h4>
             </div>
             <button

@@ -23,7 +23,7 @@ describe('sessionNormalization', () => {
     expect(normalized.kokoroLanguage).toBeNull();
   });
 
-  it('preserves French for the active input language only', () => {
+  it('preserves French and Portuguese for the active input language only', () => {
     expect(
       normalizeSessionForPersistence({
         inputMode: 'input1' as const,
@@ -51,6 +51,15 @@ describe('sessionNormalization', () => {
         telemetry: {},
       }).kokoroLanguage,
     ).toBe('fr');
+    expect(
+      normalizeSessionForPersistence({
+        inputMode: 'input4' as const,
+        transcriptionLanguage: 'de' as const,
+        ttsLanguage: 'pt' as const,
+        kokoroLanguage: 'fr' as const,
+        telemetry: {},
+      }).ttsLanguage,
+    ).toBe('pt');
   });
 
   it('input2 only keeps ttsLanguage', () => {

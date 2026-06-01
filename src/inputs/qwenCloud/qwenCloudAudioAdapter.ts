@@ -2,7 +2,7 @@ import type { PacingDecision } from '../../core/adaptive/types';
 
 export interface QwenCloudPhrase {
   id: string;
-  language: 'de' | 'en' | 'es' | string;
+  language: 'de' | 'en' | 'es' | 'fr' | 'pt' | string;
   text: string;
   audioUrl: string;
   durationMs?: number;

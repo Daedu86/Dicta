@@ -5,7 +5,7 @@ import type {
 } from '../adaptive/types';
 
 interface CollectorOptions {
-  language?: 'en' | 'de' | 'es' | 'fr' | string;
+  language?: 'en' | 'de' | 'es' | 'fr' | 'pt' | string;
 }
 
 export class LiveTelemetryCollector {

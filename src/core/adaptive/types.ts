@@ -3,7 +3,7 @@ export type PhraseSize = 'short' | 'medium' | 'long';
 export type PacingMode = 'support' | 'balanced' | 'flow';
 export type ImprovementTrend = 'improving' | 'stable' | 'declining';
 export type PhraseBoundaryType = 'sentence' | 'clause' | 'minor' | 'unsafe';
-export type LanguageCode = 'en' | 'es' | 'de' | 'fr' | 'unknown' | string;
+export type LanguageCode = 'en' | 'es' | 'de' | 'fr' | 'pt' | 'unknown' | string;
 
 export interface InputCapabilities {
   supportsClausePause: boolean;
@@ -50,7 +50,7 @@ export interface LiveTelemetryFrame {
   phraseLengthWords: number;
   phraseLengthChars: number;
 
-  language?: 'en' | 'de' | 'es' | 'fr' | string;
+  language?: 'en' | 'de' | 'es' | 'fr' | 'pt' | string;
   phraseBoundaryType?: PhraseBoundaryType;
   canPauseAfter?: boolean;
   canReplayIndependently?: boolean;

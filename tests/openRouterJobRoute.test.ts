@@ -22,6 +22,26 @@ describe('openRouter jobs route payload validation', () => {
     });
   });
 
+  it('accepts Portuguese durable session generation jobs', () => {
+    expect(
+      readCreateJobPayload({
+        model: 'openrouter/free',
+        prompt: 'Generate a Portuguese Dicta session.',
+        inputMode: 'qwen-cloud',
+        language: 'pt',
+        slotLabel: 'Session PT',
+        durationMinutes: 2,
+      }),
+    ).toMatchObject({
+      model: 'openrouter/free',
+      maxTokens: 1000,
+      inputMode: 'qwen-cloud',
+      language: 'pt',
+      slotLabel: 'Session PT',
+      durationMinutes: 2,
+    });
+  });
+
   it('accepts one-minute express durable generation jobs', () => {
     expect(
       readCreateJobPayload({

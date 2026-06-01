@@ -1,4 +1,4 @@
-export const SUPPORTED_LANGUAGES = ['en', 'es', 'de', 'fr'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'es', 'de', 'fr', 'pt'] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
@@ -7,6 +7,7 @@ export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   es: 'Spanish',
   de: 'German',
   fr: 'French',
+  pt: 'Portuguese',
 };
 
 export const LANGUAGE_TAB_LABELS: Record<SupportedLanguage, string> = {
@@ -14,6 +15,7 @@ export const LANGUAGE_TAB_LABELS: Record<SupportedLanguage, string> = {
   es: 'ES',
   de: 'DE',
   fr: 'FR',
+  pt: 'PT',
 };
 
 export function isSupportedLanguage(value: unknown): value is SupportedLanguage {
@@ -28,5 +30,6 @@ export function getDefaultSpeechSynthesisLang(language: SupportedLanguage): stri
   if (language === 'en') return 'en-US';
   if (language === 'es') return 'es-ES';
   if (language === 'fr') return 'fr-FR';
+  if (language === 'pt') return 'pt-BR';
   return 'de-DE';
 }

@@ -25,13 +25,14 @@ export interface SemanticPhrasePlaybackState {
 
 const SENTENCE_END_RE = /[.!?]["')\]]*$/;
 const CLAUSE_END_RE = /[,;:]["')\]]*$|--$|[–—]$/;
-type PlannerLanguage = 'en' | 'es' | 'de' | 'fr';
+type PlannerLanguage = 'en' | 'es' | 'de' | 'fr' | 'pt';
 
 const DISCOURSE_MARKERS: Record<PlannerLanguage, string[]> = {
   en: ['and', 'but', 'because', 'however', 'therefore', 'then', 'so', 'while'],
   es: ['y', 'pero', 'porque', 'sin', 'embargo', 'entonces', 'asi', 'ademas', 'aunque'],
   de: ['und', 'aber', 'weil', 'doch', 'dann', 'deshalb', 'wahrend', 'obwohl'],
   fr: ['et', 'mais', 'parce', 'que', 'cependant', 'donc', 'alors', 'pendant', 'bien', 'que', 'quoique'],
+  pt: ['e', 'mas', 'porque', 'porem', 'porém', 'entao', 'então', 'logo', 'portanto', 'alem', 'além', 'disso', 'embora'],
 };
 
 const UNSAFE_WORDS: Record<PlannerLanguage, string[]> = {
@@ -39,6 +40,7 @@ const UNSAFE_WORDS: Record<PlannerLanguage, string[]> = {
   es: ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'al', 'a', 'en', 'con', 'por', 'para', 'es', 'son', 'ser', 'estar', 'se'],
   de: ['der', 'die', 'das', 'ein', 'eine', 'zu', 'mit', 'von', 'im', 'am', 'ist', 'sind', 'war', 'sein', 'haben'],
   fr: ['le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'au', 'aux', 'a', 'en', 'avec', 'pour', 'par', 'est', 'sont', 'etre', 'se'],
+  pt: ['o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'de', 'do', 'da', 'dos', 'das', 'ao', 'aos', 'a', 'em', 'no', 'na', 'nos', 'nas', 'com', 'por', 'para', 'e', 'é', 'sao', 'são', 'ser', 'estar', 'se'],
 };
 
 const WORD_WEIGHTS = {
@@ -48,7 +50,7 @@ const WORD_WEIGHTS = {
 };
 
 function normalizeLanguage(language?: string): PlannerLanguage {
-  if (language === 'es' || language === 'de' || language === 'fr') return language;
+  if (language === 'es' || language === 'de' || language === 'fr' || language === 'pt') return language;
   return 'en';
 }
 
@@ -73,6 +75,9 @@ function isUnsafePair(leftWord: string, rightWord: string, language: PlannerLang
     return true;
   }
   if (language === 'fr' && /^(me|te|se|nous|vous|le|la|les|l|ne|n)$/.test(leftWord)) {
+    return true;
+  }
+  if (language === 'pt' && /^(me|te|se|o|a|os|as|lhe|lhes|nos|vos|lo|la|los|las)$/.test(leftWord)) {
     return true;
   }
   return false;

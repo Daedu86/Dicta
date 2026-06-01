@@ -74,6 +74,21 @@ describe('planBrowserTtsAdaptiveChunk', () => {
     expect((chunk?.text ?? '').trim().length).toBeGreaterThan(0);
   });
 
+  it('plans Portuguese chunks with PT semantic heuristics', () => {
+    const words = 'Primeiro escutamos, depois escrevemos. No final revisamos com calma.'.split(' ');
+    const chunk = planBrowserTtsAdaptiveChunk({
+      macroWords: words,
+      macroWordOffset: 0,
+      globalStartWordIndex: 0,
+      language: 'pt',
+      nextPhraseSize: 'medium',
+      boundaryStrictness: 'phrase',
+    });
+    expect(chunk).not.toBeNull();
+    expect((chunk?.wordCount ?? 0)).toBeGreaterThan(0);
+    expect((chunk?.semanticCompleteness ?? 0)).toBeGreaterThan(0);
+  });
+
   it('sets startWordIndex based on globalStartWordIndex + macroWordOffset', () => {
     const words = 'Zuerst horen wir zu, dann schreiben wir.'.split(' ');
     const chunk = planBrowserTtsAdaptiveChunk({
@@ -144,7 +159,7 @@ describe('planBrowserTtsAdaptiveChunk', () => {
   });
 
   it('ignores recovery-safe scanning for non-German languages', () => {
-    for (const language of ['en', 'es'] as const) {
+    for (const language of ['en', 'es', 'fr', 'pt'] as const) {
       const words = 'We hear the first sentence. Then we continue slowly.'.split(' ');
       const chunk = planBrowserTtsAdaptiveChunk({
         macroWords: words,

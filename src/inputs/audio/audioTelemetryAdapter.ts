@@ -28,7 +28,7 @@ export interface AudioTelemetryParams {
   phraseLengthChars: number;
   currentPlaybackRate: number;
   currentPauseAfterPhraseMs: number;
-  language?: 'en' | 'de' | 'es' | 'fr' | string;
+  language?: 'en' | 'de' | 'es' | 'fr' | 'pt' | string;
   trend: 'improving' | 'stable' | 'declining';
   accuracy: number;
   errorRate: number;

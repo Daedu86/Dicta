@@ -107,6 +107,21 @@ describe('openRouterGenerationPrompt', () => {
     expect(payload.prompt).not.toContain('LLM prompt:');
   });
 
+  it('uses Portuguese language labels and exact pt output contract', () => {
+    const profile = createEmptyInputLanguageBenchmark('qwen-cloud', 'pt');
+    const payload = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 2,
+    });
+
+    expect(payload.prompt).toContain('inputMode "qwen-cloud"');
+    expect(payload.prompt).toContain('language "pt"');
+    expect(payload.prompt).toContain('Write all phrase text naturally in Portuguese.');
+    expect(payload.prompt).toContain('"language": "pt"');
+  });
+
   it('includes compact adaptive v2 feedback only when feedback is provided', () => {
     const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
     const feedback = buildAdaptiveSessionFeedback({

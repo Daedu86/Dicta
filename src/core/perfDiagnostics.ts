@@ -95,7 +95,7 @@ export type PerfDiagnosticsSnapshot = {
   tts: {
     latest?: PerfTtsUtterance;
     voices: PerfTtsVoice[];
-    voiceCounts: Record<'total' | 'en' | 'es' | 'de' | 'fr', number>;
+    voiceCounts: Record<'total' | 'en' | 'es' | 'de' | 'fr' | 'pt', number>;
   };
   renders: Record<string, number>;
   heap: {
@@ -492,7 +492,7 @@ function getStandaloneMode(): boolean {
   return window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-function summarizeVoiceCounts(voices: PerfTtsVoice[]): Record<'total' | 'en' | 'es' | 'de' | 'fr', number> {
+function summarizeVoiceCounts(voices: PerfTtsVoice[]): Record<'total' | 'en' | 'es' | 'de' | 'fr' | 'pt', number> {
   const countPrefix = (prefix: string): number =>
     voices.filter((voice) => voice.lang.toLowerCase().startsWith(prefix)).length;
   return {
@@ -501,5 +501,6 @@ function summarizeVoiceCounts(voices: PerfTtsVoice[]): Record<'total' | 'en' | '
     es: countPrefix('es'),
     de: countPrefix('de'),
     fr: countPrefix('fr'),
+    pt: countPrefix('pt'),
   };
 }

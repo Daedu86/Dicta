@@ -154,8 +154,8 @@ describe('browserTtsDeRecoveryPolicy', () => {
     expect(recovery.recentOutlierDiagnosticCount).toBe(1);
   });
 
-  it('does not apply to EN or ES benchmark samples', () => {
-    for (const language of ['en', 'es'] as const) {
+  it('does not apply to EN, ES, FR, or PT benchmark samples', () => {
+    for (const language of ['en', 'es', 'fr', 'pt'] as const) {
       const recovery = summarizeBrowserTtsDeRecoveryState({
         timeline: [
           point({ language, lagSec: 3.5, rawLagSec: 3.5, stableLagSec: 3.5 }),

@@ -527,7 +527,7 @@ export default defineConfig(({ mode }) => {
               return;
             }
 
-            const supportedTranscriptionLanguages = new Set(['en', 'es', 'de', 'fr']);
+            const supportedTranscriptionLanguages = new Set(['en', 'es', 'de', 'fr', 'pt']);
             const safeLanguage = supportedTranscriptionLanguages.has(String(parsed.language)) ? String(parsed.language) : 'en';
             const resolvedExt = parsed.fileName
               ? normalizeAudioExtension(parsed.fileName)

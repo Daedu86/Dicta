@@ -202,17 +202,36 @@ function buildStaleBrowserTtsDePressureProfile(): InputLanguageBenchmarkMetrics 
 }
 
 describe('AdaptiveInputLanguageBenchmarkService', () => {
-  it('creates separate profiles for browser-tts/en, browser-tts/es, and browser-tts/fr', () => {
+  it('creates separate profiles for browser-tts/en, browser-tts/es, browser-tts/fr, and browser-tts/pt', () => {
     const en = updateInputLanguageBenchmark({ live: live({ language: 'en' }), decision: decision(), sessionId: 's1' });
     const es = updateInputLanguageBenchmark({ live: live({ language: 'es' }), decision: decision(), sessionId: 's2' });
     const fr = updateInputLanguageBenchmark({ live: live({ language: 'fr' }), decision: decision(), sessionId: 's3' });
+    const pt = updateInputLanguageBenchmark({ live: live({ language: 'pt' }), decision: decision(), sessionId: 's4' });
     expect(en.inputMode).toBe('browser-tts');
     expect(en.language).toBe('en');
     expect(es.language).toBe('es');
     expect(fr.language).toBe('fr');
+    expect(pt.language).toBe('pt');
     expect(en.sampleCount).toBe(1);
     expect(es.sampleCount).toBe(1);
     expect(fr.sampleCount).toBe(1);
+    expect(pt.sampleCount).toBe(1);
+  });
+
+  it('creates Portuguese benchmark keys for all four input modes', () => {
+    const profiles = [
+      createEmptyInputLanguageBenchmark('audio', 'pt'),
+      createEmptyInputLanguageBenchmark('browser-tts', 'pt'),
+      createEmptyInputLanguageBenchmark('kokoro', 'pt'),
+      createEmptyInputLanguageBenchmark('qwen-cloud', 'pt'),
+    ];
+
+    expect(profiles.map((profile) => `${profile.inputMode}/${profile.language}`)).toEqual([
+      'audio/pt',
+      'browser-tts/pt',
+      'kokoro/pt',
+      'qwen-cloud/pt',
+    ]);
   });
 
   it('updating kokoro/en does not modify kokoro/de', () => {

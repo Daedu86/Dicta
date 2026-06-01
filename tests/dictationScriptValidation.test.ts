@@ -89,12 +89,12 @@ describe('dictationScriptValidation', () => {
   it('normalizes optional defaults', () => {
     const normalized = normalizeDictationScript({
       title: 'Defaulted',
-      language: 'es',
+      language: 'pt',
       inputMode: 'browser-tts',
       phrases: [
         {
           id: 'p01',
-          text: 'Hola mundo.',
+          text: 'Ola mundo.',
           boundaryType: 'sentence',
           pauseAfterMs: 600,
           canReplayIndependently: true,
@@ -106,6 +106,7 @@ describe('dictationScriptValidation', () => {
     });
 
     expect(normalized.recommendedPhraseSize).toBe('medium');
+    expect(normalized.language).toBe('pt');
     expect(normalized.recommendedPauseMs).toBe(600);
     expect(normalized.recommendedRateRange).toEqual([0.9, 1]);
     expect(normalized.phrases[0].emphasisWords).toEqual([]);

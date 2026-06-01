@@ -8,7 +8,7 @@ export const OPENROUTER_CHAT_DEFAULT_MAX_TOKENS = 600;
 export const OPENROUTER_SLOT_LABEL_MAX_CHARS = 80;
 export const OPENROUTER_TARGET_DIFFICULTY_MAX_CHARS = 40;
 
-const VALID_LANGUAGES = new Set(['en', 'es', 'de', 'fr']);
+const VALID_LANGUAGES = new Set(['en', 'es', 'de', 'fr', 'pt']);
 const VALID_INPUT_MODES = new Set(['audio', 'browser-tts', 'kokoro', 'qwen-cloud']);
 const VALID_DURATIONS = new Set([1, 2, 3, 4]);
 const DEFAULT_JOB_MAX_TOKENS_BY_DURATION = new Map([

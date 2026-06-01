@@ -96,7 +96,7 @@ This repo moved from "adaptive on paper" to "adaptive in execution", especially 
   - Benchmarks and session feedback exports are grouped and deeply sectioned (7.x) with minimize/expand toggles.
   - The "Adaptive Pace Layer" button from training/TTS now deep-links to Section 7.2.4 (Session Feedback) for the current input/language.
 - Language-scoped views:
-  - Sessions list, Leaderboard, and Admin workspace are each filterable by EN/ES/DE, treating them as separate leaderboards and separate session lists.
+  - Sessions list, Leaderboard, and Admin workspace are each filterable by EN/ES/DE/FR/PT, treating them as separate leaderboards and separate session lists.
 
 ## Transcript Format (Audio Mode)
 
@@ -130,14 +130,14 @@ At a high level, on each phrase/tick it does:
 - Next phrase size (short/medium/long) based on overload, difficulty, and semantic completeness.
 - Boundary strictness (sentence/clause/phrase) to avoid unsafe cuts in different languages.
 
-### Inputs (4) x Languages (4)
+### Inputs (4) x Languages (5)
 
-Dicta's brain is shared across **4 input modes** and scoped by **language** (EN/ES/DE/FR). Practically, that means the benchmarks, recommendations, and session feedback are tracked per:
+Dicta's brain is shared across **4 input modes** and scoped by **language** (EN/ES/DE/FR/PT). Practically, that means the benchmarks, recommendations, and session feedback are tracked per:
 
 `(inputMode, language)`
 
 So "Browser TTS in German" is a different adaptive profile than "Browser TTS in English".
-French (`fr`) is a first-class language for sessions, Browser TTS, transcription, generated scripts, sync, diagnostics, and adaptive profiles. Kokoro keeps French as a non-native/experimental entry, like German, until a native model path is confirmed.
+French (`fr`) and Portuguese (`pt`) are first-class languages for sessions, Browser TTS, transcription, generated scripts, sync, diagnostics, and adaptive profiles. Portuguese defaults to Brazilian Portuguese (`pt-BR`) for Browser TTS. Kokoro keeps French and Portuguese as non-native/experimental entries, like German, until native model paths are confirmed.
 
 ### Why Language Matters
 

@@ -54,6 +54,16 @@ const FALLBACK_PHRASES: Record<LanguageCode, string[]> = {
     'Une transcription fiable demande de la patience, de la ponctuation et une attention constante.',
     'A la fin, revise les noms, les nombres et les verbes les plus importants.',
   ],
+  pt: [
+    'Esta pratica usa frases claras, ritmo estavel e pausas curtas.',
+    'Concentre-se primeiro na precisao e depois aumente a velocidade pouco a pouco.',
+    'Depois de cada frase, confira as palavras antes de continuar.',
+    'Se uma oracao parecer dificil, faca uma pausa e repita a ideia completa.',
+    'O relatorio da manha inclui planos, notas e prioridades do dia.',
+    'Durante a reuniao, a equipe compara opcoes e registra as proximas tarefas.',
+    'Uma transcricao confiavel precisa de paciencia, pontuacao e atencao constante.',
+    'No final, revise nomes, numeros e os verbos mais importantes outra vez.',
+  ],
 };
 
 const HARD_FALLBACK_PHRASES: Record<LanguageCode, string[]> = {
@@ -80,6 +90,12 @@ const HARD_FALLBACK_PHRASES: Record<LanguageCode, string[]> = {
     'L analyse compare plusieurs propositions avant de formuler un compromis vraiment praticable.',
     'Les longues propositions, les changements d accent et les termes techniques rendent l exercice plus exigeant.',
     'La note finale separe les causes, les consequences et les prochaines etapes concretes pour l equipe.',
+  ],
+  pt: [
+    'Embora o cronograma continue apertado, as decisoes principais devem ser documentadas com precisao.',
+    'A analise compara varias propostas antes de formular um compromisso realmente pratico.',
+    'As oracoes longas, as mudancas de enfase e os termos tecnicos aumentam a dificuldade.',
+    'A nota final separa causas, consequencias e proximos passos concretos para a equipe.',
   ],
 };
 
@@ -181,6 +197,8 @@ function buildTopicSuffix(language: LanguageCode, seed: number): string {
         ? ['cafe', 'planificacion', 'rutina', 'viaje', 'reunion', 'mercado']
         : language === 'fr'
           ? ['cafe', 'planification', 'routine', 'voyage', 'reunion', 'marche']
-        : ['cafe', 'planning', 'daily flow', 'travel', 'meeting', 'market'];
+          : language === 'pt'
+            ? ['cafe', 'planejamento', 'rotina', 'viagem', 'reuniao', 'mercado']
+            : ['cafe', 'planning', 'daily flow', 'travel', 'meeting', 'market'];
   return topics[seed % topics.length];
 }

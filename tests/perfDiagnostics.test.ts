@@ -69,6 +69,7 @@ describe('perf diagnostics', () => {
       { lang: 'en-US', name: 'English', voiceURI: 'en', default: false, localService: true },
       { lang: 'fr-FR', name: 'French France', voiceURI: 'fr-fr', default: false, localService: true },
       { lang: 'fr-CA', name: 'French Canada', voiceURI: 'fr-ca', default: false, localService: true },
+      { lang: 'pt-BR', name: 'Portuguese Brazil', voiceURI: 'pt-br', default: false, localService: true },
     ]);
 
     vi.spyOn(performance, 'now')
@@ -88,6 +89,6 @@ describe('perf diagnostics', () => {
     expect(snapshot.renders.TrainingView).toBe(4);
     expect(snapshot.slowSpans.count).toBe(1);
     expect(snapshot.slowSpans.latest?.name).toBe('slow-work');
-    expect(snapshot.tts.voiceCounts).toMatchObject({ total: 3, en: 1, fr: 2 });
+    expect(snapshot.tts.voiceCounts).toMatchObject({ total: 4, en: 1, fr: 2, pt: 1 });
   });
 });

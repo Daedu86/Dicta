@@ -35,7 +35,7 @@ export interface KokoroTelemetryParams {
   phraseLengthChars: number;
   currentPlaybackRate: number;
   currentPauseAfterPhraseMs: number;
-  language?: 'en' | 'de' | 'es' | 'fr' | string;
+  language?: 'en' | 'de' | 'es' | 'fr' | 'pt' | string;
   phraseBoundaryType?: PhraseBoundaryType;
   canPauseAfter?: boolean;
   canReplayIndependently?: boolean;

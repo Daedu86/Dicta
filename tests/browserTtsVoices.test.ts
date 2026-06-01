@@ -15,14 +15,17 @@ const voices: BrowserTtsVoiceLike[] = [
   { lang: 'de-DE', voiceURI: 'de-a' },
   { lang: 'fr-FR', voiceURI: 'fr-a' },
   { lang: 'fr-CA', voiceURI: 'fr-b' },
+  { lang: 'pt-BR', voiceURI: 'pt-a' },
+  { lang: 'pt-PT', voiceURI: 'pt-b' },
 ];
 
 describe('Browser TTS voices', () => {
-  it('filters voices by EN, ES, DE, and FR language prefix', () => {
+  it('filters voices by EN, ES, DE, FR, and PT language prefix', () => {
     expect(voicesForBrowserTtsLanguage(voices, 'en').map((voice) => voice.voiceURI)).toEqual(['en-a', 'en-b']);
     expect(voicesForBrowserTtsLanguage(voices, 'es').map((voice) => voice.voiceURI)).toEqual(['es-a']);
     expect(voicesForBrowserTtsLanguage(voices, 'de').map((voice) => voice.voiceURI)).toEqual(['de-a']);
     expect(voicesForBrowserTtsLanguage(voices, 'fr').map((voice) => voice.voiceURI)).toEqual(['fr-a', 'fr-b']);
+    expect(voicesForBrowserTtsLanguage(voices, 'pt').map((voice) => voice.voiceURI)).toEqual(['pt-a', 'pt-b']);
   });
 
   it('chooses a random compatible voice URI for the session language', () => {
@@ -30,6 +33,7 @@ describe('Browser TTS voices', () => {
     expect(chooseRandomBrowserTtsVoiceURI(voices, 'en', () => 0.75)).toBe('en-b');
     expect(chooseRandomBrowserTtsVoiceURI(voices, 'es', () => 0.75)).toBe('es-a');
     expect(chooseRandomBrowserTtsVoiceURI(voices, 'fr', () => 0.75)).toBe('fr-b');
+    expect(chooseRandomBrowserTtsVoiceURI(voices, 'pt', () => 0.75)).toBe('pt-b');
   });
 
   it('returns null when no compatible voices are available yet', () => {

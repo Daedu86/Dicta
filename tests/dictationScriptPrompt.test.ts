@@ -43,12 +43,12 @@ describe('dictationScriptPrompt', () => {
   });
 
   it('builds a valid sample output template for an input and language', () => {
-    const template = buildDictationScriptTemplate('kokoro', 'en');
+    const template = buildDictationScriptTemplate('kokoro', 'pt');
     const parsed = JSON.parse(template);
 
     expect(parsed.title).not.toBe('Generated Dictation');
     expect(parsed.inputMode).toBe('kokoro');
-    expect(parsed.language).toBe('en');
+    expect(parsed.language).toBe('pt');
     expect(Array.isArray(parsed.phrases)).toBe(true);
     expect(parsed.phrases.length).toBeGreaterThan(0);
   });

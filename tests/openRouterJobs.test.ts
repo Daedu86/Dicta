@@ -108,7 +108,7 @@ describe('openRouterJobs', () => {
           model: 'openrouter/free',
           slotLabel: 'Session 2',
           inputMode: 'qwen-cloud',
-          language: 'es',
+          language: 'pt',
           durationMinutes: 4,
           promptMode: 'compact-adaptive',
           promptCharacterCount: 4200,
@@ -130,6 +130,7 @@ describe('openRouterJobs', () => {
     expect(restoredJobs[0]).not.toHaveProperty('customSlotId');
     expect(restoredJobs[1]).toMatchObject({
       jobId: 'job-custom',
+      language: 'pt',
       origin: 'custom-workspace',
       customSlotId: 'prompt2',
       promptMode: 'compact-adaptive',

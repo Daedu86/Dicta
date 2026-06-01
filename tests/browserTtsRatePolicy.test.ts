@@ -119,16 +119,18 @@ describe('buildBrowserTtsControlLagSample', () => {
   });
 
   it('leaves non-DE lag stabilization unchanged', () => {
-    const sample = buildBrowserTtsControlLagSample({
-      rawLagSec: 24.16,
-      language: 'en',
-      previousValidControlLagSec: 1.4,
-    });
+    for (const language of ['en', 'es', 'fr', 'pt'] as const) {
+      const sample = buildBrowserTtsControlLagSample({
+        rawLagSec: 24.16,
+        language,
+        previousValidControlLagSec: 1.4,
+      });
 
-    expect(sample.rawLagSec).toBeCloseTo(24.16, 2);
-    expect(sample.stableLagSec).toBe(5);
-    expect(sample.isOutlier).toBe(true);
-    expect(sample.usedFallbackControlLag).toBe(false);
+      expect(sample.rawLagSec).toBeCloseTo(24.16, 2);
+      expect(sample.stableLagSec).toBe(5);
+      expect(sample.isOutlier).toBe(true);
+      expect(sample.usedFallbackControlLag).toBe(false);
+    }
   });
 });
 

@@ -35,6 +35,23 @@ describe('OpenRouter fallback script helpers', () => {
     expect(validateDictationScript(script).ok).toBe(true);
   });
 
+  it('builds a valid Portuguese fallback session', () => {
+    const script = buildFallbackOpenRouterSessionScript({
+      inputMode: 'qwen-cloud',
+      language: 'pt',
+      durationMinutes: 2,
+      targetDifficulty: 'normal',
+      seed: 'pt-seed',
+    });
+
+    expect(script.inputMode).toBe('qwen-cloud');
+    expect(script.language).toBe('pt');
+    expect(script.title).toContain('Portuguese');
+    expect(script.phrases).toHaveLength(12);
+    expect(script.phrases[0]?.id).toContain('local-fallback-pt');
+    expect(validateDictationScript(script).ok).toBe(true);
+  });
+
   it('produces varied fallback scripts for different seeds', () => {
     const a = buildFallbackOpenRouterSessionScript({
       inputMode: 'browser-tts',

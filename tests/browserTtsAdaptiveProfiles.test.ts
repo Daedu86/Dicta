@@ -5,9 +5,10 @@ import {
 } from '../src/inputs/browserTts/browserTtsAdaptiveProfiles';
 
 describe('resolveBrowserTtsAdaptiveProfile', () => {
-  it('returns base profile for unknown language', () => {
-    const profile = resolveBrowserTtsAdaptiveProfile('fr');
-    expect(profile).toEqual(BROWSER_TTS_BASE_PROFILE);
+  it('returns base profile for French, Portuguese, and unknown languages', () => {
+    expect(resolveBrowserTtsAdaptiveProfile('fr')).toEqual(BROWSER_TTS_BASE_PROFILE);
+    expect(resolveBrowserTtsAdaptiveProfile('pt')).toEqual(BROWSER_TTS_BASE_PROFILE);
+    expect(resolveBrowserTtsAdaptiveProfile('it')).toEqual(BROWSER_TTS_BASE_PROFILE);
   });
 
   it('returns ES profile values', () => {
@@ -44,4 +45,3 @@ describe('resolveBrowserTtsAdaptiveProfile', () => {
     expect(profile.germanShortBias.enabled).toBe(true);
   });
 });
-

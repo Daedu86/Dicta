@@ -53,6 +53,20 @@ describe('Session modeData schema', () => {
     });
   });
 
+  it('input4 Portuguese export preserves pt language in modeData', () => {
+    const modeData = normalizeSessionModeData({
+      inputMode: 'input4',
+      ttsLanguage: 'pt',
+      ttsText: 'ola mundo',
+    });
+
+    expect(modeData).toEqual({
+      input1: null,
+      input2: { type: 'builtInTts', language: 'pt', textLength: 9 },
+      input3: null,
+    });
+  });
+
   it('input3 creates only modeData.input3', () => {
     const modeData = normalizeSessionModeData({
       inputMode: 'input3',
@@ -136,6 +150,22 @@ describe('Session modeData schema', () => {
     expect(modeData.input3).toEqual({
       type: 'kokoro',
       language: 'de',
+      textLength: 9,
+      nativeLanguage: false,
+      processedLanguage: null,
+    });
+  });
+
+  it('input3 Portuguese export marks nativeLanguage false', () => {
+    const modeData = normalizeSessionModeData({
+      inputMode: 'input3',
+      kokoroLanguage: 'pt',
+      kokoroText: 'ola mundo',
+    });
+
+    expect(modeData.input3).toEqual({
+      type: 'kokoro',
+      language: 'pt',
       textLength: 9,
       nativeLanguage: false,
       processedLanguage: null,
