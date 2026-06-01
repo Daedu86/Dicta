@@ -16,22 +16,26 @@ describe('SemanticPhrasePlanner multilingual boundaries', () => {
     expect(phrases.every((phrase) => phrase.wordCount > 0)).toBe(true);
   });
 
-  it('marks German auxiliary-participle splits as unsafe when the cut would separate them', () => {
-    const phrases = planSemanticPhrases('Wir haben gelernt weil wir fleißig waren.', 'de', 'short');
+  it('marks German auxiliary-participle split candidates as unsafe', () => {
+    const phrases = planSemanticPhrases(
+      'Heute müssen wir haben gelernt weil diese Übung viele klare Beispiele für langsames Hören enthält und später endet.',
+      'de',
+      'short',
+    );
 
-    expect(phrases.length).toBeGreaterThan(0);
-    expect(phrases.some((phrase) => phrase.boundaryType === 'unsafe' || phrase.canPauseAfter === false)).toBe(true);
+    expect(phrases[0]?.boundaryType).toBe('unsafe');
+    expect(phrases[0]?.canPauseAfter).toBe(false);
   });
 
   it.each([
-    ['es', 'Yo se lo dije porque era importante.'],
-    ['fr', 'Je ne le savais pas parce que personne ne parlait.'],
-    ['pt', 'Eu separei as notas porque elas eram importantes.'],
-  ])('avoids unsafe pronoun/function-word breaks for %s', (language, text) => {
+    ['es', 'Hoy mismo yo se lo dije porque esta práctica necesita muchas palabras antes del final completo.'],
+    ['fr', 'Aujourd’hui vraiment je ne le savais parce que cette pratique demande plusieurs mots avant la fin complète.'],
+    ['pt', 'Hoje mesmo eu se o disse porque esta prática precisa de várias palavras antes do final completo.'],
+  ])('marks unsafe pronoun/function-word split candidates for %s', (language, text) => {
     const phrases = planSemanticPhrases(text, language, 'short');
 
-    expect(phrases.length).toBeGreaterThan(0);
-    expect(phrases.some((phrase) => phrase.boundaryType === 'unsafe' || phrase.canPauseAfter === false)).toBe(true);
+    expect(phrases[0]?.boundaryType).toBe('unsafe');
+    expect(phrases[0]?.canPauseAfter).toBe(false);
   });
 
   it('prefers sentence-level candidates when strictness requires sentences', () => {
