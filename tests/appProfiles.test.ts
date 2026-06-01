@@ -54,6 +54,7 @@ describe('appProfiles', () => {
     });
 
     expect(canDictaProfileAccessOpenRouter(profile)).toBe(false);
+    expect(profile.assignedOpenRouterModel).toBe(null);
     expect(getDictaSessionQuotaStatus(profile, 14)).toMatchObject({
       limit: 15,
       used: 14,
@@ -80,12 +81,28 @@ describe('appProfiles', () => {
     });
 
     expect(canDictaProfileAccessOpenRouter(profile)).toBe(true);
+    expect(profile.assignedOpenRouterModel).toBe(null);
     expect(getDictaSessionQuotaStatus(profile, 99)).toMatchObject({
       limit: null,
       used: 99,
       remaining: null,
       blocked: false,
     });
+  });
+
+  it('normalizes an assigned member OpenRouter model', () => {
+    const profile = normalizeDictaAppProfile({
+      user_id: 'user-3',
+      profile_id: 'vibo',
+      display_name: 'Vibo',
+      role: 'member',
+      active: true,
+      can_access_openrouter: true,
+      assigned_openrouter_model: '  meta-llama/llama-3.2-3b-instruct:free  ',
+    });
+
+    expect(canDictaProfileAccessOpenRouter(profile)).toBe(true);
+    expect(profile.assignedOpenRouterModel).toBe('meta-llama/llama-3.2-3b-instruct:free');
   });
 
   it('keeps OpenRouter access pending while Supabase auth or app profile is hydrating', () => {

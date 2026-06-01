@@ -2403,7 +2403,7 @@ textarea[readonly] {
 
 .admin-access-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(130px, 0.8fr) minmax(110px, 0.6fr) minmax(90px, 0.45fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(130px, 0.7fr) minmax(180px, 1fr) minmax(110px, 0.55fr) minmax(90px, 0.45fr);
   gap: 0.65rem;
   align-items: center;
   min-width: 0;

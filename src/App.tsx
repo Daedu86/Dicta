@@ -281,6 +281,7 @@ type OpenRouterJobNotification = {
   completedAt?: string;
   error?: string;
 };
+type OpenRouterModelSummary = { id: string; name?: string; context_length?: number };
 type TrainingGenerationNotice = {
   slotLabel: string;
   displayLabel: string;
@@ -717,7 +718,7 @@ function App() {
   const [expressEasyOpenRouterBusy, setExpressEasyOpenRouterBusy] = useState(false);
   const [expressIntermediateOpenRouterBusy, setExpressIntermediateOpenRouterBusy] = useState(false);
   const [expressAdvancedOpenRouterBusy, setExpressAdvancedOpenRouterBusy] = useState(false);
-  const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name?: string; context_length?: number }>>([]);
+  const [openRouterModels, setOpenRouterModels] = useState<OpenRouterModelSummary[]>([]);
   const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [openRouterError, setOpenRouterError] = useState('');
   const [activeOpenRouterJobs, setActiveOpenRouterJobs] = useState<ActiveOpenRouterJob[]>(() => loadActiveOpenRouterJobs());
@@ -1159,6 +1160,9 @@ function App() {
   });
   const openRouterAccessAllowed = openRouterAccessState === 'allowed';
   const openRouterAccessMessage = 'OpenRouter access is disabled for this Dicta account. Contact the admin.';
+  const assignedOpenRouterModel =
+    syncConfig.authRequired && appProfile?.role === 'member' ? appProfile.assignedOpenRouterModel?.trim() ?? '' : '';
+  const effectiveOpenRouterDefaultModel = assignedOpenRouterModel || openRouterDefaultModel;
   const sessionQuotaStatus = getDictaSessionQuotaStatus(syncConfig.authRequired ? appProfile : null, sessions.length);
   const latestSession = useMemo<StoredSession | null>(() => {
     if (sessions.length === 0) return null;
@@ -2842,9 +2846,48 @@ function App() {
     });
   }
 
+  async function refreshOpenRouterModels(): Promise<void> {
+    setOpenRouterStatus('loading');
+    setOpenRouterError('');
+    try {
+      const response = await fetch('/api/openrouter/models', { headers: getAuthHeaders() });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `OpenRouter request failed (${response.status}).`);
+      }
+      const payload = (await response.json()) as {
+        data?: Array<{
+          id: string;
+          name?: string;
+          context_length?: number;
+          pricing?: { prompt?: string | number; completion?: string | number };
+        }>;
+      };
+      const data = Array.isArray(payload.data) ? payload.data : [];
+      const freeModels = data
+        .filter((model) => {
+          const prompt = Number(model.pricing?.prompt ?? NaN);
+          const completion = Number(model.pricing?.completion ?? NaN);
+          return Number.isFinite(prompt) && Number.isFinite(completion) && prompt === 0 && completion === 0;
+        })
+        .map((model) => ({ id: model.id, name: model.name, context_length: model.context_length }))
+        .sort((a, b) => a.id.localeCompare(b.id));
+      setOpenRouterModels(freeModels);
+      setOpenRouterStatus('ready');
+      if (!assignedOpenRouterModel && !openRouterDefaultModel && freeModels.length > 0) {
+        setOpenRouterDefaultModel(freeModels[0].id);
+        window.localStorage.setItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(freeModels[0].id));
+      }
+    } catch (err) {
+      setOpenRouterModels([]);
+      setOpenRouterStatus('error');
+      setOpenRouterError(err instanceof Error ? err.message : 'OpenRouter model fetch failed.');
+    }
+  }
+
   async function updateAdminProfileAccess(
     profile: DictaAppProfile,
-    patch: { canAccessOpenRouter: boolean; sessionLimit: number },
+    patch: { canAccessOpenRouter: boolean; assignedOpenRouterModel: string; sessionLimit: number },
   ): Promise<DictaAppProfile> {
     const response = await fetch('/api/admin/users', {
       method: 'PATCH',
@@ -2852,6 +2895,7 @@ function App() {
       body: JSON.stringify({
         userId: profile.userId,
         canAccessOpenRouter: patch.canAccessOpenRouter,
+        assignedOpenRouterModel: patch.assignedOpenRouterModel,
         sessionLimit: patch.sessionLimit,
       }),
     });
@@ -2867,6 +2911,7 @@ function App() {
         role: string;
         active: boolean | null;
         can_access_openrouter?: boolean | null;
+        assigned_openrouter_model?: string | null;
         session_limit?: number | null;
         created_at?: string;
         updated_at?: string;
@@ -3322,7 +3367,7 @@ function App() {
       setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
       return;
     }
-    const model = openRouterDefaultModel.trim();
+    const model = effectiveOpenRouterDefaultModel.trim();
     const inputMode = mapSessionInputMode(activeSession.inputMode);
     const languageCandidate = resolveStoredSessionLanguage(activeSession);
     const language: BenchmarkLanguageButton = isSupportedLanguage(languageCandidate) ? languageCandidate : 'en';
@@ -6399,60 +6444,60 @@ function App() {
       id: 'easy',
       label: directOpenRouterBusy ? 'Requesting easy...' : easyDirectGenerationRunning ? 'Generating easy...' : 'New Easy Session',
       onClick: () => void generateEasyNextSessionFromOpenRouter(),
-      disabled: !isOnline || directOpenRouterBusy || easyDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      disabled: !isOnline || directOpenRouterBusy || easyDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
       title: sessionQuotaStatus.blocked
         ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
     },
     {
       id: 'medium',
       label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : mediumDirectGenerationRunning ? 'Generating medium...' : 'New Medium Session',
       onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-      disabled: !isOnline || directIntermediateOpenRouterBusy || mediumDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      disabled: !isOnline || directIntermediateOpenRouterBusy || mediumDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
       title: sessionQuotaStatus.blocked
         ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
     },
     {
       id: 'hard',
       label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : hardDirectGenerationRunning ? 'Generating hard...' : 'New Hard Session',
       onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-      disabled: !isOnline || directAdvancedOpenRouterBusy || hardDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      disabled: !isOnline || directAdvancedOpenRouterBusy || hardDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
       title: sessionQuotaStatus.blocked
         ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
     },
     {
       id: 'express-easy',
       label: expressEasyOpenRouterBusy ? 'Requesting express easy...' : expressEasyGenerationRunning ? 'Generating express easy...' : 'Express Easy Session',
       onClick: () => void generateExpressEasyNextSessionFromOpenRouter(),
-      disabled: !isOnline || expressEasyOpenRouterBusy || expressEasyGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      disabled: !isOnline || expressEasyOpenRouterBusy || expressEasyGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
       title: sessionQuotaStatus.blocked
         ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate an easy one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
     },
     {
       id: 'express-medium',
       label: expressIntermediateOpenRouterBusy ? 'Requesting express medium...' : expressMediumGenerationRunning ? 'Generating express medium...' : 'Express Medium Session',
       onClick: () => void generateExpressIntermediateNextSessionFromOpenRouter(),
-      disabled: !isOnline || expressIntermediateOpenRouterBusy || expressMediumGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      disabled: !isOnline || expressIntermediateOpenRouterBusy || expressMediumGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
       title: sessionQuotaStatus.blocked
         ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a medium one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
     },
     {
       id: 'express-hard',
       label: expressAdvancedOpenRouterBusy ? 'Requesting express hard...' : expressHardGenerationRunning ? 'Generating express hard...' : 'Express Hard Session',
       onClick: () => void generateExpressAdvancedNextSessionFromOpenRouter(),
-      disabled: !isOnline || expressAdvancedOpenRouterBusy || expressHardGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+      disabled: !isOnline || expressAdvancedOpenRouterBusy || expressHardGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
       title: sessionQuotaStatus.blocked
         ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a hard one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
       helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
     },
   ] : [];
@@ -6612,10 +6657,10 @@ function App() {
         id: 'easy',
         label: directOpenRouterBusy ? 'Requesting easy...' : easyDirectGenerationRunning ? 'Generating easy...' : 'New Easy Session',
         onClick: () => void generateEasyNextSessionFromOpenRouter(),
-        disabled: !isOnline || directOpenRouterBusy || easyDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || directOpenRouterBusy || easyDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
         statusMessage: easyGenerationNotice?.message,
         statusTone: easyGenerationNotice?.tone,
@@ -6624,10 +6669,10 @@ function App() {
         id: 'express-easy',
         label: expressEasyOpenRouterBusy ? 'Requesting express easy...' : expressEasyGenerationRunning ? 'Generating express easy...' : 'Express Easy Session',
         onClick: () => void generateExpressEasyNextSessionFromOpenRouter(),
-        disabled: !isOnline || expressEasyOpenRouterBusy || expressEasyGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || expressEasyOpenRouterBusy || expressEasyGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate an easy one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate an easy one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
         statusMessage: expressEasyGenerationNotice?.message,
         statusTone: expressEasyGenerationNotice?.tone,
@@ -6636,10 +6681,10 @@ function App() {
         id: 'medium',
         label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : mediumDirectGenerationRunning ? 'Generating medium...' : 'New Medium Session',
         onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-        disabled: !isOnline || directIntermediateOpenRouterBusy || mediumDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || directIntermediateOpenRouterBusy || mediumDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
         statusMessage: mediumGenerationNotice?.message,
         statusTone: mediumGenerationNotice?.tone,
@@ -6648,10 +6693,10 @@ function App() {
         id: 'express-medium',
         label: expressIntermediateOpenRouterBusy ? 'Requesting express medium...' : expressMediumGenerationRunning ? 'Generating express medium...' : 'Express Medium Session',
         onClick: () => void generateExpressIntermediateNextSessionFromOpenRouter(),
-        disabled: !isOnline || expressIntermediateOpenRouterBusy || expressMediumGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || expressIntermediateOpenRouterBusy || expressMediumGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a medium one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a medium one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
         statusMessage: expressMediumGenerationNotice?.message,
         statusTone: expressMediumGenerationNotice?.tone,
@@ -6660,10 +6705,10 @@ function App() {
         id: 'hard',
         label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : hardDirectGenerationRunning ? 'Generating hard...' : 'New Hard Session',
         onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-        disabled: !isOnline || directAdvancedOpenRouterBusy || hardDirectGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || directAdvancedOpenRouterBusy || hardDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
         statusMessage: hardGenerationNotice?.message,
         statusTone: hardGenerationNotice?.tone,
@@ -6672,10 +6717,10 @@ function App() {
         id: 'express-hard',
         label: expressAdvancedOpenRouterBusy ? 'Requesting express hard...' : expressHardGenerationRunning ? 'Generating express hard...' : 'Express Hard Session',
         onClick: () => void generateExpressAdvancedNextSessionFromOpenRouter(),
-        disabled: !isOnline || expressAdvancedOpenRouterBusy || expressHardGenerationRunning || !activeSession || !openRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
+        disabled: !isOnline || expressAdvancedOpenRouterBusy || expressHardGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (openRouterDefaultModel.trim() ? 'Generate a hard one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
+          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a hard one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
         helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
         statusMessage: expressHardGenerationNotice?.message,
         statusTone: expressHardGenerationNotice?.tone,
@@ -6827,12 +6872,12 @@ function App() {
               <div className="brand-status-row">
                 {openRouterAccessAllowed ? (
                   <span
-                    className={`brand-llm-status ${openRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
-                    title={openRouterDefaultModel.trim() ? `Selected OpenRouter model: ${openRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
+                    className={`brand-llm-status ${effectiveOpenRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
+                    title={effectiveOpenRouterDefaultModel.trim() ? `Selected OpenRouter model: ${effectiveOpenRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
                   >
                     <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
                     <span className="brand-llm-status-text">
-                      {openRouterDefaultModel.trim() ? `Model set: ${openRouterDefaultModel.trim()}` : 'No model set'}
+                      {effectiveOpenRouterDefaultModel.trim() ? `Model set: ${effectiveOpenRouterDefaultModel.trim()}` : 'No model set'}
                     </span>
                   </span>
                 ) : null}
@@ -8328,7 +8373,8 @@ function App() {
                 </section>
               ) : (
               <OpenRouterWorkspace
-                defaultModel={openRouterDefaultModel}
+                defaultModel={effectiveOpenRouterDefaultModel}
+                assignedModel={assignedOpenRouterModel || null}
                 authHeaders={getAuthHeaders()}
                 onSetDefaultModel={(value) => {
                   setOpenRouterDefaultModel(value);
@@ -8337,44 +8383,7 @@ function App() {
                 models={openRouterModels}
                 status={openRouterStatus}
                 error={openRouterError}
-                onRefreshModels={async () => {
-                  setOpenRouterStatus('loading');
-                  setOpenRouterError('');
-                  try {
-                    const response = await fetch('/api/openrouter/models', { headers: getAuthHeaders() });
-                    if (!response.ok) {
-                      const text = await response.text();
-                      throw new Error(text || `OpenRouter request failed (${response.status}).`);
-                    }
-                    const payload = (await response.json()) as {
-                      data?: Array<{
-                        id: string;
-                        name?: string;
-                        context_length?: number;
-                        pricing?: { prompt?: string | number; completion?: string | number };
-                      }>;
-                    };
-                    const data = Array.isArray(payload.data) ? payload.data : [];
-                    const freeModels = data
-                      .filter((model) => {
-                        const prompt = Number(model.pricing?.prompt ?? NaN);
-                        const completion = Number(model.pricing?.completion ?? NaN);
-                        return Number.isFinite(prompt) && Number.isFinite(completion) && prompt === 0 && completion === 0;
-                      })
-                      .map((model) => ({ id: model.id, name: model.name, context_length: model.context_length }))
-                      .sort((a, b) => a.id.localeCompare(b.id));
-                    setOpenRouterModels(freeModels);
-                    setOpenRouterStatus('ready');
-                    if (!openRouterDefaultModel && freeModels.length > 0) {
-                      setOpenRouterDefaultModel(freeModels[0].id);
-                      window.localStorage.setItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(freeModels[0].id));
-                    }
-                  } catch (err) {
-                    setOpenRouterModels([]);
-                    setOpenRouterStatus('error');
-                    setOpenRouterError(err instanceof Error ? err.message : 'OpenRouter model fetch failed.');
-                  }
-                }}
+                onRefreshModels={refreshOpenRouterModels}
                 onBackToTraining={() => setWorkspaceMode('training')}
                 exportProfile={selectedBenchmarkProfile}
                 exportSessionFeedback={selectedSessionFeedback}
@@ -8432,6 +8441,10 @@ function App() {
                 onUpdateProfileAccess={updateAdminProfileAccess}
                 authHeaders={getAuthHeaders()}
                 remoteAdminStatus={adminRemoteStatus}
+                openRouterModels={openRouterModels}
+                openRouterModelStatus={openRouterStatus}
+                openRouterModelError={openRouterError}
+                onRefreshOpenRouterModels={refreshOpenRouterModels}
               /> : (
                 <section className="panel workspace-panel">
                   <p className="error">Admin access required.</p>
@@ -8986,8 +8999,29 @@ type OpenRouterGenerationSlotState = {
 
 type OpenRouterGenerationSlots = Record<OpenRouterGenerationSlotId, OpenRouterGenerationSlotState>;
 
+function buildOpenRouterModelOptions(
+  models: OpenRouterModelSummary[],
+  assignedModels: Array<string | null | undefined> = [],
+): OpenRouterModelSummary[] {
+  const byId = new Map<string, OpenRouterModelSummary>();
+  byId.set('openrouter/free', { id: 'openrouter/free' });
+  for (const model of models) {
+    if (model.id.trim()) byId.set(model.id, model);
+  }
+  for (const assignedModel of assignedModels) {
+    const id = assignedModel?.trim();
+    if (id && !byId.has(id)) byId.set(id, { id });
+  }
+  return [...byId.values()].sort((a, b) => {
+    if (a.id === 'openrouter/free') return -1;
+    if (b.id === 'openrouter/free') return 1;
+    return a.id.localeCompare(b.id);
+  });
+}
+
 function OpenRouterWorkspace({
   defaultModel,
+  assignedModel,
   authHeaders,
   onSetDefaultModel,
   models,
@@ -9020,9 +9054,10 @@ function OpenRouterWorkspace({
   onCopyBenchmarkFeedbackPromptWithHumanFeedback,
 }: {
   defaultModel: string;
+  assignedModel: string | null;
   authHeaders: Record<string, string>;
   onSetDefaultModel: (value: string) => void;
-  models: Array<{ id: string; name?: string; context_length?: number }>;
+  models: OpenRouterModelSummary[];
   status: 'idle' | 'loading' | 'ready' | 'error';
   error: string;
   onRefreshModels: () => Promise<void>;
@@ -9095,6 +9130,8 @@ function OpenRouterWorkspace({
     exports: true,
     generate: true,
   });
+  const modelSelectionLocked = Boolean(assignedModel);
+  const modelOptions = useMemo(() => buildOpenRouterModelOptions(models, [defaultModel, assignedModel]), [assignedModel, defaultModel, models]);
 
   const copyToClipboard = async (label: string, text: string): Promise<void> => {
     try {
@@ -9671,14 +9708,14 @@ function OpenRouterWorkspace({
           {error ? <p className="error">{error}</p> : null}
 
           <label>
-            Default model
+            {modelSelectionLocked ? 'Assigned model' : 'Default model'}
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              disabled={models.length === 0}
+              disabled={modelSelectionLocked || modelOptions.length === 0}
             >
-              {models.length === 0 ? <option value="">No free models loaded</option> : null}
-              {models.map((model) => (
+              {modelOptions.length === 0 ? <option value="">No free models loaded</option> : null}
+              {modelOptions.map((model) => (
                 <option key={model.id} value={model.id}>
                   {model.id}{model.context_length ? ` (${model.context_length} ctx)` : ''}
                 </option>
@@ -9689,11 +9726,17 @@ function OpenRouterWorkspace({
             <button
               type="button"
               onClick={() => onSetDefaultModel(selectedModel)}
-              disabled={!selectedModel || models.length === 0}
+              disabled={modelSelectionLocked || !selectedModel || modelOptions.length === 0}
             >
               Set default model
             </button>
-            <span className="hint">{defaultModel ? `Default model set: ${defaultModel}` : 'No default model set yet.'}</span>
+            <span className="hint">
+              {modelSelectionLocked
+                ? `Assigned by admin: ${assignedModel}`
+                : defaultModel
+                  ? `Default model set: ${defaultModel}`
+                  : 'No default model set yet.'}
+            </span>
           </div>
           <p className="hint">
             This list is filtered to models with OpenRouter pricing `prompt=0` and `completion=0`. Availability and “free” status can change upstream.
@@ -10325,6 +10368,10 @@ function AdminWorkspace({
   onUpdateProfileAccess,
   authHeaders,
   remoteAdminStatus,
+  openRouterModels,
+  openRouterModelStatus,
+  openRouterModelError,
+  onRefreshOpenRouterModels,
 }: {
   sessions: StoredSession[];
   summary: AdminStorageSummary;
@@ -10347,10 +10394,14 @@ function AdminWorkspace({
   onChangeProfileFilter: (value: string) => void;
   onUpdateProfileAccess: (
     profile: DictaAppProfile,
-    patch: { canAccessOpenRouter: boolean; sessionLimit: number },
+    patch: { canAccessOpenRouter: boolean; assignedOpenRouterModel: string; sessionLimit: number },
   ) => Promise<DictaAppProfile>;
   authHeaders: Record<string, string>;
   remoteAdminStatus: string;
+  openRouterModels: OpenRouterModelSummary[];
+  openRouterModelStatus: 'idle' | 'loading' | 'ready' | 'error';
+  openRouterModelError: string;
+  onRefreshOpenRouterModels: () => Promise<void>;
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [manualInput1Name, setManualInput1Name] = useState('');
@@ -10361,10 +10412,11 @@ function AdminWorkspace({
   const [newUserRole, setNewUserRole] = useState<DictaAppRole>('member');
   const [newUserMessage, setNewUserMessage] = useState('');
   const [newUserBusy, setNewUserBusy] = useState(false);
-  const [accessDrafts, setAccessDrafts] = useState<Record<string, { canAccessOpenRouter: boolean; sessionLimit: string }>>({});
+  const [accessDrafts, setAccessDrafts] = useState<Record<string, { canAccessOpenRouter: boolean; assignedOpenRouterModel: string; sessionLimit: string }>>({});
   const [accessBusyProfileId, setAccessBusyProfileId] = useState('');
   const [accessMessage, setAccessMessage] = useState('');
   const memberProfiles = visibleProfiles.filter((profile) => profile.role === 'member');
+  const memberModelOptions = buildOpenRouterModelOptions(openRouterModels, memberProfiles.map((profile) => profile.assignedOpenRouterModel));
 
   useEffect(() => {
     setAccessDrafts((current) => {
@@ -10374,6 +10426,7 @@ function AdminWorkspace({
         if (!next[profile.profileId]) {
           next[profile.profileId] = {
             canAccessOpenRouter: profile.canAccessOpenRouter,
+            assignedOpenRouterModel: profile.assignedOpenRouterModel ?? '',
             sessionLimit: String(profile.sessionLimit ?? 15),
           };
         }
@@ -10432,6 +10485,7 @@ function AdminWorkspace({
   async function saveProfileAccess(profile: DictaAppProfile): Promise<void> {
     const draft = accessDrafts[profile.profileId] ?? {
       canAccessOpenRouter: profile.canAccessOpenRouter,
+      assignedOpenRouterModel: profile.assignedOpenRouterModel ?? '',
       sessionLimit: String(profile.sessionLimit ?? 15),
     };
     const sessionLimitNumber = Number(draft.sessionLimit);
@@ -10444,12 +10498,14 @@ function AdminWorkspace({
     try {
       const updated = await onUpdateProfileAccess(profile, {
         canAccessOpenRouter: draft.canAccessOpenRouter,
+        assignedOpenRouterModel: draft.assignedOpenRouterModel.trim(),
         sessionLimit: Math.floor(sessionLimitNumber),
       });
       setAccessDrafts((current) => ({
         ...current,
         [updated.profileId]: {
           canAccessOpenRouter: updated.canAccessOpenRouter,
+          assignedOpenRouterModel: updated.assignedOpenRouterModel ?? '',
           sessionLimit: String(updated.sessionLimit ?? 15),
         },
       }));
@@ -10546,6 +10602,7 @@ function AdminWorkspace({
                     <small>
                       OpenRouter {profile.canAccessOpenRouter ? 'enabled' : 'disabled'} · sessions{' '}
                       {profile.role === 'admin' ? 'unlimited' : profile.sessionLimit ?? 15}
+                      {profile.role === 'member' && profile.assignedOpenRouterModel ? ` · model ${profile.assignedOpenRouterModel}` : ''}
                     </small>
                   </span>
                 </div>
@@ -10558,20 +10615,29 @@ function AdminWorkspace({
           <div className="admin-card-header">
             <div>
               <h3>Member access</h3>
-              <p>Control OpenRouter and dictation-session quota for non-admin accounts.</p>
+              <p>Control OpenRouter, assigned model, and dictation-session quota for non-admin accounts.</p>
+            </div>
+            <div className="admin-actions">
+              <button type="button" className="secondary-button" onClick={() => void onRefreshOpenRouterModels()} disabled={openRouterModelStatus === 'loading'}>
+                {openRouterModelStatus === 'loading' ? 'Refreshing...' : 'Refresh free models'}
+              </button>
             </div>
           </div>
+          {openRouterModelStatus === 'ready' ? <p className="hint">{openRouterModels.length} free model(s) loaded for assignment.</p> : null}
+          {openRouterModelError ? <p className="error">{openRouterModelError}</p> : null}
           {memberProfiles.length > 0 ? (
             <div className="admin-access-table">
               <div className="admin-access-row admin-table-header">
                 <span>Member</span>
                 <span>OpenRouter</span>
+                <span>Assigned LLM</span>
                 <span>Session limit</span>
                 <span>Action</span>
               </div>
               {memberProfiles.map((profile) => {
                 const draft = accessDrafts[profile.profileId] ?? {
                   canAccessOpenRouter: profile.canAccessOpenRouter,
+                  assignedOpenRouterModel: profile.assignedOpenRouterModel ?? '',
                   sessionLimit: String(profile.sessionLimit ?? 15),
                 };
                 const busy = accessBusyProfileId === profile.profileId;
@@ -10597,6 +10663,25 @@ function AdminWorkspace({
                       />
                       <span>{draft.canAccessOpenRouter ? 'Allowed' : 'Blocked'}</span>
                     </label>
+                    <select
+                      value={draft.assignedOpenRouterModel}
+                      onChange={(event) =>
+                        setAccessDrafts((current) => ({
+                          ...current,
+                          [profile.profileId]: {
+                            ...draft,
+                            assignedOpenRouterModel: event.target.value,
+                          },
+                        }))
+                      }
+                    >
+                      <option value="">No assigned model</option>
+                      {memberModelOptions.map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.id}{model.context_length ? ` (${model.context_length} ctx)` : ''}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="number"
                       min="0"

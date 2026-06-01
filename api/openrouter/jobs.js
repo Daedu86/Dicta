@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 import { createClient } from '@supabase/supabase-js';
-import { assertOpenRouterAccess, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { assertOpenRouterAccess, assertOpenRouterModelAllowed, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
 import { OPENROUTER_ACTIVE_JOB_LIMIT, readOpenRouterJobPayload } from './_request.js';
 
 const JOB_TABLE = 'dicta_openrouter_jobs';
@@ -174,6 +174,7 @@ async function createJob(req, res) {
   assertOpenRouterAccess(requester);
   const { profileId } = requester;
   const requestPayload = readCreateJobPayload(req.body);
+  assertOpenRouterModelAllowed(requester, requestPayload.model);
   await cleanupOldOpenRouterJobs(supabase, profileId);
   await enforceActiveOpenRouterJobLimit(supabase, profileId);
   const jobId = randomUUID();

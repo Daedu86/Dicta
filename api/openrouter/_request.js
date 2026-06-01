@@ -40,7 +40,7 @@ export function normalizeRequestBody(body) {
 
 export function readOpenRouterChatPayload(body) {
   const payload = normalizeRequestBody(body);
-  const model = normalizeOpenRouterModel(payload.model);
+  const model = normalizeOpenRouterModelId(payload.model);
   const prompt = normalizeOpenRouterPrompt(payload.prompt);
   if (!model || !prompt) throw validationError('Missing model or prompt.');
 
@@ -53,7 +53,7 @@ export function readOpenRouterChatPayload(body) {
 
 export function readOpenRouterJobPayload(body) {
   const payload = normalizeRequestBody(body);
-  const model = normalizeOpenRouterModel(payload.model);
+  const model = normalizeOpenRouterModelId(payload.model);
   const prompt = normalizeOpenRouterPrompt(payload.prompt);
   const inputMode = typeof payload.inputMode === 'string' ? payload.inputMode : '';
   const language = typeof payload.language === 'string' ? payload.language : '';
@@ -79,7 +79,7 @@ export function readOpenRouterJobPayload(body) {
   };
 }
 
-function normalizeOpenRouterModel(value) {
+export function normalizeOpenRouterModelId(value) {
   const model = typeof value === 'string' ? value.trim() : '';
   if (!model) return '';
   if (model.length > OPENROUTER_MODEL_MAX_CHARS || !OPENROUTER_MODEL_PATTERN.test(model)) {

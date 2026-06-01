@@ -12,6 +12,7 @@ export type DictaAppProfile = {
   role: DictaAppRole;
   active: boolean;
   canAccessOpenRouter: boolean;
+  assignedOpenRouterModel: string | null;
   sessionLimit: number | null;
   createdAt?: string;
   updatedAt?: string;
@@ -24,6 +25,7 @@ type DictaAppProfileRow = {
   role: string;
   active: boolean | null;
   can_access_openrouter?: boolean | null;
+  assigned_openrouter_model?: string | null;
   session_limit?: number | null;
   created_at?: string;
   updated_at?: string;
@@ -100,6 +102,7 @@ export function normalizeDictaAppProfile(row: DictaAppProfileRow): DictaAppProfi
     role,
     active: row.active !== false,
     canAccessOpenRouter: role === 'admin' || row.can_access_openrouter === true,
+    assignedOpenRouterModel: normalizeAssignedOpenRouterModel(row.assigned_openrouter_model),
     sessionLimit: normalizeSessionLimit(row.session_limit, role),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -117,10 +120,15 @@ function normalizeSessionLimit(value: unknown, role: DictaAppRole): number | nul
   return role === 'admin' ? null : DEFAULT_MEMBER_SESSION_LIMIT;
 }
 
+function normalizeAssignedOpenRouterModel(value: unknown): string | null {
+  const model = typeof value === 'string' ? value.trim() : '';
+  return model || null;
+}
+
 export async function loadDictaAppProfile(client: SupabaseClient, user: User): Promise<DictaAppProfile | null> {
   const { data, error } = await client
     .from(DICTA_APP_PROFILES_TABLE)
-    .select('user_id,profile_id,display_name,role,active,can_access_openrouter,session_limit,created_at,updated_at')
+    .select('user_id,profile_id,display_name,role,active,can_access_openrouter,assigned_openrouter_model,session_limit,created_at,updated_at')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -131,7 +139,7 @@ export async function loadDictaAppProfile(client: SupabaseClient, user: User): P
 export async function loadVisibleDictaAppProfiles(client: SupabaseClient): Promise<DictaAppProfile[]> {
   const { data, error } = await client
     .from(DICTA_APP_PROFILES_TABLE)
-    .select('user_id,profile_id,display_name,role,active,can_access_openrouter,session_limit,created_at,updated_at')
+    .select('user_id,profile_id,display_name,role,active,can_access_openrouter,assigned_openrouter_model,session_limit,created_at,updated_at')
     .order('display_name', { ascending: true });
 
   if (error) throw error;

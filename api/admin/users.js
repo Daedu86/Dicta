@@ -1,4 +1,5 @@
 import { createSupabaseServiceClient, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { normalizeOpenRouterModelId } from '../openrouter/_request.js';
 
 const DEFAULT_MEMBER_SESSION_LIMIT = 15;
 
@@ -36,8 +37,13 @@ function normalizeMemberSessionLimit(value) {
   return DEFAULT_MEMBER_SESSION_LIMIT;
 }
 
+function normalizeAssignedOpenRouterModel(value) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  return raw ? normalizeOpenRouterModelId(raw) : null;
+}
+
 function profileSelect() {
-  return 'user_id,profile_id,display_name,role,active,can_access_openrouter,session_limit,created_at,updated_at';
+  return 'user_id,profile_id,display_name,role,active,can_access_openrouter,assigned_openrouter_model,session_limit,created_at,updated_at';
 }
 
 export default async function handler(req, res) {
@@ -69,6 +75,7 @@ export default async function handler(req, res) {
       const role = body.role === 'admin' ? 'admin' : 'member';
       const canAccessOpenRouter =
         role === 'admin' ? true : typeof body.canAccessOpenRouter === 'boolean' ? body.canAccessOpenRouter : false;
+      const assignedOpenRouterModel = role === 'admin' ? null : normalizeAssignedOpenRouterModel(body.assignedOpenRouterModel);
       const sessionLimit = role === 'admin' ? null : normalizeMemberSessionLimit(body.sessionLimit);
 
       if (!email || !email.includes('@')) {
@@ -97,6 +104,7 @@ export default async function handler(req, res) {
           role,
           active: true,
           can_access_openrouter: canAccessOpenRouter,
+          assigned_openrouter_model: assignedOpenRouterModel,
           session_limit: sessionLimit,
         },
         { onConflict: 'user_id' },
@@ -110,6 +118,7 @@ export default async function handler(req, res) {
         displayName: displayName || email,
         role,
         canAccessOpenRouter,
+        assignedOpenRouterModel,
         sessionLimit,
       });
       return;
@@ -128,11 +137,14 @@ export default async function handler(req, res) {
       if (typeof body.canAccessOpenRouter === 'boolean') {
         patch.can_access_openrouter = body.canAccessOpenRouter;
       }
+      if ('assignedOpenRouterModel' in body) {
+        patch.assigned_openrouter_model = normalizeAssignedOpenRouterModel(body.assignedOpenRouterModel);
+      }
       if ('sessionLimit' in body) {
         patch.session_limit = normalizeMemberSessionLimit(body.sessionLimit);
       }
 
-      if (!('can_access_openrouter' in patch) && !('session_limit' in patch)) {
+      if (!('can_access_openrouter' in patch) && !('assigned_openrouter_model' in patch) && !('session_limit' in patch)) {
         res.status(400).send('No supported profile access fields were provided.');
         return;
       }

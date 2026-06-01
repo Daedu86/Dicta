@@ -1,4 +1,4 @@
-import { assertOpenRouterAccess, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { assertOpenRouterAccess, assertOpenRouterModelAllowed, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
 import { readOpenRouterChatPayload } from './_request.js';
 
 function getOpenRouterApiKey() {
@@ -42,8 +42,9 @@ export default async function handler(req, res) {
     return;
   }
 
+  let requester;
   try {
-    const requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+    requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
     assertOpenRouterAccess(requester);
   } catch (error) {
     sendApiError(res, error, 'OpenRouter chat request failed.');
@@ -59,6 +60,7 @@ export default async function handler(req, res) {
   let requestPayload;
   try {
     requestPayload = readOpenRouterChatPayload(req.body);
+    assertOpenRouterModelAllowed(requester, requestPayload.model);
   } catch (error) {
     sendApiError(res, error, 'OpenRouter chat request failed.');
     return;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveRequestProfile } from '../api/_supabaseProfile.js';
+import { assertOpenRouterModelAllowed, resolveRequestProfile } from '../api/_supabaseProfile.js';
 
 describe('server Supabase profile resolution', () => {
   afterEach(() => {
@@ -28,5 +28,24 @@ describe('server Supabase profile resolution', () => {
       canAccessOpenRouter: true,
       legacy: true,
     });
+  });
+
+  it('enforces assigned OpenRouter models for member profiles only', () => {
+    const member = {
+      role: 'member',
+      assignedOpenRouterModel: 'openrouter/free',
+      legacy: false,
+    };
+
+    expect(() => assertOpenRouterModelAllowed(member, 'openrouter/free')).not.toThrow();
+    expect(() => assertOpenRouterModelAllowed(member, 'meta-llama/llama-3.2-3b-instruct:free')).toThrow(
+      'assigned to OpenRouter model "openrouter/free"',
+    );
+    expect(() =>
+      assertOpenRouterModelAllowed({ ...member, role: 'admin' }, 'meta-llama/llama-3.2-3b-instruct:free'),
+    ).not.toThrow();
+    expect(() =>
+      assertOpenRouterModelAllowed({ ...member, legacy: true }, 'meta-llama/llama-3.2-3b-instruct:free'),
+    ).not.toThrow();
   });
 });
