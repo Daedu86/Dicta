@@ -41,6 +41,7 @@ Browser app:
 
 Core TypeScript domain:
 
+- `src/core/buildInfo.ts`: build metadata formatting for browser display.
 - `src/core/languages.ts`: supported languages.
 - `SemanticPhrasePlanner`: language-aware phrase boundaries.
 - `AdaptiveDictationController`: rate, pause, replay, and chunk decisions.
@@ -178,6 +179,7 @@ These paths are not production Vercel backend features:
 
 Adaptive core:
 
+- `src/core/buildInfo.ts`
 - `src/core/adaptive/types.ts`
 - `src/core/adaptive/AdaptiveDictationController.ts`
 - `src/core/adaptive/SemanticPhrasePlanner.ts`
