@@ -1,8 +1,13 @@
-import { assertOpenRouterAccess, assertOpenRouterModelAllowed, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
+import { createSupabaseServiceClient, assertOpenRouterAccess, assertOpenRouterModelAllowed, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
 import { readOpenRouterChatPayload } from './_request.js';
+import { enforceOpenRouterRateLimit, getOpenRouterLimit, OPENROUTER_RATE_LIMIT_SCOPES } from './_security.js';
 
 function getOpenRouterApiKey() {
   return process.env.OPENROUTER_API_KEY?.trim() ?? '';
+}
+
+function createSecurityClient(requester) {
+  return requester?.legacy ? null : createSupabaseServiceClient();
 }
 
 async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
@@ -43,8 +48,10 @@ export default async function handler(req, res) {
   }
 
   let requester;
+  let securityClient = null;
   try {
     requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+    securityClient = createSecurityClient(requester);
     assertOpenRouterAccess(requester);
   } catch (error) {
     sendApiError(res, error, 'OpenRouter chat request failed.');
@@ -61,6 +68,14 @@ export default async function handler(req, res) {
   try {
     requestPayload = readOpenRouterChatPayload(req.body);
     assertOpenRouterModelAllowed(requester, requestPayload.model);
+    await enforceOpenRouterRateLimit({
+      supabase: securityClient,
+      requester,
+      res,
+      scope: OPENROUTER_RATE_LIMIT_SCOPES.chat,
+      limit: getOpenRouterLimit('chat', requester),
+      allowInMemoryFallback: requester.legacy === true,
+    });
   } catch (error) {
     sendApiError(res, error, 'OpenRouter chat request failed.');
     return;
