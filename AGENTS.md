@@ -2,13 +2,22 @@
 
 This is the first file an agent should read before touching Dicta. Dicta is a Vite/React dictation trainer with a shared adaptive "brain" called the Adaptive Pace Layer.
 
-Read order for code changes:
+## Required Change Protocol
 
-1. `AGENTS.md` for repo rules and guardrails.
-2. `README.md` for product overview, user model, and terminology.
-3. `docs/architecture.md` for current topology and data flow.
+Before proposing or making any code change, read and understand these files in this order:
 
-If a change updates project behavior, keep these three docs aligned.
+1. `AGENTS.md` for repo rules, guardrails, and required workflow.
+2. `README.md` for product overview, user model, terminology, deployment assumptions, and current security model.
+3. `docs/architecture.md` for current topology, data flow, boundaries, and known gaps.
+
+After reading them, propose the change from the architecture rather than from an isolated file edit. A valid proposal should identify:
+
+- Which runtime boundary is affected: browser, core TypeScript domain, input adapter, Vercel/server route, Supabase/RLS, or local-only sidecar.
+- Which `(inputMode, language)` profile is affected, if the task touches adaptive behavior.
+- Which files own the behavior and which docs/tests must change with it.
+- Whether secrets, auth, rate limits, sync, localStorage, or PWA performance are affected.
+
+Do not start implementation by guessing at a file. First map the request to the architecture, then make the smallest focused change that preserves existing boundaries. If behavior changes, keep `AGENTS.md`, `README.md`, and `docs/architecture.md` aligned.
 
 ## Project Snapshot
 
@@ -34,7 +43,7 @@ Access model:
 - Supabase deployments are invite/admin-created email/password accounts, not public signup.
 - Admin users can manage members, OpenRouter access, assigned free OpenRouter model, and member session limits.
 - Members default to 15 sessions and no OpenRouter access.
-- Non-Supabase deployments can use `DICTA_APP_PASSWORD` middleware login.
+- Non-Supabase deployments can use `DICTA_APP_PASSWORD` middleware login as a private/local fallback only.
 
 ## Commands
 
@@ -131,7 +140,11 @@ Supabase env vars are public Vite build vars and must be set locally and in Verc
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUPABASE_SYNC_PROFILE_ID`
 
-OpenRouter durable jobs use `dicta_openrouter_jobs` via server routes only. `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be referenced from Vite/client code.
+Server-only Supabase usage:
+
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be referenced from Vite/client code, `src/`, or `public/`.
+- CI checks for `SERVICE_ROLE_KEY` leakage in `src/` and `public/`.
+- Durable OpenRouter jobs use `dicta_openrouter_jobs` plus `dicta_rate_limits` through server routes only.
 
 After changing Vite env vars in Vercel, redeploy because they are baked into the build.
 
@@ -147,7 +160,14 @@ OpenRouter access is profile-gated:
 - Admins can use OpenRouter.
 - Members need `can_access_openrouter = true`.
 - Members with `assigned_openrouter_model` may only use that server-approved free model.
-- Durable jobs use `/api/openrouter/jobs`, `waitUntil`, `dicta_openrouter_jobs`, a 3 active-job limit, and 14-day completed-job cleanup.
+- Durable jobs use `/api/openrouter/jobs`, `waitUntil`, `dicta_openrouter_jobs`, a 3 active-job limit, 14-day completed-job cleanup, and persistent hourly rate limiting through `dicta_check_rate_limit`.
+
+Default durable-job rate limits:
+
+- Members: `DICTA_OPENROUTER_MEMBER_JOBS_PER_HOUR=20`
+- Admins: `DICTA_OPENROUTER_ADMIN_JOBS_PER_HOUR=120`
+
+If `dicta_check_rate_limit` is missing or broken, `/api/openrouter/jobs` must fail closed instead of accepting public beta jobs without rate limiting.
 
 ## Python Dependencies
 
