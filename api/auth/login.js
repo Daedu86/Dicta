@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
 
 const AUTH_COOKIE = 'dicta_auth';
+const LOGIN_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5;
+const loginAttempts = new Map();
 
 function hashPassword(value) {
   return createHash('sha256').update(value).digest('hex');
@@ -27,6 +30,46 @@ function readPassword(body) {
   return '';
 }
 
+function getClientIp(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .find(Boolean);
+  return forwarded || String(req.headers['x-real-ip'] ?? req.socket?.remoteAddress ?? 'unknown');
+}
+
+function checkLegacyLoginRateLimit(req) {
+  const now = Date.now();
+  const windowStart = Math.floor(now / LOGIN_RATE_LIMIT_WINDOW_MS) * LOGIN_RATE_LIMIT_WINDOW_MS;
+  const identifier = hashPassword(getClientIp(req));
+  const key = `${identifier}:${windowStart}`;
+  for (const existingKey of loginAttempts.keys()) {
+    const existingWindow = Number(existingKey.split(':').at(-1));
+    if (Number.isFinite(existingWindow) && existingWindow < windowStart - LOGIN_RATE_LIMIT_WINDOW_MS) {
+      loginAttempts.delete(existingKey);
+    }
+  }
+  const attempts = (loginAttempts.get(key) ?? 0) + 1;
+  loginAttempts.set(key, attempts);
+  const resetAt = new Date(windowStart + LOGIN_RATE_LIMIT_WINDOW_MS).toISOString();
+  return {
+    allowed: attempts <= LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+    limit: LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+    remaining: Math.max(0, LOGIN_RATE_LIMIT_MAX_ATTEMPTS - attempts),
+    resetAt,
+  };
+}
+
+function setRateLimitHeaders(res, rateLimit) {
+  res.setHeader('X-RateLimit-Limit', String(rateLimit.limit));
+  res.setHeader('X-RateLimit-Remaining', String(rateLimit.remaining));
+  res.setHeader('X-RateLimit-Reset', rateLimit.resetAt);
+  if (!rateLimit.allowed) {
+    const retryAfter = Math.max(1, Math.ceil((new Date(rateLimit.resetAt).getTime() - Date.now()) / 1000));
+    res.setHeader('Retry-After', String(retryAfter));
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).send('Method not allowed');
@@ -35,7 +78,14 @@ export default async function handler(req, res) {
 
   const configuredPassword = process.env.DICTA_APP_PASSWORD?.trim();
   if (!configuredPassword) {
-    res.status(500).send('DICTA_APP_PASSWORD is not configured.');
+    res.status(500).send('DICTA_APP_PASSWORD is not configured. Use Supabase Auth for public beta deployments.');
+    return;
+  }
+
+  const rateLimit = checkLegacyLoginRateLimit(req);
+  setRateLimitHeaders(res, rateLimit);
+  if (!rateLimit.allowed) {
+    res.status(429).send('Too many login attempts. Try again later.');
     return;
   }
 
