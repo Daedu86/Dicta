@@ -1,298 +1,340 @@
-# Dicta Project Topology
+# Dicta Architecture
 
-Dicta is a local MVP for adaptive dictation training. The current implementation is a Vite/React app with local browser storage, a development-only transcription endpoint, and a Python WhisperX ingestion script.
+This is the repo-owned architecture source of truth. Agents should read `AGENTS.md`, `README.md`, and this file before changing behavior.
 
-This document is the repo-owned source of truth for the project topology. It is intentionally written in Mermaid so the diagrams can be viewed in GitHub, VS Code Markdown preview, or exported later to PNG, PowerPoint, or Figma.
+Dicta is a Vite/React adaptive dictation trainer. The browser owns the training UI, local session state, and the Adaptive Pace Layer. Vercel/server routes protect secrets and cloud calls. Optional Supabase Auth and RLS provide invite/admin-created accounts, cross-device sync, durable OpenRouter jobs, and member quotas. Local-only Python sidecars handle WhisperX transcription, Kokoro TTS, and CosyVoice2 cache generation during development.
 
-## Component Topology
+## Product Matrix
+
+The application is built around **4 input modes x 5 languages**.
+
+Inputs:
+
+- Input #1 / `audio`: uploaded or recorded original audio plus a word-level transcript.
+- Input #2 / `browser-tts`: browser `SpeechSynthesis` with adaptive semantic chunking.
+- Input #3 / `kokoro`: local Kokoro TTS sidecar. Native in this setup: `en`, `es`. Blocked/experimental: `de`, `fr`, `pt`.
+- Input #4 / `qwen-cloud`: historical adaptive input id for cached TTS playback. The current free path is CosyVoice2 WAV cache files under `public/tts-cache/cosyvoice/{language}/`, with browser TTS fallback when cache files are missing.
+
+Languages:
+
+- `en`
+- `es`
+- `de`
+- `fr`
+- `pt`
+
+Adaptive benchmarks, telemetry, recommendations, and session feedback are scoped per `(inputMode, language)`. Do not share behavioral fixes across profiles unless the task explicitly asks for that.
+
+## Current Runtime Topology
 
 ```mermaid
----
-id: a1b0f37b-271b-43ca-8416-a3000e5b154b
----
 flowchart TB
-  user["Browser user"]
+  user["User / invited member / admin"]
 
-  subgraph browser["Browser runtime"]
-    app["React/Vite frontend<br/>src/App.tsx"]
-    training["Training workspace<br/>audio + transcript typing"]
-    tts["TTS workspace<br/>browser SpeechSynthesis"]
-    adaptiveUi["Adaptive Pace Layer workspace<br/>benchmarks + session feedback + charts"]
-    dashboard["Dashboard + leaderboard<br/>session metrics and review"]
-    storage["localStorage<br/>dicta.sessions.v1<br/>dicta.adaptiveBenchmarks.v1<br/>dicta.adaptiveSessionFeedback.v1"]
-    audio["HTMLAudioElement<br/>src/core/audioEngine.ts"]
+  subgraph browser["Browser app (Vite + React)"]
+    app["src/App.tsx<br/>workspace router + session orchestration"]
+    training["/training<br/>LowLatencyTextarea + session controls"]
+    adaptiveUi["Adaptive Pace Layer cockpit<br/>4 inputs x 5 languages"]
+    openrouterUi["OpenRouter workspace<br/>script generation slots"]
+    adminUi["Admin workspace<br/>members, remote sessions, local inventory"]
+    storage["localStorage<br/>sessions, tombstones, benchmarks,<br/>feedback, OpenRouter drafts/jobs"]
+    sw["PWA shell<br/>public/manifest.webmanifest + public/sw.js"]
   end
 
-  subgraph core["Core domain modules"]
-    sync["Sync controller<br/>src/core/syncController.ts"]
-    eval["Evaluation + word alignment<br/>src/core/evaluation.ts"]
-    transcript["Transcript parsing + normalization<br/>src/core/transcript.ts<br/>src/core/normalization.ts"]
-    telemetry["Telemetry tracking<br/>src/core/telemetry.ts"]
-    config["Difficulty config<br/>src/core/config.ts"]
-    adaptive["Adaptive Pace Layer (brain)<br/>src/core/adaptive/*"]
-    adaptiveCharts["Adaptive benchmark charts<br/>src/components/AdaptiveBenchmarkCharts.tsx"]
-    history["Historical profile<br/>src/core/history/HistoricalPerformanceService.ts"]
-    types["Shared dictation types<br/>src/types/dictation.ts"]
+  subgraph core["Core TypeScript domain"]
+    languages["src/core/languages.ts<br/>en/es/de/fr/pt"]
+    planner["SemanticPhrasePlanner<br/>language-aware phrase boundaries"]
+    controller["AdaptiveDictationController<br/>rate/pause/replay/chunk decisions"]
+    benchmark["AdaptiveInputLanguageBenchmarkService<br/>30-day rolling profile"]
+    feedback["sessionFeedback + benchmarkJson<br/>exports and diagnostics"]
+    history["HistoricalPerformanceService<br/>session profile input"]
+    sync["supabaseSync + profileScopedStorage<br/>profile-aware persistence"]
+    metrics["liveMetrics<br/>today/week/2w/3w/month (30 days)"]
   end
 
-  subgraph inputs["Input adapters (per mode)"]
-    inputAudio["Audio mode adapter<br/>src/inputs/audio/audioTelemetryAdapter.ts"]
-    inputBrowserTts["Browser TTS adapter<br/>src/inputs/browserTts/browserTtsTelemetryAdapter.ts"]
-    ttsChunkPlanner["Browser TTS dynamic chunk planner<br/>src/inputs/browserTts/ttsDynamicChunkPlanner.ts"]
-    inputKokoro["Kokoro adapter<br/>src/inputs/kokoro/kokoroTelemetryAdapter.ts"]
-    inputQwen["Qwen Cloud adapter<br/>src/inputs/qwenCloud/qwenCloudTelemetryAdapter.ts"]
+  subgraph inputs["Input adapters"]
+    audio["Input #1 audio<br/>audioEngine + audioTelemetryAdapter"]
+    browserTts["Input #2 browser-tts<br/>SpeechSynthesis + ttsDynamicChunkPlanner"]
+    kokoro["Input #3 kokoro<br/>Kokoro sidecar + telemetry adapter"]
+    qwen["Input #4 qwen-cloud<br/>CosyVoice2 cache + browser fallback"]
   end
 
-  subgraph devserver["Local Vite dev server"]
-    api["POST /api/transcribe<br/>vite.config.ts<br/>Local dev only"]
-    openrouterProxy["GET /api/openrouter/models<br/>vite.config.ts<br/>Local dev only<br/>Reads OPENROUTER_API_KEY from env"]
-    temp["Temp audio + transcript files<br/>OS temp directory"]
+  subgraph server["Server routes and Vite dev middleware"]
+    auth["api/auth/* + middleware.js<br/>legacy password fallback"]
+    profiles["api/_supabaseProfile.js<br/>signed-in profile resolution"]
+    adminApi["api/admin/users.js<br/>admin-created users and access"]
+    openrouter["api/openrouter/*<br/>models, chat, durable jobs"]
+    viteDev["vite.config.ts local middleware<br/>transcribe, local OpenRouter key UI,<br/>sidecar start/bootstrap, file inventory"]
   end
 
-  subgraph external["External services"]
-    openrouterCloud["OpenRouter API<br/>/api/v1/models"]
+  subgraph supabase["Supabase (optional but current multiuser path)"]
+    authDb["Supabase Auth<br/>email/password users"]
+    profilesDb["dicta_app_profiles<br/>role, active, quotas, OpenRouter access"]
+    syncDb["dicta_sync_items<br/>session/benchmark/feedback JSON rows"]
+    jobsDb["dicta_openrouter_jobs<br/>durable generation jobs"]
+    rls["RLS policies + helper functions<br/>own rows for members, all rows for admins"]
   end
 
-  subgraph ingestion["Local ingestion pipeline"]
-    py["Python WhisperX CLI<br/>scripts/transcribe_align.py"]
-    schema["Transcript schema<br/>scripts/transcript.schema.json"]
-    fixtures["Fixture transcripts/audio<br/>fixtures/*.json<br/>fixtures/dummy.wav"]
-    whisper["WhisperX + torch (optional)<br/>requirements-alignment.txt"]
+  subgraph localServices["Local-only services"]
+    whisper["scripts/transcribe_align.py<br/>WhisperX optional alignment"]
+    kokoroSvc["services/kokoro_tts<br/>127.0.0.1:8787"]
+    cosySvc["services/cosyvoice_cache<br/>127.0.0.1:8791"]
   end
 
-  subgraph gaps["Development gaps"]
-    prod["Needs production backend"]
-    db["Needs durable database"]
-    auth["Needs auth/user accounts<br/>if multi-user"]
-    deploy["Needs deployment/storage strategy"]
-    extTts["Future external TTS/AI service"]
+  subgraph external["External APIs"]
+    openrouterCloud["OpenRouter API<br/>models + chat completions"]
   end
 
   user --> app
   app --> training
-  app --> tts
   app --> adaptiveUi
-  app --> dashboard
+  app --> openrouterUi
+  app --> adminUi
   app <--> storage
+  app --> sw
 
-  training --> audio
-  training --> sync
-  training --> eval
-  training --> transcript
-  training --> telemetry
-  training --> config
-  training --> adaptive
-  training --> history
-  tts --> eval
-  tts --> telemetry
-  tts --> adaptive
-  tts --> ttsChunkPlanner
-  tts --> history
-  tts -. future upgrade .-> extTts
-  dashboard --> telemetry
-  dashboard --> storage
-  adaptiveUi --> adaptiveCharts
-  adaptiveUi --> adaptive
-  adaptiveUi --> storage
+  app --> languages
+  app --> planner
+  app --> controller
+  app --> benchmark
+  app --> feedback
+  app --> history
+  app --> sync
+  app --> metrics
 
-  sync --> types
-  eval --> types
-  transcript --> types
-  telemetry --> types
-  config --> types
-  adaptive --> types
-  history --> types
+  controller --> inputs
+  inputs --> controller
+  planner --> browserTts
+  audio --> app
+  browserTts --> app
+  kokoro --> app
+  qwen --> app
 
-  adaptive --> inputs
-  inputs --> adaptive
-  inputBrowserTts --> ttsChunkPlanner
-  ttsChunkPlanner --> inputBrowserTts
+  app --> auth
+  app --> profiles
+  app --> adminApi
+  app --> openrouter
+  app --> viteDev
 
-  app --> api
-  app --> openrouterProxy
-  openrouterProxy --> openrouterCloud
-  openrouterCloud --> openrouterProxy
-  api --> temp
-  api --> py
-  py --> whisper
-  py --> schema
-  py --> fixtures
-  py --> api
-  api --> app
+  profiles --> profilesDb
+  adminApi --> authDb
+  adminApi --> profilesDb
+  openrouter --> profiles
+  openrouter --> jobsDb
+  openrouter --> openrouterCloud
+  sync --> syncDb
+  authDb --> rls
+  profilesDb --> rls
+  syncDb --> rls
+  jobsDb --> rls
 
-  api -. replace for production .-> prod
-  openrouterProxy -. replace for production .-> prod
-  storage -. replace for shared accounts .-> db
-  app -. required for cloud use .-> auth
-  temp -. replace for deployed ingestion .-> deploy
+  viteDev --> whisper
+  viteDev --> kokoroSvc
+  viteDev --> cosySvc
+  kokoro --> kokoroSvc
+  qwen --> cosySvc
 ```
+
+## Adaptive Brain Loop
+
+```mermaid
+flowchart LR
+  source["Session source<br/>audio transcript, typed text,<br/>OpenRouter script, cached phrases"]
+  planner["SemanticPhrasePlanner<br/>phrase boundaries + difficulty"]
+  engine["Input engine<br/>audio, browser TTS,<br/>Kokoro, CosyVoice cache"]
+  typing["Learner typing<br/>LowLatencyTextarea"]
+  adapter["Input telemetry adapter<br/>LiveTelemetryFrame"]
+  history["Historical profile<br/>prior sessions"]
+  controller["AdaptiveDictationController<br/>PacingDecision"]
+  apply["Apply possible controls<br/>rate, pause, replay,<br/>next phrase size"]
+  benchmark["30-day benchmark<br/>(inputMode, language)"]
+  feedback["Session feedback<br/>playback issues + deltas"]
+  persist["localStorage + optional Supabase sync"]
+
+  source --> planner
+  planner --> engine
+  engine --> typing
+  typing --> adapter
+  planner --> adapter
+  adapter --> controller
+  history --> controller
+  controller --> apply
+  apply --> engine
+  adapter --> benchmark
+  controller --> benchmark
+  benchmark --> controller
+  benchmark --> feedback
+  feedback --> persist
+  benchmark --> persist
+```
+
+Important implementation details:
+
+- The adaptive benchmark rolling window is 30 days (`ROLLING_WINDOW_DAYS = 30`).
+- Timeline storage is capped and pruned by timestamp; profile `sessionCount` counts accepted adaptive samples/sessions, not every saved session.
+- Browser TTS German has extra recovery, lag, and unsafe-boundary filtering. Keep changes narrowly guarded, for example `inputMode === 'browser-tts' && language === 'de'`.
+- Browser TTS does not execute phrase replay; replay intent becomes recovery behavior such as smaller chunks, slower rate, and longer pauses.
+- Training text input is intentionally low-latency and uncontrolled. Do not reintroduce per-keystroke React state for visible text.
+
+## 30-Day Windows
+
+Dicta uses "one month" as a rolling 30-day window in the current implementation:
+
+- Adaptive benchmarks: `InputLanguageBenchmarkMetrics.rollingWindowDays` is always `30`.
+- Dashboard and leaderboard Month views: `src/core/liveMetrics.ts` maps `month` to 30 days.
+- OpenRouter context: generation hints summarize saved sessions from the last 30 days for the selected language and input/language profile.
+- Adaptive exports include recent timeline slices for debugging, but the underlying benchmark profile is still the 30-day rolling profile.
+
+## Account And Access Model
+
+Supabase Auth is the current multiuser path. Accounts are invite/admin-created from the Admin workspace via `api/admin/users.js`; there is no public self-signup flow in the repo.
+
+Profile rules:
+
+- `dicta_app_profiles` maps each Supabase user to one `profile_id`.
+- `role = admin` can read/manage all profiles and rows through RLS.
+- `role = member` can sync only its own rows.
+- Members default to `session_limit = 15`, `can_access_openrouter = false`, and optional `assigned_openrouter_model = null`.
+- Admins can grant OpenRouter access, assign a single free model, or adjust session limits.
+
+Legacy password fallback:
+
+- If Supabase Auth is not configured and `DICTA_APP_PASSWORD` is set, `middleware.js` redirects browser users to `public/login.html`.
+- The password cookie is only a fallback gate; it is not the multiuser profile model.
+
+## Persistence And Sync
+
+Primary browser storage keys:
+
+- `dicta.sessions.v1`
+- `dicta.deletedSessionIds.v1`
+- `dicta.adaptiveBenchmarks.v1`
+- `dicta.adaptiveSessionFeedback.v1`
+- `dicta.perfDiagnostics.v1`
+- `dicta.openrouterDefaultModel.v1`
+- `dicta.openrouterGeneratedVariants.v1`
+- `dicta.openrouterActiveJobs.v1`
+- `dicta.kokoroEnabled.v1`
+
+Supabase sync stores JSON rows in `dicta_sync_items`:
+
+- `item_type = session`
+- `item_type = benchmark`
+- `item_type = feedback`
+
+Session deletes are tombstones, not hard deletes. The tombstone payload must contain JSON boolean `deleted: true`; string values such as `"true"` are intentionally rejected by both SQL policy helpers and the TypeScript sync client.
+
+Sync cadence:
+
+- One full pull runs at startup.
+- Incremental pulls request rows updated since the last remote timestamp.
+- A periodic full refresh runs about hourly for clock-skew safety.
+- Local writes are selected by timestamp and do not push stale rows over newer remote rows.
+
+## OpenRouter Architecture
+
+OpenRouter is for structured dictation script generation. It is not a playback engine and it must not expose secrets to the browser.
+
+Routes:
+
+- `GET /api/openrouter/models`: lists OpenRouter models through the server key.
+- `POST /api/openrouter/chat`: immediate chat completion path, 290-second timeout.
+- `POST /api/openrouter/jobs`: durable job creation for mobile/long requests.
+- `GET /api/openrouter/jobs?id=...`: durable job polling.
+
+Server-side rules:
+
+- `OPENROUTER_API_KEY` is server-only.
+- Accepted model ids are `openrouter/free` or ids ending in `:free`.
+- Prompt length is capped at 32,000 characters.
+- `maxTokens` is bounded between 128 and 1,800.
+- Supabase/Vercel durable jobs use `dicta_openrouter_jobs`, `waitUntil`, a 3 active-job limit, and opportunistic cleanup of completed jobs older than 14 days.
+- `resolveRequestProfile`, `assertOpenRouterAccess`, and `assertOpenRouterModelAllowed` gate access per signed-in profile.
+
+Local Vite dev mirrors most OpenRouter behavior in `vite.config.ts` and also exposes dev-only key management endpoints for `.env.local`. Do not bring those dev-only key write endpoints into production client code.
 
 ## Data Flow
 
 ```mermaid
----
-id: 29bec520-c6f0-4818-ab0c-7f3c61f3a487
----
-flowchart LR
-  audioInput["Audio file upload<br/>or remote audio URL"]
-  transcriptUpload["Transcript JSON upload"]
-  textInput["Manual text source<br/>for browser TTS"]
-
-  api["/api/transcribe<br/>Vite middleware<br/>Local dev only"]
-  openrouterProxy["/api/openrouter/models<br/>Vite middleware<br/>Local dev only"]
-  openrouterCloud["OpenRouter API<br/>model listing"]
-  python["scripts/transcribe_align.py<br/>WhisperX alignment"]
-  transcriptJson["Transcript JSON<br/>{ words: [{ word, start, end }] }"]
-
-  session["Active session state<br/>src/App.tsx"]
-  playback["Audio playback<br/>AudioEngine"]
-  speech["Browser TTS playback<br/>SpeechSynthesis"]
-  typing["Typed user attempt"]
-
-  eval["Evaluation<br/>accuracy, points, alignment"]
-  sync["Sync control loop<br/>lag, WPM, playback rate, repeats"]
-  telemetry["Telemetry series<br/>lag, WPM, accuracy, actions"]
-  adaptive["Adaptive Pace Layer<br/>pace decisions + semantic chunking"]
-  history["Historical profile<br/>per input/language"]
-  benchmark["Input-language benchmark<br/>rolling timeline + weak areas"]
-  feedback["Session feedback<br/>improvement deltas + diagnostics"]
-  local["localStorage sessions<br/>single-browser persistence"]
-  adaptiveStore["Adaptive stores<br/>benchmarks + session feedback<br/>(inputMode, language) scoped"]
-  dashboard["Dashboard / leaderboard<br/>review, charts, export JSON"]
-
-  prodGap["Needs production backend"]
-  dbGap["Needs durable database"]
-  ttsGap["Future external TTS/AI service"]
-
-  audioInput --> api
-  api --> python
-  python --> transcriptJson
-  transcriptUpload --> transcriptJson
-  transcriptJson --> session
-
-  textInput --> session
-  session --> playback
-  session --> speech
-  speech -. future upgrade .-> ttsGap
-
-  playback --> sync
-  typing --> eval
-  typing --> sync
-  session --> eval
-  eval --> sync
-  sync --> playback
-  sync --> telemetry
-  eval --> telemetry
-  speech --> telemetry
-
-  session --> history
-  telemetry --> adaptive
-  history --> adaptive
-  adaptive --> playback
-  adaptive --> speech
-  adaptive --> benchmark
-  benchmark --> adaptive
-  telemetry --> benchmark
-  benchmark --> feedback
-
-  telemetry --> session
-  session --> local
-  benchmark --> adaptiveStore
-  feedback --> adaptiveStore
-  adaptiveStore --> dashboard
-  local --> dashboard
-  telemetry --> dashboard
-  feedback --> dashboard
-  dashboard --> export["Session JSON export<br/>copy/download"]
-
-  session --> openrouterProxy
-  openrouterProxy --> openrouterCloud
-  openrouterCloud --> openrouterProxy
-  openrouterProxy --> session
-
-  api -. production replacement .-> prodGap
-  openrouterProxy -. production replacement .-> prodGap
-  local -. shared persistence replacement .-> dbGap
-```
-
-## Adaptive Pace Layer (Brain) Loop
-
-This is the internal control loop that makes Dicta adaptive. It is "centralized" in the sense that every input mode produces the same normalized telemetry shape, and a single decision policy produces a `PacingDecision` that can be applied (as best as the input mode allows).
-
-```mermaid
----
-id: 8d3c9f5d-2466-4b0e-9a7d-34d1e0a69a3a
----
 flowchart TB
-  subgraph sources["Signals"]
-    user["User typing<br/>(speed, corrections, pauses)"]
-    content["Content structure<br/>(semantic boundaries, difficulty)"]
-    modeCaps["Input capabilities<br/>(can pause, can replay, rate changes)"]
-    history["Historical profile<br/>HistoricalPerformanceService"]
-  end
+  select["Choose input + language"]
+  content["Provide content<br/>audio/transcript, text,<br/>OpenRouter script, cache manifest"]
+  session["StoredSession in src/App.tsx"]
+  practice["Training run"]
+  telemetry["Telemetry series + phrase playback events"]
+  adaptive["Adaptive benchmark update<br/>(inputMode, language)"]
+  feedback["Completed feedback package"]
+  local["localStorage"]
+  remote["optional Supabase sync"]
+  exports["JSON copy/download/debug exports"]
 
-  subgraph normalize["Normalization"]
-    adapters["Telemetry adapters<br/>src/inputs/*/*TelemetryAdapter.ts"]
-    live["LiveTelemetryFrame<br/>accuracy, lag, WPM, boundaries, completeness"]
-  end
-
-  subgraph brain["Adaptive Pace Layer<br/>src/core/adaptive/*"]
-    planner["SemanticPhrasePlanner<br/>plan macro phrases + score difficulty/completeness"]
-    controller["AdaptiveDictationController<br/>decide pacing (support/balanced/flow)"]
-    benchmark["AdaptiveInputLanguageBenchmarkService<br/>update rolling benchmark + weak areas"]
-    feedback["sessionFeedback<br/>post-session diagnostics + improvement deltas"]
-  end
-
-  subgraph apply["Execution"]
-    engines["Input engines<br/>AudioEngine / SpeechSynthesis / Kokoro / Qwen"]
-    chunkPlanner["Browser TTS chunk planner<br/>ttsDynamicChunkPlanner<br/>(sub-split inside macro phrase)"]
-    actions["Apply PacingDecision<br/>rate, pause/defer, replay (if supported), nextPhraseSize"]
-  end
-
-  subgraph persist["Persistence"]
-    storage["localStorage<br/>sessions + benchmarks + session feedback"]
-    exports["JSON exports<br/>for offline analysis / iteration"]
-  end
-
-  user --> adapters
-  content --> planner
-  modeCaps --> controller
-  history --> controller
-
-  adapters --> live
-  planner --> live
-  live --> controller
-  controller --> actions
-  planner --> chunkPlanner
-  chunkPlanner --> actions
-  actions --> engines
-
-  live --> benchmark
-  controller --> benchmark
-  benchmark --> controller
-
-  benchmark --> storage
-  feedback --> storage
-  storage --> exports
+  select --> content
+  content --> session
+  session --> practice
+  practice --> telemetry
+  telemetry --> adaptive
+  adaptive --> feedback
+  session --> local
+  adaptive --> local
+  feedback --> local
+  local --> remote
+  remote --> local
+  local --> exports
 ```
 
-## Current `/api/transcribe` Behavior
+## Local-Only Development Services
 
-The transcription API exists only inside the Vite development server plugin in `vite.config.ts`.
+These paths are not production Vercel backend features:
 
-1. The frontend posts either an uploaded audio file encoded as base64 or a remote audio URL.
-2. The Vite middleware writes the audio to a temporary local file.
-3. The middleware runs `python scripts/transcribe_align.py --audio <temp-audio> --output <temp-json> --language <en|es|de|fr|pt>`.
-4. The Python script runs WhisperX, validates the transcript shape, and writes JSON.
-5. The middleware reads the JSON, deletes temporary files, and returns the transcript to the frontend.
+- `/api/transcribe` in `vite.config.ts`: writes temp audio, runs `scripts/transcribe_align.py`, and returns a transcript. Production transcription still needs a real backend/job/storage design.
+- `/api/kokoro/start`: starts `services/kokoro_tts` on `127.0.0.1:8787`.
+- `/api/cosyvoice/start` and `/api/cosyvoice/bootstrap`: start/bootstrap `services/cosyvoice_cache` on `127.0.0.1:8791`.
+- `/api/admin/files`: local file inventory for development diagnostics.
+- `/api/openrouter/key*`: dev-only `.env.local` key management.
 
-For a deployed product, this path needs a real backend service, file/object storage, job handling for long transcription runs, and durable session storage.
+## Files To Know
 
-## What Still Needs Development
+Adaptive core:
 
-- Production backend: replace the Vite-only `/api/transcribe` middleware with a deployable API.
-- Durable persistence: replace browser-only `localStorage` when sessions need to survive across devices or users.
-- Auth and user accounts: required for multi-user history, leaderboard identity, or cloud storage.
-- Audio storage strategy: decide where uploaded or remote audio is stored, cached, and cleaned up.
-- External TTS/AI service: browser `SpeechSynthesis` works for the MVP, but higher-quality adaptive TTS can be integrated later.
-- Deployment topology: define frontend hosting, backend runtime, worker/transcription runtime, object storage, database, and monitoring.
+- `src/core/adaptive/types.ts`
+- `src/core/adaptive/AdaptiveDictationController.ts`
+- `src/core/adaptive/SemanticPhrasePlanner.ts`
+- `src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts`
+- `src/core/adaptive/sessionFeedback.ts`
+- `src/core/adaptive/dictationScriptPrompt.ts`
+- `src/core/adaptive/dictationScriptValidation.ts`
+- `src/core/adaptive/openRouterGenerationPrompt.ts`
+- `src/core/adaptive/benchmarkJson.ts`
+
+Input adapters:
+
+- `src/inputs/audio/audioTelemetryAdapter.ts`
+- `src/inputs/browserTts/browserTtsTelemetryAdapter.ts`
+- `src/inputs/browserTts/ttsDynamicChunkPlanner.ts`
+- `src/inputs/kokoro/kokoroTelemetryAdapter.ts`
+- `src/inputs/qwenCloud/qwenCloudTelemetryAdapter.ts`
+- `src/inputs/qwenCloud/qwenCloudAudioAdapter.ts`
+
+Auth/sync/server:
+
+- `src/core/supabaseSync.ts`
+- `src/core/appProfiles.ts`
+- `api/_supabaseProfile.js`
+- `api/admin/users.js`
+- `api/openrouter/*`
+- `middleware.js`
+- `supabase/migrations/*`
+
+Local services:
+
+- `scripts/transcribe_align.py`
+- `services/kokoro_tts/*`
+- `services/cosyvoice_cache/*`
+
+## Known Gaps
+
+- Production transcription still needs a deployed backend, object storage, and long-running job handling.
+- Kokoro support for `de`, `fr`, and `pt` remains blocked/experimental in this setup.
+- Input #4 still uses the historical `qwen-cloud` identifier even though the current cache generator is CosyVoice2.
+- The training UI is much faster after the mobile/PWA pass, but full-tree render volume during long Browser TTS runs can still be reduced.
+- There is no automated CI benchmark gate for typing latency regressions.
