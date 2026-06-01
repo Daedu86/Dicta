@@ -8,24 +8,37 @@ export type DictaBuildInfo = {
 };
 
 export function buildBuildInfoLabel(info: DictaBuildInfo): string {
-  const branch = normalizeBuildInfoPart(info.branch, 'local');
-  const shortSha = normalizeBuildInfoPart(info.shortCommitSha || info.commitSha.slice(0, 7), 'unknown');
-  return `${branch}@${shortSha}`;
+  const branch = info.branch.trim() || 'local';
+  const commit = info.shortCommitSha.trim() || 'unknown';
+  const timestamp = formatBuildInfoTimestamp(info.commitTimestamp || info.buildTimestamp);
+  return `${branch} commit: ${commit} \u00b7 ${timestamp}`;
 }
 
 export function buildBuildInfoTitle(info: DictaBuildInfo): string {
+  const branch = info.branch.trim() || 'local';
+  const commitSha = info.commitSha.trim() || 'unknown';
+  const commitTimestamp = formatBuildInfoTimestamp(info.commitTimestamp);
+  const buildTimestamp = formatBuildInfoTimestamp(info.buildTimestamp);
   return [
-    ['Branch', info.branch],
-    ['Commit', info.commitSha || info.shortCommitSha],
-    ['Commit time', info.commitTimestamp],
-    ['Commit message', info.commitMessage],
-    ['Build time', info.buildTimestamp],
+    `Branch: ${branch}`,
+    `Commit: ${commitSha}`,
+    `Commit timestamp: ${commitTimestamp}`,
+    `Build timestamp: ${buildTimestamp}`,
+    info.commitMessage.trim() ? `Message: ${info.commitMessage.trim()}` : '',
   ]
-    .map(([label, value]) => `${label}: ${normalizeBuildInfoPart(value, 'unknown')}`)
+    .filter(Boolean)
     .join('\n');
 }
 
-function normalizeBuildInfoPart(value: string, fallback: string): string {
-  const normalized = value.trim();
-  return normalized || fallback;
+function formatBuildInfoTimestamp(value: string): string {
+  if (!value) return 'unavailable';
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return 'unavailable';
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsed);
 }

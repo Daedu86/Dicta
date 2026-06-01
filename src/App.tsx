@@ -180,15 +180,11 @@ import {
   showGeneratedTrainingSessionNotification,
 } from './core/trainingNotifications';
 import { LagDistributionChart, MiniTrends, RateAccuracyStrip, SweetSpotGauge, TargetZoneChart } from './components/AdaptiveBenchmarkCharts';
-
-type DictaBuildInfo = {
-  branch: string;
-  commitSha: string;
-  shortCommitSha: string;
-  commitTimestamp: string;
-  commitMessage: string;
-  buildTimestamp: string;
-};
+import {
+  buildBuildInfoLabel,
+  buildBuildInfoTitle,
+  type DictaBuildInfo,
+} from './core/buildInfo';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
@@ -12452,42 +12448,6 @@ function formatDuration(seconds: number): string {
 function formatElapsedMs(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(2)}s`;
-}
-
-function buildBuildInfoLabel(info: DictaBuildInfo): string {
-  const branch = info.branch.trim() || 'local';
-  const commit = info.shortCommitSha.trim() || 'unknown';
-  const timestamp = formatBuildInfoTimestamp(info.commitTimestamp || info.buildTimestamp);
-  return `${branch} commit: ${commit} · ${timestamp}`;
-}
-
-function buildBuildInfoTitle(info: DictaBuildInfo): string {
-  const branch = info.branch.trim() || 'local';
-  const commitSha = info.commitSha.trim() || 'unknown';
-  const commitTimestamp = formatBuildInfoTimestamp(info.commitTimestamp);
-  const buildTimestamp = formatBuildInfoTimestamp(info.buildTimestamp);
-  return [
-    `Branch: ${branch}`,
-    `Commit: ${commitSha}`,
-    `Commit timestamp: ${commitTimestamp}`,
-    `Build timestamp: ${buildTimestamp}`,
-    info.commitMessage.trim() ? `Message: ${info.commitMessage.trim()}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
-function formatBuildInfoTimestamp(value: string): string {
-  if (!value) return 'unavailable';
-  const parsed = new Date(value);
-  if (!Number.isFinite(parsed.getTime())) return 'unavailable';
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(parsed);
 }
 
 function buildOpenRouterJobNotification(

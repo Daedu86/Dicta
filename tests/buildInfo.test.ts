@@ -1,36 +1,44 @@
 import { describe, expect, it } from 'vitest';
 import { buildBuildInfoLabel, buildBuildInfoTitle, type DictaBuildInfo } from '../src/core/buildInfo';
 
-const baseInfo: DictaBuildInfo = {
-  branch: 'main',
-  commitSha: 'abcdef1234567890',
-  shortCommitSha: 'abcdef1',
-  commitTimestamp: '2026-06-01T15:00:00.000Z',
-  commitMessage: 'Test commit',
-  buildTimestamp: '2026-06-01T15:01:00.000Z',
+const buildInfo: DictaBuildInfo = {
+  branch: ' main ',
+  commitSha: ' abcdef123456 ',
+  shortCommitSha: ' abcdef1 ',
+  commitTimestamp: 'not-a-date',
+  commitMessage: ' Initial build ',
+  buildTimestamp: '',
 };
 
-describe('buildInfo', () => {
-  it('builds a compact branch and short SHA label', () => {
-    expect(buildBuildInfoLabel(baseInfo)).toBe('main@abcdef1');
+describe('buildBuildInfoLabel', () => {
+  it('formats branch, short commit, and unavailable timestamp', () => {
+    expect(buildBuildInfoLabel(buildInfo)).toBe('main commit: abcdef1 \u00b7 unavailable');
   });
 
-  it('falls back when branch or short SHA fields are missing', () => {
-    expect(buildBuildInfoLabel({ ...baseInfo, branch: '', shortCommitSha: '' })).toBe('local@abcdef1');
-    expect(buildBuildInfoLabel({ ...baseInfo, commitSha: '', shortCommitSha: '' })).toBe('main@unknown');
+  it('falls back to local branch and unknown commit', () => {
+    expect(buildBuildInfoLabel({
+      ...buildInfo,
+      branch: ' ',
+      shortCommitSha: ' ',
+    })).toBe('local commit: unknown \u00b7 unavailable');
+  });
+});
+
+describe('buildBuildInfoTitle', () => {
+  it('formats build metadata title lines', () => {
+    expect(buildBuildInfoTitle(buildInfo)).toBe([
+      'Branch: main',
+      'Commit: abcdef123456',
+      'Commit timestamp: unavailable',
+      'Build timestamp: unavailable',
+      'Message: Initial build',
+    ].join('\n'));
   });
 
-  it('builds a multiline title with safe fallbacks', () => {
-    const title = buildBuildInfoTitle({
-      ...baseInfo,
-      commitSha: '',
-      commitTimestamp: '',
-    });
-
-    expect(title).toContain('Branch: main');
-    expect(title).toContain('Commit: abcdef1');
-    expect(title).toContain('Commit time: unknown');
-    expect(title).toContain('Commit message: Test commit');
-    expect(title).toContain('Build time: 2026-06-01T15:01:00.000Z');
+  it('omits an empty commit message', () => {
+    expect(buildBuildInfoTitle({
+      ...buildInfo,
+      commitMessage: ' ',
+    })).not.toContain('Message:');
   });
 });
