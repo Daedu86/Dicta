@@ -113,13 +113,14 @@ Multiuser auth and sync use:
 - `dicta_sync_items`
 - RLS helper functions from `supabase/migrations/20260519000000_dicta_multiuser_auth.sql`
 
-Durable OpenRouter jobs and server-side rate limits use:
+OpenRouter server-side security uses:
 
 - `dicta_openrouter_jobs`
 - `dicta_rate_limits`
 - `dicta_check_rate_limit(...)`
+- `dicta_security_events`
 
-Apply `docs/supabase-openrouter-jobs.sql` before enabling `/api/openrouter/jobs` for beta/public users. The production Supabase project `Dicta` has already had the OpenRouter rate-limit migration applied through Supabase migration `add_openrouter_rate_limits`.
+Apply `docs/supabase-openrouter-jobs.sql` before enabling hosted OpenRouter generation. The production Supabase project `Dicta` has had the rate-limit migration `add_openrouter_rate_limits` and the security-event migration `add_security_events_for_openrouter` applied.
 
 ## OpenRouter
 
@@ -138,15 +139,18 @@ Server-side rules:
 - Prompt length is capped at 32,000 characters.
 - `maxTokens` is bounded between 128 and 1,800.
 - `resolveRequestProfile`, `assertOpenRouterAccess`, and `assertOpenRouterModelAllowed` gate access per signed-in profile.
+- `/api/openrouter/chat` and `/api/openrouter/jobs` are rate-limited per profile through `dicta_check_rate_limit`.
 - Durable jobs use `dicta_openrouter_jobs`, `waitUntil`, a 3 active-job limit, and cleanup of completed jobs older than 14 days.
-- Durable jobs are also rate-limited per profile through `dicta_check_rate_limit`.
+- Rate-limit exceedance writes a security event to logs and, when a Supabase service client is available, `dicta_security_events`.
 
-Default durable-job rate limits:
+Default OpenRouter rate limits:
 
-- Members: `DICTA_OPENROUTER_MEMBER_JOBS_PER_HOUR=20`
-- Admins: `DICTA_OPENROUTER_ADMIN_JOBS_PER_HOUR=120`
+- Members chat: `DICTA_OPENROUTER_MEMBER_CHAT_PER_HOUR=30`
+- Admins chat: `DICTA_OPENROUTER_ADMIN_CHAT_PER_HOUR=180`
+- Members jobs: `DICTA_OPENROUTER_MEMBER_JOBS_PER_HOUR=20`
+- Admins jobs: `DICTA_OPENROUTER_ADMIN_JOBS_PER_HOUR=120`
 
-If the rate-limit RPC is missing or broken, `/api/openrouter/jobs` must fail closed instead of accepting public beta jobs without rate limiting.
+If the rate-limit RPC is missing or broken, hosted OpenRouter routes must fail closed instead of accepting public beta requests without rate limiting.
 
 ## Typical Training Flow
 
@@ -276,6 +280,7 @@ npm test
 Test coverage currently includes:
 
 - Unit tests for the sync controller.
+- Adaptive controller, benchmark service, session feedback, semantic planner, and OpenRouter prompt profile-scope guardrails.
 - Integration simulation test for convergence / no excessive oscillation.
 - Ingestion smoke test (`--dry-run`) for output schema path.
 
