@@ -61,6 +61,7 @@ Server routes and local dev middleware:
 
 - `api/auth/*` and `middleware.js`: legacy private password fallback.
 - `api/_supabaseProfile.js`: signed-in profile resolution.
+- `api/_securityEvents.js`: shared server-side security event logging and `dicta_security_events` persistence.
 - `api/admin/users.js`: admin-created users and access controls.
 - `api/openrouter/*`: models, chat, durable jobs, access gating, active-job limits, and persistent rate limits.
 - `vite.config.ts`: local-only middleware for transcription, local OpenRouter key UI, sidecar start/bootstrap, and local file inventory.
@@ -72,6 +73,7 @@ Supabase multiuser path:
 - `dicta_sync_items`: session, benchmark, and feedback JSON rows.
 - `dicta_openrouter_jobs`: durable generation jobs.
 - `dicta_rate_limits`: server-side OpenRouter job throttling.
+- `dicta_security_events`: server-side security audit events written through service-role routes only.
 - RLS/helper functions: members see their own rows, admins can manage all rows.
 
 Local-only services:
@@ -155,6 +157,7 @@ Server-side rules:
 - `maxTokens` is bounded between 128 and 1,800.
 - Durable jobs use `dicta_openrouter_jobs`, `waitUntil`, a 3 active-job limit, and cleanup of completed jobs older than 14 days.
 - Durable job creation is persistently rate-limited per profile through `dicta_rate_limits` and `dicta_check_rate_limit`.
+- OpenRouter and admin routes write security events through `api/_securityEvents.js`; OpenRouter rate-limit helpers re-export it for compatibility.
 - Default durable-job rate limits are 20 jobs per hour for members and 120 jobs per hour for admins.
 - If the rate-limit RPC is missing or fails, `/api/openrouter/jobs` fails closed instead of accepting jobs without throttling.
 - Profile resolution and model authorization stay server-side.
@@ -199,10 +202,12 @@ Auth/sync/server:
 - `src/core/supabaseSync.ts`
 - `src/core/appProfiles.ts`
 - `api/_supabaseProfile.js`
+- `api/_securityEvents.js`
 - `api/admin/users.js`
 - `api/openrouter/*`
 - `middleware.js`
 - `docs/supabase-openrouter-jobs.sql`
+- `docs/supabase-events.sql`
 - `supabase/migrations/*`
 
 Local services:
