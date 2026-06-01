@@ -23,17 +23,26 @@ Read first:
 
 Boundary: browser UI display only.
 
-Move build-info formatting out of `App.tsx` into a small module, for example:
+Status: helper module prepared.
+
+Prepared files:
 
 ```text
 src/core/buildInfo.ts
+tests/buildInfo.test.ts
 ```
 
-Candidate contents:
+Prepared exports:
 
 - `DictaBuildInfo` type
 - `buildBuildInfoLabel`
 - `buildBuildInfoTitle`
+
+Remaining local patch:
+
+- Import the prepared exports from `src/core/buildInfo.ts` in `src/App.tsx`.
+- Remove the duplicate `DictaBuildInfo` type and build-info formatting helpers from `src/App.tsx`.
+- Keep `DICTA_BUILD_INFO`, `DICTA_BUILD_INFO_LABEL`, and `DICTA_BUILD_INFO_TITLE` behavior unchanged.
 
 Why first:
 
