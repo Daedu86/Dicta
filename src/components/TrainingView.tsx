@@ -5,10 +5,11 @@ import { formatDifficultyLabel, type Difficulty } from '../core/config';
 import { formatSupportedLanguage } from '../core/languages';
 import { perfDiagnostics } from '../core/perfDiagnostics';
 import type { CreatedDeviceKind } from '../core/sessionDevice';
-import { LowLatencyTextarea, type LowLatencyTextareaHandle } from './LowLatencyTextarea';
+import type { LowLatencyTextareaHandle } from './LowLatencyTextarea';
 import { PendingSessionLane } from './training/PendingSessionLane';
 import { SyncStatusBanner } from './training/SyncStatusBanner';
 import { TrainingAudioCard } from './training/TrainingAudioCard';
+import { TrainingInputCard } from './training/TrainingInputCard';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
@@ -288,43 +289,26 @@ export function TrainingView<Session extends TrainingViewSession>({
         onReset={onReset}
       />
 
-      <section className="training-card training-input-card" aria-label="Dictation input">
-        <div className="training-input-header">
-          <label className="training-input-heading" htmlFor={textAreaId}>Type what you hear</label>
-          <div className="training-live-metrics" aria-label="Live session score, points, accuracy, and lag">
-            <span title={liveScoreHelpText} aria-label={`Live score ${liveScoreLabel}. ${liveScoreHelpText}`}>
-              <small>Score</small>
-              <strong>{liveScoreLabel}</strong>
-            </span>
-            <span title={livePointsHelpText} aria-label={`Live points ${livePointsLabel}. ${livePointsHelpText}`}>
-              <small>Points</small>
-              <strong>{livePointsLabel}</strong>
-            </span>
-            <span title={liveAccuracyHelpText} aria-label={`Live accuracy ${liveAccuracyLabel}. ${liveAccuracyHelpText}`}>
-              <small>Accuracy</small>
-              <strong>{liveAccuracyLabel}</strong>
-            </span>
-            <span title={liveLagHelpText} aria-label={`Live lag ${liveLagLabel}. ${liveLagHelpText}`}>
-              <small>Lag</small>
-              <strong>{liveLagLabel}</strong>
-            </span>
-          </div>
-        </div>
-        <LowLatencyTextarea
-          id={textAreaId}
-          ref={textInputRef}
-          value={currentTextValue}
-          onValueChange={handleTextChange}
-          onImmediateValueChange={handleImmediateTextChange}
-          onKeyDown={handleTextKeyDown}
-          placeholder={textPlaceholder}
-          readOnly={readOnly}
-          rows={10}
-          commitDelayMs={textCommitDelayMs}
-          maxCommitDelayMs={Math.max(textCommitDelayMs * 3, 240)}
-          syncKey={`${activeSession?.id ?? 'none'}:${activeSession?.inputMode ?? 'none'}`}
-        />
-      </section>
+      <TrainingInputCard
+        textAreaId={textAreaId}
+        textInputRef={textInputRef}
+        currentTextValue={currentTextValue}
+        onTextChange={handleTextChange}
+        onImmediateTextChange={handleImmediateTextChange}
+        onTextKeyDown={handleTextKeyDown}
+        textPlaceholder={textPlaceholder}
+        readOnly={readOnly}
+        textCommitDelayMs={textCommitDelayMs}
+        syncKey={`${activeSession?.id ?? 'none'}:${activeSession?.inputMode ?? 'none'}`}
+        liveScoreLabel={liveScoreLabel}
+        liveScoreHelpText={liveScoreHelpText}
+        livePointsLabel={livePointsLabel}
+        livePointsHelpText={livePointsHelpText}
+        liveAccuracyLabel={liveAccuracyLabel}
+        liveAccuracyHelpText={liveAccuracyHelpText}
+        liveLagLabel={liveLagLabel}
+        liveLagHelpText={liveLagHelpText}
+      />
 
       <section className="training-card training-submit-card">
         <button type="button" className="training-submit-button" onClick={() => onSubmit(flushTextInput())} disabled={!canSubmit}>
