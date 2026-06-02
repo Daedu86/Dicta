@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the Browser TTS source/practice card extraction pass:
+Current `src/App.tsx` size on `main` after the Kokoro source card extraction pass:
 
 ```text
-10,819 lines
+about 10,769 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -385,6 +385,7 @@ Completed runtime extractions:
 ```text
 src/components/runtime-workspaces/BrowserTtsSourceCard.tsx
 src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
+src/components/runtime-workspaces/KokoroSourceCard.tsx
 ```
 
 Completed references:
@@ -395,21 +396,24 @@ Extract BrowserTtsSourceCard component
 
 a7a75e01edd6a885a00a1b7fcc41833c90feeb91
 Extract BrowserTtsPracticeCard component
+
+8f2d4886ef44998f4c953100a000decacc777e16
+Extract Kokoro source card
 ```
 
 Selected next candidate for this pass:
 
 ```text
-src/components/runtime-workspaces/KokoroSourceCard.tsx
+src/components/runtime-workspaces/KokoroPracticeCard.tsx
 ```
 
-This component should remain UI-only/presentational. App-owned playback handlers, local service checks, sidecar calls, pacing behavior, adaptive updates, submit/reset behavior, access/quotas, persistence, and sync stay in `src/App.tsx`.
+This component should remain UI-only/presentational. App-owned local service checks, playback handlers, sidecar calls, pacing behavior, replay/rewind behavior, adaptive updates, submit/reset behavior, access/quotas, persistence, and sync stay in `src/App.tsx`.
 
 Recommended follow-up:
 
 - Use the dedicated plan before moving code.
 - Keep future runtime patches to one cohesive UI-only card at a time.
-- Re-measure exact line ranges before touching Kokoro workspace, Input #4/CosyVoice workspace, input setup/sidebar, or bottom live metrics/insights.
+- Re-measure exact line ranges before touching Kokoro practice, Input #4/CosyVoice workspace, input setup/sidebar, or bottom live metrics/insights.
 - Keep playback, adaptive updates, local-dev sidecars, persistence, and submission behavior in `App.tsx`.
 
 Stop condition:
