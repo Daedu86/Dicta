@@ -56,8 +56,8 @@ Start with presentational components that receive explicit props and do not own 
 Recommended order:
 
 1. `OpenRouterGenerationStatusPanel` - done.
-2. `OpenRouterSlotSelector` - next.
-3. `OpenRouterPromptControls`.
+2. `OpenRouterSlotSelector` - done.
+3. `OpenRouterPromptControls` - next.
 4. `OpenRouterModelSelector`.
 5. `OpenRouterSlotCard`.
 6. `OpenRouterWorkspace`.
@@ -90,35 +90,45 @@ Preserved behavior:
 
 This extraction did not move durable jobs, polling, prompt building, localStorage, access checks, API routes, adaptive behavior, or training UI.
 
-## Candidate 1: OpenRouterSlotSelector
+## Completed: OpenRouterSlotSelector
+
+Boundary: browser UI controls.
+
+Status: done.
+
+File:
+
+```text
+src/components/openrouter/OpenRouterSlotSelector.tsx
+```
+
+Extracted from the generated-session setup area inside `OpenRouterWorkspace`.
+
+Preserved behavior:
+
+- slot option labels from `getOpenRouterSlotLabel(slotId)`;
+- active-slot styling and `aria-pressed`;
+- status text for ready, needs-fix, draft-saved, and empty states;
+- slot selection callback ownership in `OpenRouterWorkspace`;
+- validation and slot state calculation outside the presentational component.
+
+This extraction did not move generation, prompt building, slot persistence, import behavior, durable jobs, polling, localStorage, API routes, access checks, adaptive behavior, or training UI.
+
+## Candidate 1: OpenRouterPromptControls
 
 Boundary: browser UI controls.
 
 Why next:
 
-- Low risk.
-- It only selects the active generation slot.
-- It should not own generation, persistence, prompt building, job polling, or import behavior.
+- Still UI/control-only.
+- It groups the generate-section controls that choose the target profile and prompt mode.
+- It should not own prompt construction, generation, jobs, persistence, or validation.
 
 Likely source block:
 
 ```tsx
-<section className="openrouter-button-control openrouter-slot-control" aria-label="Generated session setup">
+<div className="openrouter-generate-controls">
 ```
-
-Rules:
-
-- Preserve `OPENROUTER_GENERATION_SLOT_IDS.map` behavior.
-- Preserve active-slot styling and `aria-pressed`.
-- Preserve each slot label from `getOpenRouterSlotLabel(slotId)`.
-- Preserve status text: ready to create, needs fix, draft saved, or empty setup.
-- Keep validation calculation in `OpenRouterWorkspace` if that keeps the selector presentational.
-- Pass explicit slot option props into the new component.
-- Keep `setActiveGenerateSlotId` ownership in `OpenRouterWorkspace`.
-
-## Candidate 2: OpenRouterPromptControls
-
-Boundary: browser UI controls.
 
 Likely responsibilities:
 
@@ -133,9 +143,11 @@ Rules:
 - Do not move prompt construction in the first extraction.
 - Do not change `buildOpenRouterGenerationPrompt` inputs.
 - Preserve exact selected values and event handlers.
+- Preserve active styling and `aria-pressed`.
+- Preserve button titles and descriptions.
 - Prefer passing option arrays and callbacks rather than importing workspace state.
 
-## Candidate 3: OpenRouterModelSelector
+## Candidate 2: OpenRouterModelSelector
 
 Boundary: browser UI controls.
 
@@ -151,7 +163,7 @@ Rules:
 - Do not change model normalization or free-model gating.
 - Pass loading/error/options/current selection as props.
 
-## Candidate 4: OpenRouterSlotCard
+## Candidate 3: OpenRouterSlotCard
 
 Boundary: browser UI display + callbacks.
 
@@ -169,7 +181,7 @@ Rules:
 - Pass callbacks from `App.tsx` or `OpenRouterWorkspace`.
 - Preserve slot ids and labels exactly.
 
-## Candidate 5: OpenRouterWorkspace
+## Candidate 4: OpenRouterWorkspace
 
 Boundary: browser UI composition.
 
