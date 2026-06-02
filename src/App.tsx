@@ -124,6 +124,7 @@ import {
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterGenerationStatusPanel } from './components/openrouter/OpenRouterGenerationStatusPanel';
+import { OpenRouterModelSelector } from './components/openrouter/OpenRouterModelSelector';
 import { OpenRouterPromptControls } from './components/openrouter/OpenRouterPromptControls';
 import { OpenRouterSlotSelector } from './components/openrouter/OpenRouterSlotSelector';
 import { perfDiagnostics } from './core/perfDiagnostics';
@@ -9697,52 +9698,21 @@ function OpenRouterWorkspace({
             <span className={`adaptive-section-toggle-icon ${sectionsExpanded.models ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
           </button>
         </div>
-        {sectionsExpanded.models ? <div className="admin-card-body">
-          <div className="admin-actions">
-            <button type="button" className="secondary-button" onClick={() => void onRefreshModels()} disabled={status === 'loading'}>
-              {status === 'loading' ? 'Refreshing…' : 'Refresh models'}
-            </button>
-            <span className="hint">
-              {status === 'ready' ? `${models.length} free model(s) found.` : status === 'loading' ? 'Querying OpenRouter…' : ''}
-            </span>
-          </div>
-          {error ? <p className="error">{error}</p> : null}
-
-          <label>
-            {modelSelectionLocked ? 'Assigned model' : 'Default model'}
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              disabled={modelSelectionLocked || modelOptions.length === 0}
-            >
-              {modelOptions.length === 0 ? <option value="">No free models loaded</option> : null}
-              {modelOptions.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.id}{model.context_length ? ` (${model.context_length} ctx)` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="admin-actions">
-            <button
-              type="button"
-              onClick={() => onSetDefaultModel(selectedModel)}
-              disabled={modelSelectionLocked || !selectedModel || modelOptions.length === 0}
-            >
-              Set default model
-            </button>
-            <span className="hint">
-              {modelSelectionLocked
-                ? `Assigned by admin: ${assignedModel}`
-                : defaultModel
-                  ? `Default model set: ${defaultModel}`
-                  : 'No default model set yet.'}
-            </span>
-          </div>
-          <p className="hint">
-            This list is filtered to models with OpenRouter pricing `prompt=0` and `completion=0`. Availability and “free” status can change upstream.
-          </p>
-        </div> : null}
+        {sectionsExpanded.models ? (
+          <OpenRouterModelSelector
+            defaultModel={defaultModel}
+            assignedModel={assignedModel}
+            selectedModel={selectedModel}
+            modelOptions={modelOptions}
+            freeModelCount={models.length}
+            modelSelectionLocked={modelSelectionLocked}
+            status={status}
+            error={error}
+            onSelectModel={setSelectedModel}
+            onSetDefaultModel={onSetDefaultModel}
+            onRefreshModels={onRefreshModels}
+          />
+        ) : null}
       </div>
 
       <div className="dashboard-card admin-card">
