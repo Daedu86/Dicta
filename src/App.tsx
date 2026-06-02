@@ -123,6 +123,7 @@ import { TrainingView, type TrainingViewProps } from './components/TrainingView'
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
 import { BrowserTtsSourceCard } from './components/runtime-workspaces/BrowserTtsSourceCard';
+import { Input4SetupCard } from './components/runtime-workspaces/Input4SetupCard';
 import { KokoroPracticeCard } from './components/runtime-workspaces/KokoroPracticeCard';
 import { KokoroSourceCard } from './components/runtime-workspaces/KokoroSourceCard';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
@@ -7238,160 +7239,40 @@ function App() {
                 ) : null}
               </section>
               ) : activeInputMode === 'input4' ? (
-              <section className="sidebar-section sidebar-section-border">
-                <button
-                  type="button"
-                  className="sidebar-section-heading sidebar-section-toggle"
-                  onClick={() => setQwenExpanded((value) => !value)}
-                  aria-expanded={qwenExpanded}
-                >
-                  <span className="sidebar-input-heading">
-                    <span>{activeInputLabel}</span>
-                    {activeInputFeatureLabel ? <span className="sidebar-input-feature">{activeInputFeatureLabel}</span> : null}
-                  </span>
-                  <span className="sidebar-section-meta">
-                    <span className={`tts-paste-pill ${ttsHasText ? 'tts-paste-pill-ready' : 'tts-paste-pill-empty'}`}>
-                      {ttsHasText ? 'Pasted' : 'Paste text'}
-                    </span>
-                    <span className={`sidebar-chevron ${qwenExpanded ? 'sidebar-chevron-open' : ''}`}>⌃</span>
-                  </span>
-                </button>
-                {qwenExpanded ? (
-                  <div className="sidebar-card tts-card">
-                    <label>
-                      CosyVoice2 text
-                      <textarea
-                        value={ttsText}
-                        onChange={(e) => onTtsTextChange(e.target.value)}
-                        placeholder="Paste text here to play cached CosyVoice2 audio..."
-                        rows={9}
-                        readOnly={setupLocked}
-                        disabled={setupLocked}
-                      />
-                    </label>
-                    <label>
-                      CosyVoice2 language
-                      <select value={ttsLanguage} disabled={setupLocked} onChange={(e) => setTtsLanguage(e.target.value as TtsLanguage)}>
-                        {SUPPORTED_LANGUAGES.map((language) => (
-                          <option key={language} value={language}>{language}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <div className={`tts-visor ${ttsHasText ? 'tts-visor-ready' : ''}`} aria-live="polite">
-                      {ttsHasText ? 'Text pasted. Ready for cached audio playback.' : 'Waiting for pasted text.'}
-                    </div>
-
-                    <div className="tts-source-actions input4-actions">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void bootstrapCosyVoiceSidecar()}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
-                        title={LOCAL_DEV_FEATURES_AVAILABLE ? 'Bootstrap the local CosyVoice2 generator.' : 'Local-only in the Vercel build.'}
-                      >
-                        1. Bootstrap CosyVoice2
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void ensureCosyVoiceCacheSidecar()}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
-                        title={LOCAL_DEV_FEATURES_AVAILABLE ? 'Start the local CosyVoice2 generator.' : 'Local-only in the Vercel build.'}
-                      >
-                        2. Start CosyVoice2 generator
-                      </button>
-                    </div>
-                    {!LOCAL_DEV_FEATURES_AVAILABLE ? (
-                      <p className="hint">CosyVoice2 cache generation is local-only. The Vercel build keeps Input #4 disabled to stay free-tier friendly.</p>
-                    ) : null}
-                    <div className="kokoro-toggle-row">
-                      <span
-                        className={`kokoro-toggle-status ${
-                          cosyVoiceCacheReady ? 'kokoro-on' : cosyVoiceCacheReady === false ? 'kokoro-off' : ''
-                        }`}
-                      >
-                        <span className="kokoro-toggle-dot" />
-                        {cosyVoiceCacheReady
-                          ? cosyVoiceCacheConfigured
-                            ? 'Ready'
-                            : 'Running (needs model)'
-                          : cosyVoiceCacheReady === false
-                            ? 'Error'
-                            : 'Not started'}
-                      </span>
-                    </div>
-                    {cosyVoiceCacheRuntime && cosyVoiceCacheConfigured === false ? (
-                      <details className="hint">
-                        <summary>Why “needs model”?</summary>
-                        <pre className="mono">{JSON.stringify(cosyVoiceCacheRuntime, null, 2)}</pre>
-                      </details>
-                    ) : null}
-                    <div className="tts-source-actions input4-actions">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void generateCosyVoiceCacheFromCurrentText()}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !ttsHasText || cosyVoiceCacheGenerating}
-                      >
-                        {cosyVoiceCacheGenerating ? 'Generating cache…' : '3. Generate cache WAVs'}
-                      </button>
-                    </div>
-                    {cosyVoiceCacheMessage ? <p className="hint">{cosyVoiceCacheMessage}</p> : null}
-
-                    <details className="hint">
-                      <summary>Optional (Colab): export manifest</summary>
-                      <div className="tts-source-actions input4-actions">
-                        <button type="button" className="secondary-button" onClick={copyQwenCloudCacheManifest} disabled={!ttsHasText}>
-                          Copy Cache Manifest JSON
-                        </button>
-                        <button type="button" className="secondary-button" onClick={downloadQwenCloudCacheManifest} disabled={!ttsHasText}>
-                          Export Cache Manifest JSON
-                        </button>
-                      </div>
-                      {qwenCloudManifestMessage ? <p className="hint">{qwenCloudManifestMessage}</p> : null}
-                    </details>
-
-                    <div className="input-lock-box">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={lockInputSettings}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || setupLocked || !inputSettingsReady}
-                      >
-                        {setupLocked ? '4. Input settings locked' : '4. Submit and lock input settings'}
-                      </button>
-                      <p className="hint">
-                        {setupLocked
-                          ? 'This Input #4 source and language are locked for this session.'
-                          : 'Lock after cache generation if you want to freeze this setup for the session.'}
-                      </p>
-                    </div>
-                    {qwenCloudFallbackDetails ? (
-                      <div className="sidebar-card">
-                        <p className="error">Missing cached audio for phrase {qwenCloudFallbackDetails.phraseId}.</p>
-                        <p className="hint">Expected path: {qwenCloudFallbackDetails.path}</p>
-                        <p className="hint">
-                          Use “Copy Cache Manifest JSON” and run the CosyVoice2 Colab to generate WAV files into{' '}
-                          <span className="mono">public/tts-cache/cosyvoice/...</span>.
-                        </p>
-                        <button type="button" className="secondary-button" onClick={fallbackToBrowserTtsFromQwen}>
-                          Fallback to browser TTS
-                        </button>
-                      </div>
-                    ) : null}
-                    <div className="tts-runtime">
-                      <span>Status: {ttsStatus}</span>
-                      <span>Rate: {ttsSpeechRate.toFixed(2)}x</span>
-                      <span>Language: {ttsLanguage}</span>
-                      <span>Pacing: {formatTtsPacingMode(ttsPacingMode)}</span>
-                    </div>
-                    {ttsCurrentChunk ? <p className="tts-current-chunk">{ttsCurrentChunk}</p> : null}
-                      <p className="hint">
-                        {'Uses cached CosyVoice2 phrase audio from /public/tts-cache/cosyvoice/{language}/{phraseId}.wav. Playback is driven by adaptive pacing and phrase-level chunks.'}
-                      </p>
-                  </div>
-                ) : null}
-              </section>
+                <Input4SetupCard
+                  activeInputLabel={activeInputLabel}
+                  activeInputFeatureLabel={activeInputFeatureLabel}
+                  qwenExpanded={qwenExpanded}
+                  ttsHasText={ttsHasText}
+                  ttsText={ttsText}
+                  ttsLanguage={ttsLanguage}
+                  ttsStatus={ttsStatus}
+                  ttsSpeechRate={ttsSpeechRate}
+                  ttsPacingMode={ttsPacingMode}
+                  ttsCurrentChunk={ttsCurrentChunk}
+                  supportedLanguages={SUPPORTED_LANGUAGES}
+                  setupLocked={setupLocked}
+                  inputSettingsReady={inputSettingsReady}
+                  localDevFeaturesAvailable={LOCAL_DEV_FEATURES_AVAILABLE}
+                  cosyVoiceCacheReady={cosyVoiceCacheReady}
+                  cosyVoiceCacheConfigured={cosyVoiceCacheConfigured}
+                  cosyVoiceCacheRuntime={cosyVoiceCacheRuntime}
+                  cosyVoiceCacheGenerating={cosyVoiceCacheGenerating}
+                  cosyVoiceCacheMessage={cosyVoiceCacheMessage}
+                  qwenCloudManifestMessage={qwenCloudManifestMessage}
+                  qwenCloudFallbackDetails={qwenCloudFallbackDetails}
+                  onToggleExpanded={() => setQwenExpanded((value) => !value)}
+                  onTtsTextChange={onTtsTextChange}
+                  onTtsLanguageChange={setTtsLanguage}
+                  onBootstrapCosyVoiceSidecar={() => void bootstrapCosyVoiceSidecar()}
+                  onEnsureCosyVoiceCacheSidecar={() => void ensureCosyVoiceCacheSidecar()}
+                  onGenerateCosyVoiceCacheFromCurrentText={() => void generateCosyVoiceCacheFromCurrentText()}
+                  onCopyQwenCloudCacheManifest={copyQwenCloudCacheManifest}
+                  onDownloadQwenCloudCacheManifest={downloadQwenCloudCacheManifest}
+                  onLockInputSettings={lockInputSettings}
+                  onFallbackToBrowserTtsFromQwen={fallbackToBrowserTtsFromQwen}
+                  formatTtsPacingMode={formatTtsPacingMode}
+                />
               ) : (
               <section className="sidebar-section sidebar-section-border">
                 <button

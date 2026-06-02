@@ -6,10 +6,10 @@ Active incremental extraction. Move only one UI-only runtime card per patch.
 
 The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
 
-Current `src/App.tsx` size on `main` after the Kokoro practice card extraction pass:
+Current `src/App.tsx` size on `main` after the Input #4 setup card extraction pass:
 
 ```text
-10,659 lines
+10,540 lines
 ```
 
 Completed runtime card extractions:
@@ -25,12 +25,14 @@ Extract BrowserTtsPracticeCard component
 Extract Kokoro source card
 
 KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
+
+Input4SetupCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Current next candidate:
 
 ```text
-Input #4/CosyVoice setup/runtime cards
+src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
 ```
 
 ## Scope
@@ -261,13 +263,54 @@ Completed reference:
 KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
 ```
 
-### 7. Extract Input #4/CosyVoice setup/runtime cards only after TTS/Kokoro are stable
+### 7. Extract Input #4/CosyVoice setup card only after TTS/Kokoro are stable
 
-Status: selected as the next UI-only candidate.
+Status: complete.
+
+Target:
+
+```text
+src/components/runtime-workspaces/Input4SetupCard.tsx
+```
 
 Input #4 has local-only sidecar/cache behavior. Keep setup/runtime extraction UI-only and leave CosyVoice/Qwen cache generation, fallback, playback, adaptive pacing, persistence, and sync behavior in `App.tsx`.
 
-### 8. Extract bottom live metrics / insights only after runtime workspaces are stable
+Completed reference:
+
+```text
+Input4SetupCard extraction completed in the implementation commit reported in the final summary.
+```
+
+### 8. Extract Browser TTS setup sidebar card
+
+Status: selected as the next UI-only candidate.
+
+Target:
+
+```text
+src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
+```
+
+Scope:
+
+- Browser TTS setup/sidebar source textarea;
+- language selector;
+- paste visor;
+- runtime status metadata;
+- current chunk display;
+- input lock box;
+- setup hint copy.
+
+Keep in `App.tsx`:
+
+- Browser TTS playback handlers;
+- voice/runtime behavior;
+- adaptive updates;
+- OpenRouter access/quotas;
+- submission/reset behavior;
+- persistence/sync.
+
+### 9. Extract bottom live metrics / insights only after runtime workspaces are stable
 
 Possible target:
 
@@ -308,4 +351,4 @@ Before moving code, run a local measurement pass to map the exact line ranges fo
 - Input #4/CosyVoice branch;
 - bottom live metrics/insights branch.
 
-Then extract Input #4/CosyVoice setup/runtime cards in a dedicated UI-only commit.
+Then extract `BrowserTtsSetupCard` in a dedicated UI-only commit.
