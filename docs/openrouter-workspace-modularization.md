@@ -55,67 +55,87 @@ Start with presentational components that receive explicit props and do not own 
 
 Recommended order:
 
-1. `OpenRouterJobNotice`
-2. `OpenRouterSlotCard`
-3. `OpenRouterPromptControls`
-4. `OpenRouterModelSelector`
-5. `OpenRouterWorkspace`
+1. `OpenRouterGenerationStatusPanel` - done.
+2. `OpenRouterSlotSelector` - next.
+3. `OpenRouterPromptControls`.
+4. `OpenRouterModelSelector`.
+5. `OpenRouterSlotCard`.
+6. `OpenRouterWorkspace`.
 
 Do not extract all of these in one patch. Each step should be committed and validated separately.
 
-## Candidate 1: OpenRouterJobNotice
+## Completed: OpenRouterGenerationStatusPanel
 
 Boundary: browser UI display only.
 
-Why first:
+Status: done.
+
+File:
+
+```text
+src/components/openrouter/OpenRouterGenerationStatusPanel.tsx
+```
+
+Extracted from the OpenRouter generate section inside `OpenRouterWorkspace`.
+
+Preserved behavior:
+
+- job notice tone mapping;
+- token usage message;
+- elapsed-time message;
+- generated-at local timestamp rendering;
+- slot-level error display;
+- draft-kept message;
+- cancel-draft button callback.
+
+This extraction did not move durable jobs, polling, prompt building, localStorage, access checks, API routes, adaptive behavior, or training UI.
+
+## Candidate 1: OpenRouterSlotSelector
+
+Boundary: browser UI controls.
+
+Why next:
 
 - Low risk.
-- Usually renders status/error/success text from already-computed props.
-- Should not own polling or job lifecycle.
+- It only selects the active generation slot.
+- It should not own generation, persistence, prompt building, job polling, or import behavior.
+
+Likely source block:
+
+```tsx
+<section className="openrouter-button-control openrouter-slot-control" aria-label="Generated session setup">
+```
 
 Rules:
 
-- Keep polling state and job lifecycle in `App.tsx`.
-- Pass only display data and callbacks.
-- Preserve notification text, tone, aria/live regions, and dismiss/action buttons.
+- Preserve `OPENROUTER_GENERATION_SLOT_IDS.map` behavior.
+- Preserve active-slot styling and `aria-pressed`.
+- Preserve each slot label from `getOpenRouterSlotLabel(slotId)`.
+- Preserve status text: ready to create, needs fix, draft saved, or empty setup.
+- Keep validation calculation in `OpenRouterWorkspace` if that keeps the selector presentational.
+- Pass explicit slot option props into the new component.
+- Keep `setActiveGenerateSlotId` ownership in `OpenRouterWorkspace`.
 
-## Candidate 2: OpenRouterSlotCard
-
-Boundary: browser UI display + callbacks.
-
-Likely responsibilities:
-
-- render one generated variant slot;
-- render notes/model/text/json state for that slot;
-- render generate/copy/import/clear actions;
-- surface slot-level errors and metadata.
-
-Rules:
-
-- Do not move slot persistence in the first extraction.
-- Do not move generate/import behavior in the first extraction.
-- Pass callbacks from `App.tsx`.
-- Preserve slot ids and labels exactly.
-
-## Candidate 3: OpenRouterPromptControls
+## Candidate 2: OpenRouterPromptControls
 
 Boundary: browser UI controls.
 
 Likely responsibilities:
 
-- prompt source selector;
+- input mode selector;
 - duration selector;
-- difficulty selector;
-- compact/adaptive option controls;
-- diversification or custom prompt controls if they are UI-only.
+- language selector;
+- prompt source selector;
+- difficulty selector if present in the same generate-control area.
 
 Rules:
 
 - Do not move prompt construction in the first extraction.
 - Do not change `buildOpenRouterGenerationPrompt` inputs.
 - Preserve exact selected values and event handlers.
+- Prefer passing option arrays and callbacks rather than importing workspace state.
 
-## Candidate 4: OpenRouterModelSelector
+## Candidate 3: OpenRouterModelSelector
 
 Boundary: browser UI controls.
 
@@ -130,6 +150,24 @@ Rules:
 - Do not move model fetch lifecycle in the first extraction.
 - Do not change model normalization or free-model gating.
 - Pass loading/error/options/current selection as props.
+
+## Candidate 4: OpenRouterSlotCard
+
+Boundary: browser UI display + callbacks.
+
+Likely responsibilities:
+
+- render one generated variant slot;
+- render notes/model/text/json state for that slot;
+- render generate/copy/import/clear actions;
+- surface slot-level errors and metadata.
+
+Rules:
+
+- Do not move slot persistence in the first extraction.
+- Do not move generate/import behavior in the first extraction.
+- Pass callbacks from `App.tsx` or `OpenRouterWorkspace`.
+- Preserve slot ids and labels exactly.
 
 ## Candidate 5: OpenRouterWorkspace
 
