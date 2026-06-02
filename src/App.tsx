@@ -123,6 +123,7 @@ import { TrainingView, type TrainingViewProps } from './components/TrainingView'
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
 import { BrowserTtsSourceCard } from './components/runtime-workspaces/BrowserTtsSourceCard';
+import { KokoroSourceCard } from './components/runtime-workspaces/KokoroSourceCard';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
   AdaptiveAdapterCardConfig,
@@ -7516,88 +7517,37 @@ function App() {
                 {lockedInputSummary}
 
                 <div className="tts-workspace-grid">
-                  <section className="panel workspace-panel tts-source-panel kokoro-source-panel">
-                    <h3>Kokoro source</h3>
-                    <div className="source-media-player">
-                      <span className="bottom-metrics-player-label">Media player</span>
-                      <div className="tts-media-controls" role="group" aria-label="Kokoro media controls">
-                        <button
-                          type="button"
-                          className="tts-media-icon-button"
-                          onClick={() => {
-                            if (kokoroStatus === 'paused') {
-                              void resumeKokoro();
-                            } else {
-                              void playKokoro();
-                            }
-                          }}
-                          disabled={
-                            !LOCAL_DEV_FEATURES_AVAILABLE ||
-                            !kokoroEnabled ||
-                            !kokoroHasText ||
-                            kokoroStatus === 'playing' ||
-                            isKokoroLanguageBlocked(kokoroLanguage)
-                          }
-                          aria-label={kokoroStatus === 'paused' ? 'Resume Kokoro' : 'Start Kokoro'}
-                          title={kokoroStatus === 'paused' ? 'Resume Kokoro' : 'Start Kokoro'}
-                        >
-                          ▶
-                        </button>
-                        <span className="tts-media-time">
-                          {formatDuration(kokoroPlayerCurrentSec)} / {formatDuration(kokoroPlayerDurationSec)}
-                        </span>
-                        <div className="tts-media-progress" aria-hidden="true">
-                          <span style={{ width: `${kokoroPlayerProgressPercent}%` }} />
-                        </div>
-                        <button
-                          type="button"
-                          className="tts-media-icon-button"
-                          onClick={pauseKokoro}
-                          disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroEnabled || kokoroStatus !== 'playing'}
-                          aria-label="Pause Kokoro"
-                          title="Pause Kokoro"
-                        >
-                          ❚❚
-                        </button>
-                        <button
-                          type="button"
-                          className="tts-media-icon-button"
-                          onClick={() => stopKokoroPlayback('stop')}
-                          disabled={!LOCAL_DEV_FEATURES_AVAILABLE || kokoroStatus === 'idle'}
-                          aria-label="Stop Kokoro"
-                          title="Stop Kokoro"
-                        >
-                          ■
-                        </button>
-                      </div>
-                      <p className="hint">
-                        Synced to the Kokoro source transcript: {kokoroPlayerCurrentWord}/{kokoroPlayerWordCount} words.
-                      </p>
-                    </div>
-                    <div className={`tts-source-box ${kokoroHasText ? 'tts-source-box-ready' : ''}`}>
-                      {kokoroHasText ? kokoroText : 'Paste text in the sidebar to load a Kokoro source passage.'}
-                    </div>
-                    <div className="tts-source-meta">
-                      <span>{kokoroHasText ? `${kokoroTranscript?.words.length ?? 0} source words` : 'No source loaded'}</span>
-                      <span>{kokoroLanguage}</span>
-                      <span>{formatTtsPacingMode(kokoroPacingMode)}</span>
-                    </div>
-                    {kokoroLanguageWarning ? <p className="error">{kokoroLanguageWarning}</p> : null}
-                    {kokoroCurrentChunk ? (
-                      <p className="tts-current-chunk">
-                        Current phrase: {kokoroCurrentChunk.text}
-                      </p>
-                    ) : null}
-                    <div className="tts-source-meta">
-                      <span>Rate {kokoroSpeechRate.toFixed(2)}x</span>
-                      <span>
-                        {kokoroCurrentChunk
-                          ? `${kokoroCurrentChunk.cached ? 'Cached' : 'Generated'} via ${kokoroCurrentChunk.engine}`
-                          : 'No phrase yet'}
-                      </span>
-                      <span>Voice {kokoroVoice || 'default'}</span>
-                    </div>
-                  </section>
+                  <KokoroSourceCard
+                    kokoroStatus={kokoroStatus}
+                    kokoroHasText={kokoroHasText}
+                    kokoroText={kokoroText}
+                    kokoroTranscript={kokoroTranscript}
+                    kokoroLanguage={kokoroLanguage}
+                    kokoroPacingMode={kokoroPacingMode}
+                    kokoroSpeechRate={kokoroSpeechRate}
+                    kokoroVoice={kokoroVoice}
+                    kokoroPlayerCurrentSec={kokoroPlayerCurrentSec}
+                    kokoroPlayerDurationSec={kokoroPlayerDurationSec}
+                    kokoroPlayerProgressPercent={kokoroPlayerProgressPercent}
+                    kokoroPlayerCurrentWord={kokoroPlayerCurrentWord}
+                    kokoroPlayerWordCount={kokoroPlayerWordCount}
+                    kokoroLanguageWarning={kokoroLanguageWarning}
+                    kokoroCurrentChunk={kokoroCurrentChunk}
+                    localDevFeaturesAvailable={LOCAL_DEV_FEATURES_AVAILABLE}
+                    kokoroEnabled={kokoroEnabled}
+                    kokoroLanguageBlocked={isKokoroLanguageBlocked(kokoroLanguage)}
+                    onStartOrResumeKokoro={() => {
+                      if (kokoroStatus === 'paused') {
+                        void resumeKokoro();
+                      } else {
+                        void playKokoro();
+                      }
+                    }}
+                    onPauseKokoro={pauseKokoro}
+                    onStopKokoro={() => stopKokoroPlayback('stop')}
+                    formatDuration={formatDuration}
+                    formatTtsPacingMode={formatTtsPacingMode}
+                  />
 
                   <section className="panel workspace-panel tts-practice-panel">
                     <div className="typing-panel-header">
