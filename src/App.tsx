@@ -128,6 +128,7 @@ import { AdminKpiGrid } from './components/admin/AdminKpiGrid';
 import { AdminUsersCard } from './components/admin/AdminUsersCard';
 import { AdminMemberAccessCard } from './components/admin/AdminMemberAccessCard';
 import { AdminCreateUserCard } from './components/admin/AdminCreateUserCard';
+import { AdminManualInputSessionCard } from './components/admin/AdminManualInputSessionCard';
 import {
   OPENROUTER_GENERATED_SCRIPT_KEY,
   OPENROUTER_GENERATED_VARIANTS_KEY,
@@ -9161,39 +9162,11 @@ function AdminWorkspace({
           onCreateUser={() => void createDictaUser()}
         />
 
-        <section className="dashboard-card admin-card">
-          <div className="admin-card-header">
-            <div>
-              <h3>Manual Input #1 session</h3>
-              <p>Create an original-audio dictation session. OpenRouter generation stays in Training/OpenRouter.</p>
-            </div>
-          </div>
-          <label>
-            Session name
-            <input
-              value={manualInput1Name}
-              onChange={(event) => setManualInput1Name(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  submitManualInput1Session();
-                }
-              }}
-              placeholder="Original audio practice"
-            />
-          </label>
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={submitManualInput1Session}
-              disabled={manualInput1Name.trim().length === 0}
-            >
-              Create Input #1 session
-            </button>
-          </div>
-          <p className="hint">After creation, load the audio/transcript in the training workspace.</p>
-        </section>
+        <AdminManualInputSessionCard
+          manualInput1Name={manualInput1Name}
+          onChangeManualInput1Name={setManualInput1Name}
+          onSubmit={submitManualInput1Session}
+        />
 
         <section className="dashboard-card admin-card">
           <div className="admin-card-header">
