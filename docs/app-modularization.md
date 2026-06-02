@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the Input #4 setup card extraction pass:
+Current `src/App.tsx` size on `main` after the Browser TTS setup card extraction pass:
 
 ```text
-10,540 lines
+10,491 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -388,6 +388,7 @@ src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
 src/components/runtime-workspaces/KokoroSourceCard.tsx
 src/components/runtime-workspaces/KokoroPracticeCard.tsx
 src/components/runtime-workspaces/Input4SetupCard.tsx
+src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
 ```
 
 Completed references:
@@ -405,15 +406,17 @@ Extract Kokoro source card
 KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
 
 Input4SetupCard extraction completed in the implementation commit reported in the final summary.
+
+BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Selected next candidate:
 
 ```text
-src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
+src/components/runtime-workspaces/KokoroSetupCard.tsx
 ```
 
-Browser TTS setup should stay UI-only/presentational in the next extraction. App-owned playback handlers, voice/runtime behavior, adaptive updates, submit/reset behavior, access/quotas, persistence, and sync stay in `src/App.tsx`.
+Kokoro setup should stay UI-only/presentational in the next extraction. App-owned local service checks, playback handlers, sidecar calls, adaptive updates, submit/reset behavior, access/quotas, persistence, and sync stay in `src/App.tsx`.
 
 Recommended follow-up:
 

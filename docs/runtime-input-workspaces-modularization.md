@@ -6,10 +6,10 @@ Active incremental extraction. Move only one UI-only runtime card per patch.
 
 The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
 
-Current `src/App.tsx` size on `main` after the Input #4 setup card extraction pass:
+Current `src/App.tsx` size on `main` after the Browser TTS setup card extraction pass:
 
 ```text
-10,540 lines
+10,491 lines
 ```
 
 Completed runtime card extractions:
@@ -27,12 +27,14 @@ Extract Kokoro source card
 KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
 
 Input4SetupCard extraction completed in the implementation commit reported in the final summary.
+
+BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Current next candidate:
 
 ```text
-src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
+src/components/runtime-workspaces/KokoroSetupCard.tsx
 ```
 
 ## Scope
@@ -283,7 +285,7 @@ Input4SetupCard extraction completed in the implementation commit reported in th
 
 ### 8. Extract Browser TTS setup sidebar card
 
-Status: selected as the next UI-only candidate.
+Status: complete.
 
 Target:
 
@@ -310,7 +312,44 @@ Keep in `App.tsx`:
 - submission/reset behavior;
 - persistence/sync.
 
-### 9. Extract bottom live metrics / insights only after runtime workspaces are stable
+Completed reference:
+
+```text
+BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
+```
+
+### 9. Extract Kokoro setup sidebar card
+
+Status: selected as the next UI-only candidate.
+
+Target:
+
+```text
+src/components/runtime-workspaces/KokoroSetupCard.tsx
+```
+
+Scope:
+
+- Kokoro setup/sidebar source textarea;
+- language selector;
+- voice input;
+- paste visor;
+- runtime status metadata;
+- local-only hint and language warning display;
+- input lock box;
+- setup error display.
+
+Keep in `App.tsx`:
+
+- local service checks;
+- playback handlers;
+- sidecar calls;
+- adaptive updates;
+- OpenRouter access/quotas;
+- submission/reset behavior;
+- persistence/sync.
+
+### 10. Extract bottom live metrics / insights only after runtime workspaces are stable
 
 Possible target:
 
@@ -351,4 +390,4 @@ Before moving code, run a local measurement pass to map the exact line ranges fo
 - Input #4/CosyVoice branch;
 - bottom live metrics/insights branch.
 
-Then extract `BrowserTtsSetupCard` in a dedicated UI-only commit.
+Then extract `KokoroSetupCard` in a dedicated UI-only commit.
