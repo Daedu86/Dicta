@@ -58,8 +58,8 @@ Recommended order:
 1. `OpenRouterGenerationStatusPanel` - done.
 2. `OpenRouterSlotSelector` - done.
 3. `OpenRouterPromptControls` - done.
-4. `OpenRouterModelSelector` - next.
-5. `OpenRouterSlotCard`.
+4. `OpenRouterModelSelector` - done.
+5. `OpenRouterSlotCard` - next.
 6. `OpenRouterWorkspace`.
 
 Do not extract all of these in one patch. Each step should be committed and validated separately.
@@ -140,33 +140,40 @@ Preserved behavior:
 
 This extraction did not move prompt construction, generation, durable jobs, polling, validation, localStorage, API routes, access checks, adaptive behavior, or training UI.
 
-## Candidate 1: OpenRouterModelSelector
+## Completed: OpenRouterModelSelector
 
 Boundary: browser UI controls.
 
-Why next:
+Status: done.
 
-- It should remain UI/control-only.
-- It can render model options and refresh/loading/error state without owning fetch lifecycle.
-- It should not own model normalization, free-model gating, access checks, or default-model persistence.
+File:
 
-Likely responsibilities:
+```text
+src/components/openrouter/OpenRouterModelSelector.tsx
+```
 
-- render model options;
-- render refresh/loading/error state;
-- render selected default model.
+Extracted from the Free Models section body inside `OpenRouterWorkspace`.
 
-Rules:
+Preserved behavior:
 
-- Do not move model fetch lifecycle in the first extraction.
-- Do not change model normalization or free-model gating.
-- Do not change default model storage semantics.
-- Pass loading/error/options/current selection as props.
-- Keep `onRefreshModels` and `onSetDefaultModel` ownership outside the presentational component.
+- model refresh/status display;
+- model error display;
+- model option rendering;
+- selected default model display and update callback;
+- assigned model hinting;
+- refresh and set-default callbacks remaining owned by `OpenRouterWorkspace`.
 
-## Candidate 2: OpenRouterSlotCard
+This extraction did not move model fetch lifecycle, model normalization, free-model gating, default-model storage semantics, access checks, API routes, durable jobs, polling, localStorage, adaptive behavior, or training UI.
+
+## Candidate 1: OpenRouterSlotCard
 
 Boundary: browser UI display + callbacks.
+
+Why next:
+
+- It is the next large visual area inside the generate workflow.
+- It should still be extracted as presentation only.
+- It is more delicate than prior extractions because it likely touches notes, generated text/json, validation, copy/import/create/clear actions, and slot metadata.
 
 Likely responsibilities:
 
@@ -179,10 +186,12 @@ Rules:
 
 - Do not move slot persistence in the first extraction.
 - Do not move generate/import behavior in the first extraction.
+- Do not move generation requests, durable jobs, or polling.
+- Do not move validation logic unless it is already purely presentational and low-risk.
 - Pass callbacks from `App.tsx` or `OpenRouterWorkspace`.
 - Preserve slot ids and labels exactly.
 
-## Candidate 3: OpenRouterWorkspace
+## Candidate 2: OpenRouterWorkspace
 
 Boundary: browser UI composition.
 
