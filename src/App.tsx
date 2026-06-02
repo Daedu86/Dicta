@@ -124,6 +124,7 @@ import {
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterGenerationStatusPanel } from './components/openrouter/OpenRouterGenerationStatusPanel';
+import { OpenRouterSlotSelector } from './components/openrouter/OpenRouterSlotSelector';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import {
   normalizeLiveSessionStatusForPersistence,
@@ -10154,29 +10155,20 @@ function OpenRouterWorkspace({
         </div>
         {sectionsExpanded.generate ? (
           <div className="admin-card-body">
-            <section className="openrouter-button-control openrouter-slot-control" aria-label="Generated session setup">
-              <h4>Choose session setup</h4>
-              <div className="openrouter-choice-row">
-                {OPENROUTER_GENERATION_SLOT_IDS.map((slotId) => {
-                  const slot = generationSlots[slotId];
-                  const slotValidation =
-                    slot.json && slot.inputMode && slot.language ? validateGeneratedScriptForTarget(slot.json, slot.inputMode, slot.language) : null;
-                  return (
-                    <button
-                      key={slotId}
-                      type="button"
-                      className={`secondary-button openrouter-choice-button ${activeGenerateSlotId === slotId ? 'openrouter-choice-button-active' : ''}`}
-                      onClick={() => setActiveGenerateSlotId(slotId)}
-                      aria-pressed={activeGenerateSlotId === slotId}
-                      title={`${getOpenRouterSlotLabel(slotId)} has independent notes, model, output, validation, tokens, elapsed time, and create/cancel actions.`}
-                    >
-                      <span>{getOpenRouterSlotLabel(slotId)}</span>
-                      <small>{slotValidation?.ok ? 'ready to create' : slot.error ? 'needs fix' : slot.json || slot.text ? 'draft saved' : 'empty setup'}</small>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+            <OpenRouterSlotSelector
+              slots={OPENROUTER_GENERATION_SLOT_IDS.map((slotId) => {
+                const slot = generationSlots[slotId];
+                const slotValidation =
+                  slot.json && slot.inputMode && slot.language ? validateGeneratedScriptForTarget(slot.json, slot.inputMode, slot.language) : null;
+                return {
+                  id: slotId,
+                  label: getOpenRouterSlotLabel(slotId),
+                  active: activeGenerateSlotId === slotId,
+                  statusLabel: slotValidation?.ok ? 'ready to create' : slot.error ? 'needs fix' : slot.json || slot.text ? 'draft saved' : 'empty setup',
+                };
+              })}
+              onSelectSlot={setActiveGenerateSlotId}
+            />
 
             <div className="today-summary-grid">
               <Metric label="Target" value={`${generateInputMode}/${generateLanguage}`} />
