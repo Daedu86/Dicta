@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the SessionDashboard pass:
+Current `src/App.tsx` size on `main` after the adaptive workspace preparation pass:
 
 ```text
-12,102 lines
+12,066 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -37,6 +37,12 @@ Net reduction in `src/App.tsx` from the SessionDashboard pass:
 
 ```text
 466 lines
+```
+
+Net reduction in `src/App.tsx` from the adaptive workspace preparation pass:
+
+```text
+36 lines
 ```
 
 ## Rules
@@ -334,9 +340,16 @@ Do not begin `AdaptiveBenchmarkWorkspace` extraction until that plan exists.
 
 Recommended next patch:
 
-- Prepare narrow adaptive workspace UI types and view helpers first.
+- Move `AdaptiveBenchmarkSection`, `AdaptiveProfileMatrix`, `AdaptiveAdapterCard`, and `AdaptiveBenchmarkWorkspace` into an adaptive workspace component module.
 - Keep app-owned callbacks, benchmark persistence, selected profile state, and session-history-dependent helpers in `App.tsx`.
 - Do not move adaptive controller updates, benchmark write paths, localStorage, sync, or feedback generation.
+
+Prepared adaptive workspace support files:
+
+```text
+src/components/adaptive-workspace/types.ts
+src/components/adaptive-workspace/adaptiveWorkspaceViewHelpers.ts
+```
 
 ## Per-patch checklist
 

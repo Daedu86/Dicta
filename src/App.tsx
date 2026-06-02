@@ -123,6 +123,21 @@ import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
+import type {
+  AdaptiveAdapterCardConfig,
+  AdaptiveWorkspaceFocusAnchor,
+  RepeatWordStat,
+} from './components/adaptive-workspace/types';
+import {
+  benchmarkSubtitle,
+  formatBenchmarkLanguage,
+  formatPercent,
+  formatScore,
+  formatSigned,
+  formatWeakAreaLabel,
+  getBenchmarkHealth,
+  normalizeAccuracyForDisplay,
+} from './components/adaptive-workspace/adaptiveWorkspaceViewHelpers';
 import { AdminHeader } from './components/admin/AdminHeader';
 import { AdminKpiGrid } from './components/admin/AdminKpiGrid';
 import { AdminUsersCard } from './components/admin/AdminUsersCard';
@@ -464,16 +479,6 @@ type LockedInputSummaryItem = {
   value: string;
 };
 
-type AdaptiveAdapterCardConfig = {
-  inputMode: SessionInputMode;
-  title: string;
-  adapter: string;
-  execution: string;
-  controls: string;
-};
-
-type RepeatWordStat = { word: string; total: number; missed: number; typos: number };
-
 type AdaptiveSemanticDebug = {
   semanticCutPenalty: number;
   unsafePauseCount: number;
@@ -737,7 +742,7 @@ function App() {
   const [adaptiveSessionFeedbackByInputLanguage, setAdaptiveSessionFeedbackByInputLanguage] = useState<AdaptiveSessionFeedbackByInputLanguage>(() =>
     loadAdaptiveSessionFeedback(),
   );
-  const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<null | 'sessionFeedback' | 'exports'>(null);
+  const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<AdaptiveWorkspaceFocusAnchor>(null);
   const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState(() => ({
     decision: false,
     architecture: false,
@@ -9250,7 +9255,7 @@ function AdaptiveBenchmarkSection({
   benchmarks: AdaptiveBenchmarksByInputLanguage;
   expanded: boolean;
   onToggleExpanded: () => void;
-  focusAnchor?: null | 'sessionFeedback' | 'exports';
+  focusAnchor?: AdaptiveWorkspaceFocusAnchor;
   selectedInputMode: InputMode;
   selectedLanguage: BenchmarkLanguageButton;
   selectedProfile: InputLanguageBenchmarkMetrics;
@@ -9471,7 +9476,7 @@ function AdaptiveBenchmarkWorkspace({
 }: {
   profile: InputLanguageBenchmarkMetrics;
   inputTitle: string;
-  focusAnchor?: null | 'sessionFeedback' | 'exports';
+  focusAnchor?: AdaptiveWorkspaceFocusAnchor;
   repeatWordStats: RepeatWordStat[];
   benchmarkExportMessage: string;
   sessionFeedback: AdaptiveSessionFeedback | null;
@@ -10703,47 +10708,6 @@ function formatSessionGenerationOrigin(origin: GenerationOrigin): string {
   if (origin === 'openrouter') return 'OpenRouter generated';
   if (origin === 'fallback-template') return 'Local fallback template';
   return 'Manual/imported';
-}
-
-function benchmarkSubtitle(inputMode: InputMode): string {
-  if (inputMode === 'audio') return 'Real-world uploaded or recorded audio with transcript alignment.';
-  if (inputMode === 'browser-tts') return 'Browser or OS voice baseline and fallback execution.';
-  if (inputMode === 'kokoro') return 'Local model execution with native EN/ES support and experimental DE/FR entries.';
-  return 'Cached semantic chunks with browser fallback.';
-}
-
-function formatBenchmarkLanguage(language: LanguageCode): string {
-  if (language === 'unknown') return 'Unknown language';
-  return formatSupportedLanguage(language);
-}
-
-function formatScore(value: number): string {
-  return `${Math.round(clamp(value, 0, 1) * 100)}%`;
-}
-
-function formatSigned(value: number): string {
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}`;
-}
-
-function normalizeAccuracyForDisplay(value: number): number {
-  return clamp(value > 1 ? value / 100 : value, 0, 1);
-}
-
-function formatPercent(value: number): string {
-  return `${(normalizeAccuracyForDisplay(value) * 100).toFixed(1)}%`;
-}
-
-function getBenchmarkHealth(profile: InputLanguageBenchmarkMetrics): 'empty' | 'watch' | 'strong' {
-  if (profile.sampleCount < 8 || profile.recommendation.confidence < 0.2) return 'empty';
-  if (profile.sweetSpotScore >= 0.72 && normalizeAccuracyForDisplay(profile.averageAccuracy) >= 0.86 && Math.abs(profile.stableAverageLagSec) <= 1.2) {
-    return 'strong';
-  }
-  return 'watch';
-}
-
-function formatWeakAreaLabel(value: string): string {
-  return value.replace(/_/g, ' ');
 }
 
 function formatAdaptiveModeFromSession(session: StoredSession): string {

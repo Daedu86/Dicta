@@ -177,7 +177,7 @@ Recommendation:
 
 ## Recommended Extraction Order
 
-1. Patch 1, preparation:
+1. Patch 1, preparation: complete.
    - Create `src/components/adaptive-workspace/types.ts` for narrow UI prop types if needed.
    - Create `src/components/adaptive-workspace/adaptiveWorkspaceViewHelpers.ts` for UI-only formatting/profile-health helpers.
    - Update `src/App.tsx` to import those helpers, without moving components yet.
@@ -221,12 +221,46 @@ Moving the full workspace immediately is possible, but the current component mix
 
 ## Next Patch Files
 
+Patch 1 created:
+
+```text
+src/components/adaptive-workspace/types.ts
+src/components/adaptive-workspace/adaptiveWorkspaceViewHelpers.ts
+```
+
+Moved from `App.tsx` in Patch 1:
+
+- `AdaptiveAdapterCardConfig`
+- `AdaptiveWorkspaceFocusAnchor`
+- `RepeatWordStat`
+- `benchmarkSubtitle`
+- `formatBenchmarkLanguage`
+- `formatScore`
+- `formatSigned`
+- `normalizeAccuracyForDisplay`
+- `formatPercent`
+- `getBenchmarkHealth`
+- `formatWeakAreaLabel`
+
+Validation for Patch 1:
+
+```text
+npm run test -- --reporter=verbose
+npm run build
+```
+
+Result: both passed.
+
+Impact:
+
+- `src/App.tsx` after Patch 1: about `12,066` lines.
+- Net `App.tsx` reduction from Patch 1: about `36` lines.
+
 Expected files for the next code patch:
 
 ```text
 src/App.tsx
-src/components/adaptive-workspace/types.ts
-src/components/adaptive-workspace/adaptiveWorkspaceViewHelpers.ts
+src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx
 docs/adaptive-workspace-modularization.md
 docs/app-modularization.md
 ```
@@ -234,6 +268,5 @@ docs/app-modularization.md
 Expected commit message:
 
 ```text
-Prepare adaptive workspace types and view helpers
+Extract adaptive benchmark workspace
 ```
-
