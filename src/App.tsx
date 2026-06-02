@@ -121,6 +121,7 @@ import {
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
+import { BrowserTtsSourceCard } from './components/runtime-workspaces/BrowserTtsSourceCard';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
   AdaptiveAdapterCardConfig,
@@ -7785,71 +7786,24 @@ function App() {
                 {lockedInputSummary}
 
                 <div className="tts-workspace-grid">
-                  <section className="panel workspace-panel tts-source-panel">
-                    <h3>TTS source</h3>
-                    <div className="source-media-player">
-                      <span className="bottom-metrics-player-label">Media player</span>
-                      <div className="tts-media-controls" role="group" aria-label="Browser TTS media controls">
-                        <button
-                          type="button"
-                          className="tts-media-icon-button"
-                          onClick={ttsStatus === 'paused' ? resumeTts : playTts}
-                          disabled={!ttsHasText || ttsStatus === 'playing'}
-                          aria-label={ttsStatus === 'paused' ? 'Resume TTS' : 'Play TTS'}
-                          title={ttsStatus === 'paused' ? 'Resume TTS' : 'Play TTS'}
-                        >
-                          ▶
-                        </button>
-                        <span className="tts-media-time">
-                          {formatDuration(ttsPlayerCurrentSec)} / {formatDuration(ttsPlayerDurationSec)}
-                        </span>
-                        <input
-                          className="tts-media-seek"
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="1"
-                          value={Math.round(ttsPlayerProgressPercent)}
-                          onChange={(event) => seekTtsPlayback(Number(event.currentTarget.value) / 100)}
-                          disabled={!ttsHasText || ttsPlayerDurationSec === 0}
-                          aria-label="Seek Browser TTS playback"
-                          title="Seek Browser TTS playback"
-                          style={{ '--tts-progress': `${ttsPlayerProgressPercent}%` } as React.CSSProperties}
-                        />
-                        <button
-                          type="button"
-                          className="tts-media-icon-button"
-                          onClick={pauseTts}
-                          disabled={ttsStatus !== 'playing'}
-                          aria-label="Pause TTS"
-                          title="Pause TTS"
-                        >
-                          ❚❚
-                        </button>
-                        <button
-                          type="button"
-                          className="tts-media-icon-button"
-                          onClick={() => stopTtsPlayback('stop')}
-                          disabled={ttsStatus === 'idle'}
-                          aria-label="Stop TTS"
-                          title="Stop TTS"
-                        >
-                          ■
-                        </button>
-                      </div>
-                      <p className="hint">
-                        Browser TTS does not expose an audio file, so these controls drive the speech engine directly.
-                      </p>
-                    </div>
-                    <div className={`tts-source-box ${ttsHasText ? 'tts-source-box-ready' : ''}`}>
-                      {ttsHasText ? ttsText : 'Paste text in the sidebar to load a source passage.'}
-                    </div>
-                    <div className="tts-source-meta">
-                      <span>{ttsHasText ? `${ttsTranscript?.words.length ?? 0} source words` : 'No source loaded'}</span>
-                      <span>{ttsLanguage}</span>
-                      <span>{formatTtsPacingMode(ttsPacingMode)}</span>
-                    </div>
-                  </section>
+                  <BrowserTtsSourceCard
+                    ttsStatus={ttsStatus}
+                    ttsHasText={ttsHasText}
+                    ttsText={ttsText}
+                    ttsTranscript={ttsTranscript}
+                    ttsLanguage={ttsLanguage}
+                    ttsPacingMode={ttsPacingMode}
+                    ttsPlayerCurrentSec={ttsPlayerCurrentSec}
+                    ttsPlayerDurationSec={ttsPlayerDurationSec}
+                    ttsPlayerProgressPercent={ttsPlayerProgressPercent}
+                    onPlayTts={() => void playTts()}
+                    onResumeTts={() => void resumeTts()}
+                    onPauseTts={pauseTts}
+                    onStopTts={() => stopTtsPlayback('stop')}
+                    onSeekTtsPlayback={seekTtsPlayback}
+                    formatDuration={formatDuration}
+                    formatTtsPacingMode={formatTtsPacingMode}
+                  />
 
                   <section className="panel workspace-panel tts-practice-panel">
                     <div className="typing-panel-header">
