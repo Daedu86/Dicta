@@ -123,6 +123,7 @@ import {
 } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
+import { OpenRouterGenerateSummary } from './components/openrouter/OpenRouterGenerateSummary';
 import { OpenRouterGenerationStatusPanel } from './components/openrouter/OpenRouterGenerationStatusPanel';
 import { OpenRouterModelSelector } from './components/openrouter/OpenRouterModelSelector';
 import { OpenRouterPromptControls } from './components/openrouter/OpenRouterPromptControls';
@@ -10141,36 +10142,29 @@ function OpenRouterWorkspace({
               onSelectSlot={setActiveGenerateSlotId}
             />
 
-            <div className="today-summary-grid">
-              <Metric label="Target" value={`${generateInputMode}/${generateLanguage}`} />
-              <Metric label="Benchmark" value={generateHasBenchmarkData ? 'available' : 'missing'} />
-              <Metric label="Feedback" value={generateHasSessionFeedback ? 'available' : 'missing'} />
-              <Metric label="Duration" value={`${generateDurationMinutes} min`} />
-              <Metric label="Prompt size" value={formatPromptSizeHint(activeGenerateSlotPrompt).replace('Words: ', '').replace(' · Tokens:', ' /')} />
-            </div>
-
-            <OpenRouterPromptControls
-              inputModeOptions={generateInputModeOptions}
-              selectedInputMode={generateInputMode}
-              onSelectInputMode={setGenerateInputMode}
-              durationOptions={generateDurationOptions}
-              selectedDurationMinutes={generateDurationMinutes}
-              onSelectDurationMinutes={setGenerateDurationMinutes}
-              languageOptions={profileLanguageOptions}
-              selectedLanguage={generateLanguage}
-              onSelectLanguage={setGenerateLanguage}
-              promptSourceOptions={generatePromptSourceOptions}
-              selectedPromptSource={generatePromptSource}
-              onSelectPromptSource={setGeneratePromptSource}
-            />
-
-            {!generateHasBenchmarkData ? <p className="hint">No benchmark available for this input/language. Generation will use the base profile/template.</p> : null}
-            {!generateHasSessionFeedback ? <p className="hint">No completed session feedback for this input/language. Generation will not include latest feedback.</p> : null}
-
-            <label>
-              Prompt sent to OpenRouter
-              <textarea value={activeGenerateSlotPrompt} readOnly rows={8} />
-            </label>
+            <OpenRouterGenerateSummary
+              targetLabel={`${generateInputMode}/${generateLanguage}`}
+              benchmarkAvailable={generateHasBenchmarkData}
+              feedbackAvailable={generateHasSessionFeedback}
+              durationLabel={`${generateDurationMinutes} min`}
+              promptSizeLabel={formatPromptSizeHint(activeGenerateSlotPrompt).replace('Words: ', '').replace(' · Tokens:', ' /')}
+              prompt={activeGenerateSlotPrompt}
+            >
+              <OpenRouterPromptControls
+                inputModeOptions={generateInputModeOptions}
+                selectedInputMode={generateInputMode}
+                onSelectInputMode={setGenerateInputMode}
+                durationOptions={generateDurationOptions}
+                selectedDurationMinutes={generateDurationMinutes}
+                onSelectDurationMinutes={setGenerateDurationMinutes}
+                languageOptions={profileLanguageOptions}
+                selectedLanguage={generateLanguage}
+                onSelectLanguage={setGenerateLanguage}
+                promptSourceOptions={generatePromptSourceOptions}
+                selectedPromptSource={generatePromptSource}
+                onSelectPromptSource={setGeneratePromptSource}
+              />
+            </OpenRouterGenerateSummary>
 
             <div className="admin-actions">
               <button
