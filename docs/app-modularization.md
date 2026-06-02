@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the Browser TTS setup card extraction pass:
+Current `src/App.tsx` size on `main` after the Kokoro setup card extraction pass:
 
 ```text
-10,491 lines
+10,437 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -389,6 +389,7 @@ src/components/runtime-workspaces/KokoroSourceCard.tsx
 src/components/runtime-workspaces/KokoroPracticeCard.tsx
 src/components/runtime-workspaces/Input4SetupCard.tsx
 src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
+src/components/runtime-workspaces/KokoroSetupCard.tsx
 ```
 
 Completed references:
@@ -408,15 +409,17 @@ KokoroPracticeCard extraction completed in the implementation commit reported in
 Input4SetupCard extraction completed in the implementation commit reported in the final summary.
 
 BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
+
+KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Selected next candidate:
 
 ```text
-src/components/runtime-workspaces/KokoroSetupCard.tsx
+src/components/runtime-workspaces/LiveMetricsDock.tsx
 ```
 
-Kokoro setup should stay UI-only/presentational in the next extraction. App-owned local service checks, playback handlers, sidecar calls, adaptive updates, submit/reset behavior, access/quotas, persistence, and sync stay in `src/App.tsx`.
+The live metrics dock should stay UI-only/presentational in the next extraction. App-owned live range state, session summaries, insights fallback reports, adaptive updates, persistence, and sync stay in `src/App.tsx`.
 
 Recommended follow-up:
 

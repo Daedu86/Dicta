@@ -6,10 +6,10 @@ Active incremental extraction. Move only one UI-only runtime card per patch.
 
 The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
 
-Current `src/App.tsx` size on `main` after the Browser TTS setup card extraction pass:
+Current `src/App.tsx` size on `main` after the Kokoro setup card extraction pass:
 
 ```text
-10,491 lines
+10,437 lines
 ```
 
 Completed runtime card extractions:
@@ -29,12 +29,14 @@ KokoroPracticeCard extraction completed in the implementation commit reported in
 Input4SetupCard extraction completed in the implementation commit reported in the final summary.
 
 BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
+
+KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Current next candidate:
 
 ```text
-src/components/runtime-workspaces/KokoroSetupCard.tsx
+src/components/runtime-workspaces/LiveMetricsDock.tsx
 ```
 
 ## Scope
@@ -320,7 +322,7 @@ BrowserTtsSetupCard extraction completed in the implementation commit reported i
 
 ### 9. Extract Kokoro setup sidebar card
 
-Status: selected as the next UI-only candidate.
+Status: complete.
 
 Target:
 
@@ -349,7 +351,15 @@ Keep in `App.tsx`:
 - submission/reset behavior;
 - persistence/sync.
 
+Completed reference:
+
+```text
+KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
+```
+
 ### 10. Extract bottom live metrics / insights only after runtime workspaces are stable
+
+Status: selected as the next UI-only candidate.
 
 Possible target:
 
@@ -390,4 +400,4 @@ Before moving code, run a local measurement pass to map the exact line ranges fo
 - Input #4/CosyVoice branch;
 - bottom live metrics/insights branch.
 
-Then extract `KokoroSetupCard` in a dedicated UI-only commit.
+Then extract `LiveMetricsDock` in a dedicated UI-only commit.
