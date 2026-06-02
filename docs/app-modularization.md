@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the adaptive workspace preparation pass:
+Current `src/App.tsx` size on `main` after the adaptive benchmark workspace extraction pass:
 
 ```text
-12,066 lines
+10,917 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -43,6 +43,12 @@ Net reduction in `src/App.tsx` from the adaptive workspace preparation pass:
 
 ```text
 36 lines
+```
+
+Net reduction in `src/App.tsx` from the adaptive benchmark workspace extraction pass:
+
+```text
+1,149 lines
 ```
 
 ## Rules
@@ -314,7 +320,7 @@ Stop condition:
 
 Boundary: adaptive dashboard UI and profile/debug display.
 
-Status: recommended analysis candidate only.
+Status: complete enough.
 
 Initial docs-only plan:
 
@@ -338,11 +344,31 @@ docs/adaptive-workspace-modularization.md
 
 Do not begin `AdaptiveBenchmarkWorkspace` extraction until that plan exists.
 
-Recommended next patch:
+Completed extraction file:
 
-- Move `AdaptiveBenchmarkSection`, `AdaptiveProfileMatrix`, `AdaptiveAdapterCard`, and `AdaptiveBenchmarkWorkspace` into an adaptive workspace component module.
+```text
+src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx
+```
+
+Moved with this pass:
+
+- `AdaptiveAdapterCard`
+- `AdaptiveBenchmarkSection`
+- `AdaptiveProfileMatrix`
+- `AdaptiveBenchmarkWorkspace`
+- adaptive workspace local `Metric` clone
+- adaptive workspace local viewport/input-mode helpers
+
+Preserved behavior:
+
+- App-owned callbacks, benchmark persistence, selected profile state, session-history-dependent helpers, active-session status resolution, adaptive controller updates, benchmark write paths, localStorage, sync, and feedback generation stayed in `App.tsx`.
+- Training UI, OpenRouter UI, Admin UI, `api/*`, `src/core/adaptive/*`, input adapters, auth/security, and Supabase code were not changed.
+
+Recommended follow-up:
+
+- Split the extracted adaptive workspace file only if a concrete maintainability need appears.
 - Keep app-owned callbacks, benchmark persistence, selected profile state, and session-history-dependent helpers in `App.tsx`.
-- Do not move adaptive controller updates, benchmark write paths, localStorage, sync, or feedback generation.
+- Do not move adaptive controller updates, benchmark write paths, localStorage, sync, or feedback generation without a separate behavior-aware plan.
 
 Prepared adaptive workspace support files:
 

@@ -2,7 +2,7 @@
 
 `AdaptiveBenchmarkWorkspace` is the selected-profile cockpit inside the Adaptive Pace Layer workspace. It is browser UI for benchmark/profile display, export controls, latest session feedback, diagnostics, and recent timeline inspection.
 
-This plan is docs-only. It does not move code yet.
+The initial analysis was docs-only. Patch 1 prepared UI-only types/helpers, and Patch 2 extracted the adaptive benchmark workspace UI while keeping app-owned behavior in `src/App.tsx`.
 
 _Initial plan created: 2026-06-02_
 
@@ -183,7 +183,7 @@ Recommendation:
    - Update `src/App.tsx` to import those helpers, without moving components yet.
    - Run `npm run test -- --reporter=verbose` and `npm run build`.
 
-2. Patch 2, component extraction:
+2. Patch 2, component extraction: complete.
    - Create `src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx`.
    - Move `AdaptiveBenchmarkWorkspace`, `AdaptiveBenchmarkSection`, `AdaptiveProfileMatrix`, and `AdaptiveAdapterCard` together if the prop surface stays manageable.
    - Keep app-owned callbacks in `App.tsx`.
@@ -259,11 +259,48 @@ Impact:
 Expected files for the next code patch:
 
 ```text
-src/App.tsx
 src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx
 docs/adaptive-workspace-modularization.md
 docs/app-modularization.md
 ```
+
+Patch 2 created:
+
+```text
+src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx
+```
+
+Moved from `App.tsx` in Patch 2:
+
+- `AdaptiveAdapterCard`
+- `AdaptiveBenchmarkSection`
+- `AdaptiveProfileMatrix`
+- `AdaptiveBenchmarkWorkspace`
+- dashboard-local `Metric` clone used by the extracted adaptive workspace UI
+- local `isMobileViewport` and input-mode mapping helpers needed by the extracted UI
+
+Left in `App.tsx`:
+
+- selected benchmark input/language state
+- benchmark and feedback storage
+- app-level export/copy callbacks
+- session-history-dependent helpers
+- active-session status resolution
+- adaptive controller updates, benchmark write paths, localStorage, sync, and feedback generation
+
+Validation for Patch 2:
+
+```text
+npm run test -- --reporter=verbose
+npm run build
+```
+
+Result: both passed.
+
+Impact:
+
+- `src/App.tsx` after Patch 2: about `10,917` lines.
+- Net `App.tsx` reduction from Patch 2: about `1,149` lines.
 
 Expected commit message:
 
