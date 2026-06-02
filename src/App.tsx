@@ -127,6 +127,7 @@ import { AdminHeader } from './components/admin/AdminHeader';
 import { AdminKpiGrid } from './components/admin/AdminKpiGrid';
 import { AdminUsersCard } from './components/admin/AdminUsersCard';
 import { AdminMemberAccessCard } from './components/admin/AdminMemberAccessCard';
+import { AdminCreateUserCard } from './components/admin/AdminCreateUserCard';
 import {
   OPENROUTER_GENERATED_SCRIPT_KEY,
   OPENROUTER_GENERATED_VARIANTS_KEY,
@@ -9144,53 +9145,21 @@ function AdminWorkspace({
           onSaveProfileAccess={saveProfileAccess}
         />
 
-        <section className="dashboard-card admin-card">
-          <div className="admin-card-header">
-            <div>
-              <h3>Create user</h3>
-              <p>Create an invite-only Supabase Auth user and map it to a separate Dicta profile.</p>
-            </div>
-          </div>
-          <label>
-            Email
-            <input value={newUserEmail} onChange={(event) => setNewUserEmail(event.target.value)} placeholder="mama@example.com" />
-          </label>
-          <label>
-            Temporary password
-            <input
-              type="password"
-              value={newUserPassword}
-              onChange={(event) => setNewUserPassword(event.target.value)}
-              placeholder="At least 8 characters"
-            />
-          </label>
-          <label>
-            Display name
-            <input value={newUserDisplayName} onChange={(event) => setNewUserDisplayName(event.target.value)} placeholder="Mama" />
-          </label>
-          <label>
-            Profile id
-            <input value={newUserProfileId} onChange={(event) => setNewUserProfileId(event.target.value)} placeholder="mama" />
-          </label>
-          <label>
-            Role
-            <select value={newUserRole} onChange={(event) => setNewUserRole(event.target.value === 'admin' ? 'admin' : 'member')}>
-              <option value="member">Member</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={newUserBusy || !newUserEmail.trim() || newUserPassword.length < 8}
-              onClick={() => void createDictaUser()}
-            >
-              {newUserBusy ? 'Creating...' : 'Create user'}
-            </button>
-          </div>
-          {newUserMessage ? <p className={newUserMessage.toLowerCase().includes('failed') || newUserMessage.toLowerCase().includes('required') ? 'error' : 'success'}>{newUserMessage}</p> : null}
-        </section>
+        <AdminCreateUserCard
+          newUserEmail={newUserEmail}
+          newUserPassword={newUserPassword}
+          newUserDisplayName={newUserDisplayName}
+          newUserProfileId={newUserProfileId}
+          newUserRole={newUserRole}
+          newUserMessage={newUserMessage}
+          newUserBusy={newUserBusy}
+          onChangeNewUserEmail={setNewUserEmail}
+          onChangeNewUserPassword={setNewUserPassword}
+          onChangeNewUserDisplayName={setNewUserDisplayName}
+          onChangeNewUserProfileId={setNewUserProfileId}
+          onChangeNewUserRole={setNewUserRole}
+          onCreateUser={() => void createDictaUser()}
+        />
 
         <section className="dashboard-card admin-card">
           <div className="admin-card-header">
