@@ -380,26 +380,30 @@ docs/runtime-input-workspaces-modularization.md
 
 The next large remaining JSX is concentrated around input setup/sidebar UI, `workspaceMode === 'tts'`, `workspaceMode === 'kokoro'`, Input #4/CosyVoice cache controls, shared runtime practice controls, and the bottom live-metrics/insights area.
 
-Completed runtime extraction:
+Completed runtime extractions:
 
 ```text
 src/components/runtime-workspaces/BrowserTtsSourceCard.tsx
+src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
 ```
 
-Completed reference:
+Completed references:
 
 ```text
 df96574bfb910ecdb0cf64bcd31e6253d961e017
 Extract BrowserTtsSourceCard component
+
+a7a75e01edd6a885a00a1b7fcc41833c90feeb91
+Extract BrowserTtsPracticeCard component
 ```
 
 Selected next candidate for this pass:
 
 ```text
-src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
+src/components/runtime-workspaces/KokoroSourceCard.tsx
 ```
 
-This component is UI-only/presentational. App-owned playback handlers, submit/reset logic, OpenRouter generation callbacks, adaptive updates, access/quotas, persistence, and sync stay in `src/App.tsx`.
+This component should remain UI-only/presentational. App-owned playback handlers, local service checks, sidecar calls, pacing behavior, adaptive updates, submit/reset behavior, access/quotas, persistence, and sync stay in `src/App.tsx`.
 
 Recommended follow-up:
 
