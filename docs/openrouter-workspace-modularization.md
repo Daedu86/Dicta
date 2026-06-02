@@ -59,8 +59,11 @@ Recommended order:
 2. `OpenRouterSlotSelector` - done.
 3. `OpenRouterPromptControls` - done.
 4. `OpenRouterModelSelector` - done.
-5. `OpenRouterSlotCard` - next.
-6. `OpenRouterWorkspace`.
+5. `OpenRouterGenerateSummary` - done.
+6. `OpenRouterGenerateActionPanel` - next.
+7. `OpenRouterGeneratedOutputPanel`.
+8. `OpenRouterSlotCard`.
+9. `OpenRouterWorkspace`.
 
 Do not extract all of these in one patch. Each step should be committed and validated separately.
 
@@ -165,21 +168,86 @@ Preserved behavior:
 
 This extraction did not move model fetch lifecycle, model normalization, free-model gating, default-model storage semantics, access checks, API routes, durable jobs, polling, localStorage, adaptive behavior, or training UI.
 
-## Candidate 1: OpenRouterSlotCard
+## Completed: OpenRouterGenerateSummary
 
-Boundary: browser UI display + callbacks.
+Boundary: browser UI display only.
+
+Status: done.
+
+File:
+
+```text
+src/components/openrouter/OpenRouterGenerateSummary.tsx
+```
+
+Extracted from the generate-section summary area inside `OpenRouterWorkspace`.
+
+Preserved behavior:
+
+- target, benchmark, feedback, duration, and prompt-size metrics;
+- missing benchmark and missing session-feedback hints;
+- read-only `Prompt sent to OpenRouter` textarea;
+- visual order by accepting prompt controls as children.
+
+This extraction did not move prompt construction, generation, durable jobs, polling, validation, localStorage, API routes, access checks, adaptive behavior, or training UI.
+
+## Candidate 1: OpenRouterGenerateActionPanel
+
+Boundary: browser UI action display + callback.
 
 Why next:
 
-- It is the next large visual area inside the generate workflow.
-- It should still be extracted as presentation only.
-- It is more delicate than prior extractions because it likely touches notes, generated text/json, validation, copy/import/create/clear actions, and slot metadata.
+- It is a small, focused action block.
+- It only renders the generate button and current model hint.
+- It should not own generation requests, durable jobs, polling, prompt construction, or slot persistence.
+
+Likely source block:
+
+```tsx
+<div className="admin-actions">
+```
+
+near the generate button inside `openrouter-generate-section`.
 
 Likely responsibilities:
 
+- render the generate button;
+- render Requesting, Generating, or Generate slot label;
+- render the `Using: model` or `Set a default model first (Section #2).` hint;
+- call the provided generate callback.
+
+Rules:
+
+- Do not move `generateOpenRouterSlot`.
+- Do not move `activeGenerateSlotId` ownership.
+- Do not move busy/job/model calculations.
+- Pass a prepared `onGenerate` callback and explicit labels/booleans.
+- Preserve button class, disabled state, and visible text exactly.
+
+## Candidate 2: OpenRouterGeneratedOutputPanel
+
+Boundary: browser UI display only.
+
+Likely responsibilities:
+
+- render validation summary metrics;
+- render generated JSON textarea;
+- render raw response textarea.
+
+Rules:
+
+- Do not move script validation unless a later dedicated patch proves it is safe.
+- Prefer passing prepared validation view data from `OpenRouterWorkspace`.
+- Do not move create/import behavior.
+
+## Candidate 3: OpenRouterSlotCard
+
+Boundary: browser UI display + callbacks.
+
+Likely responsibilities:
+
+- compose generated-slot status, summary, actions, and output panels;
 - render one generated variant slot;
-- render notes/model/text/json state for that slot;
-- render generate/copy/import/clear actions;
 - surface slot-level errors and metadata.
 
 Rules:
@@ -187,11 +255,10 @@ Rules:
 - Do not move slot persistence in the first extraction.
 - Do not move generate/import behavior in the first extraction.
 - Do not move generation requests, durable jobs, or polling.
-- Do not move validation logic unless it is already purely presentational and low-risk.
 - Pass callbacks from `App.tsx` or `OpenRouterWorkspace`.
 - Preserve slot ids and labels exactly.
 
-## Candidate 2: OpenRouterWorkspace
+## Candidate 4: OpenRouterWorkspace
 
 Boundary: browser UI composition.
 
