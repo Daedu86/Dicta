@@ -16,7 +16,7 @@ Read first:
 Current `src/App.tsx` size on `main` after the adaptive benchmark workspace extraction pass:
 
 ```text
-10,917 lines
+10,919 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -328,22 +328,6 @@ Initial docs-only plan:
 docs/adaptive-workspace-modularization.md
 ```
 
-Recommended first step:
-
-- Use the dedicated docs-only plan before moving code.
-- Measure its size and dependencies.
-- Identify subcomponents and a safe extraction order.
-- Keep adaptive behavior and `(inputMode, language)` semantics untouched.
-- Leave metric derivation/helper movement in `App.tsx` initially if moving them creates risk.
-
-Recommended plan file:
-
-```text
-docs/adaptive-workspace-modularization.md
-```
-
-Do not begin `AdaptiveBenchmarkWorkspace` extraction until that plan exists.
-
 Completed extraction file:
 
 ```text
@@ -364,6 +348,11 @@ Preserved behavior:
 - App-owned callbacks, benchmark persistence, selected profile state, session-history-dependent helpers, active-session status resolution, adaptive controller updates, benchmark write paths, localStorage, sync, and feedback generation stayed in `App.tsx`.
 - Training UI, OpenRouter UI, Admin UI, `api/*`, `src/core/adaptive/*`, input adapters, auth/security, and Supabase code were not changed.
 
+Impact:
+
+- `src/App.tsx` after this pass: about `10,919` lines.
+- Net App.tsx reduction from the adaptive benchmark workspace extraction: about `1,149` lines.
+
 Recommended follow-up:
 
 - Split the extracted adaptive workspace file only if a concrete maintainability need appears.
@@ -376,6 +365,30 @@ Prepared adaptive workspace support files:
 src/components/adaptive-workspace/types.ts
 src/components/adaptive-workspace/adaptiveWorkspaceViewHelpers.ts
 ```
+
+### 8. Runtime input workspaces
+
+Boundary: runtime setup/sidebar panels and TTS/Kokoro/CosyVoice workspace UI still embedded in the main app render branch.
+
+Status: next candidate / planning only.
+
+Dedicated plan:
+
+```text
+docs/runtime-input-workspaces-modularization.md
+```
+
+The next large remaining JSX is concentrated around input setup/sidebar UI, `workspaceMode === 'tts'`, `workspaceMode === 'kokoro'`, Input #4/CosyVoice cache controls, shared runtime practice controls, and the bottom live-metrics/insights area.
+
+Recommended first step:
+
+- Use the dedicated plan before moving code.
+- Measure exact line ranges for input setup/sidebar, browser TTS workspace, Kokoro workspace, Input #4/CosyVoice workspace, and bottom live metrics/insights.
+- Start with the smallest UI-only runtime card, keeping playback, adaptive updates, local-dev sidecars, persistence, and submission behavior in `App.tsx`.
+
+Stop condition:
+
+- Do not move audio engines, Browser TTS playback logic, Kokoro/CosyVoice sidecar behavior, adaptive controller updates, localStorage, sync, or submit/reset behavior without a separate behavior-aware plan.
 
 ## Per-patch checklist
 
