@@ -1,6 +1,6 @@
 # App.tsx Modularization Plan
 
-`src/App.tsx` is still the main orchestration surface for Dicta. Because it owns training state, adaptive behavior, OpenRouter generation, local services, sync, and admin UI, modularization must stay incremental and boundary-driven.
+`src/App.tsx` is still the main orchestration surface for Dicta. Because it owns training state, adaptive behavior, local services, sync, admin UI, routing, global app state, auth headers, polling/global lifecycle, final generated-session creation, and sensitive callbacks, modularization must stay incremental and boundary-driven.
 
 Read first:
 
@@ -111,23 +111,61 @@ Stop condition:
 
 Boundary: browser UI + server route clients.
 
-Status: planned.
+Status: complete enough.
 
-Next recommended block: create a dedicated plan before moving code, for example:
+OpenRouter workspace extraction is complete enough. `App.tsx` now owns routing, global app state, auth headers, polling/global lifecycle, final generated-session creation, and sensitive callbacks, while OpenRouter UI composition lives under:
 
 ```text
-docs/openrouter-workspace-modularization.md
+src/components/openrouter/
 ```
 
-OpenRouter workspace extraction is riskier than training UI because it mixes prompt generation, model access, durable jobs, job polling, local storage, slot state, mobile flow, and error handling. Start with a plan and keep server route contracts unchanged.
+Completed extraction files:
+
+```text
+src/components/openrouter/types.ts
+src/components/openrouter/openRouterViewHelpers.ts
+src/components/openrouter/OpenRouterWorkspace.tsx
+src/components/openrouter/OpenRouterGenerationStatusPanel.tsx
+src/components/openrouter/OpenRouterSlotSelector.tsx
+src/components/openrouter/OpenRouterPromptControls.tsx
+src/components/openrouter/OpenRouterModelSelector.tsx
+src/components/openrouter/OpenRouterGenerateSummary.tsx
+src/components/openrouter/OpenRouterGenerateActionPanel.tsx
+src/components/openrouter/OpenRouterGeneratedOutputPanel.tsx
+```
+
+Preserved behavior:
+
+- Prompt-building behavior stayed unchanged.
+- Durable job lifecycle and polling behavior stayed unchanged.
+- OpenRouter localStorage keys and generated-variant persistence stayed unchanged.
+- `/api/openrouter/*` route contracts stayed unchanged.
+- Auth/profile/access gating stayed unchanged.
+- Adaptive `(inputMode, language)` behavior stayed unchanged.
+- Training UI and final generated-session creation behavior stayed unchanged.
+
+Impact:
+
+- From the OpenRouter plan baseline, `src/App.tsx` changed by roughly `-1869/+133`, a net reduction of about 1,736 lines.
+- OpenRouter UI composition is now isolated enough that further OpenRouter splitting should be driven by a concrete maintenance need, not by line count alone.
+
+Stop condition:
+
+- Do not extract `OpenRouterSlotCard` unless it clearly reduces complexity without creating a large unstable prop bag.
+- Do not move OpenRouter job/storage lifecycle without dedicated tests and a separate design plan.
 
 ### 5. Admin workspace UI
 
 Boundary: browser UI + Supabase/admin route clients.
 
-Status: later.
+Status: next candidate.
 
-Extract admin rendering separately from OpenRouter. Keep `api/admin/users.js` and `api/_securityEvents.js` behavior unchanged.
+Admin workspace is the next likely high-value modularization area after OpenRouter. Extract admin rendering separately from OpenRouter. Keep `api/admin/users.js`, `api/_securityEvents.js`, Supabase access behavior, auth headers, and security-event behavior unchanged.
+
+Recommended first step:
+
+- Create or update a dedicated admin modularization plan before moving code.
+- Identify UI-only admin sections that can be extracted without changing Supabase calls, access gating, profile mutation behavior, file import/export behavior, or security-event logging.
 
 ## Per-patch checklist
 
