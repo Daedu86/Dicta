@@ -1,6 +1,6 @@
 # OpenRouter Workspace Modularization Plan
 
-`src/App.tsx` still owns the OpenRouter workspace. This workspace is more sensitive than the training UI because it mixes browser UI with generation state, durable jobs, polling, localStorage persistence, access gating, and generated-session import behavior.
+OpenRouter workspace extraction is complete enough. `App.tsx` now owns routing, global app state, auth headers, polling/global lifecycle, final generated-session creation, and sensitive callbacks, while OpenRouter UI composition lives under `src/components/openrouter/`.
 
 Read first:
 
@@ -30,57 +30,105 @@ OpenRouter workspace is a browser UI boundary that talks to server routes:
 - `POST /api/openrouter/jobs`
 - `GET /api/openrouter/jobs?id=...`
 
-Server route security, rate limits, durable jobs, audit events, and access checks should stay in `api/openrouter/*` and related server helpers. UI extraction must not weaken those boundaries.
+Server route security, rate limits, durable jobs, audit events, and access checks stay in `api/openrouter/*` and related server helpers. UI extraction must not weaken those boundaries.
 
-## Keep in App.tsx initially
+## Completed extraction status
 
-During early extraction patches, keep these orchestration responsibilities in `src/App.tsx`:
+OpenRouter UI modularization is complete enough for now.
 
-- model fetching and refresh behavior;
-- generation request submission;
-- durable job creation;
-- durable job polling;
-- generated-variant persistence;
-- active job persistence;
-- generated script import into training sessions;
-- error handling and recovery decisions;
-- profile/access state resolution;
-- any effect that reads or writes OpenRouter localStorage keys.
+Completed files:
 
-This keeps the first UI extractions low-risk and avoids moving async lifecycle behavior too early.
+```text
+src/components/openrouter/types.ts
+src/components/openrouter/openRouterViewHelpers.ts
+src/components/openrouter/OpenRouterWorkspace.tsx
+src/components/openrouter/OpenRouterGenerationStatusPanel.tsx
+src/components/openrouter/OpenRouterSlotSelector.tsx
+src/components/openrouter/OpenRouterPromptControls.tsx
+src/components/openrouter/OpenRouterModelSelector.tsx
+src/components/openrouter/OpenRouterGenerateSummary.tsx
+src/components/openrouter/OpenRouterGenerateActionPanel.tsx
+src/components/openrouter/OpenRouterGeneratedOutputPanel.tsx
+```
 
-## Extract first: UI-only pieces
+Completed commits:
 
-Start with presentational components that receive explicit props and do not own async state.
+- `Prepare OpenRouter workspace types and helpers` - done.
+- `Extract OpenRouter workspace` - done.
 
-Recommended order:
+## Completed: OpenRouter workspace types and helpers
 
-1. `OpenRouterGenerationStatusPanel` - done.
-2. `OpenRouterSlotSelector` - done.
-3. `OpenRouterPromptControls` - done.
-4. `OpenRouterModelSelector` - done.
-5. `OpenRouterGenerateSummary` - done.
-6. `OpenRouterGenerateActionPanel` - done.
-7. `OpenRouterGeneratedOutputPanel` - done.
-8. Re-measure `App.tsx` and `src/components/openrouter/*.tsx` before deciding the next extraction.
-9. `OpenRouterSlotCard` - evaluate after measurement.
-10. `OpenRouterWorkspace` - later.
+Boundary: shared browser UI types/helpers.
 
-Do not extract all of these in one patch. Each step should be committed and validated separately.
+Status: done.
 
-## Completed: OpenRouterGenerationStatusPanel
+Files:
 
-Boundary: browser UI display only.
+```text
+src/components/openrouter/types.ts
+src/components/openrouter/openRouterViewHelpers.ts
+```
+
+Purpose:
+
+- keep OpenRouter UI types close to the workspace components;
+- keep view-only helpers out of `App.tsx`;
+- avoid moving server route logic, durable job logic, prompt construction, or storage semantics.
+
+Preserved behavior:
+
+- no API route changes;
+- no localStorage key changes;
+- no prompt-building changes;
+- no durable job lifecycle changes;
+- no adaptive profile changes.
+
+## Completed: OpenRouterWorkspace
+
+Boundary: browser UI composition.
 
 Status: done.
 
 File:
 
 ```text
-src/components/openrouter/OpenRouterGenerationStatusPanel.tsx
+src/components/openrouter/OpenRouterWorkspace.tsx
 ```
 
-Extracted from the OpenRouter generate section inside `OpenRouterWorkspace`.
+`OpenRouterWorkspace` now lives outside `src/App.tsx`. `App.tsx` remains responsible for global app ownership and sensitive orchestration.
+
+`App.tsx` still owns:
+
+- workspace routing/render selection;
+- global app state;
+- auth headers;
+- global polling/lifecycle ownership;
+- final generated-session creation;
+- sensitive OpenRouter callbacks;
+- training session integration;
+- profile/access resolution.
+
+Preserved behavior:
+
+- no durable job lifecycle changes;
+- no polling changes;
+- no localStorage key changes;
+- no generation request behavior changes;
+- no prompt-building changes;
+- no `/api/openrouter/*` changes;
+- no auth/access gating changes;
+- no adaptive `(inputMode, language)` changes;
+- no training UI changes.
+
+## Completed UI subcomponents
+
+### OpenRouterGenerationStatusPanel
+
+File:
+
+```text
+src/components/openrouter/OpenRouterGenerationStatusPanel.tsx
+```
 
 Preserved behavior:
 
@@ -92,21 +140,13 @@ Preserved behavior:
 - draft-kept message;
 - cancel-draft button callback.
 
-This extraction did not move durable jobs, polling, prompt building, localStorage, access checks, API routes, adaptive behavior, or training UI.
-
-## Completed: OpenRouterSlotSelector
-
-Boundary: browser UI controls.
-
-Status: done.
+### OpenRouterSlotSelector
 
 File:
 
 ```text
 src/components/openrouter/OpenRouterSlotSelector.tsx
 ```
-
-Extracted from the generated-session setup area inside `OpenRouterWorkspace`.
 
 Preserved behavior:
 
@@ -116,21 +156,13 @@ Preserved behavior:
 - slot selection callback ownership in `OpenRouterWorkspace`;
 - validation and slot state calculation outside the presentational component.
 
-This extraction did not move generation, prompt building, slot persistence, import behavior, durable jobs, polling, localStorage, API routes, access checks, adaptive behavior, or training UI.
-
-## Completed: OpenRouterPromptControls
-
-Boundary: browser UI controls.
-
-Status: done.
+### OpenRouterPromptControls
 
 File:
 
 ```text
 src/components/openrouter/OpenRouterPromptControls.tsx
 ```
-
-Extracted from the generate-section controls inside `OpenRouterWorkspace`.
 
 Preserved behavior:
 
@@ -142,21 +174,13 @@ Preserved behavior:
 - button labels, descriptions, and titles;
 - selection callback ownership in `OpenRouterWorkspace`.
 
-This extraction did not move prompt construction, generation, durable jobs, polling, validation, localStorage, API routes, access checks, adaptive behavior, or training UI.
-
-## Completed: OpenRouterModelSelector
-
-Boundary: browser UI controls.
-
-Status: done.
+### OpenRouterModelSelector
 
 File:
 
 ```text
 src/components/openrouter/OpenRouterModelSelector.tsx
 ```
-
-Extracted from the Free Models section body inside `OpenRouterWorkspace`.
 
 Preserved behavior:
 
@@ -167,21 +191,13 @@ Preserved behavior:
 - assigned model hinting;
 - refresh and set-default callbacks remaining owned by `OpenRouterWorkspace`.
 
-This extraction did not move model fetch lifecycle, model normalization, free-model gating, default-model storage semantics, access checks, API routes, durable jobs, polling, localStorage, adaptive behavior, or training UI.
-
-## Completed: OpenRouterGenerateSummary
-
-Boundary: browser UI display only.
-
-Status: done.
+### OpenRouterGenerateSummary
 
 File:
 
 ```text
 src/components/openrouter/OpenRouterGenerateSummary.tsx
 ```
-
-Extracted from the generate-section summary area inside `OpenRouterWorkspace`.
 
 Preserved behavior:
 
@@ -190,21 +206,13 @@ Preserved behavior:
 - read-only `Prompt sent to OpenRouter` textarea;
 - visual order by accepting prompt controls as children.
 
-This extraction did not move prompt construction, generation, durable jobs, polling, validation, localStorage, API routes, access checks, adaptive behavior, or training UI.
-
-## Completed: OpenRouterGenerateActionPanel
-
-Boundary: browser UI action display + callback.
-
-Status: done.
+### OpenRouterGenerateActionPanel
 
 File:
 
 ```text
 src/components/openrouter/OpenRouterGenerateActionPanel.tsx
 ```
-
-Extracted from the generate-section action area inside `OpenRouterWorkspace`.
 
 Preserved behavior:
 
@@ -214,21 +222,13 @@ Preserved behavior:
 - current-model hint and missing-default-model hint;
 - generate callback ownership outside the presentational component.
 
-This extraction did not move generation requests, durable jobs, polling, prompt construction, validation, slot persistence, localStorage, API routes, access checks, adaptive behavior, or training UI.
-
-## Completed: OpenRouterGeneratedOutputPanel
-
-Boundary: browser UI display only.
-
-Status: done.
+### OpenRouterGeneratedOutputPanel
 
 File:
 
 ```text
 src/components/openrouter/OpenRouterGeneratedOutputPanel.tsx
 ```
-
-Extracted from the generate-section output area inside `OpenRouterWorkspace`.
 
 Preserved behavior:
 
@@ -238,45 +238,19 @@ Preserved behavior:
 - JSON-before-raw rendering precedence;
 - textarea labels, rows, and read-only behavior.
 
-This extraction did not move script validation, create/import behavior, generation requests, durable jobs, polling, prompt construction, slot persistence, localStorage, API routes, access checks, adaptive behavior, or training UI.
+## Stop condition
 
-## Next: measure and reassess
+Stop OpenRouter UI modularization here unless a future change adds unrelated responsibilities or the extracted workspace becomes difficult to maintain.
 
-Before extracting another OpenRouter component, measure the current file sizes:
+Avoid extracting `OpenRouterSlotCard` if it would only forward a large, unstable prop bag. Prefer preserving the current component boundaries unless a specific maintenance problem appears.
 
-```powershell
-(Get-Content src/App.tsx).Count
-Get-ChildItem src/components/openrouter/*.tsx | ForEach-Object { "$($_.Name): $((Get-Content $_.FullName).Count)" }
-```
+## Future candidates
 
-Use those numbers to decide whether `OpenRouterSlotCard` would still reduce complexity cleanly or whether the next useful move is planning/extracting `OpenRouterWorkspace` itself.
+Only revisit these if there is a clear maintenance need:
 
-## Candidate: OpenRouterSlotCard
-
-Boundary: browser UI display + callbacks.
-
-Likely responsibilities:
-
-- compose generated-slot status, summary, actions, and output panels;
-- render one generated variant slot;
-- surface slot-level errors and metadata.
-
-Rules:
-
-- Do not move slot persistence in the first extraction.
-- Do not move generate/import behavior in the first extraction.
-- Do not move generation requests, durable jobs, or polling.
-- Pass callbacks from `App.tsx` or `OpenRouterWorkspace`.
-- Preserve slot ids and labels exactly.
-- Avoid creating a component that only forwards a large, unstable prop bag.
-
-## Candidate: OpenRouterWorkspace
-
-Boundary: browser UI composition.
-
-Only extract the larger workspace after smaller pieces are stable. At that point, decide whether `OpenRouterWorkspace` should remain presentational or own some local UI-only state.
-
-Do not move job lifecycle or generated-variant persistence unless there is a dedicated follow-up plan and test coverage.
+- `OpenRouterSlotCard`, if it can reduce complexity without creating excessive prop forwarding.
+- OpenRouter storage/job hooks, but only with dedicated tests and a separate design plan.
+- Additional shared type cleanup, if repeated imports or circular dependencies appear.
 
 ## Tests and guards
 
@@ -286,7 +260,7 @@ Existing relevant tests:
 - `tests/LowLatencyTextareaContract.test.ts`
 - `tests/buildInfo.test.ts`
 
-Before moving OpenRouter logic out of `App.tsx`, add or review tests for:
+Before moving OpenRouter logic beyond UI composition, add or review tests for:
 
 - generated prompt profile isolation;
 - duration/difficulty contract;
