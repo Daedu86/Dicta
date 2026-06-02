@@ -125,6 +125,7 @@ import { TrainingView, type TrainingViewProps } from './components/TrainingView'
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { AdminHeader } from './components/admin/AdminHeader';
 import { AdminKpiGrid } from './components/admin/AdminKpiGrid';
+import { AdminUsersCard } from './components/admin/AdminUsersCard';
 import {
   OPENROUTER_GENERATED_SCRIPT_KEY,
   OPENROUTER_GENERATED_VARIANTS_KEY,
@@ -9111,50 +9112,12 @@ function AdminWorkspace({
       <AdminKpiGrid summary={summary} syncStatus={syncStatus} />
 
       <div className="admin-grid">
-        {visibleProfiles.length > 0 ? (
-          <section className="dashboard-card admin-card">
-            <div className="admin-card-header">
-              <div>
-                <h3>Users</h3>
-                <p>Profiles visible to this account. Session sync remains scoped to the active signed-in profile.</p>
-              </div>
-            </div>
-            <label>
-              Admin profile filter
-              <select value={selectedProfileFilter} onChange={(event) => onChangeProfileFilter(event.target.value)}>
-                <option value="self">Current profile</option>
-                <option value="all">All profiles</option>
-                {visibleProfiles.map((profile) => (
-                  <option key={profile.profileId} value={profile.profileId}>
-                    {profile.displayName} · {profile.role}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {remoteAdminStatus ? <p className={remoteAdminStatus.toLowerCase().includes('failed') ? 'error' : 'hint'}>{remoteAdminStatus}</p> : null}
-            <div className="admin-table">
-              <div className="admin-table-row admin-table-header">
-                <span>Name</span>
-                <span>Role</span>
-                <span>Profile</span>
-              </div>
-              {visibleProfiles.map((profile) => (
-                <div key={profile.profileId} className="admin-table-row">
-                  <span>{profile.displayName}</span>
-                  <span>{profile.active ? profile.role : 'inactive'}</span>
-                  <span>
-                    {profile.profileId}
-                    <small>
-                      OpenRouter {profile.canAccessOpenRouter ? 'enabled' : 'disabled'} · sessions{' '}
-                      {profile.role === 'admin' ? 'unlimited' : profile.sessionLimit ?? 15}
-                      {profile.role === 'member' && profile.assignedOpenRouterModel ? ` · model ${profile.assignedOpenRouterModel}` : ''}
-                    </small>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <AdminUsersCard
+          visibleProfiles={visibleProfiles}
+          selectedProfileFilter={selectedProfileFilter}
+          onChangeProfileFilter={onChangeProfileFilter}
+          remoteAdminStatus={remoteAdminStatus}
+        />
 
         <section className="dashboard-card admin-card">
           <div className="admin-card-header">
