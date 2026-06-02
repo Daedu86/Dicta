@@ -131,6 +131,7 @@ import { AdminCreateUserCard } from './components/admin/AdminCreateUserCard';
 import { AdminManualInputSessionCard } from './components/admin/AdminManualInputSessionCard';
 import { AdminBrowserStorageCard } from './components/admin/AdminBrowserStorageCard';
 import { AdminProjectFilesCard } from './components/admin/AdminProjectFilesCard';
+import { AdminSessionInventoryCard } from './components/admin/AdminSessionInventoryCard';
 import {
   OPENROUTER_GENERATED_SCRIPT_KEY,
   OPENROUTER_GENERATED_VARIANTS_KEY,
@@ -9185,38 +9186,12 @@ function AdminWorkspace({
         />
       </div>
 
-      <section className="dashboard-card admin-card">
-        <div className="admin-card-header">
-          <div>
-            <h3>Session inventory ({languageView.toUpperCase()})</h3>
-            <p>Per-session storage, transcript, text, and telemetry counts for the selected language.</p>
-          </div>
-        </div>
-        <div className="admin-session-list">
-          {sessions.map((session) => (
-            <article key={session.id} className="admin-session-card">
-              <div>
-                <h4>{session.name || 'Untitled session'}</h4>
-                <p>{formatSessionInputMode(session.inputMode)} · {formatSessionStatus(session.status)} · {formatSessionDate(session.updatedAt)}</p>
-              </div>
-              <div className="admin-session-metrics">
-                <Metric label="JSON size" value={formatBytes(estimateJsonBytes(session))} />
-                <Metric label="Transcript" value={String(session.transcript?.words.length ?? 0)} />
-                <Metric label="Typed words" value={String(countSessionTypedWords(session))} />
-                <Metric label="Telemetry" value={String(countTelemetrySamples(session.telemetry))} />
-              </div>
-              <div className="admin-actions">
-                <button type="button" className="secondary-button" onClick={() => onExportSession(session)}>
-                  Export
-                </button>
-                <button type="button" className="secondary-button" onClick={() => onCopySession(session)}>
-                  Copy
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+        <AdminSessionInventoryCard
+          sessions={sessions}
+          languageView={languageView}
+          onExportSession={onExportSession}
+          onCopySession={onCopySession}
+        />
     </section>
   );
 }
@@ -11017,29 +10992,8 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
   );
 }
 
-function countSessionTypedWords(session: StoredSession): number {
-  const text =
-    session.inputMode === 'input2' || session.inputMode === 'input4'
-      ? session.ttsPracticeText
-      : session.inputMode === 'input3'
-        ? session.kokoroPracticeText
-        : session.inputText;
-  return text.split(/\s+/).filter(Boolean).length;
-}
-
-function estimateJsonBytes(value: unknown): number {
-  return byteSize(JSON.stringify(value));
-}
-
 function byteSize(value: string): number {
   return new TextEncoder().encode(value).length;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const kib = bytes / 1024;
-  if (kib < 1024) return `${kib.toFixed(1)} KB`;
-  return `${(kib / 1024).toFixed(2)} MB`;
 }
 
 function formatSessionInputMode(mode: SessionInputMode): string {

@@ -1,0 +1,139 @@
+import type { SessionTelemetry, Transcript } from '../../types/dictation';
+
+type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
+type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+type MetricsLanguageView = 'en' | 'es' | 'de' | 'fr' | 'pt' | 'all';
+
+type StoredSession = {
+  id: string;
+  name: string;
+  inputMode: SessionInputMode;
+  updatedAt: string;
+  inputText: string;
+  ttsPracticeText: string;
+  kokoroPracticeText: string;
+  status: SessionStatus;
+  transcript: Transcript | null;
+  telemetry: SessionTelemetry;
+  [key: string]: unknown;
+};
+
+interface AdminSessionInventoryCardProps {
+  sessions: any[];
+  languageView: MetricsLanguageView;
+  onExportSession: (session: any) => void;
+  onCopySession: (session: any) => void;
+}
+
+function countTelemetrySamples(telemetry: SessionTelemetry): number {
+  return Math.max(
+    telemetry.lagSeries.length,
+    telemetry.wpmSeries.length,
+    telemetry.accuracySeries.length,
+  );
+}
+
+function countSessionTypedWords(session: StoredSession): number {
+  const text =
+    session.inputMode === 'input2' || session.inputMode === 'input4'
+      ? session.ttsPracticeText
+      : session.inputMode === 'input3'
+        ? session.kokoroPracticeText
+        : session.inputText;
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function estimateJsonBytes(value: unknown): number {
+  return byteSize(JSON.stringify(value));
+}
+
+function byteSize(value: string): number {
+  return new TextEncoder().encode(value).length;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kib = bytes / 1024;
+  if (kib < 1024) return `${kib.toFixed(1)} KB`;
+  return `${(kib / 1024).toFixed(2)} MB`;
+}
+
+function formatSessionInputMode(mode: SessionInputMode): string {
+  if (mode === 'input1') return 'Original audio';
+  if (mode === 'input2') return 'Browser TTS';
+  if (mode === 'input3') return 'Kokoro local';
+  return 'Qwen cache';
+}
+
+function formatSessionStatus(value: SessionStatus): string {
+  switch (value) {
+    case 'running':
+      return 'Running';
+    case 'paused':
+      return 'Paused';
+    case 'finished':
+      return 'Finished';
+    case 'error':
+      return 'Error';
+    default:
+      return 'Ready';
+  }
+}
+
+function formatSessionDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function Metric({ label, value, title }: { label: string; value: string; title?: string }) {
+  return (
+    <div className="metric" title={title} aria-label={title ? `${label}: ${value}. ${title}` : undefined}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+export function AdminSessionInventoryCard({
+  sessions,
+  languageView,
+  onExportSession,
+  onCopySession,
+}: AdminSessionInventoryCardProps) {
+  return (
+    <section className="dashboard-card admin-card">
+      <div className="admin-card-header">
+        <div>
+          <h3>Session inventory ({languageView.toUpperCase()})</h3>
+          <p>Per-session storage, transcript, text, and telemetry counts for the selected language.</p>
+        </div>
+      </div>
+      <div className="admin-session-list">
+        {sessions.map((session) => (
+          <article key={session.id} className="admin-session-card">
+            <div>
+              <h4>{session.name || 'Untitled session'}</h4>
+              <p>{formatSessionInputMode(session.inputMode)} · {formatSessionStatus(session.status)} · {formatSessionDate(session.updatedAt)}</p>
+            </div>
+            <div className="admin-session-metrics">
+              <Metric label="JSON size" value={formatBytes(estimateJsonBytes(session))} />
+              <Metric label="Transcript" value={String(session.transcript?.words.length ?? 0)} />
+              <Metric label="Typed words" value={String(countSessionTypedWords(session))} />
+              <Metric label="Telemetry" value={String(countTelemetrySamples(session.telemetry))} />
+            </div>
+            <div className="admin-actions">
+              <button type="button" className="secondary-button" onClick={() => onExportSession(session)}>
+                Export
+              </button>
+              <button type="button" className="secondary-button" onClick={() => onCopySession(session)}>
+                Copy
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
