@@ -6,10 +6,10 @@ Active incremental extraction. Move only one UI-only runtime card per patch.
 
 The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
 
-Current `src/App.tsx` size on `main` after the Kokoro source card extraction pass:
+Current `src/App.tsx` size on `main` after the Kokoro practice card extraction pass:
 
 ```text
-about 10,769 lines
+10,659 lines
 ```
 
 Completed runtime card extractions:
@@ -23,12 +23,14 @@ Extract BrowserTtsPracticeCard component
 
 8f2d4886ef44998f4c953100a000decacc777e16
 Extract Kokoro source card
+
+KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Current next candidate:
 
 ```text
-src/components/runtime-workspaces/KokoroPracticeCard.tsx
+Input #4/CosyVoice setup/runtime cards
 ```
 
 ## Scope
@@ -224,7 +226,7 @@ Extract Kokoro source card
 
 ### 6. Extract Kokoro practice card
 
-Status: selected as the next UI-only candidate.
+Status: complete.
 
 Target:
 
@@ -253,9 +255,17 @@ Keep in `App.tsx`:
 - OpenRouter access/quotas;
 - persistence/sync.
 
+Completed reference:
+
+```text
+KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
+```
+
 ### 7. Extract Input #4/CosyVoice setup/runtime cards only after TTS/Kokoro are stable
 
-Input #4 has local-only sidecar/cache behavior. Keep it later.
+Status: selected as the next UI-only candidate.
+
+Input #4 has local-only sidecar/cache behavior. Keep setup/runtime extraction UI-only and leave CosyVoice/Qwen cache generation, fallback, playback, adaptive pacing, persistence, and sync behavior in `App.tsx`.
 
 ### 8. Extract bottom live metrics / insights only after runtime workspaces are stable
 
@@ -298,4 +308,4 @@ Before moving code, run a local measurement pass to map the exact line ranges fo
 - Input #4/CosyVoice branch;
 - bottom live metrics/insights branch.
 
-Then extract `KokoroPracticeCard` in a dedicated UI-only commit.
+Then extract Input #4/CosyVoice setup/runtime cards in a dedicated UI-only commit.

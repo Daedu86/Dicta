@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the Kokoro source card extraction pass:
+Current `src/App.tsx` size on `main` after the Kokoro practice card extraction pass:
 
 ```text
-about 10,769 lines
+10,659 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -386,6 +386,7 @@ Completed runtime extractions:
 src/components/runtime-workspaces/BrowserTtsSourceCard.tsx
 src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
 src/components/runtime-workspaces/KokoroSourceCard.tsx
+src/components/runtime-workspaces/KokoroPracticeCard.tsx
 ```
 
 Completed references:
@@ -399,15 +400,17 @@ Extract BrowserTtsPracticeCard component
 
 8f2d4886ef44998f4c953100a000decacc777e16
 Extract Kokoro source card
+
+KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
 ```
 
-Selected next candidate for this pass:
+Selected next candidate:
 
 ```text
-src/components/runtime-workspaces/KokoroPracticeCard.tsx
+Input #4/CosyVoice setup/runtime cards
 ```
 
-This component should remain UI-only/presentational. App-owned local service checks, playback handlers, sidecar calls, pacing behavior, replay/rewind behavior, adaptive updates, submit/reset behavior, access/quotas, persistence, and sync stay in `src/App.tsx`.
+Input #4/CosyVoice should stay UI-only/presentational in the next extraction. App-owned local service checks, playback handlers, sidecar calls, cache behavior, pacing behavior, adaptive updates, submit/reset behavior, access/quotas, persistence, and sync stay in `src/App.tsx`.
 
 Recommended follow-up:
 

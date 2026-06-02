@@ -123,6 +123,7 @@ import { TrainingView, type TrainingViewProps } from './components/TrainingView'
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
 import { BrowserTtsSourceCard } from './components/runtime-workspaces/BrowserTtsSourceCard';
+import { KokoroPracticeCard } from './components/runtime-workspaces/KokoroPracticeCard';
 import { KokoroSourceCard } from './components/runtime-workspaces/KokoroSourceCard';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
@@ -7549,163 +7550,52 @@ function App() {
                     formatTtsPacingMode={formatTtsPacingMode}
                   />
 
-                  <section className="panel workspace-panel tts-practice-panel">
-                    <div className="typing-panel-header">
-                      <h3>Type what you hear</h3>
-                      {keyboardProfileLabel ? (
-                        <span className={`es-layout-indicator ${keyboardProfile === 'de-keyboard' ? 'de-layout-indicator' : ''}`}>
-                          {keyboardProfileLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="kokoro-toggle-row">
-                      <button
-                        type="button"
-                        className="secondary-button kokoro-toggle-button"
-                        onClick={() => void toggleKokoroEnabled()}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
-                        title={LOCAL_DEV_FEATURES_AVAILABLE ? 'Toggle the local Kokoro service.' : 'Kokoro is local-only in the Vercel build.'}
-                      >
-                        {kokoroEnabled ? 'Turn Kokoro Off' : 'Turn Kokoro On'}
-                      </button>
-                      <span className={`kokoro-toggle-status ${kokoroEnabled ? 'kokoro-on' : 'kokoro-off'}`}>
-                        <span className="kokoro-toggle-dot" />
-                        {kokoroEnabled ? 'On' : 'Off'}
-                      </span>
-                    </div>
-                    <div className="kokoro-source-actions kokoro-source-actions-primary">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void playKokoro()}
-                        disabled={
-                          !LOCAL_DEV_FEATURES_AVAILABLE ||
-                          !kokoroEnabled ||
-                          !kokoroHasText ||
-                          kokoroStatus === 'playing' ||
-                          isKokoroLanguageBlocked(kokoroLanguage)
-                        }
-                      >
-                        Start
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={pauseKokoro}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroEnabled || kokoroStatus !== 'playing'}
-                      >
-                        Pause
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void resumeKokoro()}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroEnabled || kokoroStatus !== 'paused'}
-                      >
-                        Resume
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={replayKokoroPhrase}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroCurrentChunk}
-                      >
-                        Replay phrase
-                      </button>
-                    </div>
-                    <div className="kokoro-source-actions kokoro-source-actions-secondary">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={rewindKokoroPhrase}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE || !kokoroCurrentChunk}
-                      >
-                        Rewind
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => adjustKokoroManualPace(-0.05, 'manual_slow')}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
-                      >
-                        Slower
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => adjustKokoroManualPace(0.05, 'manual_fast')}
-                        disabled={!LOCAL_DEV_FEATURES_AVAILABLE}
-                      >
-                        Faster
-                      </button>
-                      <button type="button" className="secondary-button" onClick={resetKokoroPace} disabled={!LOCAL_DEV_FEATURES_AVAILABLE}>
-                        Reset pace
-                      </button>
-                    </div>
-                    <textarea
-                      value={kokoroPracticeText}
-                      onChange={(e) => onKokoroPracticeChange(e.target.value)}
-                      onKeyDown={onKokoroPracticeKeyDown}
-                      placeholder={activeSessionFinished ? 'Session submitted.' : 'Type the Kokoro audio here...'}
-                      readOnly={activeSessionFinished}
-                      rows={12}
-                    />
-                    <RuntimeMetricsPanel
-                      controllerState={controllerState}
-                      rate={rate}
-                      lagSec={lagSec}
-                      lagWords={lagWords}
-                      wpm={wpm}
-                      accuracy={kokoroVisibleAccuracy}
-                    />
-                    <div className="tts-submit-row">
-                      <button type="button" onClick={() => submitKokoroSession()} disabled={!canSubmitKokoroSession}>
-                        Submit statistics
-                      </button>
-                      <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
-                        Adaptive Pace Layer
-                      </button>
-                      {desktopOpenRouterGenerationButtons.map((button) => (
-                        <div key={button.id} className="tts-generation-button-row">
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={button.onClick}
-                            disabled={button.disabled}
-                            title={button.title}
-                          >
-                            {button.label}
-                          </button>
-                          {button.helpText ? <HelpIcon tooltip={button.helpText} ariaLabel={`Help for ${button.label}`} /> : null}
-                        </div>
-                      ))}
-                      {openRouterAccessAllowed ? (
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={openOpenRouterGenerateForActiveInput}
-                          disabled={sessionQuotaStatus.blocked}
-                          title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.'}
-                        >
-                          New Custom Session
-                        </button>
-                      ) : null}
-                      <button type="button" className="secondary-button" onClick={() => resetSession()}>
-                        Reset
-                      </button>
-                    </div>
-                    {activeSessionFinished ? (
-                      <p className="success">
-                        {trainingSubmitMessage || 'Kokoro attempt submitted. Typing is locked until reset.'}
-                      </p>
-                    ) : null}
-                    <div className="tts-practice-summary">
-                      <Metric label="Correct" value={String(kokoroPracticeEvaluation.matchedWords)} />
-                      <Metric label="Wrong" value={String(kokoroPracticeEvaluation.extraWords)} />
-                      <Metric label="Missing" value={String(kokoroPracticeMissing)} />
-                      <Metric label="Words typed" value={String(kokoroPracticeWords.length)} />
-                    </div>
-                  </section>
+                  <KokoroPracticeCard
+                    keyboardProfileLabel={keyboardProfileLabel}
+                    keyboardProfile={keyboardProfile}
+                    kokoroStatus={kokoroStatus}
+                    kokoroHasText={kokoroHasText}
+                    kokoroEnabled={kokoroEnabled}
+                    kokoroPracticeText={kokoroPracticeText}
+                    activeSessionFinished={activeSessionFinished}
+                    controllerState={controllerState}
+                    rate={rate}
+                    lagSec={lagSec}
+                    lagWords={lagWords}
+                    wpm={wpm}
+                    kokoroVisibleAccuracy={kokoroVisibleAccuracy}
+                    canSubmitKokoroSession={canSubmitKokoroSession}
+                    desktopOpenRouterGenerationButtons={desktopOpenRouterGenerationButtons}
+                    openRouterAccessAllowed={openRouterAccessAllowed}
+                    sessionQuotaStatus={sessionQuotaStatus}
+                    openRouterOfflineTitle={openRouterOfflineTitle}
+                    trainingSubmitMessage={trainingSubmitMessage}
+                    kokoroPracticeMatchedWords={kokoroPracticeEvaluation.matchedWords}
+                    kokoroPracticeExtraWords={kokoroPracticeEvaluation.extraWords}
+                    kokoroPracticeMissing={kokoroPracticeMissing}
+                    kokoroPracticeWordsCount={kokoroPracticeWords.length}
+                    localDevFeaturesAvailable={LOCAL_DEV_FEATURES_AVAILABLE}
+                    kokoroLanguageBlocked={isKokoroLanguageBlocked(kokoroLanguage)}
+                    hasKokoroCurrentChunk={Boolean(kokoroCurrentChunk)}
+                    RuntimeMetricsPanelComponent={RuntimeMetricsPanel}
+                    MetricComponent={Metric}
+                    HelpIconComponent={HelpIcon}
+                    onToggleKokoroEnabled={() => void toggleKokoroEnabled()}
+                    onPlayKokoro={() => void playKokoro()}
+                    onPauseKokoro={pauseKokoro}
+                    onResumeKokoro={() => void resumeKokoro()}
+                    onReplayKokoroPhrase={replayKokoroPhrase}
+                    onRewindKokoroPhrase={rewindKokoroPhrase}
+                    onSlowKokoroPace={() => adjustKokoroManualPace(-0.05, 'manual_slow')}
+                    onFastKokoroPace={() => adjustKokoroManualPace(0.05, 'manual_fast')}
+                    onResetKokoroPace={resetKokoroPace}
+                    onKokoroPracticeChange={onKokoroPracticeChange}
+                    onKokoroPracticeKeyDown={onKokoroPracticeKeyDown}
+                    onSubmitKokoroSession={() => submitKokoroSession()}
+                    onOpenAdaptiveExportsForActiveInput={openAdaptiveExportsForActiveInput}
+                    onOpenOpenRouterGenerateForActiveInput={openOpenRouterGenerateForActiveInput}
+                    onResetSession={() => resetSession()}
+                  />
                 </div>
               </section>
             ) : workspaceMode === 'tts' ? (
