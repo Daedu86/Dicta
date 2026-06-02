@@ -2,12 +2,36 @@
 
 `src/App.tsx` is still the main orchestration surface for Dicta. Because it owns training state, adaptive behavior, local services, sync, admin UI, routing, global app state, auth headers, polling/global lifecycle, final generated-session creation, and sensitive callbacks, modularization must stay incremental and boundary-driven.
 
+_Last updated: 2026-06-02_
+
 Read first:
 
 1. `AGENTS.md`
 2. `README.md`
 3. `docs/architecture.md`
 4. this file
+
+## Current size
+
+Current `src/App.tsx` size on `main` after the AdminWorkspace pass:
+
+```text
+12,570 lines
+```
+
+Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
+
+```text
+12,882 lines
+```
+
+Net reduction in `src/App.tsx` from the AdminWorkspace pass:
+
+```text
+312 lines
+```
+
+This is a net App.tsx reduction after adding imports and keeping the remaining sensitive orchestration in place. Extracted component source now lives under `src/components/admin/`, so repository line count increased while `App.tsx` became smaller and more compositional.
 
 ## Rules
 
@@ -158,14 +182,101 @@ Stop condition:
 
 Boundary: browser UI + Supabase/admin route clients.
 
+Status: complete enough / closed.
+
+AdminWorkspace UI modularization is closed for this App.tsx reduction pass. The detailed closeout is documented in:
+
+```text
+docs/admin-workspace-modularization.md
+```
+
+Admin UI components now live under:
+
+```text
+src/components/admin/
+```
+
+Completed extraction files:
+
+```text
+src/components/admin/AdminHeader.tsx
+src/components/admin/AdminKpiGrid.tsx
+src/components/admin/AdminUsersCard.tsx
+src/components/admin/AdminMemberAccessCard.tsx
+src/components/admin/AdminCreateUserCard.tsx
+src/components/admin/AdminManualInputSessionCard.tsx
+src/components/admin/AdminBrowserStorageCard.tsx
+src/components/admin/AdminProjectFilesCard.tsx
+src/components/admin/AdminSessionInventoryCard.tsx
+```
+
+Final Admin UI extraction commit:
+
+```text
+0f4c0e2e0c1788fa5948a75ea003602e17266355
+Extract AdminSessionInventoryCard component
+```
+
+Admin closeout commit:
+
+```text
+40944d5d28b8b719c2a33f08bac2e2278c7b42f1
+Close AdminWorkspace modularization plan
+```
+
+Preserved behavior:
+
+- `api/admin/users.js` was not changed.
+- `api/_securityEvents.js` was not changed.
+- `fetch('/api/admin/users', ...)` stayed inside `createDictaUser()` in `AdminWorkspace`.
+- `createDictaUser()` stayed in `AdminWorkspace`.
+- `saveProfileAccess()` stayed in `AdminWorkspace`.
+- `onUpdateProfileAccess(...)` did not move.
+- Auth headers were not changed.
+- Supabase access behavior was not changed.
+- Security-event behavior was not changed.
+- localStorage import/export behavior was not changed.
+- `importInputRef` stayed in `AdminWorkspace`.
+
+Impact:
+
+- AdminWorkspace pass baseline: `12,882` App.tsx lines at `f5e915b24c9bbbcbf29cc8362ef6325e90895952`.
+- Current post-pass size: `12,570` App.tsx lines.
+- Net App.tsx reduction: `312` lines.
+- AdminWorkspace now acts primarily as an orchestration layer for state and sensitive handlers.
+
+Known follow-ups:
+
+- Improve `AdminSessionInventoryCard` typing by moving shared session/admin types to a stable module. The extraction intentionally avoided exporting `StoredSession` from `App.tsx` during the UI pass.
+- Consider shared admin formatting helpers only if byte/date formatter duplication starts causing maintenance friction.
+- Consider an Admin state hook only as a separate refactor after the UI modularization remains stable.
+
+Stop condition:
+
+- Do not reopen Admin UI extraction unless there is a regression, a focused type cleanup, or a deliberate second pass on admin state management.
+
+### 6. SessionDashboard
+
+Boundary: dashboard UI and derived session analytics display.
+
 Status: next candidate.
 
-Admin workspace is the next likely high-value modularization area after OpenRouter. Extract admin rendering separately from OpenRouter. Keep `api/admin/users.js`, `api/_securityEvents.js`, Supabase access behavior, auth headers, and security-event behavior unchanged.
+`SessionDashboard` is the next likely large UI-heavy block after `AdminWorkspace` in `src/App.tsx`.
 
 Recommended first step:
 
-- Create or update a dedicated admin modularization plan before moving code.
-- Identify UI-only admin sections that can be extracted without changing Supabase calls, access gating, profile mutation behavior, file import/export behavior, or security-event logging.
+- Create a dedicated docs-only plan before moving code.
+- Measure its size and dependencies.
+- Identify subcomponents and a safe extraction order.
+- Leave metric derivation and helper movement in `App.tsx` initially if moving them creates risk.
+
+Recommended plan file:
+
+```text
+docs/session-dashboard-modularization.md
+```
+
+Do not begin `SessionDashboard` extraction until that plan exists.
 
 ## Per-patch checklist
 
