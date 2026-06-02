@@ -310,9 +310,15 @@ Boundary: adaptive dashboard UI and profile/debug display.
 
 Status: recommended analysis candidate only.
 
+Initial docs-only plan:
+
+```text
+docs/adaptive-workspace-modularization.md
+```
+
 Recommended first step:
 
-- Create a dedicated docs-only plan before moving code.
+- Use the dedicated docs-only plan before moving code.
 - Measure its size and dependencies.
 - Identify subcomponents and a safe extraction order.
 - Keep adaptive behavior and `(inputMode, language)` semantics untouched.
@@ -325,6 +331,12 @@ docs/adaptive-workspace-modularization.md
 ```
 
 Do not begin `AdaptiveBenchmarkWorkspace` extraction until that plan exists.
+
+Recommended next patch:
+
+- Prepare narrow adaptive workspace UI types and view helpers first.
+- Keep app-owned callbacks, benchmark persistence, selected profile state, and session-history-dependent helpers in `App.tsx`.
+- Do not move adaptive controller updates, benchmark write paths, localStorage, sync, or feedback generation.
 
 ## Per-patch checklist
 
