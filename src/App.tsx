@@ -124,6 +124,7 @@ import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { AdminHeader } from './components/admin/AdminHeader';
+import { AdminKpiGrid } from './components/admin/AdminKpiGrid';
 import {
   OPENROUTER_GENERATED_SCRIPT_KEY,
   OPENROUTER_GENERATED_VARIANTS_KEY,
@@ -9107,17 +9108,7 @@ function AdminWorkspace({
 
       {exportMessage ? <p className="success">{exportMessage}</p> : null}
 
-      <div className="admin-kpi-grid">
-        <Metric label="Sessions" value={String(summary.sessionCount)} />
-        <Metric label="Finished" value={String(summary.finishedSessions)} />
-        <Metric label="LocalStorage" value={formatBytes(summary.dictaLocalStorageBytes)} />
-        <Metric label="Sync" value={formatSupabaseSyncState(syncStatus)} />
-        <Metric label="Transcript words" value={String(summary.totalTranscriptWords)} />
-        <Metric label="Telemetry samples" value={String(summary.telemetrySamples)} />
-        <Metric label="Actions" value={String(summary.telemetryActions)} />
-        <Metric label="TTS chunks" value={String(summary.ttsChunks)} />
-        <Metric label="Audio refs" value={String(summary.blobAudioRefs + summary.remoteAudioRefs)} />
-      </div>
+      <AdminKpiGrid summary={summary} syncStatus={syncStatus} />
 
       <div className="admin-grid">
         {visibleProfiles.length > 0 ? (
