@@ -6,10 +6,10 @@ Active incremental extraction. Move only one UI-only runtime card per patch.
 
 The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
 
-Current `src/App.tsx` size on `main` after the Kokoro setup card extraction pass:
+Current `src/App.tsx` size on `main` after the LiveMetricsDock extraction pass:
 
 ```text
-10,437 lines
+10,289 lines
 ```
 
 Completed runtime card extractions:
@@ -31,12 +31,14 @@ Input4SetupCard extraction completed in the implementation commit reported in th
 BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
 
 KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
+
+LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
 ```
 
 Current next candidate:
 
 ```text
-src/components/runtime-workspaces/LiveMetricsDock.tsx
+None selected. Run a fresh runtime render measurement before choosing another extraction.
 ```
 
 ## Scope
@@ -359,7 +361,7 @@ KokoroSetupCard extraction completed in the implementation commit reported in th
 
 ### 10. Extract bottom live metrics / insights only after runtime workspaces are stable
 
-Status: selected as the next UI-only candidate.
+Status: complete.
 
 Possible target:
 
@@ -368,6 +370,12 @@ src/components/runtime-workspaces/LiveMetricsDock.tsx
 ```
 
 This area uses live range state, last-session summaries, insights fallback reports, and workspace-mode-dependent bottom player display. Extract after smaller runtime cards are stable.
+
+Completed reference:
+
+```text
+LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
+```
 
 ## Validation requirements
 
@@ -400,4 +408,4 @@ Before moving code, run a local measurement pass to map the exact line ranges fo
 - Input #4/CosyVoice branch;
 - bottom live metrics/insights branch.
 
-Then extract `LiveMetricsDock` in a dedicated UI-only commit.
+Then choose the next extraction only after a fresh measurement shows a cohesive UI-only boundary.

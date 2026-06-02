@@ -128,6 +128,7 @@ import { Input4SetupCard } from './components/runtime-workspaces/Input4SetupCard
 import { KokoroPracticeCard } from './components/runtime-workspaces/KokoroPracticeCard';
 import { KokoroSetupCard } from './components/runtime-workspaces/KokoroSetupCard';
 import { KokoroSourceCard } from './components/runtime-workspaces/KokoroSourceCard';
+import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
   AdaptiveAdapterCardConfig,
@@ -210,7 +211,6 @@ import {
 import {
   buildRangeSummaryForLanguage,
   findLastSessionForLanguage,
-  rangeLabel,
   resolveSessionLanguage,
   type MetricsLanguageView,
   type MetricsRangeView,
@@ -8258,185 +8258,37 @@ function App() {
           </section>
         </section>
       </section>
-      <section className="bottom-metrics-dock">
-        <div className="bottom-metrics-inner">
-          <div className={`bottom-metrics-top ${insightsCollapsed ? 'bottom-metrics-top-collapsed' : ''}`}>
-            <div className="metrics-header bottom-metrics-header live-metrics-section live-metrics-section-header">
-              <h2>Insights</h2>
-              <div className="live-metrics-language-tabs" role="tablist" aria-label="Live metrics language">
-                {SUPPORTED_LANGUAGES.map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    className={`live-metrics-language-tab ${metricsLanguageView === code ? 'live-metrics-language-tab-active' : ''}`}
-                    onClick={() => setMetricsLanguageView(code)}
-                    aria-pressed={metricsLanguageView === code}
-                    title={`Live Metrics for ${LANGUAGE_LABELS[code]}`}
-                  >
-                    {code.toUpperCase()}
-                  </button>
-                  ))}
-              </div>
-              <span className={`trend trend-${trend}`}>
-                {trend === 'improving' ? 'Improving' : trend === 'declining' ? 'Needs adjustment' : 'Stable'}
-              </span>
-              <div className="live-metrics-input-tabs" role="tablist" aria-label="Adaptive report input">
-                {insightsDiagnosticInputOptions.map((option) => (
-                  <button
-                    key={option.inputMode}
-                    type="button"
-                    className={`live-metrics-input-tab ${insightsDiagnosticInputMode === option.inputMode ? 'live-metrics-input-tab-active' : ''}`}
-                    onClick={() => setInsightsDiagnosticInputMode(option.inputMode)}
-                    aria-pressed={insightsDiagnosticInputMode === option.inputMode}
-                    title={`${formatInputModeLabel(option.inputMode)} report`}
-                  >
-                    <span>{option.label}</span>
-                    <small>{formatInputModeLabel(option.inputMode)}</small>
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="secondary-button live-metrics-report-button"
-                onClick={() => void copyInsightsDiagnosticPackage()}
-                title={`Copy user progress summary + adaptive system diagnosis + technical debug data for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`}
-              >
-                Copy insights report
-              </button>
-              <button
-                type="button"
-                className="secondary-button live-metrics-collapse-button"
-                onClick={() => setInsightsCollapsed((value) => !value)}
-                aria-expanded={!insightsCollapsed}
-                aria-label={insightsCollapsed ? 'Expand insights panel' : 'Minimize insights panel'}
-                title={insightsCollapsed ? 'Expand' : 'Minimize'}
-              >
-                <span
-                  className={`live-metrics-collapse-icon ${insightsCollapsed ? 'live-metrics-collapse-icon-collapsed' : ''}`}
-                  aria-hidden="true"
-                >
-                  ⌃
-                </span>
-              </button>
-            </div>
-            {insightsDiagnosticMessage ? (
-              <p className={`insights-diagnostic-message ${insightsDiagnosticMessage.toLowerCase().includes('could not') ? 'error' : 'success'}`}>
-                {insightsDiagnosticMessage}
-              </p>
-            ) : null}
-            {insightsDiagnosticFallbackReport ? (
-              <div className="insights-report-fallback">
-                <div className="insights-report-fallback-header">
-                  <strong>Adaptive report ready</strong>
-                  <button type="button" className="secondary-button" onClick={selectInsightsDiagnosticFallbackReport}>
-                    Select report
-                  </button>
-                </div>
-                <textarea
-                  id="insights-diagnostic-fallback-report"
-                  readOnly
-                  value={insightsDiagnosticFallbackReport}
-                  rows={8}
-                  aria-label="Generated adaptive user and system report"
-                />
-              </div>
-            ) : null}
-            {!insightsCollapsed && (workspaceMode === 'tts' || workspaceMode === 'kokoro') ? (
-              <div className="bottom-metrics-player tts-bottom-player live-metrics-section live-metrics-section-player">
-                <span className="bottom-metrics-player-label">{workspaceMode === 'kokoro' ? 'Kokoro local' : 'Browser TTS'}</span>
-                <span>
-                  {workspaceMode === 'kokoro'
-                    ? kokoroCurrentChunk
-                      ? formatTtsPacingMode(kokoroPacingMode)
-                      : kokoroStatus
-                    : ttsCurrentChunk
-                      ? formatTtsPacingMode(ttsPacingMode)
-                      : ttsStatus}
-                </span>
-              </div>
-            ) : null}
-          </div>
-
-          {!insightsCollapsed ? (
-            <>
-              <section className="bottom-summary-section live-metrics-section live-metrics-section-last">
-                <div className="bottom-summary-header">
-                  <h3>Last Session ({metricsLanguageView.toUpperCase()})</h3>
-                </div>
-                {!lastSessionForLanguage ? <p className="hint">No sessions found for this language yet.</p> : null}
-                <div className="bottom-summary-grid">
-                  <Metric label="Name" value={lastSessionForLanguage?.name ?? '—'} />
-                  <Metric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode) : '—'} />
-                  <Metric label="Difficulty" value={lastSessionForLanguage?.difficulty ? formatDifficultyLabel(lastSessionForLanguage.difficulty) : '—'} />
-                  <Metric
-                    label="Score"
-                    value={lastSessionForLanguage ? String(lastSessionForLanguage.metrics.score) : '—'}
-                    title={lastSessionScoreHelpText}
-                  />
-                  <Metric label="Accuracy" value={lastSessionForLanguage ? `${lastSessionForLanguage.metrics.accuracy.toFixed(1)}%` : '—'} />
-                  <Metric
-                    label="Duration"
-                    value={
-                      typeof lastSessionForLanguage?.voiceDurationSec === 'number'
-                        ? formatDuration(lastSessionForLanguage.voiceDurationSec)
-                        : '—'
-                    }
-                  />
-                  <Metric label="Updated" value={lastSessionForLanguage ? formatSessionDate(lastSessionForLanguage.updatedAt) : '—'} />
-                </div>
-              </section>
-
-              <section className="bottom-summary-section today-summary-section live-metrics-section live-metrics-section-period">
-                <div className="bottom-summary-header">
-                  <h3>{rangeLabel(metricsRangeView)} ({metricsLanguageView.toUpperCase()})</h3>
-                  <div className="live-metrics-range-tabs" role="tablist" aria-label="Live metrics range">
-                    {([
-                      ['today', 'Today'],
-                      ['week', 'Week'],
-                      ['twoWeeks', '2 Weeks'],
-                      ['threeWeeks', '3 Weeks'],
-                      ['month', 'Month'],
-                    ] as const).map(([code, label]) => (
-                      <button
-                        key={code}
-                        type="button"
-                        className={`live-metrics-range-tab ${metricsRangeView === code ? 'live-metrics-range-tab-active' : ''}`}
-                        onClick={() => setMetricsRangeView(code)}
-                        aria-pressed={metricsRangeView === code}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {languageTodaySummary.sessionsInRange.length === 0 ? <p className="hint">No sessions in this period for this language.</p> : null}
-                <div className="today-summary-grid">
-                  <Metric label="Sessions" value={String(languageTodaySummary.sessionsInRange.length)} />
-                  <Metric label="Duration" value={formatDuration(languageTodaySummary.durationSeconds)} />
-                  <Metric label="Avg points" value={languageTodaySummary.avgPoints !== null ? languageTodaySummary.avgPoints.toFixed(1) : '—'} />
-                  <Metric label="Avg score" value={languageTodaySummary.avgScore !== null ? languageTodaySummary.avgScore.toFixed(1) : '—'} />
-                  <Metric label="Avg accuracy" value={languageTodaySummary.avgAccuracy !== null ? `${languageTodaySummary.avgAccuracy.toFixed(1)}%` : '—'} />
-                  <Metric label="Avg WPM" value={languageTodaySummary.avgWpm !== null ? languageTodaySummary.avgWpm.toFixed(1) : '—'} />
-                </div>
-                <div className="today-chart-row">
-                  {languageTodaySummary.days.map((item) => (
-                    <div key={item.label} className="today-chart-bar">
-                      <span className="today-chart-label">{item.label}</span>
-                      <div className="today-chart-track">
-                        <div
-                          className="today-chart-fill"
-                          style={{ width: `${Math.round((item.count / languageTodaySummary.maxDayCount) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </>
-          ) : null}
-
-        </div>
-      </section>
+      <LiveMetricsDock
+        insightsCollapsed={insightsCollapsed}
+        metricsLanguageView={metricsLanguageView}
+        metricsRangeView={metricsRangeView}
+        trend={trend}
+        insightsDiagnosticInputOptions={insightsDiagnosticInputOptions}
+        insightsDiagnosticInputMode={insightsDiagnosticInputMode}
+        insightsDiagnosticMessage={insightsDiagnosticMessage}
+        insightsDiagnosticFallbackReport={insightsDiagnosticFallbackReport}
+        workspaceMode={workspaceMode}
+        hasKokoroCurrentChunk={Boolean(kokoroCurrentChunk)}
+        kokoroPacingMode={kokoroPacingMode}
+        kokoroStatus={kokoroStatus}
+        hasTtsCurrentChunk={Boolean(ttsCurrentChunk)}
+        ttsPacingMode={ttsPacingMode}
+        ttsStatus={ttsStatus}
+        lastSessionForLanguage={lastSessionForLanguage}
+        lastSessionScoreHelpText={lastSessionScoreHelpText}
+        languageTodaySummary={languageTodaySummary}
+        onChangeMetricsLanguageView={setMetricsLanguageView}
+        onChangeMetricsRangeView={setMetricsRangeView}
+        onChangeInsightsDiagnosticInputMode={setInsightsDiagnosticInputMode}
+        onCopyInsightsDiagnosticPackage={copyInsightsDiagnosticPackage}
+        onToggleInsightsCollapsed={() => setInsightsCollapsed((value) => !value)}
+        onSelectInsightsDiagnosticFallbackReport={selectInsightsDiagnosticFallbackReport}
+        formatInputModeLabel={formatInputModeLabel}
+        formatSessionInputMode={formatSessionInputMode}
+        formatDuration={formatDuration}
+        formatSessionDate={formatSessionDate}
+        formatTtsPacingMode={formatTtsPacingMode}
+      />
     </main>
   );
 }

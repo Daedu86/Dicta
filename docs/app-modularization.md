@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the Kokoro setup card extraction pass:
+Current `src/App.tsx` size on `main` after the LiveMetricsDock extraction pass:
 
 ```text
-10,437 lines
+10,289 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -390,6 +390,7 @@ src/components/runtime-workspaces/KokoroPracticeCard.tsx
 src/components/runtime-workspaces/Input4SetupCard.tsx
 src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
 src/components/runtime-workspaces/KokoroSetupCard.tsx
+src/components/runtime-workspaces/LiveMetricsDock.tsx
 ```
 
 Completed references:
@@ -411,15 +412,17 @@ Input4SetupCard extraction completed in the implementation commit reported in th
 BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
 
 KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
+
+LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
 ```
 
 Selected next candidate:
 
 ```text
-src/components/runtime-workspaces/LiveMetricsDock.tsx
+None selected. Run a fresh runtime render measurement before choosing another extraction.
 ```
 
-The live metrics dock should stay UI-only/presentational in the next extraction. App-owned live range state, session summaries, insights fallback reports, adaptive updates, persistence, and sync stay in `src/App.tsx`.
+The runtime workspace pass has completed the currently selected UI-only cards. Future runtime work should start with a fresh measurement and should still keep playback, adaptive updates, local-dev sidecars, persistence, and submission behavior in `src/App.tsx`.
 
 Recommended follow-up:
 
