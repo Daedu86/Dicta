@@ -60,8 +60,8 @@ Recommended order:
 3. `OpenRouterPromptControls` - done.
 4. `OpenRouterModelSelector` - done.
 5. `OpenRouterGenerateSummary` - done.
-6. `OpenRouterGenerateActionPanel` - next.
-7. `OpenRouterGeneratedOutputPanel`.
+6. `OpenRouterGenerateActionPanel` - done.
+7. `OpenRouterGeneratedOutputPanel` - next.
 8. `OpenRouterSlotCard`.
 9. `OpenRouterWorkspace`.
 
@@ -191,42 +191,39 @@ Preserved behavior:
 
 This extraction did not move prompt construction, generation, durable jobs, polling, validation, localStorage, API routes, access checks, adaptive behavior, or training UI.
 
-## Candidate 1: OpenRouterGenerateActionPanel
+## Completed: OpenRouterGenerateActionPanel
 
 Boundary: browser UI action display + callback.
 
-Why next:
+Status: done.
 
-- It is a small, focused action block.
-- It only renders the generate button and current model hint.
-- It should not own generation requests, durable jobs, polling, prompt construction, or slot persistence.
+File:
 
-Likely source block:
-
-```tsx
-<div className="admin-actions">
+```text
+src/components/openrouter/OpenRouterGenerateActionPanel.tsx
 ```
 
-near the generate button inside `openrouter-generate-section`.
+Extracted from the generate-section action area inside `OpenRouterWorkspace`.
 
-Likely responsibilities:
+Preserved behavior:
 
-- render the generate button;
-- render Requesting, Generating, or Generate slot label;
-- render the `Using: model` or `Set a default model first (Section #2).` hint;
-- call the provided generate callback.
+- generate button wrapper and class names;
+- disabled state owned by `OpenRouterWorkspace`;
+- Requesting, Generating, and Generate slot-label text;
+- current-model hint and missing-default-model hint;
+- generate callback ownership outside the presentational component.
 
-Rules:
+This extraction did not move generation requests, durable jobs, polling, prompt construction, validation, slot persistence, localStorage, API routes, access checks, adaptive behavior, or training UI.
 
-- Do not move `generateOpenRouterSlot`.
-- Do not move `activeGenerateSlotId` ownership.
-- Do not move busy/job/model calculations.
-- Pass a prepared `onGenerate` callback and explicit labels/booleans.
-- Preserve button class, disabled state, and visible text exactly.
-
-## Candidate 2: OpenRouterGeneratedOutputPanel
+## Candidate 1: OpenRouterGeneratedOutputPanel
 
 Boundary: browser UI display only.
+
+Why next:
+
+- It is the remaining generated-output display area inside the generate workflow.
+- It can stay presentational if validation view data is prepared in `OpenRouterWorkspace`.
+- It should not own script validation, create/import behavior, jobs, or persistence.
 
 Likely responsibilities:
 
@@ -239,8 +236,9 @@ Rules:
 - Do not move script validation unless a later dedicated patch proves it is safe.
 - Prefer passing prepared validation view data from `OpenRouterWorkspace`.
 - Do not move create/import behavior.
+- Preserve text area labels, rows, and read-only behavior.
 
-## Candidate 3: OpenRouterSlotCard
+## Candidate 2: OpenRouterSlotCard
 
 Boundary: browser UI display + callbacks.
 
@@ -258,7 +256,7 @@ Rules:
 - Pass callbacks from `App.tsx` or `OpenRouterWorkspace`.
 - Preserve slot ids and labels exactly.
 
-## Candidate 4: OpenRouterWorkspace
+## Candidate 3: OpenRouterWorkspace
 
 Boundary: browser UI composition.
 
