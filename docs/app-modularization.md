@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the AdminWorkspace pass:
+Current `src/App.tsx` size on `main` after the SessionDashboard pass:
 
 ```text
-12,570 lines
+12,102 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -32,6 +32,12 @@ Net reduction in `src/App.tsx` from the AdminWorkspace pass:
 ```
 
 This is a net App.tsx reduction after adding imports and keeping the remaining sensitive orchestration in place. Extracted component source now lives under `src/components/admin/`, so repository line count increased while `App.tsx` became smaller and more compositional.
+
+Net reduction in `src/App.tsx` from the SessionDashboard pass:
+
+```text
+466 lines
+```
 
 ## Rules
 
@@ -259,24 +265,66 @@ Stop condition:
 
 Boundary: dashboard UI and derived session analytics display.
 
-Status: next candidate.
+Status: complete enough.
 
-`SessionDashboard` is the next likely large UI-heavy block after `AdminWorkspace` in `src/App.tsx`.
+`SessionDashboard` now lives outside `src/App.tsx` under:
+
+```text
+src/components/session-dashboard/SessionDashboard.tsx
+```
+
+Detailed plan and closeout:
+
+```text
+docs/session-dashboard-modularization.md
+```
+
+Completed extraction:
+
+- Moved the inline `SessionDashboard` implementation out of `src/App.tsx`.
+- Moved dashboard-only KPI, transcript review, chart card, loading state, widget copy/help, transcript review, adaptive dashboard goals, coaching insights, KPI help text, and chart help text logic with the component.
+- Moved dashboard chart lazy imports with the dashboard module.
+- Kept app-level session state, workspace routing, and navigation callbacks in `App.tsx`.
+- Kept shared session formatters in `App.tsx` and passed them as explicit props.
+- Kept shared `Metric` and `HelpIcon` in `App.tsx` because other workspaces still use them.
+
+Preserved behavior:
+
+- Dashboard visible text, class names, visual order, and chart props stayed unchanged.
+- Scoring, points, transcript review logic, telemetry cloning, adaptive dashboard goal derivation, and coaching insights stayed equivalent.
+- Training UI, OpenRouter UI, Admin UI, `api/*`, Supabase/auth/security, localStorage persistence, session sync, and adaptive core were not changed.
+
+Impact:
+
+- Starting size for this pass: about `12,568` App.tsx lines.
+- Current post-pass size: about `12,102` App.tsx lines.
+- Net App.tsx reduction: about `466` lines.
+
+Stop condition:
+
+- Do not split the dashboard further unless it gains new responsibilities or a concrete maintainability issue appears.
+
+### 7. AdaptiveBenchmarkWorkspace
+
+Boundary: adaptive dashboard UI and profile/debug display.
+
+Status: recommended analysis candidate only.
 
 Recommended first step:
 
 - Create a dedicated docs-only plan before moving code.
 - Measure its size and dependencies.
 - Identify subcomponents and a safe extraction order.
-- Leave metric derivation and helper movement in `App.tsx` initially if moving them creates risk.
+- Keep adaptive behavior and `(inputMode, language)` semantics untouched.
+- Leave metric derivation/helper movement in `App.tsx` initially if moving them creates risk.
 
 Recommended plan file:
 
 ```text
-docs/session-dashboard-modularization.md
+docs/adaptive-workspace-modularization.md
 ```
 
-Do not begin `SessionDashboard` extraction until that plan exists.
+Do not begin `AdaptiveBenchmarkWorkspace` extraction until that plan exists.
 
 ## Per-patch checklist
 
