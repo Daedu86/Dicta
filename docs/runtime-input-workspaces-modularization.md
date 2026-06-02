@@ -38,8 +38,16 @@ LiveMetricsDock extraction completed in the implementation commit reported in th
 Current next candidate:
 
 ```text
-None selected. Run a fresh runtime render measurement before choosing another extraction.
+src/components/runtime-workspaces/AudioInputSetupCard.tsx
 ```
+
+Measurement reference:
+
+```text
+docs/runtime-render-measurement.md
+```
+
+The fresh measurement recommends `AudioInputSetupCard` as the next lowest-risk runtime UI-only extraction. It also identifies session creation/import, Input #1 runtime audio cards, adaptive advanced diagnostics, and leaderboard as possible later candidates with higher or separate-plan risk.
 
 ## Scope
 
@@ -377,6 +385,45 @@ Completed reference:
 LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
 ```
 
+### 11. Extract Input #1 audio setup sidebar card
+
+Status: selected as the next UI-only candidate after the fresh measurement.
+
+Measurement reference:
+
+```text
+docs/runtime-render-measurement.md
+```
+
+Target:
+
+```text
+src/components/runtime-workspaces/AudioInputSetupCard.tsx
+```
+
+Scope:
+
+- audio file picker;
+- audio URL field and load button;
+- transcription progress display;
+- transcript JSON file picker;
+- transcription language selector;
+- Get transcription button;
+- difficulty selector;
+- input lock box;
+- audio/transcript success messages;
+- setup error display.
+
+Keep in `App.tsx`:
+
+- audio file loading;
+- audio URL loading;
+- transcript upload/parsing;
+- transcription generation;
+- difficulty state updates;
+- lock behavior;
+- persistence/sync.
+
 ## Validation requirements
 
 For every code patch:
@@ -400,12 +447,4 @@ Stop and reconsider if:
 
 ## Recommended next action
 
-Before moving code, run a local measurement pass to map the exact line ranges for:
-
-- Input setup/sidebar branch;
-- browser TTS workspace branch;
-- Kokoro workspace branch;
-- Input #4/CosyVoice branch;
-- bottom live metrics/insights branch.
-
-Then choose the next extraction only after a fresh measurement shows a cohesive UI-only boundary.
+Extract `AudioInputSetupCard` in a dedicated UI-only commit.
