@@ -123,6 +123,7 @@ import {
 } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
+import { OpenRouterGenerateActionPanel } from './components/openrouter/OpenRouterGenerateActionPanel';
 import { OpenRouterGenerateSummary } from './components/openrouter/OpenRouterGenerateSummary';
 import { OpenRouterGenerationStatusPanel } from './components/openrouter/OpenRouterGenerationStatusPanel';
 import { OpenRouterModelSelector } from './components/openrouter/OpenRouterModelSelector';
@@ -10166,21 +10167,14 @@ function OpenRouterWorkspace({
               />
             </OpenRouterGenerateSummary>
 
-            <div className="admin-actions">
-              <button
-                type="button"
-                className="secondary-button"
-                disabled={activeGenerateSlotBusy || !activeGenerateSlotModel}
-                onClick={() => void generateOpenRouterSlot(activeGenerateSlotId)}
-              >
-                {generateBusySlots[activeGenerateSlotId]
-                  ? 'Requesting...'
-                  : activeGenerateSlotJob
-                    ? 'Generating...'
-                    : `Generate ${getOpenRouterSlotLabel(activeGenerateSlotId)}`}
-              </button>
-              <span className="hint">{activeGenerateSlotModel ? `Using: ${activeGenerateSlotModel}` : 'Set a default model first (Section #2).'}</span>
-            </div>
+            <OpenRouterGenerateActionPanel
+              disabled={activeGenerateSlotBusy || !activeGenerateSlotModel}
+              requesting={Boolean(generateBusySlots[activeGenerateSlotId])}
+              generating={Boolean(activeGenerateSlotJob)}
+              slotLabel={getOpenRouterSlotLabel(activeGenerateSlotId)}
+              model={activeGenerateSlotModel}
+              onGenerate={() => void generateOpenRouterSlot(activeGenerateSlotId)}
+            />
             <OpenRouterGenerationStatusPanel
               slotLabel={getOpenRouterSlotLabel(activeGenerateSlotId)}
               jobNotice={activeGenerateSlotJobNotice}
