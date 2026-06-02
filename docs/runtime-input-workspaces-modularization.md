@@ -6,10 +6,10 @@ Active incremental extraction. Move only one UI-only runtime card per patch.
 
 The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
 
-Current `src/App.tsx` size on `main` after the Browser TTS source/practice card extraction pass:
+Current `src/App.tsx` size on `main` after the Kokoro source card extraction pass:
 
 ```text
-10,819 lines
+about 10,769 lines
 ```
 
 Completed runtime card extractions:
@@ -20,12 +20,15 @@ Extract BrowserTtsSourceCard component
 
 a7a75e01edd6a885a00a1b7fcc41833c90feeb91
 Extract BrowserTtsPracticeCard component
+
+8f2d4886ef44998f4c953100a000decacc777e16
+Extract Kokoro source card
 ```
 
 Current next candidate:
 
 ```text
-src/components/runtime-workspaces/KokoroSourceCard.tsx
+src/components/runtime-workspaces/KokoroPracticeCard.tsx
 ```
 
 ## Scope
@@ -185,7 +188,7 @@ Extract BrowserTtsPracticeCard component
 
 ### 5. Extract Kokoro runtime source card
 
-Status: selected as the next UI-only candidate.
+Status: complete.
 
 Target:
 
@@ -212,15 +215,43 @@ Keep in `App.tsx`:
 - adaptive updates;
 - persistence/sync.
 
-### 6. Extract Kokoro practice card only after KokoroSourceCard is stable
+Completed reference:
 
-Possible target:
+```text
+8f2d4886ef44998f4c953100a000decacc777e16
+Extract Kokoro source card
+```
+
+### 6. Extract Kokoro practice card
+
+Status: selected as the next UI-only candidate.
+
+Target:
 
 ```text
 src/components/runtime-workspaces/KokoroPracticeCard.tsx
 ```
 
-Keep local service checks, playback handlers, sidecar calls, pacing behavior, replay controls, and submission logic in `App.tsx`.
+Scope:
+
+- Kokoro on/off toggle row;
+- Start/Pause/Resume/Replay/Rewind/Slower/Faster/Reset pace controls;
+- typing textarea;
+- runtime metrics panel usage;
+- submit/reset/action buttons;
+- summary metrics.
+
+Keep in `App.tsx`:
+
+- local service checks;
+- playback handlers;
+- sidecar calls;
+- pacing behavior;
+- replay/rewind behavior;
+- submission logic;
+- adaptive updates;
+- OpenRouter access/quotas;
+- persistence/sync.
 
 ### 7. Extract Input #4/CosyVoice setup/runtime cards only after TTS/Kokoro are stable
 
@@ -267,4 +298,4 @@ Before moving code, run a local measurement pass to map the exact line ranges fo
 - Input #4/CosyVoice branch;
 - bottom live metrics/insights branch.
 
-Then extract `KokoroSourceCard` in a dedicated UI-only commit.
+Then extract `KokoroPracticeCard` in a dedicated UI-only commit.
