@@ -121,6 +121,7 @@ import {
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
+import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
 import { BrowserTtsSourceCard } from './components/runtime-workspaces/BrowserTtsSourceCard';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
@@ -7805,93 +7806,40 @@ function App() {
                     formatTtsPacingMode={formatTtsPacingMode}
                   />
 
-                  <section className="panel workspace-panel tts-practice-panel">
-                    <div className="typing-panel-header">
-                      <h3>Type what you hear</h3>
-                      {keyboardProfileLabel ? (
-                        <span className={`es-layout-indicator ${keyboardProfile === 'de-keyboard' ? 'de-layout-indicator' : ''}`}>
-                          {keyboardProfileLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="tts-source-actions">
-                      <button type="button" className="secondary-button" onClick={playTts} disabled={!ttsHasText || ttsStatus === 'playing'}>
-                        Play
-                      </button>
-                      <button type="button" className="secondary-button" onClick={pauseTts} disabled={ttsStatus !== 'playing'}>
-                        Pause
-                      </button>
-                      <button type="button" className="secondary-button" onClick={resumeTts} disabled={ttsStatus !== 'paused'}>
-                        Resume
-                      </button>
-                      <button type="button" className="secondary-button" onClick={() => stopTtsPlayback('stop')} disabled={ttsStatus === 'idle'}>
-                        Stop
-                      </button>
-                    </div>
-                    <textarea
-                      value={ttsPracticeText}
-                      onChange={(e) => onTtsPracticeChange(e.target.value)}
-                      onKeyDown={onTtsPracticeKeyDown}
-                      placeholder={activeSessionFinished ? 'Session submitted.' : 'Type the TTS text here...'}
-                      readOnly={activeSessionFinished}
-                      rows={12}
-                    />
-                    <RuntimeMetricsPanel
-                      controllerState={controllerState}
-                      rate={rate}
-                      lagSec={lagSec}
-                      lagWords={lagWords}
-                      wpm={wpm}
-                      accuracy={ttsVisibleAccuracy}
-                    />
-                    <div className="tts-submit-row">
-                      <button type="button" onClick={() => submitTtsSession()} disabled={!canSubmitTtsSession}>
-                        Submit statistics
-                      </button>
-                      <button type="button" className="secondary-button" onClick={openAdaptiveExportsForActiveInput}>
-                        Adaptive Pace Layer
-                      </button>
-                      {desktopOpenRouterGenerationButtons.map((button) => (
-                        <div key={button.id} className="tts-generation-button-row">
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={button.onClick}
-                            disabled={button.disabled}
-                            title={button.title}
-                          >
-                            {button.label}
-                          </button>
-                          {button.helpText ? <HelpIcon tooltip={button.helpText} ariaLabel={`Help for ${button.label}`} /> : null}
-                        </div>
-                      ))}
-                      {openRouterAccessAllowed ? (
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={openOpenRouterGenerateForActiveInput}
-                          disabled={sessionQuotaStatus.blocked}
-                          title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.'}
-                        >
-                          New Custom Session
-                        </button>
-                      ) : null}
-                      <button type="button" className="secondary-button" onClick={() => resetSession()}>
-                        Reset
-                      </button>
-                    </div>
-                    {activeSessionFinished ? (
-                      <p className="success">
-                        {trainingSubmitMessage || 'TTS attempt submitted. Typing is locked until reset.'}
-                      </p>
-                    ) : null}
-                    <div className="tts-practice-summary">
-                      <Metric label="Correct" value={String(ttsPracticeEvaluation.matchedWords)} />
-                      <Metric label="Wrong" value={String(ttsPracticeEvaluation.extraWords)} />
-                      <Metric label="Missing" value={String(ttsPracticeMissing)} />
-                      <Metric label="Words typed" value={String(ttsPracticeWords.length)} />
-                    </div>
-                  </section>
+                  <BrowserTtsPracticeCard
+                    keyboardProfileLabel={keyboardProfileLabel}
+                    keyboardProfile={keyboardProfile}
+                    ttsStatus={ttsStatus}
+                    ttsHasText={ttsHasText}
+                    ttsPracticeText={ttsPracticeText}
+                    activeSessionFinished={activeSessionFinished}
+                    controllerState={controllerState}
+                    rate={rate}
+                    lagSec={lagSec}
+                    lagWords={lagWords}
+                    wpm={wpm}
+                    ttsVisibleAccuracy={ttsVisibleAccuracy}
+                    canSubmitTtsSession={canSubmitTtsSession}
+                    desktopOpenRouterGenerationButtons={desktopOpenRouterGenerationButtons}
+                    openRouterAccessAllowed={openRouterAccessAllowed}
+                    sessionQuotaStatus={sessionQuotaStatus}
+                    openRouterOfflineTitle={openRouterOfflineTitle}
+                    trainingSubmitMessage={trainingSubmitMessage}
+                    ttsPracticeMatchedWords={ttsPracticeEvaluation.matchedWords}
+                    ttsPracticeExtraWords={ttsPracticeEvaluation.extraWords}
+                    ttsPracticeMissing={ttsPracticeMissing}
+                    ttsPracticeWordsCount={ttsPracticeWords.length}
+                    onPlayTts={() => void playTts()}
+                    onPauseTts={pauseTts}
+                    onResumeTts={() => void resumeTts()}
+                    onStopTts={() => stopTtsPlayback('stop')}
+                    onTtsPracticeChange={onTtsPracticeChange}
+                    onTtsPracticeKeyDown={onTtsPracticeKeyDown}
+                    onSubmitTtsSession={() => submitTtsSession()}
+                    onOpenAdaptiveExportsForActiveInput={openAdaptiveExportsForActiveInput}
+                    onOpenOpenRouterGenerateForActiveInput={openOpenRouterGenerateForActiveInput}
+                    onResetSession={() => resetSession()}
+                  />
                 </div>
               </section>
             ) : workspaceMode === 'dashboard' && dashboardSession ? (

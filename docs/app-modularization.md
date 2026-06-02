@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the adaptive benchmark workspace extraction pass:
+Current `src/App.tsx` size on `main` after the Browser TTS source/practice card extraction pass:
 
 ```text
-10,919 lines
+10,819 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -370,7 +370,7 @@ src/components/adaptive-workspace/adaptiveWorkspaceViewHelpers.ts
 
 Boundary: runtime setup/sidebar panels and TTS/Kokoro/CosyVoice workspace UI still embedded in the main app render branch.
 
-Status: next candidate / planning only.
+Status: active incremental extraction.
 
 Dedicated plan:
 
@@ -380,11 +380,33 @@ docs/runtime-input-workspaces-modularization.md
 
 The next large remaining JSX is concentrated around input setup/sidebar UI, `workspaceMode === 'tts'`, `workspaceMode === 'kokoro'`, Input #4/CosyVoice cache controls, shared runtime practice controls, and the bottom live-metrics/insights area.
 
-Recommended first step:
+Completed runtime extraction:
+
+```text
+src/components/runtime-workspaces/BrowserTtsSourceCard.tsx
+```
+
+Completed reference:
+
+```text
+df96574bfb910ecdb0cf64bcd31e6253d961e017
+Extract BrowserTtsSourceCard component
+```
+
+Selected next candidate for this pass:
+
+```text
+src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
+```
+
+This component is UI-only/presentational. App-owned playback handlers, submit/reset logic, OpenRouter generation callbacks, adaptive updates, access/quotas, persistence, and sync stay in `src/App.tsx`.
+
+Recommended follow-up:
 
 - Use the dedicated plan before moving code.
-- Measure exact line ranges for input setup/sidebar, browser TTS workspace, Kokoro workspace, Input #4/CosyVoice workspace, and bottom live metrics/insights.
-- Start with the smallest UI-only runtime card, keeping playback, adaptive updates, local-dev sidecars, persistence, and submission behavior in `App.tsx`.
+- Keep future runtime patches to one cohesive UI-only card at a time.
+- Re-measure exact line ranges before touching Kokoro workspace, Input #4/CosyVoice workspace, input setup/sidebar, or bottom live metrics/insights.
+- Keep playback, adaptive updates, local-dev sidecars, persistence, and submission behavior in `App.tsx`.
 
 Stop condition:
 

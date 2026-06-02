@@ -2,14 +2,21 @@
 
 ## Status
 
-Planning only. Do not move code in this pass.
+Active incremental extraction. Move only one UI-only runtime card per patch.
 
-The next high-value area in `src/App.tsx` appears to be the runtime input workspace/render branch rather than another already-isolated top-level workspace.
+The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
 
-Current `src/App.tsx` size on `main` after the adaptive benchmark workspace extraction:
+Current `src/App.tsx` size on `main` after the Browser TTS source/practice card extraction pass:
 
 ```text
-10,919 lines
+10,819 lines
+```
+
+Completed runtime card extraction:
+
+```text
+df96574bfb910ecdb0cf64bcd31e6253d961e017
+Extract BrowserTtsSourceCard component
 ```
 
 ## Scope
@@ -68,6 +75,8 @@ Do not modify:
 
 Keep app-level state, audio engines, controllers, adaptive updates, persistence, and side effects in `App.tsx` unless a later plan explicitly proves a narrower safe boundary.
 
+New runtime workspace components must stay UI-only/presentational with explicit props. Keep handlers and state in `App.tsx`.
+
 ## Candidate extraction order
 
 Use small commits. Prefer UI-only components with explicit props.
@@ -94,7 +103,9 @@ Do not move playback logic.
 
 ### 3. Extract browser TTS source card
 
-Possible target:
+Status: complete.
+
+Target:
 
 ```text
 src/components/runtime-workspaces/BrowserTtsSourceCard.tsx
@@ -114,9 +125,18 @@ Keep handlers and state in `App.tsx` and pass them as props:
 - `stopTtsPlayback`
 - `seekTtsPlayback`
 
+Completed reference:
+
+```text
+df96574bfb910ecdb0cf64bcd31e6253d961e017
+Extract BrowserTtsSourceCard component
+```
+
 ### 4. Extract browser TTS practice card
 
-Possible target:
+Status: selected as the next UI-only candidate and extracted in the current pass.
+
+Target:
 
 ```text
 src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
@@ -130,6 +150,22 @@ Scope:
 - summary metrics.
 
 Keep evaluation/submission logic in `App.tsx`.
+
+Keep in `App.tsx`:
+
+- `playTts`
+- `pauseTts`
+- `resumeTts`
+- `stopTtsPlayback`
+- `submitTtsSession`
+- `resetSession`
+- `openAdaptiveExportsForActiveInput`
+- `openOpenRouterGenerateForActiveInput`
+- `desktopOpenRouterGenerationButtons`
+- evaluation/submission logic;
+- adaptive updates;
+- OpenRouter access/quotas;
+- persistence/sync.
 
 ### 5. Extract Kokoro runtime cards
 
