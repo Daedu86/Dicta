@@ -130,6 +130,7 @@ import { AdminMemberAccessCard } from './components/admin/AdminMemberAccessCard'
 import { AdminCreateUserCard } from './components/admin/AdminCreateUserCard';
 import { AdminManualInputSessionCard } from './components/admin/AdminManualInputSessionCard';
 import { AdminBrowserStorageCard } from './components/admin/AdminBrowserStorageCard';
+import { AdminProjectFilesCard } from './components/admin/AdminProjectFilesCard';
 import {
   OPENROUTER_GENERATED_SCRIPT_KEY,
   OPENROUTER_GENERATED_VARIANTS_KEY,
@@ -9178,36 +9179,10 @@ function AdminWorkspace({
           onImportFileChange={onImportFileChange}
         />
 
-        <section className="dashboard-card admin-card">
-          <div className="admin-card-header">
-            <div>
-              <h3>Project files</h3>
-              <p>{fileInventory ? fileInventory.projectRoot : 'Known dev folders exposed by the local Vite server.'}</p>
-            </div>
-          </div>
-          {fileInventoryError ? <p className="hint">{fileInventoryError}</p> : null}
-          <div className="admin-table">
-            <div className="admin-table-row admin-table-header">
-              <span>Folder</span>
-              <span>Files</span>
-              <span>Size</span>
-            </div>
-            {(fileInventory?.folders ?? []).map((folder) => (
-              <div key={folder.relativePath} className="admin-table-row">
-                <span>
-                  {folder.label}
-                  <small>{folder.exists ? folder.absolutePath : 'Not found'}</small>
-                </span>
-                <span>
-                  {folder.exists
-                    ? `${folder.fileCount} files, ${folder.wavCount} wav, ${folder.jsonCount} json`
-                    : '0 files'}
-                </span>
-                <span>{folder.exists ? formatBytes(folder.totalBytes) : 'n/a'}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+        <AdminProjectFilesCard
+          fileInventory={fileInventory}
+          fileInventoryError={fileInventoryError}
+        />
       </div>
 
       <section className="dashboard-card admin-card">
