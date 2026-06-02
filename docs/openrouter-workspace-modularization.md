@@ -61,9 +61,10 @@ Recommended order:
 4. `OpenRouterModelSelector` - done.
 5. `OpenRouterGenerateSummary` - done.
 6. `OpenRouterGenerateActionPanel` - done.
-7. `OpenRouterGeneratedOutputPanel` - next.
-8. `OpenRouterSlotCard`.
-9. `OpenRouterWorkspace`.
+7. `OpenRouterGeneratedOutputPanel` - done.
+8. Re-measure `App.tsx` and `src/components/openrouter/*.tsx` before deciding the next extraction.
+9. `OpenRouterSlotCard` - evaluate after measurement.
+10. `OpenRouterWorkspace` - later.
 
 Do not extract all of these in one patch. Each step should be committed and validated separately.
 
@@ -215,30 +216,42 @@ Preserved behavior:
 
 This extraction did not move generation requests, durable jobs, polling, prompt construction, validation, slot persistence, localStorage, API routes, access checks, adaptive behavior, or training UI.
 
-## Candidate 1: OpenRouterGeneratedOutputPanel
+## Completed: OpenRouterGeneratedOutputPanel
 
 Boundary: browser UI display only.
 
-Why next:
+Status: done.
 
-- It is the remaining generated-output display area inside the generate workflow.
-- It can stay presentational if validation view data is prepared in `OpenRouterWorkspace`.
-- It should not own script validation, create/import behavior, jobs, or persistence.
+File:
 
-Likely responsibilities:
+```text
+src/components/openrouter/OpenRouterGeneratedOutputPanel.tsx
+```
 
-- render validation summary metrics;
-- render generated JSON textarea;
-- render raw response textarea.
+Extracted from the generate-section output area inside `OpenRouterWorkspace`.
 
-Rules:
+Preserved behavior:
 
-- Do not move script validation unless a later dedicated patch proves it is safe.
-- Prefer passing prepared validation view data from `OpenRouterWorkspace`.
-- Do not move create/import behavior.
-- Preserve text area labels, rows, and read-only behavior.
+- validation summary metrics for title, input mode, language, difficulty, phrases, and duration;
+- generated DictationScript JSON textarea;
+- raw model response textarea;
+- JSON-before-raw rendering precedence;
+- textarea labels, rows, and read-only behavior.
 
-## Candidate 2: OpenRouterSlotCard
+This extraction did not move script validation, create/import behavior, generation requests, durable jobs, polling, prompt construction, slot persistence, localStorage, API routes, access checks, adaptive behavior, or training UI.
+
+## Next: measure and reassess
+
+Before extracting another OpenRouter component, measure the current file sizes:
+
+```powershell
+(Get-Content src/App.tsx).Count
+Get-ChildItem src/components/openrouter/*.tsx | ForEach-Object { "$($_.Name): $((Get-Content $_.FullName).Count)" }
+```
+
+Use those numbers to decide whether `OpenRouterSlotCard` would still reduce complexity cleanly or whether the next useful move is planning/extracting `OpenRouterWorkspace` itself.
+
+## Candidate: OpenRouterSlotCard
 
 Boundary: browser UI display + callbacks.
 
@@ -255,8 +268,9 @@ Rules:
 - Do not move generation requests, durable jobs, or polling.
 - Pass callbacks from `App.tsx` or `OpenRouterWorkspace`.
 - Preserve slot ids and labels exactly.
+- Avoid creating a component that only forwards a large, unstable prop bag.
 
-## Candidate 3: OpenRouterWorkspace
+## Candidate: OpenRouterWorkspace
 
 Boundary: browser UI composition.
 
