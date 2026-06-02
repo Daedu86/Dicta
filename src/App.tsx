@@ -125,6 +125,7 @@ import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterGenerateActionPanel } from './components/openrouter/OpenRouterGenerateActionPanel';
 import { OpenRouterGenerateSummary } from './components/openrouter/OpenRouterGenerateSummary';
+import { OpenRouterGeneratedOutputPanel } from './components/openrouter/OpenRouterGeneratedOutputPanel';
 import { OpenRouterGenerationStatusPanel } from './components/openrouter/OpenRouterGenerationStatusPanel';
 import { OpenRouterModelSelector } from './components/openrouter/OpenRouterModelSelector';
 import { OpenRouterPromptControls } from './components/openrouter/OpenRouterPromptControls';
@@ -10188,30 +10189,23 @@ function OpenRouterWorkspace({
               onClearDraft={() => clearGeneratedScriptDraft(activeGenerateSlotId)}
             />
 
-            {activeGenerateSlotValidation?.ok ? (
-              <>
-                <div className="today-summary-grid">
-                  <Metric label="Title" value={activeGenerateSlotValidation.script.title} />
-                  <Metric label="Input mode" value={String(activeGenerateSlotValidation.script.inputMode)} />
-                  <Metric label="Language" value={activeGenerateSlotValidation.script.language} />
-                  <Metric label="Difficulty" value={activeGenerateSlotValidation.script.difficulty} />
-                  <Metric label="Phrases" value={String(activeGenerateSlotValidation.script.phrases.length)} />
-                  <Metric label="Duration" value={`${activeGenerateSlotValidation.script.estimatedDurationSec}s`} />
-                </div>
-              </>
-            ) : null}
-
-            {activeGenerateSlot.json ? (
-              <label>
-                Generated DictationScript JSON · {getOpenRouterSlotLabel(activeGenerateSlotId)}
-                <textarea value={activeGenerateSlot.json} readOnly rows={8} />
-              </label>
-            ) : activeGenerateSlot.text ? (
-              <label>
-                Raw model response · {getOpenRouterSlotLabel(activeGenerateSlotId)}
-                <textarea value={activeGenerateSlot.text} readOnly rows={8} />
-              </label>
-            ) : null}
+            <OpenRouterGeneratedOutputPanel
+              slotLabel={getOpenRouterSlotLabel(activeGenerateSlotId)}
+              validationSummary={
+                activeGenerateSlotValidation?.ok
+                  ? {
+                      title: activeGenerateSlotValidation.script.title,
+                      inputMode: String(activeGenerateSlotValidation.script.inputMode),
+                      language: activeGenerateSlotValidation.script.language,
+                      difficulty: activeGenerateSlotValidation.script.difficulty,
+                      phrases: String(activeGenerateSlotValidation.script.phrases.length),
+                      duration: `${activeGenerateSlotValidation.script.estimatedDurationSec}s`,
+                    }
+                  : null
+              }
+              json={activeGenerateSlot.json}
+              text={activeGenerateSlot.text}
+            />
           </div>
         ) : null}
       </div>
