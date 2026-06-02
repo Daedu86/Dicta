@@ -123,6 +123,7 @@ import {
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
+import { AdminHeader } from './components/admin/AdminHeader';
 import {
   OPENROUTER_GENERATED_SCRIPT_KEY,
   OPENROUTER_GENERATED_VARIANTS_KEY,
@@ -9097,37 +9098,12 @@ function AdminWorkspace({
 
   return (
     <section className="panel workspace-panel admin-workspace">
-      <div className="tts-workspace-header">
-        <div>
-          <p className="dashboard-eyebrow">Storage control</p>
-          <h2>Admin</h2>
-          <p className="dashboard-meta">Read-only project storage, session, transcript, and telemetry overview.</p>
-          {appProfile ? (
-            <p className="dashboard-meta">
-              Signed in as {appProfile.displayName} · {appProfile.role} · profile {appProfile.profileId}
-            </p>
-          ) : null}
-          <div className="live-metrics-language-tabs admin-language-tabs" role="tablist" aria-label="Admin language">
-            {SUPPORTED_LANGUAGES.map((code) => (
-              <button
-                key={code}
-                type="button"
-                className={`live-metrics-language-tab ${languageView === code ? 'live-metrics-language-tab-active' : ''}`}
-                onClick={() => onChangeLanguage(code)}
-                aria-pressed={languageView === code}
-                title={`Admin view for ${LANGUAGE_LABELS[code]} sessions`}
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="dashboard-header-actions">
-          <button type="button" className="secondary-button" onClick={onBackToTraining}>
-            Back to training
-          </button>
-        </div>
-      </div>
+      <AdminHeader
+        appProfile={appProfile}
+        languageView={languageView}
+        onChangeLanguage={onChangeLanguage}
+        onBackToTraining={onBackToTraining}
+      />
 
       {exportMessage ? <p className="success">{exportMessage}</p> : null}
 
