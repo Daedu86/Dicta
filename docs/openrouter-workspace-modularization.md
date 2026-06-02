@@ -57,8 +57,8 @@ Recommended order:
 
 1. `OpenRouterGenerationStatusPanel` - done.
 2. `OpenRouterSlotSelector` - done.
-3. `OpenRouterPromptControls` - next.
-4. `OpenRouterModelSelector`.
+3. `OpenRouterPromptControls` - done.
+4. `OpenRouterModelSelector` - next.
 5. `OpenRouterSlotCard`.
 6. `OpenRouterWorkspace`.
 
@@ -114,42 +114,41 @@ Preserved behavior:
 
 This extraction did not move generation, prompt building, slot persistence, import behavior, durable jobs, polling, localStorage, API routes, access checks, adaptive behavior, or training UI.
 
-## Candidate 1: OpenRouterPromptControls
+## Completed: OpenRouterPromptControls
 
 Boundary: browser UI controls.
 
-Why next:
+Status: done.
 
-- Still UI/control-only.
-- It groups the generate-section controls that choose the target profile and prompt mode.
-- It should not own prompt construction, generation, jobs, persistence, or validation.
+File:
 
-Likely source block:
-
-```tsx
-<div className="openrouter-generate-controls">
+```text
+src/components/openrouter/OpenRouterPromptControls.tsx
 ```
 
-Likely responsibilities:
+Extracted from the generate-section controls inside `OpenRouterWorkspace`.
+
+Preserved behavior:
 
 - input mode selector;
 - duration selector;
 - language selector;
 - prompt source selector;
-- difficulty selector if present in the same generate-control area.
+- active styling and `aria-pressed`;
+- button labels, descriptions, and titles;
+- selection callback ownership in `OpenRouterWorkspace`.
 
-Rules:
+This extraction did not move prompt construction, generation, durable jobs, polling, validation, localStorage, API routes, access checks, adaptive behavior, or training UI.
 
-- Do not move prompt construction in the first extraction.
-- Do not change `buildOpenRouterGenerationPrompt` inputs.
-- Preserve exact selected values and event handlers.
-- Preserve active styling and `aria-pressed`.
-- Preserve button titles and descriptions.
-- Prefer passing option arrays and callbacks rather than importing workspace state.
-
-## Candidate 2: OpenRouterModelSelector
+## Candidate 1: OpenRouterModelSelector
 
 Boundary: browser UI controls.
+
+Why next:
+
+- It should remain UI/control-only.
+- It can render model options and refresh/loading/error state without owning fetch lifecycle.
+- It should not own model normalization, free-model gating, access checks, or default-model persistence.
 
 Likely responsibilities:
 
@@ -161,9 +160,11 @@ Rules:
 
 - Do not move model fetch lifecycle in the first extraction.
 - Do not change model normalization or free-model gating.
+- Do not change default model storage semantics.
 - Pass loading/error/options/current selection as props.
+- Keep `onRefreshModels` and `onSetDefaultModel` ownership outside the presentational component.
 
-## Candidate 3: OpenRouterSlotCard
+## Candidate 2: OpenRouterSlotCard
 
 Boundary: browser UI display + callbacks.
 
@@ -181,7 +182,7 @@ Rules:
 - Pass callbacks from `App.tsx` or `OpenRouterWorkspace`.
 - Preserve slot ids and labels exactly.
 
-## Candidate 4: OpenRouterWorkspace
+## Candidate 3: OpenRouterWorkspace
 
 Boundary: browser UI composition.
 
