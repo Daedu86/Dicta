@@ -124,6 +124,7 @@ import {
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterGenerationStatusPanel } from './components/openrouter/OpenRouterGenerationStatusPanel';
+import { OpenRouterPromptControls } from './components/openrouter/OpenRouterPromptControls';
 import { OpenRouterSlotSelector } from './components/openrouter/OpenRouterSlotSelector';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import {
@@ -10178,78 +10179,20 @@ function OpenRouterWorkspace({
               <Metric label="Prompt size" value={formatPromptSizeHint(activeGenerateSlotPrompt).replace('Words: ', '').replace(' · Tokens:', ' /')} />
             </div>
 
-            <div className="openrouter-generate-controls">
-              <section className="openrouter-button-control" aria-label="Input mode">
-                <h4>Input mode</h4>
-                <div className="openrouter-choice-row">
-                  {generateInputModeOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`secondary-button openrouter-choice-button ${generateInputMode === option.value ? 'openrouter-choice-button-active' : ''}`}
-                      onClick={() => setGenerateInputMode(option.value)}
-                      aria-pressed={generateInputMode === option.value}
-                      title={`Use ${option.description} as the required generated script inputMode (${option.value}).`}
-                    >
-                      <span>{option.label}</span>
-                      <small>{option.description}</small>
-                    </button>
-                  ))}
-                </div>
-              </section>
-              <section className="openrouter-button-control" aria-label="Duration">
-                <h4>Duration</h4>
-                <div className="openrouter-choice-row openrouter-language-row">
-                  {generateDurationOptions.map((minutes) => (
-                    <button
-                      key={minutes}
-                      type="button"
-                      className={`secondary-button openrouter-choice-button ${generateDurationMinutes === minutes ? 'openrouter-choice-button-active' : ''}`}
-                      onClick={() => setGenerateDurationMinutes(minutes)}
-                      aria-pressed={generateDurationMinutes === minutes}
-                    title={`Generate a ${minutes}-minute voice/audio session and request estimatedDurationSec close to ${minutes * 60}.`}
-                    >
-                      {minutes} min
-                    </button>
-                  ))}
-                </div>
-              </section>
-              <section className="openrouter-button-control" aria-label="Language">
-                <h4>Language</h4>
-                <div className="openrouter-choice-row openrouter-language-row">
-                  {profileLanguageOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`secondary-button openrouter-choice-button ${generateLanguage === option.value ? 'openrouter-choice-button-active' : ''}`}
-                      onClick={() => setGenerateLanguage(option.value)}
-                      aria-pressed={generateLanguage === option.value}
-                      title={`Use ${option.value} as the required generated script language.`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </section>
-              <section className="openrouter-button-control openrouter-prompt-source-control" aria-label="Prompt source">
-                <h4>Prompt source</h4>
-                <div className="openrouter-choice-row">
-                  {generatePromptSourceOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`secondary-button openrouter-choice-button ${generatePromptSource === option.value ? 'openrouter-choice-button-active' : ''}`}
-                      onClick={() => setGeneratePromptSource(option.value)}
-                      aria-pressed={generatePromptSource === option.value}
-                      title={option.description}
-                    >
-                      <span>{option.label}</span>
-                      <small>{option.description}</small>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
+            <OpenRouterPromptControls
+              inputModeOptions={generateInputModeOptions}
+              selectedInputMode={generateInputMode}
+              onSelectInputMode={setGenerateInputMode}
+              durationOptions={generateDurationOptions}
+              selectedDurationMinutes={generateDurationMinutes}
+              onSelectDurationMinutes={setGenerateDurationMinutes}
+              languageOptions={profileLanguageOptions}
+              selectedLanguage={generateLanguage}
+              onSelectLanguage={setGenerateLanguage}
+              promptSourceOptions={generatePromptSourceOptions}
+              selectedPromptSource={generatePromptSource}
+              onSelectPromptSource={setGeneratePromptSource}
+            />
 
             {!generateHasBenchmarkData ? <p className="hint">No benchmark available for this input/language. Generation will use the base profile/template.</p> : null}
             {!generateHasSessionFeedback ? <p className="hint">No completed session feedback for this input/language. Generation will not include latest feedback.</p> : null}
