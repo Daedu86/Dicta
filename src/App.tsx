@@ -123,6 +123,7 @@ import {
 } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
+import { OpenRouterGenerationStatusPanel } from './components/openrouter/OpenRouterGenerationStatusPanel';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import {
   normalizeLiveSessionStatusForPersistence,
@@ -10281,36 +10282,18 @@ function OpenRouterWorkspace({
               </button>
               <span className="hint">{activeGenerateSlotModel ? `Using: ${activeGenerateSlotModel}` : 'Set a default model first (Section #2).'}</span>
             </div>
-            {activeGenerateSlotJobNotice ? (
-              <p className={activeGenerateSlotJobNotice.tone === 'error' ? 'error' : activeGenerateSlotJobNotice.tone === 'success' ? 'success' : 'hint'}>
-                {activeGenerateSlotJobNotice.message}
-              </p>
-            ) : null}
-
-            {activeGenerateSlot.usage ? (
-              <p className="hint">
-                {getOpenRouterSlotLabel(activeGenerateSlotId)} tokens: input {activeGenerateSlot.usage.promptTokens}, output{' '}
-                {activeGenerateSlot.usage.completionTokens}, total {activeGenerateSlot.usage.totalTokens}.
-              </p>
-            ) : null}
-            {activeGenerateSlot.elapsedMs !== null ? (
-              <p className="success">
-                {getOpenRouterSlotLabel(activeGenerateSlotId)} completed in {formatElapsedMs(activeGenerateSlot.elapsedMs)}
-                {activeGenerateSlot.generatedAt ? ` · ${new Date(activeGenerateSlot.generatedAt).toLocaleString()}` : ''}.
-              </p>
-            ) : null}
-            {activeGenerateSlot.error ? <p className="error">{activeGenerateSlot.error}</p> : null}
-            {activeGenerateSlot.json || activeGenerateSlot.text ? (
-              <div className="admin-actions">
-                <span className="hint">
-                  {getOpenRouterSlotLabel(activeGenerateSlotId)} draft kept until create or cancel
-                  {activeGenerateSlot.inputMode && activeGenerateSlot.language ? ` · ${activeGenerateSlot.inputMode}/${activeGenerateSlot.language}` : ''}.
-                </span>
-                <button type="button" className="secondary-button" onClick={() => clearGeneratedScriptDraft(activeGenerateSlotId)}>
-                  Cancel {getOpenRouterSlotLabel(activeGenerateSlotId)}
-                </button>
-              </div>
-            ) : null}
+            <OpenRouterGenerationStatusPanel
+              slotLabel={getOpenRouterSlotLabel(activeGenerateSlotId)}
+              jobNotice={activeGenerateSlotJobNotice}
+              usage={activeGenerateSlot.usage}
+              elapsedLabel={activeGenerateSlot.elapsedMs !== null ? formatElapsedMs(activeGenerateSlot.elapsedMs) : null}
+              generatedAtLabel={activeGenerateSlot.generatedAt ? new Date(activeGenerateSlot.generatedAt).toLocaleString() : null}
+              error={activeGenerateSlot.error}
+              hasDraft={Boolean(activeGenerateSlot.json || activeGenerateSlot.text)}
+              draftInputMode={activeGenerateSlot.inputMode}
+              draftLanguage={activeGenerateSlot.language}
+              onClearDraft={() => clearGeneratedScriptDraft(activeGenerateSlotId)}
+            />
 
             {activeGenerateSlotValidation?.ok ? (
               <>
