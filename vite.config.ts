@@ -31,11 +31,15 @@ export default defineConfig(({ mode }) => {
         const envLocalPath = path.resolve(process.cwd(), '.env.local');
         const maxJsonBodyBytes = 64 * 1024;
         const maxOpenRouterKeyBytes = 4096;
+        const maxOllamaKeyBytes = 4096;
         const maxTranscribeBodyBytes = 36 * 1024 * 1024;
         const maxTranscribeAudioBytes = 25 * 1024 * 1024;
         const openRouterFreeRouterModel = 'openrouter/free';
+        const ollamaRecommendedModel = 'gemma3:27b-cloud';
         const openRouterPromptMaxChars = 32_000;
+        const ollamaPromptMaxChars = 32_000;
         const openRouterModelMaxChars = 160;
+        const ollamaModelMaxChars = 160;
         const openRouterActiveJobLimit = 3;
         const supportedAudioExtensions = new Set(['.mp3', '.wav', '.m4a', '.webm', '.ogg', '.flac']);
 
@@ -128,11 +132,32 @@ export default defineConfig(({ mode }) => {
           return parseEnvValue(line.slice('OPENROUTER_API_KEY='.length)).trim();
         };
 
+        const getOllamaApiKey = async (): Promise<string> => {
+          const fromProcess = process.env.OLLAMA_API_KEY?.trim();
+          if (fromProcess) return fromProcess;
+
+          const envText = await readEnvLocal();
+          const line = envText
+            .split(/\r?\n/)
+            .map((row) => row.trim())
+            .find((row) => row.startsWith('OLLAMA_API_KEY='));
+          if (!line) return '';
+          return parseEnvValue(line.slice('OLLAMA_API_KEY='.length)).trim();
+        };
+
         const validateOpenRouterApiKey = (apiKey: string): string => {
           const cleaned = apiKey.trim();
           if (!cleaned) throw httpError('Missing apiKey.', 400);
           if (/[\r\n]/.test(cleaned)) throw httpError('OpenRouter API key cannot contain line breaks.', 400);
           if (cleaned.length > maxOpenRouterKeyBytes) throw httpError('OpenRouter API key is too large.', 400);
+          return cleaned;
+        };
+
+        const validateOllamaApiKey = (apiKey: string): string => {
+          const cleaned = apiKey.trim();
+          if (!cleaned) throw httpError('Missing apiKey.', 400);
+          if (/[\r\n]/.test(cleaned)) throw httpError('Ollama API key cannot contain line breaks.', 400);
+          if (cleaned.length > maxOllamaKeyBytes) throw httpError('Ollama API key is too large.', 400);
           return cleaned;
         };
 
@@ -144,6 +169,28 @@ export default defineConfig(({ mode }) => {
           let replaced = false;
           const nextLines = lines.map((line) => {
             if (line.trim().startsWith('OPENROUTER_API_KEY=')) {
+              replaced = true;
+              return nextLine;
+            }
+            return line;
+          });
+          if (!replaced) {
+            if (nextLines.length > 0 && nextLines[nextLines.length - 1].trim() !== '') {
+              nextLines.push('');
+            }
+            nextLines.push(nextLine);
+          }
+          await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
+        };
+
+        const upsertOllamaApiKey = async (apiKey: string): Promise<void> => {
+          const cleaned = validateOllamaApiKey(apiKey);
+          const nextLine = `OLLAMA_API_KEY=${JSON.stringify(cleaned)}`;
+          const envText = await readEnvLocal();
+          const lines = envText ? envText.split(/\r?\n/) : [];
+          let replaced = false;
+          const nextLines = lines.map((line) => {
+            if (line.trim().startsWith('OLLAMA_API_KEY=')) {
               replaced = true;
               return nextLine;
             }
@@ -170,6 +217,15 @@ export default defineConfig(({ mode }) => {
           return model;
         };
 
+        const normalizeOllamaModel = (value: unknown): string => {
+          const model = typeof value === 'string' ? value.trim() : '';
+          if (!model) return '';
+          if (model.length > ollamaModelMaxChars || !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model)) {
+            throw httpError('Invalid Ollama model id.', 400);
+          }
+          return model;
+        };
+
         const normalizeOpenRouterPrompt = (value: unknown): string => {
           const prompt = typeof value === 'string' ? value.trim() : '';
           if (!prompt) return '';
@@ -179,7 +235,23 @@ export default defineConfig(({ mode }) => {
           return prompt;
         };
 
+        const normalizeOllamaPrompt = (value: unknown): string => {
+          const prompt = typeof value === 'string' ? value.trim() : '';
+          if (!prompt) return '';
+          if (prompt.length > ollamaPromptMaxChars) {
+            throw httpError(`Prompt is too large. Limit is ${ollamaPromptMaxChars} characters.`, 400);
+          }
+          return prompt;
+        };
+
         const normalizeOpenRouterMaxTokens = (value: unknown, fallback: number): number => {
+          const hasValue = value !== undefined && value !== null && value !== '';
+          const numeric = hasValue ? Number(value) : fallback;
+          const bounded = Number.isFinite(numeric) ? numeric : fallback;
+          return Math.max(128, Math.min(1800, Math.round(bounded)));
+        };
+
+        const normalizeOllamaMaxTokens = (value: unknown, fallback: number): number => {
           const hasValue = value !== undefined && value !== null && value !== '';
           const numeric = hasValue ? Number(value) : fallback;
           const bounded = Number.isFinite(numeric) ? numeric : fallback;
@@ -199,6 +271,81 @@ export default defineConfig(({ mode }) => {
           if (nextLines.length === lines.length) return false;
           await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
           return true;
+        };
+
+        const removeOllamaApiKey = async (): Promise<boolean> => {
+          const envText = await readEnvLocal();
+          if (!envText) return false;
+          const lines = envText.split(/\r?\n/);
+          const nextLines = lines.filter((line) => !line.trim().startsWith('OLLAMA_API_KEY='));
+          if (nextLines.length === lines.length) return false;
+          await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
+          return true;
+        };
+
+        const extractOllamaErrorText = (body: string): string => {
+          const raw = body.trim();
+          if (!raw) return '';
+          try {
+            const parsed = JSON.parse(raw) as { error?: string | { message?: string }; message?: string };
+            const message =
+              typeof parsed.error === 'string'
+                ? parsed.error
+                : parsed.error && typeof parsed.error === 'object' && typeof parsed.error.message === 'string'
+                  ? parsed.error.message
+                  : typeof parsed.message === 'string'
+                    ? parsed.message
+                    : '';
+            if (message) return message;
+          } catch {
+            // Fall through to a short raw text excerpt.
+          }
+          return raw.slice(0, 500);
+        };
+
+        const formatOllamaUpstreamError = (status: number, body: string, fallback = 'Ollama Cloud request failed.'): string => {
+          const detail = extractOllamaErrorText(body);
+          if (status === 429) {
+            return `Ollama Cloud rate/quota limit likely (429).${detail ? ` ${detail}` : ''}`;
+          }
+          if (status === 401 || status === 403) {
+            return `Ollama Cloud auth/plan/access issue (${status}).${detail ? ` ${detail}` : ''}`;
+          }
+          return `${fallback} (${status}).${detail ? ` ${detail}` : ''}`;
+        };
+
+        const buildOllamaModelPayload = (rawPayload: { models?: Array<Record<string, unknown>> }): {
+          data: Array<Record<string, unknown>>;
+          source: string;
+          recommendedModel: string;
+        } => {
+          const byId = new Map<string, Record<string, unknown>>();
+          const rawModels = Array.isArray(rawPayload.models) ? rawPayload.models : [];
+          for (const model of rawModels) {
+            const id =
+              typeof model.model === 'string' && model.model.trim()
+                ? model.model.trim()
+                : typeof model.name === 'string'
+                  ? model.name.trim()
+                  : '';
+            if (!id) continue;
+            byId.set(id, {
+              id,
+              name: typeof model.name === 'string' ? model.name : id,
+              modified_at: typeof model.modified_at === 'string' ? model.modified_at : undefined,
+              size: Number.isFinite(Number(model.size)) ? Number(model.size) : undefined,
+              details: model.details && typeof model.details === 'object' ? model.details : undefined,
+            });
+          }
+          if (!byId.has(ollamaRecommendedModel)) {
+            byId.set(ollamaRecommendedModel, { id: ollamaRecommendedModel, name: ollamaRecommendedModel });
+          }
+          const data = [...byId.values()].sort((a, b) => {
+            if (a.id === ollamaRecommendedModel) return -1;
+            if (b.id === ollamaRecommendedModel) return 1;
+            return String(a.id).localeCompare(String(b.id));
+          });
+          return { data, source: 'ollama', recommendedModel: ollamaRecommendedModel };
         };
 
         server.middlewares.use('/api/openrouter/models', async (req, res) => {
@@ -287,6 +434,158 @@ export default defineConfig(({ mode }) => {
 
           res.statusCode = 405;
           res.end('Method not allowed');
+        });
+
+        server.middlewares.use('/api/ollama/models', async (req, res) => {
+          if (req.method !== 'GET') {
+            res.statusCode = 405;
+            res.end('Method not allowed');
+            return;
+          }
+
+          const ollamaApiKey = await getOllamaApiKey();
+          if (!ollamaApiKey) {
+            res.statusCode = 400;
+            res.end('Missing OLLAMA_API_KEY. Set it in .env.local (or via the Ollama UI) and try again.');
+            return;
+          }
+
+          try {
+            const response = await fetch('https://ollama.com/api/tags', {
+              headers: {
+                Authorization: `Bearer ${ollamaApiKey}`,
+                Accept: 'application/json',
+              },
+            });
+
+            const responseBody = await response.text();
+            if (!response.ok) {
+              res.statusCode = response.status;
+              res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+              res.end(formatOllamaUpstreamError(response.status, responseBody, 'Ollama Cloud model request failed'));
+              return;
+            }
+
+            const payload = responseBody ? JSON.parse(responseBody) as { models?: Array<Record<string, unknown>> } : {};
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(buildOllamaModelPayload(payload)));
+          } catch (error) {
+            res.statusCode = 500;
+            res.end(error instanceof Error ? error.message : 'Ollama proxy failed.');
+          }
+        });
+
+        server.middlewares.use('/api/ollama/key/status', async (req, res) => {
+          if (req.method !== 'GET') {
+            res.statusCode = 405;
+            res.end('Method not allowed');
+            return;
+          }
+
+          try {
+            const ollamaApiKey = await getOllamaApiKey();
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ configured: Boolean(ollamaApiKey), suffix: maskApiKeySuffix(ollamaApiKey) }));
+          } catch (error) {
+            res.statusCode = 500;
+            res.end(error instanceof Error ? error.message : 'Ollama key status failed.');
+          }
+        });
+
+        server.middlewares.use('/api/ollama/key', async (req, res) => {
+          if (req.method === 'POST') {
+            try {
+              const parsed = await readJsonRequestBody<{ apiKey?: string }>(req, maxOllamaKeyBytes);
+              const nextKey = parsed.apiKey?.trim() ?? '';
+              if (!nextKey) {
+                res.statusCode = 400;
+                res.end('Missing apiKey.');
+                return;
+              }
+
+              await upsertOllamaApiKey(nextKey);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
+              return;
+            } catch (error) {
+              sendLocalError(res, error, 'Failed to save Ollama key.');
+              return;
+            }
+          }
+
+          if (req.method === 'DELETE') {
+            try {
+              const removed = await removeOllamaApiKey();
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: true, removed }));
+              return;
+            } catch (error) {
+              res.statusCode = 500;
+              res.end(error instanceof Error ? error.message : 'Failed to remove Ollama key.');
+              return;
+            }
+          }
+
+          res.statusCode = 405;
+          res.end('Method not allowed');
+        });
+
+        server.middlewares.use('/api/ollama/chat', async (req, res) => {
+          if (req.method !== 'POST') {
+            res.statusCode = 405;
+            res.end('Method not allowed');
+            return;
+          }
+
+          const ollamaApiKey = await getOllamaApiKey();
+          if (!ollamaApiKey) {
+            res.statusCode = 400;
+            res.end('Missing OLLAMA_API_KEY. Set it in .env.local and try again.');
+            return;
+          }
+
+          try {
+            const parsed = await readJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
+            const model = normalizeOllamaModel(parsed.model);
+            const prompt = normalizeOllamaPrompt(parsed.prompt);
+            const maxTokens = normalizeOllamaMaxTokens(parsed.maxTokens, 600);
+            if (!model || !prompt) {
+              res.statusCode = 400;
+              res.end('Missing model or prompt.');
+              return;
+            }
+
+            const response = await fetch('https://ollama.com/api/chat', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${ollamaApiKey}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
+              body: JSON.stringify({
+                model,
+                messages: [{ role: 'user', content: prompt }],
+                stream: false,
+                options: {
+                  num_predict: maxTokens,
+                },
+              }),
+            });
+
+            const responseBody = await response.text();
+            res.statusCode = response.status;
+            res.setHeader('X-Dicta-Ollama-Model', model);
+            if (!response.ok) {
+              res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+              res.end(formatOllamaUpstreamError(response.status, responseBody));
+              return;
+            }
+            res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
+            res.end(responseBody);
+          } catch (error) {
+            sendLocalError(res, error, 'Ollama test request failed.');
+          }
         });
 
         server.middlewares.use('/api/openrouter/chat', async (req, res) => {

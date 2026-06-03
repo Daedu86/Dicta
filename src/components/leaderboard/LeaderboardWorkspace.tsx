@@ -8,11 +8,33 @@ type LeaderboardSectionId =
   | 'easy-standard'
   | 'medium-standard'
   | 'hard-standard';
-type LeaderboardSession = any;
+type LeaderboardGenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
+type LeaderboardSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
+type LeaderboardSessionMetrics = {
+  controllerState: string;
+  rate: number;
+  lagSec: number;
+  lagWords: number;
+  wpm: number;
+  accuracy: number;
+  trend: string;
+  score: number;
+  points: number;
+};
+type LeaderboardSession = {
+  id: string;
+  status: LeaderboardSessionStatus;
+  updatedAt: string;
+  generationOrigin: LeaderboardGenerationOrigin;
+  generationError?: string;
+  metrics: LeaderboardSessionMetrics;
+  [key: string]: unknown;
+};
+type LeaderboardEntry<TSession extends LeaderboardSession> = { rank: number; session: TSession };
 type LeaderboardSection = {
   id: LeaderboardSectionId;
   label: string;
-  sessions: Array<{ rank: number; session: LeaderboardSession }>;
+  sessions: Array<LeaderboardEntry<LeaderboardSession>>;
   rangeMetrics: Array<{
     range: string;
     label: string;
@@ -25,11 +47,11 @@ type LeaderboardSection = {
   }>;
 };
 type MetricComponentType = (props: { label: string; value: string; title?: string }) => ReactElement;
-type SessionDeviceIconComponentType = ComponentType<{ session: any }>;
+type SessionDeviceIconComponentType<TSession extends LeaderboardSession = LeaderboardSession> = ComponentType<{ session: TSession }>;
 
-export type LeaderboardWorkspaceProps = {
-  leaderboard: LeaderboardSession[];
-  leaderboardSections: LeaderboardSection[];
+export type LeaderboardWorkspaceProps<TSession extends LeaderboardSession = LeaderboardSession> = {
+  leaderboard: Array<LeaderboardEntry<TSession>>;
+  leaderboardSections: Array<Omit<LeaderboardSection, 'sessions'> & { sessions: Array<LeaderboardEntry<TSession>> }>;
   leaderboardLanguageView: LeaderboardLanguageCode;
   leaderboardExpanded: boolean;
   leaderboardSectionExpanded: Record<LeaderboardSectionId, boolean>;
@@ -39,27 +61,27 @@ export type LeaderboardWorkspaceProps = {
   onChangeLeaderboardLanguageView: (code: LeaderboardLanguageCode) => void;
   onToggleLeaderboardExpanded: () => void;
   onToggleLeaderboardSectionExpanded: (sectionId: LeaderboardSectionId) => void;
-  onOpenWorkspaceForSession: (session: any) => void;
+  onOpenWorkspaceForSession: (session: TSession) => void;
   onOpenDashboardForSession: (sessionId: string) => void;
-  onDownloadSessionSnapshot: (session: any) => void;
-  onCopySessionSnapshot: (session: any) => void;
+  onDownloadSessionSnapshot: (session: TSession) => void;
+  onCopySessionSnapshot: (session: TSession) => void;
   onDeleteSession: (sessionId: string) => void;
   onBackToTraining: () => void;
-  formatLeaderboardSessionStatus: (session: any) => string;
-  formatSessionGenerationOrigin: (generationOrigin: any) => string;
-  formatSessionPlaybackDuration: (session: any) => string;
-  formatSessionDate: (date: any) => string;
-  formatSessionPointsForSession: (points: number, session: any) => string;
-  buildSessionScoreHelpText: (metrics: any) => string;
+  formatLeaderboardSessionStatus: (session: TSession) => string;
+  formatSessionGenerationOrigin: (generationOrigin: LeaderboardGenerationOrigin) => string;
+  formatSessionPlaybackDuration: (session: TSession) => string;
+  formatSessionDate: (date: string) => string;
+  formatSessionPointsForSession: (points: number, session: TSession) => string;
+  buildSessionScoreHelpText: (metrics: TSession['metrics']) => string;
   buildSessionPointsHelpText: (maxPoints: number) => string;
-  computeSessionMaxPoints: (session: any) => number | null;
-  getSessionDisplayTitle: (session: any) => string;
-  isSessionReadyForTraining: (session: any) => boolean;
+  computeSessionMaxPoints: (session: TSession) => number | null;
+  getSessionDisplayTitle: (session: TSession) => string;
+  isSessionReadyForTraining: (session: TSession) => boolean;
   MetricComponent: MetricComponentType;
-  SessionDeviceIconComponent: SessionDeviceIconComponentType;
+  SessionDeviceIconComponent: SessionDeviceIconComponentType<TSession>;
 };
 
-export function LeaderboardWorkspace({
+export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
   leaderboard,
   leaderboardSections,
   leaderboardLanguageView,
@@ -89,7 +111,7 @@ export function LeaderboardWorkspace({
   isSessionReadyForTraining,
   MetricComponent,
   SessionDeviceIconComponent,
-}: LeaderboardWorkspaceProps) {
+}: LeaderboardWorkspaceProps<TSession>) {
   return (
     <section className="panel workspace-panel leaderboard-workspace">
       <div className="metrics-header">

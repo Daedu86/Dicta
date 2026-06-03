@@ -122,7 +122,8 @@ import {
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
-import { LeaderboardWorkspace, type LeaderboardWorkspaceProps } from './components/leaderboard/LeaderboardWorkspace';
+import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
+import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
 import { AudioInputSetupCard } from './components/runtime-workspaces/AudioInputSetupCard';
 import { AudioPracticeCard } from './components/runtime-workspaces/AudioPracticeCard';
 import { AudioSourceCard } from './components/runtime-workspaces/AudioSourceCard';
@@ -173,6 +174,7 @@ import type {
   OpenRouterModelSummary,
   TrainingGenerationNotice,
 } from './components/openrouter/types';
+import type { OllamaModelSummary } from './components/ollama/types';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import {
   normalizeLiveSessionStatusForPersistence,
@@ -241,6 +243,8 @@ const SESSION_PERSIST_DEBOUNCE_MS = 1500;
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 const KOKORO_ENABLED_KEY = 'dicta.kokoroEnabled.v1';
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
+const OLLAMA_DEFAULT_MODEL_STORAGE_KEY = 'dicta.ollamaDefaultModel.v1';
+const OLLAMA_RECOMMENDED_DEFAULT_MODEL = 'gemma3:27b-cloud';
 const THEME_MODE_KEY = 'dicta.themeMode.v1';
 const DELETED_SESSION_IDS_KEY = 'dicta.deletedSessionIds.v1';
 const LIVE_METRICS_LANGUAGE_KEY = 'dicta.liveMetricsLanguage.v1';
@@ -325,7 +329,7 @@ type TrainingSessionSubmissionMeta = {
 type TtsLanguage = SupportedLanguage;
 type TypingLanguage = SupportedLanguage;
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
-type WorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter';
+type WorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter' | 'ollama';
 type ThemeMode = 'light' | 'dark';
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
@@ -678,6 +682,7 @@ function App() {
     });
   }, [browserTtsVoices]);
   const [openRouterDefaultModel, setOpenRouterDefaultModel] = useState('');
+  const [ollamaDefaultModel, setOllamaDefaultModel] = useState(OLLAMA_RECOMMENDED_DEFAULT_MODEL);
 
   useEffect(() => {
     inputLiveTextRef.current = inputText;
@@ -699,6 +704,9 @@ function App() {
   const [openRouterModels, setOpenRouterModels] = useState<OpenRouterModelSummary[]>([]);
   const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [openRouterError, setOpenRouterError] = useState('');
+  const [ollamaModels, setOllamaModels] = useState<OllamaModelSummary[]>([]);
+  const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [ollamaError, setOllamaError] = useState('');
   const [activeOpenRouterJobs, setActiveOpenRouterJobs] = useState<ActiveOpenRouterJob[]>(() => loadActiveOpenRouterJobs());
   const [openRouterJobNotifications, setOpenRouterJobNotifications] = useState<Record<string, OpenRouterJobNotification>>({});
   const [openRouterJobStatus, setOpenRouterJobStatus] = useState('');
@@ -1367,6 +1375,18 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const storedModel = window.localStorage.getItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY);
+    if (storedModel) {
+      try {
+        const parsed = JSON.parse(storedModel) as string;
+        setOllamaDefaultModel(parsed.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL);
+      } catch {
+        setOllamaDefaultModel(storedModel.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     if (!kokoroEnabled) return;
 
     if (!kokoroText.trim() && kokoroStatus !== 'playing') {
@@ -1593,7 +1613,8 @@ function App() {
       workspaceMode !== 'dashboard' &&
       workspaceMode !== 'adaptive' &&
       workspaceMode !== 'admin' &&
-      workspaceMode !== 'openrouter'
+      workspaceMode !== 'openrouter' &&
+      workspaceMode !== 'ollama'
     ) {
       setWorkspaceMode(activeInputWorkspaceMode);
     }
@@ -2882,6 +2903,53 @@ function App() {
       setOpenRouterModels([]);
       setOpenRouterStatus('error');
       setOpenRouterError(err instanceof Error ? err.message : 'OpenRouter model fetch failed.');
+    }
+  }
+
+  async function refreshOllamaModels(): Promise<void> {
+    setOllamaStatus('loading');
+    setOllamaError('');
+    try {
+      const response = await fetch('/api/ollama/models', { headers: getAuthHeaders() });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Ollama request failed (${response.status}).`);
+      }
+      const payload = (await response.json()) as {
+        data?: Array<{
+          id: string;
+          name?: string;
+          modified_at?: string;
+          size?: number;
+          details?: OllamaModelSummary['details'];
+        }>;
+      };
+      const data = Array.isArray(payload.data) ? payload.data : [];
+      const nextModels = data
+        .filter((model) => typeof model.id === 'string' && model.id.trim())
+        .map((model) => ({
+          id: model.id,
+          name: model.name,
+          modified_at: model.modified_at,
+          size: model.size,
+          details: model.details,
+        }))
+        .sort((a, b) => {
+          if (a.id === OLLAMA_RECOMMENDED_DEFAULT_MODEL) return -1;
+          if (b.id === OLLAMA_RECOMMENDED_DEFAULT_MODEL) return 1;
+          return a.id.localeCompare(b.id);
+        });
+      setOllamaModels(nextModels);
+      setOllamaStatus('ready');
+      if (!ollamaDefaultModel.trim()) {
+        const nextDefault = nextModels[0]?.id ?? OLLAMA_RECOMMENDED_DEFAULT_MODEL;
+        setOllamaDefaultModel(nextDefault);
+        window.localStorage.setItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(nextDefault));
+      }
+    } catch (err) {
+      setOllamaModels([]);
+      setOllamaStatus('error');
+      setOllamaError(err instanceof Error ? err.message : 'Ollama model fetch failed.');
     }
   }
 
@@ -4616,6 +4684,18 @@ function App() {
         }
       } else {
         setOpenRouterDefaultModel('');
+      }
+
+      const storedOllamaModel = window.localStorage.getItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY);
+      if (storedOllamaModel) {
+        try {
+          const parsed = JSON.parse(storedOllamaModel) as string;
+          setOllamaDefaultModel(parsed.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL);
+        } catch {
+          setOllamaDefaultModel(storedOllamaModel.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL);
+        }
+      } else {
+        setOllamaDefaultModel(OLLAMA_RECOMMENDED_DEFAULT_MODEL);
       }
 
       setWorkspaceMode('leaderboard');
@@ -6946,6 +7026,17 @@ function App() {
             ) : null}
             <button
               type="button"
+              className="secondary-button brand-openrouter-button"
+              onClick={() => {
+                setWorkspaceMode('ollama');
+                setDashboardSessionId(null);
+              }}
+              title="Configure Ollama Cloud and test a server-side model"
+            >
+              Ollama
+            </button>
+            <button
+              type="button"
               className="secondary-button theme-toggle-button"
               onClick={() => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark'))}
               aria-label={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -7468,6 +7559,21 @@ function App() {
                 }
               />
               )
+            ) : workspaceMode === 'ollama' ? (
+              <OllamaWorkspace
+                defaultModel={ollamaDefaultModel}
+                authHeaders={getAuthHeaders()}
+                models={ollamaModels}
+                status={ollamaStatus}
+                error={ollamaError}
+                onSetDefaultModel={(value) => {
+                  const nextModel = value.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL;
+                  setOllamaDefaultModel(nextModel);
+                  window.localStorage.setItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(nextModel));
+                }}
+                onRefreshModels={refreshOllamaModels}
+                onBackToTraining={() => setWorkspaceMode('training')}
+              />
             ) : workspaceMode === 'admin' ? (
               isDictaAdmin(appProfile) || !syncConfig.authRequired ? <AdminWorkspace
                 sessions={adminSessions}
@@ -7538,7 +7644,7 @@ function App() {
                 getSessionDisplayTitle={getSessionDisplayTitle}
                 isSessionReadyForTraining={isSessionReadyForTraining}
                 MetricComponent={Metric}
-                SessionDeviceIconComponent={SessionDeviceIcon as LeaderboardWorkspaceProps['SessionDeviceIconComponent']}
+                SessionDeviceIconComponent={SessionDeviceIcon}
               />
             ) : (
               <>

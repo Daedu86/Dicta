@@ -48,6 +48,7 @@ Current access model:
 Server-only secrets:
 
 - `OPENROUTER_API_KEY` is server-only.
+- `OLLAMA_API_KEY` is server-only.
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be referenced from Vite/client code, `src/`, or `public/`.
 - CI fails if `SERVICE_ROLE_KEY` appears in `src/` or `public/`.
 
@@ -80,6 +81,7 @@ Dicta can be deployed to Vercel as a static Vite app with lightweight API routes
 
 - Browser TTS works in the hosted app and keeps using browser `localStorage`.
 - OpenRouter generation works through `/api/openrouter/models`, `/api/openrouter/chat`, and `/api/openrouter/jobs` when `OPENROUTER_API_KEY` is configured server-side.
+- Ollama Cloud testing works through `/api/ollama/models` and `/api/ollama/chat` when `OLLAMA_API_KEY` is configured server-side.
 - Kokoro, WhisperX transcription, CosyVoice/Input #4 cache generation, and local file inventory remain local-only workflows.
 - Hosted public beta access should use Supabase Auth (`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`) plus RLS.
 
@@ -88,6 +90,13 @@ Set OpenRouter in Vercel before using hosted generation:
 ```bash
 vercel env add OPENROUTER_API_KEY production
 vercel env add OPENROUTER_API_KEY preview
+```
+
+Set Ollama Cloud in Vercel before using the Ollama workspace:
+
+```bash
+vercel env add OLLAMA_API_KEY production
+vercel env add OLLAMA_API_KEY preview
 ```
 
 For Supabase-backed OpenRouter jobs and admin user management, also set this server-side only:
@@ -152,6 +161,24 @@ Default OpenRouter rate limits:
 - Admins jobs: `DICTA_OPENROUTER_ADMIN_JOBS_PER_HOUR=120`
 
 If the rate-limit RPC is missing or broken, hosted OpenRouter routes must fail closed instead of accepting public beta requests without rate limiting.
+
+## Ollama Cloud
+
+Ollama Cloud is added as a separate model gateway workspace for testing chat prompts. It does not replace OpenRouter generation and does not create DictationScript sessions.
+
+Routes:
+
+- `GET /api/ollama/models`: lists Ollama Cloud models through the server key.
+- `POST /api/ollama/chat`: sends a non-streaming chat test through the server key.
+- `GET /api/ollama/key/status`: reports whether `OLLAMA_API_KEY` is configured without exposing the key.
+
+Server-side rules:
+
+- `OLLAMA_API_KEY` is server-only.
+- Accepted model ids must match `/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/`.
+- The initial recommended model is `gemma3:27b-cloud`.
+- Ollama models do not use `:free`; access and quota depend on the Ollama account tier.
+- Upstream `429` responses are shown as likely rate/quota limits, and `401`/`403` responses are shown as auth/plan/access issues.
 
 ## Typical Training Flow
 
@@ -221,6 +248,7 @@ Primary browser-side state:
 - `dicta.adaptiveSessionFeedback.v1`
 - `dicta.perfDiagnostics.v1`
 - `dicta.openrouterDefaultModel.v1`
+- `dicta.ollamaDefaultModel.v1`
 - `dicta.openrouterGeneratedVariants.v1`
 - `dicta.openrouterActiveJobs.v1`
 - `dicta.kokoroEnabled.v1`

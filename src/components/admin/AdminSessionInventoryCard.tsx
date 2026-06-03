@@ -4,7 +4,7 @@ type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 type MetricsLanguageView = 'en' | 'es' | 'de' | 'fr' | 'pt' | 'all';
 
-type StoredSession = {
+type AdminInventorySessionBase = {
   id: string;
   name: string;
   inputMode: SessionInputMode;
@@ -18,11 +18,11 @@ type StoredSession = {
   [key: string]: unknown;
 };
 
-interface AdminSessionInventoryCardProps {
-  sessions: any[];
+interface AdminSessionInventoryCardProps<TSession extends AdminInventorySessionBase> {
+  sessions: TSession[];
   languageView: MetricsLanguageView;
-  onExportSession: (session: any) => void;
-  onCopySession: (session: any) => void;
+  onExportSession: (session: TSession) => void;
+  onCopySession: (session: TSession) => void;
 }
 
 function countTelemetrySamples(telemetry: SessionTelemetry): number {
@@ -33,7 +33,7 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
   );
 }
 
-function countSessionTypedWords(session: StoredSession): number {
+function countSessionTypedWords(session: AdminInventorySessionBase): number {
   const text =
     session.inputMode === 'input2' || session.inputMode === 'input4'
       ? session.ttsPracticeText
@@ -96,12 +96,12 @@ function Metric({ label, value, title }: { label: string; value: string; title?:
   );
 }
 
-export function AdminSessionInventoryCard({
+export function AdminSessionInventoryCard<TSession extends AdminInventorySessionBase>({
   sessions,
   languageView,
   onExportSession,
   onCopySession,
-}: AdminSessionInventoryCardProps) {
+}: AdminSessionInventoryCardProps<TSession>) {
   return (
     <section className="dashboard-card admin-card">
       <div className="admin-card-header">

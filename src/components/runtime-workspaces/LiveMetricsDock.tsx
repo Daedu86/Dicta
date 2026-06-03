@@ -5,7 +5,7 @@ import type { InputMode } from '../../core/adaptive/types';
 import type { TtsPacingMode } from '../../types/dictation';
 
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
-type RuntimeWorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter';
+type RuntimeWorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter' | 'ollama';
 type RuntimeTtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 
 type LiveMetricsDockProps = {
