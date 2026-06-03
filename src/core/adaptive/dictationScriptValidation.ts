@@ -40,11 +40,56 @@ const INTONATION_HINTS: DictationScriptIntonationHint[] = ['falling', 'continuat
 type UnknownRecord = Record<string, unknown>;
 
 export function parseDictationScriptJson(raw: string): DictationScriptValidationResult {
-  try {
-    return validateDictationScript(JSON.parse(raw));
-  } catch {
-    return { ok: false, script: null, errors: ['JSON must parse.'] };
+  const candidates = buildJsonParseCandidates(raw);
+  for (const candidate of candidates) {
+    try {
+      return validateDictationScript(JSON.parse(candidate));
+    } catch {
+      // Try the next candidate. Some OpenRouter free models wrap JSON in prose or markdown fences.
+    }
   }
+  return { ok: false, script: null, errors: ['JSON must parse.'] };
+}
+
+export function extractJsonObjectText(raw: string): string | null {
+  const text = stripMarkdownJsonFence(raw).trim();
+  if (!text) return null;
+  if (text.startsWith('{') && text.endsWith('}')) return text;
+
+  const start = text.indexOf('{');
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+    if (char === '{') {
+      depth += 1;
+      continue;
+    }
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, index + 1);
+    }
+  }
+
+  return null;
 }
 
 export function validateDictationScript(value: unknown): DictationScriptValidationResult {
@@ -86,6 +131,19 @@ export function normalizeDictationScript(value: unknown): DictationScript {
       };
     }),
   };
+}
+
+function buildJsonParseCandidates(raw: string): string[] {
+  const candidates = [raw.trim(), stripMarkdownJsonFence(raw).trim(), extractJsonObjectText(raw) ?? '']
+    .map((candidate) => candidate.trim())
+    .filter(Boolean);
+  return [...new Set(candidates)];
+}
+
+function stripMarkdownJsonFence(raw: string): string {
+  const text = raw.trim();
+  const fenced = text.match(/^```(?:json|JSON)?\s*([\s\S]*?)\s*```$/);
+  return fenced?.[1] ?? text;
 }
 
 function collectValidationErrors(value: unknown): string[] {
