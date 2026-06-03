@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extractJsonObjectText,
   normalizeDictationScript,
   parseDictationScriptJson,
   validateDictationScript,
@@ -49,6 +50,25 @@ describe('dictationScriptValidation', () => {
     const result = parseDictationScriptJson(JSON.stringify(validScript));
     expect(result.ok).toBe(true);
     expect(result.ok ? result.script.title : '').toBe('Generated Dictation');
+  });
+
+  it('parses JSON wrapped in markdown fences', () => {
+    const result = parseDictationScriptJson(`\n\n\`\`\`json\n${JSON.stringify(validScript)}\n\`\`\`\n`);
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.script.title : '').toBe('Generated Dictation');
+  });
+
+  it('parses JSON embedded in model prose', () => {
+    const result = parseDictationScriptJson(`Here is the requested JSON:\n${JSON.stringify(validScript)}\nThanks.`);
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.script.phrases.length : 0).toBe(2);
+  });
+
+  it('extracts a balanced JSON object without being confused by braces in strings', () => {
+    const wrapped = `Intro { not json } ${JSON.stringify({ ...validScript, title: 'Use {braces} literally' })} outro`;
+    expect(extractJsonObjectText(wrapped)).toContain('Use {braces} literally');
+    const result = parseDictationScriptJson(wrapped);
+    expect(result.ok ? result.script.title : '').toBe('Use {braces} literally');
   });
 
   it('fails invalid JSON', () => {
