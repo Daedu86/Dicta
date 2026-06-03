@@ -58,9 +58,9 @@ export function buildOpenRouterModelOptions(
   assignedModels: Array<string | null | undefined> = [],
 ): OpenRouterModelSummary[] {
   const byId = new Map<string, OpenRouterModelSummary>();
-  byId.set('openrouter/free', { id: 'openrouter/free' });
   for (const model of models) {
-    if (model.id.trim()) byId.set(model.id, model);
+    const id = model.id.trim();
+    if (id) byId.set(id, { ...model, id });
   }
   for (const assignedModel of assignedModels) {
     const id = assignedModel?.trim();
@@ -238,151 +238,73 @@ export function createEmptyOpenRouterGenerationSlots(defaultModel = ''): OpenRou
   };
 }
 
-export function loadPersistedOpenRouterGenerationVariants(defaultModel = ''): OpenRouterGenerationSlots {
-  const raw = window.localStorage.getItem(OPENROUTER_GENERATED_VARIANTS_KEY);
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as Partial<Record<OpenRouterGenerationSlotId, Partial<OpenRouterGenerationSlotState>>>;
-      return {
-        prompt1: normalizeOpenRouterGenerationSlot(parsed.prompt1, defaultModel),
-        prompt2: normalizeOpenRouterGenerationSlot(parsed.prompt2, defaultModel),
-      };
-    } catch {
-      return createEmptyOpenRouterGenerationSlots(defaultModel);
-    }
-  }
-
-  const legacyDraft = loadPersistedOpenRouterGeneration();
-  if (!legacyDraft) return createEmptyOpenRouterGenerationSlots(defaultModel);
-  return {
-    prompt1: {
-      ...createEmptyOpenRouterGenerationSlot(defaultModel),
-      text: legacyDraft.text,
-      json: legacyDraft.json,
-      inputMode: legacyDraft.inputMode,
-      language: legacyDraft.language,
-      usage: legacyDraft.usage,
-      elapsedMs: legacyDraft.elapsedMs,
-      generatedAt: new Date().toISOString(),
-    },
-    prompt2: createEmptyOpenRouterGenerationSlot(defaultModel),
-  };
-}
-
-export function persistOpenRouterGenerationVariants(slots: OpenRouterGenerationSlots): void {
-  window.localStorage.setItem(OPENROUTER_GENERATED_VARIANTS_KEY, JSON.stringify(slots));
-  window.localStorage.removeItem(OPENROUTER_GENERATED_SCRIPT_KEY);
-}
-
-export function shouldCreatePersistentGenerationErrorSession(message: string): boolean {
-  return !isTransientOpenRouterGenerationError(message);
-}
-
-type OpenRouterWakeLockSentinel = {
-  released?: boolean;
-  release: () => Promise<void>;
-};
-
-type OpenRouterWakeLockNavigator = Navigator & {
-  wakeLock?: {
-    request: (type: 'screen') => Promise<OpenRouterWakeLockSentinel>;
-  };
-};
-
-export async function requestOpenRouterWakeLock(): Promise<OpenRouterWakeLockSentinel | null> {
-  if (typeof navigator === 'undefined') return null;
-  const wakeLock = (navigator as OpenRouterWakeLockNavigator).wakeLock;
-  if (!wakeLock) return null;
+export function loadPersistedOpenRouterGenerationVariants(defaultModel = ''): OpenRouterGenerationSlots | null {
   try {
-    return await wakeLock.request('screen');
-  } catch {
-    return null;
-  }
-}
-
-export async function releaseOpenRouterWakeLock(wakeLock: OpenRouterWakeLockSentinel | null): Promise<void> {
-  if (!wakeLock || wakeLock.released) return;
-  try {
-    await wakeLock.release();
-  } catch {
-    // The browser may release the lock automatically when the page is hidden.
-  }
-}
-
-export function formatInterruptedOpenRouterMessage(message: string): string {
-  return `${message} No local fallback was created. Keep Dicta open and unlocked while OpenRouter finishes, then retry if the request was interrupted.`;
-}
-
-function loadPersistedOpenRouterGeneration(): PersistedOpenRouterGeneration | null {
-  const raw = window.localStorage.getItem(OPENROUTER_GENERATED_SCRIPT_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Partial<PersistedOpenRouterGeneration>;
-    if (
-      typeof parsed.text !== 'string' ||
-      typeof parsed.json !== 'string' ||
-      !isAdaptiveInputMode(parsed.inputMode) ||
-      !isBenchmarkLanguageButton(parsed.language)
-    ) {
-      return null;
-    }
-    const usage = parsed.usage;
+    const raw = window.localStorage.getItem(OPENROUTER_GENERATED_VARIANTS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<OpenRouterGenerationSlots>;
     return {
-      text: parsed.text,
-      json: parsed.json,
-      inputMode: parsed.inputMode,
-      language: parsed.language,
-      usage:
-        usage &&
-        Number.isFinite(usage.promptTokens) &&
-        Number.isFinite(usage.completionTokens) &&
-        Number.isFinite(usage.totalTokens)
-          ? {
-              promptTokens: usage.promptTokens,
-              completionTokens: usage.completionTokens,
-              totalTokens: usage.totalTokens,
-            }
-          : null,
-      elapsedMs: typeof parsed.elapsedMs === 'number' && Number.isFinite(parsed.elapsedMs) ? parsed.elapsedMs : null,
+      prompt1: { ...createEmptyOpenRouterGenerationSlot(defaultModel), ...(parsed.prompt1 ?? {}) },
+      prompt2: { ...createEmptyOpenRouterGenerationSlot(defaultModel), ...(parsed.prompt2 ?? {}) },
     };
   } catch {
     return null;
   }
 }
 
-function normalizeOpenRouterGenerationSlot(
-  raw: Partial<OpenRouterGenerationSlotState> | null | undefined,
-  defaultModel: string,
-): OpenRouterGenerationSlotState {
-  const usage = raw?.usage;
+export function persistOpenRouterGenerationVariants(slots: OpenRouterGenerationSlots): void {
+  window.localStorage.setItem(OPENROUTER_GENERATED_VARIANTS_KEY, JSON.stringify(slots));
+}
+
+export function loadPersistedOpenRouterGeneration(): PersistedOpenRouterGeneration | null {
+  try {
+    const raw = window.localStorage.getItem(OPENROUTER_GENERATED_SCRIPT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedOpenRouterGeneration;
+  } catch {
+    return null;
+  }
+}
+
+export function persistOpenRouterGeneration(payload: PersistedOpenRouterGeneration): void {
+  window.localStorage.setItem(OPENROUTER_GENERATED_SCRIPT_KEY, JSON.stringify(payload));
+}
+
+export function formatInterruptedOpenRouterMessage(slotLabel: string, model: string, elapsedMs: number): string {
+  return `${slotLabel} request for ${model} was interrupted after ${formatElapsedMs(elapsedMs)}. It may still finish in the background.`;
+}
+
+export function shouldCreatePersistentGenerationErrorSession(message: string): boolean {
+  return !isTransientOpenRouterGenerationError(message);
+}
+
+export function releaseOpenRouterWakeLock(wakeLock: WakeLockSentinel | null): void {
+  void wakeLock?.release().catch(() => {});
+}
+
+export async function requestOpenRouterWakeLock(): Promise<WakeLockSentinel | null> {
+  try {
+    return await navigator.wakeLock?.request('screen');
+  } catch {
+    return null;
+  }
+}
+
+export function formatTrainingGenerationNoticeMessage(notice: TrainingGenerationNoticeView | null): string {
+  return notice?.message ?? '';
+}
+
+export function mapOpenRouterJobResultToPersistedGeneration(job: OpenRouterJobResponse, elapsedMs: number | null): PersistedOpenRouterGeneration | null {
+  const result = job.result;
+  if (!result || typeof result !== 'object') return null;
+  const text = typeof result.text === 'string' ? result.text : '';
+  if (!text.trim()) return null;
   return {
-    notes: typeof raw?.notes === 'string' ? raw.notes : '',
-    model: typeof raw?.model === 'string' ? raw.model : defaultModel,
-    text: typeof raw?.text === 'string' ? raw.text : '',
-    json: typeof raw?.json === 'string' ? raw.json : '',
-    inputMode: isAdaptiveInputMode(raw?.inputMode) ? raw.inputMode : null,
-    language: isBenchmarkLanguageButton(raw?.language) ? raw.language : null,
-    usage:
-      usage &&
-      Number.isFinite(usage.promptTokens) &&
-      Number.isFinite(usage.completionTokens) &&
-      Number.isFinite(usage.totalTokens)
-        ? {
-            promptTokens: usage.promptTokens,
-            completionTokens: usage.completionTokens,
-            totalTokens: usage.totalTokens,
-          }
-        : null,
-    elapsedMs: typeof raw?.elapsedMs === 'number' && Number.isFinite(raw.elapsedMs) ? raw.elapsedMs : null,
-    generatedAt: typeof raw?.generatedAt === 'string' ? raw.generatedAt : null,
-    error: typeof raw?.error === 'string' ? raw.error : '',
+    text,
+    json: text,
+    inputMode: 'browser-tts',
+    language: isSupportedLanguage(job.request?.language) ? job.request.language : 'de',
+    usage: null,
+    elapsedMs,
   };
-}
-
-function isAdaptiveInputMode(value: unknown): value is InputMode {
-  return value === 'audio' || value === 'browser-tts' || value === 'kokoro' || value === 'qwen-cloud';
-}
-
-function isBenchmarkLanguageButton(value: unknown): value is BenchmarkLanguageButton {
-  return isSupportedLanguage(value);
 }
