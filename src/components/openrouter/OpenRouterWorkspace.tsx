@@ -6,6 +6,7 @@ import { buildDictationScriptPrompt, buildDictationScriptTemplate } from '../../
 import {
   buildOpenRouterGenerationPrompt,
   estimateOpenRouterPromptSize,
+  getOpenRouterGenerationMaxTokens,
   type OpenRouterGeneratePromptSource,
 } from '../../core/adaptive/openRouterGenerationPrompt';
 import { isTransientOpenRouterGenerationError } from '../../core/adaptive/openRouterFallbackScript';
@@ -207,7 +208,7 @@ export function OpenRouterWorkspace({
     setGenerateBusySlots((current) => ({ ...current, [slotId]: true }));
     updateGenerationSlot(slotId, { error: '' });
     const slotPrompt = buildVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
-    const slotMaxTokens = generateDurationMinutes === 2 ? 1000 : generateDurationMinutes === 3 ? 1300 : 1600;
+    const slotMaxTokens = getOpenRouterGenerationMaxTokens(generateDurationMinutes);
     const generationStartedAt = new Date().toISOString();
     const promptSize = estimateOpenRouterPromptSize(slotPrompt, {
       promptMode: generatePromptSource,

@@ -53,6 +53,19 @@ export function estimateOpenRouterPromptSize(
   };
 }
 
+export function getOpenRouterGenerationMaxTokens(durationMinutes: OpenRouterDurationMinutes): number {
+  switch (durationMinutes) {
+    case 1:
+      return 1_800;
+    case 2:
+      return 2_600;
+    case 3:
+      return 3_800;
+    case 4:
+      return 4_800;
+  }
+}
+
 export function buildOpenRouterGenerationPrompt({
   profile,
   sessionFeedback,

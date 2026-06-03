@@ -174,10 +174,39 @@ function isValidSessionScript(value) {
   );
 }
 
+function findValidSessionScript(value, depth = 0) {
+  if (isValidSessionScript(value)) return value;
+  if (depth >= 4) return null;
+
+  if (typeof value === 'string') {
+    const parsed = tryParseJson(value);
+    if (parsed !== null && parsed !== value) return findValidSessionScript(parsed, depth + 1);
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findValidSessionScript(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) {
+      const found = findValidSessionScript(item, depth + 1);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
 function extractValidSessionScriptJson(raw) {
   for (const candidate of collectJsonObjectCandidates(raw)) {
     const parsed = tryParseJson(candidate);
-    if (isValidSessionScript(parsed)) return JSON.stringify(parsed, null, 2);
+    const script = findValidSessionScript(parsed);
+    if (script) return JSON.stringify(script, null, 2);
   }
   return '';
 }

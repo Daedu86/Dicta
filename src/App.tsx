@@ -43,6 +43,7 @@ import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './core
 import {
   buildOpenRouterGenerationPrompt,
   estimateOpenRouterPromptSize,
+  getOpenRouterGenerationMaxTokens,
   type OpenRouterDurationMinutes,
 } from './core/adaptive/openRouterGenerationPrompt';
 import { buildAdaptiveUserSystemReport } from './core/adaptive/adaptiveUserSystemReport';
@@ -3376,7 +3377,7 @@ function App() {
     setOpenRouterError('');
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
-    const targetMaxTokens = durationMinutes === 1 ? 800 : durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : 1600;
+    const targetMaxTokens = getOpenRouterGenerationMaxTokens(durationMinutes);
     try {
       const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
       const sessionFeedback = selectLatestAdaptiveSessionFeedback(

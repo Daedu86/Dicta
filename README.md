@@ -137,7 +137,8 @@ Server-side rules:
 
 - Accepted model ids are `openrouter/free` or ids ending in `:free`.
 - Prompt length is capped at 32,000 characters.
-- `maxTokens` is bounded between 128 and 1,800.
+- Immediate chat `maxTokens` is bounded between 128 and 1,800.
+- Durable job `maxTokens` is bounded between 128 and 4,800, with defaults sized by requested session duration.
 - `resolveRequestProfile`, `assertOpenRouterAccess`, and `assertOpenRouterModelAllowed` gate access per signed-in profile.
 - `/api/openrouter/chat` and `/api/openrouter/jobs` are rate-limited per profile through `dicta_check_rate_limit`.
 - Durable jobs use `dicta_openrouter_jobs`, `waitUntil`, a 3 active-job limit, and cleanup of completed jobs older than 14 days.

@@ -47,7 +47,7 @@ describe('OpenRouter jobs route payload validation', () => {
       }),
     ).toMatchObject({
       model: 'openrouter/free',
-      maxTokens: 1000,
+      maxTokens: 2600,
       inputMode: 'browser-tts',
       language: 'fr',
       slotLabel: 'Session 1',
@@ -67,7 +67,7 @@ describe('OpenRouter jobs route payload validation', () => {
       }),
     ).toMatchObject({
       model: 'openrouter/free',
-      maxTokens: 1000,
+      maxTokens: 2600,
       inputMode: 'qwen-cloud',
       language: 'pt',
       slotLabel: 'Session PT',
@@ -86,7 +86,7 @@ describe('OpenRouter jobs route payload validation', () => {
         durationMinutes: 1,
       }),
     ).toMatchObject({
-      maxTokens: 800,
+      maxTokens: 1800,
       slotLabel: 'Express easy direct session',
       durationMinutes: 1,
     });
@@ -154,6 +154,16 @@ describe('OpenRouter jobs route payload validation', () => {
   it('extracts double-encoded session JSON returned as a JSON string', () => {
     const extracted = extractOpenRouterJobSessionJson(JSON.stringify(JSON.stringify(validScript)));
     expect(JSON.parse(extracted).inputMode).toBe('browser-tts');
+  });
+
+  it('extracts session JSON nested in a model wrapper string', () => {
+    const extracted = extractOpenRouterJobSessionJson(
+      JSON.stringify({
+        reasoning: 'I will provide the final Dicta session JSON.',
+        session_json: JSON.stringify(validScript),
+      }),
+    );
+    expect(JSON.parse(extracted).title).toBe('Ein ruhiger Morgen');
   });
 
   it('rejects reasoning-only text without a valid session JSON object', () => {
@@ -253,7 +263,7 @@ describe('OpenRouter jobs route payload validation', () => {
         slotLabel: 'Session 1',
         durationMinutes: 4,
       }).maxTokens,
-    ).toBe(1800);
+    ).toBe(4800);
   });
 
   it('rejects oversized prompts', () => {

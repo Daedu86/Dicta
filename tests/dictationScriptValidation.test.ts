@@ -94,6 +94,17 @@ describe('dictationScriptValidation', () => {
     expect(result.ok ? result.script.language : '').toBe('en');
   });
 
+  it('parses generated session JSON nested in a model wrapper string', () => {
+    const result = parseDictationScriptJson(
+      JSON.stringify({
+        answer: 'valid session follows',
+        session_json: JSON.stringify(validScript),
+      }),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.script.inputMode : '').toBe('kokoro');
+  });
+
   it('fails invalid JSON', () => {
     const result = parseDictationScriptJson('{bad');
     expect(result.ok).toBe(false);

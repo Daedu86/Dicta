@@ -155,7 +155,8 @@ Server-side rules:
 - Server-only Supabase role keys must never be referenced from `src/` or `public/`.
 - Accepted model ids are `openrouter/free` or ids ending in `:free`.
 - Prompt length is capped at 32,000 characters.
-- `maxTokens` is bounded between 128 and 1,800.
+- Immediate chat `maxTokens` is bounded between 128 and 1,800.
+- Durable job `maxTokens` is bounded between 128 and 4,800, with defaults sized by requested session duration.
 - Durable jobs use `dicta_openrouter_jobs`, `waitUntil`, a 3 active-job limit, and cleanup of completed jobs older than 14 days.
 - Durable job creation is persistently rate-limited per profile through `dicta_rate_limits` and `dicta_check_rate_limit`.
 - OpenRouter and admin routes write security events through `api/_securityEvents.js`; OpenRouter rate-limit helpers re-export it for compatibility.

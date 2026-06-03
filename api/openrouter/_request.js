@@ -3,7 +3,8 @@ export const OPENROUTER_ACTIVE_JOB_LIMIT = 3;
 export const OPENROUTER_PROMPT_MAX_CHARS = 32_000;
 export const OPENROUTER_MODEL_MAX_CHARS = 160;
 export const OPENROUTER_MIN_MAX_TOKENS = 128;
-export const OPENROUTER_MAX_MAX_TOKENS = 1_800;
+export const OPENROUTER_CHAT_MAX_MAX_TOKENS = 1_800;
+export const OPENROUTER_JOB_MAX_MAX_TOKENS = 4_800;
 export const OPENROUTER_CHAT_DEFAULT_MAX_TOKENS = 600;
 export const OPENROUTER_SLOT_LABEL_MAX_CHARS = 80;
 export const OPENROUTER_TARGET_DIFFICULTY_MAX_CHARS = 40;
@@ -12,10 +13,10 @@ const VALID_LANGUAGES = new Set(['en', 'es', 'de', 'fr', 'pt']);
 const VALID_INPUT_MODES = new Set(['audio', 'browser-tts', 'kokoro', 'qwen-cloud']);
 const VALID_DURATIONS = new Set([1, 2, 3, 4]);
 const DEFAULT_JOB_MAX_TOKENS_BY_DURATION = new Map([
-  [1, 800],
-  [2, 1_000],
-  [3, 1_300],
-  [4, 1_600],
+  [1, 1_800],
+  [2, 2_600],
+  [3, 3_800],
+  [4, 4_800],
 ]);
 const OPENROUTER_MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
 
@@ -47,7 +48,7 @@ export function readOpenRouterChatPayload(body) {
   return {
     model,
     prompt,
-    maxTokens: normalizeMaxTokens(payload.maxTokens, OPENROUTER_CHAT_DEFAULT_MAX_TOKENS),
+    maxTokens: normalizeMaxTokens(payload.maxTokens, OPENROUTER_CHAT_DEFAULT_MAX_TOKENS, OPENROUTER_CHAT_MAX_MAX_TOKENS),
   };
 }
 
@@ -70,7 +71,11 @@ export function readOpenRouterJobPayload(body) {
   return {
     model,
     prompt,
-    maxTokens: normalizeMaxTokens(payload.maxTokens, DEFAULT_JOB_MAX_TOKENS_BY_DURATION.get(durationMinutes) ?? OPENROUTER_CHAT_DEFAULT_MAX_TOKENS),
+    maxTokens: normalizeMaxTokens(
+      payload.maxTokens,
+      DEFAULT_JOB_MAX_TOKENS_BY_DURATION.get(durationMinutes) ?? OPENROUTER_CHAT_DEFAULT_MAX_TOKENS,
+      OPENROUTER_JOB_MAX_MAX_TOKENS,
+    ),
     inputMode,
     language,
     slotLabel,
@@ -100,11 +105,11 @@ function normalizeOpenRouterPrompt(value) {
   return prompt;
 }
 
-function normalizeMaxTokens(value, fallback) {
+function normalizeMaxTokens(value, fallback, maxTokens) {
   const hasValue = value !== undefined && value !== null && value !== '';
   const numeric = hasValue ? Number(value) : fallback;
   const bounded = Number.isFinite(numeric) ? numeric : fallback;
-  return Math.max(OPENROUTER_MIN_MAX_TOKENS, Math.min(OPENROUTER_MAX_MAX_TOKENS, Math.round(bounded)));
+  return Math.max(OPENROUTER_MIN_MAX_TOKENS, Math.min(maxTokens, Math.round(bounded)));
 }
 
 function normalizeShortLabel(value, fallback, maxChars) {

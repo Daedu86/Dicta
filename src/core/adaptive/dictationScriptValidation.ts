@@ -45,9 +45,11 @@ export function parseDictationScriptJson(raw: string): DictationScriptValidation
   for (const candidate of candidates) {
     const parsed = tryParseJsonCandidate(candidate);
     if (!parsed.ok) continue;
-    const result = validateDictationScript(parsed.value);
-    if (result.ok) return result;
-    firstValidationErrors ??= result.errors;
+    for (const value of collectDictationScriptValueCandidates(parsed.value)) {
+      const result = validateDictationScript(value);
+      if (result.ok) return result;
+      firstValidationErrors ??= result.errors;
+    }
   }
   return { ok: false, script: null, errors: firstValidationErrors ?? ['JSON must parse.'] };
 }
@@ -158,6 +160,34 @@ function buildJsonParseCandidates(raw: string): string[] {
     .map((candidate) => candidate.trim())
     .filter(Boolean);
   return [...new Set(candidates)];
+}
+
+function collectDictationScriptValueCandidates(value: unknown, depth = 0): unknown[] {
+  const candidates: unknown[] = [value];
+  if (depth >= 4) return candidates;
+
+  if (typeof value === 'string') {
+    const parsed = tryParseJsonCandidate(value);
+    if (parsed.ok && parsed.value !== value) {
+      candidates.push(...collectDictationScriptValueCandidates(parsed.value, depth + 1));
+    }
+    return candidates;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      candidates.push(...collectDictationScriptValueCandidates(item, depth + 1));
+    }
+    return candidates;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value as UnknownRecord)) {
+      candidates.push(...collectDictationScriptValueCandidates(item, depth + 1));
+    }
+  }
+
+  return candidates;
 }
 
 function stripMarkdownJsonFence(raw: string): string {
