@@ -1,13 +1,13 @@
-# App.tsx measurement after AdaptiveAdvancedDiagnostics
+# App.tsx measurement after AudioSourceCard
 
 _Last measured: 2026-06-03_
 
-This is a docs-only measurement after `AdaptiveAdvancedDiagnostics` was extracted.
+This measurement now reflects the `AudioSourceCard` extraction.
 
 Current `src/App.tsx` size reported by the implementation pass:
 
 ```text
-9,099 lines
+9,660 lines
 ```
 
 ## Completed recent extraction chain
@@ -23,17 +23,18 @@ src/components/runtime-workspaces/Input4SetupCard.tsx
 src/components/runtime-workspaces/AudioInputSetupCard.tsx
 src/components/runtime-workspaces/SessionCreateCard.tsx
 src/components/runtime-workspaces/LiveMetricsDock.tsx
+src/components/runtime-workspaces/AudioSourceCard.tsx
 src/components/leaderboard/LeaderboardWorkspace.tsx
 src/components/adaptive-workspace/AdaptiveAdvancedDiagnostics.tsx
 ```
 
 ## Current reading
 
-The main top-level workspace render branches are now mostly componentized. The largest remaining App.tsx JSX is concentrated in the default Input #1 audio runtime branch and the auth route. Both are behavior-adjacent, so any next extraction should be narrow.
+The main top-level workspace render branches are now mostly componentized. The Input #1 audio source display is extracted; remaining App.tsx JSX is concentrated in the Input #1 audio practice panel and the auth route. Both are behavior-adjacent, so any next extraction should be measured before selection.
 
 ## Remaining candidates
 
-### 1. Input #1 audio source card
+### Completed: Input #1 audio source card
 
 Approximate area:
 
@@ -60,13 +61,24 @@ Possible target:
 src/components/runtime-workspaces/AudioSourceCard.tsx
 ```
 
-Risk: medium-high.
+Status: complete.
 
-Rationale: this is the safest remaining runtime extraction because it is mostly display, but it is still behavior-adjacent due to the `audioRef`, `onTimeUpdate`, and `onEnded` lifecycle callbacks. Extract only this source card first. Keep the ref and callbacks owned by `App.tsx` and pass them explicitly.
+Completed scope:
 
-Recommendation: next code extraction after reading `docs/audio-runtime-workspace-modularization.md`.
+- source card wrapper;
+- audio media player label;
+- `<audio ref={audioRef}>` element;
+- `controls` / `src={audioUrl}`;
+- `onTimeUpdate` callback passed from `App.tsx`;
+- `onEnded` callback passed from `App.tsx`;
+- Whisper transcript heading;
+- transcript segment list;
+- active transcript segment highlighting;
+- empty transcript state.
 
-### 2. Input #1 audio practice card
+App-owned behavior stayed in `src/App.tsx`: audio ref ownership, audio URL derivation, time update callback, finish-on-ended callback, transcript segment derivation, active segment index derivation, persistence, and sync.
+
+### 1. Input #1 audio practice card
 
 Approximate area:
 
@@ -91,9 +103,9 @@ src/components/runtime-workspaces/AudioPracticeCard.tsx
 
 Risk: high.
 
-Rationale: this is behavior-adjacent because it touches session lifecycle controls, typing state, ready-state display, transcript cues, and live metrics. Do not extract until `AudioSourceCard` is stable.
+Rationale: this is behavior-adjacent because it touches session lifecycle controls, typing state, ready-state display, transcript cues, and live metrics. Treat this only as possible after measurement, not as an automatic next extraction.
 
-### 3. Auth/sign-in route
+### 2. Auth/sign-in route
 
 Approximate area:
 
@@ -120,7 +132,7 @@ Risk: medium-high.
 
 Rationale: cohesive UI, but it touches Supabase auth flows, password update/reset, sign-in, sign-out, profile loading, and local storage readiness. Plan separately. Do not choose before the smaller audio source card unless auth maintainability becomes the priority.
 
-### 4. Runtime workspace headers
+### 3. Runtime workspace headers
 
 Approximate area:
 
@@ -138,7 +150,7 @@ Risk: low.
 
 Rationale: safe but low value. Not recommended as the next size-reduction step.
 
-### 5. AdminWorkspace second pass
+### 4. AdminWorkspace second pass
 
 Observed area:
 
@@ -152,19 +164,19 @@ Rationale: Admin UI cards are extracted, but `AdminWorkspace` still owns local a
 
 ## Recommendation
 
-Recommended next code extraction:
+Recommended next step:
 
 ```text
-src/components/runtime-workspaces/AudioSourceCard.tsx
+Measure the remaining Input #1 audio runtime branch before deciding whether AudioPracticeCard is worth extracting.
 ```
 
-Use the dedicated plan first:
+Use the dedicated plan before any later audio-runtime code move:
 
 ```text
 docs/audio-runtime-workspace-modularization.md
 ```
 
-Do not extract `AudioPracticeCard` yet.
+Do not mark `AudioPracticeCard` as the next automatic extraction; it is only possible after measurement.
 
 ## Stop conditions
 
@@ -186,4 +198,4 @@ git diff --stat
 git status --short
 ```
 
-This measurement is docs-only; runtime validation is not required for this file.
+This measurement was updated with the AudioSourceCard extraction pass.

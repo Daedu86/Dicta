@@ -4,23 +4,23 @@ _Last updated: 2026-06-03_
 
 ## Status
 
-Planning/evaluation only. No code has moved under this plan yet.
+First pass complete. `AudioSourceCard.tsx` is extracted as a UI-only/presentational component.
 
 This plan covers the remaining inline default Input #1 audio runtime workspace branch in `src/App.tsx` after the runtime setup/sidebar, leaderboard, and adaptive advanced diagnostics extractions.
 
-Current `src/App.tsx` size after the AdaptiveAdvancedDiagnostics pass:
+Current `src/App.tsx` size after the AudioSourceCard pass:
 
 ```text
-9,099 lines
+9,660 lines
 ```
 
-## Proposed first target
+## Completed first target
 
 ```text
 src/components/runtime-workspaces/AudioSourceCard.tsx
 ```
 
-## Later target, not first
+## Possible later target, only after measurement
 
 ```text
 src/components/runtime-workspaces/AudioPracticeCard.tsx
@@ -37,7 +37,7 @@ The branch should be split in two passes because the source card is mostly displ
 Source card:
 
 ```text
-src/App.tsx:7515-7548
+extracted to src/components/runtime-workspaces/AudioSourceCard.tsx
 ```
 
 Practice card:
@@ -50,7 +50,7 @@ Actual lines may drift. Re-measure immediately before implementation.
 
 ## AudioSourceCard scope
 
-Move only this visual source card:
+Moved only this visual source card:
 
 - `<section className="panel workspace-panel tts-source-panel tall-panel">`;
 - `Audio source` heading;
@@ -74,6 +74,14 @@ Keep in `App.tsx`:
 - persistence/sync.
 
 Pass explicit props/callbacks to the component.
+
+Completed component:
+
+```text
+src/components/runtime-workspaces/AudioSourceCard.tsx
+```
+
+`App.tsx` still owns the audio ref, audio URL derivation, `setCurrentAudioTime`, `finishSession`, transcript segment derivation, active segment index derivation, `formatTimestamp`, playback/session lifecycle behavior, persistence, and sync.
 
 ## AudioPracticeCard scope, later only
 
@@ -165,11 +173,11 @@ Do not move practice panel JSX.
 
 ### Step 2: measure again
 
-After AudioSourceCard is stable, re-measure before deciding whether to extract `AudioPracticeCard`.
+After AudioSourceCard is stable, re-measure before deciding whether `AudioPracticeCard` is worth extracting.
 
 ### Step 3: AudioPracticeCard, optional later
 
-Only if the prop surface stays reasonable and the source card is stable.
+Only if measurement shows it is worth doing and the prop surface stays reasonable.
 
 ## Validation
 
@@ -195,10 +203,10 @@ Stop and do not extract if:
 
 ## Recommendation
 
-Proceed only with:
+AudioSourceCard is complete. Next step:
 
 ```text
-src/components/runtime-workspaces/AudioSourceCard.tsx
+Measure before deciding whether AudioPracticeCard is worth extracting.
 ```
 
-Do not extract `AudioPracticeCard` in the same patch.
+Do not treat `AudioPracticeCard` as an automatic next extraction.

@@ -123,6 +123,7 @@ import { TrainingView, type TrainingViewProps } from './components/TrainingView'
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { LeaderboardWorkspace, type LeaderboardWorkspaceProps } from './components/leaderboard/LeaderboardWorkspace';
 import { AudioInputSetupCard } from './components/runtime-workspaces/AudioInputSetupCard';
+import { AudioSourceCard } from './components/runtime-workspaces/AudioSourceCard';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
 import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
 import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsSetupCard';
@@ -7538,36 +7539,15 @@ function App() {
               {lockedInputSummary}
               <div className="workspace-columns">
                 <div className="workspace-column workspace-column-primary">
-                  <section className="panel workspace-panel tts-source-panel tall-panel">
-                    <h2>Audio source</h2>
-                    <div className="source-media-player">
-                      <span className="bottom-metrics-player-label">Media player</span>
-                      <audio
-                        ref={audioRef}
-                        controls
-                        src={audioUrl}
-                        className="audio"
-                        onTimeUpdate={() => setCurrentAudioTime(audioRef.current?.currentTime ?? 0)}
-                        onEnded={() => finishSession()}
-                      />
-                    </div>
-                    <h3>Whisper transcript</h3>
-                    <div className="transcript-preview long transcript-segment-list">
-                      {transcriptSegments.length > 0 ? (
-                        transcriptSegments.map((segment, index) => (
-                          <article
-                            key={`${segment.start}-${segment.end}`}
-                            className={`transcript-segment ${index === activeTranscriptSegmentIndex ? 'transcript-segment-active' : ''}`}
-                          >
-                            <span className="transcript-segment-time">{formatTimestamp(segment.start)}</span>
-                            <p>{segment.text}</p>
-                          </article>
-                        ))
-                      ) : (
-                        <p>No transcript yet.</p>
-                      )}
-                    </div>
-                  </section>
+                  <AudioSourceCard
+                    audioRef={audioRef}
+                    audioUrl={audioUrl}
+                    transcriptSegments={transcriptSegments}
+                    activeTranscriptSegmentIndex={activeTranscriptSegmentIndex}
+                    onTimeUpdate={() => setCurrentAudioTime(audioRef.current?.currentTime ?? 0)}
+                    onEnded={() => finishSession()}
+                    formatTimestamp={formatTimestamp}
+                  />
 
                 </div>
 

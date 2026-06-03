@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the AdaptiveAdvancedDiagnostics extraction pass:
+Current `src/App.tsx` size on `main` after the AudioSourceCard extraction pass:
 
 ```text
-9,099 lines
+9,660 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -427,6 +427,7 @@ src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
 src/components/runtime-workspaces/KokoroSetupCard.tsx
 src/components/runtime-workspaces/LiveMetricsDock.tsx
 src/components/runtime-workspaces/AudioInputSetupCard.tsx
+src/components/runtime-workspaces/AudioSourceCard.tsx
 ```
 
 Completed references:
@@ -452,15 +453,19 @@ KokoroSetupCard extraction completed in the implementation commit reported in th
 LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
 
 AudioInputSetupCard extraction completed in the implementation commit reported in the final summary.
+
+AudioSourceCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Selected next candidate:
 
 ```text
-None selected. Run a fresh runtime render measurement before choosing another extraction.
+None selected. Measure the remaining Input #1 audio runtime branch before deciding whether AudioPracticeCard is worth extracting.
 ```
 
 Session creation/import is now extracted as a UI-only/presentational card. App-owned session creation, quota state, DictationScript validation, generated session creation, persistence, and sync stay in `src/App.tsx`.
+
+Input #1 audio source display is now extracted as a UI-only/presentational card. App-owned audio refs, audio URL derivation, time updates, finish-on-ended behavior, transcript segment derivation, persistence, and sync stay in `src/App.tsx`.
 
 ### 9. Leaderboard workspace
 
