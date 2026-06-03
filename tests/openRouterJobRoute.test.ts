@@ -130,19 +130,30 @@ describe('OpenRouter jobs route payload validation', () => {
     });
   });
 
-  it('falls back from Nemotron 120B to known free model candidates', () => {
-    expect(resolveOpenRouterJobModelCandidates('nvidia/nemotron-3-super-120b-a12b:free')).toEqual([
-      'nvidia/nemotron-3-super-120b-a12b:free',
-      'nvidia/nemotron-nano-12b-v2-vl:free',
-      'poolside/laguna-xs.2:free',
-      'openrouter/free',
-      'meta-llama/llama-3.2-3b-instruct:free',
-    ]);
+  it('keeps an explicitly selected free model as the only durable job candidate', () => {
+    expect(resolveOpenRouterJobModelCandidates('z-ai/glm-4.5-air:free')).toEqual(['z-ai/glm-4.5-air:free']);
+  });
+
+  it('does not add app-level fallback candidates to the generic free router', () => {
+    expect(resolveOpenRouterJobModelCandidates('openrouter/free')).toEqual(['openrouter/free']);
   });
 
   it('extracts valid session JSON from prose before accepting a job result', () => {
     const extracted = extractOpenRouterJobSessionJson(`We need to produce JSON only.\n${JSON.stringify(validScript)}\nDone.`);
     expect(JSON.parse(extracted).title).toBe('Ein ruhiger Morgen');
+  });
+
+  it('repairs trailing commas before storing extracted session JSON', () => {
+    const sloppyJson = JSON.stringify(validScript, null, 2)
+      .replace('"intonationHint": "neutral"\n    }', '"intonationHint": "neutral",\n    }')
+      .replace(/\n}$/, ',\n}');
+    const extracted = extractOpenRouterJobSessionJson(`\`\`\`json\n${sloppyJson}\n\`\`\``);
+    expect(JSON.parse(extracted).phrases[0].text).toBe(validScript.phrases[0].text);
+  });
+
+  it('extracts double-encoded session JSON returned as a JSON string', () => {
+    const extracted = extractOpenRouterJobSessionJson(JSON.stringify(JSON.stringify(validScript)));
+    expect(JSON.parse(extracted).inputMode).toBe('browser-tts');
   });
 
   it('rejects reasoning-only text without a valid session JSON object', () => {

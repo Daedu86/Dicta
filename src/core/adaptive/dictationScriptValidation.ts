@@ -41,26 +41,32 @@ type UnknownRecord = Record<string, unknown>;
 
 export function parseDictationScriptJson(raw: string): DictationScriptValidationResult {
   const candidates = buildJsonParseCandidates(raw);
+  let firstValidationErrors: string[] | null = null;
   for (const candidate of candidates) {
-    try {
-      return validateDictationScript(JSON.parse(candidate));
-    } catch {
-      // Try the next candidate. Some OpenRouter free models wrap JSON in prose or markdown fences.
-    }
+    const parsed = tryParseJsonCandidate(candidate);
+    if (!parsed.ok) continue;
+    const result = validateDictationScript(parsed.value);
+    if (result.ok) return result;
+    firstValidationErrors ??= result.errors;
   }
-  return { ok: false, script: null, errors: ['JSON must parse.'] };
+  return { ok: false, script: null, errors: firstValidationErrors ?? ['JSON must parse.'] };
 }
 
 export function extractJsonObjectText(raw: string): string | null {
-  const text = stripMarkdownJsonFence(raw).trim();
-  if (!text) return null;
+  return extractJsonObjectTexts(raw)[0] ?? null;
+}
 
+function extractJsonObjectTexts(raw: string): string[] {
+  const text = stripMarkdownJsonFence(raw).trim();
+  if (!text) return [];
+
+  const candidates: string[] = [];
   for (let start = text.indexOf('{'); start >= 0; start = text.indexOf('{', start + 1)) {
     const candidate = extractBalancedObjectAt(text, start);
-    if (candidate && isJsonObjectText(candidate)) return candidate;
+    if (candidate && isJsonObjectText(candidate)) candidates.push(candidate);
   }
 
-  return null;
+  return [...new Set(candidates)];
 }
 
 function extractBalancedObjectAt(text: string, start: number): string | null {
@@ -148,7 +154,7 @@ export function normalizeDictationScript(value: unknown): DictationScript {
 }
 
 function buildJsonParseCandidates(raw: string): string[] {
-  const candidates = [raw.trim(), stripMarkdownJsonFence(raw).trim(), extractJsonObjectText(raw) ?? '']
+  const candidates = [raw.trim(), stripMarkdownJsonFence(raw).trim(), ...extractJsonObjectTexts(raw)]
     .map((candidate) => candidate.trim())
     .filter(Boolean);
   return [...new Set(candidates)];
@@ -156,8 +162,58 @@ function buildJsonParseCandidates(raw: string): string[] {
 
 function stripMarkdownJsonFence(raw: string): string {
   const text = raw.trim();
-  const fenced = text.match(/^```(?:json|JSON)?\s*([\s\S]*?)\s*```$/);
+  const fenced = text.match(/^```\s*(?:json|jsonc)?\s*([\s\S]*?)\s*```$/i);
   return fenced?.[1] ?? text;
+}
+
+type JsonParseCandidateResult =
+  | { ok: true; value: unknown }
+  | { ok: false };
+
+function tryParseJsonCandidate(value: string, depth = 0): JsonParseCandidateResult {
+  const text = value.replace(/^\uFEFF/, '').trim();
+  const candidates = [...new Set([text, removeTrailingJsonCommas(text)].filter(Boolean))];
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (depth < 1 && typeof parsed === 'string') {
+        const nested = tryParseJsonCandidate(parsed, depth + 1);
+        if (nested.ok) return nested;
+      }
+      return { ok: true, value: parsed };
+    } catch {
+      // Try the next repaired candidate. Some free models emit prose, fences, or trailing commas.
+    }
+  }
+  return { ok: false };
+}
+
+function removeTrailingJsonCommas(value: string): string {
+  let output = '';
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if (inString) {
+      output += char;
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      output += char;
+      continue;
+    }
+    if (char === ',') {
+      let nextIndex = index + 1;
+      while (nextIndex < value.length && /\s/.test(value[nextIndex])) nextIndex += 1;
+      if (value[nextIndex] === '}' || value[nextIndex] === ']') continue;
+    }
+    output += char;
+  }
+  return output;
 }
 
 function collectValidationErrors(value: unknown): string[] {

@@ -64,11 +64,34 @@ describe('dictationScriptValidation', () => {
     expect(result.ok ? result.script.phrases.length : 0).toBe(2);
   });
 
+  it('skips non-script JSON objects before the generated script', () => {
+    const result = parseDictationScriptJson(
+      `Metadata first: ${JSON.stringify({ reasoning: 'draft', phrases: [] })}\nFinal JSON:\n${JSON.stringify(validScript)}`,
+    );
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.script.title : '').toBe('Generated Dictation');
+  });
+
   it('extracts a balanced JSON object without being confused by braces in strings', () => {
     const wrapped = `Intro { not json } ${JSON.stringify({ ...validScript, title: 'Use {braces} literally' })} outro`;
     expect(extractJsonObjectText(wrapped)).toContain('Use {braces} literally');
     const result = parseDictationScriptJson(wrapped);
     expect(result.ok ? result.script.title : '').toBe('Use {braces} literally');
+  });
+
+  it('parses generated JSON with trailing commas', () => {
+    const sloppyJson = JSON.stringify(validScript, null, 2)
+      .replace('"intonationHint": "falling"\n    }', '"intonationHint": "falling",\n    }')
+      .replace(/\n}$/, ',\n}');
+    const result = parseDictationScriptJson(`\`\`\`json\n${sloppyJson}\n\`\`\``);
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.script.phrases[0].text : '').toBe('This is the first phrase.');
+  });
+
+  it('parses double-encoded generated JSON strings', () => {
+    const result = parseDictationScriptJson(JSON.stringify(JSON.stringify(validScript)));
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.script.language : '').toBe('en');
   });
 
   it('fails invalid JSON', () => {

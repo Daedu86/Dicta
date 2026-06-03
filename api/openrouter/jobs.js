@@ -12,12 +12,6 @@ const OPENROUTER_JOB_MAX_ATTEMPTS = 3;
 const OPENROUTER_JOB_RETRY_BASE_DELAY_MS = 750;
 const OPENROUTER_RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 const OPENROUTER_RETRYABLE_ERROR_MARKERS = ['no healthy upstream', 'temporarily unavailable', 'upstream', 'overloaded', 'timeout', 'timed out', 'rate limit'];
-const OPENROUTER_JOB_FALLBACK_MODELS = [
-  'nvidia/nemotron-nano-12b-v2-vl:free',
-  'poolside/laguna-xs.2:free',
-  'openrouter/free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-];
 
 function getRequiredEnv(name) {
   const value = process.env[name]?.trim() ?? '';
@@ -29,13 +23,55 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function tryParseJson(value) {
+function parseJsonCandidate(value, depth = 0) {
   if (typeof value !== 'string' || !value.trim()) return null;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
+  const text = value.replace(/^\uFEFF/, '').trim();
+  const candidates = [...new Set([text, removeTrailingJsonCommas(text)].filter(Boolean))];
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (depth < 1 && typeof parsed === 'string') {
+        const nested = parseJsonCandidate(parsed, depth + 1);
+        if (nested !== null) return nested;
+      }
+      return parsed;
+    } catch {
+      // Try the next repaired candidate.
+    }
   }
+  return null;
+}
+
+function tryParseJson(value) {
+  return parseJsonCandidate(value);
+}
+
+function removeTrailingJsonCommas(value) {
+  let output = '';
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if (inString) {
+      output += char;
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      output += char;
+      continue;
+    }
+    if (char === ',') {
+      let nextIndex = index + 1;
+      while (nextIndex < value.length && /\s/.test(value[nextIndex])) nextIndex += 1;
+      if (value[nextIndex] === '}' || value[nextIndex] === ']') continue;
+    }
+    output += char;
+  }
+  return output;
 }
 
 function readOpenRouterErrorDetails(body) {
@@ -59,7 +95,8 @@ function resolveOpenRouterJobRequestPayload(requester, requestPayload) {
 }
 
 function buildOpenRouterJobModelCandidates(primaryModel) {
-  return [...new Set([primaryModel, ...OPENROUTER_JOB_FALLBACK_MODELS].map((model) => (typeof model === 'string' ? model.trim() : '')).filter(Boolean))];
+  const model = typeof primaryModel === 'string' ? primaryModel.trim() : '';
+  return model ? [model] : [];
 }
 
 export function isRetryableOpenRouterJobResponse(response) {
@@ -79,12 +116,13 @@ export function formatOpenRouterJobProviderError(response, attempts = []) {
   const retryText = retryCount > 0 ? ` Retried ${retryCount} time${retryCount === 1 ? '' : 's'}.` : '';
   const modelCount = new Set(attempts.map((attempt) => attempt.model).filter(Boolean)).size;
   const modelText = modelCount > 1 ? ` Tried ${modelCount} models.` : '';
-  return `OpenRouter provider error (${statusLabel}${provider}): ${summary}.${retryText}${modelText}`;
+  const punctuatedSummary = /[.!?]$/.test(summary) ? summary : `${summary}.`;
+  return `OpenRouter provider error (${statusLabel}${provider}): ${punctuatedSummary}${retryText}${modelText}`;
 }
 
 function stripMarkdownJsonFence(raw) {
   const text = String(raw ?? '').trim();
-  const fenced = text.match(/^```(?:json|JSON)?\s*([\s\S]*?)\s*```$/);
+  const fenced = text.match(/^```\s*(?:json|jsonc)?\s*([\s\S]*?)\s*```$/i);
   return fenced?.[1] ?? text;
 }
 
@@ -139,7 +177,7 @@ function isValidSessionScript(value) {
 function extractValidSessionScriptJson(raw) {
   for (const candidate of collectJsonObjectCandidates(raw)) {
     const parsed = tryParseJson(candidate);
-    if (isValidSessionScript(parsed)) return candidate;
+    if (isValidSessionScript(parsed)) return JSON.stringify(parsed, null, 2);
   }
   return '';
 }
@@ -181,9 +219,10 @@ async function postChatCompletionWithRetries({ apiKey, req, model, prompt, maxTo
   return { ...lastResponse, model, attempts };
 }
 
-async function postChatCompletionWithModelFallbacks({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
+async function postChatCompletionWithSelectedModelRetries({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
   const allAttempts = [];
   let lastResponse = null;
+  let receivedSuccessfulResponse = false;
   for (const candidateModel of buildOpenRouterJobModelCandidates(model)) {
     const response = await postChatCompletionWithRetries({ apiKey, req, model: candidateModel, prompt, maxTokens, timeoutMs });
     allAttempts.push(...response.attempts);
@@ -194,12 +233,9 @@ async function postChatCompletionWithModelFallbacks({ apiKey, req, model, prompt
       continue;
     }
 
+    receivedSuccessfulResponse = true;
     let payload = null;
-    try {
-      payload = JSON.parse(response.body);
-    } catch {
-      payload = null;
-    }
+    payload = tryParseJson(response.body);
     const text = typeof payload?.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
     const scriptText = extractValidSessionScriptJson(text);
     const latestAttempt = allAttempts[allAttempts.length - 1];
@@ -207,12 +243,16 @@ async function postChatCompletionWithModelFallbacks({ apiKey, req, model, prompt
     if (scriptText) return { ...response, attempts: allAttempts, model: candidateModel, payload, scriptText };
   }
 
+  if (lastResponse && !receivedSuccessfulResponse) {
+    return lastResponse;
+  }
+
   return {
     ...(lastResponse ?? {}),
     ok: false,
     status: 422,
     attempts: allAttempts,
-    scriptError: 'OpenRouter returned text without valid session JSON',
+    scriptError: `OpenRouter returned text without valid session JSON for selected model "${model}".`,
   };
 }
 
@@ -256,7 +296,7 @@ async function runOpenRouterJob({ req, supabase, requester, profileId, jobId, re
   const now = new Date().toISOString();
   await supabase.from(JOB_TABLE).update({ status: 'running', updated_at: now, error: null }).eq('profile_id', profileId).eq('job_id', jobId);
   try {
-    const response = await postChatCompletionWithModelFallbacks({ apiKey: getRequiredEnv('OPENROUTER_API_KEY'), req, model: requestPayload.model, prompt: requestPayload.prompt, maxTokens: requestPayload.maxTokens, timeoutMs: 290_000 });
+    const response = await postChatCompletionWithSelectedModelRetries({ apiKey: getRequiredEnv('OPENROUTER_API_KEY'), req, model: requestPayload.model, prompt: requestPayload.prompt, maxTokens: requestPayload.maxTokens, timeoutMs: 290_000 });
     if (!response.ok) throw Object.assign(new Error(formatOpenRouterJobProviderError(response, response.attempts)), { statusCode: response.status, providerError: true, providerAttempts: response.attempts });
     const text = response.scriptText;
     if (!text?.trim()) throw new Error('OpenRouter returned no valid session JSON.');
