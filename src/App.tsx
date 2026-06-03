@@ -138,7 +138,8 @@ import type {
   AdaptiveWorkspaceFocusAnchor,
   RepeatWordStat,
 } from './components/adaptive-workspace/types';
-import { AdaptiveAdapterCard, AdaptiveBenchmarkSection } from './components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
+import { AdaptiveBenchmarkSection } from './components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
+import { AdaptiveAdvancedDiagnostics } from './components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
 import { AdminHeader } from './components/admin/AdminHeader';
 import { AdminKpiGrid } from './components/admin/AdminKpiGrid';
 import { AdminUsersCard } from './components/admin/AdminUsersCard';
@@ -6259,7 +6260,7 @@ function App() {
     [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],
   );
   const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
-  const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) : null;
+  const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) ?? null : null;
   const insightsDiagnosticInputOptions: Array<{ inputMode: InputMode; label: string }> = [
     { inputMode: 'audio', label: 'Input 1' },
     { inputMode: 'browser-tts', label: 'Input 2' },
@@ -7309,315 +7310,40 @@ function App() {
                   </div>
                 </div>
                 <div className="adaptive-workspace-grid">
-                  <details className="adaptive-advanced-shell">
-                    <summary>
-                      <span>
-                        <strong>Advanced diagnostics</strong>
-                        <small>Architecture, adapters, latest run, and debug counters</small>
-                      </span>
-                    </summary>
-                    <div className="adaptive-advanced-grid">
-                  <section className="panel workspace-panel adaptive-decision-panel">
-                    <div className="adaptive-section-header">
-                      <div>
-                        <p className="dashboard-eyebrow">Advanced</p>
-                        <h3>Central Brain</h3>
-                      </div>
-                      <button
-                        type="button"
-                        className="secondary-button adaptive-section-toggle"
-                        onClick={() =>
-                          setAdaptiveSectionExpanded((prev) => ({
-                            ...prev,
-                            decision: !(prev.decision && prev.architecture),
-                            architecture: !(prev.decision && prev.architecture),
-                          }))
-                        }
-                        aria-expanded={adaptiveSectionExpanded.decision}
-                        aria-label={adaptiveSectionExpanded.decision ? 'Collapse section' : 'Expand section'}
-                        title={adaptiveSectionExpanded.decision ? 'Collapse' : 'Expand'}
-                      >
-                        <span className={`adaptive-section-toggle-icon ${adaptiveSectionExpanded.decision ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-                      </button>
-                    </div>
-                    {adaptiveSectionExpanded.decision ? (
-                      <>
-                        <p className="dashboard-meta">
-                          AdaptiveDictationController reads normalized telemetry and chooses support, balanced, or flow pacing for the active input.
-                        </p>
-                        <div className="bottom-summary-grid">
-                          <Metric label="Current mode" value={latestAdaptiveMode} />
-                          <Metric label="Rate range" value="0.75x-1.15x" />
-                          <Metric label="Phrase sizes" value="Short / medium / long" />
-                          <Metric label="Inputs" value="Lag, accuracy, WPM" />
-                          <Metric label="Sensitivity" value="Correction + difficulty" />
-                          <Metric label="History" value="Profile confidence" />
-                        </div>
-                      </>
-                    ) : null}
-                  </section>
-
-                  <section className="panel workspace-panel adaptive-architecture-panel">
-                    <div className="adaptive-section-header">
-                      <div>
-                        <p className="dashboard-eyebrow">Architecture</p>
-                        <h3>Centralized decision, input-specific execution</h3>
-                      </div>
-                      <button
-                        type="button"
-                        className="secondary-button adaptive-section-toggle"
-                        onClick={() =>
-                          setAdaptiveSectionExpanded((prev) => ({
-                            ...prev,
-                            decision: !(prev.decision && prev.architecture),
-                            architecture: !(prev.decision && prev.architecture),
-                          }))
-                        }
-                        aria-expanded={adaptiveSectionExpanded.architecture}
-                        aria-label={adaptiveSectionExpanded.architecture ? 'Collapse section' : 'Expand section'}
-                        title={adaptiveSectionExpanded.architecture ? 'Collapse' : 'Expand'}
-                      >
-                        <span className={`adaptive-section-toggle-icon ${adaptiveSectionExpanded.architecture ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-                      </button>
-                    </div>
-                    {adaptiveSectionExpanded.architecture ? (
-                      <>
-                        <p>
-                          Future inputs should plug into the same adapter contract: produce a telemetry frame, request a pacing decision, then apply that decision
-                          through the input's playback engine.
-                        </p>
-                        <div className="adaptive-flow-row">
-                          <span>Input telemetry</span>
-                          <span>Adaptive controller</span>
-                          <span>Input adapter</span>
-                          <span>Playback behavior</span>
-                        </div>
-                      </>
-                    ) : null}
-                  </section>
-
-                  <section className="panel workspace-panel adaptive-adapters-panel">
-                    <div className="adaptive-section-header">
-                      <div>
-                        <p className="dashboard-eyebrow">Adapters</p>
-                        <h3>Execution strategies</h3>
-                        <p className="dashboard-meta">Select an input to focus its benchmark profile below.</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="secondary-button adaptive-section-toggle"
-                        onClick={() => setAdaptiveSectionExpanded((prev) => ({ ...prev, adapters: !prev.adapters }))}
-                        aria-expanded={adaptiveSectionExpanded.adapters}
-                        aria-label={adaptiveSectionExpanded.adapters ? 'Collapse section' : 'Expand section'}
-                        title={adaptiveSectionExpanded.adapters ? 'Collapse' : 'Expand'}
-                      >
-                        <span className={`adaptive-section-toggle-icon ${adaptiveSectionExpanded.adapters ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-                      </button>
-                    </div>
-                    {adaptiveSectionExpanded.adapters ? (
-                      <div className="adaptive-adapter-grid">
-                        {adaptiveAdapters.map((adapter) => (
-                          <AdaptiveAdapterCard
-                            key={adapter.inputMode}
-                            adapter={adapter}
-                            active={latestSession?.inputMode === adapter.inputMode}
-                            selected={selectedBenchmarkInputMode === mapSessionInputMode(adapter.inputMode)}
-                            onOpen={() => {
-                              setSelectedBenchmarkInputMode(mapSessionInputMode(adapter.inputMode));
-                              setBenchmarkExportMessage('');
-                              setSessionFeedbackMessage('');
-                              window.setTimeout(() => {
-                                document.getElementById('adaptive-benchmarks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                              }, 0);
-                            }}
-                          />
-                        ))}
-                      </div>
-                    ) : null}
-                  </section>
-
-                  <section className="panel workspace-panel adaptive-summary-panel">
-                    <div className="adaptive-section-header">
-                      <div>
-                        <p className="dashboard-eyebrow">Session</p>
-                        <h3>Most recent run</h3>
-                      </div>
-                      <button
-                        type="button"
-                        className="secondary-button adaptive-section-toggle"
-                        onClick={() =>
-                          setAdaptiveSectionExpanded((prev) => ({
-                            ...prev,
-                            latest: !(prev.latest && prev.live),
-                            live: !(prev.latest && prev.live),
-                          }))
-                        }
-                        aria-expanded={adaptiveSectionExpanded.latest}
-                        aria-label={adaptiveSectionExpanded.latest ? 'Collapse section' : 'Expand section'}
-                        title={adaptiveSectionExpanded.latest ? 'Collapse' : 'Expand'}
-                      >
-                        <span className={`adaptive-section-toggle-icon ${adaptiveSectionExpanded.latest ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-                      </button>
-                    </div>
-                    {adaptiveSectionExpanded.latest ? (
-                      latestSession ? (
-                        <div className="bottom-summary-grid">
-                          <Metric label="Session" value={latestSession.name || 'Untitled'} />
-                          <Metric label="Input mode" value={formatSessionInputMode(latestSession.inputMode)} />
-                          <Metric label="Adapter" value={latestInputAdapter?.adapter ?? 'Not set'} />
-                          <Metric label="Updated" value={new Date(latestSession.updatedAt).toLocaleString()} />
-                          <Metric label="Duration" value={formatSessionPlaybackDuration(latestSession)} />
-                          <Metric
-                            label="Score"
-                            value={String(latestSession.metrics.score)}
-                            title={buildSessionScoreHelpText(latestSession.metrics)}
-                          />
-                          <Metric label="Points" value={formatSessionPointsForSession(latestSession.metrics.points, latestSession)} />
-                        </div>
-                      ) : (
-                        <p className="hint">No session data available yet.</p>
-                      )
-                    ) : null}
-                  </section>
-                  {latestSession ? (
-                    <section className="panel workspace-panel adaptive-metrics-panel">
-                      <div className="adaptive-section-header">
-                        <div>
-                          <p className="dashboard-eyebrow">Live state</p>
-                          <h3>Latest pacing snapshot</h3>
-                          <p className="dashboard-meta">Most recent metrics computed from the stored session.</p>
-                        </div>
-                          <button
-                            type="button"
-                            className="secondary-button adaptive-section-toggle"
-                            onClick={() =>
-                              setAdaptiveSectionExpanded((prev) => ({
-                                ...prev,
-                                latest: !(prev.latest && prev.live),
-                                live: !(prev.latest && prev.live),
-                              }))
-                            }
-                            aria-expanded={adaptiveSectionExpanded.live}
-                            aria-label={adaptiveSectionExpanded.live ? 'Collapse section' : 'Expand section'}
-                            title={adaptiveSectionExpanded.live ? 'Collapse' : 'Expand'}
-                          >
-                          <span className={`adaptive-section-toggle-icon ${adaptiveSectionExpanded.live ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-                        </button>
-                      </div>
-                      {adaptiveSectionExpanded.live ? (
-                        <>
-                          <div className="bottom-summary-grid">
-                            <Metric label="Mode" value={formatAdaptiveModeFromSession(latestSession)} />
-                            <Metric label="Rate" value={`${latestSession.metrics.rate.toFixed(2)}x`} />
-                            <Metric label="Lag" value={`${latestSession.metrics.lagSec.toFixed(2)}s`} />
-                            <Metric label="Lag words" value={String(latestSession.metrics.lagWords)} />
-                            <Metric label="WPM" value={latestSession.metrics.wpm.toFixed(1)} />
-                            <Metric label="Accuracy" value={`${latestSession.metrics.accuracy.toFixed(1)}%`} />
-                            <Metric
-                              label="Trend"
-                              value={
-                                latestSession.metrics.trend === 'improving'
-                                  ? 'Improving'
-                                  : latestSession.metrics.trend === 'declining'
-                                    ? 'Declining'
-                                    : 'Stable'
-                              }
-                            />
-                          </div>
-                          <div className="today-chart-row">
-                            <div className="today-chart-bar">
-                              <span className="today-chart-label">Actions</span>
-                              <div className="today-chart-track">
-                                <div className="today-chart-fill" style={{ width: `${Math.min(100, latestSession.telemetry.actions.length * 4)}%` }} />
-                              </div>
-                            </div>
-                            <div className="today-chart-bar">
-                              <span className="today-chart-label">Telemetry samples</span>
-                              <div className="today-chart-track">
-                                <div className="today-chart-fill" style={{ width: `${Math.min(100, latestSession.telemetry.lagSeries.length)}%` }} />
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      ) : null}
-                    </section>
-                  ) : null}
-                  {latestSession ? (
-                    <section className="panel workspace-panel adaptive-telemetry-panel">
-                      <div className="adaptive-section-header">
-                        <div>
-                          <p className="dashboard-eyebrow">Diagnostics</p>
-                          <h3>Debug counters</h3>
-                          <p className="dashboard-meta">Most recent live debug counters, semantic pacing signals, and rate distribution.</p>
-                        </div>
-                        <button
-                          type="button"
-                          className="secondary-button adaptive-section-toggle"
-                          onClick={() => setAdaptiveSectionExpanded((prev) => ({ ...prev, telemetry: !prev.telemetry }))}
-                          aria-expanded={adaptiveSectionExpanded.telemetry}
-                          aria-label={adaptiveSectionExpanded.telemetry ? 'Collapse section' : 'Expand section'}
-                          title={adaptiveSectionExpanded.telemetry ? 'Collapse' : 'Expand'}
-                        >
-                          <span className={`adaptive-section-toggle-icon ${adaptiveSectionExpanded.telemetry ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-                        </button>
-                      </div>
-                      {adaptiveSectionExpanded.telemetry ? (
-                        <>
-                          <div className="today-summary-grid">
-                            <Metric label="Samples" value={String(countTelemetrySamples(latestSession.telemetry))} />
-                            <Metric label="Actions" value={String(latestSession.telemetry.actions.length)} />
-                            <Metric label="Rate buckets" value={String(latestSession.telemetry.rateDistribution.length)} />
-                            <Metric label="Repeat count" value={String(latestSession.telemetry.repeatCount)} />
-                            <Metric label="TTS chunks" value={String(latestSession.telemetry.ttsChunks.length)} />
-                            <Metric label="Kokoro chunks" value={String(latestSession.kokoroChunks.length)} />
-                          </div>
-                          <div className="today-summary-grid">
-                            <Metric label="Semantic cut penalty" value={adaptiveSemanticDebug.semanticCutPenalty.toFixed(2)} />
-                            <Metric label="Unsafe pauses" value={String(adaptiveSemanticDebug.unsafePauseCount)} />
-                            <Metric label="Safe pauses" value={String(adaptiveSemanticDebug.safePauseCount)} />
-                            <Metric label="Deferred pauses" value={String(adaptiveSemanticDebug.deferredPauseCount)} />
-                            <Metric label="Replay denied" value={String(adaptiveSemanticDebug.replayDeniedByBoundaryCount)} />
-                            <Metric label="Avg completeness" value={adaptiveSemanticDebug.averageSemanticCompleteness.toFixed(2)} />
-                            <Metric label="Avg difficulty" value={adaptiveSemanticDebug.averagePhraseDifficulty.toFixed(2)} />
-                            <Metric label="Execution fidelity" value={adaptiveSemanticDebug.inputExecutionFidelityScore.toFixed(2)} />
-                            <Metric label="Phrase index" value={`${adaptiveSemanticDebug.currentPhraseIndex}/${adaptiveSemanticDebug.totalSemanticPhrases}`} />
-                            <Metric label="Phrase id" value={adaptiveSemanticDebug.currentPhraseId} />
-                            <Metric label="Phrase preview" value={adaptiveSemanticDebug.currentPhraseTextPreview || 'n/a'} />
-                            <Metric label="Phrase advances" value={String(adaptiveSemanticDebug.phraseAdvanceCount)} />
-                            <Metric label="Phrase replays" value={String(adaptiveSemanticDebug.phraseReplayCount)} />
-                            <Metric label="Last phrase reason" value={adaptiveSemanticDebug.lastPhraseAdvanceReason} />
-                          </div>
-                          <div className="today-chart-row">
-                            {latestSession.telemetry.rateDistribution.map((entry) => (
-                              <div key={entry.rate} className="today-chart-bar">
-                                <span className="today-chart-label">{entry.rate.toFixed(2)}x</span>
-                                <div className="today-chart-track">
-                                  <div
-                                    className="today-chart-fill"
-                                    style={{
-                                      width: `${Math.min(
-                                        100,
-                                        Math.round(
-                                          (entry.seconds /
-                                            Math.max(
-                                              1,
-                                              latestSession.telemetry.rateDistribution.reduce((sum, next) => sum + next.seconds, 0),
-                                            )) *
-                                            100,
-                                        ),
-                                      )}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      ) : null}
-                    </section>
-                  ) : null}
-                    </div>
-                  </details>
+                  <AdaptiveAdvancedDiagnostics
+                    adaptiveSectionExpanded={adaptiveSectionExpanded}
+                    adaptiveAdapters={adaptiveAdapters}
+                    latestSession={latestSession}
+                    latestInputAdapter={latestInputAdapter}
+                    latestAdaptiveMode={latestAdaptiveMode}
+                    selectedBenchmarkInputMode={selectedBenchmarkInputMode}
+                    adaptiveSemanticDebug={adaptiveSemanticDebug}
+                    mapSessionInputMode={mapSessionInputMode}
+                    onToggleDecisionArchitectureSections={() =>
+                      setAdaptiveSectionExpanded((prev) => ({
+                        ...prev,
+                        decision: !(prev.decision && prev.architecture),
+                        architecture: !(prev.decision && prev.architecture),
+                      }))
+                    }
+                    onToggleAdaptersSection={() => setAdaptiveSectionExpanded((prev) => ({ ...prev, adapters: !prev.adapters }))}
+                    onToggleLatestSections={() =>
+                      setAdaptiveSectionExpanded((prev) => ({
+                        ...prev,
+                        latest: !(prev.latest && prev.live),
+                        live: !(prev.latest && prev.live),
+                      }))
+                    }
+                    onToggleTelemetrySection={() => setAdaptiveSectionExpanded((prev) => ({ ...prev, telemetry: !prev.telemetry }))}
+                    onOpenAdapter={(inputMode) => {
+                      setSelectedBenchmarkInputMode(mapSessionInputMode(inputMode));
+                      setBenchmarkExportMessage('');
+                      setSessionFeedbackMessage('');
+                      window.setTimeout(() => {
+                        document.getElementById('adaptive-benchmarks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 0);
+                    }}
+                  />
                   <AdaptiveBenchmarkSection
                     id="adaptive-benchmarks"
                     adapters={adaptiveAdapters}
