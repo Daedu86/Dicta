@@ -12,7 +12,12 @@ const OPENROUTER_JOB_MAX_ATTEMPTS = 3;
 const OPENROUTER_JOB_RETRY_BASE_DELAY_MS = 750;
 const OPENROUTER_RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 const OPENROUTER_RETRYABLE_ERROR_MARKERS = ['no healthy upstream', 'temporarily unavailable', 'upstream', 'overloaded', 'timeout', 'timed out', 'rate limit'];
-const OPENROUTER_JOB_FALLBACK_MODELS = ['google/gemma-3n-e2b-it:free', 'meta-llama/llama-3.2-3b-instruct:free', 'qwen/qwen3-4b:free'];
+const OPENROUTER_JOB_FALLBACK_MODELS = [
+  'nvidia/nemotron-nano-12b-v2-vl:free',
+  'poolside/laguna-xs.2:free',
+  'openrouter/free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+];
 
 function getRequiredEnv(name) {
   const value = process.env[name]?.trim() ?? '';
@@ -68,13 +73,75 @@ export function formatOpenRouterJobProviderError(response, attempts = []) {
   const status = Number(response?.status);
   const statusLabel = Number.isFinite(status) ? String(status) : 'unknown status';
   const { message, raw, providerName } = readOpenRouterErrorDetails(response?.body ?? '');
-  const summary = raw || message || `OpenRouter request failed (${statusLabel}).`;
+  const summary = raw || message || response?.scriptError || `OpenRouter request failed (${statusLabel}).`;
   const provider = providerName ? ` from ${providerName}` : '';
   const retryCount = Math.max(0, attempts.length - 1);
   const retryText = retryCount > 0 ? ` Retried ${retryCount} time${retryCount === 1 ? '' : 's'}.` : '';
   const modelCount = new Set(attempts.map((attempt) => attempt.model).filter(Boolean)).size;
   const modelText = modelCount > 1 ? ` Tried ${modelCount} models.` : '';
   return `OpenRouter provider error (${statusLabel}${provider}): ${summary}.${retryText}${modelText}`;
+}
+
+function stripMarkdownJsonFence(raw) {
+  const text = String(raw ?? '').trim();
+  const fenced = text.match(/^```(?:json|JSON)?\s*([\s\S]*?)\s*```$/);
+  return fenced?.[1] ?? text;
+}
+
+function collectJsonObjectCandidates(raw) {
+  const text = stripMarkdownJsonFence(raw);
+  const candidates = [];
+  for (let start = text.indexOf('{'); start >= 0; start = text.indexOf('{', start + 1)) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < text.length; index += 1) {
+      const char = text[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+      if (char === '{') {
+        depth += 1;
+        continue;
+      }
+      if (char === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          candidates.push(text.slice(start, index + 1));
+          break;
+        }
+      }
+    }
+  }
+  return [...new Set([String(raw ?? '').trim(), text.trim(), ...candidates].filter(Boolean))];
+}
+
+function isValidSessionScript(value) {
+  if (!value || typeof value !== 'object') return false;
+  const script = value;
+  return (
+    typeof script.title === 'string' &&
+    typeof script.language === 'string' &&
+    typeof script.inputMode === 'string' &&
+    Array.isArray(script.phrases) &&
+    script.phrases.length > 0 &&
+    script.phrases.every((phrase) => phrase && typeof phrase === 'object' && typeof phrase.text === 'string' && phrase.text.trim().length > 0)
+  );
+}
+
+function extractValidSessionScriptJson(raw) {
+  for (const candidate of collectJsonObjectCandidates(raw)) {
+    const parsed = tryParseJson(candidate);
+    if (isValidSessionScript(parsed)) return candidate;
+  }
+  return '';
 }
 
 async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
@@ -121,10 +188,32 @@ async function postChatCompletionWithModelFallbacks({ apiKey, req, model, prompt
     const response = await postChatCompletionWithRetries({ apiKey, req, model: candidateModel, prompt, maxTokens, timeoutMs });
     allAttempts.push(...response.attempts);
     lastResponse = { ...response, attempts: allAttempts };
-    if (response.ok) return { ...response, attempts: allAttempts, model: candidateModel };
-    if (!isRetryableOpenRouterJobResponse(response)) break;
+
+    if (!response.ok) {
+      if (!isRetryableOpenRouterJobResponse(response)) break;
+      continue;
+    }
+
+    let payload = null;
+    try {
+      payload = JSON.parse(response.body);
+    } catch {
+      payload = null;
+    }
+    const text = typeof payload?.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
+    const scriptText = extractValidSessionScriptJson(text);
+    const latestAttempt = allAttempts[allAttempts.length - 1];
+    if (latestAttempt) latestAttempt.jsonValid = Boolean(scriptText);
+    if (scriptText) return { ...response, attempts: allAttempts, model: candidateModel, payload, scriptText };
   }
-  return lastResponse;
+
+  return {
+    ...(lastResponse ?? {}),
+    ok: false,
+    status: 422,
+    attempts: allAttempts,
+    scriptError: 'OpenRouter returned text without valid session JSON',
+  };
 }
 
 function normalizeJobRow(row) {
@@ -141,6 +230,10 @@ export function resolveCreateJobPayloadForRequester(requester, body) {
 
 export function resolveOpenRouterJobModelCandidates(model) {
   return buildOpenRouterJobModelCandidates(model);
+}
+
+export function extractOpenRouterJobSessionJson(raw) {
+  return extractValidSessionScriptJson(raw);
 }
 
 async function auditOpenRouterJobEvent(supabase, eventType, requester, details = {}) {
@@ -165,16 +258,10 @@ async function runOpenRouterJob({ req, supabase, requester, profileId, jobId, re
   try {
     const response = await postChatCompletionWithModelFallbacks({ apiKey: getRequiredEnv('OPENROUTER_API_KEY'), req, model: requestPayload.model, prompt: requestPayload.prompt, maxTokens: requestPayload.maxTokens, timeoutMs: 290_000 });
     if (!response.ok) throw Object.assign(new Error(formatOpenRouterJobProviderError(response, response.attempts)), { statusCode: response.status, providerError: true, providerAttempts: response.attempts });
-    let payload = null;
-    try {
-      payload = JSON.parse(response.body);
-    } catch {
-      throw new Error('OpenRouter returned non-JSON response.');
-    }
-    const text = typeof payload?.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
-    if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
+    const text = response.scriptText;
+    if (!text?.trim()) throw new Error('OpenRouter returned no valid session JSON.');
     const completedAt = new Date().toISOString();
-    await supabase.from(JOB_TABLE).update({ status: 'succeeded', result: { text, payload, model: response.model || requestPayload.model, requestedModel: requestPayload.model, contentType: response.contentType, attempts: response.attempts }, error: null, updated_at: completedAt, completed_at: completedAt }).eq('profile_id', profileId).eq('job_id', jobId);
+    await supabase.from(JOB_TABLE).update({ status: 'succeeded', result: { text, payload: response.payload, model: response.model || requestPayload.model, requestedModel: requestPayload.model, contentType: response.contentType, attempts: response.attempts }, error: null, updated_at: completedAt, completed_at: completedAt }).eq('profile_id', profileId).eq('job_id', jobId);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'OpenRouter job failed.';
     const statusCode = Number(error?.statusCode);
