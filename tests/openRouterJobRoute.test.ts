@@ -3,6 +3,7 @@ import {
   formatOpenRouterJobProviderError,
   isRetryableOpenRouterJobResponse,
   readCreateJobPayload,
+  resolveCreateJobPayloadForRequester,
 } from '../api/openrouter/jobs.js';
 
 describe('OpenRouter jobs route payload validation', () => {
@@ -60,6 +61,44 @@ describe('OpenRouter jobs route payload validation', () => {
       maxTokens: 800,
       slotLabel: 'Express easy direct session',
       durationMinutes: 1,
+    });
+  });
+
+  it('uses an assigned model when the client still requests the generic free router', () => {
+    expect(
+      resolveCreateJobPayloadForRequester(
+        { assignedOpenRouterModel: 'meta-llama/llama-3.2-3b-instruct:free' },
+        {
+          model: 'openrouter/free',
+          prompt: 'Generate a short express Dicta session.',
+          inputMode: 'browser-tts',
+          language: 'de',
+          slotLabel: 'Express easy direct session',
+          durationMinutes: 1,
+        },
+      ),
+    ).toMatchObject({
+      model: 'meta-llama/llama-3.2-3b-instruct:free',
+      requestedModel: 'openrouter/free',
+      slotLabel: 'Express easy direct session',
+    });
+  });
+
+  it('keeps an explicitly requested concrete model unchanged', () => {
+    expect(
+      resolveCreateJobPayloadForRequester(
+        { assignedOpenRouterModel: 'meta-llama/llama-3.2-3b-instruct:free' },
+        {
+          model: 'google/gemma-3n-e2b-it:free',
+          prompt: 'Generate a short express Dicta session.',
+          inputMode: 'browser-tts',
+          language: 'de',
+          slotLabel: 'Express easy direct session',
+          durationMinutes: 1,
+        },
+      ),
+    ).toMatchObject({
+      model: 'google/gemma-3n-e2b-it:free',
     });
   });
 
