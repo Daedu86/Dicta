@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 import { createSupabaseServiceClient, assertOpenRouterAccess, assertOpenRouterModelAllowed, resolveRequestProfile, sendApiError } from '../_supabaseProfile.js';
-import { OPENROUTER_ACTIVE_JOB_LIMIT, readOpenRouterJobPayload } from './_request.js';
+import { OPENROUTER_ACTIVE_JOB_LIMIT, OPENROUTER_FREE_ROUTER_MODEL, readOpenRouterJobPayload } from './_request.js';
 import { auditSecurityEvent, enforceOpenRouterRateLimit, getOpenRouterLimit, OPENROUTER_RATE_LIMIT_SCOPES } from './_security.js';
 
 const JOB_TABLE = 'dicta_openrouter_jobs';
@@ -52,6 +52,20 @@ function readOpenRouterErrorDetails(body) {
     message,
     raw,
     providerName,
+  };
+}
+
+function getRequesterAssignedOpenRouterModel(requester) {
+  return typeof requester?.assignedOpenRouterModel === 'string' ? requester.assignedOpenRouterModel.trim() : '';
+}
+
+function resolveOpenRouterJobRequestPayload(requester, requestPayload) {
+  const assignedModel = getRequesterAssignedOpenRouterModel(requester);
+  if (!assignedModel || requestPayload.model !== OPENROUTER_FREE_ROUTER_MODEL) return requestPayload;
+  return {
+    ...requestPayload,
+    model: assignedModel,
+    requestedModel: requestPayload.model,
   };
 }
 
@@ -145,6 +159,10 @@ function normalizeJobRow(row) {
 
 export function readCreateJobPayload(body) {
   return readOpenRouterJobPayload(body);
+}
+
+export function resolveCreateJobPayloadForRequester(requester, body) {
+  return resolveOpenRouterJobRequestPayload(requester, readCreateJobPayload(body));
 }
 
 async function auditOpenRouterJobEvent(supabase, eventType, requester, details = {}) {
@@ -289,7 +307,7 @@ async function createJob(req, res) {
     requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
     assertOpenRouterAccess(requester);
     const { profileId } = requester;
-    requestPayload = readCreateJobPayload(req.body);
+    requestPayload = resolveCreateJobPayloadForRequester(requester, req.body);
     assertOpenRouterModelAllowed(requester, requestPayload.model);
     await cleanupOldOpenRouterJobs(supabase, profileId);
     await enforceOpenRouterRateLimit({
