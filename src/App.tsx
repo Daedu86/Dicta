@@ -301,6 +301,13 @@ type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
 type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
+type ImmediateSessionSyncOptions = {
+  localStorageSpanName?: string;
+  buildSpanName?: string;
+  pushingMessage?: string;
+  syncedMessage?: string;
+  errorMessage?: string;
+};
 type TrainingSessionSubmissionMeta = {
   positionLabel: string;
   scoreLabel: string;
@@ -366,6 +373,14 @@ const LEADERBOARD_RANGE_DEFINITIONS: Array<{ range: MetricsRangeView; label: str
   { range: 'threeWeeks', label: '3 Weeks' },
   { range: 'month', label: 'Month' },
 ];
+
+const SESSION_CREATE_SYNC_OPTIONS: ImmediateSessionSyncOptions = {
+  localStorageSpanName: 'session.create.persistNow.localStorage',
+  buildSpanName: 'supabase.buildSyncState.sessionCreate',
+  pushingMessage: 'Pushing new session to Supabase...',
+  syncedMessage: 'New session synced to Supabase.',
+  errorMessage: 'Supabase session sync failed.',
+};
 
 function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
@@ -1662,20 +1677,33 @@ function App() {
     };
   }, []);
 
-  function persistAndPushSessionsNow(nextSessions: StoredSession[]): void {
+  function persistAndPushSessionsNow(nextSessions: StoredSession[], options: ImmediateSessionSyncOptions = {}): void {
+    const {
+      localStorageSpanName = 'session.persistNow.localStorage',
+      buildSpanName = 'supabase.buildSyncState.final',
+      pushingMessage = 'Pushing final session to Supabase...',
+      syncedMessage = 'Final session synced to Supabase.',
+      errorMessage = 'Supabase sync failed.',
+    } = options;
     latestSessionsForPersistenceRef.current = nextSessions;
     clearScheduledSessionPersist();
-    persistSessionsToLocalStorage(nextSessions, 'session.persistNow.localStorage');
-    if (!supabaseClient || !effectiveSyncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
+    persistSessionsToLocalStorage(nextSessions, localStorageSpanName);
+
+    let syncState: DictaSyncState | null = null;
+    if (supabaseClient && effectiveSyncConfig.enabled) {
+      syncState = perfDiagnostics.withSpan(buildSpanName, () =>
+        buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
+      );
+      syncStateRef.current = syncState;
+    }
+
+    if (!supabaseClient || !effectiveSyncConfig.enabled || !syncState || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
 
     setSupabaseSyncStatus((current) => ({
       ...current,
       state: 'pushing',
-      message: 'Pushing final session to Supabase...',
+      message: pushingMessage,
     }));
-    const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.final', () =>
-      buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
-    );
     void pushSyncRowsDetailed(supabaseClient, effectiveSyncConfig.profileId, syncState, {
       existingRows: supabaseKnownRemoteRowsRef.current,
     })
@@ -1686,7 +1714,7 @@ function App() {
         setSupabaseSyncStatus((current) => ({
           ...current,
           state: 'synced',
-          message: 'Final session synced to Supabase.',
+          message: syncedMessage,
           lastSyncedAt: new Date().toISOString(),
           pushed,
         }));
@@ -1695,9 +1723,18 @@ function App() {
         setSupabaseSyncStatus((current) => ({
           ...current,
           state: 'error',
-          message: error instanceof Error ? error.message : 'Supabase sync failed.',
+          message: error instanceof Error ? error.message : errorMessage,
         }));
       });
+  }
+
+  function prependSessionAndPersistNow(createNextSession: (previousSessions: StoredSession[]) => StoredSession): StoredSession {
+    const previousSessions = latestSessionsForPersistenceRef.current;
+    const nextSession = createNextSession(previousSessions);
+    const nextSessions = [nextSession, ...previousSessions];
+    setSessions(nextSessions);
+    persistAndPushSessionsNow(nextSessions, SESSION_CREATE_SYNC_OPTIONS);
+    return nextSession;
   }
 
   function persistAndPushAdaptiveSessionFeedbackNow(nextFeedback: AdaptiveSessionFeedbackByInputLanguage): void {
@@ -3020,13 +3057,14 @@ function App() {
       setError('Enter a session name before creating the session.');
       return;
     }
-    const nextSession = createStoredSession(
-      getNextSessionIndex(sessions),
-      inputMode,
-      name,
-    );
     suppressSidebarAutoSelectRef.current = true;
-    setSessions((prev) => [nextSession, ...prev]);
+    const nextSession = prependSessionAndPersistNow((prev) =>
+      createStoredSession(
+        getNextSessionIndex(prev),
+        inputMode,
+        name,
+      ),
+    );
     setActiveSessionId(nextSession.id);
     setWorkspaceMode(
       inputMode === 'input1'
@@ -3049,9 +3087,8 @@ function App() {
 
   function createManualInput1SessionFromAdmin(name: string): void {
     if (!ensureCanCreateDictationSession('export')) return;
-    const nextSession = createStoredSession(getNextSessionIndex(sessions), 'input1', name);
     suppressSidebarAutoSelectRef.current = true;
-    setSessions((prev) => [nextSession, ...prev]);
+    const nextSession = prependSessionAndPersistNow((prev) => createStoredSession(getNextSessionIndex(prev), 'input1', name));
     setActiveSessionId(nextSession.id);
     setWorkspaceMode('training');
     setDashboardSessionId(null);
@@ -3082,9 +3119,10 @@ function App() {
       return;
     }
 
-    const nextSession = createSessionFromScript(result.script, getNextSessionIndex(sessions), inputMode, { browserTtsVoices });
     suppressSidebarAutoSelectRef.current = true;
-    setSessions((prev) => [nextSession, ...prev]);
+    const nextSession = prependSessionAndPersistNow((prev) =>
+      createSessionFromScript(result.script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
+    );
     setActiveSessionId(nextSession.id);
     setWorkspaceMode(inputMode === 'input1' ? 'training' : inputMode === 'input2' || inputMode === 'input4' ? 'tts' : 'kokoro');
     setDashboardSessionId(null);
@@ -3115,25 +3153,15 @@ function App() {
     }
 
     suppressSidebarAutoSelectRef.current = true;
+    const nextSession = prependSessionAndPersistNow((prev) => ({
+      ...createSessionFromScript(script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
+      generationOrigin,
+    }));
+    setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
     if (navigateToLeaderboard) {
-      const nextSession = {
-        ...createSessionFromScript(script, getNextSessionIndex(sessions), inputMode, { browserTtsVoices }),
-        generationOrigin,
-      };
-      setSessions((prev) => [nextSession, ...prev]);
-      setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
       setActiveSessionId(nextSession.id);
       setWorkspaceMode('leaderboard');
       setDashboardSessionId(null);
-    } else {
-      setSessions((prev) => {
-        const nextSession = {
-          ...createSessionFromScript(script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
-          generationOrigin,
-        };
-        return [nextSession, ...prev];
-      });
-      setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
     }
     setSessionCreationMode(null);
     setSessionCreationSource('plainText');
@@ -3163,15 +3191,16 @@ function App() {
     if (!ensureCanCreateDictationSession('openrouter')) return;
     const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
     const sessionInputMode = mapDictationScriptInputModeToSession(inputMode) ?? 'input2';
-    const nextSession = createGeneratedErrorSession({
-      index: getNextSessionIndex(sessions),
-      inputMode: sessionInputMode,
-      language,
-      name: `${slotLabel} generation error`,
-      message,
-    });
     suppressSidebarAutoSelectRef.current = true;
-    setSessions((prev) => [nextSession, ...prev]);
+    const nextSession = prependSessionAndPersistNow((prev) =>
+      createGeneratedErrorSession({
+        index: getNextSessionIndex(prev),
+        inputMode: sessionInputMode,
+        language,
+        name: `${slotLabel} generation error`,
+        message,
+      }),
+    );
     setLeaderboardLanguageView(language);
     if (navigateToLeaderboard) {
       setActiveSessionId(nextSession.id);
