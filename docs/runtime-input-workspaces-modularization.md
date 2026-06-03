@@ -2,88 +2,58 @@
 
 ## Status
 
-Active incremental extraction. Move only one UI-only runtime card per patch.
+Runtime input setup/card extraction is complete enough for the originally selected UI-only cards. Do not choose another runtime extraction without a fresh, narrow boundary.
 
-The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
-
-Current `src/App.tsx` size on `main` after the AudioInputSetupCard extraction pass:
+Current `src/App.tsx` size on `main` after the `SessionCreateCard` extraction pass:
 
 ```text
-10,103 lines
+9,548 lines
 ```
 
-Completed runtime card extractions:
+Completed runtime/setup extractions:
 
 ```text
-df96574bfb910ecdb0cf64bcd31e6253d961e017
-Extract BrowserTtsSourceCard component
-
-a7a75e01edd6a885a00a1b7fcc41833c90feeb91
-Extract BrowserTtsPracticeCard component
-
-8f2d4886ef44998f4c953100a000decacc777e16
-Extract Kokoro source card
-
-KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
-
-Input4SetupCard extraction completed in the implementation commit reported in the final summary.
-
-BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
-
-KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
-
-LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
-
-AudioInputSetupCard extraction completed in the implementation commit reported in the final summary.
+src/components/runtime-workspaces/BrowserTtsSourceCard.tsx
+src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
+src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
+src/components/runtime-workspaces/KokoroSourceCard.tsx
+src/components/runtime-workspaces/KokoroPracticeCard.tsx
+src/components/runtime-workspaces/KokoroSetupCard.tsx
+src/components/runtime-workspaces/Input4SetupCard.tsx
+src/components/runtime-workspaces/AudioInputSetupCard.tsx
+src/components/runtime-workspaces/SessionCreateCard.tsx
+src/components/runtime-workspaces/LiveMetricsDock.tsx
 ```
 
-Current next candidate:
-
-```text
-None selected. Run a fresh runtime render measurement before choosing another extraction.
-```
-
-Measurement reference:
+Measurement references:
 
 ```text
 docs/runtime-render-measurement.md
+docs/runtime-render-measurement-after-session-create.md
 ```
 
-The fresh measurement recommended `AudioInputSetupCard`, which is now complete. The next candidate is the session creation/import card, with a stricter UI-only boundary because it touches quota state, DictationScript validation, and create-session callbacks.
+## Current next candidate
 
-## Scope
+```text
+None selected from the runtime plan.
+```
 
-This plan covers the inline runtime UI still owned by `App.tsx`, especially:
+The latest measurement says the runtime setup/card pass should pause. The remaining large inline areas are no longer simple runtime setup/sidebar cards.
 
-- input setup/sidebar panels for Input #1 audio, Input #2 browser TTS, Input #3 Kokoro, and Input #4 CosyVoice/Qwen cache flows;
-- `workspaceMode === 'tts'` runtime UI;
-- `workspaceMode === 'kokoro'` runtime UI;
-- shared runtime practice controls, textareas, metrics panels, submit/reset actions, and generation shortcuts;
-- the bottom live-metrics/insights area that is still embedded in the main render branch.
+If continuing with a small runtime-only patch, the safest possible candidate is:
 
-This pass should not touch already-closed areas:
+```text
+src/components/runtime-workspaces/AudioSourceCard.tsx
+```
 
-- Training UI under `src/components/training/`;
-- OpenRouter UI under `src/components/openrouter/`;
-- Admin UI under `src/components/admin/`;
-- Session dashboard under `src/components/session-dashboard/`;
-- Adaptive benchmark workspace under `src/components/adaptive-workspace/`.
+but it is behavior-adjacent because it touches the audio player/ref, transcript segment display, and finish-on-ended lifecycle. Keep audio refs, playback/session handlers, transcript derivation, metrics, persistence, and sync in `App.tsx`.
 
-## Why this is the next candidate
+If continuing with meaningful App.tsx reduction, start a separate plan for:
 
-After the recent extraction passes, the remaining large JSX is concentrated around runtime input workflows. The code still mixes:
-
-- UI markup;
-- audio/TTS/Kokoro/CosyVoice controls;
-- typing textareas;
-- adaptive runtime metrics;
-- submit/reset controls;
-- generation shortcuts;
-- local-dev-only guards;
-- mobile/desktop affordances;
-- bottom live metrics and insights.
-
-The UI can likely be reduced without moving the underlying behavior, but the state and handler surface is large enough that this needs careful planning before extraction.
+```text
+docs/leaderboard-workspace-modularization.md
+src/components/leaderboard/LeaderboardWorkspace.tsx
+```
 
 ## Guardrails
 
@@ -109,15 +79,52 @@ Keep app-level state, audio engines, controllers, adaptive updates, persistence,
 
 New runtime workspace components must stay UI-only/presentational with explicit props. Keep handlers and state in `App.tsx`.
 
-## Candidate extraction order
+## Completed extraction sequence
 
-Use small commits. Prefer UI-only components with explicit props.
+Use this list as the closeout for the runtime setup/card pass:
 
-### 1. Runtime workspace plan/update only
+1. `BrowserTtsSourceCard.tsx`
+2. `BrowserTtsPracticeCard.tsx`
+3. `KokoroSourceCard.tsx`
+4. `KokoroPracticeCard.tsx`
+5. `Input4SetupCard.tsx`
+6. `BrowserTtsSetupCard.tsx`
+7. `KokoroSetupCard.tsx`
+8. `LiveMetricsDock.tsx`
+9. `AudioInputSetupCard.tsx`
+10. `SessionCreateCard.tsx`
 
-Create and maintain this plan. Measure line counts before moving code.
+## Remaining runtime-adjacent candidates
 
-### 2. Extract shared runtime header/actions only if low risk
+### AudioSourceCard
+
+Possible target:
+
+```text
+src/components/runtime-workspaces/AudioSourceCard.tsx
+```
+
+Status: possible but not auto-selected.
+
+Risk: medium-high.
+
+Reason: the source card is a display/player wrapper, but it includes `<audio ref={audioRef}>`, `onTimeUpdate`, and `onEnded`. Extract only if the component receives refs/callbacks explicitly and App.tsx keeps all playback/session lifecycle behavior.
+
+### AudioPracticeCard
+
+Possible target:
+
+```text
+src/components/runtime-workspaces/AudioPracticeCard.tsx
+```
+
+Status: possible but not auto-selected.
+
+Risk: medium-high.
+
+Reason: practice controls touch `startSession`, `pauseSession`, `finishSession`, `resetSession`, typing state, ready checklist, active/next transcript cues, and runtime metrics. Extract only after `AudioSourceCard` is stable, if still worthwhile.
+
+### RuntimeWorkspaceHeader
 
 Possible target:
 
@@ -125,346 +132,21 @@ Possible target:
 src/components/runtime-workspaces/RuntimeWorkspaceHeader.tsx
 ```
 
-Scope:
+Status: possible but low value.
 
-- runtime header text;
-- back-to-sessions button;
-- static metadata.
+Risk: low.
 
-Do not move playback logic.
+Reason: the remaining duplication is small after the runtime card extractions.
 
-### 3. Extract browser TTS source card
+## Better next non-runtime plan
 
-Status: complete.
-
-Target:
+Recommended planning target:
 
 ```text
-src/components/runtime-workspaces/BrowserTtsSourceCard.tsx
+docs/leaderboard-workspace-modularization.md
 ```
 
-Scope:
-
-- source media player markup;
-- TTS source text box;
-- source metadata display.
-
-Keep handlers and state in `App.tsx` and pass them as props:
-
-- `playTts`
-- `pauseTts`
-- `resumeTts`
-- `stopTtsPlayback`
-- `seekTtsPlayback`
-
-Completed reference:
-
-```text
-df96574bfb910ecdb0cf64bcd31e6253d961e017
-Extract BrowserTtsSourceCard component
-```
-
-### 4. Extract browser TTS practice card
-
-Status: complete.
-
-Target:
-
-```text
-src/components/runtime-workspaces/BrowserTtsPracticeCard.tsx
-```
-
-Scope:
-
-- typing textarea;
-- runtime metrics panel usage;
-- submit/reset/action buttons;
-- summary metrics.
-
-Keep evaluation/submission logic in `App.tsx`.
-
-Keep in `App.tsx`:
-
-- `playTts`
-- `pauseTts`
-- `resumeTts`
-- `stopTtsPlayback`
-- `submitTtsSession`
-- `resetSession`
-- `openAdaptiveExportsForActiveInput`
-- `openOpenRouterGenerateForActiveInput`
-- `desktopOpenRouterGenerationButtons`
-- evaluation/submission logic;
-- adaptive updates;
-- OpenRouter access/quotas;
-- persistence/sync.
-
-Completed reference:
-
-```text
-a7a75e01edd6a885a00a1b7fcc41833c90feeb91
-Extract BrowserTtsPracticeCard component
-```
-
-### 5. Extract Kokoro runtime source card
-
-Status: complete.
-
-Target:
-
-```text
-src/components/runtime-workspaces/KokoroSourceCard.tsx
-```
-
-Scope:
-
-- Kokoro source media player markup;
-- Kokoro source text box;
-- source metadata display;
-- current phrase display;
-- rate/cache/voice metadata display.
-
-Keep in `App.tsx`:
-
-- local service checks;
-- playback handlers;
-- sidecar calls;
-- pacing behavior;
-- replay/rewind behavior;
-- submission logic;
-- adaptive updates;
-- persistence/sync.
-
-Completed reference:
-
-```text
-8f2d4886ef44998f4c953100a000decacc777e16
-Extract Kokoro source card
-```
-
-### 6. Extract Kokoro practice card
-
-Status: complete.
-
-Target:
-
-```text
-src/components/runtime-workspaces/KokoroPracticeCard.tsx
-```
-
-Scope:
-
-- Kokoro on/off toggle row;
-- Start/Pause/Resume/Replay/Rewind/Slower/Faster/Reset pace controls;
-- typing textarea;
-- runtime metrics panel usage;
-- submit/reset/action buttons;
-- summary metrics.
-
-Keep in `App.tsx`:
-
-- local service checks;
-- playback handlers;
-- sidecar calls;
-- pacing behavior;
-- replay/rewind behavior;
-- submission logic;
-- adaptive updates;
-- OpenRouter access/quotas;
-- persistence/sync.
-
-Completed reference:
-
-```text
-KokoroPracticeCard extraction completed in the implementation commit reported in the final summary.
-```
-
-### 7. Extract Input #4/CosyVoice setup card only after TTS/Kokoro are stable
-
-Status: complete.
-
-Target:
-
-```text
-src/components/runtime-workspaces/Input4SetupCard.tsx
-```
-
-Input #4 has local-only sidecar/cache behavior. Keep setup/runtime extraction UI-only and leave CosyVoice/Qwen cache generation, fallback, playback, adaptive pacing, persistence, and sync behavior in `App.tsx`.
-
-Completed reference:
-
-```text
-Input4SetupCard extraction completed in the implementation commit reported in the final summary.
-```
-
-### 8. Extract Browser TTS setup sidebar card
-
-Status: complete.
-
-Target:
-
-```text
-src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
-```
-
-Scope:
-
-- Browser TTS setup/sidebar source textarea;
-- language selector;
-- paste visor;
-- runtime status metadata;
-- current chunk display;
-- input lock box;
-- setup hint copy.
-
-Keep in `App.tsx`:
-
-- Browser TTS playback handlers;
-- voice/runtime behavior;
-- adaptive updates;
-- OpenRouter access/quotas;
-- submission/reset behavior;
-- persistence/sync.
-
-Completed reference:
-
-```text
-BrowserTtsSetupCard extraction completed in the implementation commit reported in the final summary.
-```
-
-### 9. Extract Kokoro setup sidebar card
-
-Status: complete.
-
-Target:
-
-```text
-src/components/runtime-workspaces/KokoroSetupCard.tsx
-```
-
-Scope:
-
-- Kokoro setup/sidebar source textarea;
-- language selector;
-- voice input;
-- paste visor;
-- runtime status metadata;
-- local-only hint and language warning display;
-- input lock box;
-- setup error display.
-
-Keep in `App.tsx`:
-
-- local service checks;
-- playback handlers;
-- sidecar calls;
-- adaptive updates;
-- OpenRouter access/quotas;
-- submission/reset behavior;
-- persistence/sync.
-
-Completed reference:
-
-```text
-KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
-```
-
-### 10. Extract bottom live metrics / insights only after runtime workspaces are stable
-
-Status: complete.
-
-Possible target:
-
-```text
-src/components/runtime-workspaces/LiveMetricsDock.tsx
-```
-
-This area uses live range state, last-session summaries, insights fallback reports, and workspace-mode-dependent bottom player display. Extract after smaller runtime cards are stable.
-
-Completed reference:
-
-```text
-LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
-```
-
-### 11. Extract Input #1 audio setup sidebar card
-
-Status: complete.
-
-Measurement reference:
-
-```text
-docs/runtime-render-measurement.md
-```
-
-Target:
-
-```text
-src/components/runtime-workspaces/AudioInputSetupCard.tsx
-```
-
-Scope:
-
-- audio file picker;
-- audio URL field and load button;
-- transcription progress display;
-- transcript JSON file picker;
-- transcription language selector;
-- Get transcription button;
-- difficulty selector;
-- input lock box;
-- audio/transcript success messages;
-- setup error display.
-
-Keep in `App.tsx`:
-
-- audio file loading;
-- audio URL loading;
-- transcript upload/parsing;
-- transcription generation;
-- difficulty state updates;
-- lock behavior;
-- persistence/sync.
-
-Completed reference:
-
-```text
-AudioInputSetupCard extraction completed in the implementation commit reported in the final summary.
-```
-
-### 12. Extract session creation/import card
-
-Status: complete.
-
-Measurement reference:
-
-```text
-docs/runtime-render-measurement.md
-```
-
-Target:
-
-```text
-src/components/runtime-workspaces/SessionCreateCard.tsx
-```
-
-Scope:
-
-- session source selector;
-- plain-text session name field;
-- input-mode choice buttons;
-- DictationScript JSON textarea;
-- validation preview and errors;
-- create/cancel controls.
-
-Keep in `App.tsx`:
-
-- session creation mode state;
-- quota state;
-- DictationScript validation data derivation;
-- manual/imported session creation callbacks;
-- OpenRouter/generated session behavior;
-- persistence/sync.
+Rationale: the leaderboard is now one of the clearer remaining top-level App.tsx render areas. It is not a runtime input workspace, so it should not be extracted under this plan.
 
 ## Validation requirements
 
@@ -489,4 +171,4 @@ Stop and reconsider if:
 
 ## Recommended next action
 
-Run a fresh runtime render measurement before choosing another extraction.
+Do not extract another runtime component immediately. Create a leaderboard-specific modularization plan, or deliberately choose `AudioSourceCard` only if the goal is a small runtime follow-up and the audio ref boundary is kept explicit.
