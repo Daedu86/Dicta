@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics, InputMode } from '../../core/adaptive/types';
 import { buildBrowserTtsDeDiagnostics, createEmptyInputLanguageBenchmark } from '../../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildSelectedBenchmarkExportPayload } from '../../core/adaptive/benchmarkJson';
@@ -11,9 +11,28 @@ import {
 } from '../../core/adaptive/sessionFeedback';
 import { formatSupportedLanguage, isSupportedLanguage, SUPPORTED_LANGUAGES } from '../../core/languages';
 import { isKokoroLanguageBlocked } from '../../core/kokoroSupport';
-import { LagDistributionChart, MiniTrends, RateAccuracyStrip, SweetSpotGauge, TargetZoneChart } from '../AdaptiveBenchmarkCharts';
 import type { AdaptiveBenchmarksByInputLanguage, BenchmarkLanguageButton } from '../openrouter/types';
 import type { AdaptiveAdapterCardConfig, AdaptiveWorkspaceFocusAnchor, RepeatWordStat } from './types';
+const SweetSpotGauge = lazy(() =>
+  import('../AdaptiveBenchmarkCharts').then((module) => ({ default: module.SweetSpotGauge })),
+);
+const TargetZoneChart = lazy(() =>
+  import('../AdaptiveBenchmarkCharts').then((module) => ({ default: module.TargetZoneChart })),
+);
+const MiniTrends = lazy(() =>
+  import('../AdaptiveBenchmarkCharts').then((module) => ({ default: module.MiniTrends })),
+);
+const RateAccuracyStrip = lazy(() =>
+  import('../AdaptiveBenchmarkCharts').then((module) => ({ default: module.RateAccuracyStrip })),
+);
+const LagDistributionChart = lazy(() =>
+  import('../AdaptiveBenchmarkCharts').then((module) => ({ default: module.LagDistributionChart })),
+);
+
+function AdaptiveChartLoadingState() {
+  return <div className="dashboard-empty-wrap"><p className="dashboard-empty">Loading benchmark chart...</p></div>;
+}
+
 import {
   benchmarkSubtitle,
   formatBenchmarkLanguage,
@@ -924,7 +943,8 @@ function AdaptiveBenchmarkWorkspace({
         </button>
       </div>
       {workspaceSubsectionsExpanded.coach ? (
-        <div className="adaptive-coach-grid" aria-label="Benchmark coach charts">
+        <Suspense fallback={<AdaptiveChartLoadingState />}>
+          <div className="adaptive-coach-grid" aria-label="Benchmark coach charts">
           <section className="dashboard-card adaptive-coach-card adaptive-coach-card-gauge">
             <SweetSpotGauge score={profile.sweetSpotScore} />
             <div className="adaptive-coach-card-meta">
@@ -957,6 +977,7 @@ function AdaptiveBenchmarkWorkspace({
             <LagDistributionChart profile={profile} />
           </section>
         </div>
+        </Suspense>
       ) : null}
 
       <div className="adaptive-section-header adaptive-subsection-header">
