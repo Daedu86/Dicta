@@ -40,6 +40,7 @@ export async function resolveRequestProfile(req, options = {}) {
           user: null,
           profile: null,
           canAccessOpenRouter: true,
+          assignedOpenRouterModel: '',
           sessionLimit: null,
           legacy: true,
         };
@@ -73,7 +74,7 @@ export async function resolveRequestProfile(req, options = {}) {
     user: userData.user,
     profile,
     canAccessOpenRouter: role === 'admin' || profile.can_access_openrouter === true,
-    assignedOpenRouterModel: role === 'member' ? normalizeAssignedOpenRouterModel(profile.assigned_openrouter_model) : '',
+    assignedOpenRouterModel: normalizeAssignedOpenRouterModel(profile.assigned_openrouter_model),
     sessionLimit: role === 'admin' ? null : normalizeMemberSessionLimit(profile.session_limit),
     legacy: false,
   };
