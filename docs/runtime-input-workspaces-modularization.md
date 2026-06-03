@@ -9,7 +9,7 @@ The next high-value area in `src/App.tsx` is the runtime input workspace/render 
 Current `src/App.tsx` size on `main` after the AudioInputSetupCard extraction pass:
 
 ```text
-10,227 lines
+10,103 lines
 ```
 
 Completed runtime card extractions:
@@ -40,7 +40,7 @@ AudioInputSetupCard extraction completed in the implementation commit reported i
 Current next candidate:
 
 ```text
-src/components/runtime-workspaces/SessionCreateCard.tsx
+None selected. Run a fresh runtime render measurement before choosing another extraction.
 ```
 
 Measurement reference:
@@ -434,7 +434,7 @@ AudioInputSetupCard extraction completed in the implementation commit reported i
 
 ### 12. Extract session creation/import card
 
-Status: selected as the next UI-only candidate.
+Status: complete.
 
 Measurement reference:
 
@@ -489,4 +489,4 @@ Stop and reconsider if:
 
 ## Recommended next action
 
-Extract `SessionCreateCard` in a dedicated UI-only commit only if the prop boundary stays presentational.
+Run a fresh runtime render measurement before choosing another extraction.

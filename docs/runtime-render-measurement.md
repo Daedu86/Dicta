@@ -7,7 +7,7 @@ This is a docs-only measurement pass after the runtime workspace extraction seri
 ## Current App.tsx size
 
 ```text
-10,227 lines
+10,103 lines
 ```
 
 ## Measurement summary
@@ -83,15 +83,21 @@ Observed boundary:
 - validation preview;
 - create/cancel controls.
 
-Possible target:
+Completed target:
 
 ```text
 src/components/runtime-workspaces/SessionCreateCard.tsx
 ```
 
+Completed reference:
+
+```text
+SessionCreateCard extraction completed in the implementation commit reported in the final summary.
+```
+
 Risk: medium.
 
-Rationale: the UI is cohesive, but it touches session creation mode, quota state, DictationScript validation, and create-session callbacks. Extract only after the Input #1 setup card or with a very explicit UI-only boundary.
+Rationale: the UI is cohesive, but it touches session creation mode, quota state, DictationScript validation, and create-session callbacks. The extraction kept those behaviors in `App.tsx` and moved only the presentational card.
 
 ### 3. Runtime workspace headers
 
@@ -208,7 +214,7 @@ Rationale: this is a separate top-level workspace rather than runtime input UI. 
 Recommended next code patch:
 
 ```text
-src/components/runtime-workspaces/SessionCreateCard.tsx
+None selected. Run a fresh measurement before choosing another extraction.
 ```
 
 Scope:

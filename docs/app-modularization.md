@@ -16,7 +16,7 @@ Read first:
 Current `src/App.tsx` size on `main` after the AudioInputSetupCard extraction pass:
 
 ```text
-10,227 lines
+10,103 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -422,10 +422,10 @@ AudioInputSetupCard extraction completed in the implementation commit reported i
 Selected next candidate:
 
 ```text
-src/components/runtime-workspaces/SessionCreateCard.tsx
+None selected. Run a fresh runtime render measurement before choosing another extraction.
 ```
 
-Session creation/import should stay UI-only/presentational if extracted next. App-owned session creation, quota state, DictationScript validation, generated session creation, persistence, and sync stay in `src/App.tsx`.
+Session creation/import is now extracted as a UI-only/presentational card. App-owned session creation, quota state, DictationScript validation, generated session creation, persistence, and sync stay in `src/App.tsx`.
 
 Recommended follow-up:
 
