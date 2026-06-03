@@ -236,7 +236,7 @@ Preserve these behaviors:
 - `dicta.sessions.v1` localStorage writes are debounced, with immediate persistence preserved for finalization and lifecycle exits.
 - `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling.
 
-Known performance gap: there is still no automated CI benchmark gate for typing-latency regressions.
+Low-latency typing is protected by contract and regression tests (`LowLatencyTextareaContract`, `lowLatencyTextarea`, and `lowLatencyPerformanceGate`). The remaining gap is the absence of a real-browser end-to-end performance benchmark running in CI.
 
 ## Local Storage Keys
 

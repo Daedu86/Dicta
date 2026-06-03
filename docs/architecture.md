@@ -252,4 +252,4 @@ Local services:
 - Kokoro support for `de`, `fr`, and `pt` remains blocked or experimental.
 - Input #4 still uses the historical `qwen-cloud` identifier even though the current cache generator is CosyVoice2.
 - Full-tree render volume during long Browser TTS runs can still be reduced.
-- There is no automated CI benchmark gate for typing latency regressions.
+- Low-latency typing is protected by contract and regression tests, but there is still no real-browser end-to-end performance benchmark running in CI.
