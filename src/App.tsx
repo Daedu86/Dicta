@@ -240,6 +240,11 @@ declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
 const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
 const SESSION_PERSIST_DEBOUNCE_MS = 1500;
+const SESSION_PERSIST_RECOVERY_MAX_SESSIONS = 50;
+const SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS = 8;
+const SESSION_PERSIST_RECOVERY_SERIES_LIMIT = 120;
+const SESSION_PERSIST_RECOVERY_ACTION_LIMIT = 160;
+const SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT = 80;
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 const KOKORO_ENABLED_KEY = 'dicta.kokoroEnabled.v1';
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
@@ -1660,12 +1665,70 @@ function App() {
     sessionPersistTimerRef.current = null;
   }
 
+  function isLocalStorageQuotaExceeded(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const candidate = error as { name?: unknown; code?: unknown };
+    return (
+      candidate.name === 'QuotaExceededError' ||
+      candidate.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      candidate.code === 22 ||
+      candidate.code === 1014
+    );
+  }
+
+  function compactTelemetryForStorage(telemetry: SessionTelemetry): SessionTelemetry {
+    return {
+      ...telemetry,
+      lagSeries: telemetry.lagSeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
+      wpmSeries: telemetry.wpmSeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
+      accuracySeries: telemetry.accuracySeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
+      actions: telemetry.actions.slice(-SESSION_PERSIST_RECOVERY_ACTION_LIMIT),
+      ttsChunks: telemetry.ttsChunks.slice(-SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT),
+      rateDistribution: telemetry.rateDistribution.slice(-40),
+    };
+  }
+
+  function buildQuotaRecoverySessions(nextSessions: StoredSession[]): StoredSession[] {
+    const sortedSessions = [...nextSessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const recoverySessions = sortedSessions.filter(
+      (session, index) => index < SESSION_PERSIST_RECOVERY_MAX_SESSIONS || session.id === activeSessionId,
+    );
+
+    return recoverySessions.map((session, index) => {
+      const normalized = normalizeSessionForPersistence(session);
+      const keepFullTelemetry =
+        session.id === activeSessionId ||
+        index < SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS ||
+        session.status === 'running' ||
+        session.status === 'paused';
+
+      return keepFullTelemetry
+        ? normalized
+        : {
+            ...normalized,
+            telemetry: compactTelemetryForStorage(normalized.telemetry),
+          };
+    });
+  }
+
   function persistSessionsToLocalStorage(nextSessions: StoredSession[], spanName = 'session.localStorage.persist'): void {
     perfDiagnostics.withSpan(spanName, () => {
       const json = JSON.stringify(nextSessions.map((session) => normalizeSessionForPersistence(session)));
       if (json === lastPersistedSessionsJsonRef.current) return;
-      window.localStorage.setItem(SESSION_STORAGE_KEY, json);
-      lastPersistedSessionsJsonRef.current = json;
+
+      try {
+        window.localStorage.setItem(SESSION_STORAGE_KEY, json);
+        lastPersistedSessionsJsonRef.current = json;
+      } catch (error) {
+        if (!isLocalStorageQuotaExceeded(error)) {
+          throw error;
+        }
+
+        const recoveryJson = JSON.stringify(buildQuotaRecoverySessions(nextSessions));
+        window.localStorage.setItem(SESSION_STORAGE_KEY, recoveryJson);
+        lastPersistedSessionsJsonRef.current = recoveryJson;
+        setError('Local session storage was full. Dicta compacted older session telemetry so the current session can keep saving.');
+      }
     }, { sessionCount: nextSessions.length });
   }
 
