@@ -6,10 +6,10 @@ Active incremental extraction. Move only one UI-only runtime card per patch.
 
 The next high-value area in `src/App.tsx` is the runtime input workspace/render branch rather than another already-isolated top-level workspace.
 
-Current `src/App.tsx` size on `main` after the LiveMetricsDock extraction pass:
+Current `src/App.tsx` size on `main` after the AudioInputSetupCard extraction pass:
 
 ```text
-10,289 lines
+10,227 lines
 ```
 
 Completed runtime card extractions:
@@ -33,12 +33,14 @@ BrowserTtsSetupCard extraction completed in the implementation commit reported i
 KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
 
 LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
+
+AudioInputSetupCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Current next candidate:
 
 ```text
-src/components/runtime-workspaces/AudioInputSetupCard.tsx
+src/components/runtime-workspaces/SessionCreateCard.tsx
 ```
 
 Measurement reference:
@@ -47,7 +49,7 @@ Measurement reference:
 docs/runtime-render-measurement.md
 ```
 
-The fresh measurement recommends `AudioInputSetupCard` as the next lowest-risk runtime UI-only extraction. It also identifies session creation/import, Input #1 runtime audio cards, adaptive advanced diagnostics, and leaderboard as possible later candidates with higher or separate-plan risk.
+The fresh measurement recommended `AudioInputSetupCard`, which is now complete. The next candidate is the session creation/import card, with a stricter UI-only boundary because it touches quota state, DictationScript validation, and create-session callbacks.
 
 ## Scope
 
@@ -387,7 +389,7 @@ LiveMetricsDock extraction completed in the implementation commit reported in th
 
 ### 11. Extract Input #1 audio setup sidebar card
 
-Status: selected as the next UI-only candidate after the fresh measurement.
+Status: complete.
 
 Measurement reference:
 
@@ -424,6 +426,46 @@ Keep in `App.tsx`:
 - lock behavior;
 - persistence/sync.
 
+Completed reference:
+
+```text
+AudioInputSetupCard extraction completed in the implementation commit reported in the final summary.
+```
+
+### 12. Extract session creation/import card
+
+Status: selected as the next UI-only candidate.
+
+Measurement reference:
+
+```text
+docs/runtime-render-measurement.md
+```
+
+Target:
+
+```text
+src/components/runtime-workspaces/SessionCreateCard.tsx
+```
+
+Scope:
+
+- session source selector;
+- plain-text session name field;
+- input-mode choice buttons;
+- DictationScript JSON textarea;
+- validation preview and errors;
+- create/cancel controls.
+
+Keep in `App.tsx`:
+
+- session creation mode state;
+- quota state;
+- DictationScript validation data derivation;
+- manual/imported session creation callbacks;
+- OpenRouter/generated session behavior;
+- persistence/sync.
+
 ## Validation requirements
 
 For every code patch:
@@ -447,4 +489,4 @@ Stop and reconsider if:
 
 ## Recommended next action
 
-Extract `AudioInputSetupCard` in a dedicated UI-only commit.
+Extract `SessionCreateCard` in a dedicated UI-only commit only if the prop boundary stays presentational.

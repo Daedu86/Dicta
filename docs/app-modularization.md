@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the LiveMetricsDock extraction pass:
+Current `src/App.tsx` size on `main` after the AudioInputSetupCard extraction pass:
 
 ```text
-10,289 lines
+10,227 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -391,6 +391,7 @@ src/components/runtime-workspaces/Input4SetupCard.tsx
 src/components/runtime-workspaces/BrowserTtsSetupCard.tsx
 src/components/runtime-workspaces/KokoroSetupCard.tsx
 src/components/runtime-workspaces/LiveMetricsDock.tsx
+src/components/runtime-workspaces/AudioInputSetupCard.tsx
 ```
 
 Completed references:
@@ -414,15 +415,17 @@ BrowserTtsSetupCard extraction completed in the implementation commit reported i
 KokoroSetupCard extraction completed in the implementation commit reported in the final summary.
 
 LiveMetricsDock extraction completed in the implementation commit reported in the final summary.
+
+AudioInputSetupCard extraction completed in the implementation commit reported in the final summary.
 ```
 
 Selected next candidate:
 
 ```text
-None selected. Run a fresh runtime render measurement before choosing another extraction.
+src/components/runtime-workspaces/SessionCreateCard.tsx
 ```
 
-The runtime workspace pass has completed the currently selected UI-only cards. Future runtime work should start with a fresh measurement and should still keep playback, adaptive updates, local-dev sidecars, persistence, and submission behavior in `src/App.tsx`.
+Session creation/import should stay UI-only/presentational if extracted next. App-owned session creation, quota state, DictationScript validation, generated session creation, persistence, and sync stay in `src/App.tsx`.
 
 Recommended follow-up:
 

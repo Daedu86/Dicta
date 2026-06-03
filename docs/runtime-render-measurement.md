@@ -1,13 +1,13 @@
 # Runtime render measurement
 
-_Last measured: 2026-06-02_
+_Last measured: 2026-06-03_
 
 This is a docs-only measurement pass after the runtime workspace extraction series. It should guide the next modularization patch, not move code by itself.
 
 ## Current App.tsx size
 
 ```text
-10,289 lines
+10,227 lines
 ```
 
 ## Measurement summary
@@ -23,6 +23,7 @@ src/components/runtime-workspaces/KokoroPracticeCard.tsx
 src/components/runtime-workspaces/KokoroSetupCard.tsx
 src/components/runtime-workspaces/Input4SetupCard.tsx
 src/components/runtime-workspaces/LiveMetricsDock.tsx
+src/components/runtime-workspaces/AudioInputSetupCard.tsx
 ```
 
 The remaining large inline areas in `src/App.tsx` are not all equal. Some are good UI-only candidates, while others need a dedicated plan because they mix derived state, session routing, or already-closed workspace ownership.
@@ -30,6 +31,8 @@ The remaining large inline areas in `src/App.tsx` are not all equal. Some are go
 ## Remaining inline candidates
 
 ### 1. Input #1 audio setup/sidebar
+
+Status: complete.
 
 Approximate range:
 
@@ -50,15 +53,19 @@ Observed boundary:
 - input lock box;
 - success/error messages.
 
-Recommended target:
+Completed target:
 
 ```text
 src/components/runtime-workspaces/AudioInputSetupCard.tsx
 ```
 
-Risk: low to medium.
+Completed reference:
 
-Rationale: this is the cleanest remaining setup/sidebar card. It should remain UI-only and keep audio loading, transcript generation, lock behavior, persistence, and sync in `App.tsx`.
+```text
+AudioInputSetupCard extraction completed in the implementation commit reported in the final summary.
+```
+
+Rationale: this was the cleanest remaining setup/sidebar card. It remained UI-only and kept audio loading, transcript generation, lock behavior, persistence, and sync in `App.tsx`.
 
 ### 2. Session creation/import dialog
 
@@ -201,13 +208,13 @@ Rationale: this is a separate top-level workspace rather than runtime input UI. 
 Recommended next code patch:
 
 ```text
-src/components/runtime-workspaces/AudioInputSetupCard.tsx
+src/components/runtime-workspaces/SessionCreateCard.tsx
 ```
 
 Scope:
 
-- extract only the Input #1 setup/sidebar branch;
-- keep audio loading, transcript upload/parsing, transcription generation, difficulty changes, lock behavior, persistence, and sync in `App.tsx`;
+- extract only the session creation/import card;
+- keep session creation mode state, quota state, DictationScript validation data derivation, manual/imported session creation callbacks, generated session creation, persistence, and sync in `App.tsx`;
 - pass explicit props and callbacks;
 - do not touch runtime audio practice, leaderboard, adaptive, admin, OpenRouter, Browser TTS, Kokoro, or Input #4.
 

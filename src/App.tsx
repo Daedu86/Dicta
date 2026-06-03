@@ -121,6 +121,7 @@ import {
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
+import { AudioInputSetupCard } from './components/runtime-workspaces/AudioInputSetupCard';
 import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
 import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsSetupCard';
 import { BrowserTtsSourceCard } from './components/runtime-workspaces/BrowserTtsSourceCard';
@@ -7081,94 +7082,31 @@ function App() {
         </section>
         {!setupLocked ? (
               activeInputMode === 'input1' ? (
-              <section className="sidebar-section sidebar-section-border">
-                <button
-                  type="button"
-                  className="sidebar-section-heading sidebar-section-toggle"
-                  onClick={() => setSetupExpanded((value) => !value)}
-                  aria-expanded={setupExpanded}
-                >
-                  <span>{activeInputLabel}</span>
-                  <span className="sidebar-section-meta">
-                    <span className={`sidebar-chevron ${setupExpanded ? 'sidebar-chevron-open' : ''}`}>⌃</span>
-                  </span>
-                </button>
-                {setupExpanded ? (
-                  <>
-                    <div className="sidebar-card">
-                      <label>
-                        Audio file
-                        <input type="file" accept="audio/*" disabled={setupLocked} onChange={(e) => onAudioFile(e.target.files?.[0] ?? null)} />
-                      </label>
-                      <label>
-                        Audio URL (direct .mp3/.wav)
-                        <input
-                          type="url"
-                          value={audioSourceUrlInput}
-                          disabled={setupLocked}
-                          onChange={(e) => setAudioSourceUrlInput(e.target.value)}
-                          placeholder="https://.../audio.mp3"
-                        />
-                        <button type="button" onClick={onAudioUrlLoad} disabled={setupLocked}>Load audio URL</button>
-                      </label>
-                      <div className="progress-wrap" aria-live="polite">
-                        {transcribing || transcriptionProgress > 0 ? (
-                          <>
-                            <div className="progress-meta">
-                              <span>{transcribing ? 'Transcribing audio...' : 'Transcription complete'}</span>
-                              <strong>{Math.round(transcriptionProgress)}%</strong>
-                            </div>
-                            <div className="progress-track">
-                              <div className="progress-fill" style={{ width: `${transcriptionProgress}%` }} />
-                            </div>
-                          </>
-                        ) : null}
-                      </div>
-                      <label>
-                        Transcript JSON
-                        <input type="file" accept="application/json" disabled={setupLocked} onChange={(e) => void onTranscriptFile(e.target.files?.[0] ?? null)} />
-                      </label>
-                      <label>
-                        Transcription language
-                        <select value={transcriptionLanguage} disabled={setupLocked} onChange={(e) => setTranscriptionLanguage(e.target.value as TtsLanguage)}>
-                          {SUPPORTED_LANGUAGES.map((language) => (
-                            <option key={language} value={language}>{language}</option>
-                          ))}
-                        </select>
-                        <button type="button" onClick={() => void generateTranscriptFromAudio()} disabled={!canGenerateTranscript || transcribing || setupLocked}>
-                          {transcribing ? 'Generating transcription...' : 'Get transcription'}
-                        </button>
-                      </label>
-                      <label>
-                        Difficulty
-                        <select value={difficulty} disabled={setupLocked} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
-                          <option value="easy">easy</option>
-                          <option value="normal">normal</option>
-                          <option value="hard">hard</option>
-                        </select>
-                      </label>
-                      <div className="input-lock-box">
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={lockInputSettings}
-                          disabled={setupLocked || !inputSettingsReady}
-                        >
-                          {setupLocked ? 'Input settings locked' : 'Submit and lock input settings'}
-                        </button>
-                        <p className="hint">
-                          {setupLocked
-                            ? 'This input setup is locked for this session.'
-                            : 'Lock after audio and transcript are ready.'}
-                        </p>
-                      </div>
-                    </div>
-                    {audioReadyMessage ? <p className="success">{audioReadyMessage}</p> : null}
-                    {transcriptReadyMessage ? <p className="success">{transcriptReadyMessage}</p> : null}
-                    {error ? <p className="error">{error}</p> : null}
-                  </>
-                ) : null}
-              </section>
+                <AudioInputSetupCard
+                  activeInputLabel={activeInputLabel}
+                  setupExpanded={setupExpanded}
+                  setupLocked={setupLocked}
+                  audioSourceUrlInput={audioSourceUrlInput}
+                  transcribing={transcribing}
+                  transcriptionProgress={transcriptionProgress}
+                  transcriptionLanguage={transcriptionLanguage}
+                  supportedLanguages={SUPPORTED_LANGUAGES}
+                  difficulty={difficulty}
+                  canGenerateTranscript={canGenerateTranscript}
+                  inputSettingsReady={inputSettingsReady}
+                  audioReadyMessage={audioReadyMessage}
+                  transcriptReadyMessage={transcriptReadyMessage}
+                  error={error}
+                  onToggleExpanded={() => setSetupExpanded((value) => !value)}
+                  onAudioFile={onAudioFile}
+                  onAudioSourceUrlInputChange={setAudioSourceUrlInput}
+                  onAudioUrlLoad={onAudioUrlLoad}
+                  onTranscriptFile={onTranscriptFile}
+                  onTranscriptionLanguageChange={setTranscriptionLanguage}
+                  onGenerateTranscriptFromAudio={generateTranscriptFromAudio}
+                  onDifficultyChange={setDifficulty}
+                  onLockInputSettings={lockInputSettings}
+                />
               ) : activeInputMode === 'input2' ? (
                 <BrowserTtsSetupCard
                   activeInputLabel={activeInputLabel}
