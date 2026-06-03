@@ -10,7 +10,7 @@ type DictaPerfSnapshot = {
 };
 
 test('mobile training typing stays local and batches commits', async ({ page }) => {
-  await page.goto('/?e2eTraining=1&perf=1', { waitUntil: 'domcontentloaded' });
+  await page.goto('/e2e-training.html', { waitUntil: 'domcontentloaded' });
 
   const textarea = page.getByLabel('Type what you hear');
   await expect(textarea).toBeVisible();
