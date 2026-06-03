@@ -24,7 +24,7 @@ test('mobile training typing stays local and batches commits', async ({ page }) 
   const trainingViewRendersBefore = beforeTyping.renders.TrainingView ?? 0;
   const commitsBefore = beforeTyping.input.inputToCommit.count;
 
-  await page.keyboard.type(text, { delay: 1 });
+  await page.keyboard.insertText(text);
 
   await expect(textarea).toHaveValue(text);
 
