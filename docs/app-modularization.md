@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the AudioInputSetupCard extraction pass:
+Current `src/App.tsx` size on `main` after the LeaderboardWorkspace extraction pass:
 
 ```text
-10,103 lines
+9,370 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -426,6 +426,39 @@ None selected. Run a fresh runtime render measurement before choosing another ex
 ```
 
 Session creation/import is now extracted as a UI-only/presentational card. App-owned session creation, quota state, DictationScript validation, generated session creation, persistence, and sync stay in `src/App.tsx`.
+
+### 9. Leaderboard workspace
+
+Boundary: browser UI and derived session analytics display.
+
+Status: complete.
+
+Completed extraction file:
+
+```text
+src/components/leaderboard/LeaderboardWorkspace.tsx
+```
+
+Preserved behavior:
+
+- leaderboard data derivation stayed in `App.tsx`;
+- session filtering, sorting, and ranking stayed in `App.tsx`;
+- leaderboardSections construction stayed in `App.tsx`;
+- leaderboard language/expanded state stayed in `App.tsx`;
+- workspace navigation state stayed in `App.tsx`;
+- dashboard session selection stayed in `App.tsx`;
+- session delete/export/copy behavior stayed in `App.tsx`;
+- session readiness/status derivation stayed in `App.tsx`;
+- persistence, sync, and auth/profile/access state stayed in `App.tsx`.
+
+Impact:
+
+- Current post-pass size: `9,370` App.tsx lines.
+
+Stop condition:
+
+- Do not split child leaderboard components yet.
+- Re-evaluate later whether `LeaderboardHeader`, `LeaderboardSection`, or `LeaderboardSessionRow` are worth extracting.
 
 Recommended follow-up:
 
