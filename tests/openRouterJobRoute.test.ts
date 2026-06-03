@@ -4,6 +4,7 @@ import {
   isRetryableOpenRouterJobResponse,
   readCreateJobPayload,
   resolveCreateJobPayloadForRequester,
+  resolveOpenRouterJobModelCandidates,
 } from '../api/openrouter/jobs.js';
 
 describe('OpenRouter jobs route payload validation', () => {
@@ -102,6 +103,23 @@ describe('OpenRouter jobs route payload validation', () => {
     });
   });
 
+  it('falls back from a concrete free model to other free models', () => {
+    expect(resolveOpenRouterJobModelCandidates('openai/gpt-oss-120b:free')).toEqual([
+      'openai/gpt-oss-120b:free',
+      'google/gemma-3n-e2b-it:free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'qwen/qwen3-4b:free',
+    ]);
+  });
+
+  it('deduplicates fallback models when the primary model is already a fallback', () => {
+    expect(resolveOpenRouterJobModelCandidates('google/gemma-3n-e2b-it:free')).toEqual([
+      'google/gemma-3n-e2b-it:free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'qwen/qwen3-4b:free',
+    ]);
+  });
+
   it('treats OpenRouter 503 provider upstream failures as retryable', () => {
     expect(
       isRetryableOpenRouterJobResponse({
@@ -142,14 +160,15 @@ describe('OpenRouter jobs route payload validation', () => {
         }),
       },
       [
-        { attempt: 1, status: 503, retryable: true },
-        { attempt: 2, status: 503, retryable: true },
-        { attempt: 3, status: 503, retryable: true },
+        { attempt: 1, model: 'openai/gpt-oss-120b:free', status: 503, retryable: true },
+        { attempt: 2, model: 'openai/gpt-oss-120b:free', status: 503, retryable: true },
+        { attempt: 3, model: 'google/gemma-3n-e2b-it:free', status: 503, retryable: true },
       ],
     );
 
     expect(message).toContain('OpenRouter provider error (503 from OpenInference): no healthy upstream.');
     expect(message).toContain('Retried 2 times.');
+    expect(message).toContain('Tried 2 models.');
     expect(message).not.toContain('user_360ls8gD0nDOmwcRgJr92fqM1Fk');
   });
 
