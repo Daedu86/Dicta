@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { readCreateJobPayload } from '../api/openrouter/jobs.js';
+import {
+  formatOpenRouterJobProviderError,
+  isRetryableOpenRouterJobResponse,
+  readCreateJobPayload,
+} from '../api/openrouter/jobs.js';
 
-describe('openRouter jobs route payload validation', () => {
+describe('OpenRouter jobs route payload validation', () => {
   it('accepts French durable session generation jobs', () => {
     expect(
       readCreateJobPayload({
@@ -57,6 +61,57 @@ describe('openRouter jobs route payload validation', () => {
       slotLabel: 'Express easy direct session',
       durationMinutes: 1,
     });
+  });
+
+  it('treats OpenRouter 503 provider upstream failures as retryable', () => {
+    expect(
+      isRetryableOpenRouterJobResponse({
+        ok: false,
+        status: 503,
+        body: JSON.stringify({
+          error: {
+            message: 'Provider returned error',
+            code: 503,
+            metadata: {
+              raw: 'no healthy upstream',
+              provider_name: 'OpenInference',
+              is_byok: false,
+            },
+          },
+          user_id: 'user_360ls8gD0nDOmwcRgJr92fqM1Fk',
+        }),
+      }),
+    ).toBe(true);
+  });
+
+  it('formats transient provider failures without leaking OpenRouter user ids', () => {
+    const message = formatOpenRouterJobProviderError(
+      {
+        ok: false,
+        status: 503,
+        body: JSON.stringify({
+          error: {
+            message: 'Provider returned error',
+            code: 503,
+            metadata: {
+              raw: 'no healthy upstream',
+              provider_name: 'OpenInference',
+              is_byok: false,
+            },
+          },
+          user_id: 'user_360ls8gD0nDOmwcRgJr92fqM1Fk',
+        }),
+      },
+      [
+        { attempt: 1, status: 503, retryable: true },
+        { attempt: 2, status: 503, retryable: true },
+        { attempt: 3, status: 503, retryable: true },
+      ],
+    );
+
+    expect(message).toContain('OpenRouter provider error (503 from OpenInference): no healthy upstream.');
+    expect(message).toContain('Retried 2 times.');
+    expect(message).not.toContain('user_360ls8gD0nDOmwcRgJr92fqM1Fk');
   });
 
   it('rejects unsupported durable job languages', () => {
