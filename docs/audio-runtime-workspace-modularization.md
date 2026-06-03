@@ -14,68 +14,13 @@ Current `src/App.tsx` size after the AudioSourceCard pass:
 9,660 lines
 ```
 
+Latest measurement:
+
+```text
+docs/app-post-audio-source-measurement.md
+```
+
 ## Completed first target
-
-```text
-src/components/runtime-workspaces/AudioSourceCard.tsx
-```
-
-## Possible later target, only after measurement
-
-```text
-src/components/runtime-workspaces/AudioPracticeCard.tsx
-```
-
-## Why this candidate
-
-The latest post-adaptive-diagnostics measurement identifies the default Input #1 audio runtime branch as the clearest remaining runtime UI area.
-
-The branch should be split in two passes because the source card is mostly display/player UI, while the practice card touches session lifecycle controls and typing state.
-
-## Current approximate ranges
-
-Source card:
-
-```text
-extracted to src/components/runtime-workspaces/AudioSourceCard.tsx
-```
-
-Practice card:
-
-```text
-src/App.tsx:7555-7628
-```
-
-Actual lines may drift. Re-measure immediately before implementation.
-
-## AudioSourceCard scope
-
-Moved only this visual source card:
-
-- `<section className="panel workspace-panel tts-source-panel tall-panel">`;
-- `Audio source` heading;
-- media player label;
-- `<audio>` element;
-- `Whisper transcript` heading;
-- transcript segment list;
-- active transcript segment highlighting;
-- empty transcript state.
-
-Keep in `App.tsx`:
-
-- `audioRef` ownership;
-- `audioUrl` state/derivation;
-- `setCurrentAudioTime` callback;
-- `finishSession` callback;
-- transcript segment derivation;
-- active transcript segment index derivation;
-- `formatTimestamp` helper unless already stable/importable;
-- playback/session lifecycle behavior;
-- persistence/sync.
-
-Pass explicit props/callbacks to the component.
-
-Completed component:
 
 ```text
 src/components/runtime-workspaces/AudioSourceCard.tsx
@@ -83,19 +28,32 @@ src/components/runtime-workspaces/AudioSourceCard.tsx
 
 `App.tsx` still owns the audio ref, audio URL derivation, `setCurrentAudioTime`, `finishSession`, transcript segment derivation, active segment index derivation, `formatTimestamp`, playback/session lifecycle behavior, persistence, and sync.
 
-## AudioPracticeCard scope, later only
+## Current candidate after measurement
 
-Do not extract in the first patch.
+```text
+src/components/runtime-workspaces/AudioPracticeCard.tsx
+```
 
-Possible later scope:
+Risk: high.
 
+The post-AudioSourceCard measurement confirms that `AudioPracticeCard` is viable but more behavior-adjacent than the source card. It should only be extracted as a UI-only component with strict props.
+
+## AudioPracticeCard scope
+
+Move only this visual practice panel:
+
+- `<section className="panel workspace-panel accent-panel">`;
+- `How can I help you train today?` heading;
 - Start/Pause/Finish/Reset controls;
-- ready checklist;
-- success/error/hint messages;
-- active/next transcript cues;
-- keyboard profile label;
+- session-ready banner;
+- ready checklist chips;
+- export/success/finished messages;
+- setup-required hint;
+- active transcript cue;
+- next transcript cue;
+- keyboard profile indicator;
 - typing textarea;
-- `RuntimeMetricsPanel`.
+- `RuntimeMetricsPanel` usage.
 
 Keep in `App.tsx`:
 
@@ -105,79 +63,96 @@ Keep in `App.tsx`:
 - `resetSession`;
 - `onTypingChange`;
 - `onTypingKeyDown`;
-- live metrics derivation;
+- ready checklist derivation;
 - active/next transcript segment derivation;
-- persistence/sync.
+- live metrics derivation;
+- `RuntimeMetricsPanel` definition/import ownership unless it is already stable;
+- persistence/sync/localStorage.
 
-## Risk level
+## Expected AudioPracticeCard props
 
-AudioSourceCard risk: medium-high.
+Data/state:
 
-AudioPracticeCard risk: high.
+- `canStartSession`
+- `canPauseSession`
+- `canFinishSession`
+- `activeSessionFinished`
+- `readyChecklist`
+- `exportMessage`
+- `trainingSubmitMessage`
+- `activeTranscriptSegment`
+- `nextTranscriptSegment`
+- `transcriptPreview`
+- `keyboardProfileLabel`
+- `keyboardProfile`
+- `inputText`
+- `controllerState`
+- `rate`
+- `lagSec`
+- `lagWords`
+- `wpm`
+- `visibleAccuracy`
 
-The source card is safer but still behavior-adjacent because it contains the `<audio>` element and lifecycle callbacks. It is acceptable only if the ref and callbacks remain owned by `App.tsx`.
+Callbacks:
+
+- `onStartSession`
+- `onPauseSession`
+- `onFinishSession`
+- `onResetSession`
+- `onTypingChange`
+- `onTypingKeyDown`
+
+Helpers/components:
+
+- `formatTimestamp`
+- `RuntimeMetricsPanelComponent`, unless importable cleanly
+
+Types:
+
+- use narrow local structural types for ready checklist items and transcript segments;
+- do not export broad App-local session types.
 
 ## Do not change
 
 Do not change:
 
 - audio playback behavior;
-- finish-on-ended behavior;
-- `onTimeUpdate` behavior;
-- active segment highlighting;
-- transcript list order;
+- session lifecycle behavior;
+- finish behavior;
+- pause behavior;
+- reset behavior;
+- typing behavior;
+- ready checklist semantics;
+- active/next transcript cue semantics;
+- adaptive runtime metrics;
 - visible copy;
 - class names;
-- audio element attributes;
-- practice controls;
-- typing behavior;
-- adaptive runtime metrics;
+- textarea attributes;
 - persistence/sync/localStorage.
-
-## Expected AudioSourceCard props
-
-Data props:
-
-- `audioRef`
-- `audioUrl`
-- `transcriptSegments`
-- `activeTranscriptSegmentIndex`
-
-Callbacks:
-
-- `onTimeUpdate`
-- `onEnded`
-
-Helpers:
-
-- `formatTimestamp`
-
-Types:
-
-- Use a narrow local structural transcript segment type based on fields rendered: `start`, `end`, `text`.
-- Do not export App-local session types.
 
 ## Recommended extraction strategy
 
 ### Step 1: AudioSourceCard
 
+Status: complete.
+
+### Step 2: AudioPracticeCard
+
+Status: evaluated and possible, but high risk.
+
 Create:
 
 ```text
-src/components/runtime-workspaces/AudioSourceCard.tsx
+src/components/runtime-workspaces/AudioPracticeCard.tsx
 ```
 
-Move only the audio source panel JSX.
+Move only the practice panel JSX.
 
-Do not move practice panel JSX.
+Do not move data derivation, callbacks, metrics derivation, transcript derivation, or persistence/sync.
 
-### Step 2: measure again
+### Step 3: stop and re-measure
 
-After AudioSourceCard is stable, re-measure before deciding whether `AudioPracticeCard` is worth extracting.
-
-### Step 3: AudioPracticeCard, optional later
-
-Only if measurement shows it is worth doing and the prop surface stays reasonable.
+After AudioPracticeCard, stop and measure before choosing another extraction.
 
 ## Validation
 
@@ -195,18 +170,19 @@ git status --short
 
 Stop and do not extract if:
 
-- the component needs to own `audioRef` internally;
-- TypeScript forces broad App-local session types into the component;
-- the diff changes playback/session lifecycle behavior;
+- the component would own session lifecycle behavior internally;
+- the component would derive transcript or metrics state internally;
+- `RuntimeMetricsPanel` movement causes broad type exports;
+- TypeScript requires broad App-local session types;
 - the diff touches Browser TTS, Kokoro, Input #4, OpenRouter, Admin, auth, API routes, adaptive controller logic, persistence, or sync;
 - tests/build failures require behavior changes.
 
 ## Recommendation
 
-AudioSourceCard is complete. Next step:
+If continuing runtime cleanup, proceed only with:
 
 ```text
-Measure before deciding whether AudioPracticeCard is worth extracting.
+src/components/runtime-workspaces/AudioPracticeCard.tsx
 ```
 
-Do not treat `AudioPracticeCard` as an automatic next extraction.
+Keep the extraction UI-only and stop for a fresh measurement afterward.
