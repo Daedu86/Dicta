@@ -5,7 +5,8 @@ import App from './App.tsx'
 import { E2ETrainingPerfHarness, configureE2ETrainingPerf } from './components/training/E2ETrainingPerfHarness.tsx'
 
 const params = new URLSearchParams(window.location.search)
-const useE2ETrainingHarness = import.meta.env.DEV && params.get('e2eTraining') === '1'
+const isE2ELocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+const useE2ETrainingHarness = isE2ELocalHost && params.get('e2eTraining') === '1'
 
 if (useE2ETrainingHarness) {
   configureE2ETrainingPerf()
