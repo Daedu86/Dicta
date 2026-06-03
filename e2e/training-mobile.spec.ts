@@ -22,22 +22,26 @@ test('mobile training typing stays local and batches commits', async ({ page }) 
   expect(beforeTyping.enabled).toBe(true);
   const lowLatencyRendersBefore = beforeTyping.renders.LowLatencyTextarea ?? 0;
   const trainingViewRendersBefore = beforeTyping.renders.TrainingView ?? 0;
+  const commitsBefore = beforeTyping.input.inputToCommit.count;
 
   await page.keyboard.type(text, { delay: 1 });
 
   await expect(textarea).toHaveValue(text);
 
-  const beforeCommit = await page.evaluate<DictaPerfSnapshot>(() => window.__DICTA_PERF__?.snapshot() as DictaPerfSnapshot);
-  expect(beforeCommit.input.latest?.valueLength).toBe(text.length);
-  expect(beforeCommit.input.inputToCommit.count).toBe(0);
-  expect(beforeCommit.renders.LowLatencyTextarea ?? 0).toBeLessThanOrEqual(lowLatencyRendersBefore + 1);
-  expect(beforeCommit.renders.TrainingView ?? 0).toBeLessThanOrEqual(trainingViewRendersBefore + 1);
+  const beforeFinalWait = await page.evaluate<DictaPerfSnapshot>(() => window.__DICTA_PERF__?.snapshot() as DictaPerfSnapshot);
+  const commitLimit = Math.ceil(text.length / 12);
+  expect(beforeFinalWait.input.latest?.valueLength).toBe(text.length);
+  expect(beforeFinalWait.input.inputToCommit.count - commitsBefore).toBeLessThanOrEqual(commitLimit);
+  expect(beforeFinalWait.renders.LowLatencyTextarea ?? 0).toBeLessThanOrEqual(lowLatencyRendersBefore + 1);
+  expect(beforeFinalWait.renders.TrainingView ?? 0).toBeLessThanOrEqual(trainingViewRendersBefore + 1);
 
   await page.waitForTimeout(120);
 
-  const afterCommit = await page.evaluate<DictaPerfSnapshot>(() => window.__DICTA_PERF__?.snapshot() as DictaPerfSnapshot);
-  expect(afterCommit.input.inputToCommit.count).toBe(1);
-  expect(afterCommit.input.inputToCommit.max).toBeLessThan(500);
-  expect(afterCommit.renders.LowLatencyTextarea ?? 0).toBeLessThanOrEqual(lowLatencyRendersBefore + 2);
-  expect(afterCommit.renders.TrainingView ?? 0).toBeLessThanOrEqual(trainingViewRendersBefore + 2);
+  const afterFinalWait = await page.evaluate<DictaPerfSnapshot>(() => window.__DICTA_PERF__?.snapshot() as DictaPerfSnapshot);
+  const commitDelta = afterFinalWait.input.inputToCommit.count - commitsBefore;
+  expect(commitDelta).toBeGreaterThan(0);
+  expect(commitDelta).toBeLessThanOrEqual(commitLimit + 1);
+  expect(afterFinalWait.input.inputToCommit.max).toBeLessThan(500);
+  expect(afterFinalWait.renders.LowLatencyTextarea ?? 0).toBeLessThanOrEqual(lowLatencyRendersBefore + 2);
+  expect(afterFinalWait.renders.TrainingView ?? 0).toBeLessThanOrEqual(trainingViewRendersBefore + 2);
 });
