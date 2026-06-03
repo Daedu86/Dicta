@@ -2,25 +2,25 @@
 
 _Last measured: 2026-06-03_
 
-This is a docs-only measurement after `AudioSourceCard` was extracted.
+This began as a docs-only measurement after `AudioSourceCard` was extracted. It is now closed because `AudioPracticeCard` has also been extracted.
 
 Current `src/App.tsx` size reported by the implementation pass:
 
 ```text
-9,660 lines
+9,620 lines
 ```
 
 ## Current reading
 
 `AudioSourceCard` is extracted and the source/player/transcript list is no longer inline in `App.tsx`.
 
-The remaining default Input #1 audio runtime branch is now the practice panel. It is compact but behavior-adjacent because it renders session lifecycle controls, typing state, live cues, ready-state messages, and runtime metrics.
+`AudioPracticeCard` is also extracted as a UI-only/presentational card. `App.tsx` still owns session lifecycle callbacks, typing handlers, ready checklist derivation, active/next transcript cue derivation, metrics derivation, `RuntimeMetricsPanel`, persistence, and sync.
 
-## Remaining Input #1 audio runtime candidate
+## Completed Input #1 audio runtime candidate
 
 ### AudioPracticeCard
 
-Approximate current area:
+Former approximate area:
 
 ```text
 src/App.tsx:7555-7624
@@ -41,13 +41,15 @@ Observed UI:
 - typing textarea;
 - `RuntimeMetricsPanel`.
 
-Possible target:
+Completed target:
 
 ```text
 src/components/runtime-workspaces/AudioPracticeCard.tsx
 ```
 
-Risk: high.
+Status: complete.
+
+Risk handled as UI-only extraction.
 
 Rationale: this is no longer just display markup. The controls call `startSession`, `pauseSession`, `finishSession`, and `resetSession`. The textarea calls `onTypingChange` and `onTypingKeyDown`. The panel also displays derived ready checklist state, active/next transcript cues, live metrics, and success/error state.
 
@@ -100,17 +102,7 @@ Types:
 
 ## Recommendation
 
-`AudioPracticeCard` is viable but should be treated as a high-risk UI-only extraction, not a routine card move.
-
-Recommended next code extraction if continuing runtime cleanup:
-
-```text
-src/components/runtime-workspaces/AudioPracticeCard.tsx
-```
-
-Only proceed if the implementer keeps all session lifecycle, typing behavior, metrics derivation, transcript derivation, persistence, and sync in `App.tsx`.
-
-Alternative: stop runtime extraction here and plan `AuthWorkspace` separately if auth UI maintainability becomes more important.
+Stop and run a fresh measurement before choosing another extraction. Do not select `AuthWorkspace`, `RuntimeWorkspaceHeader`, Admin second pass, or another runtime card automatically from this file.
 
 ## Stop conditions
 
@@ -133,4 +125,4 @@ git diff --stat
 git status --short
 ```
 
-This measurement is docs-only; runtime validation is not required for this file.
+This measurement is closed; use a fresh measurement for any next extraction.

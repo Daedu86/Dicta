@@ -123,6 +123,7 @@ import { TrainingView, type TrainingViewProps } from './components/TrainingView'
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { LeaderboardWorkspace, type LeaderboardWorkspaceProps } from './components/leaderboard/LeaderboardWorkspace';
 import { AudioInputSetupCard } from './components/runtime-workspaces/AudioInputSetupCard';
+import { AudioPracticeCard } from './components/runtime-workspaces/AudioPracticeCard';
 import { AudioSourceCard } from './components/runtime-workspaces/AudioSourceCard';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
 import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
@@ -7552,76 +7553,35 @@ function App() {
                 </div>
 
                 <div className="workspace-column">
-                  <section className="panel workspace-panel accent-panel">
-                    <h2>How can I help you train today?</h2>
-                    <div className="panel composer-panel">
-                      <div className="controls">
-                        <button onClick={() => void startSession()} disabled={!canStartSession}>Start</button>
-                        <button onClick={pauseSession} disabled={!canPauseSession}>Pause</button>
-                        <button onClick={() => finishSession()} disabled={!canFinishSession}>Finish</button>
-                        <button onClick={() => resetSession()}>Reset</button>
-                      </div>
-                      <div className={`session-ready-banner ${canStartSession ? 'session-ready-banner-active' : ''}`} aria-live="polite">
-                        <strong>
-                          {activeSessionFinished
-                            ? 'Session finished'
-                            : canStartSession
-                              ? 'Session ready to start'
-                              : 'Session setup required'}
-                        </strong>
-                        <div className="session-ready-checklist">
-                          {readyChecklist.map((item) => (
-                            <span
-                              key={item.label}
-                              className={`session-ready-chip ${item.ready ? 'session-ready-chip-done' : 'session-ready-chip-pending'}`}
-                            >
-                              {item.ready ? '✓' : '○'} {item.label}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      {exportMessage ? <p className="success">{exportMessage}</p> : null}
-                      {activeSessionFinished ? (
-                        <p className="success">
-                          {trainingSubmitMessage || 'Attempt completed. Input is locked until you reset.'}
-                        </p>
-                      ) : null}
-                      {!activeSessionFinished && !canStartSession ? <p className="hint">Load audio and transcript to enable Start.</p> : null}
-                      <div className="typing-cue-stack">
-                        <div className="target target-active">
-                          <strong>{activeTranscriptSegment ? formatTimestamp(activeTranscriptSegment.start) : '--:--'}</strong>
-                          <span>{activeTranscriptSegment?.text || transcriptPreview || 'Load transcript to see target words.'}</span>
-                        </div>
-                        {nextTranscriptSegment ? (
-                          <div className="target target-next">
-                            <strong>{formatTimestamp(nextTranscriptSegment.start)}</strong>
-                            <span>{nextTranscriptSegment.text}</span>
-                          </div>
-                        ) : null}
-                      </div>
-                      {keyboardProfileLabel ? (
-                        <span className={`es-layout-indicator ${keyboardProfile === 'de-keyboard' ? 'de-layout-indicator' : ''}`}>
-                          {keyboardProfileLabel}
-                        </span>
-                      ) : null}
-                      <textarea
-                        value={inputText}
-                        onChange={(e) => onTypingChange(e.target.value)}
-                        onKeyDown={onTypingKeyDown}
-                        placeholder={activeSessionFinished ? 'Session finished.' : 'Type what you hear...'}
-                        readOnly={activeSessionFinished}
-                        rows={8}
-                      />
-                      <RuntimeMetricsPanel
-                        controllerState={controllerState}
-                        rate={rate}
-                        lagSec={lagSec}
-                        lagWords={lagWords}
-                        wpm={wpm}
-                        accuracy={visibleAccuracy}
-                      />
-                    </div>
-                  </section>
+                  <AudioPracticeCard
+                    canStartSession={canStartSession}
+                    canPauseSession={canPauseSession}
+                    canFinishSession={canFinishSession}
+                    activeSessionFinished={activeSessionFinished}
+                    readyChecklist={readyChecklist}
+                    exportMessage={exportMessage}
+                    trainingSubmitMessage={trainingSubmitMessage}
+                    activeTranscriptSegment={activeTranscriptSegment}
+                    nextTranscriptSegment={nextTranscriptSegment}
+                    transcriptPreview={transcriptPreview}
+                    keyboardProfileLabel={keyboardProfileLabel}
+                    keyboardProfile={keyboardProfile}
+                    inputText={inputText}
+                    controllerState={controllerState}
+                    rate={rate}
+                    lagSec={lagSec}
+                    lagWords={lagWords}
+                    wpm={wpm}
+                    visibleAccuracy={visibleAccuracy}
+                    onStartSession={() => void startSession()}
+                    onPauseSession={pauseSession}
+                    onFinishSession={() => finishSession()}
+                    onResetSession={() => resetSession()}
+                    onTypingChange={onTypingChange}
+                    onTypingKeyDown={onTypingKeyDown}
+                    formatTimestamp={formatTimestamp}
+                    RuntimeMetricsPanelComponent={RuntimeMetricsPanel}
+                  />
                 </div>
               </div>
               </>

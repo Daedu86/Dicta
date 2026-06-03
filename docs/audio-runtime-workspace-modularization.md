@@ -4,14 +4,14 @@ _Last updated: 2026-06-03_
 
 ## Status
 
-First pass complete. `AudioSourceCard.tsx` is extracted as a UI-only/presentational component.
+First pass complete. `AudioSourceCard.tsx` and `AudioPracticeCard.tsx` are extracted as UI-only/presentational components.
 
 This plan covers the remaining inline default Input #1 audio runtime workspace branch in `src/App.tsx` after the runtime setup/sidebar, leaderboard, and adaptive advanced diagnostics extractions.
 
-Current `src/App.tsx` size after the AudioSourceCard pass:
+Current `src/App.tsx` size after the AudioPracticeCard pass:
 
 ```text
-9,660 lines
+9,620 lines
 ```
 
 Latest measurement:
@@ -20,23 +20,24 @@ Latest measurement:
 docs/app-post-audio-source-measurement.md
 ```
 
-## Completed first target
+## Completed targets
 
 ```text
 src/components/runtime-workspaces/AudioSourceCard.tsx
+src/components/runtime-workspaces/AudioPracticeCard.tsx
 ```
 
 `App.tsx` still owns the audio ref, audio URL derivation, `setCurrentAudioTime`, `finishSession`, transcript segment derivation, active segment index derivation, `formatTimestamp`, playback/session lifecycle behavior, persistence, and sync.
 
-## Current candidate after measurement
+`App.tsx` also still owns `startSession`, `pauseSession`, `finishSession`, `resetSession`, `onTypingChange`, `onTypingKeyDown`, ready checklist derivation, active/next transcript segment derivation, live metrics derivation, `RuntimeMetricsPanel`, persistence, and sync.
+
+## Current candidate after AudioPracticeCard
 
 ```text
-src/components/runtime-workspaces/AudioPracticeCard.tsx
+None selected. Stop and run a fresh measurement before choosing another extraction.
 ```
 
-Risk: high.
-
-The post-AudioSourceCard measurement confirms that `AudioPracticeCard` is viable but more behavior-adjacent than the source card. It should only be extracted as a UI-only component with strict props.
+No next-extraction risk is assigned until a fresh measurement identifies a new candidate.
 
 ## AudioPracticeCard scope
 
@@ -138,9 +139,9 @@ Status: complete.
 
 ### Step 2: AudioPracticeCard
 
-Status: evaluated and possible, but high risk.
+Status: complete.
 
-Create:
+Created:
 
 ```text
 src/components/runtime-workspaces/AudioPracticeCard.tsx
@@ -151,6 +152,8 @@ Move only the practice panel JSX.
 Do not move data derivation, callbacks, metrics derivation, transcript derivation, or persistence/sync.
 
 ### Step 3: stop and re-measure
+
+Status: next.
 
 After AudioPracticeCard, stop and measure before choosing another extraction.
 
@@ -179,10 +182,4 @@ Stop and do not extract if:
 
 ## Recommendation
 
-If continuing runtime cleanup, proceed only with:
-
-```text
-src/components/runtime-workspaces/AudioPracticeCard.tsx
-```
-
-Keep the extraction UI-only and stop for a fresh measurement afterward.
+No next extraction is selected. Stop and run a fresh measurement before choosing another extraction; do not select `AuthWorkspace`, `RuntimeWorkspaceHeader`, or an Admin second pass automatically from this plan.
