@@ -19,6 +19,17 @@ export const OPENROUTER_GENERATED_SCRIPT_KEY = 'dicta.openrouterGeneratedScript.
 export const OPENROUTER_GENERATED_VARIANTS_KEY = 'dicta.openrouterGeneratedVariants.v1';
 export const OPENROUTER_GENERATION_SLOT_IDS: OpenRouterGenerationSlotId[] = ['prompt1', 'prompt2'];
 
+type OpenRouterWakeLockSentinel = {
+  released?: boolean;
+  release: () => Promise<void>;
+};
+
+type OpenRouterWakeLockNavigator = Navigator & {
+  wakeLock?: {
+    request: (type: 'screen') => Promise<OpenRouterWakeLockSentinel>;
+  };
+};
+
 export function stripJsonFence(value: string): string {
   const trimmed = value.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
@@ -278,13 +289,15 @@ export function shouldCreatePersistentGenerationErrorSession(message: string): b
   return !isTransientOpenRouterGenerationError(message);
 }
 
-export function releaseOpenRouterWakeLock(wakeLock: WakeLockSentinel | null): void {
+export function releaseOpenRouterWakeLock(wakeLock: OpenRouterWakeLockSentinel | null): void {
   void wakeLock?.release().catch(() => {});
 }
 
-export async function requestOpenRouterWakeLock(): Promise<WakeLockSentinel | null> {
+export async function requestOpenRouterWakeLock(): Promise<OpenRouterWakeLockSentinel | null> {
+  const wakeLock = (navigator as OpenRouterWakeLockNavigator).wakeLock;
+  if (!wakeLock) return null;
   try {
-    return await navigator.wakeLock?.request('screen');
+    return await wakeLock.request('screen');
   } catch {
     return null;
   }
