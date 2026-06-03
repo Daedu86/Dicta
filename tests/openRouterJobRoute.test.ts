@@ -1,11 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extractOpenRouterJobSessionJson,
   formatOpenRouterJobProviderError,
   isRetryableOpenRouterJobResponse,
   readCreateJobPayload,
   resolveCreateJobPayloadForRequester,
   resolveOpenRouterJobModelCandidates,
 } from '../api/openrouter/jobs.js';
+
+const validScript = {
+  title: 'Ein ruhiger Morgen',
+  language: 'de',
+  inputMode: 'browser-tts',
+  difficulty: 'easy',
+  estimatedDurationSec: 60,
+  targetSkills: [],
+  recommendedRateRange: [0.8, 0.85],
+  recommendedPhraseSize: 'short',
+  recommendedPauseMs: 1200,
+  phrases: [
+    {
+      id: 'p01',
+      text: 'Heute bereite ich das Frühstück langsam und aufmerksam vor.',
+      boundaryType: 'clause',
+      pauseAfterMs: 1200,
+      canReplayIndependently: true,
+      requiresContinuation: false,
+      semanticCompleteness: 0.9,
+      difficulty: 0.35,
+      emphasisWords: [],
+      intonationHint: 'neutral',
+    },
+  ],
+};
 
 describe('OpenRouter jobs route payload validation', () => {
   it('accepts French durable session generation jobs', () => {
@@ -103,21 +130,27 @@ describe('OpenRouter jobs route payload validation', () => {
     });
   });
 
-  it('falls back from a concrete free model to other free models', () => {
-    expect(resolveOpenRouterJobModelCandidates('openai/gpt-oss-120b:free')).toEqual([
-      'openai/gpt-oss-120b:free',
-      'google/gemma-3n-e2b-it:free',
+  it('falls back from Nemotron 120B to known free model candidates', () => {
+    expect(resolveOpenRouterJobModelCandidates('nvidia/nemotron-3-super-120b-a12b:free')).toEqual([
+      'nvidia/nemotron-3-super-120b-a12b:free',
+      'nvidia/nemotron-nano-12b-v2-vl:free',
+      'poolside/laguna-xs.2:free',
+      'openrouter/free',
       'meta-llama/llama-3.2-3b-instruct:free',
-      'qwen/qwen3-4b:free',
     ]);
   });
 
-  it('deduplicates fallback models when the primary model is already a fallback', () => {
-    expect(resolveOpenRouterJobModelCandidates('google/gemma-3n-e2b-it:free')).toEqual([
-      'google/gemma-3n-e2b-it:free',
-      'meta-llama/llama-3.2-3b-instruct:free',
-      'qwen/qwen3-4b:free',
-    ]);
+  it('extracts valid session JSON from prose before accepting a job result', () => {
+    const extracted = extractOpenRouterJobSessionJson(`We need to produce JSON only.\n${JSON.stringify(validScript)}\nDone.`);
+    expect(JSON.parse(extracted).title).toBe('Ein ruhiger Morgen');
+  });
+
+  it('rejects reasoning-only text without a valid session JSON object', () => {
+    expect(
+      extractOpenRouterJobSessionJson(
+        'We need to produce JSON with specified fields. Let us craft about 12 phrases, each around 13 words.',
+      ),
+    ).toBe('');
   });
 
   it('treats OpenRouter 503 provider upstream failures as retryable', () => {
