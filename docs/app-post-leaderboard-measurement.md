@@ -52,6 +52,12 @@ Observed UI:
 - rate distribution bars;
 - `AdaptiveBenchmarkSection` already extracted below this area.
 
+Plan:
+
+```text
+docs/adaptive-advanced-diagnostics-modularization.md
+```
+
 Possible target:
 
 ```text
@@ -60,9 +66,9 @@ src/components/adaptive-workspace/AdaptiveAdvancedDiagnostics.tsx
 
 Risk: medium-high.
 
-Rationale: this is the largest cohesive remaining render block, but it belongs to the adaptive workspace. It touches selected benchmark state, expanded-section state, latest session summaries, semantic debug data, telemetry counters, helper formatters, and scroll/focus behavior. Create a dedicated plan before moving code.
+Rationale: this is the largest cohesive remaining render block, but it belongs to the adaptive workspace. It touches selected benchmark state, expanded-section state, latest session summaries, semantic debug data, telemetry counters, helper formatters, and scroll/focus behavior. A dedicated plan now exists and should be read before moving code.
 
-Recommendation: best next major App.tsx reduction candidate, but only after an adaptive-specific plan/evaluation pass.
+Recommendation: best next major App.tsx reduction candidate, but only as a UI-only extraction with all adaptive state/data derivation staying in `App.tsx`.
 
 ### 2. Input #1 audio runtime workspace
 
@@ -163,16 +169,16 @@ Rationale: Admin UI components are extracted, but `AdminWorkspace` itself still 
 
 ## Recommendation
 
-Recommended next planning document:
-
-```text
-docs/adaptive-advanced-diagnostics-modularization.md
-```
-
-Recommended next code extraction only after that evaluation passes:
+Recommended next code extraction:
 
 ```text
 src/components/adaptive-workspace/AdaptiveAdvancedDiagnostics.tsx
+```
+
+Use the dedicated plan first:
+
+```text
+docs/adaptive-advanced-diagnostics-modularization.md
 ```
 
 Fallback small extraction if the goal is lower-risk runtime cleanup:
