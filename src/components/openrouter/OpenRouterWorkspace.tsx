@@ -267,12 +267,17 @@ export function OpenRouterWorkspace({
             ? err.message
             : 'OpenRouter generation failed.';
       if (isTransientOpenRouterGenerationError(message)) {
+        const nowMs = Date.now();
         updateGenerationSlot(slotId, {
           inputMode: generateInputMode,
           language: generateLanguage,
           generatedAt: new Date().toISOString(),
           model: slotModel,
-          error: formatInterruptedOpenRouterMessage(message),
+          error: formatInterruptedOpenRouterMessage(
+            slotLabel,
+            slotModel,
+            Math.max(0, nowMs - parseTimestampMs(generationStartedAt, nowMs)),
+          ),
         });
         return;
       }

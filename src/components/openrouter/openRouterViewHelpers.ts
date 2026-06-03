@@ -310,7 +310,7 @@ export function formatTrainingGenerationNoticeMessage(notice: TrainingGeneration
 export function mapOpenRouterJobResultToPersistedGeneration(job: OpenRouterJobResponse, elapsedMs: number | null): PersistedOpenRouterGeneration | null {
   const result = job.result;
   if (!result || typeof result !== 'object') return null;
-  const text = typeof result.text === 'string' ? result.text : '';
+  const text = 'text' in result && typeof result.text === 'string' ? result.text : '';
   if (!text.trim()) return null;
   return {
     text,

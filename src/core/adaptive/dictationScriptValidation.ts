@@ -54,11 +54,16 @@ export function parseDictationScriptJson(raw: string): DictationScriptValidation
 export function extractJsonObjectText(raw: string): string | null {
   const text = stripMarkdownJsonFence(raw).trim();
   if (!text) return null;
-  if (text.startsWith('{') && text.endsWith('}')) return text;
 
-  const start = text.indexOf('{');
-  if (start < 0) return null;
+  for (let start = text.indexOf('{'); start >= 0; start = text.indexOf('{', start + 1)) {
+    const candidate = extractBalancedObjectAt(text, start);
+    if (candidate && isJsonObjectText(candidate)) return candidate;
+  }
 
+  return null;
+}
+
+function extractBalancedObjectAt(text: string, start: number): string | null {
   let depth = 0;
   let inString = false;
   let escaped = false;
@@ -90,6 +95,15 @@ export function extractJsonObjectText(raw: string): string | null {
   }
 
   return null;
+}
+
+function isJsonObjectText(value: string): boolean {
+  try {
+    const parsed = JSON.parse(value);
+    return Boolean(parsed) && typeof parsed === 'object' && !Array.isArray(parsed);
+  } catch {
+    return false;
+  }
 }
 
 export function validateDictationScript(value: unknown): DictationScriptValidationResult {

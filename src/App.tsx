@@ -159,6 +159,7 @@ import {
   buildTrainingGenerationButtonNotice,
   formatInterruptedOpenRouterMessage,
   formatOpenRouterJobNotifications,
+  parseTimestampMs,
   shouldCreatePersistentGenerationErrorSession,
   stripJsonFence,
   validateGeneratedScriptForTarget,
@@ -3466,7 +3467,10 @@ function App() {
         },
       }));
       if (isTransientOpenRouterGenerationError(message)) {
-        setOpenRouterError(formatInterruptedOpenRouterMessage(message));
+        const nowMs = Date.now();
+        setOpenRouterError(
+          formatInterruptedOpenRouterMessage(slotLabel, model, Math.max(0, nowMs - parseTimestampMs(generationStartedAt, nowMs))),
+        );
       } else if (shouldCreatePersistentGenerationErrorSession(message)) {
         createOpenRouterErrorSession({
           slotLabel,
