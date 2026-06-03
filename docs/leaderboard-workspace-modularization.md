@@ -4,7 +4,9 @@ _Last updated: 2026-06-03_
 
 ## Status
 
-Planning/evaluation only. No code has moved under this plan yet.
+Evaluated. Ready for one narrow UI-only extraction, with medium-high risk and strict guardrails.
+
+No code has moved under this plan yet.
 
 `src/App.tsx` is currently around:
 
@@ -12,7 +14,7 @@ Planning/evaluation only. No code has moved under this plan yet.
 9,548 lines
 ```
 
-The runtime input setup/card extraction pass is complete enough. The next meaningful `App.tsx` reduction candidate is likely the leaderboard workspace, but the risk is higher than the previous runtime UI-only cards and must be evaluated before extraction.
+The runtime input setup/card extraction pass is complete enough. The next meaningful `App.tsx` reduction candidate is the leaderboard workspace, but the risk is higher than the previous runtime UI-only cards.
 
 ## Proposed target
 
@@ -20,47 +22,102 @@ The runtime input setup/card extraction pass is complete enough. The next meanin
 src/components/leaderboard/LeaderboardWorkspace.tsx
 ```
 
-Optional support folder:
+Support folder:
 
 ```text
 src/components/leaderboard/
 ```
 
-## Why this candidate
+## Evaluation result
 
-The leaderboard is one of the remaining large top-level render branches in `App.tsx`. It is visually cohesive and has clearer workspace ownership than small runtime header cleanup.
+The evaluation found that the leaderboard branch is large enough to justify extraction and cohesive enough to move as a single presentational workspace.
 
-It currently includes:
+Approximate current branch:
+
+```text
+src/App.tsx:7744-7961
+```
+
+Branch shape:
+
+```tsx
+workspaceMode === 'leaderboard' ? (
+  <section className="panel workspace-panel leaderboard-workspace">
+    ...
+  </section>
+)
+```
+
+Observed inline work inside the branch:
 
 - leaderboard header;
-- language tabs;
-- collapse/minimize controls;
-- difficulty/range sections;
-- aggregate range metrics;
-- session table rows;
-- open workspace/dashboard actions;
-- export/copy/delete actions;
-- empty states.
+- language tabs over `SUPPORTED_LANGUAGES`;
+- collapse/minimize button;
+- back button;
+- empty-state copy;
+- `leaderboardSections.map(...)`;
+- per-section expanded-state lookup;
+- range metrics panels;
+- table header;
+- per-session row rendering;
+- readiness class derivation;
+- status label/title derivation;
+- score help-text derivation;
+- action buttons for open, dashboard, export, copy, and delete.
 
 ## Risk level
 
 Risk: medium-high.
 
-This is intentionally higher risk than the previous runtime card extractions because the leaderboard branch is not a simple presentational card. It touches derived leaderboard data, session readiness/status formatting, action callbacks, export/copy/delete behavior, active-session highlighting, language filtering, and route/workspace transitions.
+This is higher risk than the previous runtime card extractions because the leaderboard branch is not a simple static card. It renders derived leaderboard sections, calls helper functions per row, and exposes destructive/export actions.
 
-## Evaluation required before code movement
+The risk is acceptable only if the extraction is UI-only and all data derivation and side effects remain in `App.tsx`.
 
-Before extracting code, run a dedicated evaluation pass and verify:
+## Prop surface evaluation
 
-1. Exact line range of the leaderboard branch in current `src/App.tsx`.
-2. Full prop surface needed for `LeaderboardWorkspace`.
-3. Whether props are acceptable or too broad.
-4. Which helper functions must remain in `App.tsx`.
-5. Whether any helper should move to a stable shared module before or after extraction.
-6. Whether the extraction can stay UI-only.
-7. Whether smaller child components are needed immediately or should wait.
+The prop surface is broad but acceptable for a single extraction because the branch already depends on a clear set of data, callbacks, and formatters.
 
-Do not start code movement if the prop surface becomes larger or less clear than the inline branch.
+Expected prop groups:
+
+### Data props
+
+- `leaderboard`
+- `leaderboardSections`
+- `leaderboardLanguageView`
+- `leaderboardExpanded`
+- `leaderboardSectionExpanded`
+- `activeSessionId`
+- `supportedLanguages`
+- `languageLabels`
+
+### Callback props
+
+- `onChangeLeaderboardLanguageView`
+- `onToggleLeaderboardExpanded`
+- `onToggleLeaderboardSectionExpanded`
+- `onOpenWorkspaceForSession`
+- `onOpenDashboardForSession`
+- `onDownloadSessionSnapshot`
+- `onCopySessionSnapshot`
+- `onDeleteSession`
+- `onBackToTraining`
+
+### Formatter/helper props
+
+- `formatLeaderboardSessionStatus`
+- `formatSessionGenerationOrigin`
+- `formatSessionPlaybackDuration`
+- `formatSessionDate`
+- `formatSessionPointsForSession`
+- `buildSessionScoreHelpText`
+- `buildSessionPointsHelpText`
+- `computeSessionMaxPoints`
+- `getSessionDisplayTitle`
+- `isSessionReadyForTraining`
+- `MetricComponent`
+- `SessionDeviceIconComponent`
+
+This prop surface is acceptable for the first pass. Do not split child components yet.
 
 ## Boundary
 
@@ -79,7 +136,7 @@ Keep in `App.tsx`:
 - session delete behavior;
 - session export/copy behavior;
 - session readiness/status derivation unless already in stable helpers;
-- persistence/sync;
+- all persistence/sync behavior;
 - auth/profile/access state.
 
 Pass explicit props/callbacks to the new component.
@@ -103,52 +160,9 @@ Do not change:
 - route/workspace behavior;
 - session persistence or sync.
 
-## Likely prop groups
+## Extraction strategy
 
-Expected prop groups may include:
-
-- data:
-  - `leaderboard`
-  - `leaderboardSections`
-  - `leaderboardLanguageView`
-  - `leaderboardExpanded`
-  - `leaderboardSectionExpanded`
-  - `activeSessionId`
-  - `SUPPORTED_LANGUAGES` or stable supported language list
-  - `LANGUAGE_LABELS` or a formatter
-- callbacks:
-  - `onChangeLeaderboardLanguageView`
-  - `onToggleLeaderboardExpanded`
-  - `onToggleLeaderboardSectionExpanded`
-  - `onOpenWorkspaceForSession`
-  - `onOpenDashboardForSession`
-  - `onDownloadSessionSnapshot`
-  - `onCopySessionSnapshot`
-  - `onDeleteSession`
-  - `onBackToTraining`
-- formatting/helpers:
-  - `formatLeaderboardSessionStatus`
-  - `formatSessionGenerationOrigin`
-  - `formatSessionPlaybackDuration`
-  - `formatSessionDate`
-  - `formatSessionPointsForSession`
-  - `buildSessionScoreHelpText`
-  - `buildSessionPointsHelpText`
-  - `computeSessionMaxPoints`
-  - `getSessionDisplayTitle`
-  - `isSessionReadyForTraining`
-  - `MetricComponent`
-  - `SessionDeviceIconComponent` if local to `App.tsx`
-
-This list must be verified against the current code before implementation.
-
-## Possible extraction strategy
-
-### Step 1: evaluation/docs only
-
-Measure the current branch and write a short implementation checklist. No code movement.
-
-### Step 2: single-component extraction
+### Step 1: single-component extraction
 
 Create:
 
@@ -158,9 +172,11 @@ src/components/leaderboard/LeaderboardWorkspace.tsx
 
 Move only the existing leaderboard branch JSX.
 
-Keep helper movement out of this patch unless TypeScript requires a minimal stable type import.
+Do not move helpers unless TypeScript requires minimal local types or stable imports.
 
-### Step 3: optional child split later
+Do not create child components in this patch.
+
+### Step 2: optional child split later
 
 Only after the first extraction is stable, consider splitting:
 
@@ -170,7 +186,20 @@ src/components/leaderboard/LeaderboardSection.tsx
 src/components/leaderboard/LeaderboardSessionRow.tsx
 ```
 
-Do not create these child components in the first extraction unless the prop surface is clearly improved.
+Do not create these child components in the first extraction.
+
+## Implementation checklist for Codex
+
+1. Pull latest `main`.
+2. Re-read this plan and `docs/app-modularization.md`.
+3. Locate the current `workspaceMode === 'leaderboard'` branch.
+4. Create `src/components/leaderboard/LeaderboardWorkspace.tsx`.
+5. Move only the leaderboard JSX into the new component.
+6. Keep all state/data derivation/helpers/side effects in `App.tsx`.
+7. Pass explicit props/callbacks.
+8. Preserve class names, copy, aria labels, titles, button order, and render order.
+9. Update this plan and `docs/app-modularization.md` after extraction.
+10. Run tests/build.
 
 ## Validation
 
@@ -194,7 +223,7 @@ git status --short
 
 Stop and do not extract if:
 
-- the required props become too broad or unstable;
+- the required props become broader than the evaluated list above;
 - helper movement starts changing behavior;
 - TypeScript requires exporting large `App.tsx`-local types;
 - the diff touches runtime, adaptive, OpenRouter, Admin, auth, API routes, persistence, or sync;
@@ -203,6 +232,10 @@ Stop and do not extract if:
 
 ## Recommendation
 
-Do not implement `LeaderboardWorkspace` until the evaluation confirms the prop surface is acceptable.
+Proceed with a single-component extraction:
 
-If the evaluation passes, extract `LeaderboardWorkspace` as one UI-only component, keeping all data derivation and side effects in `App.tsx`.
+```text
+src/components/leaderboard/LeaderboardWorkspace.tsx
+```
+
+Do not split `LeaderboardHeader`, `LeaderboardSection`, or `LeaderboardSessionRow` yet. Keep the first patch as one UI-only extraction with explicit props and unchanged behavior.
