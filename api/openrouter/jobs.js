@@ -8,11 +8,71 @@ const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
 const JOB_RETENTION_DAYS = 14;
 const JOB_ROUTE = '/api/openrouter/jobs';
+const OPENROUTER_JOB_MAX_ATTEMPTS = 3;
+const OPENROUTER_JOB_RETRY_BASE_DELAY_MS = 750;
+const OPENROUTER_RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
+const OPENROUTER_RETRYABLE_ERROR_MARKERS = [
+  'no healthy upstream',
+  'temporarily unavailable',
+  'upstream',
+  'overloaded',
+  'timeout',
+  'timed out',
+  'rate limit',
+];
 
 function getRequiredEnv(name) {
   const value = process.env[name]?.trim() ?? '';
   if (!value) throw new Error(`Missing ${name}.`);
   return value;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function tryParseJson(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function readOpenRouterErrorDetails(body) {
+  const parsed = tryParseJson(body);
+  const error = parsed?.error && typeof parsed.error === 'object' ? parsed.error : null;
+  const metadata = error?.metadata && typeof error.metadata === 'object' ? error.metadata : null;
+  const message = typeof error?.message === 'string' ? error.message.trim() : '';
+  const raw = typeof metadata?.raw === 'string' ? metadata.raw.trim() : '';
+  const providerName = typeof metadata?.provider_name === 'string' ? metadata.provider_name.trim() : '';
+
+  return {
+    message,
+    raw,
+    providerName,
+  };
+}
+
+export function isRetryableOpenRouterJobResponse(response) {
+  if (!response || response.ok) return false;
+  if (OPENROUTER_RETRYABLE_STATUS_CODES.has(Number(response.status))) return true;
+
+  const body = typeof response.body === 'string' ? response.body.toLowerCase() : '';
+  return OPENROUTER_RETRYABLE_ERROR_MARKERS.some((marker) => body.includes(marker));
+}
+
+export function formatOpenRouterJobProviderError(response, attempts = []) {
+  const status = Number(response?.status);
+  const statusLabel = Number.isFinite(status) ? String(status) : 'unknown status';
+  const { message, raw, providerName } = readOpenRouterErrorDetails(response?.body ?? '');
+  const summary = raw || message || `OpenRouter request failed (${statusLabel}).`;
+  const provider = providerName ? ` from ${providerName}` : '';
+  const retryCount = Math.max(0, attempts.length - 1);
+  const retryText = retryCount > 0 ? ` Retried ${retryCount} time${retryCount === 1 ? '' : 's'}.` : '';
+
+  return `OpenRouter provider error (${statusLabel}${provider}): ${summary}.${retryText}`;
 }
 
 async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
@@ -44,6 +104,30 @@ async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeo
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+async function postChatCompletionWithRetries({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
+  const attempts = [];
+  let lastResponse = null;
+
+  for (let attempt = 1; attempt <= OPENROUTER_JOB_MAX_ATTEMPTS; attempt += 1) {
+    const response = await postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs });
+    const retryable = isRetryableOpenRouterJobResponse(response);
+    const { providerName } = readOpenRouterErrorDetails(response.body);
+    attempts.push({
+      attempt,
+      status: response.status,
+      ok: response.ok,
+      retryable: !response.ok && retryable,
+      ...(providerName ? { providerName } : {}),
+    });
+    lastResponse = response;
+
+    if (response.ok || !retryable || attempt === OPENROUTER_JOB_MAX_ATTEMPTS) break;
+    await delay(OPENROUTER_JOB_RETRY_BASE_DELAY_MS * attempt);
+  }
+
+  return { ...lastResponse, attempts };
 }
 
 function normalizeJobRow(row) {
@@ -118,7 +202,7 @@ async function runOpenRouterJob({ req, supabase, requester, profileId, jobId, re
     .eq('job_id', jobId);
 
   try {
-    const response = await postChatCompletion({
+    const response = await postChatCompletionWithRetries({
       apiKey: getRequiredEnv('OPENROUTER_API_KEY'),
       req,
       model: requestPayload.model,
@@ -128,9 +212,10 @@ async function runOpenRouterJob({ req, supabase, requester, profileId, jobId, re
     });
 
     if (!response.ok) {
-      throw Object.assign(new Error(response.body || `OpenRouter request failed (${response.status}).`), {
+      throw Object.assign(new Error(formatOpenRouterJobProviderError(response, response.attempts)), {
         statusCode: response.status,
         providerError: true,
+        providerAttempts: response.attempts,
       });
     }
 
@@ -154,6 +239,7 @@ async function runOpenRouterJob({ req, supabase, requester, profileId, jobId, re
           payload,
           model: requestPayload.model,
           contentType: response.contentType,
+          attempts: response.attempts,
         },
         error: null,
         updated_at: completedAt,
@@ -176,7 +262,7 @@ async function runOpenRouterJob({ req, supabase, requester, profileId, jobId, re
       severity: 'error',
       model: requestPayload.model,
       reason: message,
-      metadata: { jobId },
+      metadata: { jobId, attempts: error?.providerAttempts ?? [] },
     });
 
     const completedAt = new Date().toISOString();
