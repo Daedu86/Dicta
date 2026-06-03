@@ -118,6 +118,7 @@ Recent mobile/PWA fixes changed how `/training` handles typing and persistence. 
 - Diagnostics:
   - `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling in installed Android PWA runtime.
   - Keep diagnostics passive; avoid adding instrumentation that increases typing latency.
+  - `tests/LowLatencyTextareaContract.test.ts`, `tests/lowLatencyTextarea.test.ts`, and `tests/lowLatencyPerformanceGate.test.ts` protect the low-latency typing contract. They are regression gates, not a real-browser end-to-end performance benchmark.
 
 ## Persistence and Sync
 
@@ -144,7 +145,7 @@ Supabase env vars are public Vite build vars and must be set locally and in Verc
 Server-only Supabase usage:
 
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be referenced from Vite/client code, `src/`, or `public/`.
-- CI checks for `SERVICE_ROLE_KEY` leakage in `src/` and `public/`.
+- CI checks for `SERVICE_ROLE_KEY` leakage in `src` and `public`.
 - Durable OpenRouter jobs use `dicta_openrouter_jobs` plus `dicta_rate_limits` through server routes only.
 
 After changing Vite env vars in Vercel, redeploy because they are baked into the build.
