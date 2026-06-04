@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size after the AppShellHeader extraction pass:
+Current `src/App.tsx` size after the PendingSessionLane reuse pass:
 
 ```text
-9,069 lines
+9,565 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -67,6 +67,12 @@ Net reduction in `src/App.tsx` from the AppShellHeader extraction pass:
 
 ```text
 80 lines
+```
+
+Net reduction in `src/App.tsx` from the PendingSessionLane reuse pass:
+
+```text
+71 lines
 ```
 
 ## Rules
@@ -152,6 +158,8 @@ src/components/training/TrainingSubmitCard.tsx
 src/components/training/TrainingGenerationCard.tsx
 src/components/training/TrainingSessionCard.tsx
 ```
+
+`src/App.tsx` now imports `PendingSessionLane` from `src/components/training/PendingSessionLane.tsx`; the later inline duplicate was removed during the PendingSessionLane reuse pass.
 
 Preserved behavior:
 
@@ -601,6 +609,48 @@ Impact:
 - Fresh pre-pass size: `9,149` App.tsx lines.
 - Current post-pass size: `9,069` App.tsx lines.
 - Net App.tsx reduction: `80` lines.
+
+Stop condition:
+
+- Stop and run a fresh measurement before selecting another App.tsx extraction candidate.
+
+### 12. PendingSessionLane reuse
+
+Boundary: browser UI for the pending-session strip in the main app shell.
+
+Status: complete.
+
+Dedicated closeout:
+
+```text
+docs/pending-session-lane-modularization.md
+```
+
+Completed reuse file:
+
+```text
+src/components/training/PendingSessionLane.tsx
+```
+
+Completed patch:
+
+- Imported the existing `PendingSessionLane` component into `src/App.tsx`.
+- Removed the duplicate inline `PendingSessionLane` implementation and local props type from `src/App.tsx`.
+- Removed the now-unused pending-session reason helper from `src/App.tsx`.
+- Kept app-owned `pendingSessions`, `activeSessionId`, `openWorkspaceForSession`, and `deleteSession` behavior in `src/App.tsx`.
+
+Preserved behavior:
+
+- Pending session title, metadata, open action, delete action, active chip styling, and empty-state behavior stayed equivalent.
+- Session state, persistence, sync, tombstones, workspace routing, and training lifecycle stayed in `src/App.tsx`.
+- Adaptive `(inputMode, language)` behavior was not changed.
+- Auth, secrets, rate limits, Supabase/RLS, server routes, local-only sidecars, and PWA typing performance were not changed.
+
+Impact:
+
+- Fresh pre-pass size: `9,636` physical `App.tsx` lines.
+- Current post-pass size: `9,565` physical `App.tsx` lines.
+- Net App.tsx reduction: `71` lines.
 
 Stop condition:
 

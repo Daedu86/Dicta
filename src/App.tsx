@@ -18,7 +18,7 @@ import type {
   PacingMode,
 } from './core/adaptive/types';
 import { AudioEngine } from './core/audioEngine';
-import { configForDifficulty, formatDifficultyLabel, type Difficulty } from './core/config';
+import { configForDifficulty, type Difficulty } from './core/config';
 import {
   evaluateTranscriptAttempt,
   buildSessionPointsHelpText,
@@ -123,6 +123,7 @@ import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
 import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
+import { PendingSessionLane } from './components/training/PendingSessionLane';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
 import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
@@ -8340,68 +8341,6 @@ type TrainingGenerationButton = {
   statusTone?: 'hint' | 'success' | 'error';
 };
 
-type PendingSessionLaneProps = {
-  sessions: StoredSession[];
-  activeSessionId: string | null;
-  className?: string;
-  onOpenSession: (session: StoredSession) => void;
-  onDeleteSession: (sessionId: string) => void;
-};
-
-function PendingSessionLane({
-  sessions,
-  activeSessionId,
-  className = '',
-  onOpenSession,
-  onDeleteSession,
-}: PendingSessionLaneProps) {
-  if (sessions.length === 0) return null;
-
-  return (
-    <section className={`pending-session-lane ${className}`.trim()} aria-label="Pending sessions">
-      <div className="pending-session-lane-header">
-        <div>
-          <p className="dashboard-eyebrow">Pending sessions</p>
-          <h3>Ready to perform</h3>
-        </div>
-        <span className="pending-session-count">{sessions.length}</span>
-      </div>
-      <div className="pending-session-strip">
-        {sessions.map((session) => (
-          <div
-            key={session.id}
-            className={`pending-session-chip ${session.id === activeSessionId ? 'pending-session-chip-active' : ''}`}
-          >
-            <button
-              type="button"
-              className="pending-session-open-button"
-              onClick={() => onOpenSession(session)}
-              title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
-            >
-              <span className="pending-session-title">
-                <SessionDeviceIcon session={session} />
-                <span>{getSessionDisplayTitle(session)}</span>
-              </span>
-              <span className="pending-session-meta">
-                {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {formatDifficultyLabel(session.difficulty)} · {getPendingSessionReason(session)}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="danger-button pending-session-delete-button"
-              onClick={() => onDeleteSession(session.id)}
-              aria-label={`Delete ${getSessionDisplayTitle(session)}`}
-              title="Delete session"
-            >
-              <span aria-hidden="true">✕</span>
-            </button>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function TrainingHeader({ onBackToApp }: { onBackToApp: () => void }) {
   return (
     <header className="training-header">
@@ -8904,16 +8843,6 @@ function formatLeaderboardSessionStatus(session: StoredSession): string {
     return 'Not submitted';
   }
   return formatSessionStatus(session.status);
-}
-
-function getPendingSessionReason(session: StoredSession): string {
-  if (session.status === 'finished' && session.inputMode !== 'input1' && !hasSubmittedSessionStats(session)) {
-    return 'stats pending';
-  }
-  if (!session.inputSettingsLocked) return 'setup pending';
-  if (session.status === 'running') return 'running';
-  if (session.status === 'paused') return 'paused';
-  return 'perform pending';
 }
 
 function getSessionDisplayTitle(session: StoredSession): string {
