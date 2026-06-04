@@ -121,6 +121,7 @@ import {
 } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
+import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
@@ -6874,6 +6875,11 @@ function App() {
     ] : [],
   };
 
+  const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
+  const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
+    supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
+  }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` · ${pendingSyncSummary.count} pending` : ''}`;
+
   if (syncConfig.authRequired && (authLoading || authView === 'updatePassword' || !authSession || !appProfile || appProfileError || !localStorageReadyForEffectiveProfile)) {
     return (
       <AuthWorkspace
@@ -6920,128 +6926,43 @@ function App() {
   return (
     <main className={`app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
       <section className="layout">
-        <section className="panel brand-block brand-header-panel workspace-main-header">
-          <div className="brand-header-main">
-            <div className="brand-mark">
-              <span className="brand-mark-icon" aria-hidden="true">🪗</span>
-            </div>
-            <div className="brand-copy">
-              <h1>Dicta MVP</h1>
-              <p>Adaptive real-time dictation training</p>
-              <div className="brand-status-row">
-                {openRouterAccessAllowed ? (
-                  <span
-                    className={`brand-llm-status ${effectiveOpenRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
-                    title={effectiveOpenRouterDefaultModel.trim() ? `Selected OpenRouter model: ${effectiveOpenRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
-                  >
-                    <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
-                    <span className="brand-llm-status-text">
-                      {effectiveOpenRouterDefaultModel.trim() ? `Model set: ${effectiveOpenRouterDefaultModel.trim()}` : 'No model set'}
-                    </span>
-                  </span>
-                ) : null}
-                <span className="brand-build-status" title={DICTA_BUILD_INFO_TITLE}>
-                  <span className="brand-build-status-icon" aria-hidden="true">Git</span>
-                  <span className="brand-build-status-text">{DICTA_BUILD_INFO_LABEL}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="brand-header-actions">
-            <button
-              type="button"
-              className="secondary-button brand-leaderboard-button"
-              onClick={() => {
-                setWorkspaceMode('leaderboard');
-                setDashboardSessionId(null);
-              }}
-            >
-              Leaderboard
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-training-desktop-button"
-              onClick={() => {
-                setWorkspaceMode('training');
-                setDashboardSessionId(null);
-              }}
-            >
-              Training Mode (desktop ver)
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-training-mode-button"
-              onClick={() => navigateAppRoute('/training')}
-              title="Open the focused mobile training view"
-            >
-              Training Mode (Mobile ver)
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-adaptive-button"
-              onClick={openAdaptiveWorkspaceFromHeader}
-            >
-              🧠 Adaptive Pace Layer
-            </button>
-            {isDictaAdmin(appProfile) || !syncConfig.authRequired ? (
-              <button
-                type="button"
-                className="secondary-button brand-admin-button"
-                onClick={() => {
-                  setWorkspaceMode('admin');
-                  setDashboardSessionId(null);
-                }}
-              >
-                Admin
-              </button>
-            ) : null}
-            {openRouterAccessAllowed ? (
-              <button
-                type="button"
-                className="secondary-button brand-openrouter-button"
-                onClick={() => {
-                  setWorkspaceMode('openrouter');
-                  setDashboardSessionId(null);
-                }}
-                title="Configure OpenRouter API key and choose a default free model"
-              >
-                OpenRouter
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="secondary-button brand-openrouter-button"
-              onClick={() => {
-                setWorkspaceMode('ollama');
-                setDashboardSessionId(null);
-              }}
-              title="Configure Ollama Cloud and test a server-side model"
-            >
-              Ollama
-            </button>
-            <button
-              type="button"
-              className="secondary-button theme-toggle-button"
-              onClick={() => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark'))}
-              aria-label={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-signout-button"
-              onClick={() => void signOut()}
-              title="Sign out and return to login"
-            >
-              Sign out
-            </button>
-            <span className={`brand-sync-status brand-sync-status-${supabaseSyncStatus.state}`}>
-              {isOnline ? 'Sync' : 'Offline'}: {isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}
-              {supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''}
-              {supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` · ${pendingSyncSummary.count} pending` : ''}
-            </span>
-          </div>
+        <AppShellHeader
+          themeMode={themeMode}
+          showOpenRouterStatus={openRouterAccessAllowed}
+          openRouterModelIsSet={Boolean(appShellOpenRouterModel)}
+          openRouterModelTitle={appShellOpenRouterModel ? `Selected OpenRouter model: ${appShellOpenRouterModel}` : 'No OpenRouter model selected'}
+          openRouterModelLabel={appShellOpenRouterModel ? `Model set: ${appShellOpenRouterModel}` : 'No model set'}
+          buildInfoTitle={DICTA_BUILD_INFO_TITLE}
+          buildInfoLabel={DICTA_BUILD_INFO_LABEL}
+          showAdminButton={isDictaAdmin(appProfile) || !syncConfig.authRequired}
+          showOpenRouterButton={openRouterAccessAllowed}
+          syncStatusState={supabaseSyncStatus.state}
+          syncStatusText={appShellSyncStatusText}
+          onOpenLeaderboard={() => {
+            setWorkspaceMode('leaderboard');
+            setDashboardSessionId(null);
+          }}
+          onOpenDesktopTraining={() => {
+            setWorkspaceMode('training');
+            setDashboardSessionId(null);
+          }}
+          onOpenMobileTraining={() => navigateAppRoute('/training')}
+          onOpenAdaptive={openAdaptiveWorkspaceFromHeader}
+          onOpenAdmin={() => {
+            setWorkspaceMode('admin');
+            setDashboardSessionId(null);
+          }}
+          onOpenOpenRouter={() => {
+            setWorkspaceMode('openrouter');
+            setDashboardSessionId(null);
+          }}
+          onOpenOllama={() => {
+            setWorkspaceMode('ollama');
+            setDashboardSessionId(null);
+          }}
+          onToggleTheme={() => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark'))}
+          onSignOut={signOut}
+        >
           {sessionCreationMode ? (
             <SessionCreateCard
               sessionCreationSource={sessionCreationSource}
@@ -7068,7 +6989,7 @@ function App() {
               MetricComponent={Metric}
             />
           ) : null}
-        </section>
+        </AppShellHeader>
         {!setupLocked ? (
               activeInputMode === 'input1' ? (
                 <AudioInputSetupCard

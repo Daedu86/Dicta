@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size after the AuthWorkspace extraction pass:
+Current `src/App.tsx` size after the AppShellHeader extraction pass:
 
 ```text
-9,149 lines
+9,069 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -61,6 +61,12 @@ Net reduction in `src/App.tsx` from the AuthWorkspace extraction pass:
 
 ```text
 79 lines
+```
+
+Net reduction in `src/App.tsx` from the AppShellHeader extraction pass:
+
+```text
+80 lines
 ```
 
 ## Rules
@@ -554,6 +560,47 @@ Impact:
 - Fresh pre-pass size: `9,228` App.tsx lines.
 - Current post-pass size: `9,149` App.tsx lines.
 - Net App.tsx reduction: `79` lines.
+
+Stop condition:
+
+- Stop and run a fresh measurement before selecting another App.tsx extraction candidate.
+
+### 11. AppShellHeader
+
+Boundary: browser UI for the main app shell header.
+
+Status: complete.
+
+Dedicated plan and closeout:
+
+```text
+docs/app-shell-header-modularization.md
+```
+
+Completed extraction file:
+
+```text
+src/components/app-shell/AppShellHeader.tsx
+```
+
+Preserved behavior:
+
+- workspace routing state and mutations stayed in `App.tsx`;
+- dashboard session selection stayed in `App.tsx`;
+- focused training navigation stayed in `App.tsx`;
+- adaptive workspace opening behavior stayed in `App.tsx`;
+- admin and OpenRouter access decisions stayed in `App.tsx`;
+- theme state stayed in `App.tsx`;
+- sign-out implementation stayed in `App.tsx`;
+- sync status derivation stayed in `App.tsx`;
+- `SessionCreateCard` state, validation, and callbacks stayed in `App.tsx`;
+- persistence, sync, localStorage, API routes, Supabase/RLS behavior, and adaptive `(inputMode, language)` behavior were not changed.
+
+Impact:
+
+- Fresh pre-pass size: `9,149` App.tsx lines.
+- Current post-pass size: `9,069` App.tsx lines.
+- Net App.tsx reduction: `80` lines.
 
 Stop condition:
 
