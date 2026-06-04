@@ -130,6 +130,7 @@ describe('openRouterJobs', () => {
     expect(restoredJobs[0]).not.toHaveProperty('customSlotId');
     expect(restoredJobs[1]).toMatchObject({
       jobId: 'job-custom',
+      inputMode: 'cosyvoice-cache',
       language: 'pt',
       origin: 'custom-workspace',
       customSlotId: 'prompt2',

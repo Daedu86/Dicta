@@ -2,6 +2,7 @@ import type { ActiveOpenRouterJob, OpenRouterJobResponse } from '../../core/open
 import { isTransientOpenRouterGenerationError } from '../../core/adaptive/openRouterFallbackScript';
 import { parseDictationScriptJson, type DictationScriptValidationResult } from '../../core/adaptive/dictationScriptValidation';
 import type { InputMode } from '../../core/adaptive/types';
+import { normalizeInputMode } from '../../core/adaptive/inputModes';
 import { isSupportedLanguage } from '../../core/languages';
 import type {
   BenchmarkLanguageButton,
@@ -49,7 +50,7 @@ export function validateGeneratedScriptForTarget(
 ): DictationScriptValidationResult {
   const result = parseDictationScriptJson(raw);
   if (!result.ok) return result;
-  const normalizedInputMode = String(result.script.inputMode).trim().toLowerCase().replace(/_/g, '-');
+  const normalizedInputMode = normalizeInputMode(String(result.script.inputMode).trim().toLowerCase().replace(/_/g, '-'));
   const normalizedLanguage = String(result.script.language).trim().toLowerCase();
   const errors: string[] = [];
   if (normalizedInputMode !== targetInputMode) {
@@ -312,10 +313,12 @@ export function mapOpenRouterJobResultToPersistedGeneration(job: OpenRouterJobRe
   if (!result || typeof result !== 'object') return null;
   const text = 'text' in result && typeof result.text === 'string' ? result.text : '';
   if (!text.trim()) return null;
+  const requestInputMode =
+    normalizeInputMode(typeof job.request?.inputMode === 'string' ? job.request.inputMode : '') ?? 'browser-tts';
   return {
     text,
     json: text,
-    inputMode: 'browser-tts',
+    inputMode: requestInputMode,
     language: isSupportedLanguage(job.request?.language) ? job.request.language : 'de',
     usage: null,
     elapsedMs,

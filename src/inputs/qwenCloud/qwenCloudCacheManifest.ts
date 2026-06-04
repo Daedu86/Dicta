@@ -1,4 +1,5 @@
 import type { SemanticPhrase } from '../../core/adaptive/SemanticPhrasePlanner';
+import { COSYVOICE_CACHE_INPUT_MODE } from '../../core/adaptive/inputModes';
 import { buildQwenCloudPhraseId, type QwenCloudManifest, type QwenCloudPhrase } from './qwenCloudAudioAdapter';
 
 const QWEN_CACHE_BASE_PATH = '/tts-cache/cosyvoice';
@@ -26,12 +27,12 @@ export function buildQwenCloudCacheManifestFromSemanticPhrases(
         wordCount: phrase.wordCount,
         charCount: phrase.charCount,
         difficulty: phrase.difficulty,
-        engine: 'qwen-cloud',
+        engine: COSYVOICE_CACHE_INPUT_MODE,
       };
     });
 
   return {
-    engine: 'qwen-cloud',
+    engine: COSYVOICE_CACHE_INPUT_MODE,
     language,
     phrases,
   };

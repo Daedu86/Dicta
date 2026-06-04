@@ -31,7 +31,7 @@ Input modes:
 - Input #1 / `audio`: original uploaded or recorded audio plus a word-level transcript.
 - Input #2 / `browser-tts`: browser `SpeechSynthesis`, adaptive semantic chunking, and browser/OS voice behavior.
 - Input #3 / `kokoro`: local Kokoro TTS sidecar. English and Spanish are native in this setup; German, French, and Portuguese remain blocked/experimental until native model paths are confirmed.
-- Input #4 / `qwen-cloud`: legacy name for cached cloud-TTS playback. The current free local path targets CosyVoice2 WAV cache files under `public/tts-cache/cosyvoice/{language}/`, with browser TTS fallback when cached audio is missing.
+- Input #4 / `cosyvoice-cache`: CosyVoice2 WAV cache files under `public/tts-cache/cosyvoice/{language}/`, with browser TTS fallback when cached audio is missing. Legacy stored/cache data may still use `qwen-cloud`; new adaptive and OpenRouter job state uses `cosyvoice-cache`.
 
 The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, recommendation, and session feedback package is scoped by `(inputMode, language)`, so `browser-tts/de` and `browser-tts/en` are different adaptive profiles. The adaptive benchmark rolling window is **30 days** (`rollingWindowDays: 30`), and dashboard/leaderboard "Month" views also mean the last 30 days.
 
@@ -331,5 +331,5 @@ Before finishing code changes, run `npm run test` and `npm run build` unless the
 
 - Production transcription still needs a deployed backend, object storage, and long-running job handling.
 - Kokoro support for `de`, `fr`, and `pt` remains blocked/experimental.
-- Input #4 still uses the historical `qwen-cloud` identifier even though the current cache generator is CosyVoice2.
+- Input #4 still accepts the historical `qwen-cloud` alias for existing cache manifests, stored sessions, and active OpenRouter jobs.
 - Full-tree render volume during long Browser TTS runs can still be reduced.

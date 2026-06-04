@@ -55,7 +55,27 @@ describe('OpenRouter jobs route payload validation', () => {
     });
   });
 
-  it('accepts Portuguese durable session generation jobs', () => {
+  it('accepts canonical Portuguese CosyVoice cache durable session generation jobs', () => {
+    expect(
+      readCreateJobPayload({
+        model: 'openrouter/free',
+        prompt: 'Generate a Portuguese Dicta session.',
+        inputMode: 'cosyvoice-cache',
+        language: 'pt',
+        slotLabel: 'Session PT',
+        durationMinutes: 2,
+      }),
+    ).toMatchObject({
+      model: 'openrouter/free',
+      maxTokens: 2600,
+      inputMode: 'cosyvoice-cache',
+      language: 'pt',
+      slotLabel: 'Session PT',
+      durationMinutes: 2,
+    });
+  });
+
+  it('normalizes legacy qwen-cloud durable session generation jobs', () => {
     expect(
       readCreateJobPayload({
         model: 'openrouter/free',
@@ -68,7 +88,8 @@ describe('OpenRouter jobs route payload validation', () => {
     ).toMatchObject({
       model: 'openrouter/free',
       maxTokens: 2600,
-      inputMode: 'qwen-cloud',
+      inputMode: 'cosyvoice-cache',
+      legacyInputMode: 'qwen-cloud',
       language: 'pt',
       slotLabel: 'Session PT',
       durationMinutes: 2,

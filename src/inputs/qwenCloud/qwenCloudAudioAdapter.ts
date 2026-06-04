@@ -1,5 +1,7 @@
-import type { InputMode, PacingDecision, StoredInputMode } from '../../core/adaptive/types';
+import type { InputMode, PacingDecision } from '../../core/adaptive/types';
 import { COSYVOICE_CACHE_INPUT_MODE, LEGACY_QWEN_CLOUD_INPUT_MODE } from '../../core/adaptive/inputModes';
+
+type QwenCloudEngine = typeof COSYVOICE_CACHE_INPUT_MODE | typeof LEGACY_QWEN_CLOUD_INPUT_MODE;
 
 export interface QwenCloudPhrase {
   id: string;
@@ -10,11 +12,11 @@ export interface QwenCloudPhrase {
   wordCount: number;
   charCount: number;
   difficulty?: number;
-  engine: StoredInputMode;
+  engine: QwenCloudEngine;
 }
 
 export interface QwenCloudManifest {
-  engine: StoredInputMode;
+  engine: QwenCloudEngine;
   language: string;
   phrases: QwenCloudPhrase[];
 }
@@ -75,7 +77,7 @@ export function buildQwenCloudPhraseId(text: string, language: string): string {
 }
 
 export class QwenCloudAudioAdapter implements DictationAudioAdapter {
-  public inputMode = COSYVOICE_CACHE_INPUT_MODE;
+  public inputMode: InputMode = COSYVOICE_CACHE_INPUT_MODE;
   private currentPhrase: QwenCloudPhrase | null = null;
   private manifestCache = new Map<string, QwenCloudManifest | null>();
   private audio = new Audio();

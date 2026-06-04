@@ -5,8 +5,8 @@ export type InputMode = (typeof CANONICAL_INPUT_MODES)[number];
 export type LegacyInputMode = (typeof LEGACY_INPUT_MODES)[number];
 export type StoredInputMode = InputMode | LegacyInputMode;
 
-export const COSYVOICE_CACHE_INPUT_MODE: InputMode = 'cosyvoice-cache';
-export const LEGACY_QWEN_CLOUD_INPUT_MODE: LegacyInputMode = 'qwen-cloud';
+export const COSYVOICE_CACHE_INPUT_MODE = 'cosyvoice-cache';
+export const LEGACY_QWEN_CLOUD_INPUT_MODE = 'qwen-cloud';
 
 export function normalizeInputMode(value: string | null | undefined): InputMode | null {
   const normalized = (value ?? '').trim();

@@ -18,7 +18,7 @@ export type CosyVoiceCacheManifestPhrase = {
 };
 
 export type CosyVoiceCacheManifest = {
-  engine: 'qwen-cloud';
+  engine: 'cosyvoice-cache' | 'qwen-cloud';
   language: string;
   phrases: CosyVoiceCacheManifestPhrase[];
 };

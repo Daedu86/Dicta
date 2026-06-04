@@ -299,20 +299,29 @@ export interface AdaptiveSessionFeedback {
   playbackIssues: {
     repeatedPhraseCount: number;
     maxRepeatCountForSinglePhrase: number;
-    repeatedPhrases: Array<{ phraseId: string; textPreview: string; repeatCount: number }>;
+    repeatedPhrases: Array<{
+      phraseId: string;
+      textPreview: string;
+      repeatCount: number;
+      timestampsMs: number[];
+    }>;
     skippedPhraseCount: number;
+    skippedPhrases: Array<{
+      phraseId: string;
+      textPreview: string;
+      expectedIndex: number;
+    }>;
     outOfOrderAdvanceCount: number;
     replayAdvancedPhraseCount: number;
     phraseIndexJumpCount: number;
   };
   phraseStats: {
     totalPhrases: number;
-    startedPhraseCount: number;
-    completedPhraseCount: number;
-    completionRatio: number;
+    completedPhrases: number;
+    replayCount: number;
+    phraseAdvanceCount: number;
     averageRepeatsPerPhrase: number;
-    mostRepeatedPhrase?: { phraseId: string; textPreview: string; repeatCount: number };
   };
+  verdict: 'improved' | 'stable' | 'regressed' | 'inconclusive';
   notes: string[];
-  verdict: 'improved' | 'stable' | 'regressed' | 'incomplete';
 }

@@ -37,14 +37,14 @@ describe('OpenRouter fallback script helpers', () => {
 
   it('builds a valid Portuguese fallback session', () => {
     const script = buildFallbackOpenRouterSessionScript({
-      inputMode: 'qwen-cloud',
+      inputMode: 'cosyvoice-cache',
       language: 'pt',
       durationMinutes: 2,
       targetDifficulty: 'normal',
       seed: 'pt-seed',
     });
 
-    expect(script.inputMode).toBe('qwen-cloud');
+    expect(script.inputMode).toBe('cosyvoice-cache');
     expect(script.language).toBe('pt');
     expect(script.title).toContain('Portuguese');
     expect(script.phrases).toHaveLength(12);

@@ -34,7 +34,7 @@ describe('computeSessionMaxPoints', () => {
     })).toBe(4);
   });
 
-  it('uses normalized Qwen Cloud source words for input 4', () => {
+  it('uses normalized CosyVoice cache source words for input 4', () => {
     expect(computeSessionMaxPoints({
       inputMode: 'input4',
       ttsText: 'un deux trois',

@@ -2,9 +2,11 @@ import type {
   AdaptivePacingInput,
   HistoricalPerformanceProfile,
   InputCapabilities,
+  InputMode,
   LiveTelemetryFrame,
   PhraseBoundaryType,
 } from '../../core/adaptive/types';
+import { COSYVOICE_CACHE_INPUT_MODE } from '../../core/adaptive/inputModes';
 
 export const qwenCloudInputCapabilities: InputCapabilities = {
   supportsClausePause: true,
@@ -16,7 +18,7 @@ export const qwenCloudInputCapabilities: InputCapabilities = {
 };
 
 export interface QwenCloudTelemetryParams {
-  inputMode: 'qwen-cloud';
+  inputMode?: InputMode;
   phraseId: string;
   estimatedSpokenRatio: number;
   typedProgressRatio: number;
@@ -49,7 +51,7 @@ export interface QwenCloudTelemetryParams {
 
 export function buildQwenCloudTelemetryFrame(params: QwenCloudTelemetryParams): LiveTelemetryFrame {
   return {
-    inputMode: params.inputMode,
+    inputMode: params.inputMode ?? COSYVOICE_CACHE_INPUT_MODE,
     phraseId: params.phraseId,
     spokenProgressRatio: clamp(params.estimatedSpokenRatio, 0, 1),
     typedProgressRatio: clamp(params.typedProgressRatio, 0, 1),

@@ -17,6 +17,7 @@ import type {
   PhraseSize,
   PacingMode,
 } from './core/adaptive/types';
+import { COSYVOICE_CACHE_INPUT_MODE, LEGACY_QWEN_CLOUD_INPUT_MODE } from './core/adaptive/inputModes';
 import { AudioEngine } from './core/audioEngine';
 import { configForDifficulty, type Difficulty } from './core/config';
 import {
@@ -3252,7 +3253,7 @@ function App() {
       setDictationScriptValidation({
         ok: false,
         script: null,
-        errors: ['inputMode must match input1/input2/input3/input4 or audio/browser-tts/kokoro/qwen-cloud.'],
+        errors: ['inputMode must match input1/input2/input3/input4 or audio/browser-tts/kokoro/cosyvoice-cache. Legacy qwen-cloud is still accepted.'],
       });
       return;
     }
@@ -3286,7 +3287,7 @@ function App() {
     const generationOrigin = options.generationOrigin ?? 'openrouter';
     const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
     if (!inputMode) {
-      setOpenRouterError('Generated script inputMode must match input1/input2/input3/input4 or audio/browser-tts/kokoro/qwen-cloud.');
+      setOpenRouterError('Generated script inputMode must match input1/input2/input3/input4 or audio/browser-tts/kokoro/cosyvoice-cache. Legacy qwen-cloud is still accepted.');
       return;
     }
 
@@ -4892,7 +4893,7 @@ function App() {
     let currentPhraseIndex = 0;
     let cancelled = false;
     const semanticPhrases = buildSemanticPhrasesForCurrentSession(ttsText, ttsLanguage, ttsPacingMode);
-    beginAdaptiveSessionFeedback('qwen-cloud', ttsLanguage, semanticPhrases.length);
+    beginAdaptiveSessionFeedback(COSYVOICE_CACHE_INPUT_MODE, ttsLanguage, semanticPhrases.length);
     ttsSemanticPhraseAdvanceCountRef.current = 0;
     ttsSemanticPhraseReplayCountRef.current = 0;
     ttsStartedAtMsRef.current = performance.now();
@@ -4917,13 +4918,13 @@ function App() {
         return;
       }
 
-      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, 'qwen-cloud', ttsLanguage);
+      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, COSYVOICE_CACHE_INPUT_MODE, ttsLanguage);
       const liveSignal = ttsLiveSignalRef.current;
       const semanticPhrase = semanticPhrases[currentPhraseIndex];
       const wordIndex = wordIndexForSemanticPhrase(semanticPhrases, currentPhraseIndex);
-      recordPhrasePlaybackEvent('phrase_started', 'qwen-cloud', ttsLanguage, semanticPhrase, currentPhraseIndex);
+      recordPhrasePlaybackEvent('phrase_started', COSYVOICE_CACHE_INPUT_MODE, ttsLanguage, semanticPhrase, currentPhraseIndex);
       const qwenTelemetry = buildQwenCloudTelemetryFrame({
-        inputMode: 'qwen-cloud',
+        inputMode: COSYVOICE_CACHE_INPUT_MODE,
         phraseId: `qwen-${chunkIndex}`,
         estimatedSpokenRatio: sourceWords.length > 0 ? estimateTtsSpokenWordIndex() / sourceWords.length : 0,
         typedProgressRatio: sourceWords.length > 0 ? Math.max(0, ttsPracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
@@ -4957,7 +4958,7 @@ function App() {
         semanticPhrase,
       );
       const semanticTelemetry = buildQwenCloudTelemetryFrame({
-        inputMode: 'qwen-cloud',
+        inputMode: COSYVOICE_CACHE_INPUT_MODE,
         phraseId: `${qwenTelemetry.phraseId}-semantic`,
         estimatedSpokenRatio: sourceWords.length > 0 ? estimateTtsSpokenWordIndex() / sourceWords.length : 0,
         typedProgressRatio: sourceWords.length > 0 ? Math.max(0, ttsPracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
@@ -5052,16 +5053,16 @@ function App() {
 
       adapter.setOnEnded(() => {
         if (cancelled) return;
-        recordPhrasePlaybackEvent('phrase_completed', 'qwen-cloud', ttsLanguage, semanticPhrase, currentPhraseIndex);
+        recordPhrasePlaybackEvent('phrase_completed', COSYVOICE_CACHE_INPUT_MODE, ttsLanguage, semanticPhrase, currentPhraseIndex);
         ttsCompletedSourceWordsRef.current = chunk.startWordIndex + chunk.wordCount;
         chunkIndex += 1;
         if (effectiveReplay) {
           ttsSemanticPhraseReplayCountRef.current += 1;
-          recordPhrasePlaybackEvent('phrase_replayed', 'qwen-cloud', ttsLanguage, semanticPhrase, currentPhraseIndex);
+          recordPhrasePlaybackEvent('phrase_replayed', COSYVOICE_CACHE_INPUT_MODE, ttsLanguage, semanticPhrase, currentPhraseIndex);
         } else {
           currentPhraseIndex += 1;
           ttsSemanticPhraseAdvanceCountRef.current += 1;
-          recordPhrasePlaybackEvent('phrase_advanced', 'qwen-cloud', ttsLanguage, semanticPhrase, currentPhraseIndex);
+          recordPhrasePlaybackEvent('phrase_advanced', COSYVOICE_CACHE_INPUT_MODE, ttsLanguage, semanticPhrase, currentPhraseIndex);
         }
         setAdaptiveSemanticDebug((current) => ({
           ...current,
@@ -5161,12 +5162,12 @@ function App() {
         return;
       }
 
-      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, 'qwen-cloud', ttsLanguage);
+      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, COSYVOICE_CACHE_INPUT_MODE, ttsLanguage);
       const liveSignal = ttsLiveSignalRef.current;
       const semanticPhrase = semanticPhrases[currentPhraseIndex];
       const wordIndex = wordIndexForSemanticPhrase(semanticPhrases, currentPhraseIndex);
       const qwenTelemetry = buildQwenCloudTelemetryFrame({
-        inputMode: 'qwen-cloud',
+        inputMode: COSYVOICE_CACHE_INPUT_MODE,
         phraseId: `qwen-${chunkIndex}`,
         estimatedSpokenRatio: sourceWords.length > 0 ? estimateTtsSpokenWordIndex() / sourceWords.length : 0,
         typedProgressRatio: sourceWords.length > 0 ? Math.max(0, ttsPracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
@@ -5200,7 +5201,7 @@ function App() {
         semanticPhrase,
       );
       const semanticTelemetry = buildQwenCloudTelemetryFrame({
-        inputMode: 'qwen-cloud',
+        inputMode: COSYVOICE_CACHE_INPUT_MODE,
         phraseId: `${qwenTelemetry.phraseId}-semantic`,
         estimatedSpokenRatio: sourceWords.length > 0 ? estimateTtsSpokenWordIndex() / sourceWords.length : 0,
         typedProgressRatio: sourceWords.length > 0 ? Math.max(0, ttsPracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
@@ -6401,7 +6402,7 @@ function App() {
               { label: 'Text length', value: ttsHasText ? `${ttsText.length} chars` : 'Not set' },
               { label: 'Language', value: ttsLanguage ?? 'Not set' },
               { label: 'Pacing', value: formatTtsPacingMode(ttsPacingMode) },
-              { label: 'Cache', value: qwenCloudFallbackDetails ? 'Missing cached phrase' : 'Qwen cache' },
+              { label: 'Cache', value: qwenCloudFallbackDetails ? 'Missing cached phrase' : 'CosyVoice cache' },
               { label: 'Status', value: ttsStatus },
             ]
           : [
@@ -6447,7 +6448,7 @@ function App() {
     { inputMode: 'audio', label: 'Input 1' },
     { inputMode: 'browser-tts', label: 'Input 2' },
     { inputMode: 'kokoro', label: 'Input 3' },
-    { inputMode: 'qwen-cloud', label: 'Input 4' },
+    { inputMode: COSYVOICE_CACHE_INPUT_MODE, label: 'Input 4' },
   ];
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedProgressLabel =
@@ -8265,14 +8266,14 @@ function formatSessionInputMode(mode: SessionInputMode): string {
   if (mode === 'input1') return 'Original audio';
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
-  return 'Qwen cache';
+  return 'CosyVoice cache';
 }
 
 function formatInputModeLabel(mode: InputMode): string {
   if (mode === 'audio') return 'Original audio';
   if (mode === 'browser-tts') return 'Browser TTS';
   if (mode === 'kokoro') return 'Kokoro local';
-  return 'Qwen cache';
+  return 'CosyVoice cache';
 }
 
 function formatSessionGenerationOrigin(origin: GenerationOrigin): string {
@@ -8523,7 +8524,12 @@ function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMo
   if (normalized === 'input1' || normalized === 'audio') return 'input1';
   if (normalized === 'input2' || normalized === 'browser-tts' || normalized === 'browsertts') return 'input2';
   if (normalized === 'input3' || normalized === 'kokoro' || normalized === 'kokoro-tts') return 'input3';
-  if (normalized === 'input4' || normalized === 'qwen-cloud' || normalized === 'qwen') return 'input4';
+  if (
+    normalized === 'input4' ||
+    normalized === COSYVOICE_CACHE_INPUT_MODE ||
+    normalized === LEGACY_QWEN_CLOUD_INPUT_MODE ||
+    normalized === 'qwen'
+  ) return 'input4';
   return null;
 }
 
@@ -9240,7 +9246,7 @@ function buildHistoricalPerformanceProfile(
 function mapSessionInputMode(mode: SessionInputMode): InputMode {
   if (mode === 'input1') return 'audio';
   if (mode === 'input2') return 'browser-tts';
-  if (mode === 'input4') return 'qwen-cloud';
+  if (mode === 'input4') return COSYVOICE_CACHE_INPUT_MODE;
   return 'kokoro';
 }
 

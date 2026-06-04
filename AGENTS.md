@@ -28,7 +28,9 @@ Inputs:
 - `audio` / input 1 / original audio plus transcript
 - `browser-tts` / input 2 / browser SpeechSynthesis
 - `kokoro` / input 3 / local Kokoro TTS sidecar
-- `qwen-cloud` / input 4 / legacy name for CosyVoice2 cached WAV playback with browser fallback
+- `cosyvoice-cache` / input 4 / CosyVoice2 cached WAV playback with browser fallback
+
+Legacy stored/cache data may still use `qwen-cloud`; normalize it to `cosyvoice-cache` before writing new adaptive or OpenRouter job state.
 
 Languages:
 
@@ -73,7 +75,7 @@ Inputs:
 - `audio` / input 1
 - `browser-tts` / input 2
 - `kokoro` / input 3
-- `qwen-cloud` / input 4 (CosyVoice2 cache path, historical name)
+- `cosyvoice-cache` / input 4 (CosyVoice2 cache path; `qwen-cloud` is a legacy alias)
 
 Languages:
 
