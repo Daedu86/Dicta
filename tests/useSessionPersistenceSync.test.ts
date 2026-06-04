@@ -2,6 +2,7 @@
 import { act, createElement, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
   ADAPTIVE_SESSION_FEEDBACK_KEY,
@@ -11,7 +12,7 @@ import {
   type UseSessionPersistenceSyncResult,
 } from '../src/app/useSessionPersistenceSync';
 import type { SessionTelemetry } from '../src/types/dictation';
-import type { DictaSyncConfig, DictaSyncState } from '../src/core/supabaseSync';
+import type { DictaSyncConfig, DictaSyncRow, DictaSyncState } from '../src/core/supabaseSync';
 import {
   PROFILE_SCOPED_STORAGE_MARKER_KEY,
   profileScopedStorageKey,
@@ -126,15 +127,21 @@ function buildTestSyncState(
   };
 }
 
+function normalizeTestSession(session: TestSession): TestSession {
+  return session;
+}
+
 function renderHarness({
   initialSessions,
   syncConfig = disabledSyncConfig,
   effectiveProfileId = '',
+  supabaseClient = null,
   onProfileStorageSwitched = () => undefined,
 }: {
   initialSessions: TestSession[];
   syncConfig?: DictaSyncConfig;
   effectiveProfileId?: string;
+  supabaseClient?: SupabaseClient | null;
   onProfileStorageSwitched?: () => void;
 }): {
   getRuntime: () => RuntimeSnapshot;
@@ -163,7 +170,7 @@ function renderHarness({
       activeSessionId,
       setActiveSessionId,
       syncConfig,
-      supabaseClient: null,
+      supabaseClient,
       effectiveProfileId,
       adaptiveBenchmarks: benchmarks,
       setAdaptiveBenchmarks: setBenchmarks,
@@ -174,8 +181,8 @@ function renderHarness({
       loadSessions: loadTestSessions,
       loadAdaptiveBenchmarks: loadTestBenchmarks,
       loadAdaptiveSessionFeedback: loadTestFeedback,
-      normalizeSessionForPersistence: (session) => session,
-      normalizeRestoredSession: (session) => session,
+      normalizeSessionForPersistence: normalizeTestSession,
+      normalizeRestoredSession: normalizeTestSession,
       buildSyncState: buildTestSyncState,
       onQuotaRecovered: () => undefined,
       onProfileStorageSwitched,
@@ -194,6 +201,29 @@ function renderHarness({
     },
     getSessions: () => latestSessions,
     getActiveSessionId: () => latestActiveSessionId,
+  };
+}
+
+function createDeferredSupabaseClient(remoteRows: DictaSyncRow[]): {
+  client: SupabaseClient;
+  resolvePull: () => void;
+} {
+  let resolvePull: (value: { data: DictaSyncRow[]; error: null }) => void = () => undefined;
+  const pullResult = new Promise<{ data: DictaSyncRow[]; error: null }>((resolve) => {
+    resolvePull = resolve;
+  });
+  const query = {
+    select: () => query,
+    eq: () => query,
+    gt: () => query,
+    order: () => pullResult,
+    upsert: async () => ({ error: null }),
+  };
+  return {
+    client: {
+      from: () => query,
+    } as unknown as SupabaseClient,
+    resolvePull: () => resolvePull({ data: remoteRows, error: null }),
   };
 }
 
@@ -259,5 +289,59 @@ describe('useSessionPersistenceSync', () => {
 
     expect(getSessions()).toEqual([secondSession]);
     expect(loadDeletedSessionIds().has('s1')).toBe(true);
+  });
+
+  it('keeps Supabase initial sync pending until remote tombstones are applied', async () => {
+    vi.useRealTimers();
+    const staleSession = session('stale', 'stale-local');
+    const remoteSession = {
+      ...session('remote', 'remote-current'),
+      updatedAt: '2026-06-05T12:00:00.000Z',
+    };
+    window.localStorage.setItem(PROFILE_SCOPED_STORAGE_MARKER_KEY, 'profile-b');
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify([staleSession]));
+    const remoteRows: DictaSyncRow[] = [
+      {
+        profile_id: 'profile-b',
+        item_type: 'session',
+        item_key: 'stale',
+        payload: {
+          id: 'stale',
+          deleted: true,
+          deletedAt: '2026-06-05T11:00:00.000Z',
+          updatedAt: '2026-06-05T11:00:00.000Z',
+        },
+        updated_at: '2026-06-05T11:00:00.000Z',
+      },
+      {
+        profile_id: 'profile-b',
+        item_type: 'session',
+        item_key: 'remote',
+        payload: remoteSession,
+        updated_at: remoteSession.updatedAt,
+      },
+    ];
+
+    const fakeSupabase = createDeferredSupabaseClient(remoteRows);
+    const { getRuntime, getSessions } = renderHarness({
+      initialSessions: [staleSession],
+      syncConfig: authSyncConfig,
+      effectiveProfileId: 'profile-b',
+      supabaseClient: fakeSupabase.client,
+    });
+
+    expect(getRuntime().supabaseInitialSyncPending).toBe(true);
+    await act(async () => {
+      fakeSupabase.resolvePull();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await flushReactWork();
+    await flushReactWork();
+    await flushReactWork();
+
+    expect(getRuntime().supabaseInitialSyncPending).toBe(false);
+    expect(getSessions()).toEqual([remoteSession]);
+    expect(loadDeletedSessionIds().has('stale')).toBe(true);
   });
 });

@@ -39,6 +39,7 @@ const SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS = 8;
 const SESSION_PERSIST_RECOVERY_SERIES_LIMIT = 120;
 const SESSION_PERSIST_RECOVERY_ACTION_LIMIT = 160;
 const SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT = 80;
+const SUPABASE_BACKGROUND_PULL_INTERVAL_MS = 15_000;
 
 const PROFILE_SCOPED_DICTA_STORAGE_KEYS = [
   SESSION_STORAGE_KEY,
@@ -102,6 +103,7 @@ type UseSessionPersistenceSyncOptions<TSession extends PersistableSession, TBenc
 
 export type UseSessionPersistenceSyncResult<TSession extends PersistableSession, TFeedback> = {
   localStorageReadyForEffectiveProfile: boolean;
+  supabaseInitialSyncPending: boolean;
   effectiveSyncConfig: DictaSyncConfig;
   supabaseSyncStatus: SupabaseSyncStatus;
   flushScheduledSessionPersist: (spanName?: string) => void;
@@ -164,6 +166,15 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     imported: 0,
     pushed: 0,
   });
+  const supabaseSyncIdentity = effectiveSyncConfig.enabled ? effectiveSyncConfig.profileId : '';
+  const [supabaseInitialPullState, setSupabaseInitialPullState] = useState(() => ({
+    key: supabaseSyncIdentity,
+    complete: !effectiveSyncConfig.enabled,
+  }));
+  const supabaseInitialSyncComplete =
+    !effectiveSyncConfig.enabled ||
+    (supabaseInitialPullState.key === supabaseSyncIdentity && supabaseInitialPullState.complete);
+  const supabaseInitialSyncPending = effectiveSyncConfig.enabled && !supabaseInitialSyncComplete;
 
   const supabaseInitialPullCompleteRef = useRef(!effectiveSyncConfig.enabled);
   const supabaseApplyingRemoteRef = useRef(false);
@@ -178,6 +189,11 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
   const supabaseLastRemoteUpdatedAtRef = useRef<string | null>(null);
   const supabaseLastFullPullAtMsRef = useRef(0);
   const deletedSessionIdsRef = useRef<Set<string>>(loadDeletedSessionIds());
+  const supabaseInitialSyncPendingRef = useRef(supabaseInitialSyncPending);
+
+  useEffect(() => {
+    supabaseInitialSyncPendingRef.current = supabaseInitialSyncPending;
+  }, [supabaseInitialSyncPending]);
 
   const clearScheduledSessionPersist = useCallback((): void => {
     if (sessionPersistTimerRef.current === null) return;
@@ -231,6 +247,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
 
   const flushScheduledSessionPersist = useCallback((spanName = 'session.localStorage.flush'): void => {
     clearScheduledSessionPersist();
+    if (supabaseInitialSyncPendingRef.current) return;
     persistSessionsToLocalStorage(latestSessionsForPersistenceRef.current, spanName);
   }, [clearScheduledSessionPersist, persistSessionsToLocalStorage]);
 
@@ -413,6 +430,10 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     syncStateRef.current = buildSyncState(restoredSessions, restoredBenchmarks, restoredFeedback);
     supabaseApplyingRemoteRef.current = false;
     supabaseInitialPullCompleteRef.current = !result.activeProfileId;
+    setSupabaseInitialPullState({
+      key: result.activeProfileId,
+      complete: !result.activeProfileId,
+    });
     supabasePullInFlightRef.current = false;
     supabaseKnownRemoteRowsRef.current = [];
     supabaseLastRemoteUpdatedAtRef.current = null;
@@ -437,6 +458,10 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
 
   useEffect(() => {
     supabaseInitialPullCompleteRef.current = !effectiveSyncConfig.enabled;
+    setSupabaseInitialPullState({
+      key: supabaseSyncIdentity,
+      complete: !effectiveSyncConfig.enabled,
+    });
     supabaseKnownRemoteRowsRef.current = [];
     supabaseLastRemoteUpdatedAtRef.current = null;
     supabaseLastFullPullAtMsRef.current = 0;
@@ -452,17 +477,20 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
       imported: 0,
       pushed: 0,
     });
-  }, [profileDisplayName, effectiveSyncConfig.enabled, effectiveSyncConfig.profileId, syncConfig.authRequired]);
+  }, [profileDisplayName, effectiveSyncConfig.enabled, effectiveSyncConfig.profileId, supabaseSyncIdentity, syncConfig.authRequired]);
 
   useEffect(() => {
     latestSessionsForPersistenceRef.current = sessions;
-    if (!localStorageReadyForEffectiveProfile) return;
+    if (!localStorageReadyForEffectiveProfile || supabaseInitialSyncPending) {
+      clearScheduledSessionPersist();
+      return;
+    }
     clearScheduledSessionPersist();
     sessionPersistTimerRef.current = window.setTimeout(() => {
       sessionPersistTimerRef.current = null;
       persistSessionsToLocalStorage(latestSessionsForPersistenceRef.current);
     }, SESSION_PERSIST_DEBOUNCE_MS);
-  }, [clearScheduledSessionPersist, localStorageReadyForEffectiveProfile, persistSessionsToLocalStorage, sessions]);
+  }, [clearScheduledSessionPersist, localStorageReadyForEffectiveProfile, persistSessionsToLocalStorage, sessions, supabaseInitialSyncPending]);
 
   useEffect(() => {
     const flushBeforeExit = () => flushScheduledSessionPersist('session.localStorage.flushBeforeExit');
@@ -527,8 +555,6 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
         const filteredMergedSessions = (merged.sessions as TSession[]).map(normalizeRestoredSession).filter(
           (session) => !deletedSessionIdsRef.current.has(session.id) && !isTransientGenerationErrorSessionLike(session),
         );
-        supabaseInitialPullCompleteRef.current = true;
-
         if (merged.changed || filteredMergedSessions.length !== (merged.sessions as TSession[]).length) {
           supabaseApplyingRemoteRef.current = true;
           setSessions(filteredMergedSessions);
@@ -538,6 +564,11 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
             supabaseApplyingRemoteRef.current = false;
           }, 0);
         }
+        supabaseInitialPullCompleteRef.current = true;
+        setSupabaseInitialPullState({
+          key: supabaseSyncIdentity,
+          complete: true,
+        });
 
         const postMergeState = {
           ...merged,
@@ -559,8 +590,12 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
           pushed,
         });
       } catch (error) {
-        supabaseInitialPullCompleteRef.current = true;
         if (cancelled) return;
+        supabaseInitialPullCompleteRef.current = true;
+        setSupabaseInitialPullState({
+          key: supabaseSyncIdentity,
+          complete: true,
+        });
         setSupabaseSyncStatus((current) => ({
           ...current,
           state: 'error',
@@ -574,8 +609,9 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     void pullAndMergeSync('initial');
 
     const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
       void pullAndMergeSync('background');
-    }, 45_000);
+    }, SUPABASE_BACKGROUND_PULL_INTERVAL_MS);
 
     const onFocus = () => {
       void pullAndMergeSync('background');
@@ -583,14 +619,21 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     const onOnline = () => {
       void pullAndMergeSync('background');
     };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void pullAndMergeSync('background');
+      }
+    };
     window.addEventListener('focus', onFocus);
     window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [
     effectiveSyncConfig.enabled,
@@ -599,6 +642,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     setAdaptiveBenchmarks,
     setAdaptiveSessionFeedback,
     setSessions,
+    supabaseSyncIdentity,
     supabaseClient,
   ]);
 
@@ -651,6 +695,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
 
   return {
     localStorageReadyForEffectiveProfile,
+    supabaseInitialSyncPending,
     effectiveSyncConfig,
     supabaseSyncStatus,
     flushScheduledSessionPersist,

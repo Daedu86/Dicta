@@ -772,6 +772,7 @@ function App() {
   const resetOpenRouterJobsRuntimeRef = useRef<() => void>(() => undefined);
   const {
     localStorageReadyForEffectiveProfile,
+    supabaseInitialSyncPending,
     supabaseSyncStatus,
     persistAndPushSessionsNow,
     prependSessionAndPersistNow,
@@ -6171,7 +6172,18 @@ function App() {
     supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
   }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` · ${pendingSyncSummary.count} pending` : ''}`;
 
-  if (syncConfig.authRequired && (authLoading || authView === 'updatePassword' || !authSession || !appProfile || appProfileError || !localStorageReadyForEffectiveProfile)) {
+  if (
+    syncConfig.authRequired &&
+    (
+      authLoading ||
+      authView === 'updatePassword' ||
+      !authSession ||
+      !appProfile ||
+      appProfileError ||
+      !localStorageReadyForEffectiveProfile ||
+      supabaseInitialSyncPending
+    )
+  ) {
     return (
       <AuthWorkspace
         themeMode={themeMode}
@@ -6181,6 +6193,7 @@ function App() {
         appProfile={appProfile}
         appProfileError={appProfileError}
         localStorageReadyForEffectiveProfile={localStorageReadyForEffectiveProfile}
+        supabaseInitialSyncPending={supabaseInitialSyncPending}
         effectiveProfileId={effectiveProfileId}
         authEmail={authEmail}
         authPassword={authPassword}

@@ -151,6 +151,8 @@ Supabase sync stores JSON rows in `dicta_sync_items` with item types `session`, 
 
 Session deletes are tombstones, not hard deletes. The tombstone payload must contain JSON boolean `deleted: true`.
 
+Authenticated profile UI waits for the initial Supabase pull/merge before rendering profile-scoped sessions, so a hard refresh does not briefly expose stale localStorage rows. Remote session tombstones are sticky against local `ready`/pending copies; only a newer locally submitted finished session may repair an older tombstone.
+
 ## OpenRouter Architecture
 
 OpenRouter is for structured dictation script generation. It is not a playback engine and it must not expose secrets to the browser.

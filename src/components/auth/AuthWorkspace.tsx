@@ -16,6 +16,7 @@ export type AuthWorkspaceProps = {
   appProfile: AuthProfileDisplay | null;
   appProfileError: string;
   localStorageReadyForEffectiveProfile: boolean;
+  supabaseInitialSyncPending: boolean;
   effectiveProfileId: string;
   authEmail: string;
   authPassword: string;
@@ -62,6 +63,7 @@ export function AuthWorkspace({
   appProfile,
   appProfileError,
   localStorageReadyForEffectiveProfile,
+  supabaseInitialSyncPending,
   effectiveProfileId,
   authEmail,
   authPassword,
@@ -99,6 +101,8 @@ export function AuthWorkspace({
           <p className="hint">Loading Dicta profile...</p>
         ) : authSession && appProfile && !localStorageReadyForEffectiveProfile ? (
           <p className="hint">Preparing local storage for {appProfile.displayName ?? effectiveProfileId}...</p>
+        ) : authSession && appProfile && supabaseInitialSyncPending ? (
+          <p className="hint">Synchronizing latest Dicta sessions...</p>
         ) : authSession && appProfileError ? (
           <>
             <p className="error">{appProfileError}</p>

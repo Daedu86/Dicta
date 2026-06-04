@@ -270,6 +270,11 @@ Primary browser-side state:
 
 OpenRouter credentials are intentionally not stored in `localStorage`.
 
+Supabase sync notes:
+
+- Authenticated profile UI waits for the initial Supabase pull/merge before showing profile-scoped sessions, preventing hard-refresh flashes from stale local snapshots.
+- Session deletes are tombstones. Remote tombstones must not be overwritten by local `ready`/pending copies; only a newer locally submitted finished session may repair an older tombstone.
+
 ## Local Ingestion Pipeline (WhisperX)
 
 Install core Python dependencies:

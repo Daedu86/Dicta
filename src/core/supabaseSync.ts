@@ -174,7 +174,7 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
       }
       if (isSessionTombstonePayload(remote)) {
         const localSession = sessionsById.get(id);
-        if (localSession && isRemoteNewer(row, localSession, ['updatedAt'])) {
+        if (localSession && !shouldLocalSessionSurviveRemoteTombstone(row, localSession)) {
           deletedSessionIds.add(id);
           sessionsById.delete(id);
           changed = true;
@@ -303,7 +303,7 @@ export function selectPushableSyncRows(localRows: DictaSyncRow[], remoteRows: Di
     const remoteRow = remoteByKey.get(syncRowIdentity(localRow));
     if (!remoteRow) return true;
     if (localRow.item_type === 'session' && isSessionTombstonePayload(remoteRow.payload)) {
-      return compareTimestamp(localRow.updated_at, remoteRow.updated_at) > 0;
+      return shouldLocalRowReplaceRemoteTombstone(localRow, remoteRow);
     }
     if (localRow.item_type === 'session' && localSubmittedSessionOutranksRemote(localRow.payload, remoteRow.payload)) {
       return true;
@@ -383,6 +383,23 @@ function isRemoteNewer(row: DictaSyncRow, localPayload: unknown, localFields: st
 function shouldRemoteSessionReplaceLocal(row: DictaSyncRow, localSession: unknown): boolean {
   if (remoteSubmittedSessionOutranksLocal(row.payload, localSession)) return true;
   return isRemoteNewer(row, localSession, ['updatedAt']);
+}
+
+function shouldLocalSessionSurviveRemoteTombstone(remoteTombstoneRow: DictaSyncRow, localSession: unknown): boolean {
+  const localUpdatedAt = timestampFrom(asRecord(localSession).updatedAt);
+  return Boolean(
+    localUpdatedAt &&
+      isSubmittedFinishedSession(localSession) &&
+      compareTimestamp(localUpdatedAt, remoteTombstoneRow.updated_at) > 0,
+  );
+}
+
+function shouldLocalRowReplaceRemoteTombstone(localRow: DictaSyncRow, remoteTombstoneRow: DictaSyncRow): boolean {
+  return (
+    localRow.item_type === 'session' &&
+    isSubmittedFinishedSession(localRow.payload) &&
+    compareTimestamp(localRow.updated_at, remoteTombstoneRow.updated_at) > 0
+  );
 }
 
 function remoteSubmittedSessionOutranksLocal(remotePayload: unknown, localPayload: unknown): boolean {
