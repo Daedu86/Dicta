@@ -4,9 +4,17 @@ const e2eBaseUrl = 'http://127.0.0.1:4174';
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 45_000,
+  outputDir: 'test-results',
+  reporter: process.env.CI
+    ? [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
+    : 'list',
+  // Covers cold Vite dev transforms; the typing latency budget is asserted in the spec.
+  timeout: 180_000,
   use: {
     baseURL: e2eBaseUrl,
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
+    video: 'retain-on-failure',
   },
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 4174',

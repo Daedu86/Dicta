@@ -18,7 +18,7 @@ import type {
   PacingMode,
 } from './core/adaptive/types';
 import { AudioEngine } from './core/audioEngine';
-import { configForDifficulty, formatDifficultyLabel, type Difficulty } from './core/config';
+import { configForDifficulty, type Difficulty } from './core/config';
 import {
   evaluateTranscriptAttempt,
   buildSessionPointsHelpText,
@@ -121,7 +121,9 @@ import {
 } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
+import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
+import { PendingSessionLane } from './components/training/PendingSessionLane';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
 import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
@@ -6874,6 +6876,11 @@ function App() {
     ] : [],
   };
 
+  const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
+  const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
+    supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
+  }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` · ${pendingSyncSummary.count} pending` : ''}`;
+
   if (syncConfig.authRequired && (authLoading || authView === 'updatePassword' || !authSession || !appProfile || appProfileError || !localStorageReadyForEffectiveProfile)) {
     return (
       <AuthWorkspace
@@ -6920,128 +6927,43 @@ function App() {
   return (
     <main className={`app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
       <section className="layout">
-        <section className="panel brand-block brand-header-panel workspace-main-header">
-          <div className="brand-header-main">
-            <div className="brand-mark">
-              <span className="brand-mark-icon" aria-hidden="true">🪗</span>
-            </div>
-            <div className="brand-copy">
-              <h1>Dicta MVP</h1>
-              <p>Adaptive real-time dictation training</p>
-              <div className="brand-status-row">
-                {openRouterAccessAllowed ? (
-                  <span
-                    className={`brand-llm-status ${effectiveOpenRouterDefaultModel.trim() ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
-                    title={effectiveOpenRouterDefaultModel.trim() ? `Selected OpenRouter model: ${effectiveOpenRouterDefaultModel.trim()}` : 'No OpenRouter model selected'}
-                  >
-                    <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
-                    <span className="brand-llm-status-text">
-                      {effectiveOpenRouterDefaultModel.trim() ? `Model set: ${effectiveOpenRouterDefaultModel.trim()}` : 'No model set'}
-                    </span>
-                  </span>
-                ) : null}
-                <span className="brand-build-status" title={DICTA_BUILD_INFO_TITLE}>
-                  <span className="brand-build-status-icon" aria-hidden="true">Git</span>
-                  <span className="brand-build-status-text">{DICTA_BUILD_INFO_LABEL}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="brand-header-actions">
-            <button
-              type="button"
-              className="secondary-button brand-leaderboard-button"
-              onClick={() => {
-                setWorkspaceMode('leaderboard');
-                setDashboardSessionId(null);
-              }}
-            >
-              Leaderboard
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-training-desktop-button"
-              onClick={() => {
-                setWorkspaceMode('training');
-                setDashboardSessionId(null);
-              }}
-            >
-              Training Mode (desktop ver)
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-training-mode-button"
-              onClick={() => navigateAppRoute('/training')}
-              title="Open the focused mobile training view"
-            >
-              Training Mode (Mobile ver)
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-adaptive-button"
-              onClick={openAdaptiveWorkspaceFromHeader}
-            >
-              🧠 Adaptive Pace Layer
-            </button>
-            {isDictaAdmin(appProfile) || !syncConfig.authRequired ? (
-              <button
-                type="button"
-                className="secondary-button brand-admin-button"
-                onClick={() => {
-                  setWorkspaceMode('admin');
-                  setDashboardSessionId(null);
-                }}
-              >
-                Admin
-              </button>
-            ) : null}
-            {openRouterAccessAllowed ? (
-              <button
-                type="button"
-                className="secondary-button brand-openrouter-button"
-                onClick={() => {
-                  setWorkspaceMode('openrouter');
-                  setDashboardSessionId(null);
-                }}
-                title="Configure OpenRouter API key and choose a default free model"
-              >
-                OpenRouter
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="secondary-button brand-openrouter-button"
-              onClick={() => {
-                setWorkspaceMode('ollama');
-                setDashboardSessionId(null);
-              }}
-              title="Configure Ollama Cloud and test a server-side model"
-            >
-              Ollama
-            </button>
-            <button
-              type="button"
-              className="secondary-button theme-toggle-button"
-              onClick={() => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark'))}
-              aria-label={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-signout-button"
-              onClick={() => void signOut()}
-              title="Sign out and return to login"
-            >
-              Sign out
-            </button>
-            <span className={`brand-sync-status brand-sync-status-${supabaseSyncStatus.state}`}>
-              {isOnline ? 'Sync' : 'Offline'}: {isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}
-              {supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''}
-              {supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` · ${pendingSyncSummary.count} pending` : ''}
-            </span>
-          </div>
+        <AppShellHeader
+          themeMode={themeMode}
+          showOpenRouterStatus={openRouterAccessAllowed}
+          openRouterModelIsSet={Boolean(appShellOpenRouterModel)}
+          openRouterModelTitle={appShellOpenRouterModel ? `Selected OpenRouter model: ${appShellOpenRouterModel}` : 'No OpenRouter model selected'}
+          openRouterModelLabel={appShellOpenRouterModel ? `Model set: ${appShellOpenRouterModel}` : 'No model set'}
+          buildInfoTitle={DICTA_BUILD_INFO_TITLE}
+          buildInfoLabel={DICTA_BUILD_INFO_LABEL}
+          showAdminButton={isDictaAdmin(appProfile) || !syncConfig.authRequired}
+          showOpenRouterButton={openRouterAccessAllowed}
+          syncStatusState={supabaseSyncStatus.state}
+          syncStatusText={appShellSyncStatusText}
+          onOpenLeaderboard={() => {
+            setWorkspaceMode('leaderboard');
+            setDashboardSessionId(null);
+          }}
+          onOpenDesktopTraining={() => {
+            setWorkspaceMode('training');
+            setDashboardSessionId(null);
+          }}
+          onOpenMobileTraining={() => navigateAppRoute('/training')}
+          onOpenAdaptive={openAdaptiveWorkspaceFromHeader}
+          onOpenAdmin={() => {
+            setWorkspaceMode('admin');
+            setDashboardSessionId(null);
+          }}
+          onOpenOpenRouter={() => {
+            setWorkspaceMode('openrouter');
+            setDashboardSessionId(null);
+          }}
+          onOpenOllama={() => {
+            setWorkspaceMode('ollama');
+            setDashboardSessionId(null);
+          }}
+          onToggleTheme={() => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark'))}
+          onSignOut={signOut}
+        >
           {sessionCreationMode ? (
             <SessionCreateCard
               sessionCreationSource={sessionCreationSource}
@@ -7068,7 +6990,7 @@ function App() {
               MetricComponent={Metric}
             />
           ) : null}
-        </section>
+        </AppShellHeader>
         {!setupLocked ? (
               activeInputMode === 'input1' ? (
                 <AudioInputSetupCard
@@ -8419,68 +8341,6 @@ type TrainingGenerationButton = {
   statusTone?: 'hint' | 'success' | 'error';
 };
 
-type PendingSessionLaneProps = {
-  sessions: StoredSession[];
-  activeSessionId: string | null;
-  className?: string;
-  onOpenSession: (session: StoredSession) => void;
-  onDeleteSession: (sessionId: string) => void;
-};
-
-function PendingSessionLane({
-  sessions,
-  activeSessionId,
-  className = '',
-  onOpenSession,
-  onDeleteSession,
-}: PendingSessionLaneProps) {
-  if (sessions.length === 0) return null;
-
-  return (
-    <section className={`pending-session-lane ${className}`.trim()} aria-label="Pending sessions">
-      <div className="pending-session-lane-header">
-        <div>
-          <p className="dashboard-eyebrow">Pending sessions</p>
-          <h3>Ready to perform</h3>
-        </div>
-        <span className="pending-session-count">{sessions.length}</span>
-      </div>
-      <div className="pending-session-strip">
-        {sessions.map((session) => (
-          <div
-            key={session.id}
-            className={`pending-session-chip ${session.id === activeSessionId ? 'pending-session-chip-active' : ''}`}
-          >
-            <button
-              type="button"
-              className="pending-session-open-button"
-              onClick={() => onOpenSession(session)}
-              title={`Open ${getSessionDisplayTitle(session)} in ${formatSessionInputMode(session.inputMode)}`}
-            >
-              <span className="pending-session-title">
-                <SessionDeviceIcon session={session} />
-                <span>{getSessionDisplayTitle(session)}</span>
-              </span>
-              <span className="pending-session-meta">
-                {formatSessionInputMode(session.inputMode)} · {resolveStoredSessionLanguage(session).toUpperCase()} · {formatDifficultyLabel(session.difficulty)} · {getPendingSessionReason(session)}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="danger-button pending-session-delete-button"
-              onClick={() => onDeleteSession(session.id)}
-              aria-label={`Delete ${getSessionDisplayTitle(session)}`}
-              title="Delete session"
-            >
-              <span aria-hidden="true">✕</span>
-            </button>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function TrainingHeader({ onBackToApp }: { onBackToApp: () => void }) {
   return (
     <header className="training-header">
@@ -8983,16 +8843,6 @@ function formatLeaderboardSessionStatus(session: StoredSession): string {
     return 'Not submitted';
   }
   return formatSessionStatus(session.status);
-}
-
-function getPendingSessionReason(session: StoredSession): string {
-  if (session.status === 'finished' && session.inputMode !== 'input1' && !hasSubmittedSessionStats(session)) {
-    return 'stats pending';
-  }
-  if (!session.inputSettingsLocked) return 'setup pending';
-  if (session.status === 'running') return 'running';
-  if (session.status === 'paused') return 'paused';
-  return 'perform pending';
 }
 
 function getSessionDisplayTitle(session: StoredSession): string {

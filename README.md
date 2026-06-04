@@ -323,7 +323,7 @@ Test coverage currently includes:
 - Adaptive controller, benchmark service, session feedback, semantic planner, and OpenRouter prompt profile-scope guardrails.
 - Integration simulation test for convergence / no excessive oscillation.
 - Ingestion smoke test (`--dry-run`) for output schema path.
-- Playwright mobile E2E guard for the focused `/training` typing performance harness.
+- Playwright mobile E2E guard for the focused `/training` typing performance harness. GitHub CI runs it after `npm run build` and uploads Playwright trace, screenshot, and video artifacts only on failure.
 
 Before finishing code changes, run `npm run test` and `npm run build` unless the change is docs-only or you clearly explain why not.
 
@@ -333,4 +333,3 @@ Before finishing code changes, run `npm run test` and `npm run build` unless the
 - Kokoro support for `de`, `fr`, and `pt` remains blocked/experimental.
 - Input #4 still uses the historical `qwen-cloud` identifier even though the current cache generator is CosyVoice2.
 - Full-tree render volume during long Browser TTS runs can still be reduced.
-- The mobile Playwright guard exists as `npm run test:e2e:mobile`; wiring it into the GitHub CI workflow remains a separate step.
