@@ -1,4 +1,5 @@
 import type { InputLanguageBenchmarkMetrics } from './types';
+import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
 import {
   buildBrowserTtsDeDiagnostics,
   normalizeInputLanguageBenchmarkForRecommendation,
@@ -45,6 +46,9 @@ export type SelectedBenchmarkExportPayload = {
   rateAccuracyBuckets: InputLanguageBenchmarkMetrics['rateAccuracyBuckets'];
   weakAreas: InputLanguageBenchmarkMetrics['weakAreas'];
   recommendation: InputLanguageBenchmarkMetrics['recommendation'];
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+  ttsEnvironmentHistory?: BrowserTtsEnvironmentHistoryEntry[];
+  environmentChanged?: boolean;
   browserTtsDeDiagnostics?: BrowserTtsDeDiagnostics;
   recentTimelinePoints: InputLanguageBenchmarkMetrics['timeline'];
   debug: {
@@ -105,6 +109,15 @@ export function buildSelectedBenchmarkExportPayload(profile: InputLanguageBenchm
     rateAccuracyBuckets: normalizedProfile.rateAccuracyBuckets,
     weakAreas: normalizedProfile.weakAreas,
     recommendation: normalizedProfile.recommendation,
+    ...(normalizedProfile.inputMode === 'browser-tts' && normalizedProfile.ttsEnvironment
+      ? { ttsEnvironment: normalizedProfile.ttsEnvironment }
+      : {}),
+    ...(normalizedProfile.inputMode === 'browser-tts' && normalizedProfile.ttsEnvironmentHistory
+      ? { ttsEnvironmentHistory: normalizedProfile.ttsEnvironmentHistory }
+      : {}),
+    ...(normalizedProfile.inputMode === 'browser-tts' && normalizedProfile.environmentChanged
+      ? { environmentChanged: true }
+      : {}),
     ...(browserTtsDeDiagnostics ? { browserTtsDeDiagnostics } : {}),
     recentTimelinePoints,
     debug: {

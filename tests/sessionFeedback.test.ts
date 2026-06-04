@@ -11,6 +11,45 @@ import {
 } from '../src/core/adaptive/sessionFeedback';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import type { AdaptiveSessionFeedback, AdaptiveTimelinePoint, InputMode, LanguageCode, PhrasePlaybackEvent } from '../src/core/adaptive/types';
+import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../src/types/dictation';
+
+const browserEnvironment: BrowserTtsEnvironmentFingerprint = {
+  engine: 'browser',
+  browserUserAgentHash: 'a1b2c3d4',
+  platform: 'Win32',
+  standalonePwa: false,
+  voiceURI: 'de-local',
+  voiceName: 'German Local',
+  voiceLang: 'de-DE',
+  localService: true,
+  availableVoiceCount: 5,
+  matchingVoiceCount: 2,
+};
+
+const browserEnvironmentHistory: BrowserTtsEnvironmentHistoryEntry[] = [
+  {
+    environmentId: 'browser-current',
+    ttsEnvironment: browserEnvironment,
+    firstSeenAt: '2026-05-21T08:00:00.000Z',
+    lastSeenAt: '2026-05-21T08:10:00.000Z',
+    sampleCount: 8,
+    sessionCount: 1,
+  },
+  {
+    environmentId: 'browser-previous',
+    ttsEnvironment: {
+      ...browserEnvironment,
+      browserUserAgentHash: '11111111',
+      voiceURI: 'de-remote',
+      voiceName: 'German Remote',
+      localService: false,
+    },
+    firstSeenAt: '2026-05-20T08:00:00.000Z',
+    lastSeenAt: '2026-05-20T08:10:00.000Z',
+    sampleCount: 5,
+    sessionCount: 1,
+  },
+];
 
 function phraseEvent(
   phraseIndex: number,
@@ -203,6 +242,73 @@ describe('session feedback diagnostics', () => {
     expect(payload.benchmarkProfile?.countSemantics).toContain('not all saved sessions');
     expect(payload.latestSessionFeedback?.sessionId).toBe(feedback.sessionId);
     expect(payload.playbackDiagnostics).toEqual(feedback.playbackIssues);
+  });
+
+  it('includes structured Browser TTS environment in benchmark feedback packages', () => {
+    const profile = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'de'),
+      ttsEnvironment: browserEnvironment,
+      ttsEnvironmentHistory: browserEnvironmentHistory,
+      environmentChanged: true,
+    };
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-browser-env',
+      inputMode: 'browser-tts',
+      language: 'de',
+      sourceType: 'dictation_script',
+      createdAt: '2026-05-21T08:00:00.000Z',
+      completedAt: '2026-05-21T08:10:00.000Z',
+      ttsEnvironment: browserEnvironment,
+      phraseEvents: [phraseEvent(0, 'p00', 'phrase_started', 1)],
+      totalPhrases: 1,
+    });
+
+    const payload = buildBenchmarkFeedbackPackage(profile, feedback) as {
+      ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+      ttsEnvironmentHistory?: BrowserTtsEnvironmentHistoryEntry[];
+      environmentChanged?: boolean;
+      latestSessionFeedback?: { ttsEnvironment?: BrowserTtsEnvironmentFingerprint };
+      benchmarkProfile?: { ttsEnvironment?: BrowserTtsEnvironmentFingerprint };
+    };
+
+    expect(payload.ttsEnvironment).toEqual(browserEnvironment);
+    expect(payload.ttsEnvironmentHistory).toEqual(browserEnvironmentHistory);
+    expect(payload.environmentChanged).toBe(true);
+    expect(payload.latestSessionFeedback?.ttsEnvironment).toEqual(browserEnvironment);
+    expect(payload.benchmarkProfile?.ttsEnvironment).toEqual(browserEnvironment);
+  });
+
+  it('does not add Browser TTS environment metadata to non-browser feedback packages', () => {
+    const profile = {
+      ...createEmptyInputLanguageBenchmark('kokoro', 'de'),
+      ttsEnvironment: browserEnvironment,
+      ttsEnvironmentHistory: browserEnvironmentHistory,
+      environmentChanged: true,
+    };
+    const feedback = buildAdaptiveSessionFeedback({
+      sessionId: 'session-kokoro',
+      inputMode: 'kokoro',
+      language: 'de',
+      sourceType: 'dictation_script',
+      createdAt: '2026-05-21T08:00:00.000Z',
+      ttsEnvironment: browserEnvironment,
+      phraseEvents: [phraseEvent(0, 'p00', 'phrase_started', 1)],
+      totalPhrases: 1,
+    });
+
+    const payload = buildBenchmarkFeedbackPackage(profile, feedback) as {
+      ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+      ttsEnvironmentHistory?: BrowserTtsEnvironmentHistoryEntry[];
+      environmentChanged?: boolean;
+      latestSessionFeedback?: { ttsEnvironment?: BrowserTtsEnvironmentFingerprint };
+      benchmarkProfile?: { ttsEnvironment?: BrowserTtsEnvironmentFingerprint };
+    };
+
+    expect(payload.ttsEnvironment).toBeUndefined();
+    expect(payload.ttsEnvironmentHistory).toBeUndefined();
+    expect(payload.environmentChanged).toBeUndefined();
+    expect(payload.latestSessionFeedback?.ttsEnvironment).toBeUndefined();
+    expect(payload.benchmarkProfile?.ttsEnvironment).toBeUndefined();
   });
 
   it('selects the newest matching feedback for exported benchmark packages even when the list is stale-ordered', () => {
@@ -471,6 +577,32 @@ describe('session feedback diagnostics', () => {
     expect(payload.latestSessionFeedback?.benchmarkAfter?.benchmarkSessionCount).toBe(3);
     expect(payload.latestSessionFeedback?.benchmarkAfter?.acceptedTelemetrySamples).toBe(43);
     expect(payload.latestSessionFeedback?.benchmarkAfter?.countSemantics).toContain('not all saved sessions');
+  });
+
+  it('keeps legacy Browser TTS feedback packages compatible when environment metadata is missing', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'en');
+    const legacyFeedback = buildAdaptiveSessionFeedback({
+      sessionId: 'legacy-browser-session',
+      inputMode: 'browser-tts',
+      language: 'en',
+      sourceType: 'plain_text',
+      createdAt: '2026-05-21T08:00:00.000Z',
+      phraseEvents: [phraseEvent(0, 'p00', 'phrase_started', 1)],
+      totalPhrases: 1,
+    });
+
+    const payload = buildBenchmarkFeedbackPackage(profile, legacyFeedback) as {
+      ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+      ttsEnvironmentHistory?: BrowserTtsEnvironmentHistoryEntry[];
+      environmentChanged?: boolean;
+      latestSessionFeedback?: { sessionId?: string; ttsEnvironment?: BrowserTtsEnvironmentFingerprint };
+    };
+
+    expect(payload.latestSessionFeedback?.sessionId).toBe('legacy-browser-session');
+    expect(payload.ttsEnvironment).toBeUndefined();
+    expect(payload.ttsEnvironmentHistory).toBeUndefined();
+    expect(payload.environmentChanged).toBeUndefined();
+    expect(payload.latestSessionFeedback?.ttsEnvironment).toBeUndefined();
   });
 
   it('keeps clean browser-tts DE playback verdict stable even when benchmark recommendation is conservative', () => {

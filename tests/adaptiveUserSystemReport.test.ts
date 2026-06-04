@@ -3,6 +3,20 @@ import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/Adaptive
 import { buildAdaptiveUserSystemReport } from '../src/core/adaptive/adaptiveUserSystemReport';
 import { buildAdaptiveSessionFeedback } from '../src/core/adaptive/sessionFeedback';
 import type { PhrasePlaybackEvent } from '../src/core/adaptive/types';
+import type { BrowserTtsEnvironmentFingerprint } from '../src/types/dictation';
+
+const browserEnvironment: BrowserTtsEnvironmentFingerprint = {
+  engine: 'browser',
+  browserUserAgentHash: 'abcdef12',
+  platform: 'Linux armv8l',
+  standalonePwa: true,
+  voiceURI: 'de-local',
+  voiceName: 'German Local',
+  voiceLang: 'de-DE',
+  localService: true,
+  availableVoiceCount: 5,
+  matchingVoiceCount: 2,
+};
 
 function phraseEvent(
   phraseIndex: number,
@@ -65,6 +79,7 @@ describe('adaptiveUserSystemReport', () => {
           repeatCount: 4,
           finishedAt: '2026-05-24T19:59:00.000Z',
         },
+        ttsEnvironment: browserEnvironment,
         durationLabel: '1m 20s',
         updatedAt: '2026-05-24T20:00:00.000Z',
       },
@@ -78,6 +93,7 @@ describe('adaptiveUserSystemReport', () => {
       language: 'de',
       languageLabel: 'DE',
     });
+    expect(report.reportMetadata.ttsEnvironment).toEqual(browserEnvironment);
     expect(report.userProgressSummary.latestSession?.points).toBe('3/4');
     expect(report.userProgressSummary.howYouDid).toContain('3/4 points');
     expect(report.userProgressSummary.needsImprovement.join(' ')).toContain('Accuracy needs work');
@@ -100,6 +116,7 @@ describe('adaptiveUserSystemReport', () => {
     expect(report.userProgressSummary.howYouDid).toContain('No finished session');
     expect(report.adaptiveSystemSummary.feedbackStatus).toContain('No current completed-session feedback');
     expect(report.technicalDebugData).toEqual({ status: 'debug' });
+    expect(report.reportMetadata.ttsEnvironment).toBeUndefined();
   });
 
   it('normalizes legacy benchmark profiles that are missing recommendation fields', () => {

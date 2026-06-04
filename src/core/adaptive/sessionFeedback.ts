@@ -10,6 +10,7 @@ import {
   buildBrowserTtsDeDiagnostics,
   normalizeInputLanguageBenchmarkForRecommendation,
 } from './AdaptiveInputLanguageBenchmarkService';
+import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
 
 export type SessionFeedbackBuildArgs = {
   sessionId: string;
@@ -22,6 +23,7 @@ export type SessionFeedbackBuildArgs = {
   scriptTitle?: string;
   benchmarkBefore?: InputLanguageBenchmarkMetrics | null;
   benchmarkAfter?: InputLanguageBenchmarkMetrics | null;
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
   phraseEvents: PhrasePlaybackEvent[];
   totalPhrases?: number;
 };
@@ -132,6 +134,7 @@ export function buildAdaptiveSessionFeedback(args: SessionFeedbackBuildArgs): Ad
     createdAt: args.createdAt,
     completedAt: args.completedAt,
     sourceType: args.sourceType,
+    ...(args.inputMode === 'browser-tts' && args.ttsEnvironment ? { ttsEnvironment: args.ttsEnvironment } : {}),
     benchmarkBefore: args.benchmarkBefore ? compactBenchmark(args.benchmarkBefore) : undefined,
     benchmarkAfter: args.benchmarkAfter ? compactBenchmark(args.benchmarkAfter) : undefined,
     sessionCountDroppedReason,
@@ -220,10 +223,12 @@ export function buildBenchmarkFeedbackPackage(
   const fallbackDiagnostics = currentFeedback ? null : derivePlaybackDiagnosticsFromTimeline(recentTimelinePoints);
   const sessionFeedbackStatus = buildSessionFeedbackStatus(currentFeedback, options.activeSessionStatus, recency);
   const browserTtsDeDiagnostics = buildBrowserTtsDeDiagnostics(normalizedProfile, FEEDBACK_EXPORT_TIMELINE_CAP) ?? undefined;
+  const ttsEnvironmentReport = buildTtsEnvironmentReport(normalizedProfile, currentFeedback);
   return {
     inputMode: normalizedProfile.inputMode,
     language: normalizedProfile.language,
     sessionFeedbackStatus,
+    ...ttsEnvironmentReport,
     ...(recency ? { sessionFeedbackRecency: recency } : {}),
     benchmarkProfile: compactBenchmark(normalizedProfile),
     recommendation: normalizedProfile.recommendation,
@@ -259,6 +264,24 @@ function normalizeFeedbackBenchmarkSnapshots(feedback: AdaptiveSessionFeedback):
     ...feedback,
     benchmarkBefore: addBenchmarkCountSemantics(feedback.benchmarkBefore),
     benchmarkAfter: addBenchmarkCountSemantics(feedback.benchmarkAfter),
+  };
+}
+
+function buildTtsEnvironmentReport(
+  profile: InputLanguageBenchmarkMetrics,
+  feedback: AdaptiveSessionFeedback | null,
+): {
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+  ttsEnvironmentHistory?: BrowserTtsEnvironmentHistoryEntry[];
+  environmentChanged?: boolean;
+} {
+  if (profile.inputMode !== 'browser-tts') return {};
+  const ttsEnvironment = feedback?.ttsEnvironment ?? profile.ttsEnvironment;
+  const history = profile.ttsEnvironmentHistory;
+  return {
+    ...(ttsEnvironment ? { ttsEnvironment } : {}),
+    ...(history && history.length > 0 ? { ttsEnvironmentHistory: history } : {}),
+    ...(profile.environmentChanged || (history && history.length > 1) ? { environmentChanged: true } : {}),
   };
 }
 
@@ -617,6 +640,15 @@ function compactBenchmark(profile: InputLanguageBenchmarkMetrics): Partial<Input
     averageAccuracy: normalizedProfile.averageAccuracy,
     averageWpm: normalizedProfile.averageWpm,
     averageLagSec: normalizedProfile.averageLagSec,
+    ...(normalizedProfile.inputMode === 'browser-tts' && normalizedProfile.ttsEnvironment
+      ? { ttsEnvironment: normalizedProfile.ttsEnvironment }
+      : {}),
+    ...(normalizedProfile.inputMode === 'browser-tts' && normalizedProfile.ttsEnvironmentHistory
+      ? { ttsEnvironmentHistory: normalizedProfile.ttsEnvironmentHistory }
+      : {}),
+    ...(normalizedProfile.inputMode === 'browser-tts' && normalizedProfile.environmentChanged
+      ? { environmentChanged: true }
+      : {}),
     weakAreas: normalizedProfile.weakAreas,
     recommendation: normalizedProfile.recommendation,
   };

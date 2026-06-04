@@ -1,4 +1,5 @@
 import { computeSessionMaxPoints, formatSessionPointsLabel, type SessionPointsSource } from '../evaluation';
+import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
 import {
   createEmptyInputLanguageBenchmark,
   normalizeInputLanguageBenchmarkForRecommendation,
@@ -30,6 +31,7 @@ export type AdaptiveReportSession = SessionPointsSource & {
     repeatCount?: number;
     finishedAt?: string | null;
   };
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
   dictationScript?: {
     title?: string;
     difficulty?: string;
@@ -49,6 +51,9 @@ export type AdaptiveUserSystemReport = {
     languageLabel: string;
     intendedUse: string;
     estimatedTechnicalDebugDataBytes: number | null;
+    ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+    ttsEnvironmentHistory?: BrowserTtsEnvironmentHistoryEntry[];
+    environmentChanged?: boolean;
   };
   userProgressSummary: {
     status: 'available' | 'no_finished_session';
@@ -131,6 +136,7 @@ export function buildAdaptiveUserSystemReport({
   const recommendedNextExercise = buildRecommendedNextExercise(normalizedProfile, sessionSummary, repeatCount, nextPracticeFocus);
   const whatIsWorking = buildSystemWorkingSignals(normalizedProfile, sessionSummary, feedback);
   const whatNeedsTuning = buildSystemTuningSignals(normalizedProfile, needsImprovement, feedback);
+  const ttsEnvironmentReport = buildTtsEnvironmentReport(normalizedProfile, feedback, latestSession ?? null);
 
   return {
     reportMetadata: {
@@ -144,6 +150,7 @@ export function buildAdaptiveUserSystemReport({
       intendedUse:
         'Debug Dicta behavior, understand user progress, tune adaptive pacing/content, and decide what the learner should practice next. This report is not the compact prompt used for direct session generation.',
       estimatedTechnicalDebugDataBytes: estimateJsonBytes(technicalDebugData),
+      ...ttsEnvironmentReport,
     },
     userProgressSummary: {
       status: sessionSummary ? 'available' : 'no_finished_session',
@@ -168,6 +175,25 @@ export function buildAdaptiveUserSystemReport({
       feedbackStatus: feedback ? `Current feedback is available for session ${feedback.sessionId}.` : 'No current completed-session feedback is available for this input/language yet.',
     },
     technicalDebugData,
+  };
+}
+
+function buildTtsEnvironmentReport(
+  profile: InputLanguageBenchmarkMetrics,
+  feedback: AdaptiveSessionFeedback | null,
+  latestSession: AdaptiveReportSession | null,
+): {
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+  ttsEnvironmentHistory?: BrowserTtsEnvironmentHistoryEntry[];
+  environmentChanged?: boolean;
+} {
+  if (profile.inputMode !== 'browser-tts') return {};
+  const ttsEnvironment = latestSession?.ttsEnvironment ?? feedback?.ttsEnvironment ?? profile.ttsEnvironment;
+  const history = profile.ttsEnvironmentHistory;
+  return {
+    ...(ttsEnvironment ? { ttsEnvironment } : {}),
+    ...(history && history.length > 0 ? { ttsEnvironmentHistory: history } : {}),
+    ...(profile.environmentChanged || (history && history.length > 1) ? { environmentChanged: true } : {}),
   };
 }
 

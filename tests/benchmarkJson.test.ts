@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { buildBenchmarkFilename, buildSelectedBenchmarkExportPayload } from '../src/core/adaptive/benchmarkJson';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
+import type { BrowserTtsEnvironmentFingerprint } from '../src/types/dictation';
+
+const browserEnvironment: BrowserTtsEnvironmentFingerprint = {
+  engine: 'browser',
+  browserUserAgentHash: 'facefeed',
+  platform: 'Linux armv8l',
+  standalonePwa: true,
+  voiceURI: 'de-local',
+  voiceName: 'German Local',
+  voiceLang: 'de-DE',
+  localService: true,
+  availableVoiceCount: 6,
+  matchingVoiceCount: 2,
+};
 
 describe('benchmarkJson', () => {
   it('builds payload with required benchmark fields', () => {
@@ -54,6 +68,28 @@ describe('benchmarkJson', () => {
     }));
     const payload = buildSelectedBenchmarkExportPayload(profile);
     expect(payload.recentTimelinePoints.length).toBe(60);
+  });
+
+  it('includes Browser TTS environment metadata in selected benchmark exports', () => {
+    const profile = {
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'de'),
+      ttsEnvironment: browserEnvironment,
+      ttsEnvironmentHistory: [
+        {
+          environmentId: 'browser-env',
+          ttsEnvironment: browserEnvironment,
+          firstSeenAt: '2026-05-21T08:00:00.000Z',
+          lastSeenAt: '2026-05-21T08:10:00.000Z',
+          sampleCount: 2,
+          sessionCount: 1,
+        },
+      ],
+    };
+
+    const payload = buildSelectedBenchmarkExportPayload(profile);
+
+    expect(payload.ttsEnvironment).toEqual(browserEnvironment);
+    expect(payload.ttsEnvironmentHistory?.[0]?.environmentId).toBe('browser-env');
   });
 
   it('normalizes stale browser-tts DE pressure recommendations before export', () => {

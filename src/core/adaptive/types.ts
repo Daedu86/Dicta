@@ -1,4 +1,5 @@
 import type { InputMode, StoredInputMode } from './inputModes';
+import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
 export type { InputMode, LegacyInputMode, StoredInputMode } from './inputModes';
 
 export type PhraseSize = 'short' | 'medium' | 'long';
@@ -151,6 +152,7 @@ export interface AdaptiveTimelinePoint {
   phraseBoundaryType?: PhraseBoundaryType;
   semanticCompleteness?: number;
   sessionId?: string;
+  ttsEnvironmentId?: string;
   phraseId?: string;
   phraseIndex?: number;
   totalSemanticPhrases?: number;
@@ -251,6 +253,9 @@ export interface InputLanguageBenchmarkMetrics {
   inputExecutionFidelityScore: number;
   rateAccuracyBuckets: RateAccuracyBucket[];
   timeline: AdaptiveTimelinePoint[];
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+  ttsEnvironmentHistory?: BrowserTtsEnvironmentHistoryEntry[];
+  environmentChanged?: boolean;
   weakAreas: AdaptiveWeakArea[];
   recommendation: InputLanguageBenchmarkRecommendation;
 }
@@ -282,6 +287,7 @@ export interface AdaptiveSessionFeedback {
   createdAt: string;
   completedAt?: string;
   sourceType: 'plain_text' | 'dictation_script';
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
   benchmarkBefore?: Partial<InputLanguageBenchmarkMetrics>;
   benchmarkAfter?: Partial<InputLanguageBenchmarkMetrics>;
   sessionCountDroppedReason?: string;

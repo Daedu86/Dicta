@@ -6,6 +6,29 @@ import {
   updateInputLanguageBenchmark,
 } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import type { LiveTelemetryFrame, PacingDecision } from '../src/core/adaptive/types';
+import type { BrowserTtsEnvironmentFingerprint } from '../src/types/dictation';
+
+const environmentA: BrowserTtsEnvironmentFingerprint = {
+  engine: 'browser',
+  browserUserAgentHash: '11111111',
+  platform: 'Win32',
+  standalonePwa: false,
+  voiceURI: 'de-a',
+  voiceName: 'German A',
+  voiceLang: 'de-DE',
+  localService: true,
+  availableVoiceCount: 4,
+  matchingVoiceCount: 2,
+};
+
+const environmentB: BrowserTtsEnvironmentFingerprint = {
+  ...environmentA,
+  browserUserAgentHash: '22222222',
+  platform: 'Linux armv8l',
+  voiceURI: 'de-b',
+  voiceName: 'German B',
+  localService: false,
+};
 
 function live(overrides: Partial<LiveTelemetryFrame> = {}): LiveTelemetryFrame {
   return {
@@ -125,5 +148,32 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expect(point).toBeDefined();
     expect(isValidBrowserTtsDeBenchmarkSample(point!)).toBe(false);
     expect(getBrowserTtsDeBenchmarkRejectionReason(point!)).toBe('unsafe_phrase_boundary');
+  });
+
+  it('tracks Browser TTS environment ids on timeline samples and summarizes environment history', () => {
+    const first = updateInputLanguageBenchmark({
+      current: createEmptyInputLanguageBenchmark('browser-tts', 'en'),
+      live: live({ language: 'en', phraseId: 'phrase-1' }),
+      decision: decision(),
+      ttsEnvironment: environmentA,
+      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+      sessionId: 's-a',
+      event: 'phrase_completed',
+    });
+    const second = updateInputLanguageBenchmark({
+      current: first,
+      live: live({ language: 'en', phraseId: 'phrase-2' }),
+      decision: decision(),
+      ttsEnvironment: environmentB,
+      timestampMs: Date.parse('2026-06-01T12:05:00Z'),
+      sessionId: 's-b',
+      event: 'phrase_completed',
+    });
+
+    expect(second.ttsEnvironment).toEqual(environmentB);
+    expect(second.environmentChanged).toBe(true);
+    expect(second.ttsEnvironmentHistory).toHaveLength(2);
+    expect(second.timeline.every((point) => typeof point.ttsEnvironmentId === 'string')).toBe(true);
+    expect(second.ttsEnvironmentHistory?.map((entry) => entry.sampleCount)).toEqual([1, 1]);
   });
 });

@@ -11,6 +11,8 @@ import type {
   RateAccuracyBucket,
 } from './types';
 import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browserTtsAdaptiveProfiles';
+import { getBrowserTtsEnvironmentId } from '../../inputs/browserTts/browserTtsEnvironment';
+import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
 
 const ROLLING_WINDOW_DAYS = 30 as const;
 const MAX_TIMELINE_POINTS = 450;
@@ -73,6 +75,7 @@ export type InputLanguageBenchmarkUpdateArgs = {
   execution?: InputExecutionTelemetry;
   timestampMs?: number;
   sessionId?: string;
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
   phraseIndex?: number;
   totalSemanticPhrases?: number;
   event?: AdaptiveTimelinePoint['event'];
@@ -149,6 +152,8 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
   const unsafePause = args.decision.shouldPauseNow && !canPauseAfter;
   const semanticCutPenalty = unsafePause ? 1 : args.decision.deferPauseUntilSafeBoundary ? 0.35 : 0;
   const executionFidelity = computeExecutionFidelity(args.execution);
+  const ttsEnvironment = args.live.inputMode === 'browser-tts' ? args.ttsEnvironment ?? undefined : undefined;
+  const ttsEnvironmentId = ttsEnvironment ? getBrowserTtsEnvironmentId(ttsEnvironment) : undefined;
   const timelinePoint: AdaptiveTimelinePoint = {
     timestampMs,
     inputMode: args.live.inputMode,
@@ -167,6 +172,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     phraseBoundaryType: args.live.phraseBoundaryType,
     semanticCompleteness,
     sessionId: args.sessionId,
+    ttsEnvironmentId,
     phraseId: args.live.phraseId,
     phraseIndex: args.phraseIndex,
     totalSemanticPhrases: args.totalSemanticPhrases,
@@ -175,6 +181,12 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     event: args.event ?? deriveTimelineEvent(args.decision),
   };
   const timeline = pruneTimelineToRollingWindow([...current.timeline, timelinePoint], ROLLING_WINDOW_DAYS);
+  const environmentState = buildBrowserTtsEnvironmentBenchmarkState({
+    current,
+    timeline,
+    ttsEnvironment,
+    timestampMs,
+  });
   const usesFilteredBrowserTtsDeScoring = isBrowserTtsDe(args.live.inputMode, language);
   const scoringTimeline = usesFilteredBrowserTtsDeScoring
     ? dedupeBrowserTtsDeScoringTimeline(timeline.filter(isValidBrowserTtsDeBenchmarkSample))
@@ -262,6 +274,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
       ? runningAverage(current.inputExecutionFidelityScore, executionFidelity, previousAverageCount)
       : current.inputExecutionFidelityScore,
     timeline,
+    ...environmentState,
   };
 
   if (usesFilteredBrowserTtsDeScoring && !hasBrowserTtsDeScoringSamples) {
@@ -565,6 +578,124 @@ export function pruneTimelineToRollingWindow(
   return timeline
     .filter((point) => point.timestampMs >= cutoff)
     .slice(-MAX_TIMELINE_POINTS);
+}
+
+function buildBrowserTtsEnvironmentBenchmarkState({
+  current,
+  timeline,
+  ttsEnvironment,
+  timestampMs,
+}: {
+  current: InputLanguageBenchmarkMetrics;
+  timeline: AdaptiveTimelinePoint[];
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint;
+  timestampMs: number;
+}): Pick<InputLanguageBenchmarkMetrics, 'ttsEnvironment' | 'ttsEnvironmentHistory' | 'environmentChanged'> {
+  if (current.inputMode !== 'browser-tts' && !ttsEnvironment) {
+    return {
+      ttsEnvironment: undefined,
+      ttsEnvironmentHistory: undefined,
+      environmentChanged: undefined,
+    };
+  }
+
+  const entriesById = new Map<string, BrowserTtsEnvironmentHistoryEntry>();
+  for (const entry of current.ttsEnvironmentHistory ?? []) {
+    if (!entry.environmentId || entry.ttsEnvironment?.engine !== 'browser') continue;
+    entriesById.set(entry.environmentId, { ...entry });
+  }
+
+  if (current.ttsEnvironment?.engine === 'browser') {
+    const currentId = getBrowserTtsEnvironmentId(current.ttsEnvironment);
+    if (!entriesById.has(currentId)) {
+      const fallbackTimestamp = current.lastUpdatedAt ?? new Date(timestampMs).toISOString();
+      entriesById.set(currentId, {
+        environmentId: currentId,
+        ttsEnvironment: current.ttsEnvironment,
+        firstSeenAt: fallbackTimestamp,
+        lastSeenAt: fallbackTimestamp,
+        sampleCount: current.sampleCount,
+        sessionCount: current.sessionCount,
+      });
+    }
+  }
+
+  if (ttsEnvironment) {
+    const environmentId = getBrowserTtsEnvironmentId(ttsEnvironment);
+    const seenAt = new Date(timestampMs).toISOString();
+    const existing = entriesById.get(environmentId);
+    entriesById.set(environmentId, {
+      environmentId,
+      ttsEnvironment,
+      firstSeenAt: existing?.firstSeenAt ?? seenAt,
+      lastSeenAt: seenAt,
+      sampleCount: existing?.sampleCount ?? 0,
+      sessionCount: existing?.sessionCount ?? 0,
+    });
+  }
+
+  const timelineCounts = countTimelineByTtsEnvironment(timeline);
+  const hasTimelineEnvironmentIds = timelineCounts.size > 0;
+  const history = [...entriesById.values()]
+    .filter((entry) => !hasTimelineEnvironmentIds || timelineCounts.has(entry.environmentId))
+    .map((entry) => {
+      const counts = timelineCounts.get(entry.environmentId);
+      return counts
+        ? {
+            ...entry,
+            firstSeenAt: new Date(counts.firstSeenAtMs).toISOString(),
+            lastSeenAt: new Date(counts.lastSeenAtMs).toISOString(),
+            sampleCount: counts.sampleCount,
+            sessionCount: counts.sessionIds.size > 0 ? counts.sessionIds.size : counts.sampleCount > 0 ? 1 : 0,
+          }
+        : entry;
+    })
+    .sort((a, b) => Date.parse(b.lastSeenAt) - Date.parse(a.lastSeenAt));
+
+  const nextEnvironment = ttsEnvironment ?? history[0]?.ttsEnvironment ?? current.ttsEnvironment;
+  return {
+    ttsEnvironment: nextEnvironment,
+    ttsEnvironmentHistory: history.length > 0 ? history : undefined,
+    environmentChanged: history.length > 1 ? true : undefined,
+  };
+}
+
+function countTimelineByTtsEnvironment(timeline: AdaptiveTimelinePoint[]): Map<
+  string,
+  {
+    firstSeenAtMs: number;
+    lastSeenAtMs: number;
+    sampleCount: number;
+    sessionIds: Set<string>;
+  }
+> {
+  const counts = new Map<
+    string,
+    {
+      firstSeenAtMs: number;
+      lastSeenAtMs: number;
+      sampleCount: number;
+      sessionIds: Set<string>;
+    }
+  >();
+  for (const point of timeline) {
+    if (!point.ttsEnvironmentId) continue;
+    const current = counts.get(point.ttsEnvironmentId);
+    if (current) {
+      current.firstSeenAtMs = Math.min(current.firstSeenAtMs, point.timestampMs);
+      current.lastSeenAtMs = Math.max(current.lastSeenAtMs, point.timestampMs);
+      current.sampleCount += 1;
+      if (point.sessionId) current.sessionIds.add(point.sessionId);
+    } else {
+      counts.set(point.ttsEnvironmentId, {
+        firstSeenAtMs: point.timestampMs,
+        lastSeenAtMs: point.timestampMs,
+        sampleCount: 1,
+        sessionIds: new Set(point.sessionId ? [point.sessionId] : []),
+      });
+    }
+  }
+  return counts;
 }
 
 function deriveTimelineEvent(decision: PacingDecision): AdaptiveTimelinePoint['event'] {

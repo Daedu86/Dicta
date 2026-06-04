@@ -36,6 +36,28 @@ export type ControlAction =
 export type TtsPacingMode = 'slow' | 'balanced' | 'flow';
 export type TtsEngine = 'browser' | 'kokoro' | 'cosyvoice-cache' | 'qwen-cloud';
 
+export interface BrowserTtsEnvironmentFingerprint {
+  engine: 'browser';
+  browserUserAgentHash: string;
+  platform: string;
+  standalonePwa: boolean;
+  voiceURI: string | null;
+  voiceName: string | null;
+  voiceLang: string | null;
+  localService: boolean | null;
+  availableVoiceCount: number;
+  matchingVoiceCount: number;
+}
+
+export interface BrowserTtsEnvironmentHistoryEntry {
+  environmentId: string;
+  ttsEnvironment: BrowserTtsEnvironmentFingerprint;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  sampleCount: number;
+  sessionCount: number;
+}
+
 export interface TtsChunkTelemetry {
   t: number;
   startWordIndex: number;

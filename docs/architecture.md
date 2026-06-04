@@ -107,6 +107,7 @@ Important implementation details:
 - Timeline storage is capped and pruned by timestamp.
 - Browser TTS German has extra recovery, lag, and unsafe-boundary filtering. Keep changes narrowly guarded.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior.
+- Browser TTS benchmark samples and completed session feedback are tagged with a structured `ttsEnvironment` fingerprint (hashed user agent, platform/PWA mode, selected voice metadata, and voice counts) so benchmark/report analysis can separate learner progress from browser, OS, voice, or speechSynthesis changes without storing the raw user agent.
 - Training text input is intentionally low-latency and uncontrolled.
 - Low-latency typing is covered by contract/regression tests plus the Playwright mobile guard for the dedicated training harness.
 

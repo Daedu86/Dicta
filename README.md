@@ -220,6 +220,7 @@ Important rules:
 - Treat each `(inputMode, language)` as its own profile.
 - Do not share fixes across profiles unless the task explicitly requires it.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior such as shorter chunks, slower rate, and longer pauses.
+- Browser TTS benchmark samples and completed session feedback carry a structured `ttsEnvironment` fingerprint with a hashed user agent, platform/PWA mode, selected voice metadata, and voice counts so reports can distinguish learner progress from browser, OS, voice, or speechSynthesis changes.
 - Training text input is intentionally low-latency and uncontrolled. Do not reintroduce per-keystroke React state for visible text.
 
 Key files:

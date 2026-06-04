@@ -2,7 +2,14 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import type { Session as SupabaseAuthSession } from '@supabase/supabase-js';
 import './App.css';
-import type { ControlAction, SessionTelemetry, Transcript, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
+import type {
+  BrowserTtsEnvironmentFingerprint,
+  ControlAction,
+  SessionTelemetry,
+  Transcript,
+  TtsChunkTelemetry,
+  TtsPacingMode,
+} from './types/dictation';
 import type {
   AdaptiveTimelinePoint,
   AdaptiveSessionFeedback,
@@ -87,6 +94,10 @@ import {
   chooseRandomBrowserTtsVoiceURIForSession,
   resolveBrowserTtsSessionVoice,
 } from './inputs/browserTts/browserTtsVoices';
+import {
+  collectBrowserTtsEnvironmentFingerprint,
+  normalizeBrowserTtsEnvironmentFingerprint,
+} from './inputs/browserTts/browserTtsEnvironment';
 import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
 import { buildQwenCloudTelemetryFrame, buildAdaptiveQwenCloudInput } from './inputs/qwenCloud/qwenCloudTelemetryAdapter';
 import { QwenCloudAudioAdapter, buildQwenCloudPhraseId } from './inputs/qwenCloud/qwenCloudAudioAdapter';
@@ -261,6 +272,7 @@ type StoredSession = {
   ttsText: string;
   ttsLanguage: TtsLanguage | null;
   ttsVoiceURI?: string | null;
+  ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
   ttsPracticeText: string;
   kokoroText: string;
   kokoroLanguage: TtsLanguage | null;
@@ -628,8 +640,10 @@ function App() {
         );
         if (!ttsVoiceURI) return session;
         usedVoiceURIs.push(ttsVoiceURI);
+        const selectedVoice = browserTtsVoices.find((voice) => voice.voiceURI === ttsVoiceURI) ?? null;
+        const nextSession = attachBrowserTtsEnvironment({ ...session, ttsVoiceURI }, selectedVoice, ttsVoiceURI);
         changed = true;
-        return { ...session, ttsVoiceURI };
+        return nextSession;
       });
       return changed ? next : prev;
     });
@@ -3077,14 +3091,44 @@ function App() {
     setTtsStatus(value.trim().length > 0 ? 'ready' : 'idle');
   }
 
+  function collectBrowserTtsEnvironmentForSession(
+    session: StoredSession | null | undefined,
+    selectedVoice: SpeechSynthesisVoice | null = null,
+    selectedVoiceURI: string | null | undefined = session?.ttsVoiceURI,
+  ): BrowserTtsEnvironmentFingerprint | null {
+    if (!session || session.inputMode !== 'input2') return null;
+    return collectBrowserTtsEnvironmentFingerprint({
+      inputMode: 'browser-tts',
+      language: session.ttsLanguage,
+      selectedVoice,
+      selectedVoiceURI: selectedVoice?.voiceURI ?? selectedVoiceURI ?? null,
+      voices: browserTtsVoices,
+      navigatorRef: window.navigator,
+      matchMedia: window.matchMedia.bind(window),
+    });
+  }
+
+  function attachBrowserTtsEnvironment(
+    session: StoredSession,
+    selectedVoice: SpeechSynthesisVoice | null = null,
+    selectedVoiceURI: string | null | undefined = session.ttsVoiceURI,
+  ): StoredSession {
+    if (session.inputMode !== 'input2') return session;
+    const ttsEnvironment = collectBrowserTtsEnvironmentForSession(session, selectedVoice, selectedVoiceURI);
+    if (sameBrowserTtsEnvironment(session.ttsEnvironment, ttsEnvironment)) return session;
+    return { ...session, ttsEnvironment };
+  }
+
   function resolveActiveBrowserTtsVoice(): SpeechSynthesisVoice | null {
     if (!activeSession || activeSession.inputMode !== 'input2') return null;
     const resolution = resolveBrowserTtsSessionVoice(browserTtsVoices, ttsLanguage, activeSession.ttsVoiceURI);
-    if (resolution.voiceURI && resolution.voiceURI !== activeSession.ttsVoiceURI) {
+    const nextVoiceURI = resolution.voiceURI ?? activeSession.ttsVoiceURI ?? null;
+    const nextEnvironment = collectBrowserTtsEnvironmentForSession(activeSession, resolution.voice, nextVoiceURI);
+    if (nextVoiceURI !== activeSession.ttsVoiceURI || !sameBrowserTtsEnvironment(activeSession.ttsEnvironment, nextEnvironment)) {
       setSessions((prev) =>
         prev.map((session) =>
           session.id === activeSession.id
-            ? { ...session, ttsVoiceURI: resolution.voiceURI, updatedAt: new Date().toISOString() }
+            ? { ...session, ttsVoiceURI: nextVoiceURI, ttsEnvironment: nextEnvironment, updatedAt: new Date().toISOString() }
             : session,
         ),
       );
@@ -3436,10 +3480,18 @@ function App() {
       }
       const finalSample = applyTtsPerformanceSample({ action: 'submit', finalize: true, practiceTextOverride: latestPracticeText });
       const finishedAt = new Date().toISOString();
+      const finalVoiceResolution =
+        activeSession?.inputMode === 'input2'
+          ? resolveBrowserTtsSessionVoice(browserTtsVoices, ttsLanguage, activeSession.ttsVoiceURI)
+          : null;
+      const finalVoiceURI = finalVoiceResolution?.voiceURI ?? activeSession?.ttsVoiceURI ?? null;
+      const finalTtsEnvironment = collectBrowserTtsEnvironmentForSession(activeSession, finalVoiceResolution?.voice ?? null, finalVoiceURI);
       const nextSessions = sessions.map((session) =>
         session.id === activeSessionId
           ? {
               ...session,
+              ttsVoiceURI: session.inputMode === 'input2' ? finalVoiceURI : session.ttsVoiceURI,
+              ttsEnvironment: session.inputMode === 'input2' ? finalTtsEnvironment : session.ttsEnvironment,
               ttsPracticeText: latestPracticeText,
               status: 'finished' as const,
               metrics: finalSample.metrics,
@@ -3501,6 +3553,11 @@ function App() {
 
     const speech = window.speechSynthesis;
     const browserTtsVoice = resolveActiveBrowserTtsVoice();
+    const browserTtsEnvironment = collectBrowserTtsEnvironmentForSession(
+      activeSession,
+      browserTtsVoice,
+      browserTtsVoice?.voiceURI ?? activeSession?.ttsVoiceURI ?? null,
+    );
     const clampedStartWordIndex = Math.floor(clamp(startWordIndex, 0, Math.max(0, sourceWords.length - 1)));
     let chunkIndex = clampedStartWordIndex > 0 ? clampedStartWordIndex : 0;
     let macroPhraseIndex = 0;
@@ -3813,6 +3870,7 @@ function App() {
         actualPauseMs: effectivePauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
         replayExecuted: effectiveReplay,
         actualBoundaryType: chunk.phraseBoundaryType,
+        ttsEnvironment: browserTtsEnvironment,
         event: effectiveReplay ? 'replay' : effectivePauseNow ? 'pause' : runtimeDecision.deferPauseUntilSafeBoundary ? 'defer_pause' : 'phrase_advance',
         phraseIndex: macroPhraseIndex,
         totalSemanticPhrases: semanticPhrases.length,
@@ -3886,6 +3944,7 @@ function App() {
               actualPauseMs: 0,
               replayExecuted: false,
               actualBoundaryType: chunk.phraseBoundaryType,
+              ttsEnvironment: browserTtsEnvironment,
               event: 'phrase_completed',
               phraseIndex: macroPhraseIndex,
               totalSemanticPhrases: semanticPhrases.length,
@@ -5228,6 +5287,7 @@ function App() {
       actualPauseMs?: number;
       replayExecuted?: boolean;
       actualBoundaryType?: PhraseBoundaryType;
+      ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
       event?: AdaptiveTimelinePoint['event'];
       phraseIndex?: number;
       totalSemanticPhrases?: number;
@@ -5254,6 +5314,7 @@ function App() {
           live,
           decision,
           sessionId: activeSessionId,
+          ttsEnvironment: options.ttsEnvironment,
           phraseIndex: options.phraseIndex,
           totalSemanticPhrases: options.totalSemanticPhrases,
           event: options.event,
@@ -5359,6 +5420,7 @@ function App() {
       scriptTitle: completedSession.dictationScript?.title,
       benchmarkBefore: before,
       benchmarkAfter: after,
+      ttsEnvironment: inputMode === 'browser-tts' ? completedSession.ttsEnvironment ?? null : null,
       phraseEvents: options.phraseEvents ?? phrasePlaybackEventsRef.current,
       totalPhrases: options.totalPhrases ?? (phrasePlaybackTotalPhrasesRef.current || undefined),
     });
@@ -7399,6 +7461,7 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
     ttsText: record.ttsText ?? '',
     ttsLanguage: isSupportedLanguage(record.ttsLanguage) ? record.ttsLanguage : null,
     ttsVoiceURI: inputMode === 'input2' && typeof record.ttsVoiceURI === 'string' ? record.ttsVoiceURI : null,
+    ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(record.ttsEnvironment) : undefined,
     ttsPracticeText: record.ttsPracticeText ?? '',
     kokoroText: record.kokoroText ?? '',
     kokoroLanguage: isSupportedLanguage(record.kokoroLanguage) ? record.kokoroLanguage : null,
@@ -7745,6 +7808,7 @@ function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
   const telemetry = cloneTelemetry(session.telemetry);
   return normalizeSessionForPersistence({
     ...session,
+    ttsEnvironment: session.inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
     telemetry,
     status: normalizeRestoredSessionStatus(session.status, telemetry),
   });
@@ -7874,6 +7938,7 @@ function loadSessions(): StoredSession[] {
         ttsText: session.ttsText ?? '',
         ttsLanguage: isSupportedLanguage(session.ttsLanguage) ? session.ttsLanguage : null,
         ttsVoiceURI: inputMode === 'input2' && typeof session.ttsVoiceURI === 'string' ? session.ttsVoiceURI : null,
+        ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
         ttsPracticeText: session.ttsPracticeText ?? '',
         kokoroText: session.kokoroText ?? '',
         kokoroLanguage: isSupportedLanguage(session.kokoroLanguage) ? session.kokoroLanguage : null,
@@ -7955,6 +8020,15 @@ function getSessionVoiceDurationSec(session: StoredSession): number | null {
 
 function isSessionStatus(value: unknown): value is SessionStatus {
   return value === 'ready' || value === 'running' || value === 'paused' || value === 'finished' || value === 'error';
+}
+
+function sameBrowserTtsEnvironment(
+  left: BrowserTtsEnvironmentFingerprint | null | undefined,
+  right: BrowserTtsEnvironmentFingerprint | null | undefined,
+): boolean {
+  const normalizedLeft = normalizeBrowserTtsEnvironmentFingerprint(left);
+  const normalizedRight = normalizeBrowserTtsEnvironmentFingerprint(right);
+  return JSON.stringify(normalizedLeft) === JSON.stringify(normalizedRight);
 }
 
 function buildTranscriptSegments(transcript: Transcript | null): Array<{ start: number; end: number; text: string }> {
@@ -8245,6 +8319,7 @@ function buildBenchmarkActivitySummary(sessions: StoredSession[], profile: Input
       sessionSource: session.sessionSource,
       generationOrigin: session.generationOrigin,
       difficulty: session.difficulty,
+      ...(profile.inputMode === 'browser-tts' && session.ttsEnvironment ? { ttsEnvironment: session.ttsEnvironment } : {}),
       dictationScript: session.dictationScript
         ? {
             title: session.dictationScript.title,
