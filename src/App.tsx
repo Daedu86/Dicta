@@ -49,8 +49,6 @@ import {
 } from './core/adaptive/openRouterGenerationPrompt';
 import { buildAdaptiveUserSystemReport } from './core/adaptive/adaptiveUserSystemReport';
 import {
-  OPENROUTER_ACTIVE_JOB_STORAGE_KEY,
-  OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
   type ActiveOpenRouterJob,
   type OpenRouterJobResponse,
 } from './core/openRouterJobs';
@@ -153,8 +151,6 @@ import { AdminBrowserStorageCard } from './components/admin/AdminBrowserStorageC
 import { AdminProjectFilesCard } from './components/admin/AdminProjectFilesCard';
 import { AdminSessionInventoryCard } from './components/admin/AdminSessionInventoryCard';
 import {
-  OPENROUTER_GENERATED_SCRIPT_KEY,
-  OPENROUTER_GENERATED_VARIANTS_KEY,
   buildOpenRouterModelOptions,
   buildTrainingGenerationButtonNotice,
   formatInterruptedOpenRouterMessage,
@@ -179,14 +175,7 @@ import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
   DICTA_SYNC_TABLE,
   createDictaSupabaseClient,
-  deleteSessionSyncRow,
   getDictaSyncConfig,
-  latestSyncRowTimestamp,
-  mergeSyncRowSnapshots,
-  mergeSyncRows,
-  pullSyncRows,
-  pushSyncRowsDetailed,
-  type DictaSyncRow,
   type DictaSyncState,
 } from './core/supabaseSync';
 import {
@@ -200,10 +189,6 @@ import {
   type DictaAppProfile,
   type DictaAppRole,
 } from './core/appProfiles';
-import {
-  readActiveSyncStorageProfileId,
-  switchProfileScopedStorage,
-} from './core/profileScopedStorage';
 import {
   detectCreatedDeviceMetadata,
   formatCreatedDeviceIcon,
@@ -233,39 +218,27 @@ import {
   type WorkspaceMode,
 } from './app/useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
+import {
+  ADAPTIVE_BENCHMARKS_KEY,
+  ADAPTIVE_SESSION_FEEDBACK_KEY,
+  SESSION_STORAGE_KEY,
+  loadDeletedSessionIds,
+  useSessionPersistenceSync,
+  type SupabaseSyncStatus,
+} from './app/useSessionPersistenceSync';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
-const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
-const SESSION_PERSIST_DEBOUNCE_MS = 1500;
-const SESSION_PERSIST_RECOVERY_MAX_SESSIONS = 50;
-const SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS = 8;
-const SESSION_PERSIST_RECOVERY_SERIES_LIMIT = 120;
-const SESSION_PERSIST_RECOVERY_ACTION_LIMIT = 160;
-const SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT = 80;
 const KOKORO_ENABLED_KEY = 'dicta.kokoroEnabled.v1';
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
 const OLLAMA_DEFAULT_MODEL_STORAGE_KEY = 'dicta.ollamaDefaultModel.v1';
 const OLLAMA_RECOMMENDED_DEFAULT_MODEL = 'gemma3:27b-cloud';
 const THEME_MODE_KEY = 'dicta.themeMode.v1';
-const DELETED_SESSION_IDS_KEY = 'dicta.deletedSessionIds.v1';
 const LIVE_METRICS_LANGUAGE_KEY = 'dicta.liveMetricsLanguage.v1';
 const LIVE_METRICS_RANGE_KEY = 'dicta.liveMetricsRange.v1';
 const INSIGHTS_COLLAPSED_KEY = 'dicta.insightsCollapsed.v1';
 const LEADERBOARD_LANGUAGE_KEY = 'dicta.leaderboardLanguage.v1';
 const ADMIN_LANGUAGE_KEY = 'dicta.adminLanguage.v1';
-const ADAPTIVE_BENCHMARKS_KEY = 'dicta.adaptiveBenchmarks.v1';
-const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
-const PROFILE_SCOPED_DICTA_STORAGE_KEYS = [
-  SESSION_STORAGE_KEY,
-  DELETED_SESSION_IDS_KEY,
-  ADAPTIVE_BENCHMARKS_KEY,
-  ADAPTIVE_SESSION_FEEDBACK_KEY,
-  OPENROUTER_GENERATED_SCRIPT_KEY,
-  OPENROUTER_GENERATED_VARIANTS_KEY,
-  OPENROUTER_ACTIVE_JOB_STORAGE_KEY,
-  OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
-] as const;
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 const DICTA_BUILD_INFO = __DICTA_BUILD_INFO__;
@@ -311,13 +284,6 @@ type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
 type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
-type ImmediateSessionSyncOptions = {
-  localStorageSpanName?: string;
-  buildSpanName?: string;
-  pushingMessage?: string;
-  syncedMessage?: string;
-  errorMessage?: string;
-};
 type TrainingSessionSubmissionMeta = {
   positionLabel: string;
   scoreLabel: string;
@@ -383,14 +349,6 @@ const LEADERBOARD_RANGE_DEFINITIONS: Array<{ range: MetricsRangeView; label: str
   { range: 'month', label: 'Month' },
 ];
 
-const SESSION_CREATE_SYNC_OPTIONS: ImmediateSessionSyncOptions = {
-  localStorageSpanName: 'session.create.persistNow.localStorage',
-  buildSpanName: 'supabase.buildSyncState.sessionCreate',
-  pushingMessage: 'Pushing new session to Supabase...',
-  syncedMessage: 'New session synced to Supabase.',
-  errorMessage: 'Supabase session sync failed.',
-};
-
 function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
 }
@@ -452,15 +410,6 @@ type AdminStorageSummary = {
   blobAudioRefs: number;
   remoteAudioRefs: number;
   audioLabels: number;
-};
-
-type SupabaseSyncStatus = {
-  enabled: boolean;
-  state: 'disabled' | 'idle' | 'pulling' | 'pushing' | 'synced' | 'error';
-  message: string;
-  lastSyncedAt: string | null;
-  imported: number;
-  pushed: number;
 };
 
 type PendingSyncSummary = {
@@ -768,6 +717,7 @@ function App() {
   const [adaptiveSessionFeedbackByInputLanguage, setAdaptiveSessionFeedbackByInputLanguage] = useState<AdaptiveSessionFeedbackByInputLanguage>(() =>
     loadAdaptiveSessionFeedback(),
   );
+  const adaptiveSessionFeedbackRef = useRef<AdaptiveSessionFeedbackByInputLanguage>(adaptiveSessionFeedbackByInputLanguage);
   const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<AdaptiveWorkspaceFocusAnchor>(null);
   const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState(() => ({
     decision: false,
@@ -819,19 +769,41 @@ function App() {
     profile: appProfile,
     legacyProfileId: syncConfig.legacyProfileId,
   });
-  const [activeLocalSyncProfileId, setActiveLocalSyncProfileId] = useState(() =>
-    readActiveSyncStorageProfileId(window.localStorage),
-  );
-  const localStorageReadyForEffectiveProfile =
-    !syncConfig.authRequired || !effectiveProfileId || activeLocalSyncProfileId === effectiveProfileId;
-  const effectiveSyncConfig = useMemo(
-    () => ({
-      ...syncConfig,
-      enabled: Boolean(syncConfig.url && syncConfig.anonKey && effectiveProfileId && localStorageReadyForEffectiveProfile),
-      profileId: effectiveProfileId,
-    }),
-    [syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile],
-  );
+  const resetOpenRouterJobsRuntimeRef = useRef<() => void>(() => undefined);
+  const {
+    localStorageReadyForEffectiveProfile,
+    supabaseSyncStatus,
+    persistAndPushSessionsNow,
+    prependSessionAndPersistNow,
+    persistAndPushAdaptiveSessionFeedbackNow,
+    deleteSessionAndSync,
+  } = useSessionPersistenceSync({
+    sessions,
+    setSessions,
+    activeSessionId,
+    setActiveSessionId,
+    syncConfig,
+    supabaseClient,
+    effectiveProfileId,
+    profileDisplayName: appProfile?.displayName,
+    adaptiveBenchmarks: adaptiveBenchmarksByInputLanguage,
+    setAdaptiveBenchmarks: setAdaptiveBenchmarksByInputLanguage,
+    adaptiveBenchmarksRef,
+    adaptiveSessionFeedback: adaptiveSessionFeedbackByInputLanguage,
+    setAdaptiveSessionFeedback: setAdaptiveSessionFeedbackByInputLanguage,
+    adaptiveSessionFeedbackRef,
+    loadSessions,
+    loadAdaptiveBenchmarks,
+    loadAdaptiveSessionFeedback,
+    normalizeSessionForPersistence,
+    normalizeRestoredSession: normalizeRestoredStoredSession,
+    buildSyncState: buildCurrentSyncState,
+    onQuotaRecovered: setError,
+    onProfileStorageSwitched: () => {
+      clearDashboardSession();
+      resetOpenRouterJobsRuntimeRef.current();
+    },
+  });
   const {
     activeOpenRouterJobs,
     openRouterJobNotifications,
@@ -852,14 +824,7 @@ function App() {
       void showGeneratedTrainingSessionNotification(buildGeneratedTrainingSessionNotification(script, trackedJob));
     },
   });
-  const [supabaseSyncStatus, setSupabaseSyncStatus] = useState<SupabaseSyncStatus>({
-    enabled: effectiveSyncConfig.enabled,
-    state: effectiveSyncConfig.enabled ? 'idle' : 'disabled',
-    message: effectiveSyncConfig.enabled ? 'Supabase sync ready.' : 'Sign in with Supabase Auth to enable cross-device sync.',
-    lastSyncedAt: null,
-    imported: 0,
-    pushed: 0,
-  });
+  resetOpenRouterJobsRuntimeRef.current = resetOpenRouterJobsRuntime;
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
@@ -904,23 +869,9 @@ function App() {
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
-  const supabaseInitialPullCompleteRef = useRef(!effectiveSyncConfig.enabled);
-  const supabaseApplyingRemoteRef = useRef(false);
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
   const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
-  const latestSessionsForPersistenceRef = useRef<StoredSession[]>(sessions);
-  const sessionPersistTimerRef = useRef<number | null>(null);
-  const lastPersistedSessionsJsonRef = useRef<string | null>(null);
-  const adaptiveSessionFeedbackRef = useRef<AdaptiveSessionFeedbackByInputLanguage>(adaptiveSessionFeedbackByInputLanguage);
-  const syncStateRef = useRef<DictaSyncState>(
-    buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
-  );
-  const supabasePullInFlightRef = useRef(false);
-  const supabaseKnownRemoteRowsRef = useRef<DictaSyncRow[]>([]);
-  const supabaseLastRemoteUpdatedAtRef = useRef<string | null>(null);
-  const supabaseLastFullPullAtMsRef = useRef(0);
-  const deletedSessionIdsRef = useRef<Set<string>>(loadDeletedSessionIds());
   const kokoroSemanticPhrasesRef = useRef<SemanticPhrase[]>([]);
   const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
   const kokoroSemanticPhraseReplayCountRef = useRef(0);
@@ -944,47 +895,6 @@ function App() {
     accuracy: 100,
     trend: 'stable',
   });
-
-  useEffect(() => {
-    if (!syncConfig.authRequired) return;
-
-    const result = switchProfileScopedStorage(window.localStorage, PROFILE_SCOPED_DICTA_STORAGE_KEYS, effectiveProfileId);
-    if (!result.changed) {
-      if (activeLocalSyncProfileId !== result.activeProfileId) {
-        setActiveLocalSyncProfileId(result.activeProfileId);
-      }
-      return;
-    }
-
-    setActiveLocalSyncProfileId(result.activeProfileId);
-    clearScheduledSessionPersist();
-
-    const restoredSessions = loadSessions();
-    latestSessionsForPersistenceRef.current = restoredSessions;
-    lastPersistedSessionsJsonRef.current = null;
-    setSessions(restoredSessions);
-    setActiveSessionId(restoredSessions[0]?.id ?? '');
-    clearDashboardSession();
-
-    const restoredBenchmarks = loadAdaptiveBenchmarks();
-    adaptiveBenchmarksRef.current = restoredBenchmarks;
-    setAdaptiveBenchmarksByInputLanguage(restoredBenchmarks);
-
-    const restoredFeedback = loadAdaptiveSessionFeedback();
-    adaptiveSessionFeedbackRef.current = restoredFeedback;
-    setAdaptiveSessionFeedbackByInputLanguage(restoredFeedback);
-
-    deletedSessionIdsRef.current = loadDeletedSessionIds();
-    syncStateRef.current = buildCurrentSyncState(restoredSessions, restoredBenchmarks, restoredFeedback);
-    supabaseApplyingRemoteRef.current = false;
-    supabaseInitialPullCompleteRef.current = !result.activeProfileId;
-    supabasePullInFlightRef.current = false;
-    supabaseKnownRemoteRowsRef.current = [];
-    supabaseLastRemoteUpdatedAtRef.current = null;
-    supabaseLastFullPullAtMsRef.current = 0;
-
-    resetOpenRouterJobsRuntime();
-  }, [activeLocalSyncProfileId, clearDashboardSession, effectiveProfileId, resetOpenRouterJobsRuntime, syncConfig.authRequired]);
 
   useEffect(() => {
     if (!supabaseClient || !syncConfig.authRequired) {
@@ -1106,25 +1016,6 @@ function App() {
       cancelled = true;
     };
   }, [adminProfileFilter, appProfile, supabaseClient]);
-
-  useEffect(() => {
-    supabaseInitialPullCompleteRef.current = !effectiveSyncConfig.enabled;
-    supabaseKnownRemoteRowsRef.current = [];
-    supabaseLastRemoteUpdatedAtRef.current = null;
-    supabaseLastFullPullAtMsRef.current = 0;
-    setSupabaseSyncStatus({
-      enabled: effectiveSyncConfig.enabled,
-      state: effectiveSyncConfig.enabled ? 'idle' : 'disabled',
-      message: effectiveSyncConfig.enabled
-        ? `Supabase sync ready for ${appProfile?.displayName ?? effectiveSyncConfig.profileId}.`
-        : syncConfig.authRequired
-          ? 'Sign in with Supabase Auth to enable cross-device sync.'
-          : 'Set Supabase env vars to enable cross-device sync.',
-      lastSyncedAt: null,
-      imported: 0,
-      pushed: 0,
-    });
-  }, [appProfile?.displayName, effectiveSyncConfig.enabled, effectiveSyncConfig.profileId, syncConfig.authRequired]);
 
   const config = useMemo(() => configForDifficulty(difficulty), [difficulty]);
   const controllerRef = useRef(new SyncController(config));
@@ -1497,214 +1388,6 @@ function App() {
     };
   }, [workspaceMode]);
 
-  function clearScheduledSessionPersist(): void {
-    if (sessionPersistTimerRef.current === null) return;
-    window.clearTimeout(sessionPersistTimerRef.current);
-    sessionPersistTimerRef.current = null;
-  }
-
-  function isLocalStorageQuotaExceeded(error: unknown): boolean {
-    if (!error || typeof error !== 'object') return false;
-    const candidate = error as { name?: unknown; code?: unknown };
-    return (
-      candidate.name === 'QuotaExceededError' ||
-      candidate.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-      candidate.code === 22 ||
-      candidate.code === 1014
-    );
-  }
-
-  function compactTelemetryForStorage(telemetry: SessionTelemetry): SessionTelemetry {
-    return {
-      ...telemetry,
-      lagSeries: telemetry.lagSeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
-      wpmSeries: telemetry.wpmSeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
-      accuracySeries: telemetry.accuracySeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
-      actions: telemetry.actions.slice(-SESSION_PERSIST_RECOVERY_ACTION_LIMIT),
-      ttsChunks: telemetry.ttsChunks.slice(-SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT),
-      rateDistribution: telemetry.rateDistribution.slice(-40),
-    };
-  }
-
-  function buildQuotaRecoverySessions(nextSessions: StoredSession[]): StoredSession[] {
-    const sortedSessions = [...nextSessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    const recoverySessions = sortedSessions.filter(
-      (session, index) => index < SESSION_PERSIST_RECOVERY_MAX_SESSIONS || session.id === activeSessionId,
-    );
-
-    return recoverySessions.map((session, index) => {
-      const normalized = normalizeSessionForPersistence(session);
-      const keepFullTelemetry =
-        session.id === activeSessionId ||
-        index < SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS ||
-        session.status === 'running' ||
-        session.status === 'paused';
-
-      return keepFullTelemetry
-        ? normalized
-        : {
-            ...normalized,
-            telemetry: compactTelemetryForStorage(normalized.telemetry),
-          };
-    });
-  }
-
-  function persistSessionsToLocalStorage(nextSessions: StoredSession[], spanName = 'session.localStorage.persist'): void {
-    perfDiagnostics.withSpan(spanName, () => {
-      const json = JSON.stringify(nextSessions.map((session) => normalizeSessionForPersistence(session)));
-      if (json === lastPersistedSessionsJsonRef.current) return;
-
-      try {
-        window.localStorage.setItem(SESSION_STORAGE_KEY, json);
-        lastPersistedSessionsJsonRef.current = json;
-      } catch (error) {
-        if (!isLocalStorageQuotaExceeded(error)) {
-          throw error;
-        }
-
-        const recoveryJson = JSON.stringify(buildQuotaRecoverySessions(nextSessions));
-        window.localStorage.setItem(SESSION_STORAGE_KEY, recoveryJson);
-        lastPersistedSessionsJsonRef.current = recoveryJson;
-        setError('Local session storage was full. Dicta compacted older session telemetry so the current session can keep saving.');
-      }
-    }, { sessionCount: nextSessions.length });
-  }
-
-  function flushScheduledSessionPersist(spanName = 'session.localStorage.flush'): void {
-    clearScheduledSessionPersist();
-    persistSessionsToLocalStorage(latestSessionsForPersistenceRef.current, spanName);
-  }
-
-  useEffect(() => {
-    latestSessionsForPersistenceRef.current = sessions;
-    if (!localStorageReadyForEffectiveProfile) return;
-    clearScheduledSessionPersist();
-    sessionPersistTimerRef.current = window.setTimeout(() => {
-      sessionPersistTimerRef.current = null;
-      persistSessionsToLocalStorage(latestSessionsForPersistenceRef.current);
-    }, SESSION_PERSIST_DEBOUNCE_MS);
-  }, [localStorageReadyForEffectiveProfile, sessions]);
-
-  useEffect(() => {
-    const flushBeforeExit = () => flushScheduledSessionPersist('session.localStorage.flushBeforeExit');
-    const flushWhenHidden = () => {
-      if (document.visibilityState === 'hidden') {
-        flushBeforeExit();
-      }
-    };
-    window.addEventListener('pagehide', flushBeforeExit);
-    window.addEventListener('beforeunload', flushBeforeExit);
-    document.addEventListener('visibilitychange', flushWhenHidden);
-    return () => {
-      flushScheduledSessionPersist();
-      window.removeEventListener('pagehide', flushBeforeExit);
-      window.removeEventListener('beforeunload', flushBeforeExit);
-      document.removeEventListener('visibilitychange', flushWhenHidden);
-    };
-  }, []);
-
-  function persistAndPushSessionsNow(nextSessions: StoredSession[], options: ImmediateSessionSyncOptions = {}): void {
-    const {
-      localStorageSpanName = 'session.persistNow.localStorage',
-      buildSpanName = 'supabase.buildSyncState.final',
-      pushingMessage = 'Pushing final session to Supabase...',
-      syncedMessage = 'Final session synced to Supabase.',
-      errorMessage = 'Supabase sync failed.',
-    } = options;
-    latestSessionsForPersistenceRef.current = nextSessions;
-    clearScheduledSessionPersist();
-    persistSessionsToLocalStorage(nextSessions, localStorageSpanName);
-
-    let syncState: DictaSyncState | null = null;
-    if (supabaseClient && effectiveSyncConfig.enabled) {
-      syncState = perfDiagnostics.withSpan(buildSpanName, () =>
-        buildCurrentSyncState(nextSessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
-      );
-      syncStateRef.current = syncState;
-    }
-
-    if (!supabaseClient || !effectiveSyncConfig.enabled || !syncState || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
-
-    setSupabaseSyncStatus((current) => ({
-      ...current,
-      state: 'pushing',
-      message: pushingMessage,
-    }));
-    void pushSyncRowsDetailed(supabaseClient, effectiveSyncConfig.profileId, syncState, {
-      existingRows: supabaseKnownRemoteRowsRef.current,
-    })
-      .then(({ pushed, pushedRows }) => {
-        supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
-        supabaseLastRemoteUpdatedAtRef.current =
-          latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
-        setSupabaseSyncStatus((current) => ({
-          ...current,
-          state: 'synced',
-          message: syncedMessage,
-          lastSyncedAt: new Date().toISOString(),
-          pushed,
-        }));
-      })
-      .catch((error) => {
-        setSupabaseSyncStatus((current) => ({
-          ...current,
-          state: 'error',
-          message: error instanceof Error ? error.message : errorMessage,
-        }));
-      });
-  }
-
-  function prependSessionAndPersistNow(createNextSession: (previousSessions: StoredSession[]) => StoredSession): StoredSession {
-    const previousSessions = latestSessionsForPersistenceRef.current;
-    const nextSession = createNextSession(previousSessions);
-    const nextSessions = [nextSession, ...previousSessions];
-    setSessions(nextSessions);
-    persistAndPushSessionsNow(nextSessions, SESSION_CREATE_SYNC_OPTIONS);
-    return nextSession;
-  }
-
-  function persistAndPushAdaptiveSessionFeedbackNow(nextFeedback: AdaptiveSessionFeedbackByInputLanguage): void {
-    adaptiveSessionFeedbackRef.current = nextFeedback;
-    window.localStorage.setItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(nextFeedback));
-    const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.feedbackFinal', () =>
-      buildCurrentSyncState(latestSessionsForPersistenceRef.current, adaptiveBenchmarksRef.current, nextFeedback),
-    );
-    syncStateRef.current = syncState;
-    if (!supabaseClient || !effectiveSyncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
-
-    setSupabaseSyncStatus((current) => ({
-      ...current,
-      state: 'pushing',
-      message: 'Pushing completed session feedback to Supabase...',
-    }));
-    void pushSyncRowsDetailed(supabaseClient, effectiveSyncConfig.profileId, syncState, {
-      existingRows: supabaseKnownRemoteRowsRef.current,
-    })
-      .then(({ pushed, pushedRows }) => {
-        supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
-        supabaseLastRemoteUpdatedAtRef.current =
-          latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
-        setSupabaseSyncStatus((current) => ({
-          ...current,
-          state: 'synced',
-          message: 'Completed session feedback synced to Supabase.',
-          lastSyncedAt: new Date().toISOString(),
-          pushed,
-        }));
-      })
-      .catch((error) => {
-        setSupabaseSyncStatus((current) => ({
-          ...current,
-          state: 'error',
-          message: error instanceof Error ? error.message : 'Supabase feedback sync failed.',
-        }));
-      });
-  }
-
-  useEffect(() => {
-    syncStateRef.current = buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage);
-  }, [sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage]);
-
   useEffect(() => {
     const updateOnlineState = () => setIsOnline(navigator.onLine);
     updateOnlineState();
@@ -1715,160 +1398,6 @@ function App() {
       window.removeEventListener('offline', updateOnlineState);
     };
   }, []);
-
-  useEffect(() => {
-    if (!supabaseClient || !effectiveSyncConfig.enabled) return;
-    const client = supabaseClient;
-    let cancelled = false;
-
-    async function pullAndMergeSync(reason: 'initial' | 'background'): Promise<void> {
-      if (supabasePullInFlightRef.current) return;
-      supabasePullInFlightRef.current = true;
-      setSupabaseSyncStatus((current) => ({
-        ...current,
-        state: 'pulling',
-        message: reason === 'initial' ? 'Pulling Supabase sync data...' : 'Refreshing Supabase sync data...',
-      }));
-      try {
-        const shouldFullPull = reason === 'initial' || Date.now() - supabaseLastFullPullAtMsRef.current > 60 * 60_000;
-        const rows = await pullSyncRows(client, effectiveSyncConfig.profileId, {
-          updatedAfter: shouldFullPull ? null : supabaseLastRemoteUpdatedAtRef.current,
-        });
-        if (cancelled) return;
-        if (shouldFullPull) {
-          supabaseLastFullPullAtMsRef.current = Date.now();
-        }
-        supabaseKnownRemoteRowsRef.current = shouldFullPull ? rows : mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, rows);
-        supabaseLastRemoteUpdatedAtRef.current =
-          latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
-        const transientErrorSessionIds = rows
-          .filter((row) => row.item_type === 'session' && isTransientGenerationErrorSessionLike(row.payload))
-          .map((row) => row.item_key);
-        if (transientErrorSessionIds.length > 0) {
-          transientErrorSessionIds.forEach((sessionId) => deletedSessionIdsRef.current.add(sessionId));
-          persistDeletedSessionIds(deletedSessionIdsRef.current);
-          void Promise.allSettled(transientErrorSessionIds.map((sessionId) => deleteSessionSyncRow(client, effectiveSyncConfig.profileId, sessionId)));
-        }
-        const merged = mergeSyncRows(syncStateRef.current, rows);
-        if (merged.deletedSessionIds.length > 0) {
-          merged.deletedSessionIds.forEach((sessionId) => deletedSessionIdsRef.current.add(sessionId));
-          persistDeletedSessionIds(deletedSessionIdsRef.current);
-        }
-        const filteredMergedSessions = (merged.sessions as StoredSession[]).map(normalizeRestoredStoredSession).filter(
-          (session) => !deletedSessionIdsRef.current.has(session.id) && !isTransientGenerationErrorSessionLike(session),
-        );
-        supabaseInitialPullCompleteRef.current = true;
-
-        if (merged.changed || filteredMergedSessions.length !== (merged.sessions as StoredSession[]).length) {
-          supabaseApplyingRemoteRef.current = true;
-          setSessions(filteredMergedSessions);
-          setAdaptiveBenchmarksByInputLanguage(merged.benchmarks as AdaptiveBenchmarksByInputLanguage);
-          setAdaptiveSessionFeedbackByInputLanguage(merged.feedback as AdaptiveSessionFeedbackByInputLanguage);
-          window.setTimeout(() => {
-            supabaseApplyingRemoteRef.current = false;
-          }, 0);
-        }
-
-        const postMergeState = {
-          ...merged,
-          sessions: filteredMergedSessions,
-        };
-        const { pushed, pushedRows } = await pushSyncRowsDetailed(client, effectiveSyncConfig.profileId, postMergeState, {
-          existingRows: supabaseKnownRemoteRowsRef.current,
-        });
-        supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
-        supabaseLastRemoteUpdatedAtRef.current =
-          latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
-        if (cancelled) return;
-        setSupabaseSyncStatus({
-          enabled: true,
-          state: 'synced',
-          message: merged.imported > 0 ? `Synced. Imported ${merged.imported} remote item${merged.imported === 1 ? '' : 's'}.` : 'Synced with Supabase.',
-          lastSyncedAt: new Date().toISOString(),
-          imported: merged.imported,
-          pushed,
-        });
-      } catch (error) {
-        supabaseInitialPullCompleteRef.current = true;
-        if (cancelled) return;
-        setSupabaseSyncStatus((current) => ({
-          ...current,
-          state: 'error',
-          message: error instanceof Error ? error.message : 'Supabase sync failed.',
-        }));
-      } finally {
-        supabasePullInFlightRef.current = false;
-      }
-    }
-
-    void pullAndMergeSync('initial');
-
-    const intervalId = window.setInterval(() => {
-      void pullAndMergeSync('background');
-    }, 45_000);
-
-    const onFocus = () => {
-      void pullAndMergeSync('background');
-    };
-    const onOnline = () => {
-      void pullAndMergeSync('background');
-    };
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('online', onOnline);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('online', onOnline);
-    };
-  }, [supabaseClient, effectiveSyncConfig.enabled, effectiveSyncConfig.profileId]);
-
-  useEffect(() => {
-    if (!supabaseClient || !effectiveSyncConfig.enabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
-
-    const timeout = window.setTimeout(() => {
-      setSupabaseSyncStatus((current) => ({
-        ...current,
-        state: 'pushing',
-        message: 'Pushing local changes to Supabase...',
-      }));
-      const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.background', () =>
-        buildCurrentSyncState(sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage),
-      );
-      pushSyncRowsDetailed(supabaseClient, effectiveSyncConfig.profileId, syncState, {
-        existingRows: supabaseKnownRemoteRowsRef.current,
-      })
-        .then(({ pushed, pushedRows }) => {
-          supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
-          supabaseLastRemoteUpdatedAtRef.current =
-            latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
-          setSupabaseSyncStatus((current) => ({
-            ...current,
-            state: 'synced',
-            message: 'Local changes synced to Supabase.',
-            lastSyncedAt: new Date().toISOString(),
-            pushed,
-          }));
-        })
-        .catch((error) => {
-          setSupabaseSyncStatus((current) => ({
-            ...current,
-            state: 'error',
-            message: error instanceof Error ? error.message : 'Supabase sync failed.',
-          }));
-        });
-    }, 1200);
-
-    return () => window.clearTimeout(timeout);
-  }, [
-    adaptiveBenchmarksByInputLanguage,
-    adaptiveSessionFeedbackByInputLanguage,
-    sessions,
-    supabaseClient,
-    effectiveSyncConfig.enabled,
-    effectiveSyncConfig.profileId,
-  ]);
 
   useEffect(() => {
     controllerRef.current = new SyncController(config);
@@ -3172,35 +2701,7 @@ function App() {
         showLeaderboardWorkspace();
       }
     }
-    deletedSessionIdsRef.current.add(sessionId);
-    persistDeletedSessionIds(deletedSessionIdsRef.current);
-    setSessions((prev) => prev.filter((session) => session.id !== sessionId));
-    if (supabaseClient && effectiveSyncConfig.enabled) {
-      setSupabaseSyncStatus((current) => ({
-        ...current,
-        state: 'pushing',
-        message: 'Deleting session in Supabase...',
-      }));
-      void deleteSessionSyncRow(supabaseClient, effectiveSyncConfig.profileId, sessionId)
-        .then((deletedRow) => {
-          supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, [deletedRow]);
-          supabaseLastRemoteUpdatedAtRef.current =
-            latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
-          setSupabaseSyncStatus((current) => ({
-            ...current,
-            state: 'synced',
-            message: 'Session deleted and synced.',
-            lastSyncedAt: new Date().toISOString(),
-          }));
-        })
-        .catch((error) => {
-          setSupabaseSyncStatus((current) => ({
-            ...current,
-            state: 'error',
-            message: error instanceof Error ? error.message : 'Failed to delete session in Supabase.',
-          }));
-        });
-    }
+    deleteSessionAndSync(sessionId);
   }
 
   function openDashboardForSession(sessionId: string): void {
@@ -8389,23 +7890,6 @@ function loadSessions(): StoredSession[] {
   } catch {
     return [];
   }
-}
-
-function loadDeletedSessionIds(): Set<string> {
-  const raw = window.localStorage.getItem(DELETED_SESSION_IDS_KEY);
-  if (!raw) return new Set();
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((value): value is string => typeof value === 'string' && value.length > 0));
-  } catch {
-    return new Set();
-  }
-}
-
-function persistDeletedSessionIds(ids: Set<string>): void {
-  const normalized = [...ids].filter(Boolean).slice(-600);
-  window.localStorage.setItem(DELETED_SESSION_IDS_KEY, JSON.stringify(normalized));
 }
 
 function formatSessionDate(value: string): string {

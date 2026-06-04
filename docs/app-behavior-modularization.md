@@ -2,7 +2,7 @@
 
 Phase 2: behavior-aware modularization.
 
-Status: active. The `useWorkspaceRouting` and `useOpenRouterJobsRuntime` boundaries have been extracted; no later Phase 2 boundary has started.
+Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, and `useSessionPersistenceSync` boundaries have been extracted; no later Phase 2 boundary has started.
 
 `src/App.tsx` still owns substantial runtime behavior: workspace orchestration, hook-shaped state boundaries, side-effect ownership, polling, persistence, sync, adaptive wiring, playback lifecycle, auth/profile glue, generated-session handoff, and browser lifecycle logic. Phase 2 exists to move those behavior boundaries deliberately, one at a time, without changing product behavior.
 
@@ -121,6 +121,8 @@ Move localStorage session persistence, profile-scoped storage readiness, tombsto
 
 Risk: high. Watch for data loss, tombstone regressions, and cross-profile leakage.
 
+Status: complete.
+
 ### D. useAdaptiveRuntime
 
 Proposed file:
@@ -188,7 +190,7 @@ Stop the Phase 2 extraction if:
 
 Phase 2 started with `useWorkspaceRouting`.
 
-`useOpenRouterJobsRuntime` is now complete. The next listed boundary is `useSessionPersistenceSync`, but it is high risk. Do not start it without fresh measurement, a data-loss/tombstone test plan, and explicit review of profile-scoped storage behavior.
+`useSessionPersistenceSync` is now complete. The next listed boundary is `useAdaptiveRuntime`, but it is high risk and should start only after fixture/replay coverage for adaptive runtime wiring.
 
 ## Closeout Log
 
@@ -216,4 +218,17 @@ Behavior preserved: browser-side durable OpenRouter active-job storage, polling 
 Validation: git status; git pull origin main; App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile
 Manual smoke test: automated Playwright mobile smoke passed; no separate browser manual smoke was needed for this non-visual runtime extraction.
 Follow-ups: next listed candidate is useSessionPersistenceSync, but only after a fresh Phase 2 measurement/checklist and a dedicated data-loss/tombstone regression plan.
+```
+
+```text
+Boundary: useSessionPersistenceSync
+Status: complete
+PR/commit: pending
+Pre-change App.tsx lines: 8777
+Post-change App.tsx lines: 8305
+Files added/moved: src/app/useSessionPersistenceSync.ts; tests/useSessionPersistenceSync.test.ts
+Behavior preserved: session localStorage key, adaptive benchmark/feedback storage keys, profile-scoped storage key set, tombstone key and retention behavior, debounced session persistence, immediate finalize/create/feedback persistence, Supabase row shapes, pull/merge/push cadence, transient generation-error tombstoning, and admin/profile/auth boundaries. Adaptive heuristics, OpenRouter payloads, server routes, rate limits, LowLatencyTextarea behavior, and session normalization semantics were not changed.
+Validation: git status; git pull origin main; App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile
+Manual smoke test: automated Playwright mobile smoke passed; focused hook tests cover debounced/immediate persistence, profile-scoped switching readiness, and local tombstones.
+Follow-ups: next listed candidate is useAdaptiveRuntime, but only after fixture/replay coverage for adaptive wiring.
 ```
