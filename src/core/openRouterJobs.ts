@@ -2,6 +2,7 @@ import type { DictationScriptDifficulty } from './adaptive/dictationScriptValida
 import type { OpenRouterDurationMinutes } from './adaptive/openRouterGenerationPrompt';
 import type { InputMode, LanguageCode } from './adaptive/types';
 import { isSupportedLanguage } from './languages';
+import { isStoredInputMode, normalizeInputMode } from './adaptive/inputModes';
 
 export const OPENROUTER_ACTIVE_JOB_STORAGE_KEY = 'dicta.openrouterActiveJob.v1';
 export const OPENROUTER_ACTIVE_JOBS_STORAGE_KEY = 'dicta.openrouterActiveJobs.v1';
@@ -139,8 +140,9 @@ function normalizeActiveOpenRouterJob(value: unknown): ActiveOpenRouterJob | nul
   const language = stringField(record, 'language');
   const durationMinutes = Number(record.durationMinutes);
   const startedAt = stringField(record, 'startedAt');
+  const canonicalInputMode = normalizeInputMode(inputMode);
 
-  if (!jobId || !model || !slotLabel || !isInputMode(inputMode) || !isLanguage(language) || !isDuration(durationMinutes) || !startedAt) {
+  if (!jobId || !model || !slotLabel || !isInputMode(inputMode) || !canonicalInputMode || !isLanguage(language) || !isDuration(durationMinutes) || !startedAt) {
     return null;
   }
 
@@ -154,7 +156,7 @@ function normalizeActiveOpenRouterJob(value: unknown): ActiveOpenRouterJob | nul
     jobId,
     model,
     slotLabel,
-    inputMode,
+    inputMode: canonicalInputMode,
     language,
     durationMinutes,
     ...(targetDifficulty === 'easy' || targetDifficulty === 'normal' || targetDifficulty === 'hard' ? { targetDifficulty } : {}),
@@ -180,8 +182,8 @@ function finiteNumberField(record: Record<string, unknown>, key: string): number
   return Number.isFinite(value) ? value : null;
 }
 
-function isInputMode(value: string): value is InputMode {
-  return value === 'audio' || value === 'browser-tts' || value === 'kokoro' || value === 'qwen-cloud';
+function isInputMode(value: string): boolean {
+  return isStoredInputMode(value);
 }
 
 function isLanguage(value: string): value is LanguageCode {
