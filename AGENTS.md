@@ -126,7 +126,7 @@ Recent mobile/PWA fixes changed how `/training` handles typing and persistence. 
   - `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling in installed Android PWA runtime.
   - Keep diagnostics passive; avoid adding instrumentation that increases typing latency.
   - `tests/LowLatencyTextareaContract.test.ts`, `tests/lowLatencyTextarea.test.ts`, and `tests/lowLatencyPerformanceGate.test.ts` protect the low-latency typing contract.
-  - `npm run test:e2e:mobile` runs the Playwright mobile guard against `e2e-training.html`, backed by `src/e2e/trainingPerfHarness.tsx` and `e2e/training-mobile.spec.ts`, to catch real-browser typing/render regressions.
+  - `npm run test:e2e:mobile` runs the Playwright mobile guard against `e2e-training.html`, backed by `src/e2e/trainingPerfHarness.tsx` and `e2e/training-mobile.spec.ts`, to catch real-browser typing/render regressions. GitHub CI runs this guard after `npm run build` and uploads Playwright trace, screenshot, and video artifacts only on failure.
 
 ## Persistence and Sync
 

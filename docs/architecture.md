@@ -33,7 +33,7 @@ Browser app:
 
 - `src/App.tsx`: workspace router and session orchestration.
 - `/training`: low-latency typing surface and session controls.
-- Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`.
+- Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
 - Adaptive Pace Layer cockpit: benchmark and feedback diagnostics.
 - OpenRouter workspace: structured dictation script generation slots.
 - Ollama workspace: Ollama Cloud model listing and chat-test prompt surface.
@@ -260,4 +260,3 @@ Local services:
 - Kokoro support for `de`, `fr`, and `pt` remains blocked or experimental.
 - Input #4 still uses the historical `qwen-cloud` identifier even though the current cache generator is CosyVoice2.
 - Full-tree render volume during long Browser TTS runs can still be reduced.
-- The dedicated mobile Playwright training guard exists, but `.github/workflows/ci.yml` does not run `npm run test:e2e:mobile` yet.
