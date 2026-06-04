@@ -1,6 +1,18 @@
 # App.tsx Modularization Plan
 
-`src/App.tsx` is still the main orchestration surface for Dicta. Because it owns training state, adaptive behavior, local services, sync, admin UI, routing, global app state, auth headers, polling/global lifecycle, final generated-session creation, and sensitive callbacks, modularization must stay incremental and boundary-driven.
+Phase 1: UI-only / presentational modularization.
+
+Status: maintenance / evaluate-before-continuing, not closed.
+
+Use this file only for future UI-only extractions from `src/App.tsx`, and only when fresh measurement shows a concrete presentational target. Do not use this file for behavior, persistence, sync, adaptive, playback, auth, or lifecycle moves.
+
+Behavior-aware modularization belongs in:
+
+```text
+docs/app-behavior-modularization.md
+```
+
+`src/App.tsx` is still the main orchestration surface for Dicta. Because it owns training state, adaptive behavior, local services, sync, admin UI, routing, global app state, auth headers, polling/global lifecycle, final generated-session creation, and sensitive callbacks, Phase 1 modularization must stay limited to UI-only extraction and explicit presentational boundaries.
 
 _Last updated: 2026-06-04_
 
@@ -78,7 +90,9 @@ Net reduction in `src/App.tsx` from the PendingSessionLane reuse pass:
 ## Rules
 
 - Do not combine modularization with behavior changes.
-- Do not touch adaptive pacing behavior while extracting UI or helpers.
+- Do not touch adaptive pacing behavior while extracting UI-only components or presentational helpers.
+- Do not move behavior, persistence, sync, adaptive, playback, auth, or lifecycle ownership under this Phase 1 plan.
+- Use `docs/app-behavior-modularization.md` for behavior-aware Phase 2 work.
 - Do not change `(inputMode, language)` semantics during extraction.
 - Each extraction should move one cohesive unit and keep imports explicit.
 - Each step should pass `npm run test -- --reporter=verbose` and `npm run build` before the next extraction.
@@ -425,7 +439,7 @@ Recommended follow-up:
 
 Boundary: runtime setup/sidebar panels and TTS/Kokoro/CosyVoice workspace UI still embedded in the main app render branch.
 
-Status: active incremental extraction.
+Status: maintenance / evaluate-before-continuing.
 
 Dedicated plan:
 
@@ -433,7 +447,7 @@ Dedicated plan:
 docs/runtime-input-workspaces-modularization.md
 ```
 
-The next large remaining JSX is concentrated around input setup/sidebar UI, `workspaceMode === 'tts'`, `workspaceMode === 'kokoro'`, Input #4/CosyVoice cache controls, shared runtime practice controls, and the bottom live-metrics/insights area.
+Remaining JSX candidates are concentrated around input setup/sidebar UI, `workspaceMode === 'tts'`, `workspaceMode === 'kokoro'`, Input #4/CosyVoice cache controls, shared runtime practice controls, and the bottom live-metrics/insights area. Do not continue this UI-only track without fresh measurement and a concrete presentational target.
 
 Completed runtime extractions:
 
@@ -656,7 +670,7 @@ Stop condition:
 
 - Stop and run a fresh measurement before selecting another App.tsx extraction candidate.
 
-## Per-patch checklist
+## Phase 1 Per-patch Checklist
 
 Before each extraction patch:
 
