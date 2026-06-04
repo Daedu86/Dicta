@@ -2,7 +2,7 @@
 
 `src/App.tsx` is still the main orchestration surface for Dicta. Because it owns training state, adaptive behavior, local services, sync, admin UI, routing, global app state, auth headers, polling/global lifecycle, final generated-session creation, and sensitive callbacks, modularization must stay incremental and boundary-driven.
 
-_Last updated: 2026-06-03_
+_Last updated: 2026-06-04_
 
 Read first:
 
@@ -13,10 +13,10 @@ Read first:
 
 ## Current size
 
-Current `src/App.tsx` size on `main` after the AudioPracticeCard extraction pass:
+Current `src/App.tsx` size after the AuthWorkspace extraction pass:
 
 ```text
-9,620 lines
+9,149 lines
 ```
 
 Baseline before the AdminWorkspace extraction pass, using commit `f5e915b24c9bbbcbf29cc8362ef6325e90895952`:
@@ -55,6 +55,12 @@ Net reduction in `src/App.tsx` from the AdaptiveAdvancedDiagnostics extraction p
 
 ```text
 271 lines
+```
+
+Net reduction in `src/App.tsx` from the AuthWorkspace extraction pass:
+
+```text
+79 lines
 ```
 
 ## Rules
@@ -515,6 +521,43 @@ Recommended follow-up:
 Stop condition:
 
 - Do not move audio engines, Browser TTS playback logic, Kokoro/CosyVoice sidecar behavior, adaptive controller updates, localStorage, sync, or submit/reset behavior without a separate behavior-aware plan.
+
+### 10. Auth workspace
+
+Boundary: browser UI for the Supabase auth-required route.
+
+Status: complete.
+
+Dedicated plan and closeout:
+
+```text
+docs/auth-workspace-modularization.md
+```
+
+Completed extraction file:
+
+```text
+src/components/auth/AuthWorkspace.tsx
+```
+
+Preserved behavior:
+
+- `syncConfig.authRequired` gate logic stayed in `App.tsx`;
+- Supabase session/profile state stayed in `App.tsx`;
+- auth form state, auth messages, and auth errors stayed in `App.tsx`;
+- `signInWithSupabase`, `requestSupabasePasswordReset`, `updateSupabasePassword`, `signOut`, and `showAuthView` stayed in `App.tsx`;
+- profile/localStorage readiness derivation stayed in `App.tsx`;
+- persistence, sync, localStorage, API routes, Supabase/RLS behavior, and adaptive `(inputMode, language)` behavior were not changed.
+
+Impact:
+
+- Fresh pre-pass size: `9,228` App.tsx lines.
+- Current post-pass size: `9,149` App.tsx lines.
+- Net App.tsx reduction: `79` lines.
+
+Stop condition:
+
+- Stop and run a fresh measurement before selecting another App.tsx extraction candidate.
 
 ## Per-patch checklist
 

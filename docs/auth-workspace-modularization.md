@@ -1,17 +1,29 @@
 # AuthWorkspace modularization plan
 
-_Last updated: 2026-06-03_
+_Last updated: 2026-06-04_
 
 ## Status
 
-Planning/evaluation only. No code has moved under this plan yet.
+Complete. The auth/sign-in route branch was extracted as a UI-only component.
 
 This plan covers the inline auth/sign-in route branch in `src/App.tsx` after the runtime, leaderboard, and adaptive diagnostics extraction passes.
 
-Current `src/App.tsx` size after the AudioPracticeCard pass:
+Fresh pre-extraction `src/App.tsx` size:
 
 ```text
-9,620 lines
+9,228 lines
+```
+
+Current `src/App.tsx` size after the AuthWorkspace extraction:
+
+```text
+9,149 lines
+```
+
+Net `App.tsx` reduction from this extraction:
+
+```text
+79 lines
 ```
 
 ## Proposed target
@@ -35,10 +47,10 @@ However, it is behavior-adjacent because it displays Supabase auth states and ca
 ## Current approximate range
 
 ```text
-src/App.tsx:6600-6825
+Historical pre-extraction range: src/App.tsx:6876-6987
 ```
 
-Actual lines may drift. Re-measure immediately before implementation.
+The inline range no longer exists in `App.tsx`; the auth UI now lives in `src/components/auth/AuthWorkspace.tsx`.
 
 ## Observed UI scope
 
@@ -182,15 +194,46 @@ Create:
 src/components/auth/AuthWorkspace.tsx
 ```
 
+Status: complete.
+
 Move only the auth early-return JSX into the new component.
 
 Keep the `if (syncConfig.authRequired && ...)` condition in `App.tsx`; only replace the returned JSX with `<AuthWorkspace ... />`.
 
-Keep `PerfDiagnosticsOverlay` behavior unchanged. Either keep it in `App.tsx` around the component or pass `perfDiagnosticsEnabled` and import/use `PerfDiagnosticsOverlay` from the same stable source if already importable. Prefer the option that avoids broad refactors.
+Keep `PerfDiagnosticsOverlay` behavior unchanged. The extracted component imports the existing overlay and receives `perfDiagnosticsEnabled` as an explicit prop.
 
 ### Step 2: stop and measure
 
-After AuthWorkspace is stable, stop and measure before choosing another extraction.
+Status: complete.
+
+After AuthWorkspace, stop and measure before choosing another extraction.
+
+## Completed scope
+
+Moved to `src/components/auth/AuthWorkspace.tsx`:
+
+- auth layout wrapper and panel markup;
+- brand mark and `Dicta access` header;
+- checking-session, loading-profile, local-storage preparation, and profile-error display states;
+- update-password form;
+- forgot-password form;
+- sign-in form;
+- auth message/error rendering;
+- `PerfDiagnosticsOverlay` usage through the existing overlay component.
+
+Left in `src/App.tsx`:
+
+- `syncConfig.authRequired` gate logic;
+- Supabase session/profile state;
+- auth form state;
+- auth message/error state;
+- local-storage profile readiness derivation;
+- `signInWithSupabase`;
+- `requestSupabasePasswordReset`;
+- `updateSupabasePassword`;
+- `signOut`;
+- `showAuthView`;
+- persistence, sync, localStorage, API routes, and Supabase behavior.
 
 ## Validation
 
@@ -202,6 +245,21 @@ npm run build
 wc -l src/App.tsx
 git diff --stat
 git status --short
+```
+
+Validation result for the completed patch:
+
+```text
+npm run test -- --reporter=verbose
+52 test files passed, 377 tests passed
+
+npm run build
+passed
+
+Browser verification against the built dist app
+title: Dicta
+expected UI present: true
+console errors: 0
 ```
 
 ## Stop conditions
@@ -217,10 +275,10 @@ Stop and do not extract if:
 
 ## Recommendation
 
-Proceed only with:
+Completed:
 
 ```text
 src/components/auth/AuthWorkspace.tsx
 ```
 
-Keep the extraction UI-only and stop for a fresh measurement afterward.
+Stop for a fresh measurement before selecting another App.tsx extraction candidate.

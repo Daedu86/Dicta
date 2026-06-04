@@ -121,6 +121,7 @@ import {
 } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
+import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
 import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
@@ -6875,114 +6876,34 @@ function App() {
 
   if (syncConfig.authRequired && (authLoading || authView === 'updatePassword' || !authSession || !appProfile || appProfileError || !localStorageReadyForEffectiveProfile)) {
     return (
-      <main className={`app auth-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
-        <section className="auth-panel">
-          <div className="brand-mark auth-brand-mark">
-            <span className="brand-mark-icon" aria-hidden="true">D</span>
-          </div>
-          <div>
-            <p className="dashboard-eyebrow">Dicta access</p>
-            <h1>Sign in</h1>
-            <p className="dashboard-meta">Use the Supabase account assigned to your Dicta profile.</p>
-          </div>
-          {authLoading ? (
-            <p className="hint">Checking session...</p>
-          ) : authSession && !appProfile && !appProfileError ? (
-            <p className="hint">Loading Dicta profile...</p>
-          ) : authSession && appProfile && !localStorageReadyForEffectiveProfile ? (
-            <p className="hint">Preparing local storage for {appProfile.displayName ?? effectiveProfileId}...</p>
-          ) : authSession && appProfileError ? (
-            <>
-              <p className="error">{appProfileError}</p>
-              <button type="button" className="secondary-button" onClick={() => void signOut()}>
-                Sign out
-              </button>
-            </>
-          ) : authView === 'updatePassword' ? (
-            <>
-              <form className="auth-form" onSubmit={(event) => void updateSupabasePassword(event)}>
-                <label>
-                  New password
-                  <input
-                    type="password"
-                    value={authNewPassword}
-                    onChange={(event) => setAuthNewPassword(event.target.value)}
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                  />
-                </label>
-                <label>
-                  Confirm password
-                  <input
-                    type="password"
-                    value={authNewPasswordConfirm}
-                    onChange={(event) => setAuthNewPasswordConfirm(event.target.value)}
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  className="secondary-button"
-                  disabled={authBusy || authNewPassword.length < 8 || authNewPasswordConfirm.length < 8}
-                >
-                  {authBusy ? 'Saving...' : 'Save new password'}
-                </button>
-                <button type="button" className="auth-text-button" onClick={() => showAuthView('signIn')}>
-                  Back to sign in
-                </button>
-              </form>
-              {authMessage ? <p className={authMessageTone === 'success' ? 'success' : authMessageTone === 'error' ? 'error' : 'hint'}>{authMessage}</p> : null}
-              {authError ? <p className="error">{authError}</p> : null}
-            </>
-          ) : authView === 'forgotPassword' ? (
-            <>
-              <form className="auth-form" onSubmit={(event) => void requestSupabasePasswordReset(event)}>
-                <label>
-                  Email
-                  <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" required />
-                </label>
-                <button type="submit" className="secondary-button" disabled={authBusy || !authEmail.trim()}>
-                  {authBusy ? 'Sending...' : 'Send reset email'}
-                </button>
-                <button type="button" className="auth-text-button" onClick={() => showAuthView('signIn')}>
-                  Back to sign in
-                </button>
-              </form>
-              {authMessage ? <p className={authMessageTone === 'success' ? 'success' : authMessageTone === 'error' ? 'error' : 'hint'}>{authMessage}</p> : null}
-              {authError ? <p className="error">{authError}</p> : null}
-            </>
-          ) : (
-            <form className="auth-form" onSubmit={(event) => void signInWithSupabase(event)}>
-              <label>
-                Email
-                <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" required />
-              </label>
-              <label>
-                Password
-                <input
-                  type="password"
-                  value={authPassword}
-                  onChange={(event) => setAuthPassword(event.target.value)}
-                  autoComplete="current-password"
-                  required
-                />
-              </label>
-              <button type="submit" className="secondary-button" disabled={!authEmail.trim() || !authPassword}>
-                Sign in
-              </button>
-              <button type="button" className="auth-text-button" onClick={() => showAuthView('forgotPassword')}>
-                Forgot password?
-              </button>
-              {authMessage ? <p className={authMessageTone === 'success' ? 'success' : authMessageTone === 'error' ? 'error' : 'hint'}>{authMessage}</p> : null}
-              {authError ? <p className="error">{authError}</p> : null}
-            </form>
-          )}
-        </section>
-        <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />
-      </main>
+      <AuthWorkspace
+        themeMode={themeMode}
+        authLoading={authLoading}
+        authView={authView}
+        authSession={authSession}
+        appProfile={appProfile}
+        appProfileError={appProfileError}
+        localStorageReadyForEffectiveProfile={localStorageReadyForEffectiveProfile}
+        effectiveProfileId={effectiveProfileId}
+        authEmail={authEmail}
+        authPassword={authPassword}
+        authNewPassword={authNewPassword}
+        authNewPasswordConfirm={authNewPasswordConfirm}
+        authBusy={authBusy}
+        authMessage={authMessage}
+        authMessageTone={authMessageTone}
+        authError={authError}
+        perfDiagnosticsEnabled={perfDiagnosticsEnabled}
+        onSignIn={signInWithSupabase}
+        onRequestPasswordReset={requestSupabasePasswordReset}
+        onUpdatePassword={updateSupabasePassword}
+        onSignOut={signOut}
+        onShowAuthView={showAuthView}
+        onAuthEmailChange={setAuthEmail}
+        onAuthPasswordChange={setAuthPassword}
+        onAuthNewPasswordChange={setAuthNewPassword}
+        onAuthNewPasswordConfirmChange={setAuthNewPasswordConfirm}
+      />
     );
   }
 
