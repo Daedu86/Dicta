@@ -15,10 +15,8 @@ import type {
   AdaptiveSessionFeedback,
   InputLanguageBenchmarkMetrics,
   InputMode,
-  HistoricalPerformanceProfile,
   LanguageCode,
   LiveTelemetryFrame,
-  PacingDecision,
   PhrasePlaybackEvent,
   PhraseBoundaryType,
   PhraseSize,
@@ -37,14 +35,12 @@ import {
 import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
 import { normalizeTranscript, buildTargetWords, normalizeWord } from './core/normalization';
 import { deriveSyncState, SyncController } from './core/syncController';
-import { AdaptiveDictationController } from './core/adaptive/AdaptiveDictationController';
 import { planSemanticPhrases, type SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import {
   clampBrowserTtsDeDecisionToRecommendation,
   createEmptyInputLanguageBenchmark,
   getBrowserTtsDeBenchmarkRejectionReason,
   normalizeBenchmarkLanguage,
-  updateInputLanguageBenchmark,
 } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildBenchmarkFilename, buildSelectedBenchmarkExportPayload } from './core/adaptive/benchmarkJson';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './core/adaptive/dictationScriptPrompt';
@@ -71,17 +67,13 @@ import {
   type DictationScriptValidationResult,
 } from './core/adaptive/dictationScriptValidation';
 import {
-  buildAdaptiveSessionFeedback,
   buildBenchmarkFeedbackPackage,
   buildBenchmarkFeedbackPromptPackage,
   buildSessionFeedbackJsonPayload,
   derivePlaybackDiagnosticsFromTimeline,
-  hasAdaptiveSessionFeedbackForSession,
   selectLatestAdaptiveSessionFeedback,
-  upsertAdaptiveSessionFeedbackByInputLanguage,
   type SessionFeedbackReference,
 } from './core/adaptive/sessionFeedback';
-import { HistoricalPerformanceService } from './core/history/HistoricalPerformanceService';
 import { buildAudioTelemetryFrame, buildAdaptiveAudioInput } from './inputs/audio/audioTelemetryAdapter';
 import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
@@ -237,6 +229,7 @@ import {
   useSessionPersistenceSync,
   type SupabaseSyncStatus,
 } from './app/useSessionPersistenceSync';
+import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
@@ -742,9 +735,6 @@ function App() {
     telemetry: false,
     benchmarks: !isMobileViewport(),
   }));
-  const [selectedBenchmarkInputMode, setSelectedBenchmarkInputMode] = useState<InputMode>('kokoro');
-  const selectedBenchmarkLanguage: BenchmarkLanguageButton = dictaLanguageView;
-  const setSelectedBenchmarkLanguage = setDictaLanguageView;
   const [benchmarkExportMessage, setBenchmarkExportMessage] = useState('');
   const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
   const syncConfig = useMemo(() => getDictaSyncConfig(import.meta.env), []);
@@ -849,8 +839,6 @@ function App() {
 
   const trackerRef = useRef(new TypingTracker());
   const engineRef = useRef<AudioEngine | null>(null);
-  const adaptiveControllerRef = useRef(new AdaptiveDictationController());
-  const historyServiceRef = useRef(new HistoricalPerformanceService());
   const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const qwenCloudAdapterRef = useRef<QwenCloudAudioAdapter | null>(null);
   const telemetryRef = useRef<SessionTelemetry | null>(null);
@@ -878,14 +866,9 @@ function App() {
   const kokoroChunkIndexRef = useRef(0);
   const kokoroLastControllerActionRef = useRef<ControlAction>('hold');
   const kokoroCancelledRef = useRef(false);
-  const adaptiveBenchmarkLastUpdateRef = useRef<Record<string, number>>({});
-  const sessionBenchmarkBeforeRef = useRef<Record<string, InputLanguageBenchmarkMetrics>>({});
-  const sessionFeedbackContextRef = useRef<Record<string, { inputMode: InputMode; language: LanguageCode }>>({});
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
-  const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
-  const phrasePlaybackTotalPhrasesRef = useRef(0);
   const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
   const kokoroSemanticPhrasesRef = useRef<SemanticPhrase[]>([]);
   const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
