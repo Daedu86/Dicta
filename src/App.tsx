@@ -49,13 +49,8 @@ import {
 } from './core/adaptive/openRouterGenerationPrompt';
 import { buildAdaptiveUserSystemReport } from './core/adaptive/adaptiveUserSystemReport';
 import {
-  addActiveOpenRouterJob,
-  extractOpenRouterJobText,
-  isOpenRouterJobTerminal,
-  loadActiveOpenRouterJobs,
   OPENROUTER_ACTIVE_JOB_STORAGE_KEY,
   OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
-  removeActiveOpenRouterJob,
   type ActiveOpenRouterJob,
   type OpenRouterJobResponse,
 } from './core/openRouterJobs';
@@ -160,23 +155,17 @@ import { AdminSessionInventoryCard } from './components/admin/AdminSessionInvent
 import {
   OPENROUTER_GENERATED_SCRIPT_KEY,
   OPENROUTER_GENERATED_VARIANTS_KEY,
-  buildOpenRouterJobNotification,
   buildOpenRouterModelOptions,
   buildTrainingGenerationButtonNotice,
   formatInterruptedOpenRouterMessage,
-  formatOpenRouterJobNotifications,
   parseTimestampMs,
   shouldCreatePersistentGenerationErrorSession,
-  stripJsonFence,
-  validateGeneratedScriptForTarget,
 } from './components/openrouter/openRouterViewHelpers';
 import type {
   AdaptiveBenchmarksByInputLanguage,
   AdaptiveSessionFeedbackByInputLanguage,
   BenchmarkLanguageButton,
-  OpenRouterJobNotification,
   OpenRouterModelSummary,
-  TrainingGenerationNotice,
 } from './components/openrouter/types';
 import type { OllamaModelSummary } from './components/ollama/types';
 import { perfDiagnostics } from './core/perfDiagnostics';
@@ -243,6 +232,7 @@ import {
   useWorkspaceRouting,
   type WorkspaceMode,
 } from './app/useWorkspaceRouting';
+import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
@@ -721,11 +711,6 @@ function App() {
   const [ollamaModels, setOllamaModels] = useState<OllamaModelSummary[]>([]);
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [ollamaError, setOllamaError] = useState('');
-  const [activeOpenRouterJobs, setActiveOpenRouterJobs] = useState<ActiveOpenRouterJob[]>(() => loadActiveOpenRouterJobs());
-  const [openRouterJobNotifications, setOpenRouterJobNotifications] = useState<Record<string, OpenRouterJobNotification>>({});
-  const [openRouterJobStatus, setOpenRouterJobStatus] = useState('');
-  const [trainingGenerationNotices, setTrainingGenerationNotices] = useState<Record<string, TrainingGenerationNotice>>({});
-  const [trainingGenerationNowMs, setTrainingGenerationNowMs] = useState(() => Date.now());
   const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
   const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
   const [dictaLanguageView, setDictaLanguageView] = useState<MetricsLanguageView>(() =>
@@ -816,6 +801,15 @@ function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [appProfile, setAppProfile] = useState<DictaAppProfile | null>(null);
   const [appProfileError, setAppProfileError] = useState('');
+  const openRouterAccessState = resolveOpenRouterAccessState({
+    authRequired: syncConfig.authRequired,
+    authLoading,
+    hasAuthSession: Boolean(authSession),
+    profile: appProfile,
+    profileError: appProfileError,
+  });
+  const openRouterAccessAllowed = openRouterAccessState === 'allowed';
+  const openRouterAccessMessage = 'OpenRouter access is disabled for this Dicta account. Contact the admin.';
   const [visibleProfiles, setVisibleProfiles] = useState<DictaAppProfile[]>([]);
   const [adminProfileFilter, setAdminProfileFilter] = useState<string>('self');
   const [adminRemoteSessions, setAdminRemoteSessions] = useState<StoredSession[]>([]);
@@ -838,6 +832,26 @@ function App() {
     }),
     [syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile],
   );
+  const {
+    activeOpenRouterJobs,
+    openRouterJobNotifications,
+    openRouterJobStatus,
+    trainingGenerationNotices,
+    trainingGenerationNowMs,
+    trackOpenRouterJob,
+    recordOpenRouterGenerationFailure,
+    resetOpenRouterJobsRuntime,
+  } = useOpenRouterJobsRuntime({
+    localStorageReady: localStorageReadyForEffectiveProfile,
+    openRouterAccessAllowed,
+    getAuthHeaders,
+    onOpenRouterError: setOpenRouterError,
+    onCreateGenerationErrorSession: createCustomOpenRouterErrorSessionForJob,
+    onGeneratedScript: (script, trackedJob) => {
+      createSessionFromOpenRouterScript(script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
+      void showGeneratedTrainingSessionNotification(buildGeneratedTrainingSessionNotification(script, trackedJob));
+    },
+  });
   const [supabaseSyncStatus, setSupabaseSyncStatus] = useState<SupabaseSyncStatus>({
     enabled: effectiveSyncConfig.enabled,
     state: effectiveSyncConfig.enabled ? 'idle' : 'disabled',
@@ -907,7 +921,6 @@ function App() {
   const supabaseLastRemoteUpdatedAtRef = useRef<string | null>(null);
   const supabaseLastFullPullAtMsRef = useRef(0);
   const deletedSessionIdsRef = useRef<Set<string>>(loadDeletedSessionIds());
-  const consumedOpenRouterJobIdsRef = useRef<Set<string>>(new Set());
   const kokoroSemanticPhrasesRef = useRef<SemanticPhrase[]>([]);
   const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
   const kokoroSemanticPhraseReplayCountRef = useRef(0);
@@ -970,12 +983,8 @@ function App() {
     supabaseLastRemoteUpdatedAtRef.current = null;
     supabaseLastFullPullAtMsRef.current = 0;
 
-    consumedOpenRouterJobIdsRef.current = new Set();
-    setActiveOpenRouterJobs(loadActiveOpenRouterJobs());
-    setOpenRouterJobNotifications({});
-    setOpenRouterJobStatus('');
-    setTrainingGenerationNotices({});
-  }, [activeLocalSyncProfileId, clearDashboardSession, effectiveProfileId, syncConfig.authRequired]);
+    resetOpenRouterJobsRuntime();
+  }, [activeLocalSyncProfileId, clearDashboardSession, effectiveProfileId, resetOpenRouterJobsRuntime, syncConfig.authRequired]);
 
   useEffect(() => {
     if (!supabaseClient || !syncConfig.authRequired) {
@@ -1151,15 +1160,6 @@ function App() {
         ? 'tts'
         : 'kokoro';
   const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
-  const openRouterAccessState = resolveOpenRouterAccessState({
-    authRequired: syncConfig.authRequired,
-    authLoading,
-    hasAuthSession: Boolean(authSession),
-    profile: appProfile,
-    profileError: appProfileError,
-  });
-  const openRouterAccessAllowed = openRouterAccessState === 'allowed';
-  const openRouterAccessMessage = 'OpenRouter access is disabled for this Dicta account. Contact the admin.';
   const assignedOpenRouterModel =
     syncConfig.authRequired && appProfile?.role === 'member' ? appProfile.assignedOpenRouterModel?.trim() ?? '' : '';
   const effectiveOpenRouterDefaultModel = assignedOpenRouterModel || openRouterDefaultModel;
@@ -1362,18 +1362,6 @@ function App() {
   }, [kokoroEnabled]);
 
   useEffect(() => {
-    const hasRunningGenerationNotice = Object.values(trainingGenerationNotices).some((notice) => notice.status === 'running');
-    if (!hasRunningGenerationNotice && activeOpenRouterJobs.length === 0) return;
-
-    setTrainingGenerationNowMs(Date.now());
-    const intervalId = window.setInterval(() => {
-      setTrainingGenerationNowMs(Date.now());
-    }, 1000);
-
-    return () => window.clearInterval(intervalId);
-  }, [activeOpenRouterJobs.length, trainingGenerationNotices]);
-
-  useEffect(() => {
     const storedModel = window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY);
     if (storedModel) {
       try {
@@ -1413,161 +1401,6 @@ function App() {
 
     return () => window.clearTimeout(id);
   }, [kokoroEnabled, kokoroText, kokoroStatus]);
-
-  useEffect(() => {
-    if (!localStorageReadyForEffectiveProfile || activeOpenRouterJobs.length === 0 || openRouterAccessState !== 'allowed') {
-      return;
-    }
-
-    let cancelled = false;
-    let intervalId = 0;
-
-    async function pollOpenRouterJobs(): Promise<void> {
-      const settledJobIds: string[] = [];
-      const notifications: OpenRouterJobNotification[] = [];
-
-      await Promise.all(
-        activeOpenRouterJobs.map(async (trackedJob) => {
-          try {
-            const response = await fetch(`/api/openrouter/jobs?id=${encodeURIComponent(trackedJob.jobId)}`, {
-              headers: getAuthHeaders(),
-            });
-            if (!response.ok) {
-              const text = await response.text();
-              throw new Error(text || `OpenRouter job status failed (${response.status}).`);
-            }
-            const job = (await response.json()) as OpenRouterJobResponse;
-            if (cancelled) return;
-
-            const notification = buildOpenRouterJobNotification(trackedJob, job);
-            notifications.push(notification);
-            if (!isOpenRouterJobTerminal(job.status)) return;
-
-            settledJobIds.push(trackedJob.jobId);
-            if (job.status === 'failed') {
-              const message = job.error || 'OpenRouter job failed.';
-              setOpenRouterError(message);
-              createCustomOpenRouterErrorSessionForJob(trackedJob, message);
-              setTrainingGenerationNotices((current) => ({
-                ...current,
-                [trackedJob.slotLabel]: {
-                  slotLabel: trackedJob.slotLabel,
-                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
-                  model: trackedJob.model,
-                  startedAt: trackedJob.startedAt,
-                  status: 'failed',
-                  completedAt: job.completedAt || job.updatedAt || new Date().toISOString(),
-                  error: message,
-                },
-              }));
-              return;
-            }
-
-            if (consumedOpenRouterJobIdsRef.current.has(trackedJob.jobId)) return;
-            consumedOpenRouterJobIdsRef.current.add(trackedJob.jobId);
-
-            const text = extractOpenRouterJobText(job.result);
-            if (!text.trim()) {
-              const message = 'OpenRouter job finished without usable text.';
-              setOpenRouterError(message);
-              createCustomOpenRouterErrorSessionForJob(trackedJob, message);
-              setTrainingGenerationNotices((current) => ({
-                ...current,
-                [trackedJob.slotLabel]: {
-                  slotLabel: trackedJob.slotLabel,
-                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
-                  model: trackedJob.model,
-                  startedAt: trackedJob.startedAt,
-                  status: 'failed',
-                  completedAt: job.completedAt || job.updatedAt || new Date().toISOString(),
-                  error: message,
-                },
-              }));
-              return;
-            }
-
-            const validation = validateGeneratedScriptForTarget(stripJsonFence(text), trackedJob.inputMode, trackedJob.language as BenchmarkLanguageButton);
-            if (validation.ok) {
-              createSessionFromOpenRouterScript(validation.script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
-              void showGeneratedTrainingSessionNotification(buildGeneratedTrainingSessionNotification(validation.script, trackedJob));
-              setTrainingGenerationNotices((current) => ({
-                ...current,
-                [trackedJob.slotLabel]: {
-                  slotLabel: trackedJob.slotLabel,
-                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
-                  model: trackedJob.model,
-                  startedAt: trackedJob.startedAt,
-                  status: 'succeeded',
-                  completedAt: job.completedAt || job.updatedAt || new Date().toISOString(),
-                },
-              }));
-            } else {
-              const message = validation.errors.join(' ') || 'Generated script did not validate.';
-              setOpenRouterError(message);
-              createCustomOpenRouterErrorSessionForJob(trackedJob, message);
-              setTrainingGenerationNotices((current) => ({
-                ...current,
-                [trackedJob.slotLabel]: {
-                  slotLabel: trackedJob.slotLabel,
-                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
-                  model: trackedJob.model,
-                  startedAt: trackedJob.startedAt,
-                  status: 'failed',
-                  completedAt: job.completedAt || job.updatedAt || new Date().toISOString(),
-                  error: message,
-                },
-              }));
-            }
-          } catch (error) {
-            if (cancelled) return;
-            const message = error instanceof Error ? error.message : 'OpenRouter job polling failed.';
-            notifications.push(buildOpenRouterJobNotification(trackedJob, null, message));
-            setOpenRouterError(message);
-            setTrainingGenerationNotices((current) => ({
-              ...current,
-              [trackedJob.slotLabel]: {
-                slotLabel: trackedJob.slotLabel,
-                displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
-                model: trackedJob.model,
-                startedAt: trackedJob.startedAt,
-                status: 'failed',
-                completedAt: new Date().toISOString(),
-                error: message,
-              },
-            }));
-          }
-        }),
-      );
-
-      if (cancelled) return;
-      if (notifications.length > 0) {
-        setOpenRouterJobNotifications((current) => {
-          const next = { ...current };
-          notifications.forEach((notification) => {
-            next[notification.jobId] = notification;
-          });
-          const status = formatOpenRouterJobNotifications(next);
-          setOpenRouterJobStatus(status);
-          return next;
-        });
-      }
-      if (settledJobIds.length > 0) {
-        setActiveOpenRouterJobs((current) => {
-          return settledJobIds.reduce((jobs, jobId) => removeActiveOpenRouterJob(jobId, jobs), current);
-        });
-      }
-    }
-
-    void pollOpenRouterJobs();
-    intervalId = window.setInterval(() => {
-      void pollOpenRouterJobs();
-    }, 3000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [activeOpenRouterJobs, localStorageReadyForEffectiveProfile, openRouterAccessState]);
 
   useEffect(() => {
     window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, dictaLanguageView);
@@ -2917,24 +2750,6 @@ function App() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
-  function trackOpenRouterJob(activeJob: ActiveOpenRouterJob): void {
-    setActiveOpenRouterJobs((current) => addActiveOpenRouterJob(activeJob, current));
-    setOpenRouterJobNotifications((current) => {
-      const next = {
-        ...current,
-        [activeJob.jobId]: {
-          jobId: activeJob.jobId,
-          slotLabel: activeJob.slotLabel,
-          model: activeJob.model,
-          startedAt: activeJob.startedAt,
-          status: 'running' as const,
-        },
-      };
-      setOpenRouterJobStatus(formatOpenRouterJobNotifications(next));
-      return next;
-    });
-  }
-
   async function refreshOpenRouterModels(): Promise<void> {
     setOpenRouterStatus('loading');
     setOpenRouterError('');
@@ -3570,18 +3385,13 @@ function App() {
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
-      setTrainingGenerationNotices((current) => ({
-        ...current,
-        [slotLabel]: {
-          slotLabel,
-          displayLabel,
-          model,
-          startedAt: generationStartedAt,
-          status: 'failed',
-          completedAt: new Date().toISOString(),
-          error: message,
-        },
-      }));
+      recordOpenRouterGenerationFailure({
+        slotLabel,
+        displayLabel,
+        model,
+        startedAt: generationStartedAt,
+        error: message,
+      });
       if (isTransientOpenRouterGenerationError(message)) {
         const nowMs = Date.now();
         setOpenRouterError(
@@ -7953,17 +7763,6 @@ function formatDuration(seconds: number): string {
   const minutes = Math.floor(roundedSeconds / 60);
   const remaining = roundedSeconds % 60;
   return `${minutes}m ${remaining}s`;
-}
-
-function formatGenerationDisplayLabel(slotLabel: string): string {
-  const normalized = slotLabel.toLowerCase();
-  if (normalized.includes('express') && normalized.includes('easy')) return 'Express easy session';
-  if (normalized.includes('express') && normalized.includes('intermediate')) return 'Express medium session';
-  if (normalized.includes('express') && normalized.includes('advanced')) return 'Express hard session';
-  if (normalized.includes('easy')) return 'Easy session';
-  if (normalized.includes('intermediate')) return 'Medium session';
-  if (normalized.includes('advanced')) return 'Hard session';
-  return slotLabel;
 }
 
 function formatSupabaseSyncState(status: SupabaseSyncStatus): string {

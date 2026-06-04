@@ -2,7 +2,7 @@
 
 Phase 2: behavior-aware modularization.
 
-Status: active. The `useWorkspaceRouting` boundary has been extracted; no later Phase 2 boundary has started.
+Status: active. The `useWorkspaceRouting` and `useOpenRouterJobsRuntime` boundaries have been extracted; no later Phase 2 boundary has started.
 
 `src/App.tsx` still owns substantial runtime behavior: workspace orchestration, hook-shaped state boundaries, side-effect ownership, polling, persistence, sync, adaptive wiring, playback lifecycle, auth/profile glue, generated-session handoff, and browser lifecycle logic. Phase 2 exists to move those behavior boundaries deliberately, one at a time, without changing product behavior.
 
@@ -101,6 +101,8 @@ Proposed file:
 src/app/useOpenRouterJobsRuntime.ts
 ```
 
+Status: complete.
+
 Move browser-side durable OpenRouter job lifecycle, active job state, local active-job storage, polling setup/cleanup, terminal cleanup, and result/usage extraction orchestration.
 
 Do not move final generated-session creation yet.
@@ -186,7 +188,7 @@ Stop the Phase 2 extraction if:
 
 Phase 2 started with `useWorkspaceRouting`.
 
-Do not start the next boundary without fresh measurement. Do not proceed next with adaptive, playback, or sync.
+`useOpenRouterJobsRuntime` is now complete. The next listed boundary is `useSessionPersistenceSync`, but it is high risk. Do not start it without fresh measurement, a data-loss/tombstone test plan, and explicit review of profile-scoped storage behavior.
 
 ## Closeout Log
 
@@ -201,4 +203,17 @@ Behavior preserved: workspace mode routing, dashboard session selection, app rou
 Validation: git pull origin main; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile
 Manual smoke test: attempted with the in-app Browser against http://127.0.0.1:5173/; blocked by browser navigation timeout. Automated Playwright mobile smoke passed.
 Follow-ups: next listed candidate is useOpenRouterJobsRuntime, but only after a fresh Phase 2 measurement/checklist.
+```
+
+```text
+Boundary: useOpenRouterJobsRuntime
+Status: complete
+PR/commit: pending
+Pre-change App.tsx lines: 8961
+Post-change App.tsx lines: 8777
+Files added/moved: src/app/useOpenRouterJobsRuntime.ts; tests/useOpenRouterJobsRuntime.test.ts
+Behavior preserved: browser-side durable OpenRouter active-job storage, polling cadence, terminal cleanup, job notifications, generation notices, successful result validation, and handoff to App-owned generated-session creation. OpenRouter server routes, auth/access gating, rate limits, payload shapes, final generated-session creation, persistence/sync implementation, adaptive updates, localStorage keys, Supabase row shapes, and adaptive heuristics were not changed. Polling transport errors still do not create persistent generation error sessions.
+Validation: git status; git pull origin main; App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile
+Manual smoke test: automated Playwright mobile smoke passed; no separate browser manual smoke was needed for this non-visual runtime extraction.
+Follow-ups: next listed candidate is useSessionPersistenceSync, but only after a fresh Phase 2 measurement/checklist and a dedicated data-loss/tombstone regression plan.
 ```
