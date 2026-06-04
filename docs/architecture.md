@@ -124,6 +124,12 @@ Legacy password fallback:
 - The password cookie is only a private/local fallback gate; it is not the multiuser profile model.
 - `/api/auth/login` rate-limits legacy password attempts in memory. This fallback is not the public beta access path.
 
+Verification test account:
+
+- Local and remote app verification can use the invite/admin-created Supabase E2E test account from `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, and `E2E_TEST_PROFILE_ID`.
+- These vars are for agent/developer verification only. They are not Vite browser vars, and the password must not be committed, copied into docs/source, stored in `localStorage`, or exposed in screenshots/logs.
+- If a task needs authenticated local or hosted testing, try this account before blocking on missing credentials, and confirm both Supabase sign-in and `dicta_app_profiles` loading.
+
 ## Persistence And Sync
 
 Primary browser storage keys:

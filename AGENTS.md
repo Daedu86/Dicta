@@ -45,6 +45,12 @@ Access model:
 - Members default to 15 sessions and no OpenRouter access.
 - Non-Supabase deployments can use `DICTA_APP_PASSWORD` middleware login as a private/local fallback only.
 
+Test account:
+
+- A Supabase E2E test account is available for local and remote app verification. Use `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, and `E2E_TEST_PROFILE_ID` from `.env.local` or the secure execution environment when a task requires signing in.
+- Do not commit the test account password or copy it into docs, source, localStorage, screenshots, or logs. Document only the variable names.
+- Before blocking on authentication in local or remote checks, try this test account first and report whether sign-in and profile loading work.
+
 ## Commands
 
 - Install JS deps: `npm install`

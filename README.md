@@ -44,6 +44,7 @@ Current access model:
 - Member profiles default to a 15-session limit, no OpenRouter access, and only their own synced rows.
 - Local/dev or non-Supabase deployments can use `DICTA_APP_PASSWORD` and `public/login.html` as a private fallback only.
 - For public beta deployment, use Supabase Auth + RLS. Do not rely on `DICTA_APP_PASSWORD` as the primary public access model.
+- Local and remote verification can use the Supabase E2E test account defined by `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, and `E2E_TEST_PROFILE_ID` in `.env.local` or the secure execution environment. Keep the password out of committed docs, source, screenshots, and logs.
 
 Server-only secrets:
 
@@ -111,6 +112,14 @@ Set public Vite Supabase vars locally and in Vercel:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUPABASE_SYNC_PROFILE_ID`
+
+Optional local-only verification vars:
+
+- `E2E_TEST_EMAIL`
+- `E2E_TEST_PASSWORD`
+- `E2E_TEST_PROFILE_ID`
+
+Use these only to sign into the invite/admin-created Supabase test account during local or hosted app checks. They are not Vite vars and must not be exposed to browser code.
 
 Vercel note: `VITE_*` env vars are baked in at build time. After changing them, redeploy before mobile/PWA clients see the new configuration.
 

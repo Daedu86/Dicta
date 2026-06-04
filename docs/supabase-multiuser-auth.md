@@ -31,6 +31,14 @@ Server-only vars:
 
 `SUPABASE_SERVICE_ROLE_KEY` is used only by Vercel API routes for admin user creation and durable OpenRouter jobs. It must never be exposed through `VITE_*`.
 
+Local-only verification vars:
+
+- `E2E_TEST_EMAIL`
+- `E2E_TEST_PASSWORD`
+- `E2E_TEST_PROFILE_ID`
+
+Use these values from `.env.local` or a secure execution environment to sign into the invite/admin-created Supabase E2E test account when checking the local dev app or a hosted deployment. Do not commit the password, paste it into docs/source, store it in `localStorage`, or expose it in screenshots/logs.
+
 ## Behavior
 
 - Users sign in with Supabase email/password.
