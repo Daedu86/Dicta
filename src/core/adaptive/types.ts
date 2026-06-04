@@ -1,4 +1,6 @@
-export type InputMode = 'audio' | 'browser-tts' | 'kokoro' | 'qwen-cloud';
+import type { InputMode, StoredInputMode } from './inputModes';
+export type { InputMode, LegacyInputMode, StoredInputMode } from './inputModes';
+
 export type PhraseSize = 'short' | 'medium' | 'long';
 export type PacingMode = 'support' | 'balanced' | 'flow';
 export type ImprovementTrend = 'improving' | 'stable' | 'declining';
@@ -133,7 +135,7 @@ export interface RateAccuracyBucket {
 
 export interface AdaptiveTimelinePoint {
   timestampMs: number;
-  inputMode: InputMode;
+  inputMode: StoredInputMode;
   language: LanguageCode;
   mode: PacingMode;
   playbackRate: number;
@@ -267,13 +269,13 @@ export interface PhrasePlaybackEvent {
   textPreview: string;
   event: PhrasePlaybackEventType;
   timestampMs: number;
-  inputMode: InputMode;
+  inputMode: StoredInputMode;
   language: LanguageCode;
 }
 
 export interface AdaptiveSessionFeedback {
   sessionId: string;
-  inputMode: InputMode;
+  inputMode: StoredInputMode;
   language: LanguageCode;
   scriptId?: string;
   scriptTitle?: string;
@@ -297,29 +299,20 @@ export interface AdaptiveSessionFeedback {
   playbackIssues: {
     repeatedPhraseCount: number;
     maxRepeatCountForSinglePhrase: number;
-    repeatedPhrases: Array<{
-      phraseId: string;
-      textPreview: string;
-      repeatCount: number;
-      timestampsMs: number[];
-    }>;
+    repeatedPhrases: Array<{ phraseId: string; textPreview: string; repeatCount: number }>;
     skippedPhraseCount: number;
-    skippedPhrases: Array<{
-      phraseId: string;
-      textPreview: string;
-      expectedIndex: number;
-    }>;
     outOfOrderAdvanceCount: number;
     replayAdvancedPhraseCount: number;
     phraseIndexJumpCount: number;
   };
   phraseStats: {
     totalPhrases: number;
-    completedPhrases: number;
-    replayCount: number;
-    phraseAdvanceCount: number;
+    startedPhraseCount: number;
+    completedPhraseCount: number;
+    completionRatio: number;
     averageRepeatsPerPhrase: number;
+    mostRepeatedPhrase?: { phraseId: string; textPreview: string; repeatCount: number };
   };
-  verdict: 'improved' | 'stable' | 'regressed' | 'inconclusive';
   notes: string[];
+  verdict: 'improved' | 'stable' | 'regressed' | 'incomplete';
 }
