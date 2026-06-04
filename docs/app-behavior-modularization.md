@@ -2,7 +2,7 @@
 
 Phase 2: behavior-aware modularization.
 
-Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, and `useSessionPersistenceSync` boundaries have been extracted; no later Phase 2 boundary has started.
+Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, `useSessionPersistenceSync`, and `useAdaptiveRuntime` boundaries have been extracted; no later Phase 2 boundary has started.
 
 `src/App.tsx` still owns substantial runtime behavior: workspace orchestration, hook-shaped state boundaries, side-effect ownership, polling, persistence, sync, adaptive wiring, playback lifecycle, auth/profile glue, generated-session handoff, and browser lifecycle logic. Phase 2 exists to move those behavior boundaries deliberately, one at a time, without changing product behavior.
 
@@ -137,6 +137,8 @@ Do not move `AdaptiveDictationController` heuristics or benchmark calculation lo
 
 Add fixture/replay tests before doing this extraction.
 
+Status: complete.
+
 ### E. useTrainingSessionLifecycle
 
 Proposed file:
@@ -190,7 +192,7 @@ Stop the Phase 2 extraction if:
 
 Phase 2 started with `useWorkspaceRouting`.
 
-`useSessionPersistenceSync` is now complete. The next listed boundary is `useAdaptiveRuntime`, but it is high risk and should start only after fixture/replay coverage for adaptive runtime wiring.
+`useAdaptiveRuntime` is now complete. The next listed boundary is `useTrainingSessionLifecycle`; start only after fresh measurement and focused lifecycle tests for start, pause, resume, stop, reset, and submit orchestration.
 
 ## Closeout Log
 
@@ -231,4 +233,18 @@ Behavior preserved: session localStorage key, adaptive benchmark/feedback storag
 Validation: git status; git pull origin main; App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile
 Manual smoke test: automated Playwright mobile smoke passed; focused hook tests cover debounced/immediate persistence, profile-scoped switching readiness, and local tombstones.
 Follow-ups: next listed candidate is useAdaptiveRuntime, but only after fixture/replay coverage for adaptive wiring.
+```
+
+```text
+Boundary: useAdaptiveRuntime
+Status: complete
+PR/commit: pending
+Pre-change App.tsx lines: 8390
+Post-change App.tsx lines: 8139
+Reduction: 251 lines (2.99%)
+Files added/moved: existing prepared boundary `src/app/useAdaptiveRuntime.ts` is now consumed by `src/App.tsx`; fixture/replay coverage lives in `tests/useAdaptiveRuntime.test.ts`.
+Behavior preserved: adaptive controller heuristics, benchmark calculation/scoring, selected `(inputMode, language)` semantics, live telemetry payloads, session feedback payload shape, localStorage keys, Supabase row shapes, OpenRouter payload shapes, playback runtimes, generated-session creation, persistence/sync implementation, and LowLatencyTextarea behavior were not changed. `App.tsx` now consumes the hook while input-specific playback runtimes still decide how to execute adaptive decisions.
+Validation: git status; git pull origin main; pre-change App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile; focused useAdaptiveRuntime fixture/replay tests.
+Manual smoke test: automated Playwright mobile training guard passed; no separate browser manual smoke was needed for this non-visual runtime extraction.
+Follow-ups: next recommended candidate is useTrainingSessionLifecycle because it is the next listed Phase 2 boundary and can separate start/pause/resume/stop/reset/submit orchestration without entering the higher-risk playback runtimes. Keep useBrowserTtsRuntime and useGeneratedSessionCreation in separate PRs with their own replay tests.
 ```

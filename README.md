@@ -225,6 +225,7 @@ Important rules:
 
 Key files:
 
+- `src/app/useAdaptiveRuntime.ts`
 - `src/core/adaptive/types.ts`
 - `src/core/adaptive/AdaptiveDictationController.ts`
 - `src/core/adaptive/SemanticPhrasePlanner.ts`

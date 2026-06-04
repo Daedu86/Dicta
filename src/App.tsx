@@ -1061,6 +1061,34 @@ function App() {
     () => buildTrainingSessionSubmissionMeta(sessions, activeSession),
     [activeSession, sessions],
   );
+  const {
+    adaptiveControllerRef,
+    phrasePlaybackEventsRef,
+    selectedBenchmarkInputMode,
+    setSelectedBenchmarkInputMode,
+    selectedBenchmarkLanguage,
+    setSelectedBenchmarkLanguage,
+    getHistoricalPerformanceProfile,
+    getBenchmarkSnapshot,
+    recordAdaptiveBenchmark,
+    beginAdaptiveSessionFeedback,
+    recordPhrasePlaybackEvent,
+    completeAdaptiveSessionFeedback,
+    ensureLatestBrowserTtsDeDictationScriptFeedback,
+    resetAdaptiveSessionFeedbackTracking,
+  } = useAdaptiveRuntime({
+    activeSession,
+    activeSessionId,
+    sessions,
+    setAdaptiveBenchmarks: setAdaptiveBenchmarksByInputLanguage,
+    adaptiveBenchmarksRef,
+    adaptiveSessionFeedback: adaptiveSessionFeedbackByInputLanguage,
+    setAdaptiveSessionFeedback: setAdaptiveSessionFeedbackByInputLanguage,
+    adaptiveSessionFeedbackRef,
+    persistAdaptiveSessionFeedbackNow: persistAndPushAdaptiveSessionFeedbackNow,
+    selectedBenchmarkLanguage: dictaLanguageView,
+    setSelectedBenchmarkLanguage: setDictaLanguageView,
+  });
   const pendingSessions = useMemo(
     () =>
       [...sessions]
@@ -1322,7 +1350,7 @@ function App() {
 
   useEffect(() => {
     ensureLatestBrowserTtsDeDictationScriptFeedback(sessions);
-  }, [activeSessionId, adaptiveSessionFeedbackByInputLanguage, sessions]);
+  }, [ensureLatestBrowserTtsDeDictationScriptFeedback, sessions]);
 
   useEffect(() => {
     if (sessions.length === 0) {
@@ -1533,7 +1561,7 @@ function App() {
         accuracy: currentAccuracy,
       });
 
-      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, 'audio', transcriptionLanguage);
+      const historyProfile = getHistoricalPerformanceProfile('audio', transcriptionLanguage);
       const audioTelemetry = buildAudioTelemetryFrame({
         inputMode: 'audio',
         phraseId: `audio-${sync.expectedWordIndex}`,
@@ -1759,9 +1787,7 @@ function App() {
     kokoroSemanticPhraseReplayCountRef.current = 0;
     kokoroLastControllerActionRef.current = 'hold';
     kokoroCancelledRef.current = false;
-    phrasePlaybackEventsRef.current = [];
-    phrasePlaybackTotalPhrasesRef.current = 0;
-    delete sessionFeedbackContextRef.current[activeSessionId];
+    resetAdaptiveSessionFeedbackTracking(activeSessionId);
     kokoroEngineRef.current?.stop();
   }, [activeSessionId]);
 
@@ -2235,11 +2261,7 @@ function App() {
       }
     }
     telemetryRef.current = null;
-    phrasePlaybackEventsRef.current = [];
-    phrasePlaybackTotalPhrasesRef.current = 0;
-    if (activeSession) {
-      delete sessionFeedbackContextRef.current[activeSession.id];
-    }
+    resetAdaptiveSessionFeedbackTracking(activeSession?.id);
     setAudioReady(Boolean(audioUrl));
     setAudioReadyMessage(audioUrl ? 'Audio loaded successfully.' : '');
     setTranscriptReadyMessage(
@@ -3591,7 +3613,7 @@ function App() {
         return;
       }
 
-      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, 'browser-tts', ttsLanguage);
+      const historyProfile = getHistoricalPerformanceProfile('browser-tts', ttsLanguage);
       const liveSignal = ttsLiveSignalRef.current;
       const livePracticeEvaluation = evaluateTranscriptAttempt(ttsPracticeLiveTextRef.current, ttsTranscript);
       const browserTtsProfile = resolveBrowserTtsAdaptiveProfile(ttsLanguage);
@@ -4250,7 +4272,7 @@ function App() {
         return;
       }
 
-      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, COSYVOICE_CACHE_INPUT_MODE, ttsLanguage);
+      const historyProfile = getHistoricalPerformanceProfile(COSYVOICE_CACHE_INPUT_MODE, ttsLanguage);
       const liveSignal = ttsLiveSignalRef.current;
       const semanticPhrase = semanticPhrases[currentPhraseIndex];
       const wordIndex = wordIndexForSemanticPhrase(semanticPhrases, currentPhraseIndex);
@@ -4494,7 +4516,7 @@ function App() {
         return;
       }
 
-      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, COSYVOICE_CACHE_INPUT_MODE, ttsLanguage);
+      const historyProfile = getHistoricalPerformanceProfile(COSYVOICE_CACHE_INPUT_MODE, ttsLanguage);
       const liveSignal = ttsLiveSignalRef.current;
       const semanticPhrase = semanticPhrases[currentPhraseIndex];
       const wordIndex = wordIndexForSemanticPhrase(semanticPhrases, currentPhraseIndex);
@@ -4950,7 +4972,7 @@ function App() {
     }
 
     try {
-      const historyProfile = buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, 'kokoro', kokoroLanguage);
+      const historyProfile = getHistoricalPerformanceProfile('kokoro', kokoroLanguage);
       const liveSignal = ttsLiveSignalRef.current;
       const semanticPhrase = semanticPhrases[currentPhraseIndex];
       const phraseStartWordIndex = wordIndexForSemanticPhrase(semanticPhrases, currentPhraseIndex);
@@ -5260,204 +5282,6 @@ function App() {
     if (activeSessionId) {
       setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
     }
-  }
-
-  function recordAdaptiveBenchmark(
-    live: LiveTelemetryFrame,
-    decision: PacingDecision,
-    options: {
-      actualPlaybackRate?: number;
-      actualPauseMs?: number;
-      replayExecuted?: boolean;
-      actualBoundaryType?: PhraseBoundaryType;
-      ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
-      event?: AdaptiveTimelinePoint['event'];
-      phraseIndex?: number;
-      totalSemanticPhrases?: number;
-      throttleMs?: number;
-    } = {},
-  ): void {
-    const endPerfSpan = perfDiagnostics.startSpan('adaptive.benchmark.update', { inputMode: live.inputMode, language: live.language });
-    const language = normalizeBenchmarkLanguage(live.language);
-    const key = `${live.inputMode}:${language}`;
-    const now = Date.now();
-    const lastUpdate = adaptiveBenchmarkLastUpdateRef.current[key] ?? 0;
-    if (options.throttleMs && now - lastUpdate < options.throttleMs) {
-      endPerfSpan();
-      return;
-    }
-    adaptiveBenchmarkLastUpdateRef.current[key] = now;
-
-    try {
-      setAdaptiveBenchmarksByInputLanguage((current) => {
-        const inputBenchmarks = current[live.inputMode] ?? {};
-        const existing = inputBenchmarks[language] ?? createEmptyInputLanguageBenchmark(live.inputMode, language);
-        const updated = updateInputLanguageBenchmark({
-          current: existing,
-          live,
-          decision,
-          sessionId: activeSessionId,
-          ttsEnvironment: options.ttsEnvironment,
-          phraseIndex: options.phraseIndex,
-          totalSemanticPhrases: options.totalSemanticPhrases,
-          event: options.event,
-          execution: {
-            requestedPlaybackRate: decision.playbackRate,
-            actualPlaybackRate: options.actualPlaybackRate ?? live.currentPlaybackRate,
-            requestedPauseMs: decision.pauseAfterPhraseMs,
-            actualPauseMs: options.actualPauseMs,
-            requestedReplay: decision.shouldReplayPhrase,
-            replayExecuted: options.replayExecuted,
-            requestedBoundaryType: live.phraseBoundaryType,
-            actualBoundaryType: options.actualBoundaryType ?? live.phraseBoundaryType,
-            decisionAppliedAtMs: now,
-            executionStartedAtMs: now,
-          },
-        });
-        const nextBenchmarks = {
-          ...current,
-          [live.inputMode]: {
-            ...inputBenchmarks,
-            [language]: updated,
-          },
-        };
-        adaptiveBenchmarksRef.current = nextBenchmarks;
-        return nextBenchmarks;
-      });
-    } finally {
-      endPerfSpan();
-    }
-  }
-
-  function getBenchmarkSnapshot(inputMode: InputMode, language: LanguageCode): InputLanguageBenchmarkMetrics {
-    return adaptiveBenchmarksRef.current[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
-  }
-
-  function beginAdaptiveSessionFeedback(inputMode: InputMode, language: LanguageCode, totalPhrases = 0): void {
-    if (!activeSession) return;
-    const normalizedLanguage = normalizeBenchmarkLanguage(language);
-    sessionFeedbackContextRef.current[activeSession.id] = {
-      inputMode,
-      language: normalizedLanguage,
-    };
-    sessionBenchmarkBeforeRef.current[activeSession.id] = JSON.parse(JSON.stringify(getBenchmarkSnapshot(inputMode, normalizedLanguage)));
-    phrasePlaybackEventsRef.current = [];
-    phrasePlaybackTotalPhrasesRef.current = totalPhrases;
-  }
-
-  function recordPhrasePlaybackEvent(
-    event: PhrasePlaybackEvent['event'],
-    inputMode: InputMode,
-    language: LanguageCode,
-    phrase: SemanticPhrase | null | undefined,
-    phraseIndex: number,
-  ): void {
-    if (!activeSession || phraseIndex < 0) return;
-    phrasePlaybackEventsRef.current = [
-      ...phrasePlaybackEventsRef.current,
-      {
-        sessionId: activeSession.id,
-        phraseId: phrase?.id ?? `phrase-${phraseIndex}`,
-        phraseIndex,
-        textPreview: phrase?.text.slice(0, 120) ?? '',
-        event,
-        timestampMs: Date.now(),
-        inputMode,
-        language: normalizeBenchmarkLanguage(language),
-      },
-    ].slice(-500);
-  }
-
-  function completeAdaptiveSessionFeedback(
-    completedSession = activeSession,
-    options: { phraseEvents?: PhrasePlaybackEvent[]; totalPhrases?: number } = {},
-  ): void {
-    if (!completedSession) return;
-    const context = sessionFeedbackContextRef.current[completedSession.id];
-    const inputMode = context?.inputMode ?? mapSessionInputMode(completedSession.inputMode);
-    const language = normalizeBenchmarkLanguage(context?.language ?? resolveStoredSessionLanguage(completedSession));
-    if (
-      inputMode === 'browser-tts' &&
-      language === 'de' &&
-      hasAdaptiveSessionFeedbackForSession(
-        adaptiveSessionFeedbackRef.current[inputMode]?.[language],
-        inputMode,
-        language,
-        completedSession.id,
-      )
-    ) {
-      delete sessionBenchmarkBeforeRef.current[completedSession.id];
-      delete sessionFeedbackContextRef.current[completedSession.id];
-      return;
-    }
-    const before = sessionBenchmarkBeforeRef.current[completedSession.id] ?? getBenchmarkSnapshot(inputMode, language);
-    const after = getBenchmarkSnapshot(inputMode, language);
-    const feedback = buildAdaptiveSessionFeedback({
-      sessionId: completedSession.id,
-      inputMode,
-      language,
-      sourceType: completedSession.sessionSource === 'dictationScript' ? 'dictation_script' : 'plain_text',
-      createdAt: completedSession.createdAt,
-      completedAt: completedSession.telemetry.finishedAt ?? completedSession.updatedAt ?? new Date().toISOString(),
-      scriptId: completedSession.dictationScript ? `${completedSession.id}:${completedSession.dictationScript.title}` : undefined,
-      scriptTitle: completedSession.dictationScript?.title,
-      benchmarkBefore: before,
-      benchmarkAfter: after,
-      ttsEnvironment: inputMode === 'browser-tts' ? completedSession.ttsEnvironment ?? null : null,
-      phraseEvents: options.phraseEvents ?? phrasePlaybackEventsRef.current,
-      totalPhrases: options.totalPhrases ?? (phrasePlaybackTotalPhrasesRef.current || undefined),
-    });
-    const nextFeedbackState = upsertAdaptiveSessionFeedbackByInputLanguage(
-      adaptiveSessionFeedbackRef.current,
-      inputMode,
-      language,
-      feedback,
-    );
-    setAdaptiveSessionFeedbackByInputLanguage(nextFeedbackState);
-    persistAndPushAdaptiveSessionFeedbackNow(nextFeedbackState);
-    delete sessionBenchmarkBeforeRef.current[completedSession.id];
-    delete sessionFeedbackContextRef.current[completedSession.id];
-  }
-
-  function ensureLatestBrowserTtsDeDictationScriptFeedback(sourceSessions: StoredSession[]): void {
-    const latestSession = findLatestFinishedBrowserTtsDeDictationScriptSession(sourceSessions);
-    if (!latestSession) return;
-    const inputMode: InputMode = 'browser-tts';
-    const language: LanguageCode = 'de';
-    if (
-      hasAdaptiveSessionFeedbackForSession(
-        adaptiveSessionFeedbackRef.current[inputMode]?.[language],
-        inputMode,
-        language,
-        latestSession.id,
-      )
-    ) {
-      return;
-    }
-    completeAdaptiveSessionFeedback(latestSession, {
-      phraseEvents: activeSessionId === latestSession.id ? phrasePlaybackEventsRef.current : [],
-      totalPhrases:
-        activeSessionId === latestSession.id && phrasePlaybackTotalPhrasesRef.current > 0
-          ? phrasePlaybackTotalPhrasesRef.current
-          : latestSession.dictationScript?.phrases.length,
-    });
-  }
-
-  function findLatestFinishedBrowserTtsDeDictationScriptSession(sourceSessions: StoredSession[]): StoredSession | null {
-    return (
-      sourceSessions
-        .filter(isFinishedBrowserTtsDeDictationScriptSession)
-        .sort((a, b) => getSessionFinishedAtMs(b) - getSessionFinishedAtMs(a))[0] ?? null
-    );
-  }
-
-  function isFinishedBrowserTtsDeDictationScriptSession(session: StoredSession): boolean {
-    return (
-      session.status === 'finished' &&
-      session.sessionSource === 'dictationScript' &&
-      mapSessionInputMode(session.inputMode) === 'browser-tts' &&
-      normalizeBenchmarkLanguage(resolveStoredSessionLanguage(session)) === 'de'
-    );
   }
 
   function buildAdaptiveEventCounts(
@@ -8474,76 +8298,6 @@ function clamp01(value: number): number {
 function averageNumbers(values: number[], fallback = 0): number {
   if (values.length === 0) return fallback;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function buildHistoricalPerformanceProfile(
-  sessions: StoredSession[],
-  historyService: HistoricalPerformanceService,
-  inputMode: InputMode,
-  language?: string,
-): HistoricalPerformanceProfile {
-  const records = sessions
-    .filter((session) => session.status === 'finished' && session.metrics.points > 0)
-    .map((session) => {
-      const mode = mapSessionInputMode(session.inputMode);
-      return {
-        inputMode: mode,
-        language:
-          (mode === 'audio'
-            ? session.transcriptionLanguage
-            : mode === 'browser-tts'
-              ? session.ttsLanguage
-              : session.kokoroLanguage) ?? undefined,
-        durationSec: Math.max(1, getSessionVoiceDurationSec(session) ?? session.metrics.points * 2),
-        averagePlaybackRate: clamp(session.metrics.rate, 0.75, 1.15),
-        averageWpm: session.metrics.wpm,
-        averageAccuracy: clamp01(session.metrics.accuracy / 100),
-        averageLagSec: Math.abs(session.metrics.lagSec),
-        averagePauseMs: 700,
-        replayCount: 0,
-        phraseCount: 1,
-        supportCount: session.metrics.trend === 'declining' ? 1 : 0,
-        balancedCount: session.metrics.trend === 'stable' ? 1 : 0,
-        flowCount: session.metrics.trend === 'improving' ? 1 : 0,
-        backspaceRate: 0.03,
-        correctionRate: 0.05,
-        strugglesWithLongPhrases: session.metrics.wpm < 40,
-        strugglesWithNumbers: false,
-        strugglesWithNames: false,
-        strugglesWithPunctuation: false,
-        score: session.metrics.score,
-        points: session.metrics.points,
-        improvementTrend: session.metrics.trend,
-        timestamp: session.updatedAt,
-        sessionsCount: 1,
-        profileConfidence: 0.5,
-      };
-    });
-
-  if (records.length === 0) {
-    return {
-      language,
-      inputMode,
-      comfortablePlaybackRate: 1,
-      averageWpm: 55,
-      averageAccuracy: 0.92,
-      averageLagSec: 1.2,
-      averagePauseMs: 700,
-      preferredPhraseSize: 'medium',
-      preferredPauseAfterPhraseMs: 700,
-      typicalBackspaceRate: 0.05,
-      typicalCorrectionRate: 0.05,
-      strugglesWithLongPhrases: false,
-      strugglesWithNumbers: false,
-      strugglesWithNames: false,
-      strugglesWithPunctuation: false,
-      improvementTrend: 'stable',
-      sessionsCount: 0,
-      profileConfidence: 0.2,
-    };
-  }
-
-  return historyService.computeProfile(records, language, inputMode);
 }
 
 function mapSessionInputMode(mode: SessionInputMode): InputMode {

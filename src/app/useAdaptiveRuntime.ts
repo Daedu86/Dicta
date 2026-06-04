@@ -20,7 +20,6 @@ import {
   upsertAdaptiveSessionFeedbackByInputLanguage,
 } from '../core/adaptive/sessionFeedback';
 import type {
-  AdaptiveSessionFeedback,
   AdaptiveTimelinePoint,
   HistoricalPerformanceProfile,
   InputLanguageBenchmarkMetrics,
@@ -90,7 +89,6 @@ type AdaptiveRuntimeOptions = {
   activeSession: AdaptiveRuntimeSessionInput | null;
   activeSessionId: string;
   sessions: AdaptiveRuntimeSessionInput[];
-  adaptiveBenchmarks: AdaptiveBenchmarksByInputLanguage;
   setAdaptiveBenchmarks: Dispatch<SetStateAction<AdaptiveBenchmarksByInputLanguage>>;
   adaptiveBenchmarksRef: MutableRefObject<AdaptiveBenchmarksByInputLanguage>;
   adaptiveSessionFeedback: AdaptiveSessionFeedbackByInputLanguage;
@@ -137,7 +135,6 @@ export function useAdaptiveRuntime({
   activeSession,
   activeSessionId,
   sessions,
-  adaptiveBenchmarks,
   setAdaptiveBenchmarks,
   adaptiveBenchmarksRef,
   adaptiveSessionFeedback,

@@ -46,6 +46,7 @@ Core TypeScript domain:
 
 - `src/core/buildInfo.ts`: build metadata formatting for browser display.
 - `src/core/languages.ts`: supported languages.
+- `src/app/useAdaptiveRuntime.ts`: browser-side adaptive controller wiring, benchmark update dispatch, selected profile glue, live telemetry application, and session feedback orchestration.
 - `SemanticPhrasePlanner`: language-aware phrase boundaries.
 - `AdaptiveDictationController`: rate, pause, replay, and chunk decisions.
 - `AdaptiveInputLanguageBenchmarkService`: 30-day rolling profiles.
@@ -218,6 +219,7 @@ These paths are not production Vercel backend features:
 
 Adaptive core:
 
+- `src/app/useAdaptiveRuntime.ts`
 - `src/core/buildInfo.ts`
 - `src/core/adaptive/types.ts`
 - `src/core/adaptive/AdaptiveDictationController.ts`
