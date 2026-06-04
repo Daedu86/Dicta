@@ -123,6 +123,7 @@ Recent mobile/PWA fixes changed how `/training` handles typing and persistence. 
 - Session persistence:
   - `dicta.sessions.v1` writes are intentionally debounced for performance.
   - Preserve immediate persistence on finalize/submit paths and lifecycle flushes (`pagehide`, `beforeunload`, hidden visibility).
+  - Finalized session rows also use a best-effort Supabase `keepalive` flush on page exit so mobile/PWA submits are less likely to remain remote `ready` rows.
   - Do not reintroduce synchronous full-session localStorage writes on every `sessions` update.
 - Diagnostics:
   - `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling in installed Android PWA runtime.

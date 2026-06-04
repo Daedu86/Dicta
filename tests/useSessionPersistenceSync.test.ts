@@ -67,6 +67,7 @@ afterEach(() => {
   });
   host.remove();
   window.localStorage.clear();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
@@ -227,6 +228,37 @@ function createDeferredSupabaseClient(remoteRows: DictaSyncRow[]): {
   };
 }
 
+function createKeepaliveSupabaseClient(): SupabaseClient {
+  const pullResult = Promise.resolve<{ data: DictaSyncRow[]; error: null }>({ data: [], error: null });
+  const query = {
+    select: () => query,
+    eq: () => query,
+    gt: () => query,
+    order: () => pullResult,
+    upsert: () => new Promise<{ error: null }>(() => undefined),
+  };
+  return {
+    from: () => query,
+    auth: {
+      getSession: async () => ({
+        data: {
+          session: {
+            access_token: 'access-token',
+          },
+        },
+        error: null,
+      }),
+      onAuthStateChange: () => ({
+        data: {
+          subscription: {
+            unsubscribe: vi.fn(),
+          },
+        },
+      }),
+    },
+  } as unknown as SupabaseClient;
+}
+
 describe('useSessionPersistenceSync', () => {
   it('schedules debounced normal session writes and persists immediately on final paths', () => {
     const firstSession = session('s1');
@@ -343,5 +375,60 @@ describe('useSessionPersistenceSync', () => {
     expect(getRuntime().supabaseInitialSyncPending).toBe(false);
     expect(getSessions()).toEqual([remoteSession]);
     expect(loadDeletedSessionIds().has('stale')).toBe(true);
+  });
+
+  it('flushes critical finished session rows with keepalive when the page exits before Supabase push resolves', async () => {
+    const firstSession = session('s1');
+    window.localStorage.setItem(PROFILE_SCOPED_STORAGE_MARKER_KEY, 'profile-b');
+    const fetchSpy = vi.fn(() => Promise.resolve({ ok: true }));
+    vi.stubGlobal('fetch', fetchSpy);
+    const { getRuntime } = renderHarness({
+      initialSessions: [firstSession],
+      syncConfig: authSyncConfig,
+      effectiveProfileId: 'profile-b',
+      supabaseClient: createKeepaliveSupabaseClient(),
+    });
+    await flushReactWork();
+    await flushReactWork();
+
+    const finishedSession: TestSession = {
+      ...firstSession,
+      status: 'finished',
+      updatedAt: '2026-06-04T12:03:00.000Z',
+      telemetry: {
+        ...telemetry(),
+        startedAt: '2026-06-04T12:00:00.000Z',
+        finishedAt: '2026-06-04T12:03:00.000Z',
+      },
+    };
+    act(() => {
+      getRuntime().persistAndPushSessionsNow([finishedSession], { criticalSessionIds: ['s1'] });
+      window.dispatchEvent(new Event('pagehide'));
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://example.supabase.co/rest/v1/dicta_sync_items?on_conflict=profile_id,item_type,item_key');
+    expect(init.keepalive).toBe(true);
+    expect(init.method).toBe('POST');
+    expect(init.headers).toMatchObject({
+      apikey: 'anon-key',
+      Authorization: 'Bearer access-token',
+      Prefer: 'resolution=merge-duplicates,return=minimal',
+    });
+    expect(JSON.parse(String(init.body))).toMatchObject([
+      {
+        profile_id: 'profile-b',
+        item_type: 'session',
+        item_key: 's1',
+        payload: {
+          id: 's1',
+          status: 'finished',
+          telemetry: {
+            finishedAt: '2026-06-04T12:03:00.000Z',
+          },
+        },
+      },
+    ]);
   });
 });

@@ -2156,7 +2156,7 @@ function App() {
     );
     const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
     setSessions(nextSessions);
-    persistAndPushSessionsNow(nextSessions);
+    persistAndPushSessionsNow(nextSessions, { criticalSessionIds: activeSessionId ? [activeSessionId] : [] });
     setSessionStatus('finished');
     completeAdaptiveSessionFeedback(finalizedSession);
     setError('');
@@ -3450,7 +3450,7 @@ function App() {
       );
       const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
       setSessions(nextSessions);
-      persistAndPushSessionsNow(nextSessions);
+      persistAndPushSessionsNow(nextSessions, { criticalSessionIds: activeSessionId ? [activeSessionId] : [] });
       stopTtsPlayback();
       setRunning(false);
       setSessionStatus('finished');
@@ -5208,7 +5208,7 @@ function App() {
     );
     const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
     setSessions(nextSessions);
-    persistAndPushSessionsNow(nextSessions);
+    persistAndPushSessionsNow(nextSessions, { criticalSessionIds: activeSessionId ? [activeSessionId] : [] });
     stopKokoroPlayback();
     setRunning(false);
     setSessionStatus('finished');

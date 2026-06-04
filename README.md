@@ -244,6 +244,7 @@ Preserve these behaviors:
 - Parent state commits are delayed and flushed on blur, pause/stop, submit, session change, and unmount.
 - Browser TTS runtime metrics are throttled to avoid full-tree rerender pressure.
 - `dicta.sessions.v1` localStorage writes are debounced, with immediate persistence preserved for finalization and lifecycle exits.
+- Finished-session Supabase rows are kept in a critical sync buffer and sent with a best-effort `keepalive` flush on page exit to protect mobile/PWA submits.
 - `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling.
 
 Low-latency typing is protected by contract and regression tests (`LowLatencyTextareaContract`, `lowLatencyTextarea`, and `lowLatencyPerformanceGate`). A dedicated real-browser mobile guard is available through `npm run test:e2e:mobile`; it serves `e2e-training.html`, mounts `src/e2e/trainingPerfHarness.tsx`, and runs `e2e/training-mobile.spec.ts` under Playwright's Pixel 7 profile to verify local textarea updates, batched parent commits, and bounded render counts.

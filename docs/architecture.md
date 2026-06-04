@@ -39,6 +39,7 @@ Browser app:
 - Ollama workspace: Ollama Cloud model listing and chat-test prompt surface.
 - Admin workspace: members, remote sessions, and local diagnostics.
 - `localStorage`: sessions, tombstones, benchmarks, feedback, OpenRouter drafts/jobs, and default provider models.
+- Finalized session rows are buffered for critical Supabase sync and sent with a best-effort `keepalive` flush during page exit, which reduces mobile/PWA cases where a submitted session remains a remote `ready` row.
 - PWA shell: manifest and service worker.
 
 Core TypeScript domain:

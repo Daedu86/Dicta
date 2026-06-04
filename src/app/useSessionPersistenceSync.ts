@@ -7,12 +7,16 @@ import {
   OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
 } from '../core/openRouterJobs';
 import {
+  buildSyncItems,
+  DICTA_SYNC_TABLE,
   deleteSessionSyncRow,
   latestSyncRowTimestamp,
   mergeSyncRowSnapshots,
   mergeSyncRows,
   pullSyncRows,
   pushSyncRowsDetailed,
+  selectPushableSyncRows,
+  toSyncRows,
   type DictaSyncConfig,
   type DictaSyncRow,
   type DictaSyncState,
@@ -40,6 +44,7 @@ const SESSION_PERSIST_RECOVERY_SERIES_LIMIT = 120;
 const SESSION_PERSIST_RECOVERY_ACTION_LIMIT = 160;
 const SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT = 80;
 const SUPABASE_BACKGROUND_PULL_INTERVAL_MS = 15_000;
+const SUPABASE_KEEPALIVE_BODY_MAX_BYTES = 60_000;
 
 const PROFILE_SCOPED_DICTA_STORAGE_KEYS = [
   SESSION_STORAGE_KEY,
@@ -67,6 +72,7 @@ export type ImmediateSessionSyncOptions = {
   pushingMessage?: string;
   syncedMessage?: string;
   errorMessage?: string;
+  criticalSessionIds?: string[];
 };
 
 type PersistableSession = {
@@ -190,10 +196,35 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
   const supabaseLastFullPullAtMsRef = useRef(0);
   const deletedSessionIdsRef = useRef<Set<string>>(loadDeletedSessionIds());
   const supabaseInitialSyncPendingRef = useRef(supabaseInitialSyncPending);
+  const supabaseAccessTokenRef = useRef<string>('');
+  const pendingCriticalSessionRowsRef = useRef<DictaSyncRow[]>([]);
 
   useEffect(() => {
     supabaseInitialSyncPendingRef.current = supabaseInitialSyncPending;
   }, [supabaseInitialSyncPending]);
+
+  useEffect(() => {
+    supabaseAccessTokenRef.current = '';
+    if (!supabaseClient || !effectiveSyncConfig.enabled) return;
+
+    const auth = supabaseClient.auth;
+    if (!auth?.getSession || !auth?.onAuthStateChange) return;
+    let cancelled = false;
+    void auth.getSession().then(({ data }) => {
+      if (!cancelled) {
+        supabaseAccessTokenRef.current = data.session?.access_token ?? '';
+      }
+    });
+
+    const { data } = auth.onAuthStateChange((_event, session) => {
+      supabaseAccessTokenRef.current = session?.access_token ?? '';
+    });
+
+    return () => {
+      cancelled = true;
+      data.subscription.unsubscribe();
+    };
+  }, [effectiveSyncConfig.enabled, supabaseClient, supabaseSyncIdentity]);
 
   const clearScheduledSessionPersist = useCallback((): void => {
     if (sessionPersistTimerRef.current === null) return;
@@ -245,6 +276,56 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     }, { sessionCount: nextSessions.length });
   }, [buildQuotaRecoverySessions, normalizeSessionForPersistence, onQuotaRecovered]);
 
+  const clearPendingCriticalSessionRows = useCallback((sessionIds: string[]): void => {
+    if (sessionIds.length === 0 || pendingCriticalSessionRowsRef.current.length === 0) return;
+    const ids = new Set(sessionIds);
+    pendingCriticalSessionRowsRef.current = pendingCriticalSessionRowsRef.current.filter(
+      (row) => row.item_type !== 'session' || !ids.has(row.item_key),
+    );
+  }, []);
+
+  const rememberPendingCriticalSessionRows = useCallback((syncState: DictaSyncState, sessionIds: string[]): void => {
+    if (!effectiveSyncConfig.enabled || sessionIds.length === 0) return;
+    const ids = new Set(sessionIds.filter(Boolean));
+    if (ids.size === 0) return;
+    const rows = toSyncRows(effectiveSyncConfig.profileId, buildSyncItems(syncState)).filter(
+      (row) => row.item_type === 'session' && ids.has(row.item_key),
+    );
+    pendingCriticalSessionRowsRef.current = mergeSyncRowSnapshots(pendingCriticalSessionRowsRef.current, rows);
+  }, [effectiveSyncConfig.enabled, effectiveSyncConfig.profileId]);
+
+  const flushPendingCriticalSessionRowsKeepalive = useCallback((): void => {
+    if (!effectiveSyncConfig.enabled || pendingCriticalSessionRowsRef.current.length === 0) return;
+    const accessToken = supabaseAccessTokenRef.current;
+    if (!effectiveSyncConfig.url || !effectiveSyncConfig.anonKey || !accessToken) return;
+
+    const rows = selectPushableSyncRows(pendingCriticalSessionRowsRef.current, supabaseKnownRemoteRowsRef.current);
+    if (rows.length === 0) {
+      pendingCriticalSessionRowsRef.current = [];
+      return;
+    }
+
+    const body = JSON.stringify(rows);
+    if (byteSize(body) > SUPABASE_KEEPALIVE_BODY_MAX_BYTES) return;
+
+    const endpoint = `${effectiveSyncConfig.url.replace(/\/+$/, '')}/rest/v1/${DICTA_SYNC_TABLE}?on_conflict=profile_id,item_type,item_key`;
+    try {
+      void fetch(endpoint, {
+        method: 'POST',
+        keepalive: true,
+        headers: {
+          apikey: effectiveSyncConfig.anonKey,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates,return=minimal',
+        },
+        body,
+      });
+    } catch {
+      // The normal Supabase retry path will run on the next visible/online sync cycle.
+    }
+  }, [effectiveSyncConfig.anonKey, effectiveSyncConfig.enabled, effectiveSyncConfig.url]);
+
   const flushScheduledSessionPersist = useCallback((spanName = 'session.localStorage.flush'): void => {
     clearScheduledSessionPersist();
     if (supabaseInitialSyncPendingRef.current) return;
@@ -258,6 +339,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
       pushingMessage = 'Pushing final session to Supabase...',
       syncedMessage = 'Final session synced to Supabase.',
       errorMessage = 'Supabase sync failed.',
+      criticalSessionIds = [],
     } = options;
     latestSessionsForPersistenceRef.current = nextSessions;
     clearScheduledSessionPersist();
@@ -269,6 +351,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
         buildSyncState(nextSessions, adaptiveBenchmarks, adaptiveSessionFeedback),
       );
       syncStateRef.current = syncState;
+      rememberPendingCriticalSessionRows(syncState, criticalSessionIds);
     }
 
     if (!supabaseClient || !effectiveSyncConfig.enabled || !syncState || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;
@@ -285,6 +368,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
         supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
         supabaseLastRemoteUpdatedAtRef.current =
           latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
+        clearPendingCriticalSessionRows(criticalSessionIds);
         setSupabaseSyncStatus((current) => ({
           ...current,
           state: 'synced',
@@ -304,10 +388,12 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     adaptiveBenchmarks,
     adaptiveSessionFeedback,
     buildSyncState,
+    clearPendingCriticalSessionRows,
     clearScheduledSessionPersist,
     effectiveSyncConfig.enabled,
     effectiveSyncConfig.profileId,
     persistSessionsToLocalStorage,
+    rememberPendingCriticalSessionRows,
     supabaseClient,
   ]);
 
@@ -438,6 +524,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     supabaseKnownRemoteRowsRef.current = [];
     supabaseLastRemoteUpdatedAtRef.current = null;
     supabaseLastFullPullAtMsRef.current = 0;
+    pendingCriticalSessionRowsRef.current = [];
   }, [
     activeLocalSyncProfileId,
     adaptiveBenchmarksRef,
@@ -465,6 +552,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     supabaseKnownRemoteRowsRef.current = [];
     supabaseLastRemoteUpdatedAtRef.current = null;
     supabaseLastFullPullAtMsRef.current = 0;
+    pendingCriticalSessionRowsRef.current = [];
     setSupabaseSyncStatus({
       enabled: effectiveSyncConfig.enabled,
       state: effectiveSyncConfig.enabled ? 'idle' : 'disabled',
@@ -493,7 +581,10 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
   }, [clearScheduledSessionPersist, localStorageReadyForEffectiveProfile, persistSessionsToLocalStorage, sessions, supabaseInitialSyncPending]);
 
   useEffect(() => {
-    const flushBeforeExit = () => flushScheduledSessionPersist('session.localStorage.flushBeforeExit');
+    const flushBeforeExit = () => {
+      flushScheduledSessionPersist('session.localStorage.flushBeforeExit');
+      flushPendingCriticalSessionRowsKeepalive();
+    };
     const flushWhenHidden = () => {
       if (document.visibilityState === 'hidden') {
         flushBeforeExit();
@@ -504,11 +595,12 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     document.addEventListener('visibilitychange', flushWhenHidden);
     return () => {
       flushScheduledSessionPersist();
+      flushPendingCriticalSessionRowsKeepalive();
       window.removeEventListener('pagehide', flushBeforeExit);
       window.removeEventListener('beforeunload', flushBeforeExit);
       document.removeEventListener('visibilitychange', flushWhenHidden);
     };
-  }, [flushScheduledSessionPersist]);
+  }, [flushPendingCriticalSessionRowsKeepalive, flushScheduledSessionPersist]);
 
   useEffect(() => {
     syncStateRef.current = buildSyncState(sessions, adaptiveBenchmarks, adaptiveSessionFeedback);
@@ -580,6 +672,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
         supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
         supabaseLastRemoteUpdatedAtRef.current =
           latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
+        clearPendingCriticalSessionRows((postMergeState.sessions as TSession[]).map((session) => session.id));
         if (cancelled) return;
         setSupabaseSyncStatus({
           enabled: true,
@@ -639,6 +732,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     effectiveSyncConfig.enabled,
     effectiveSyncConfig.profileId,
     normalizeRestoredSession,
+    clearPendingCriticalSessionRows,
     setAdaptiveBenchmarks,
     setAdaptiveSessionFeedback,
     setSessions,
@@ -665,6 +759,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
           supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
           supabaseLastRemoteUpdatedAtRef.current =
             latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
+          clearPendingCriticalSessionRows(sessions.map((session) => session.id));
           setSupabaseSyncStatus((current) => ({
             ...current,
             state: 'synced',
@@ -687,6 +782,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     adaptiveBenchmarks,
     adaptiveSessionFeedback,
     buildSyncState,
+    clearPendingCriticalSessionRows,
     effectiveSyncConfig.enabled,
     effectiveSyncConfig.profileId,
     sessions,
@@ -732,6 +828,10 @@ function isLocalStorageQuotaExceeded(error: unknown): boolean {
     candidate.code === 22 ||
     candidate.code === 1014
   );
+}
+
+function byteSize(value: string): number {
+  return new TextEncoder().encode(value).length;
 }
 
 function compactTelemetryForStorage(telemetry: SessionTelemetry): SessionTelemetry {
