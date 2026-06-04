@@ -1,4 +1,6 @@
-export type InputMode = 'audio' | 'browser-tts' | 'kokoro' | 'qwen-cloud';
+import type { InputMode, StoredInputMode } from './inputModes';
+export type { InputMode, LegacyInputMode, StoredInputMode } from './inputModes';
+
 export type PhraseSize = 'short' | 'medium' | 'long';
 export type PacingMode = 'support' | 'balanced' | 'flow';
 export type ImprovementTrend = 'improving' | 'stable' | 'declining';
@@ -133,7 +135,7 @@ export interface RateAccuracyBucket {
 
 export interface AdaptiveTimelinePoint {
   timestampMs: number;
-  inputMode: InputMode;
+  inputMode: StoredInputMode;
   language: LanguageCode;
   mode: PacingMode;
   playbackRate: number;
@@ -267,13 +269,13 @@ export interface PhrasePlaybackEvent {
   textPreview: string;
   event: PhrasePlaybackEventType;
   timestampMs: number;
-  inputMode: InputMode;
+  inputMode: StoredInputMode;
   language: LanguageCode;
 }
 
 export interface AdaptiveSessionFeedback {
   sessionId: string;
-  inputMode: InputMode;
+  inputMode: StoredInputMode;
   language: LanguageCode;
   scriptId?: string;
   scriptTitle?: string;

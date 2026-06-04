@@ -1,4 +1,7 @@
-import type { PacingDecision } from '../../core/adaptive/types';
+import type { InputMode, PacingDecision } from '../../core/adaptive/types';
+import { COSYVOICE_CACHE_INPUT_MODE, LEGACY_QWEN_CLOUD_INPUT_MODE } from '../../core/adaptive/inputModes';
+
+type QwenCloudEngine = typeof COSYVOICE_CACHE_INPUT_MODE | typeof LEGACY_QWEN_CLOUD_INPUT_MODE;
 
 export interface QwenCloudPhrase {
   id: string;
@@ -9,17 +12,17 @@ export interface QwenCloudPhrase {
   wordCount: number;
   charCount: number;
   difficulty?: number;
-  engine: 'qwen-cloud';
+  engine: QwenCloudEngine;
 }
 
 export interface QwenCloudManifest {
-  engine: 'qwen-cloud';
+  engine: QwenCloudEngine;
   language: string;
   phrases: QwenCloudPhrase[];
 }
 
 export interface DictationAudioAdapter {
-  inputMode: 'audio' | 'browser-tts' | 'kokoro' | 'qwen-cloud';
+  inputMode: InputMode;
   loadPhrase(phraseId: string): Promise<void>;
   play(decision: PacingDecision): Promise<void>;
   pause(): void;
@@ -29,7 +32,6 @@ export interface DictationAudioAdapter {
   getCurrentPhrase(): QwenCloudPhrase | null;
 }
 
-// Input #4 cache base. Historically "qwen", but the free local path now targets CosyVoice2-generated WAVs.
 const BASE_PATH = '/tts-cache/cosyvoice';
 const LEGACY_BASE_PATH = '/tts-cache/qwen';
 
@@ -75,7 +77,7 @@ export function buildQwenCloudPhraseId(text: string, language: string): string {
 }
 
 export class QwenCloudAudioAdapter implements DictationAudioAdapter {
-  public inputMode = 'qwen-cloud' as const;
+  public inputMode: InputMode = COSYVOICE_CACHE_INPUT_MODE;
   private currentPhrase: QwenCloudPhrase | null = null;
   private manifestCache = new Map<string, QwenCloudManifest | null>();
   private audio = new Audio();
@@ -85,7 +87,7 @@ export class QwenCloudAudioAdapter implements DictationAudioAdapter {
     this.onError = onError;
     this.audio.addEventListener('error', () => {
       if (this.currentPhrase) {
-        this.onError?.(`Missing Qwen audio for phrase ${this.currentPhrase.id}.`);
+        this.onError?.(`Missing CosyVoice cache audio for phrase ${this.currentPhrase.id}.`);
       }
     });
   }
@@ -120,7 +122,7 @@ export class QwenCloudAudioAdapter implements DictationAudioAdapter {
       wordCount: phrase?.wordCount ?? 0,
       charCount: phrase?.charCount ?? 0,
       difficulty: phrase?.difficulty,
-      engine: 'qwen-cloud',
+      engine: phrase?.engine ?? COSYVOICE_CACHE_INPUT_MODE,
     };
 
     await this.verifyAudioExists(normalizedAudioUrl, language, hash);
@@ -131,7 +133,7 @@ export class QwenCloudAudioAdapter implements DictationAudioAdapter {
 
   public async play(decision: PacingDecision): Promise<void> {
     if (!this.currentPhrase) {
-      throw new Error('No Qwen phrase loaded.');
+      throw new Error('No CosyVoice cache phrase loaded.');
     }
     this.audio.playbackRate = decision.playbackRate;
     return this.audio.play();
@@ -143,7 +145,7 @@ export class QwenCloudAudioAdapter implements DictationAudioAdapter {
 
   public async replay(decision: PacingDecision): Promise<void> {
     if (!this.currentPhrase) {
-      throw new Error('No Qwen phrase loaded.');
+      throw new Error('No CosyVoice cache phrase loaded.');
     }
     this.audio.currentTime = 0;
     this.audio.playbackRate = decision.replayRate;
@@ -163,8 +165,16 @@ export class QwenCloudAudioAdapter implements DictationAudioAdapter {
         return null;
       }
       const manifest = (await response.json()) as QwenCloudManifest;
-      this.manifestCache.set(language, manifest);
-      return manifest;
+      const normalizedManifest: QwenCloudManifest = {
+        ...manifest,
+        engine: manifest.engine === LEGACY_QWEN_CLOUD_INPUT_MODE ? LEGACY_QWEN_CLOUD_INPUT_MODE : COSYVOICE_CACHE_INPUT_MODE,
+        phrases: manifest.phrases.map((phrase) => ({
+          ...phrase,
+          engine: phrase.engine === LEGACY_QWEN_CLOUD_INPUT_MODE ? LEGACY_QWEN_CLOUD_INPUT_MODE : COSYVOICE_CACHE_INPUT_MODE,
+        })),
+      };
+      this.manifestCache.set(language, normalizedManifest);
+      return normalizedManifest;
     } catch {
       this.manifestCache.set(language, null);
       return null;
@@ -182,11 +192,9 @@ export class QwenCloudAudioAdapter implements DictationAudioAdapter {
           return;
         }
       } catch {
-        // ignore and continue to fallback candidates
       }
     }
 
-    // Backward compatibility: older caches may still live under /tts-cache/qwen.
     const legacyCandidates = [`${LEGACY_BASE_PATH}/${language}/${hash}.wav`, `${LEGACY_BASE_PATH}/${language}/${hash}.mp3`];
     for (const url of legacyCandidates) {
       try {
@@ -196,7 +204,6 @@ export class QwenCloudAudioAdapter implements DictationAudioAdapter {
           return;
         }
       } catch {
-        // ignore and continue
       }
     }
 

@@ -576,7 +576,7 @@ function deriveTimelineEvent(decision: PacingDecision): AdaptiveTimelinePoint['e
   return 'rate_change';
 }
 
-function isBrowserTtsDe(inputMode: InputMode, language?: string | null): boolean {
+function isBrowserTtsDe(inputMode: string | null | undefined, language?: string | null): boolean {
   return inputMode === 'browser-tts' && normalizeBenchmarkLanguage(language).toLowerCase() === 'de';
 }
 

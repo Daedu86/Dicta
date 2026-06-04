@@ -129,7 +129,7 @@ describe('openRouterGenerationPrompt', () => {
   });
 
   it('uses Portuguese language labels and exact pt output contract', () => {
-    const profile = createEmptyInputLanguageBenchmark('qwen-cloud', 'pt');
+    const profile = createEmptyInputLanguageBenchmark('cosyvoice-cache', 'pt');
     const payload = buildOpenRouterGenerationPrompt({
       profile,
       sessionFeedback: null,
@@ -137,7 +137,7 @@ describe('openRouterGenerationPrompt', () => {
       durationMinutes: 2,
     });
 
-    expect(payload.prompt).toContain('inputMode "qwen-cloud"');
+    expect(payload.prompt).toContain('inputMode "cosyvoice-cache"');
     expect(payload.prompt).toContain('language "pt"');
     expect(payload.prompt).toContain('Write all phrase text naturally in Portuguese.');
     expect(payload.prompt).toContain('"language": "pt"');
@@ -158,9 +158,9 @@ describe('openRouterGenerationPrompt', () => {
       summary: 'German browser recovery only.',
     };
 
-    const qwenPtProfile = createEmptyInputLanguageBenchmark('qwen-cloud', 'pt');
-    qwenPtProfile.weakAreas = ['flow_instability'];
-    qwenPtProfile.recommendation = {
+    const cosyvoicePtProfile = createEmptyInputLanguageBenchmark('cosyvoice-cache', 'pt');
+    cosyvoicePtProfile.weakAreas = ['flow_instability'];
+    cosyvoicePtProfile.recommendation = {
       targetRateRange: [0.9, 1],
       targetPhraseSize: 'medium',
       targetPauseMs: 700,
@@ -175,8 +175,8 @@ describe('openRouterGenerationPrompt', () => {
       promptSource: 'compact-adaptive-v2',
       durationMinutes: 3,
     });
-    const qwenPtPayload = buildOpenRouterGenerationPrompt({
-      profile: qwenPtProfile,
+    const cosyvoicePtPayload = buildOpenRouterGenerationPrompt({
+      profile: cosyvoicePtProfile,
       sessionFeedback: null,
       promptSource: 'compact-adaptive-v2',
       durationMinutes: 1,
@@ -189,12 +189,12 @@ describe('openRouterGenerationPrompt', () => {
     expect(browserDePayload.prompt).toContain('German browser recovery only.');
     expect(browserDePayload.prompt).not.toContain('Portuguese cache fluency only.');
 
-    expect(qwenPtPayload.prompt).toContain('inputMode "qwen-cloud"');
-    expect(qwenPtPayload.prompt).toContain('language "pt"');
-    expect(qwenPtPayload.prompt).toContain('Write all phrase text naturally in Portuguese.');
-    expect(qwenPtPayload.prompt).toContain('"language": "pt"');
-    expect(qwenPtPayload.prompt).toContain('Portuguese cache fluency only.');
-    expect(qwenPtPayload.prompt).not.toContain('German browser recovery only.');
+    expect(cosyvoicePtPayload.prompt).toContain('inputMode "cosyvoice-cache"');
+    expect(cosyvoicePtPayload.prompt).toContain('language "pt"');
+    expect(cosyvoicePtPayload.prompt).toContain('Write all phrase text naturally in Portuguese.');
+    expect(cosyvoicePtPayload.prompt).toContain('"language": "pt"');
+    expect(cosyvoicePtPayload.prompt).toContain('Portuguese cache fluency only.');
+    expect(cosyvoicePtPayload.prompt).not.toContain('German browser recovery only.');
   });
 
   it('includes compact adaptive v2 feedback only when feedback is provided', () => {

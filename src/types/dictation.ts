@@ -34,6 +34,7 @@ export type ControlAction =
   | 'phrase_end';
 
 export type TtsPacingMode = 'slow' | 'balanced' | 'flow';
+export type TtsEngine = 'browser' | 'kokoro' | 'cosyvoice-cache' | 'qwen-cloud';
 
 export interface TtsChunkTelemetry {
   t: number;
@@ -41,7 +42,7 @@ export interface TtsChunkTelemetry {
   wordCount: number;
   rate: number;
   pacingMode: TtsPacingMode;
-  engine?: 'browser' | 'kokoro' | 'qwen-cloud';
+  engine?: TtsEngine;
   cacheKey?: string;
   durationSec?: number;
 }

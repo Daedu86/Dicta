@@ -21,7 +21,7 @@ Inputs:
 - `audio`: uploaded or recorded original audio plus a word-level transcript.
 - `browser-tts`: browser SpeechSynthesis with adaptive semantic chunking.
 - `kokoro`: local Kokoro TTS sidecar. Native in this setup: `en`, `es`. Blocked or experimental: `de`, `fr`, `pt`.
-- `qwen-cloud`: historical adaptive input id for cached TTS playback. The current free path is CosyVoice2 WAV cache files with browser TTS fallback when cache files are missing.
+- `cosyvoice-cache`: CosyVoice2 WAV cache files with browser TTS fallback when cache files are missing. Historical `qwen-cloud` values are treated as a legacy alias when reading stored/cache data.
 
 Languages: `en`, `es`, `de`, `fr`, `pt`.
 
@@ -58,7 +58,7 @@ Input adapters:
 - `audio`: audio engine plus telemetry adapter.
 - `browser-tts`: SpeechSynthesis plus dynamic chunk planner.
 - `kokoro`: Kokoro sidecar plus telemetry adapter.
-- `qwen-cloud`: CosyVoice2 cache plus browser fallback.
+- `cosyvoice-cache`: CosyVoice2 cache plus browser fallback, with `qwen-cloud` accepted as a legacy cache/input alias.
 
 Server routes and local dev middleware:
 
@@ -258,5 +258,5 @@ Local services:
 
 - Production transcription still needs a deployed backend, object storage, and long-running job handling.
 - Kokoro support for `de`, `fr`, and `pt` remains blocked or experimental.
-- Input #4 still uses the historical `qwen-cloud` identifier even though the current cache generator is CosyVoice2.
+- Input #4 still needs legacy `qwen-cloud` compatibility for existing manifests, stored sessions, and active OpenRouter jobs.
 - Full-tree render volume during long Browser TTS runs can still be reduced.

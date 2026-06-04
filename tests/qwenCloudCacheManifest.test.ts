@@ -23,7 +23,7 @@ describe('qwenCloudCacheManifest', () => {
     ] satisfies SemanticPhrase[];
 
     const manifest = buildQwenCloudCacheManifestFromSemanticPhrases(semanticPhrases, 'en');
-    expect(manifest.engine).toBe('qwen-cloud');
+    expect(manifest.engine).toBe('cosyvoice-cache');
     expect(manifest.language).toBe('en');
     expect(manifest.phrases.length).toBe(1);
     expect(manifest.phrases[0].id.startsWith('en:')).toBe(true);

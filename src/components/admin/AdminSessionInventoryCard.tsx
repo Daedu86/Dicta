@@ -62,7 +62,7 @@ function formatSessionInputMode(mode: SessionInputMode): string {
   if (mode === 'input1') return 'Original audio';
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
-  return 'Qwen cache';
+  return 'CosyVoice cache';
 }
 
 function formatSessionStatus(value: SessionStatus): string {

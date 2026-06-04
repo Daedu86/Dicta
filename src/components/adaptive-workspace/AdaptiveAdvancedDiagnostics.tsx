@@ -57,7 +57,7 @@ function formatSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): s
   if (mode === 'input1') return 'Original audio';
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
-  return 'Qwen cache';
+  return 'CosyVoice cache';
 }
 
 function formatDuration(seconds: number): string {

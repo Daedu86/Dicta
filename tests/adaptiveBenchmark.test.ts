@@ -223,14 +223,14 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
       createEmptyInputLanguageBenchmark('audio', 'pt'),
       createEmptyInputLanguageBenchmark('browser-tts', 'pt'),
       createEmptyInputLanguageBenchmark('kokoro', 'pt'),
-      createEmptyInputLanguageBenchmark('qwen-cloud', 'pt'),
+      createEmptyInputLanguageBenchmark('cosyvoice-cache', 'pt'),
     ];
 
     expect(profiles.map((profile) => `${profile.inputMode}/${profile.language}`)).toEqual([
       'audio/pt',
       'browser-tts/pt',
       'kokoro/pt',
-      'qwen-cloud/pt',
+      'cosyvoice-cache/pt',
     ]);
   });
 
@@ -805,7 +805,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
       createEmptyInputLanguageBenchmark('browser-tts', 'es'),
       createEmptyInputLanguageBenchmark('audio', 'de'),
       createEmptyInputLanguageBenchmark('kokoro', 'de'),
-      createEmptyInputLanguageBenchmark('qwen-cloud', 'de'),
+      createEmptyInputLanguageBenchmark('cosyvoice-cache', 'de'),
     ];
 
     for (const profile of profiles) {
@@ -1039,11 +1039,11 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const es = buildPressureProfile('browser-tts', 'es');
     const audio = buildPressureProfile('audio', 'de');
     const kokoro = buildPressureProfile('kokoro', 'de');
-    const qwen = buildPressureProfile('qwen-cloud', 'de');
+    const cosyvoice = buildPressureProfile('cosyvoice-cache', 'de');
 
     expect(de.recommendation.targetRateRange).toEqual([0.8, 0.85]);
     expect(de.recommendation.targetPauseMs).toBe(1200);
-    for (const profile of [en, es, audio, kokoro, qwen]) {
+    for (const profile of [en, es, audio, kokoro, cosyvoice]) {
       expect(profile.recommendation.targetRateRange).not.toEqual([0.95, 1]);
       expect(profile.recommendation.summary).not.toContain('support-mode pressure remains high');
     }

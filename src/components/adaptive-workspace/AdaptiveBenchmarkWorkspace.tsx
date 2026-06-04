@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics, InputMode } from '../../core/adaptive/types';
+import { COSYVOICE_CACHE_INPUT_MODE } from '../../core/adaptive/inputModes';
 import { buildBrowserTtsDeDiagnostics, createEmptyInputLanguageBenchmark } from '../../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildSelectedBenchmarkExportPayload } from '../../core/adaptive/benchmarkJson';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from '../../core/adaptive/dictationScriptPrompt';
@@ -60,7 +61,7 @@ function isMobileViewport(): boolean {
 function mapSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): InputMode {
   if (mode === 'input1') return 'audio';
   if (mode === 'input2') return 'browser-tts';
-  if (mode === 'input4') return 'qwen-cloud';
+  if (mode === 'input4') return COSYVOICE_CACHE_INPUT_MODE;
   return 'kokoro';
 }
 export function AdaptiveAdapterCard({
