@@ -57,6 +57,7 @@ Test account:
 - Run app locally: `npm run dev`
 - Run tests: `npm run test`
 - Production build/typecheck: `npm run build`
+- Run mobile training E2E guard: `npm run test:e2e:mobile`
 - Optional ingestion dry run: `npm run ingest:dryrun`
 
 Before finishing code changes, run `npm run test` and `npm run build` unless the change is docs-only or you clearly explain why you could not.
@@ -124,7 +125,8 @@ Recent mobile/PWA fixes changed how `/training` handles typing and persistence. 
 - Diagnostics:
   - `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling in installed Android PWA runtime.
   - Keep diagnostics passive; avoid adding instrumentation that increases typing latency.
-  - `tests/LowLatencyTextareaContract.test.ts`, `tests/lowLatencyTextarea.test.ts`, and `tests/lowLatencyPerformanceGate.test.ts` protect the low-latency typing contract. They are regression gates, not a real-browser end-to-end performance benchmark.
+  - `tests/LowLatencyTextareaContract.test.ts`, `tests/lowLatencyTextarea.test.ts`, and `tests/lowLatencyPerformanceGate.test.ts` protect the low-latency typing contract.
+  - `npm run test:e2e:mobile` runs the Playwright mobile guard against `e2e-training.html`, backed by `src/e2e/trainingPerfHarness.tsx` and `e2e/training-mobile.spec.ts`, to catch real-browser typing/render regressions.
 
 ## Persistence and Sync
 

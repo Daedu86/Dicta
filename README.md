@@ -73,6 +73,7 @@ Useful checks:
 ```bash
 npm run test
 npm run build
+npm run test:e2e:mobile
 npm run ingest:dryrun
 ```
 
@@ -245,7 +246,7 @@ Preserve these behaviors:
 - `dicta.sessions.v1` localStorage writes are debounced, with immediate persistence preserved for finalization and lifecycle exits.
 - `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling.
 
-Low-latency typing is protected by contract and regression tests (`LowLatencyTextareaContract`, `lowLatencyTextarea`, and `lowLatencyPerformanceGate`). The remaining gap is the absence of a real-browser end-to-end performance benchmark running in CI.
+Low-latency typing is protected by contract and regression tests (`LowLatencyTextareaContract`, `lowLatencyTextarea`, and `lowLatencyPerformanceGate`). A dedicated real-browser mobile guard is available through `npm run test:e2e:mobile`; it serves `e2e-training.html`, mounts `src/e2e/trainingPerfHarness.tsx`, and runs `e2e/training-mobile.spec.ts` under Playwright's Pixel 7 profile to verify local textarea updates, batched parent commits, and bounded render counts.
 
 ## Local Storage Keys
 
@@ -313,6 +314,7 @@ Security note:
 
 ```bash
 npm test
+npm run test:e2e:mobile
 ```
 
 Test coverage currently includes:
@@ -321,6 +323,7 @@ Test coverage currently includes:
 - Adaptive controller, benchmark service, session feedback, semantic planner, and OpenRouter prompt profile-scope guardrails.
 - Integration simulation test for convergence / no excessive oscillation.
 - Ingestion smoke test (`--dry-run`) for output schema path.
+- Playwright mobile E2E guard for the focused `/training` typing performance harness.
 
 Before finishing code changes, run `npm run test` and `npm run build` unless the change is docs-only or you clearly explain why not.
 
@@ -330,4 +333,4 @@ Before finishing code changes, run `npm run test` and `npm run build` unless the
 - Kokoro support for `de`, `fr`, and `pt` remains blocked/experimental.
 - Input #4 still uses the historical `qwen-cloud` identifier even though the current cache generator is CosyVoice2.
 - Full-tree render volume during long Browser TTS runs can still be reduced.
-- There is no automated CI benchmark gate for typing-latency regressions.
+- The mobile Playwright guard exists as `npm run test:e2e:mobile`; wiring it into the GitHub CI workflow remains a separate step.
