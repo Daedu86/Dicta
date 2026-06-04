@@ -239,6 +239,10 @@ import {
   buildBuildInfoTitle,
   type DictaBuildInfo,
 } from './core/buildInfo';
+import {
+  useWorkspaceRouting,
+  type WorkspaceMode,
+} from './app/useWorkspaceRouting';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
@@ -249,7 +253,6 @@ const SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS = 8;
 const SESSION_PERSIST_RECOVERY_SERIES_LIMIT = 120;
 const SESSION_PERSIST_RECOVERY_ACTION_LIMIT = 160;
 const SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT = 80;
-const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 const KOKORO_ENABLED_KEY = 'dicta.kokoroEnabled.v1';
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
 const OLLAMA_DEFAULT_MODEL_STORAGE_KEY = 'dicta.ollamaDefaultModel.v1';
@@ -338,7 +341,6 @@ type TrainingSessionSubmissionMeta = {
 type TtsLanguage = SupportedLanguage;
 type TypingLanguage = SupportedLanguage;
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
-type WorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter' | 'ollama';
 type ThemeMode = 'light' | 'dark';
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
@@ -567,8 +569,22 @@ function App() {
   const [sessionCreationName, setSessionCreationName] = useState('');
   const [dictationScriptJson, setDictationScriptJson] = useState('');
   const [dictationScriptValidation, setDictationScriptValidation] = useState<DictationScriptValidationResult | null>(null);
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('leaderboard');
-  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+  const {
+    workspaceMode,
+    currentPath,
+    dashboardSessionId,
+    clearDashboardSession,
+    navigateAppRoute,
+    showWorkspaceMode,
+    showLeaderboardWorkspace,
+    showTrainingWorkspace,
+    showAdminWorkspace,
+    showOpenRouterWorkspace,
+    showOllamaWorkspace,
+    showAdaptiveWorkspace,
+    showDashboardWorkspace,
+    showSessionInputWorkspace,
+  } = useWorkspaceRouting();
   const [perfDiagnosticsEnabled, setPerfDiagnosticsEnabled] = useState(false);
   const [openRouterGenerateFocusRequest, setOpenRouterGenerateFocusRequest] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
@@ -578,15 +594,9 @@ function App() {
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
-  const [dashboardSessionId, setDashboardSessionId] = useState<string | null>(null);
   const [setupExpanded, setSetupExpanded] = useState(true);
   const [ttsExpanded, setTtsExpanded] = useState(true);
   const [ttsText, setTtsText] = useState('');
-
-  useEffect(() => {
-    setWorkspaceMode('leaderboard');
-    setDashboardSessionId(null);
-  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(THEME_MODE_KEY, themeMode);
@@ -597,11 +607,6 @@ function App() {
     qwenCloudAdapterRef.current = new QwenCloudAudioAdapter((message) => setError(message));
   }, []);
 
-  useEffect(() => {
-    const onRouteChange = () => setCurrentPath(window.location.pathname);
-    window.addEventListener('popstate', onRouteChange);
-    return () => window.removeEventListener('popstate', onRouteChange);
-  }, []);
 
   const [ttsLanguage, setTtsLanguage] = useState<TtsLanguage>('de');
   const [browserTtsVoices, setBrowserTtsVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -946,7 +951,7 @@ function App() {
     lastPersistedSessionsJsonRef.current = null;
     setSessions(restoredSessions);
     setActiveSessionId(restoredSessions[0]?.id ?? '');
-    setDashboardSessionId(null);
+    clearDashboardSession();
 
     const restoredBenchmarks = loadAdaptiveBenchmarks();
     adaptiveBenchmarksRef.current = restoredBenchmarks;
@@ -970,7 +975,7 @@ function App() {
     setOpenRouterJobNotifications({});
     setOpenRouterJobStatus('');
     setTrainingGenerationNotices({});
-  }, [activeLocalSyncProfileId, effectiveProfileId, syncConfig.authRequired]);
+  }, [activeLocalSyncProfileId, clearDashboardSession, effectiveProfileId, syncConfig.authRequired]);
 
   useEffect(() => {
     if (!supabaseClient || !syncConfig.authRequired) {
@@ -1339,14 +1344,10 @@ function App() {
   ]);
 
   useEffect(() => {
-    window.localStorage.setItem(WORKSPACE_MODE_KEY, workspaceMode);
-  }, [workspaceMode]);
-
-  useEffect(() => {
     if (workspaceMode !== 'openrouter' || openRouterAccessState !== 'denied') return;
-    setWorkspaceMode('leaderboard');
+    showLeaderboardWorkspace();
     setOpenRouterError(openRouterAccessMessage);
-  }, [openRouterAccessState, workspaceMode]);
+  }, [openRouterAccessState, showLeaderboardWorkspace, workspaceMode]);
 
   useEffect(() => {
     window.localStorage.setItem(KOKORO_ENABLED_KEY, JSON.stringify(kokoroEnabled));
@@ -1625,9 +1626,9 @@ function App() {
       workspaceMode !== 'openrouter' &&
       workspaceMode !== 'ollama'
     ) {
-      setWorkspaceMode(activeInputWorkspaceMode);
+      showWorkspaceMode(activeInputWorkspaceMode);
     }
-  }, [activeInputWorkspaceMode, activeSession, workspaceMode]);
+  }, [activeInputWorkspaceMode, activeSession, showWorkspaceMode, workspaceMode]);
 
   useEffect(() => {
     if (workspaceMode !== 'admin') return;
@@ -3182,13 +3183,6 @@ function App() {
     }
   }
 
-  function navigateAppRoute(path: '/' | '/training'): void {
-    if (window.location.pathname !== path) {
-      window.history.pushState(null, '', path);
-    }
-    setCurrentPath(path);
-  }
-
   function createSessionWithMode(inputMode: SessionInputMode): void {
     if (!ensureCanCreateDictationSession('error')) return;
     const name = sessionCreationName.trim();
@@ -3205,14 +3199,7 @@ function App() {
       ),
     );
     setActiveSessionId(nextSession.id);
-    setWorkspaceMode(
-      inputMode === 'input1'
-        ? 'training'
-        : inputMode === 'input2' || inputMode === 'input4'
-          ? 'tts'
-          : 'kokoro',
-    );
-    setDashboardSessionId(null);
+    showSessionInputWorkspace(inputMode);
     setSessionCreationMode(null);
     setSessionCreationSource('plainText');
     setSessionCreationName('');
@@ -3229,8 +3216,7 @@ function App() {
     suppressSidebarAutoSelectRef.current = true;
     const nextSession = prependSessionAndPersistNow((prev) => createStoredSession(getNextSessionIndex(prev), 'input1', name));
     setActiveSessionId(nextSession.id);
-    setWorkspaceMode('training');
-    setDashboardSessionId(null);
+    showTrainingWorkspace();
     setSetupExpanded(true);
     setError('');
     setExportMessage('Manual Input #1 session created.');
@@ -3263,8 +3249,7 @@ function App() {
       createSessionFromScript(result.script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
     );
     setActiveSessionId(nextSession.id);
-    setWorkspaceMode(inputMode === 'input1' ? 'training' : inputMode === 'input2' || inputMode === 'input4' ? 'tts' : 'kokoro');
-    setDashboardSessionId(null);
+    showSessionInputWorkspace(inputMode);
     setSessionCreationMode(null);
     setSessionCreationSource('plainText');
     setSessionCreationName('');
@@ -3299,8 +3284,7 @@ function App() {
     setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
     if (navigateToLeaderboard) {
       setActiveSessionId(nextSession.id);
-      setWorkspaceMode('leaderboard');
-      setDashboardSessionId(null);
+      showLeaderboardWorkspace();
     }
     setSessionCreationMode(null);
     setSessionCreationSource('plainText');
@@ -3343,8 +3327,7 @@ function App() {
     setLeaderboardLanguageView(language);
     if (navigateToLeaderboard) {
       setActiveSessionId(nextSession.id);
-      setWorkspaceMode('leaderboard');
-      setDashboardSessionId(null);
+      showLeaderboardWorkspace();
     }
     setError('');
     setOpenRouterError(message);
@@ -3369,9 +3352,9 @@ function App() {
 
   function deleteSession(sessionId: string): void {
     if (dashboardSessionId === sessionId) {
-      setDashboardSessionId(null);
+      clearDashboardSession();
       if (workspaceMode === 'dashboard') {
-        setWorkspaceMode('leaderboard');
+        showLeaderboardWorkspace();
       }
     }
     deletedSessionIdsRef.current.add(sessionId);
@@ -3407,14 +3390,12 @@ function App() {
 
   function openDashboardForSession(sessionId: string): void {
     setActiveSessionId(sessionId);
-    setDashboardSessionId(sessionId);
-    setWorkspaceMode('dashboard');
+    showDashboardWorkspace(sessionId);
   }
 
   function openWorkspaceForSession(session: StoredSession): void {
     setActiveSessionId(session.id);
-    setDashboardSessionId(null);
-    setWorkspaceMode(getWorkspaceModeForSessionInput(session.inputMode));
+    showSessionInputWorkspace(session.inputMode);
   }
 
   function getActiveTypingLanguage(): TypingLanguage | null {
@@ -3462,8 +3443,7 @@ function App() {
     setSelectedBenchmarkLanguage(language);
     setBenchmarkExportMessage('');
     setSessionFeedbackMessage('');
-    setWorkspaceMode('openrouter');
-    setDashboardSessionId(null);
+    showOpenRouterWorkspace();
     setOpenRouterGenerateFocusRequest((value) => value + 1);
   }
 
@@ -3706,8 +3686,7 @@ function App() {
     setSessionFeedbackMessage('');
     setAdaptiveBenchmarksFocusAnchor('exports');
     setAdaptiveSectionExpanded((prev) => ({ ...prev, benchmarks: true }));
-    setWorkspaceMode('adaptive');
-    setDashboardSessionId(null);
+    showAdaptiveWorkspace();
   }
 
   function openAdaptiveWorkspaceFromHeader(): void {
@@ -3723,8 +3702,7 @@ function App() {
         benchmarks: false,
       }));
     }
-    setWorkspaceMode('adaptive');
-    setDashboardSessionId(null);
+    showAdaptiveWorkspace();
   }
 
   const keyboardProfile = resolveKeyboardProfile();
@@ -4737,7 +4715,7 @@ function App() {
       const importedSessions = loadSessions();
       setSessions(importedSessions);
       setActiveSessionId(importedSessions[0]?.id ?? '');
-      setDashboardSessionId(null);
+      clearDashboardSession();
       setAdaptiveBenchmarksByInputLanguage(loadAdaptiveBenchmarks());
       setAdaptiveSessionFeedbackByInputLanguage(loadAdaptiveSessionFeedback());
       setDictaLanguageView(loadPersistedDictaLanguageView());
@@ -4765,7 +4743,7 @@ function App() {
         setOllamaDefaultModel(OLLAMA_RECOMMENDED_DEFAULT_MODEL);
       }
 
-      setWorkspaceMode('leaderboard');
+      showLeaderboardWorkspace();
       setExportMessage(`Imported ${incoming.length} Dicta storage key(s). Leaderboard and adaptive profiles restored in this browser.`);
     } catch (error) {
       setExportMessage(error instanceof Error ? `Import failed: ${error.message}` : 'Import failed.');
@@ -6940,28 +6918,13 @@ function App() {
           showOpenRouterButton={openRouterAccessAllowed}
           syncStatusState={supabaseSyncStatus.state}
           syncStatusText={appShellSyncStatusText}
-          onOpenLeaderboard={() => {
-            setWorkspaceMode('leaderboard');
-            setDashboardSessionId(null);
-          }}
-          onOpenDesktopTraining={() => {
-            setWorkspaceMode('training');
-            setDashboardSessionId(null);
-          }}
+          onOpenLeaderboard={showLeaderboardWorkspace}
+          onOpenDesktopTraining={showTrainingWorkspace}
           onOpenMobileTraining={() => navigateAppRoute('/training')}
           onOpenAdaptive={openAdaptiveWorkspaceFromHeader}
-          onOpenAdmin={() => {
-            setWorkspaceMode('admin');
-            setDashboardSessionId(null);
-          }}
-          onOpenOpenRouter={() => {
-            setWorkspaceMode('openrouter');
-            setDashboardSessionId(null);
-          }}
-          onOpenOllama={() => {
-            setWorkspaceMode('ollama');
-            setDashboardSessionId(null);
-          }}
+          onOpenAdmin={showAdminWorkspace}
+          onOpenOpenRouter={showOpenRouterWorkspace}
+          onOpenOllama={showOllamaWorkspace}
           onToggleTheme={() => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark'))}
           onSignOut={signOut}
         >
@@ -7134,8 +7097,7 @@ function App() {
                       type="button"
                       className="secondary-button"
                       onClick={() => {
-                        setWorkspaceMode('leaderboard');
-                        setDashboardSessionId(null);
+                        showLeaderboardWorkspace();
                       }}
                     >
                       Back to sessions
@@ -7243,8 +7205,7 @@ function App() {
                       type="button"
                       className="secondary-button"
                       onClick={() => {
-                        setWorkspaceMode('leaderboard');
-                        setDashboardSessionId(null);
+                        showLeaderboardWorkspace();
                       }}
                     >
                       Back to sessions
@@ -7317,11 +7278,8 @@ function App() {
                 formatSessionStatus={formatSessionStatus}
                 formatSessionDate={formatSessionDate}
                 formatSessionPlaybackDuration={(session) => formatSessionPlaybackDuration(session as StoredSession)}
-                onBackToLeaderboard={() => setWorkspaceMode('leaderboard')}
-                onBackToTraining={() => {
-                  setWorkspaceMode('training');
-                  setDashboardSessionId(null);
-                }}
+                onBackToLeaderboard={showLeaderboardWorkspace}
+                onBackToTraining={showTrainingWorkspace}
               />
             ) : workspaceMode === 'adaptive' ? (
               <section className="panel workspace-panel adaptive-workspace">
@@ -7334,10 +7292,7 @@ function App() {
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => {
-                        setWorkspaceMode('training');
-                        setDashboardSessionId(null);
-                      }}
+                      onClick={showTrainingWorkspace}
                     >
                       Back to training
                     </button>
@@ -7433,7 +7388,7 @@ function App() {
                 status={openRouterStatus}
                 error={openRouterError}
                 onRefreshModels={refreshOpenRouterModels}
-                onBackToTraining={() => setWorkspaceMode('training')}
+                onBackToTraining={showTrainingWorkspace}
                 exportProfile={selectedBenchmarkProfile}
                 exportSessionFeedback={selectedSessionFeedback}
                 exportActiveSessionStatus={getBenchmarkActiveSessionStatus(selectedBenchmarkProfile)}
@@ -7479,7 +7434,7 @@ function App() {
                   window.localStorage.setItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(nextModel));
                 }}
                 onRefreshModels={refreshOllamaModels}
-                onBackToTraining={() => setWorkspaceMode('training')}
+                onBackToTraining={showTrainingWorkspace}
               />
             ) : workspaceMode === 'admin' ? (
               isDictaAdmin(appProfile) || !syncConfig.authRequired ? <AdminWorkspace
@@ -7491,7 +7446,7 @@ function App() {
                 syncStatus={supabaseSyncStatus}
                 languageView={adminLanguageView}
                 onChangeLanguage={setAdminLanguageView}
-                onBackToTraining={() => setWorkspaceMode('training')}
+                onBackToTraining={showTrainingWorkspace}
                 onCopyLocalStorage={() => void copyDictaLocalStorage(setExportMessage)}
                 onExportLocalStorage={downloadDictaLocalStorage}
                 onImportLocalStorage={importDictaLocalStorageSnapshot}
@@ -7539,7 +7494,7 @@ function App() {
                   void copySessionSnapshot(session, setExportMessage);
                 }}
                 onDeleteSession={deleteSession}
-                onBackToTraining={() => setWorkspaceMode('training')}
+                onBackToTraining={showTrainingWorkspace}
                 formatLeaderboardSessionStatus={formatLeaderboardSessionStatus}
                 formatSessionGenerationOrigin={formatSessionGenerationOrigin}
                 formatSessionPlaybackDuration={formatSessionPlaybackDuration}
@@ -8531,12 +8486,6 @@ function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMo
     normalized === 'qwen'
   ) return 'input4';
   return null;
-}
-
-function getWorkspaceModeForSessionInput(inputMode: SessionInputMode): WorkspaceMode {
-  if (inputMode === 'input1') return 'training';
-  if (inputMode === 'input2' || inputMode === 'input4') return 'tts';
-  return 'kokoro';
 }
 
 function scriptLanguageToTtsLanguage(language: string): TtsLanguage {

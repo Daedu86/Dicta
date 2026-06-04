@@ -2,7 +2,7 @@
 
 Phase 2: behavior-aware modularization.
 
-Status: planning / ready to start. No behavior has moved under this Phase 2 plan yet.
+Status: active. The `useWorkspaceRouting` boundary has been extracted; no later Phase 2 boundary has started.
 
 `src/App.tsx` still owns substantial runtime behavior: workspace orchestration, hook-shaped state boundaries, side-effect ownership, polling, persistence, sync, adaptive wiring, playback lifecycle, auth/profile glue, generated-session handoff, and browser lifecycle logic. Phase 2 exists to move those behavior boundaries deliberately, one at a time, without changing product behavior.
 
@@ -86,6 +86,8 @@ src/app/useWorkspaceRouting.ts
 ```
 
 Risk: lowest.
+
+Status: complete.
 
 Move workspace routing state and navigation helpers only.
 
@@ -182,6 +184,21 @@ Stop the Phase 2 extraction if:
 
 ## Current Recommendation
 
-Start Phase 2 with `useWorkspaceRouting`.
+Phase 2 started with `useWorkspaceRouting`.
 
-Do not start with adaptive, playback, or sync.
+Do not start the next boundary without fresh measurement. Do not proceed next with adaptive, playback, or sync.
+
+## Closeout Log
+
+```text
+Boundary: useWorkspaceRouting
+Status: complete
+PR/commit: pending
+Pre-change App.tsx lines: 9008
+Post-change App.tsx lines: 8961
+Files added/moved: src/app/useWorkspaceRouting.ts
+Behavior preserved: workspace mode routing, dashboard session selection, app route path tracking, and dicta.workspaceMode.v1 persistence. Session mutation, sync, adaptive, playback, OpenRouter, auth, payload shapes, localStorage keys, Supabase row shapes, and adaptive heuristics were not changed.
+Validation: git pull origin main; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile
+Manual smoke test: attempted with the in-app Browser against http://127.0.0.1:5173/; blocked by browser navigation timeout. Automated Playwright mobile smoke passed.
+Follow-ups: next listed candidate is useOpenRouterJobsRuntime, but only after a fresh Phase 2 measurement/checklist.
+```
