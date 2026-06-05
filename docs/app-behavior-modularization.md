@@ -2,7 +2,7 @@
 
 Phase 2: behavior-aware modularization.
 
-Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, `useSessionPersistenceSync`, `useAdaptiveRuntime`, `useTrainingSessionLifecycle`, `useAudioPlaybackRuntime`, and `useBrowserTtsRuntime` boundaries have been extracted; Kokoro and CosyVoice cache playback runtime boundaries have not started.
+Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, `useSessionPersistenceSync`, `useAdaptiveRuntime`, `useTrainingSessionLifecycle`, `useAudioPlaybackRuntime`, `useBrowserTtsRuntime`, and `useKokoroRuntime` boundaries have been extracted; CosyVoice cache playback runtime has not started.
 
 `src/App.tsx` still owns substantial runtime behavior: workspace orchestration, hook-shaped state boundaries, side-effect ownership, polling, persistence, sync, adaptive wiring, playback lifecycle, auth/profile glue, generated-session handoff, and browser lifecycle logic. Phase 2 exists to move those behavior boundaries deliberately, one at a time, without changing product behavior.
 
@@ -168,7 +168,7 @@ Risk: highest.
 
 Move one input mode per PR. Do not move multiple input playback runtimes in the same PR.
 
-Status: in progress. `useAudioPlaybackRuntime` is complete for Input #1 only. `useBrowserTtsRuntime` is complete for Input #2 direct Browser TTS voice discovery and SpeechSynthesis commands only; Input #4 browser fallback remains App-owned/direct. Kokoro and CosyVoice cache runtimes are not started.
+Status: in progress. `useAudioPlaybackRuntime` is complete for Input #1 only. `useBrowserTtsRuntime` is complete for Input #2 direct Browser TTS voice discovery and SpeechSynthesis commands only; Input #4 browser fallback remains App-owned/direct. `useKokoroRuntime` is complete for Input #3 local sidecar availability/toggle only; Kokoro chunk generation, audio engine playback, and adaptive execution remain App-owned. CosyVoice cache runtime is not started.
 
 ### G. useGeneratedSessionCreation
 
@@ -196,7 +196,7 @@ Stop the Phase 2 extraction if:
 
 Phase 2 started with `useWorkspaceRouting`.
 
-Input #1 `useAudioPlaybackRuntime` and Input #2 direct `useBrowserTtsRuntime` are now complete. Continue Playback Runtimes with only one remaining input mode per PR after fresh measurement and mode-specific replay/lifecycle tests. The next candidate should be Kokoro or CosyVoice cache, with Kokoro likely simpler because Input #4 still carries legacy `qwen-cloud` aliasing plus browser fallback behavior. Keep Input #4 browser fallback separate from the direct Browser TTS runtime.
+Input #1 `useAudioPlaybackRuntime`, Input #2 direct `useBrowserTtsRuntime`, and Input #3 sidecar-availability `useKokoroRuntime` are now complete. Continue Playback Runtimes with only one remaining input mode per PR after fresh measurement and mode-specific replay/lifecycle tests. The next candidate is CosyVoice cache, but keep its cache playback, legacy `qwen-cloud` aliasing, and browser fallback behavior carefully separated.
 
 ## Closeout Log
 
@@ -293,4 +293,18 @@ Behavior preserved: Input #2 still uses SpeechSynthesis for direct Browser TTS, 
 Validation: git status; git pull origin main; pre-change App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile; focused useBrowserTtsRuntime tests.
 Manual smoke test: automated Playwright mobile training guard passed; no separate browser manual smoke was needed for this non-visual SpeechSynthesis runtime extraction.
 Follow-ups: continue Playback Runtimes one input mode per PR. Remaining candidates are useKokoroRuntime and useCosyVoiceCacheRuntime; keep Input #4 browser fallback separate.
+```
+
+```text
+Boundary: useKokoroRuntime (Input #3 Kokoro sidecar availability only)
+Status: complete
+PR/commit: pending
+Pre-change App.tsx lines: 8065
+Post-change App.tsx lines: 8002
+Reduction: 63 lines (0.78%)
+Files added/moved: src/app/useKokoroRuntime.ts; tests/useKokoroRuntime.test.ts
+Behavior preserved: Input #3 still uses the same KokoroAudioEngine playback, generateKokoroChunk calls, adaptive decisions, phrase advancement/replay, benchmark/session feedback, language blocking, telemetry, manual bias, submit/finalization, and LowLatencyTextarea behavior. The existing dicta.kokoroEnabled.v1 localStorage key, local-only hosted guard, sidecar health/start polling, active-playback stop-on-disable behavior, and 1-minute inactivity shutdown were preserved in the hook. Storage payloads, Supabase row shapes, OpenRouter payload shapes, secrets, auth, and rate limits were not changed.
+Validation: git status; git pull origin main; pre-change App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile; focused useKokoroRuntime tests.
+Manual smoke test: automated Playwright mobile training guard passed; no separate browser manual smoke was needed for this non-visual sidecar-availability extraction.
+Follow-ups: continue Playback Runtimes one input mode per PR. Remaining candidate is useCosyVoiceCacheRuntime; keep Input #4 cache playback, legacy qwen-cloud aliasing, and browser fallback separate.
 ```

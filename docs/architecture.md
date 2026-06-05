@@ -35,6 +35,7 @@ Browser app:
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `src/app/useAudioPlaybackRuntime.ts`: Input #1 browser audio element and AudioEngine runtime state/control boundary.
 - `src/app/useBrowserTtsRuntime.ts`: Input #2 direct Browser TTS SpeechSynthesis voice discovery and command boundary.
+- `src/app/useKokoroRuntime.ts`: Input #3 Kokoro local sidecar availability, toggle, health/start polling, and inactivity timeout boundary.
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
 - Adaptive Pace Layer cockpit: benchmark and feedback diagnostics.
@@ -225,6 +226,7 @@ App runtime and adaptive core:
 
 - `src/app/useAudioPlaybackRuntime.ts`
 - `src/app/useBrowserTtsRuntime.ts`
+- `src/app/useKokoroRuntime.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/core/buildInfo.ts`

@@ -97,7 +97,7 @@ import { TypingTracker } from './core/typingTracker';
 import { createTelemetry, trackAction, trackSample } from './core/telemetry';
 import { parseTranscript } from './core/transcript';
 import { KokoroAudioEngine } from './core/kokoroAudioEngine';
-import { checkKokoroHealth, generateKokoroChunk, startKokoroSidecar, type KokoroChunkResponse } from './core/kokoroClient';
+import { generateKokoroChunk, type KokoroChunkResponse } from './core/kokoroClient';
 import {
   bootstrapCosyVoiceCacheSidecar,
   fetchCosyVoiceCacheHealth,
@@ -223,6 +223,7 @@ import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useAudioPlaybackRuntime } from './app/useAudioPlaybackRuntime';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
+import { useKokoroRuntime } from './app/useKokoroRuntime';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
   ADAPTIVE_SESSION_FEEDBACK_KEY,
@@ -235,7 +236,6 @@ import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
-const KOKORO_ENABLED_KEY = 'dicta.kokoroEnabled.v1';
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
 const OLLAMA_DEFAULT_MODEL_STORAGE_KEY = 'dicta.ollamaDefaultModel.v1';
 const OLLAMA_RECOMMENDED_DEFAULT_MODEL = 'gemma3:27b-cloud';
@@ -610,8 +610,18 @@ function App() {
   const [kokoroPacingMode, setKokoroPacingMode] = useState<TtsPacingMode>('balanced');
   const [kokoroSpeechRate, setKokoroSpeechRate] = useState(1);
   const [kokoroManualBias, setKokoroManualBias] = useState(0);
-  const [kokoroServiceReady, setKokoroServiceReady] = useState<boolean | null>(null);
-  const [kokoroEnabled, setKokoroEnabled] = useState<boolean>(false);
+  const {
+    kokoroEnabled,
+    kokoroServiceReady,
+    setKokoroServiceReady,
+    toggleKokoroEnabled,
+  } = useKokoroRuntime({
+    localDevFeaturesAvailable: LOCAL_DEV_FEATURES_AVAILABLE,
+    kokoroText,
+    kokoroStatus,
+    setError,
+    onStopActivePlayback: () => stopKokoroPlayback('hold'),
+  });
 
   useEffect(() => {
     if (browserTtsVoices.length === 0) return;
@@ -1271,18 +1281,6 @@ function App() {
   }, [openRouterAccessState, showLeaderboardWorkspace, workspaceMode]);
 
   useEffect(() => {
-    window.localStorage.setItem(KOKORO_ENABLED_KEY, JSON.stringify(kokoroEnabled));
-  }, [kokoroEnabled]);
-
-  useEffect(() => {
-    if (!LOCAL_DEV_FEATURES_AVAILABLE && kokoroEnabled) {
-      setKokoroEnabled(false);
-      setKokoroServiceReady(false);
-      setError('Kokoro is local-only in the Vercel build. Use Input #2 for hosted/mobile practice.');
-    }
-  }, [kokoroEnabled]);
-
-  useEffect(() => {
     const storedModel = window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY);
     if (storedModel) {
       try {
@@ -1304,24 +1302,6 @@ function App() {
       }
     }
   }, []);
-
-  useEffect(() => {
-    if (!kokoroEnabled) return;
-
-    if (!kokoroText.trim() && kokoroStatus !== 'playing') {
-      setKokoroEnabled(false);
-      return;
-    }
-
-    if (kokoroStatus === 'playing') return;
-
-    const id = window.setTimeout(() => {
-      setKokoroEnabled(false);
-      setError((current) => current || 'Kokoro TTS was turned off after 1 minute of inactivity.');
-    }, 60_000);
-
-    return () => window.clearTimeout(id);
-  }, [kokoroEnabled, kokoroText, kokoroStatus]);
 
   useEffect(() => {
     window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, dictaLanguageView);
@@ -3132,59 +3112,6 @@ function App() {
 
   function onKokoroPracticeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
     handleEsKeyboardRemapKeyDown(event, onKokoroPracticeChange);
-  }
-
-  async function ensureKokoroServiceRunning(): Promise<boolean> {
-    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
-      setError('Kokoro is local-only in the Vercel build. Use Input #2 for hosted/mobile practice.');
-      return false;
-    }
-    if (await checkKokoroHealth()) {
-      return true;
-    }
-    await startKokoroSidecar();
-    const attempts = 20;
-    for (let index = 0; index < attempts; index += 1) {
-      if (await checkKokoroHealth()) {
-        return true;
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 250));
-    }
-    return false;
-  }
-
-  async function toggleKokoroEnabled(): Promise<void> {
-    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
-      setKokoroServiceReady(false);
-      setKokoroEnabled(false);
-      setError('Kokoro is local-only in the Vercel build. Use Input #2 for hosted/mobile practice.');
-      return;
-    }
-    if (kokoroEnabled) {
-      if (kokoroStatus === 'playing' || kokoroStatus === 'paused') {
-        stopKokoroPlayback('hold');
-      }
-      setError('');
-      setKokoroEnabled(false);
-      return;
-    }
-
-    setError('');
-    setKokoroServiceReady(null);
-    try {
-      const ready = await ensureKokoroServiceRunning();
-      setKokoroServiceReady(ready);
-      if (!ready) {
-        setError('Could not start Kokoro service. Check services/kokoro_tts/.venv and try again.');
-        setKokoroEnabled(false);
-        return;
-      }
-      setKokoroEnabled(true);
-    } catch (error) {
-      setKokoroServiceReady(false);
-      setKokoroEnabled(false);
-      setError(error instanceof Error ? error.message : 'Could not start Kokoro service.');
-    }
   }
 
   function ensureAttemptTelemetry(): SessionTelemetry {
