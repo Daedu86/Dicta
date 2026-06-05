@@ -77,7 +77,7 @@ describe('profile scoped storage', () => {
       'dicta.deletedSessionIds.v1': '["main-deleted"]',
       [profileScopedStorageKey('codex-tester')]: JSON.stringify({
         'dicta.sessions.v1': '[{"id":"tester-session"}]',
-        'dicta.adaptiveBenchmarks.v1': '{"audio:en":{"sampleCount":1}}',
+        'dicta.adaptiveBenchmarks.v1': '{"kokoro:en":{"sampleCount":1}}',
       }),
     });
 
@@ -91,7 +91,7 @@ describe('profile scoped storage', () => {
     });
     expect(storage.getItem('dicta.sessions.v1')).toBe('[{"id":"tester-session"}]');
     expect(storage.getItem('dicta.deletedSessionIds.v1')).toBeNull();
-    expect(storage.getItem('dicta.adaptiveBenchmarks.v1')).toBe('{"audio:en":{"sampleCount":1}}');
+    expect(storage.getItem('dicta.adaptiveBenchmarks.v1')).toBe('{"kokoro:en":{"sampleCount":1}}');
   });
 
   it('restores a saved profile when switching back', () => {

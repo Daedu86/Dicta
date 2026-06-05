@@ -90,18 +90,18 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const current = createEmptyInputLanguageBenchmark('browser-tts', 'de');
     const updated = updateInputLanguageBenchmark({
       current,
-      live: live({ inputMode: 'audio', language: 'en' }),
+      live: live({ inputMode: 'browser-tts', language: 'en' }),
       decision: decision(),
       timestampMs: Date.parse('2026-06-01T12:00:00Z'),
       sessionId: 's1',
       event: 'phrase_completed',
     });
 
-    expect(updated.inputMode).toBe('audio');
+    expect(updated.inputMode).toBe('browser-tts');
     expect(updated.language).toBe('en');
     expect(updated.sampleCount).toBe(1);
     expect(updated.timeline).toHaveLength(1);
-    expect(updated.timeline[0]?.inputMode).toBe('audio');
+    expect(updated.timeline[0]?.inputMode).toBe('browser-tts');
   });
 
   it('filters unsafe Browser TTS German samples without blocking neighboring languages', () => {

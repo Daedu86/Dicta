@@ -21,11 +21,10 @@ Do not start implementation by guessing at a file. First map the request to the 
 
 ## Project Snapshot
 
-Dicta trains listening and typing across 4 input modes and 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 30 days.
+Dicta trains listening and typing across 3 input modes and 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 30 days.
 
 Inputs:
 
-- `audio` / input 1 / original audio plus transcript
 - `browser-tts` / input 2 / browser SpeechSynthesis
 - `kokoro` / input 3 / local Kokoro TTS sidecar
 - `cosyvoice-cache` / input 4 / CosyVoice2 cached WAV playback with browser fallback
@@ -60,19 +59,17 @@ Test account:
 - Run tests: `npm run test`
 - Production build/typecheck: `npm run build`
 - Run mobile training E2E guard: `npm run test:e2e:mobile`
-- Optional ingestion dry run: `npm run ingest:dryrun`
 
 Before finishing code changes, run `npm run test` and `npm run build` unless the change is docs-only or you clearly explain why you could not.
 
 ## Adaptive Pace Layer Rules
 
-The Adaptive Pace Layer is shared across 4 inputs and 5 languages. Benchmarks, telemetry, recommendations, and session feedback are scoped per:
+The Adaptive Pace Layer is shared across 3 inputs and 5 languages. Benchmarks, telemetry, recommendations, and session feedback are scoped per:
 
 `(inputMode, language)`
 
 Inputs:
 
-- `audio` / input 1
 - `browser-tts` / input 2
 - `kokoro` / input 3
 - `cosyvoice-cache` / input 4 (CosyVoice2 cache path; `qwen-cloud` is a legacy alias)
@@ -203,13 +200,7 @@ Core setup uses:
 pip install -r requirements.txt
 ```
 
-Optional WhisperX/Torch alignment uses:
-
-```bash
-pip install -r requirements-alignment.txt
-```
-
-Do not add `transformers>=5.0.0rc3` to core requirements without an explicit compatibility test for the optional alignment stack. Do not load untrusted Hugging Face or PyTorch checkpoint folders.
+Do not add untrusted Hugging Face or PyTorch checkpoint loading paths without an explicit compatibility and security review.
 
 ## Git and Scope
 

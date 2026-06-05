@@ -3,29 +3,9 @@ import { normalizeSessionModeData } from '../src/core/sessionNormalization';
 import { sessionSnapshotJson, type SessionSnapshot } from '../src/core/sessionSnapshot';
 
 describe('Session modeData schema', () => {
-  it('input1 creates only modeData.input1', () => {
-    const modeData = normalizeSessionModeData({
-      inputMode: 'input1',
-      transcriptionLanguage: 'de',
-      ttsLanguage: 'es',
-      kokoroLanguage: 'en',
-      transcript: { words: [{}, {}, {}] },
-      inputText: 'hello',
-      ttsText: 'ignored',
-      kokoroText: 'ignored',
-    });
-
-    expect(modeData).toEqual({
-      input1: { type: 'transcription', language: 'de', transcriptWords: 3, inputTextLength: 5 },
-      input2: null,
-      input3: null,
-    });
-  });
-
   it('input2 creates only modeData.input2', () => {
     const modeData = normalizeSessionModeData({
       inputMode: 'input2',
-      transcriptionLanguage: 'de',
       ttsLanguage: 'es',
       kokoroLanguage: 'en',
       ttsText: 'abcd',
@@ -33,7 +13,6 @@ describe('Session modeData schema', () => {
     });
 
     expect(modeData).toEqual({
-      input1: null,
       input2: { type: 'builtInTts', language: 'es', textLength: 4 },
       input3: null,
     });
@@ -47,7 +26,6 @@ describe('Session modeData schema', () => {
     });
 
     expect(modeData).toEqual({
-      input1: null,
       input2: { type: 'builtInTts', language: 'fr', textLength: 21 },
       input3: null,
     });
@@ -61,7 +39,6 @@ describe('Session modeData schema', () => {
     });
 
     expect(modeData).toEqual({
-      input1: null,
       input2: { type: 'builtInTts', language: 'pt', textLength: 9 },
       input3: null,
     });
@@ -70,7 +47,6 @@ describe('Session modeData schema', () => {
   it('input3 creates only modeData.input3', () => {
     const modeData = normalizeSessionModeData({
       inputMode: 'input3',
-      transcriptionLanguage: 'de',
       ttsLanguage: 'es',
       kokoroLanguage: 'en',
       kokoroText: 'kokoro',
@@ -78,7 +54,6 @@ describe('Session modeData schema', () => {
     });
 
     expect(modeData).toEqual({
-      input1: null,
       input2: null,
       input3: { type: 'kokoro', language: 'en', textLength: 6, nativeLanguage: true, processedLanguage: 'en' },
     });
@@ -91,13 +66,10 @@ describe('Session modeData schema', () => {
       textSummary: {
         ttsTextLength: 1849,
         kokoroTextLength: 0,
-        transcriptWords: 0,
-        inputTextLength: 0,
       },
     });
 
     expect(modeData.input2).toEqual({ type: 'builtInTts', language: 'es', textLength: 1849 });
-    expect(modeData.input1).toBeNull();
     expect(modeData.input3).toBeNull();
   });
 
@@ -108,8 +80,6 @@ describe('Session modeData schema', () => {
       textSummary: {
         kokoroTextLength: 999,
         ttsTextLength: 0,
-        transcriptWords: 0,
-        inputTextLength: 0,
       },
     });
 
@@ -120,7 +90,6 @@ describe('Session modeData schema', () => {
       nativeLanguage: true,
       processedLanguage: 'en',
     });
-    expect(modeData.input1).toBeNull();
     expect(modeData.input2).toBeNull();
   });
 
@@ -194,8 +163,7 @@ describe('Session modeData schema', () => {
       inputMode: 'input2',
       difficulty: 'normal',
       status: 'finished',
-      // legacy flat fields that must not be emitted anymore
-      transcriptionLanguage: 'de',
+      // legacy flat language fields that must not be emitted anymore
       ttsLanguage: 'es',
       kokoroLanguage: 'en',
       // active mode content
@@ -216,13 +184,11 @@ describe('Session modeData schema', () => {
 
     const parsed = JSON.parse(json) as SessionSnapshot;
     expect(parsed).toHaveProperty('modeData');
-    expect(parsed).not.toHaveProperty('transcriptionLanguage');
     expect(parsed).not.toHaveProperty('ttsLanguage');
     expect(parsed).not.toHaveProperty('kokoroLanguage');
     expect(parsed).not.toHaveProperty('textSummary');
 
     expect(parsed.modeData).toEqual({
-      input1: null,
       input2: { type: 'builtInTts', language: 'es', textLength: 4 },
       input3: null,
     });

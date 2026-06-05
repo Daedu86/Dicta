@@ -2,22 +2,13 @@ import type { SessionTelemetry } from '../types/dictation';
 import { getKokoroProcessedLanguage, isKokoroNativeLanguage } from './kokoroSupport';
 import { isSupportedLanguage, type SupportedLanguage } from './languages';
 
-export type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
-export type Input1Language = SupportedLanguage;
+export type SessionInputMode = 'input2' | 'input3' | 'input4';
 export type Input2Language = SupportedLanguage;
 
 export type SessionLanguageFields = {
   inputMode: SessionInputMode;
-  transcriptionLanguage: Input1Language | null;
   ttsLanguage: Input2Language | null;
   kokoroLanguage: Input2Language | null;
-};
-
-export type Input1ModeData = {
-  type: 'transcription';
-  language: Input1Language | null;
-  transcriptWords: number;
-  inputTextLength: number;
 };
 
 export type Input2ModeData = {
@@ -36,7 +27,6 @@ export type Input3ModeData = {
 };
 
 export type SessionModeData = {
-  input1: Input1ModeData | null;
   input2: Input2ModeData | null;
   input3: Input3ModeData | null;
 };
@@ -44,11 +34,7 @@ export type SessionModeData = {
 type UnknownRecord = Record<string, unknown>;
 
 function isInputMode(value: unknown): value is SessionInputMode {
-  return value === 'input1' || value === 'input2' || value === 'input3' || value === 'input4';
-}
-
-function isInput1Language(value: unknown): value is Input1Language {
-  return isSupportedLanguage(value);
+  return value === 'input2' || value === 'input3' || value === 'input4';
 }
 
 function isInput2Language(value: unknown): value is Input2Language {
@@ -142,7 +128,6 @@ export function isSubmittedFinishedAttempt(payload: unknown): boolean {
   if (session.status !== 'finished') return false;
 
   const inputMode = session.inputMode;
-  if (inputMode === 'input1') return true;
   if (hasFinalizedAttemptTelemetry(session.telemetry)) return true;
   if (inputMode !== 'input2' && inputMode !== 'input3' && inputMode !== 'input4') return false;
 
@@ -163,32 +148,26 @@ export function isSubmittedFinishedAttempt(payload: unknown): boolean {
 }
 
 export function normalizeSessionLanguages(
-  session: Pick<SessionLanguageFields, 'inputMode' | 'transcriptionLanguage' | 'ttsLanguage' | 'kokoroLanguage'>,
+  session: Pick<SessionLanguageFields, 'inputMode' | 'ttsLanguage' | 'kokoroLanguage'>,
 ): {
-  transcriptionLanguage: SessionLanguageFields['transcriptionLanguage'] | null;
   ttsLanguage: SessionLanguageFields['ttsLanguage'] | null;
   kokoroLanguage: SessionLanguageFields['kokoroLanguage'] | null;
 } {
-  if (session.inputMode === 'input1') {
-    return { transcriptionLanguage: session.transcriptionLanguage, ttsLanguage: null, kokoroLanguage: null };
-  }
   if (session.inputMode === 'input2') {
-    return { transcriptionLanguage: null, ttsLanguage: session.ttsLanguage, kokoroLanguage: null };
+    return { ttsLanguage: session.ttsLanguage, kokoroLanguage: null };
   }
   if (session.inputMode === 'input3') {
-    return { transcriptionLanguage: null, ttsLanguage: null, kokoroLanguage: session.kokoroLanguage };
+    return { ttsLanguage: null, kokoroLanguage: session.kokoroLanguage };
   }
   // input4 reuses TTS language and settings
-  return { transcriptionLanguage: null, ttsLanguage: session.ttsLanguage, kokoroLanguage: null };
+  return { ttsLanguage: session.ttsLanguage, kokoroLanguage: null };
 }
 
 export function normalizeSessionModeData(session: unknown): SessionModeData {
   const input = asRecord(session);
-  const inputMode: SessionInputMode = isInputMode(input.inputMode) ? input.inputMode : 'input1';
+  const inputMode: SessionInputMode = isInputMode(input.inputMode) ? input.inputMode : 'input2';
 
   const existingModeData = input.modeData && typeof input.modeData === 'object' ? (input.modeData as UnknownRecord) : null;
-  const existingInput1 =
-    existingModeData?.input1 && typeof existingModeData.input1 === 'object' ? (existingModeData.input1 as UnknownRecord) : null;
   const existingInput2 =
     existingModeData?.input2 && typeof existingModeData.input2 === 'object' ? (existingModeData.input2 as UnknownRecord) : null;
   const existingInput3 =
@@ -196,40 +175,21 @@ export function normalizeSessionModeData(session: unknown): SessionModeData {
 
   const textSummary = input.textSummary && typeof input.textSummary === 'object' ? (input.textSummary as UnknownRecord) : null;
 
-  const input1LanguageRaw = existingInput1?.language ?? input.transcriptionLanguage;
   const input2LanguageRaw = existingInput2?.language ?? input.ttsLanguage;
   const input3LanguageRaw = existingInput3?.language ?? input.kokoroLanguage;
 
-  const input1Language = isInput1Language(input1LanguageRaw) ? input1LanguageRaw : null;
   const input2Language = isInput2Language(input2LanguageRaw) ? input2LanguageRaw : null;
   const input3Language = isInput2Language(input3LanguageRaw) ? input3LanguageRaw : null;
 
-  const transcriptWords =
-    numberOr(
-      existingInput1?.transcriptWords ??
-        textSummary?.transcriptWords ??
-        (asRecord(input.transcript).words as unknown[] | undefined)?.length ??
-        0,
-      0,
-    );
-  const inputTextLength = numberOr(existingInput1?.inputTextLength ?? textSummary?.inputTextLength ?? safeLength(input.inputText), 0);
   const ttsTextLength = numberOr(existingInput2?.textLength ?? textSummary?.ttsTextLength ?? safeLength(input.ttsText), 0);
   const kokoroTextLength = numberOr(existingInput3?.textLength ?? textSummary?.kokoroTextLength ?? safeLength(input.kokoroText), 0);
 
   const modeData: SessionModeData = {
-    input1: null,
     input2: null,
     input3: null,
   };
 
-  if (inputMode === 'input1') {
-    modeData.input1 = {
-      type: 'transcription',
-      language: input1Language,
-      transcriptWords,
-      inputTextLength,
-    };
-  } else if (inputMode === 'input2' || inputMode === 'input4') {
+  if (inputMode === 'input2' || inputMode === 'input4') {
     modeData.input2 = {
       type: 'builtInTts',
       language: input2Language,
@@ -269,7 +229,6 @@ export function normalizeSessionForPersistence<T extends SessionLanguageFields &
   const normalizedLanguages = normalizeSessionLanguages(session);
   return {
     ...session,
-    transcriptionLanguage: normalizedLanguages.transcriptionLanguage,
     ttsLanguage: normalizedLanguages.ttsLanguage,
     kokoroLanguage: normalizedLanguages.kokoroLanguage,
     telemetry: cloneTelemetry(session.telemetry),

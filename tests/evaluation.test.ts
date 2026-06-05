@@ -7,19 +7,6 @@ import {
 } from '../src/core/evaluation';
 
 describe('computeSessionMaxPoints', () => {
-  it('uses non-empty transcript words for input 1', () => {
-    expect(computeSessionMaxPoints({
-      inputMode: 'input1',
-      transcript: {
-        words: [
-          { word: 'Eins', start: 0, end: 1 },
-          { word: 'zwei', start: 1, end: 2 },
-          { word: '!!!', start: 2, end: 3 },
-        ],
-      },
-    })).toBe(2);
-  });
-
   it('uses normalized Browser TTS source words for input 2', () => {
     expect(computeSessionMaxPoints({
       inputMode: 'input2',
@@ -43,7 +30,7 @@ describe('computeSessionMaxPoints', () => {
 
   it('falls back to no total when the active source is missing', () => {
     expect(computeSessionMaxPoints({ inputMode: 'input2', ttsText: '' })).toBeNull();
-    expect(computeSessionMaxPoints({ inputMode: 'input1', transcript: null })).toBeNull();
+    expect(computeSessionMaxPoints({ inputMode: 'input3', kokoroText: '' })).toBeNull();
   });
 });
 

@@ -3,11 +3,10 @@ import type { SupportedLanguage } from './languages';
 
 export type MetricsLanguageView = SupportedLanguage;
 export type MetricsRangeView = 'today' | 'week' | 'twoWeeks' | 'threeWeeks' | 'month';
-export type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+export type SessionInputMode = 'input2' | 'input3' | 'input4';
 
 export type SessionLanguageLike = {
   inputMode: SessionInputMode;
-  transcriptionLanguage?: SupportedLanguage | null;
   ttsLanguage?: SupportedLanguage | null;
   kokoroLanguage?: SupportedLanguage | null;
 };
@@ -42,9 +41,6 @@ export type LanguageRangeSummary = {
 };
 
 export function resolveSessionLanguage(session: SessionLanguageLike): MetricsLanguageView | null {
-  if (session.inputMode === 'input1') {
-    return session.transcriptionLanguage ?? null;
-  }
   if (session.inputMode === 'input2' || session.inputMode === 'input4') {
     return session.ttsLanguage ?? null;
   }

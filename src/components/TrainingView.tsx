@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type KeyboardEvent, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, type KeyboardEvent } from 'react';
 import type { DictationScript } from '../core/adaptive/dictationScriptValidation';
 import type { LanguageCode } from '../core/adaptive/types';
 import { formatDifficultyLabel, type Difficulty } from '../core/config';
@@ -15,7 +15,7 @@ import { TrainingSessionCard, type TrainingSessionSubmissionMeta } from './train
 import { TrainingSubmitCard } from './training/TrainingSubmitCard';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+type SessionInputMode = 'input2' | 'input3' | 'input4';
 
 type SupabaseSyncStatus = {
   enabled: boolean;
@@ -36,7 +36,6 @@ type TrainingViewSession = {
   name: string;
   inputMode: SessionInputMode;
   inputSettingsLocked: boolean;
-  transcriptionLanguage: LanguageCode | null;
   ttsLanguage: LanguageCode | null;
   kokoroLanguage: LanguageCode | null;
   difficulty: Difficulty;
@@ -54,11 +53,6 @@ export type TrainingViewProps<Session extends TrainingViewSession = TrainingView
   sourceLabel: string;
   progressLabel: string;
   statusLabel: string;
-  audioRef: RefObject<HTMLAudioElement | null>;
-  audioUrl: string;
-  onAudioTimeUpdate: () => void;
-  onAudioEnded: () => void;
-  showAudioElement: boolean;
   currentTextValue: string;
   onTextChange: (value: string) => void;
   onImmediateTextChange?: (value: string) => void;
@@ -108,11 +102,6 @@ export function TrainingView<Session extends TrainingViewSession>({
   sourceLabel,
   progressLabel,
   statusLabel,
-  audioRef,
-  audioUrl,
-  onAudioTimeUpdate,
-  onAudioEnded,
-  showAudioElement,
   currentTextValue,
   onTextChange,
   onImmediateTextChange,
@@ -230,11 +219,6 @@ export function TrainingView<Session extends TrainingViewSession>({
 
       <TrainingAudioCard
         statusLabel={statusLabel}
-        audioRef={audioRef}
-        audioUrl={audioUrl}
-        onAudioTimeUpdate={onAudioTimeUpdate}
-        onAudioEnded={onAudioEnded}
-        showAudioElement={showAudioElement}
         canPlay={canPlay}
         playLabel={playLabel}
         onPlay={handlePlay}

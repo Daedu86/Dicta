@@ -20,8 +20,7 @@ export interface WordAlignmentPair {
 }
 
 export type SessionPointsSource = {
-  inputMode?: 'input1' | 'input2' | 'input3' | 'input4';
-  transcript?: Transcript | null;
+  inputMode?: 'input2' | 'input3' | 'input4';
   ttsText?: string | null;
   kokoroText?: string | null;
 };
@@ -68,9 +67,7 @@ export function computeSessionMaxPoints(session: SessionPointsSource | null | un
   if (!session) return null;
 
   let maxPoints = 0;
-  if (session.inputMode === 'input1') {
-    maxPoints = countTranscriptWords(session.transcript);
-  } else if (session.inputMode === 'input2' || session.inputMode === 'input4') {
+  if (session.inputMode === 'input2' || session.inputMode === 'input4') {
     maxPoints = countNormalizedTextWords(session.ttsText ?? '');
   } else if (session.inputMode === 'input3') {
     maxPoints = countNormalizedTextWords(session.kokoroText ?? '');
@@ -128,10 +125,6 @@ export function alignWordPairs(typedWords: string[], targetWords: string[]): Wor
   }
 
   return pairs;
-}
-
-function countTranscriptWords(transcript: Transcript | null | undefined): number {
-  return transcript?.words.filter((word) => normalizeWord(word.word).length > 0).length ?? 0;
 }
 
 function countNormalizedTextWords(text: string): number {

@@ -34,7 +34,6 @@ type WorkspaceRouting = {
 };
 
 export function getWorkspaceModeForSessionInput(inputMode: SessionInputMode): WorkspaceMode {
-  if (inputMode === 'input1') return 'training';
   if (inputMode === 'input2' || inputMode === 'input4') return 'tts';
   return 'kokoro';
 }

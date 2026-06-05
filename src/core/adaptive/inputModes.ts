@@ -1,4 +1,4 @@
-export const CANONICAL_INPUT_MODES = ['audio', 'browser-tts', 'kokoro', 'cosyvoice-cache'] as const;
+export const CANONICAL_INPUT_MODES = ['browser-tts', 'kokoro', 'cosyvoice-cache'] as const;
 export const LEGACY_INPUT_MODES = ['qwen-cloud'] as const;
 
 export type InputMode = (typeof CANONICAL_INPUT_MODES)[number];
@@ -25,8 +25,6 @@ export function isStoredInputMode(value: string): value is StoredInputMode {
 export function formatInputModeLabel(inputMode: string | null | undefined): string {
   const normalized = normalizeInputMode(inputMode);
   switch (normalized) {
-    case 'audio':
-      return 'Audio';
     case 'browser-tts':
       return 'Browser TTS';
     case 'kokoro':

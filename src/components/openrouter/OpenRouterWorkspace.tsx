@@ -519,7 +519,6 @@ export function OpenRouterWorkspace({
   const exportHasSessionFeedback = Boolean(exportSessionFeedback);
   const exportLanguage: BenchmarkLanguageButton = isSupportedLanguage(exportProfile.language) ? exportProfile.language : 'en';
   const profileInputModeOptions: Array<{ value: InputMode; label: string; description: string }> = [
-    { value: 'audio', label: 'Input #1', description: 'Audio' },
     { value: 'browser-tts', label: 'Input #2', description: 'Browser TTS' },
     { value: 'kokoro', label: 'Input #3', description: 'Kokoro' },
     { value: COSYVOICE_CACHE_INPUT_MODE, label: 'Input #4', description: 'CosyVoice cache' },

@@ -20,7 +20,7 @@ const DashboardActionTimeline = lazy(() =>
 );
 
 type SessionDashboardStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionDashboardInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+type SessionDashboardInputMode = 'input2' | 'input3' | 'input4';
 
 type SessionDashboardMetrics = SessionScoreMetrics & {
   lagWords: number;
@@ -31,8 +31,6 @@ export type SessionDashboardSession = {
   name: string;
   updatedAt: string;
   inputMode: SessionDashboardInputMode;
-  transcript: Transcript | null;
-  inputText: string;
   ttsText: string;
   ttsPracticeText: string;
   kokoroText: string;
@@ -229,7 +227,7 @@ function DashboardKpi({ label, value, target, helpText }: { label: string; value
 
 function TranscriptReviewWidget({ review }: { review: TranscriptReview }) {
   const tooltip =
-    'Compares what you typed against the target text. Input 1 uses Whisper transcript, Input 2 uses pasted TTS text, and Input 3 uses Kokoro source text.';
+    'Compares what you typed against the target text. Input 2 uses pasted TTS text, Input 3 uses Kokoro source text, and Input 4 uses cached TTS text.';
   const typedWords = review.tokens.length;
   const totalPoints = review.tokens.reduce((sum, token) => sum + token.points, 0);
   const maxPoints = totalPoints + review.missed;
@@ -402,13 +400,13 @@ function Metric({ label, value, title }: { label: string; value: string; title?:
 }
 
 function buildTranscriptReview(session: SessionDashboardSession): TranscriptReview {
-  const typedSource = session.inputMode === 'input2' ? session.ttsPracticeText : session.inputMode === 'input3' ? session.kokoroPracticeText : session.inputText;
+  const typedSource = session.inputMode === 'input3' ? session.kokoroPracticeText : session.ttsPracticeText;
   const targetTranscript =
     session.inputMode === 'input2'
       ? buildTextTranscript(session.ttsText)
       : session.inputMode === 'input3'
         ? buildTextTranscript(session.kokoroText)
-        : session.transcript;
+        : buildTextTranscript(session.ttsText);
   const rawTypedWords = typedSource.split(/\s+/).filter(Boolean);
   const typedWords = rawTypedWords.map((word) => normalizeWord(word)).filter(Boolean);
   const targetWords = targetTranscript ? targetTranscript.words.map((word) => normalizeWord(word.word)).filter(Boolean) : [];
@@ -553,4 +551,3 @@ function average(values: number[]): number {
 
   return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
-

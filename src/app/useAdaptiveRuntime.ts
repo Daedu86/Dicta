@@ -6,7 +6,7 @@ import {
   type MutableRefObject,
   type SetStateAction,
 } from 'react';
-import type { BrowserTtsEnvironmentFingerprint, SessionTelemetry, Transcript } from '../types/dictation';
+import type { BrowserTtsEnvironmentFingerprint, SessionTelemetry } from '../types/dictation';
 import { COSYVOICE_CACHE_INPUT_MODE } from '../core/adaptive/inputModes';
 import { AdaptiveDictationController } from '../core/adaptive/AdaptiveDictationController';
 import {
@@ -40,7 +40,7 @@ import type {
 } from '../components/openrouter/types';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 
-export type AdaptiveRuntimeSessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+export type AdaptiveRuntimeSessionInputMode = 'input2' | 'input3' | 'input4';
 export type AdaptiveRuntimeSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error' | string;
 export type AdaptiveRuntimeSessionSource = 'plainText' | 'dictationScript' | string;
 
@@ -50,11 +50,9 @@ export type AdaptiveRuntimeSessionInput = {
   updatedAt: string;
   inputMode: AdaptiveRuntimeSessionInputMode;
   status: AdaptiveRuntimeSessionStatus;
-  transcript?: Transcript | null;
   ttsText?: string;
   kokoroText?: string;
   kokoroChunks?: Array<{ durationSec?: number }>;
-  transcriptionLanguage?: LanguageCode | null;
   ttsLanguage?: LanguageCode | null;
   kokoroLanguage?: LanguageCode | null;
   metrics: {
@@ -402,11 +400,9 @@ function buildHistoricalPerformanceProfile(
       return {
         inputMode: mode,
         language:
-          (mode === 'audio'
-            ? session.transcriptionLanguage
-            : mode === 'browser-tts'
-              ? session.ttsLanguage
-              : session.kokoroLanguage) ?? undefined,
+          (mode === 'browser-tts' || mode === COSYVOICE_CACHE_INPUT_MODE
+            ? session.ttsLanguage
+            : session.kokoroLanguage) ?? undefined,
         durationSec: Math.max(1, estimateSessionVoiceDurationSec(session) ?? session.metrics.points * 2),
         averagePlaybackRate: clamp(session.metrics.rate, 0.75, 1.15),
         averageWpm: session.metrics.wpm,
@@ -484,14 +480,12 @@ function getRuntimeSessionFinishedAtMs(session: AdaptiveRuntimeSessionInput): nu
 }
 
 function mapRuntimeSessionInputMode(mode: AdaptiveRuntimeSessionInputMode): InputMode {
-  if (mode === 'input1') return 'audio';
   if (mode === 'input2') return 'browser-tts';
   if (mode === 'input4') return COSYVOICE_CACHE_INPUT_MODE;
   return 'kokoro';
 }
 
 function resolveRuntimeSessionLanguage(session: AdaptiveRuntimeSessionInput): LanguageCode {
-  if (session.inputMode === 'input1') return session.transcriptionLanguage ?? 'unknown';
   if (session.inputMode === 'input2' || session.inputMode === 'input4') return session.ttsLanguage ?? 'unknown';
   if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
   return 'unknown';

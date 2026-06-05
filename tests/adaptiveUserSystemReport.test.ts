@@ -103,7 +103,7 @@ describe('adaptiveUserSystemReport', () => {
   });
 
   it('falls back cleanly when no finished session or feedback exists', () => {
-    const profile = createEmptyInputLanguageBenchmark('audio', 'en');
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'en');
     const report = buildAdaptiveUserSystemReport({
       profile,
       feedback: null,

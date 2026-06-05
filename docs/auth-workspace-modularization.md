@@ -40,7 +40,7 @@ src/components/auth/
 
 ## Why this candidate
 
-The post-AudioPracticeCard measurement identifies the auth/sign-in route as the next most coherent remaining render branch. It is visually cohesive and separated from the main app shell by an early return.
+The latest app measurement identifies the auth/sign-in route as the next most coherent remaining render branch. It is visually cohesive and separated from the main app shell by an early return.
 
 However, it is behavior-adjacent because it displays Supabase auth states and calls auth handlers.
 

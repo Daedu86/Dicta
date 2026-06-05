@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { ControlAction } from '../types/dictation';
 
-export type TrainingLifecycleInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+export type TrainingLifecycleInputMode = 'input2' | 'input3' | 'input4';
 export type TrainingLifecycleSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 export type TrainingLifecyclePlaybackStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 
@@ -16,11 +16,6 @@ export type TrainingLifecycleStateInput = {
   activeSessionFinished: boolean;
   sessionStatus: TrainingLifecycleSessionStatus;
   running: boolean;
-  audioReady: boolean;
-  canGenerateTranscriptSource: boolean;
-  transcriptWordCount: number;
-  typedWordCount: number;
-  currentAudioTime: number;
   ttsHasText: boolean;
   ttsStatus: TrainingLifecyclePlaybackStatus;
   kokoroHasText: boolean;
@@ -29,10 +24,6 @@ export type TrainingLifecycleStateInput = {
 };
 
 export type TrainingLifecycleDerivedState = {
-  canGenerateTranscript: boolean;
-  canStartSession: boolean;
-  canPauseSession: boolean;
-  canFinishSession: boolean;
   inputSettingsReady: boolean;
   setupLocked: boolean;
   canSubmitTtsSession: boolean;
@@ -41,7 +32,6 @@ export type TrainingLifecycleDerivedState = {
 };
 
 type TrainingLifecycleTextState = {
-  inputText: string;
   ttsPracticeText: string;
   kokoroPracticeText: string;
 };
@@ -51,11 +41,7 @@ type ResetSessionOptions = {
 };
 
 type TrainingLifecycleActions = {
-  startAudioSession: () => void | Promise<void>;
-  pauseAudioSession: () => void;
-  finishAudioSession: (latestTextValue?: string) => void;
   resetSession: (options?: ResetSessionOptions) => void;
-  onAudioTextChange: (value: string) => void;
   playTts: () => void;
   resumeTts: () => void | Promise<void>;
   pauseTts: () => void;
@@ -105,25 +91,12 @@ export function deriveTrainingLifecycleState({
   activeInputMode,
   activeSessionFinished,
   sessionStatus,
-  running,
-  audioReady,
-  canGenerateTranscriptSource,
-  transcriptWordCount,
-  typedWordCount,
-  currentAudioTime,
   ttsHasText,
   kokoroHasText,
   inputSettingsLocked,
 }: TrainingLifecycleStateInput): TrainingLifecycleDerivedState {
-  const hasTranscript = transcriptWordCount > 0;
-  const canGenerateTranscript = canGenerateTranscriptSource;
-  const canStartSession = Boolean(audioReady && hasTranscript && !activeSessionFinished && sessionStatus !== 'error');
-  const canPauseSession = running && sessionStatus === 'running';
-  const canFinishSession = !activeSessionFinished && sessionStatus !== 'error' && (running || typedWordCount > 0 || currentAudioTime > 0);
   const inputSettingsReady =
-    activeInputMode === 'input1'
-      ? Boolean(audioReady && hasTranscript)
-      : activeInputMode === 'input2' || activeInputMode === 'input4'
+    activeInputMode === 'input2' || activeInputMode === 'input4'
         ? ttsHasText
         : kokoroHasText;
   const setupLocked = activeSessionFinished || sessionStatus === 'error' || inputSettingsLocked;
@@ -136,18 +109,14 @@ export function deriveTrainingLifecycleState({
     activeInputMode === 'input3' && !activeSessionFinished && sessionStatus !== 'error' && kokoroHasText;
 
   return {
-    canGenerateTranscript,
-    canStartSession,
-    canPauseSession,
-    canFinishSession,
     inputSettingsReady,
     setupLocked,
     canSubmitTtsSession,
     canSubmitKokoroSession,
-    readyChecklist: [
-      { label: 'Audio loaded', ready: audioReady },
-      { label: 'Transcript loaded', ready: hasTranscript },
-    ],
+    readyChecklist:
+      activeInputMode === 'input3'
+        ? [{ label: 'Kokoro source loaded', ready: kokoroHasText }]
+        : [{ label: 'TTS source loaded', ready: ttsHasText }],
   };
 }
 
@@ -165,9 +134,7 @@ export function useTrainingSessionLifecycle({
   const lockInputSettings = useCallback((): void => {
     if (state.inputSettingsLocked) return;
     if (!derivedState.inputSettingsReady) {
-      if (state.activeInputMode === 'input1') {
-        actions.setError('Load audio and transcript before locking Input #1.');
-      } else if (state.activeInputMode === 'input2' || state.activeInputMode === 'input4') {
+      if (state.activeInputMode === 'input2' || state.activeInputMode === 'input4') {
         actions.setError('Paste TTS text before locking this input.');
       } else {
         actions.setError('Paste Kokoro source text before locking Input #3.');
@@ -181,18 +148,11 @@ export function useTrainingSessionLifecycle({
   }, [actions, derivedState.inputSettingsReady, state.activeInputMode, state.inputSettingsLocked]);
 
   const focusedTrainingControls = useMemo<FocusedTrainingLifecycleControls>(() => {
-    const isAudio = state.activeInputMode === 'input1';
     const isKokoro = state.activeInputMode === 'input3';
-    const canPlay = isAudio
-      ? derivedState.canStartSession
-      : isKokoro
+    const canPlay = isKokoro
         ? state.kokoroHasText && state.kokoroStatus !== 'playing' && !state.activeSessionFinished
         : state.ttsHasText && state.ttsStatus !== 'playing' && !state.activeSessionFinished;
-    const playLabel = isAudio
-      ? state.sessionStatus === 'paused'
-        ? 'Resume'
-        : 'Play'
-      : isKokoro
+    const playLabel = isKokoro
         ? state.kokoroStatus === 'paused'
           ? 'Resume'
           : 'Play'
@@ -204,24 +164,17 @@ export function useTrainingSessionLifecycle({
       canPlay,
       playLabel,
       onPlay: () => {
-        if (isAudio) {
-          void actions.startAudioSession();
-        } else if (isKokoro) {
+        if (isKokoro) {
           void (state.kokoroStatus === 'paused' ? actions.resumeKokoro() : actions.playKokoro());
         } else {
           void (state.ttsStatus === 'paused' ? actions.resumeTts() : actions.playTts());
         }
       },
-      canPause: isAudio
-        ? derivedState.canPauseSession
-        : isKokoro
+      canPause: isKokoro
           ? state.kokoroStatus === 'playing'
           : state.ttsStatus === 'playing',
       onPause: (latestTextValue?: string) => {
-        if (isAudio) {
-          if (latestTextValue !== undefined && latestTextValue !== text.inputText) actions.onAudioTextChange(latestTextValue);
-          actions.pauseAudioSession();
-        } else if (isKokoro) {
+        if (isKokoro) {
           if (latestTextValue !== undefined && latestTextValue !== text.kokoroPracticeText) actions.onKokoroPracticeChange(latestTextValue);
           actions.pauseKokoro();
         } else {
@@ -229,16 +182,11 @@ export function useTrainingSessionLifecycle({
           actions.pauseTts();
         }
       },
-      canStop: isAudio
-        ? state.sessionStatus === 'running' || state.sessionStatus === 'paused'
-        : isKokoro
+      canStop: isKokoro
           ? state.kokoroStatus !== 'idle'
           : state.ttsStatus !== 'idle',
       onStop: (latestTextValue?: string) => {
-        if (isAudio) {
-          if (latestTextValue !== undefined && latestTextValue !== text.inputText) actions.onAudioTextChange(latestTextValue);
-          actions.finishAudioSession(latestTextValue);
-        } else if (isKokoro) {
+        if (isKokoro) {
           if (latestTextValue !== undefined && latestTextValue !== text.kokoroPracticeText) actions.onKokoroPracticeChange(latestTextValue);
           actions.stopKokoro('stop');
         } else {
@@ -248,21 +196,17 @@ export function useTrainingSessionLifecycle({
       },
       canReset: state.activeSessionPresent,
       onReset: resetFocusedTrainingAttempt,
-      canSubmit: isAudio
-        ? derivedState.canFinishSession
-        : isKokoro
+      canSubmit: isKokoro
           ? derivedState.canSubmitKokoroSession
           : derivedState.canSubmitTtsSession,
       onSubmit: (latestTextValue?: string) => {
-        if (isAudio) {
-          actions.finishAudioSession(latestTextValue);
-        } else if (isKokoro) {
+        if (isKokoro) {
           actions.submitKokoroSession(latestTextValue);
         } else {
           actions.submitTtsSession(latestTextValue);
         }
       },
-      submitLabel: isAudio ? 'Finish session' : 'Submit / Check',
+      submitLabel: 'Submit / Check',
     };
   }, [actions, derivedState, resetFocusedTrainingAttempt, state, text]);
 

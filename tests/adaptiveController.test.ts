@@ -98,7 +98,7 @@ describe('AdaptiveDictationController profile guardrails', () => {
     const controller = new AdaptiveDictationController();
     const decision = controller.decide({
       ...input({
-        inputMode: 'audio',
+        inputMode: 'browser-tts',
         language: 'en',
         lagSec: 3.2,
         lagWords: 8,

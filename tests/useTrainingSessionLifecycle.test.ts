@@ -32,33 +32,6 @@ afterEach(() => {
 });
 
 describe('deriveTrainingLifecycleState', () => {
-  it('preserves audio ready/start/pause/finish gates and transcript generation source gating', () => {
-    const state = deriveTrainingLifecycleState(
-      stateFixture({
-        activeInputMode: 'input1',
-        audioReady: true,
-        canGenerateTranscriptSource: true,
-        transcriptWordCount: 24,
-        running: true,
-        sessionStatus: 'running',
-        typedWordCount: 3,
-      }),
-    );
-
-    expect(state).toMatchObject({
-      canGenerateTranscript: true,
-      canStartSession: true,
-      canPauseSession: true,
-      canFinishSession: true,
-      inputSettingsReady: true,
-      setupLocked: false,
-    });
-    expect(state.readyChecklist).toEqual([
-      { label: 'Audio loaded', ready: true },
-      { label: 'Transcript loaded', ready: true },
-    ]);
-  });
-
   it('keeps TTS and Kokoro submit readiness separated by input mode', () => {
     expect(
       deriveTrainingLifecycleState(
@@ -91,38 +64,6 @@ describe('deriveTrainingLifecycleState', () => {
 });
 
 describe('useTrainingSessionLifecycle', () => {
-  it('routes focused audio pause/stop/submit through latest flushed text before lifecycle actions', () => {
-    const calls: string[] = [];
-    const lifecycle = renderLifecycle({
-      state: stateFixture({
-        activeInputMode: 'input1',
-        audioReady: true,
-        transcriptWordCount: 12,
-        running: true,
-        sessionStatus: 'running',
-        typedWordCount: 2,
-      }),
-      text: {
-        inputText: 'old attempt',
-        ttsPracticeText: '',
-        kokoroPracticeText: '',
-      },
-      calls,
-    });
-
-    lifecycle.focusedTrainingControls.onPause('new attempt');
-    lifecycle.focusedTrainingControls.onStop('final attempt');
-    lifecycle.focusedTrainingControls.onSubmit('submitted attempt');
-
-    expect(calls).toEqual([
-      'audioText:new attempt',
-      'pauseAudio',
-      'audioText:final attempt',
-      'finishAudio:final attempt',
-      'finishAudio:submitted attempt',
-    ]);
-  });
-
   it('routes paused TTS to resume, playing TTS to pause/stop, and submit to the TTS submit path', () => {
     const pausedCalls: string[] = [];
     const pausedLifecycle = renderLifecycle({
@@ -132,7 +73,6 @@ describe('useTrainingSessionLifecycle', () => {
         ttsStatus: 'paused',
       }),
       text: {
-        inputText: '',
         ttsPracticeText: 'old tts',
         kokoroPracticeText: '',
       },
@@ -153,7 +93,6 @@ describe('useTrainingSessionLifecycle', () => {
         ttsStatus: 'playing',
       }),
       text: {
-        inputText: '',
         ttsPracticeText: 'old tts',
         kokoroPracticeText: '',
       },
@@ -175,7 +114,6 @@ describe('useTrainingSessionLifecycle', () => {
         kokoroStatus: 'paused',
       }),
       text: {
-        inputText: '',
         ttsPracticeText: '',
         kokoroPracticeText: 'old kokoro',
       },
@@ -226,11 +164,11 @@ describe('useTrainingSessionLifecycle', () => {
 
 function renderLifecycle({
   state = stateFixture(),
-  text = { inputText: '', ttsPracticeText: '', kokoroPracticeText: '' },
+  text = { ttsPracticeText: '', kokoroPracticeText: '' },
   calls,
 }: {
   state?: TrainingLifecycleStateInput;
-  text?: { inputText: string; ttsPracticeText: string; kokoroPracticeText: string };
+  text?: { ttsPracticeText: string; kokoroPracticeText: string };
   calls: string[];
 }): TrainingSessionLifecycle {
   let snapshot: TrainingSessionLifecycle | null = null;
@@ -240,11 +178,7 @@ function renderLifecycle({
       state,
       text,
       actions: {
-        startAudioSession: () => calls.push('startAudio'),
-        pauseAudioSession: () => calls.push('pauseAudio'),
-        finishAudioSession: (latestTextValue) => calls.push(`finishAudio:${latestTextValue ?? ''}`),
         resetSession: (options) => calls.push(`reset:${options?.preserveInputSettingsLock ? 'preserve' : 'clear'}`),
-        onAudioTextChange: (value) => calls.push(`audioText:${value}`),
         playTts: () => calls.push('playTts'),
         resumeTts: () => calls.push('resumeTts'),
         pauseTts: () => calls.push('pauseTts'),
@@ -276,16 +210,11 @@ function renderLifecycle({
 
 function stateFixture(overrides: Partial<TrainingLifecycleStateInput> = {}): TrainingLifecycleStateInput {
   return {
-    activeInputMode: 'input1' as TrainingLifecycleInputMode,
+    activeInputMode: 'input2' as TrainingLifecycleInputMode,
     activeSessionPresent: true,
     activeSessionFinished: false,
     sessionStatus: 'ready' as TrainingLifecycleSessionStatus,
     running: false,
-    audioReady: false,
-    canGenerateTranscriptSource: false,
-    transcriptWordCount: 0,
-    typedWordCount: 0,
-    currentAudioTime: 0,
     ttsHasText: false,
     ttsStatus: 'idle' as TrainingLifecyclePlaybackStatus,
     kokoroHasText: false,

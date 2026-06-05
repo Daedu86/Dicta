@@ -59,7 +59,6 @@ function isMobileViewport(): boolean {
 }
 
 function mapSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): InputMode {
-  if (mode === 'input1') return 'audio';
   if (mode === 'input2') return 'browser-tts';
   if (mode === 'input4') return COSYVOICE_CACHE_INPUT_MODE;
   return 'kokoro';

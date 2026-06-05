@@ -43,7 +43,7 @@ export function buildSessionSnapshot(session: unknown): SessionSnapshot {
     name: typeof input.name === 'string' ? input.name : '',
     createdAt: typeof input.createdAt === 'string' ? input.createdAt : undefined,
     updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : undefined,
-    inputMode: typeof input.inputMode === 'string' ? input.inputMode : 'input1',
+    inputMode: typeof input.inputMode === 'string' ? input.inputMode : 'input2',
     difficulty: typeof input.difficulty === 'string' ? input.difficulty : undefined,
     status: typeof input.status === 'string' ? input.status : undefined,
     generationError: typeof input.generationError === 'string' && input.generationError.trim() ? input.generationError : undefined,

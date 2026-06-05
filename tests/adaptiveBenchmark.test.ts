@@ -218,16 +218,14 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expect(pt.sampleCount).toBe(1);
   });
 
-  it('creates Portuguese benchmark keys for all four input modes', () => {
+  it('creates Portuguese benchmark keys for all active input modes', () => {
     const profiles = [
-      createEmptyInputLanguageBenchmark('audio', 'pt'),
       createEmptyInputLanguageBenchmark('browser-tts', 'pt'),
       createEmptyInputLanguageBenchmark('kokoro', 'pt'),
       createEmptyInputLanguageBenchmark('cosyvoice-cache', 'pt'),
     ];
 
     expect(profiles.map((profile) => `${profile.inputMode}/${profile.language}`)).toEqual([
-      'audio/pt',
       'browser-tts/pt',
       'kokoro/pt',
       'cosyvoice-cache/pt',
@@ -261,25 +259,25 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
 
   it('clamps sweetSpotScore between 0 and 1', () => {
     const profile: InputLanguageBenchmarkMetrics = {
-      ...createEmptyInputLanguageBenchmark('audio', 'en'),
+      ...createEmptyInputLanguageBenchmark('browser-tts', 'en'),
       semanticFidelityScore: 10,
       controlFidelityScore: 10,
       learningEffectivenessScore: 10,
       flowStabilityScore: 10,
     };
-    const updated = updateInputLanguageBenchmark({ current: profile, live: live({ inputMode: 'audio' }), decision: decision() });
+    const updated = updateInputLanguageBenchmark({ current: profile, live: live({ inputMode: 'browser-tts' }), decision: decision() });
     expect(updated.sweetSpotScore).toBeGreaterThanOrEqual(0);
     expect(updated.sweetSpotScore).toBeLessThanOrEqual(1);
   });
 
   it('semanticFidelityScore decreases with unsafePauseCount', () => {
-    const clean = { ...createEmptyInputLanguageBenchmark('audio', 'en'), sampleCount: 10, unsafePauseCount: 0, averageSemanticCompleteness: 0.95 };
+    const clean = { ...createEmptyInputLanguageBenchmark('browser-tts', 'en'), sampleCount: 10, unsafePauseCount: 0, averageSemanticCompleteness: 0.95 };
     const unsafe = { ...clean, unsafePauseCount: 6, semanticCutPenalty: 6 };
     expect(computeSemanticFidelityScore(unsafe)).toBeLessThan(computeSemanticFidelityScore(clean));
   });
 
   it('controlFidelityScore decreases when replay was requested but not executed', () => {
-    const clean = { ...createEmptyInputLanguageBenchmark('audio', 'en'), sampleCount: 10, replayDeniedByBoundaryCount: 0 };
+    const clean = { ...createEmptyInputLanguageBenchmark('browser-tts', 'en'), sampleCount: 10, replayDeniedByBoundaryCount: 0 };
     const denied = { ...clean, replayDeniedByBoundaryCount: 6 };
     expect(computeControlFidelityScore(denied)).toBeLessThan(computeControlFidelityScore(clean));
   });
@@ -345,7 +343,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const now = Date.now();
     const points: AdaptiveTimelinePoint[] = Array.from({ length: 520 }, (_, index) => ({
       timestampMs: now - index * 1000,
-      inputMode: 'audio',
+      inputMode: 'browser-tts',
       language: 'en',
       mode: 'balanced',
       playbackRate: 1,
@@ -803,7 +801,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const profiles = [
       createEmptyInputLanguageBenchmark('browser-tts', 'en'),
       createEmptyInputLanguageBenchmark('browser-tts', 'es'),
-      createEmptyInputLanguageBenchmark('audio', 'de'),
+      createEmptyInputLanguageBenchmark('browser-tts', 'fr'),
       createEmptyInputLanguageBenchmark('kokoro', 'de'),
       createEmptyInputLanguageBenchmark('cosyvoice-cache', 'de'),
     ];
@@ -1037,13 +1035,13 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const de = buildPressureProfile('browser-tts', 'de');
     const en = buildPressureProfile('browser-tts', 'en');
     const es = buildPressureProfile('browser-tts', 'es');
-    const audio = buildPressureProfile('audio', 'de');
+    const fr = buildPressureProfile('browser-tts', 'fr');
     const kokoro = buildPressureProfile('kokoro', 'de');
     const cosyvoice = buildPressureProfile('cosyvoice-cache', 'de');
 
     expect(de.recommendation.targetRateRange).toEqual([0.8, 0.85]);
     expect(de.recommendation.targetPauseMs).toBe(1200);
-    for (const profile of [en, es, audio, kokoro, cosyvoice]) {
+    for (const profile of [en, es, fr, kokoro, cosyvoice]) {
       expect(profile.recommendation.targetRateRange).not.toEqual([0.95, 1]);
       expect(profile.recommendation.summary).not.toContain('support-mode pressure remains high');
     }

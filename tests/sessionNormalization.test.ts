@@ -8,35 +8,10 @@ import {
 } from '../src/core/sessionNormalization';
 
 describe('sessionNormalization', () => {
-  it('input1 only keeps transcriptionLanguage', () => {
-    const session = {
-      inputMode: 'input1' as const,
-      transcriptionLanguage: 'de' as const,
-      ttsLanguage: 'es' as const,
-      kokoroLanguage: 'en' as const,
-      telemetry: {},
-    };
-
-    const normalized = normalizeSessionForPersistence(session);
-    expect(normalized.transcriptionLanguage).toBe('de');
-    expect(normalized.ttsLanguage).toBeNull();
-    expect(normalized.kokoroLanguage).toBeNull();
-  });
-
   it('preserves French and Portuguese for the active input language only', () => {
     expect(
       normalizeSessionForPersistence({
-        inputMode: 'input1' as const,
-        transcriptionLanguage: 'fr' as const,
-        ttsLanguage: 'de' as const,
-        kokoroLanguage: 'es' as const,
-        telemetry: {},
-      }).transcriptionLanguage,
-    ).toBe('fr');
-    expect(
-      normalizeSessionForPersistence({
         inputMode: 'input2' as const,
-        transcriptionLanguage: 'de' as const,
         ttsLanguage: 'fr' as const,
         kokoroLanguage: 'es' as const,
         telemetry: {},
@@ -45,7 +20,6 @@ describe('sessionNormalization', () => {
     expect(
       normalizeSessionForPersistence({
         inputMode: 'input3' as const,
-        transcriptionLanguage: 'de' as const,
         ttsLanguage: 'es' as const,
         kokoroLanguage: 'fr' as const,
         telemetry: {},
@@ -54,7 +28,6 @@ describe('sessionNormalization', () => {
     expect(
       normalizeSessionForPersistence({
         inputMode: 'input4' as const,
-        transcriptionLanguage: 'de' as const,
         ttsLanguage: 'pt' as const,
         kokoroLanguage: 'fr' as const,
         telemetry: {},
@@ -65,14 +38,12 @@ describe('sessionNormalization', () => {
   it('input2 only keeps ttsLanguage', () => {
     const session = {
       inputMode: 'input2' as const,
-      transcriptionLanguage: 'de' as const,
       ttsLanguage: 'es' as const,
       kokoroLanguage: 'en' as const,
       telemetry: {},
     };
 
     const normalized = normalizeSessionForPersistence(session);
-    expect(normalized.transcriptionLanguage).toBeNull();
     expect(normalized.ttsLanguage).toBe('es');
     expect(normalized.kokoroLanguage).toBeNull();
   });
@@ -80,14 +51,12 @@ describe('sessionNormalization', () => {
   it('input3 only keeps kokoroLanguage', () => {
     const session = {
       inputMode: 'input3' as const,
-      transcriptionLanguage: 'de' as const,
       ttsLanguage: 'es' as const,
       kokoroLanguage: 'en' as const,
       telemetry: {},
     };
 
     const normalized = normalizeSessionForPersistence(session);
-    expect(normalized.transcriptionLanguage).toBeNull();
     expect(normalized.ttsLanguage).toBeNull();
     expect(normalized.kokoroLanguage).toBe('en');
   });
@@ -95,7 +64,6 @@ describe('sessionNormalization', () => {
   it('switching from input3 to input2 does not keep kokoroLanguage in saved JSON', () => {
     const session = {
       inputMode: 'input2' as const,
-      transcriptionLanguage: null,
       ttsLanguage: 'de' as const,
       // stale carry-over that should be cleared
       kokoroLanguage: 'en' as const,

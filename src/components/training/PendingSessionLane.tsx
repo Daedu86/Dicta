@@ -6,14 +6,13 @@ import { formatCreatedDeviceIcon, formatCreatedDeviceTooltip, type CreatedDevice
 import { isSubmittedFinishedAttempt } from '../../core/sessionNormalization';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+type SessionInputMode = 'input2' | 'input3' | 'input4';
 
 type PendingSessionLaneSession = {
   id: string;
   name: string;
   inputMode: SessionInputMode;
   inputSettingsLocked: boolean;
-  transcriptionLanguage: LanguageCode | null;
   ttsLanguage: LanguageCode | null;
   kokoroLanguage: LanguageCode | null;
   difficulty: Difficulty;
@@ -96,14 +95,13 @@ function SessionDeviceIcon({ session }: { session: PendingSessionLaneSession }) 
 }
 
 function formatSessionInputMode(mode: SessionInputMode): string {
-  if (mode === 'input1') return 'Original audio';
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
   return 'CosyVoice cache';
 }
 
 function getPendingSessionReason(session: PendingSessionLaneSession): string {
-  if (session.status === 'finished' && session.inputMode !== 'input1' && !isSubmittedFinishedAttempt(session)) {
+  if (session.status === 'finished' && !isSubmittedFinishedAttempt(session)) {
     return 'stats pending';
   }
   if (!session.inputSettingsLocked) return 'setup pending';
@@ -120,7 +118,6 @@ function getSessionDisplayTitle(session: PendingSessionLaneSession): string {
 }
 
 function resolveStoredSessionLanguage(session: PendingSessionLaneSession): LanguageCode {
-  if (session.inputMode === 'input1') return session.transcriptionLanguage ?? 'unknown';
   if (session.inputMode === 'input2' || session.inputMode === 'input4') return session.ttsLanguage ?? 'unknown';
   if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
   return 'unknown';

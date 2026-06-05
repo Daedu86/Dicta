@@ -420,11 +420,9 @@ function sessionFixture(overrides: Partial<AdaptiveRuntimeSessionInput> = {}): A
     updatedAt: '2026-06-04T11:10:00.000Z',
     inputMode: 'input2',
     status: 'running',
-    transcript: null,
     ttsText: 'Dies ist ein Test fuer die adaptive Laufzeit.',
     kokoroText: 'This is a Kokoro fixture.',
     kokoroChunks: [],
-    transcriptionLanguage: null,
     ttsLanguage: 'de',
     kokoroLanguage: 'en',
     metrics: {

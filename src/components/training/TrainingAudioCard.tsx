@@ -1,12 +1,5 @@
-import type { RefObject } from 'react';
-
 export type TrainingAudioCardProps = {
   statusLabel: string;
-  audioRef: RefObject<HTMLAudioElement | null>;
-  audioUrl: string;
-  onAudioTimeUpdate: () => void;
-  onAudioEnded: () => void;
-  showAudioElement: boolean;
   canPlay: boolean;
   playLabel: string;
   onPlay: () => void;
@@ -22,11 +15,6 @@ export type TrainingAudioCardProps = {
 
 export function TrainingAudioCard({
   statusLabel,
-  audioRef,
-  audioUrl,
-  onAudioTimeUpdate,
-  onAudioEnded,
-  showAudioElement,
   canPlay,
   playLabel,
   onPlay,
@@ -45,16 +33,6 @@ export function TrainingAudioCard({
         <span>Media player</span>
         <strong>{statusLabel}</strong>
       </div>
-      {showAudioElement ? (
-        <audio
-          ref={audioRef}
-          controls
-          src={audioUrl}
-          className="training-native-audio"
-          onTimeUpdate={onAudioTimeUpdate}
-          onEnded={onAudioEnded}
-        />
-      ) : null}
       <div className="training-control-grid">
         <button type="button" onClick={onPlay} disabled={!canPlay}>
           {playLabel}

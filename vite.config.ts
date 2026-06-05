@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import { execFile, execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 let kokoroSidecarProcess: ChildProcess | null = null;
@@ -32,8 +31,6 @@ export default defineConfig(({ mode }) => {
         const maxJsonBodyBytes = 64 * 1024;
         const maxOpenRouterKeyBytes = 4096;
         const maxOllamaKeyBytes = 4096;
-        const maxTranscribeBodyBytes = 36 * 1024 * 1024;
-        const maxTranscribeAudioBytes = 25 * 1024 * 1024;
         const openRouterFreeRouterModel = 'openrouter/free';
         const ollamaRecommendedModel = 'gemma3:27b-cloud';
         const openRouterPromptMaxChars = 32_000;
@@ -41,8 +38,6 @@ export default defineConfig(({ mode }) => {
         const openRouterModelMaxChars = 160;
         const ollamaModelMaxChars = 160;
         const openRouterActiveJobLimit = 3;
-        const supportedAudioExtensions = new Set(['.mp3', '.wav', '.m4a', '.webm', '.ogg', '.flac']);
-
         const httpError = (message: string, statusCode: number): Error & { statusCode: number } =>
           Object.assign(new Error(message), { statusCode });
 
@@ -256,11 +251,6 @@ export default defineConfig(({ mode }) => {
           const numeric = hasValue ? Number(value) : fallback;
           const bounded = Number.isFinite(numeric) ? numeric : fallback;
           return Math.max(128, Math.min(1800, Math.round(bounded)));
-        };
-
-        const normalizeAudioExtension = (value: string): string => {
-          const ext = path.extname(value).toLowerCase();
-          return supportedAudioExtensions.has(ext) ? ext : '.mp3';
         };
 
         const removeOpenRouterApiKey = async (): Promise<boolean> => {
@@ -806,98 +796,6 @@ export default defineConfig(({ mode }) => {
           }
         });
 
-        server.middlewares.use('/api/transcribe', async (req, res) => {
-          if (req.method !== 'POST') {
-            res.statusCode = 405;
-            res.end('Method not allowed');
-            return;
-          }
-
-          try {
-            const parsed = await readJsonRequestBody<{
-              fileName?: string;
-              audioBase64?: string;
-              audioUrl?: string;
-              language?: string;
-            }>(req, maxTranscribeBodyBytes);
-            if ((!parsed.audioBase64 || !parsed.fileName) && !parsed.audioUrl) {
-              res.statusCode = 400;
-              res.end('Missing audio payload.');
-              return;
-            }
-
-            const supportedTranscriptionLanguages = new Set(['en', 'es', 'de', 'fr', 'pt']);
-            const safeLanguage = supportedTranscriptionLanguages.has(String(parsed.language)) ? String(parsed.language) : 'en';
-            const resolvedExt = parsed.fileName
-              ? normalizeAudioExtension(parsed.fileName)
-              : normalizeAudioExtension(new URL(normalizeRemoteAudioUrl(parsed.audioUrl as string)).pathname);
-            const ext = resolvedExt;
-            const id = randomUUID();
-            const audioPath = path.join(os.tmpdir(), `dicta-${id}${ext}`);
-            const outputPath = path.join(os.tmpdir(), `dicta-${id}.json`);
-            if (parsed.audioBase64) {
-              if (Buffer.byteLength(parsed.audioBase64, 'base64') > maxTranscribeAudioBytes) {
-                throw httpError(`Audio payload too large. Limit is ${maxTranscribeAudioBytes} bytes.`, 413);
-              }
-              await fs.writeFile(audioPath, Buffer.from(parsed.audioBase64, 'base64'));
-            } else {
-              const remoteUrl = normalizeRemoteAudioUrl(parsed.audioUrl as string);
-              const response = await fetch(remoteUrl, {
-                redirect: 'follow',
-                headers: {
-                  'User-Agent': 'DictaLocalMVP/1.0',
-                  Accept: 'audio/*,*/*;q=0.8',
-                },
-              });
-              if (!response.ok) {
-                res.statusCode = 400;
-                res.end(`Failed to fetch audio URL: ${response.status}`);
-                return;
-              }
-              const contentType = response.headers.get('content-type') ?? '';
-              if (!contentType.includes('audio') && !contentType.includes('application/octet-stream')) {
-                res.statusCode = 400;
-                res.end(`URL did not return audio content (received: ${contentType || 'unknown'}).`);
-                return;
-              }
-              const contentLength = Number(response.headers.get('content-length') ?? NaN);
-              if (Number.isFinite(contentLength) && contentLength > maxTranscribeAudioBytes) {
-                throw httpError(`Remote audio is too large. Limit is ${maxTranscribeAudioBytes} bytes.`, 413);
-              }
-              const arrayBuffer = await response.arrayBuffer();
-              if (arrayBuffer.byteLength > maxTranscribeAudioBytes) {
-                throw httpError(`Remote audio is too large. Limit is ${maxTranscribeAudioBytes} bytes.`, 413);
-              }
-              await fs.writeFile(audioPath, Buffer.from(arrayBuffer));
-            }
-
-            const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-            await new Promise<void>((resolve, reject) => {
-              execFile(
-                pythonCmd,
-                ['scripts/transcribe_align.py', '--audio', audioPath, '--output', outputPath, '--language', safeLanguage],
-                { cwd: process.cwd() },
-                (error, stdout, stderr) => {
-                  if (error) {
-                    reject(new Error(stderr || stdout || error.message));
-                    return;
-                  }
-                  resolve();
-                },
-              );
-            });
-
-            const transcript = await fs.readFile(outputPath, 'utf-8');
-            await fs.rm(audioPath, { force: true });
-            await fs.rm(outputPath, { force: true });
-
-            res.setHeader('Content-Type', 'application/json');
-            res.end(transcript);
-          } catch (error) {
-            sendLocalError(res, error, 'Transcription server error');
-          }
-        });
-
         server.middlewares.use('/api/kokoro/start', async (req, res) => {
           if (req.method !== 'POST') {
             res.statusCode = 405;
@@ -1303,62 +1201,3 @@ async function waitForCosyVoiceSidecarReady(timeoutMs = 10_000): Promise<boolean
   return false;
 }
 
-function normalizeRemoteAudioUrl(rawUrl: string): string {
-  try {
-    const url = new URL(rawUrl);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      throw httpError('Remote audio URL must use http or https.', 400);
-    }
-    if (isBlockedRemoteAudioHostname(url.hostname)) {
-      throw httpError('Remote audio URL host is not allowed for local transcription.', 400);
-    }
-    if (url.hostname.includes('archive.org') && url.pathname.startsWith('/details/')) {
-      const parts = url.pathname.split('/').filter(Boolean);
-      if (parts.length >= 3) {
-        const identifier = parts[1];
-        const filename = parts.slice(2).join('/');
-        url.pathname = `/download/${identifier}/${filename}`;
-        url.search = '';
-      }
-    }
-    return url.toString();
-  } catch (error) {
-    if (error instanceof Error && 'statusCode' in error) throw error;
-    throw httpError('Invalid remote audio URL.', 400);
-  }
-}
-
-function isBlockedRemoteAudioHostname(hostname: string): boolean {
-  const normalized = hostname.toLowerCase().replace(/^\[/, '').replace(/\]$/, '').replace(/\.$/, '');
-  if (!normalized) return true;
-  if (
-    normalized === 'localhost' ||
-    normalized === 'metadata.google.internal' ||
-    normalized.endsWith('.localhost') ||
-    normalized.endsWith('.local')
-  ) {
-    return true;
-  }
-  if (normalized === '::1' || normalized === '::' || normalized.startsWith('fe80:') || normalized.startsWith('fc') || normalized.startsWith('fd')) {
-    return true;
-  }
-
-  const ipv4 = normalized.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (!ipv4) return false;
-  const [a, b, c, d] = ipv4.slice(1).map(Number);
-  if ([a, b, c, d].some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true;
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    a === 169 && b === 254 ||
-    a === 172 && b >= 16 && b <= 31 ||
-    a === 192 && b === 168 ||
-    a === 100 && b >= 64 && b <= 127 ||
-    a >= 224
-  );
-}
-
-function httpError(message: string, statusCode: number): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode });
-}

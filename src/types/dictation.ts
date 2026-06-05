@@ -8,12 +8,6 @@ export interface Transcript {
   words: WordTiming[];
 }
 
-export interface TypingEvent {
-  t: number;
-  key: string;
-  correct?: boolean;
-}
-
 export type ControlAction =
   | 'hold'
   | 'speed_up'
@@ -67,16 +61,6 @@ export interface TtsChunkTelemetry {
   engine?: TtsEngine;
   cacheKey?: string;
   durationSec?: number;
-}
-
-export interface SyncState {
-  audioTime: number;
-  typedWordIndex: number;
-  expectedWordIndex: number;
-  lagWords: number;
-  lagSec: number;
-  wpm: number;
-  accuracy: number;
 }
 
 export interface ControllerConfig {

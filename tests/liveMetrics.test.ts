@@ -9,9 +9,8 @@ import {
 
 function session(overrides: Partial<SessionForMetrics>): SessionForMetrics {
   return {
-    inputMode: 'input1',
-    transcriptionLanguage: 'de',
-    ttsLanguage: null,
+    inputMode: 'input2',
+    ttsLanguage: 'de',
     kokoroLanguage: null,
     updatedAt: '2026-04-28T10:00:00.000Z',
     metrics: { points: 10, score: 20, accuracy: 90, wpm: 50 },
@@ -21,10 +20,6 @@ function session(overrides: Partial<SessionForMetrics>): SessionForMetrics {
 }
 
 describe('resolveSessionLanguage', () => {
-  it('uses transcription language for input1', () => {
-    expect(resolveSessionLanguage(session({ inputMode: 'input1', transcriptionLanguage: 'de' }))).toBe('de');
-  });
-
   it('uses tts language for input2 and input4', () => {
     expect(resolveSessionLanguage(session({ inputMode: 'input2', ttsLanguage: 'es' }))).toBe('es');
     expect(resolveSessionLanguage(session({ inputMode: 'input4', ttsLanguage: 'en' }))).toBe('en');
@@ -45,7 +40,7 @@ describe('language metrics aggregation', () => {
   it('selects latest session for language by updatedAt', () => {
     const sessions = [
       session({ inputMode: 'input2', ttsLanguage: 'es', updatedAt: '2026-04-27T10:00:00.000Z' }),
-      session({ inputMode: 'input1', transcriptionLanguage: 'es', updatedAt: '2026-04-28T10:00:00.000Z' }),
+      session({ inputMode: 'input4', ttsLanguage: 'es', updatedAt: '2026-04-28T10:00:00.000Z' }),
       session({ inputMode: 'input3', kokoroLanguage: 'en', updatedAt: '2026-04-29T10:00:00.000Z' }),
     ];
     const lastEs = findLastSessionForLanguage(sessions, 'es');
@@ -55,7 +50,7 @@ describe('language metrics aggregation', () => {
   it('aggregates only selected language sessions for today', () => {
     const today = new Date('2026-04-28T12:00:00.000Z');
     const sessions = [
-      session({ inputMode: 'input1', transcriptionLanguage: 'de', updatedAt: '2026-04-28T09:00:00.000Z', metrics: { points: 10, score: 20, accuracy: 80, wpm: 40 } }),
+      session({ inputMode: 'input4', ttsLanguage: 'de', updatedAt: '2026-04-28T09:00:00.000Z', metrics: { points: 10, score: 20, accuracy: 80, wpm: 40 } }),
       session({ inputMode: 'input2', ttsLanguage: 'de', updatedAt: '2026-04-28T11:00:00.000Z', metrics: { points: 30, score: 40, accuracy: 100, wpm: 60 } }),
       session({ inputMode: 'input2', ttsLanguage: 'es', updatedAt: '2026-04-28T11:30:00.000Z', metrics: { points: 99, score: 99, accuracy: 99, wpm: 99 } }),
       session({ inputMode: 'input3', kokoroLanguage: 'de', updatedAt: '2026-04-27T11:30:00.000Z', metrics: { points: 100, score: 100, accuracy: 100, wpm: 100 } }),

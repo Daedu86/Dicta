@@ -48,7 +48,7 @@ type SessionCreateCardProps = {
   validatedDictationScript: DictationScriptPreview | null;
   onSessionCreationSourceChange: (value: SessionSource) => void;
   onSessionCreationNameChange: (value: string) => void;
-  onCreateSessionWithMode: (inputMode: 'input1' | 'input2' | 'input3' | 'input4') => void;
+  onCreateSessionWithMode: (inputMode: 'input2' | 'input3' | 'input4') => void;
   onDictationScriptJsonChange: (value: string) => void;
   onValidateScriptImport: () => void;
   onCreateSessionFromDictationScript: () => void;
@@ -108,15 +108,6 @@ export function SessionCreateCard({
           </label>
           <p className="session-create-hint">Enter a name first, then choose the setup.</p>
           <div className="session-create-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onCreateSessionWithMode('input1')}
-              disabled={!canCreateSessionFromDialog}
-              title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
-            >
-              Input # 1 - Original Audio
-            </button>
             <button
               type="button"
               className="secondary-button"

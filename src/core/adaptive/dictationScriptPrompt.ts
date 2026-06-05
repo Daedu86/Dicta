@@ -2,7 +2,6 @@ import type { InputLanguageBenchmarkMetrics, InputMode, LanguageCode } from './t
 
 function inputSpecificGuidance(inputMode: InputMode): string {
   const guidance: Record<InputMode, string> = {
-    audio: 'Use simple, transcript-friendly sentences with natural sentence boundaries.',
     'browser-tts': 'Use clean clauses and conservative pauses that browser/system TTS can speak predictably.',
     kokoro: 'Use precise phrase-level chunks with complete metadata for local Kokoro generation.',
     'cosyvoice-cache': 'Use cache-friendly and replay-safe chunks for reusable CosyVoice cached audio.',

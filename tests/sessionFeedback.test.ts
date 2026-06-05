@@ -345,15 +345,15 @@ describe('session feedback diagnostics', () => {
       createdAt: '2026-05-20T08:00:00.000Z',
       completedAt: '2026-05-20T08:10:00.000Z',
     });
-    const newerAudioDe = feedbackRecord({
-      sessionId: 'audio-de-newer',
-      inputMode: 'audio',
+    const newerKokoroDe = feedbackRecord({
+      sessionId: 'kokoro-de-newer',
+      inputMode: 'kokoro',
       language: 'de',
       createdAt: '2026-05-21T08:00:00.000Z',
       completedAt: '2026-05-21T08:10:00.000Z',
     });
 
-    const selected = selectLatestAdaptiveSessionFeedback([newerAudioDe, browserTtsDe], 'browser-tts', 'de');
+    const selected = selectLatestAdaptiveSessionFeedback([newerKokoroDe, browserTtsDe], 'browser-tts', 'de');
 
     expect(selected?.sessionId).toBe('browser-tts-de-older');
   });
@@ -424,7 +424,7 @@ describe('session feedback diagnostics', () => {
     const next = upsertAdaptiveSessionFeedbackByInputLanguage({}, 'browser-tts', 'de', feedback);
 
     expect(next['browser-tts']?.de?.[0]?.sessionId).toBe('4968d38d-ca63-4d6c-bc00-20b4013d94ad');
-    expect(next.audio?.de).toBeUndefined();
+    expect(next.kokoro?.de).toBeUndefined();
     expect(next['browser-tts']?.en).toBeUndefined();
   });
 
@@ -450,7 +450,7 @@ describe('session feedback diagnostics', () => {
   it('does not treat feedback under the wrong inputMode or language as a browser-tts DE match', () => {
     const sameSessionWrongInput = feedbackRecord({
       sessionId: '178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f',
-      inputMode: 'audio',
+      inputMode: 'kokoro',
       language: 'de',
       createdAt: '2026-05-21T08:38:00.000Z',
       completedAt: '2026-05-21T08:42:04.706Z',
@@ -497,7 +497,7 @@ describe('session feedback diagnostics', () => {
 
     expect(withRegenerated['browser-tts']?.de).toHaveLength(1);
     expect(withRegenerated['browser-tts']?.de?.[0]?.sessionId).toBe('178d8cdb-dc98-4ab9-8b01-d7a984ad7b2f');
-    expect(withRegenerated.audio?.de).toBeUndefined();
+    expect(withRegenerated.kokoro?.de).toBeUndefined();
     expect(withRegenerated['browser-tts']?.en).toBeUndefined();
   });
 

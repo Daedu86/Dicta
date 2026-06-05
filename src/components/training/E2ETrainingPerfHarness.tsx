@@ -7,7 +7,6 @@ type HarnessSession = {
   name: string;
   inputMode: 'input2';
   inputSettingsLocked: boolean;
-  transcriptionLanguage: null;
   ttsLanguage: 'de';
   kokoroLanguage: null;
   difficulty: 'normal';
@@ -21,7 +20,6 @@ const session: HarnessSession = {
   name: 'E2E mobile training session',
   inputMode: 'input2',
   inputSettingsLocked: true,
-  transcriptionLanguage: null,
   ttsLanguage: 'de',
   kokoroLanguage: null,
   difficulty: 'normal',
@@ -42,11 +40,6 @@ export function E2ETrainingPerfHarness() {
       sourceLabel="E2E fixture"
       progressLabel="0 / 1"
       statusLabel="Running"
-      audioRef={{ current: null }}
-      audioUrl=""
-      onAudioTimeUpdate={() => undefined}
-      onAudioEnded={() => undefined}
-      showAudioElement={false}
       currentTextValue={text}
       onTextChange={setText}
       onImmediateTextChange={() => undefined}

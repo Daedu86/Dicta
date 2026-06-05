@@ -2,12 +2,9 @@ type AdminStorageSummary = {
   sessionCount: number;
   finishedSessions: number;
   dictaLocalStorageBytes: number;
-  totalTranscriptWords: number;
   telemetrySamples: number;
   telemetryActions: number;
   ttsChunks: number;
-  blobAudioRefs: number;
-  remoteAudioRefs: number;
 };
 
 type SupabaseSyncStatus = {
@@ -56,11 +53,9 @@ export function AdminKpiGrid({ summary, syncStatus }: AdminKpiGridProps) {
       <Metric label="Finished" value={String(summary.finishedSessions)} />
       <Metric label="LocalStorage" value={formatBytes(summary.dictaLocalStorageBytes)} />
       <Metric label="Sync" value={formatSupabaseSyncState(syncStatus)} />
-      <Metric label="Transcript words" value={String(summary.totalTranscriptWords)} />
       <Metric label="Telemetry samples" value={String(summary.telemetrySamples)} />
       <Metric label="Actions" value={String(summary.telemetryActions)} />
       <Metric label="TTS chunks" value={String(summary.ttsChunks)} />
-      <Metric label="Audio refs" value={String(summary.blobAudioRefs + summary.remoteAudioRefs)} />
     </div>
   );
 }

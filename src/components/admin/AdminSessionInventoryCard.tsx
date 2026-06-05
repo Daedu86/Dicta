@@ -1,7 +1,7 @@
-import type { SessionTelemetry, Transcript } from '../../types/dictation';
+import type { SessionTelemetry } from '../../types/dictation';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+type SessionInputMode = 'input2' | 'input3' | 'input4';
 type MetricsLanguageView = 'en' | 'es' | 'de' | 'fr' | 'pt' | 'all';
 
 type AdminInventorySessionBase = {
@@ -9,11 +9,9 @@ type AdminInventorySessionBase = {
   name: string;
   inputMode: SessionInputMode;
   updatedAt: string;
-  inputText: string;
   ttsPracticeText: string;
   kokoroPracticeText: string;
   status: SessionStatus;
-  transcript: Transcript | null;
   telemetry: SessionTelemetry;
   [key: string]: unknown;
 };
@@ -37,9 +35,7 @@ function countSessionTypedWords(session: AdminInventorySessionBase): number {
   const text =
     session.inputMode === 'input2' || session.inputMode === 'input4'
       ? session.ttsPracticeText
-      : session.inputMode === 'input3'
-        ? session.kokoroPracticeText
-        : session.inputText;
+      : session.kokoroPracticeText;
   return text.split(/\s+/).filter(Boolean).length;
 }
 
@@ -59,7 +55,6 @@ function formatBytes(bytes: number): string {
 }
 
 function formatSessionInputMode(mode: SessionInputMode): string {
-  if (mode === 'input1') return 'Original audio';
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
   return 'CosyVoice cache';
@@ -107,7 +102,7 @@ export function AdminSessionInventoryCard<TSession extends AdminInventorySession
       <div className="admin-card-header">
         <div>
           <h3>Session inventory ({languageView.toUpperCase()})</h3>
-          <p>Per-session storage, transcript, text, and telemetry counts for the selected language.</p>
+          <p>Per-session storage, practice text, and telemetry counts for the selected language.</p>
         </div>
       </div>
       <div className="admin-session-list">
@@ -119,7 +114,6 @@ export function AdminSessionInventoryCard<TSession extends AdminInventorySession
             </div>
             <div className="admin-session-metrics">
               <Metric label="JSON size" value={formatBytes(estimateJsonBytes(session))} />
-              <Metric label="Transcript" value={String(session.transcript?.words.length ?? 0)} />
               <Metric label="Typed words" value={String(countSessionTypedWords(session))} />
               <Metric label="Telemetry" value={String(countTelemetrySamples(session.telemetry))} />
             </div>

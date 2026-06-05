@@ -10,15 +10,14 @@ Before proposing or making behavior changes, agents must read and understand the
 
 After reading them, propose changes from the architecture rather than from an isolated file edit. A valid proposal should identify the affected boundary: browser, core TypeScript domain, input adapter, Vercel/server route, Supabase/RLS, or local-only sidecar. If adaptive behavior is involved, identify the affected `(inputMode, language)` profile and how neighboring profiles stay unchanged.
 
-Dicta is a Vite/React adaptive dictation trainer. The browser owns the training UI, local session state, and the Adaptive Pace Layer. Vercel/server routes protect secrets and cloud calls. Supabase Auth and RLS provide invite/admin-created accounts, cross-device sync, durable OpenRouter jobs, persistent job rate limits, and member quotas. Local-only Python sidecars handle WhisperX transcription, Kokoro TTS, and CosyVoice2 cache generation during development.
+Dicta is a Vite/React adaptive dictation trainer. The browser owns the training UI, local session state, and the Adaptive Pace Layer. Vercel/server routes protect secrets and cloud calls. Supabase Auth and RLS provide invite/admin-created accounts, cross-device sync, durable OpenRouter jobs, persistent job rate limits, and member quotas. Local-only Python sidecars handle Kokoro TTS and CosyVoice2 cache generation during development.
 
 ## Product Matrix
 
-Dicta is built around 4 input modes x 5 languages.
+Dicta is built around 3 input modes x 5 languages.
 
 Inputs:
 
-- `audio`: uploaded or recorded original audio plus a word-level transcript.
 - `browser-tts`: browser SpeechSynthesis with adaptive semantic chunking.
 - `kokoro`: local Kokoro TTS sidecar. Native in this setup: `en`, `es`. Blocked or experimental: `de`, `fr`, `pt`.
 - `cosyvoice-cache`: CosyVoice2 WAV cache files with browser TTS fallback when cache files are missing. Historical `qwen-cloud` values are treated as a legacy alias when reading stored/cache data.
@@ -33,7 +32,6 @@ Browser app:
 
 - `src/App.tsx`: workspace router and session orchestration host.
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
-- `src/app/useAudioPlaybackRuntime.ts`: Input #1 browser audio element and AudioEngine runtime state/control boundary.
 - `src/app/useBrowserTtsRuntime.ts`: Input #2 direct Browser TTS SpeechSynthesis voice discovery and command boundary.
 - `src/app/useKokoroRuntime.ts`: Input #3 Kokoro local sidecar availability, toggle, health/start polling, and inactivity timeout boundary.
 - `/training`: low-latency typing surface and session controls.
@@ -62,7 +60,6 @@ Core TypeScript domain:
 
 Input adapters:
 
-- `audio`: audio engine plus telemetry adapter.
 - `browser-tts`: SpeechSynthesis plus dynamic chunk planner.
 - `kokoro`: Kokoro sidecar plus telemetry adapter.
 - `cosyvoice-cache`: CosyVoice2 cache plus browser fallback, with `qwen-cloud` accepted as a legacy cache/input alias.
@@ -91,15 +88,14 @@ Ollama Cloud uses `OLLAMA_API_KEY` through server routes only. It currently has 
 
 Local-only services:
 
-- `scripts/transcribe_align.py`: WhisperX optional alignment.
 - `services/kokoro_tts/*`: Kokoro TTS sidecar.
 - `services/cosyvoice_cache/*`: CosyVoice2 cache sidecar.
 
 ## Adaptive Brain Loop
 
-1. A session source provides audio transcript, typed text, OpenRouter script, or cached phrases.
+1. A session source provides typed text, OpenRouter script, or cached phrases.
 2. `SemanticPhrasePlanner` produces phrase boundaries and difficulty.
-3. The active input engine plays audio, TTS, or cached output.
+3. The active input engine plays TTS or cached output.
 4. `LowLatencyTextarea` captures learner typing without per-keystroke React state for visible text.
 5. Input telemetry adapters produce `LiveTelemetryFrame`.
 6. `HistoricalPerformanceService` and the 30-day benchmark provide profile context.
@@ -217,7 +213,6 @@ Local Vite dev mirrors the Ollama models/chat/status routes and exposes dev-only
 
 These paths are not production Vercel backend features:
 
-- `/api/transcribe` in `vite.config.ts`.
 - `/api/kokoro/start`.
 - `/api/cosyvoice/start` and `/api/cosyvoice/bootstrap`.
 - `/api/admin/files`.
@@ -228,7 +223,6 @@ These paths are not production Vercel backend features:
 
 App runtime and adaptive core:
 
-- `src/app/useAudioPlaybackRuntime.ts`
 - `src/app/useBrowserTtsRuntime.ts`
 - `src/app/useKokoroRuntime.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
@@ -247,7 +241,6 @@ App runtime and adaptive core:
 
 Input adapters:
 
-- `src/inputs/audio/audioTelemetryAdapter.ts`
 - `src/inputs/browserTts/browserTtsTelemetryAdapter.ts`
 - `src/inputs/browserTts/ttsDynamicChunkPlanner.ts`
 - `src/inputs/kokoro/kokoroTelemetryAdapter.ts`
@@ -270,7 +263,6 @@ Auth/sync/server:
 
 Local services:
 
-- `scripts/transcribe_align.py`
 - `services/kokoro_tts/*`
 - `services/cosyvoice_cache/*`
 

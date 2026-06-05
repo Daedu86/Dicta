@@ -15,7 +15,6 @@ The following Admin UI components now live under `src/components/admin/`:
 - `AdminUsersCard.tsx`
 - `AdminMemberAccessCard.tsx`
 - `AdminCreateUserCard.tsx`
-- `AdminManualInputSessionCard.tsx`
 - `AdminBrowserStorageCard.tsx`
 - `AdminProjectFilesCard.tsx`
 - `AdminSessionInventoryCard.tsx`
@@ -33,7 +32,6 @@ Planning and extraction commits:
 - `4aa4e6cc3838aacbb7b2d4848d489aec7068a731` — `Extract AdminUsersCard component`
 - `7221ee9e9de05ed16957087c71cee80b428fb114` — `Extract AdminMemberAccessCard component`
 - `1955f994f75e8b4c265610b445b2128964e83a6e` — `Extract AdminCreateUserCard component`
-- `e794dc246e196133518886789c0dee95734ba86a` — `Extract AdminManualInputSessionCard component`
 - `85596adac254bf51b22db345c90b50eb406eb01d` — `Extract AdminBrowserStorageCard component`
 - `9ef3c2ec40e59e6248d1eaa2a14730c4c566d127` — `Extract AdminProjectFilesCard component`
 - `0f4c0e2e0c1788fa5948a75ea003602e17266355` — `Extract AdminSessionInventoryCard component`
@@ -58,13 +56,11 @@ The modularization intentionally avoided behavior changes. In particular:
 After these extractions, `AdminWorkspace` should be treated as an orchestration layer. It still owns sensitive and stateful pieces such as:
 
 - `importInputRef`
-- `manualInput1Name`
 - create-user form state
 - member-access draft state
 - `memberProfiles`
 - `memberModelOptions`
 - `onImportFileChange(...)`
-- `submitManualInput1Session()`
 - `createDictaUser()`
 - `saveProfileAccess()`
 - `updateAccessDraft(...)`

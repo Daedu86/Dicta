@@ -656,8 +656,7 @@ function estimatePointsFromAccuracy(session: Record<string, unknown>, accuracy: 
   if (accuracy <= 0) return 0;
   const sourceText =
     getStringField(session, 'ttsText') ||
-    getStringField(session, 'kokoroText') ||
-    getStringField(session, 'inputText');
+    getStringField(session, 'kokoroText');
   const wordCount = countWords(sourceText);
   return wordCount > 0 ? Math.round(wordCount * Math.max(0, Math.min(100, accuracy)) / 100) : 0;
 }

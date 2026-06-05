@@ -1,5 +1,5 @@
 export type AdaptiveAdapterCardConfig = {
-  inputMode: 'input1' | 'input2' | 'input3' | 'input4';
+  inputMode: 'input2' | 'input3' | 'input4';
   title: string;
   adapter: string;
   execution: string;
@@ -14,4 +14,3 @@ export type RepeatWordStat = {
   missed: number;
   typos: number;
 };
-

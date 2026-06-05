@@ -33,8 +33,7 @@ import {
   formatSessionPointsLabel,
 } from './core/evaluation';
 import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
-import { normalizeTranscript, buildTargetWords, normalizeWord } from './core/normalization';
-import { deriveSyncState, SyncController } from './core/syncController';
+import { normalizeWord } from './core/normalization';
 import { planSemanticPhrases, type SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import {
   clampBrowserTtsDeDecisionToRecommendation,
@@ -74,7 +73,6 @@ import {
   selectLatestAdaptiveSessionFeedback,
   type SessionFeedbackReference,
 } from './core/adaptive/sessionFeedback';
-import { buildAudioTelemetryFrame, buildAdaptiveAudioInput } from './inputs/audio/audioTelemetryAdapter';
 import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
 import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor, buildBrowserTtsControlLagSample } from './inputs/browserTts/browserTtsRatePolicy';
@@ -94,9 +92,7 @@ import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/ko
 import { buildQwenCloudTelemetryFrame, buildAdaptiveQwenCloudInput } from './inputs/qwenCloud/qwenCloudTelemetryAdapter';
 import { QwenCloudAudioAdapter, buildQwenCloudPhraseId } from './inputs/qwenCloud/qwenCloudAudioAdapter';
 import { buildQwenCloudCacheManifestFromSemanticPhrases, qwenCloudCacheManifestJson } from './inputs/qwenCloud/qwenCloudCacheManifest';
-import { TypingTracker } from './core/typingTracker';
-import { createTelemetry, trackAction, trackSample } from './core/telemetry';
-import { parseTranscript } from './core/transcript';
+import { trackAction, trackSample } from './core/telemetry';
 import { KokoroAudioEngine } from './core/kokoroAudioEngine';
 import { generateKokoroChunk, type KokoroChunkResponse } from './core/kokoroClient';
 import {
@@ -126,9 +122,6 @@ import { TrainingHeader } from './components/training/TrainingHeader';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
 import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
-import { AudioInputSetupCard } from './components/runtime-workspaces/AudioInputSetupCard';
-import { AudioPracticeCard } from './components/runtime-workspaces/AudioPracticeCard';
-import { AudioSourceCard } from './components/runtime-workspaces/AudioSourceCard';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
 import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
 import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsSetupCard';
@@ -151,7 +144,6 @@ import { AdminKpiGrid } from './components/admin/AdminKpiGrid';
 import { AdminUsersCard } from './components/admin/AdminUsersCard';
 import { AdminMemberAccessCard } from './components/admin/AdminMemberAccessCard';
 import { AdminCreateUserCard } from './components/admin/AdminCreateUserCard';
-import { AdminManualInputSessionCard } from './components/admin/AdminManualInputSessionCard';
 import { AdminBrowserStorageCard } from './components/admin/AdminBrowserStorageCard';
 import { AdminProjectFilesCard } from './components/admin/AdminProjectFilesCard';
 import { AdminSessionInventoryCard } from './components/admin/AdminSessionInventoryCard';
@@ -224,7 +216,6 @@ import {
 } from './app/useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
-import { useAudioPlaybackRuntime } from './app/useAudioPlaybackRuntime';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
 import { useKokoroRuntime } from './app/useKokoroRuntime';
 import {
@@ -261,12 +252,6 @@ type StoredSession = {
   updatedAt: string;
   inputMode: SessionInputMode;
   inputSettingsLocked: boolean;
-  audioUrl: string;
-  audioSourceUrlInput: string;
-  audioLabel: string;
-  transcriptionLanguage: TtsLanguage | null;
-  transcript: Transcript | null;
-  inputText: string;
   ttsText: string;
   ttsLanguage: TtsLanguage | null;
   ttsVoiceURI?: string | null;
@@ -290,7 +275,7 @@ type StoredSession = {
 };
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input1' | 'input2' | 'input3' | 'input4';
+type SessionInputMode = 'input2' | 'input3' | 'input4';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
 type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
@@ -410,16 +395,12 @@ type AdminStorageSummary = {
   inputModeCounts: Record<SessionInputMode, number>;
   localStorageEntries: LocalStorageEntry[];
   dictaLocalStorageBytes: number;
-  totalTranscriptWords: number;
   ttsTextChars: number;
   kokoroTextChars: number;
   typedTextChars: number;
   telemetrySamples: number;
   telemetryActions: number;
   ttsChunks: number;
-  blobAudioRefs: number;
-  remoteAudioRefs: number;
-  audioLabels: number;
 };
 
 type PendingSyncSummary = {
@@ -485,36 +466,6 @@ function App() {
   appRenderCountRef.current += 1;
   const [sessions, setSessions] = useState<StoredSession[]>(() => loadSessions());
   const [activeSessionId, setActiveSessionId] = useState<string>(() => loadSessions()[0]?.id ?? '');
-  const [audioUrl, setAudioUrl] = useState<string>('');
-  const {
-    audioRef,
-    audioReady,
-    audioReadyMessage,
-    currentAudioTime,
-    hasAudioElement,
-    hasAudioEngine,
-    loadAudioSource,
-    setAudioReadyState,
-    setAudioCurrentTime,
-    handleAudioTimeUpdate,
-    playAudio,
-    pauseAudio,
-    resetAudio,
-    seekAudio,
-    rewindAudio,
-    getAudioCurrentTime,
-    getAudioRate,
-    setAudioRate,
-  } = useAudioPlaybackRuntime(audioUrl);
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [audioSourceUrlInput, setAudioSourceUrlInput] = useState<string>('');
-  const [loadedAudioFromUrl, setLoadedAudioFromUrl] = useState<string>('');
-  const [transcriptionLanguage, setTranscriptionLanguage] = useState<TtsLanguage>('de');
-  const [transcribing, setTranscribing] = useState(false);
-  const [transcriptionProgress, setTranscriptionProgress] = useState(0);
-  const [transcriptReadyMessage, setTranscriptReadyMessage] = useState('');
-  const [transcript, setTranscript] = useState<Transcript | null>(null);
-  const [inputText, setInputText] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('ready');
   const [controllerState, setControllerState] = useState<ControlAction>('hold');
@@ -559,7 +510,6 @@ function App() {
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
-  const [setupExpanded, setSetupExpanded] = useState(true);
   const [ttsExpanded, setTtsExpanded] = useState(true);
   const [ttsText, setTtsText] = useState('');
 
@@ -661,10 +611,6 @@ function App() {
   }, [browserTtsVoices]);
   const [openRouterDefaultModel, setOpenRouterDefaultModel] = useState('');
   const [ollamaDefaultModel, setOllamaDefaultModel] = useState(OLLAMA_RECOMMENDED_DEFAULT_MODEL);
-
-  useEffect(() => {
-    inputLiveTextRef.current = inputText;
-  }, [inputText]);
 
   useEffect(() => {
     ttsPracticeLiveTextRef.current = ttsPracticeText;
@@ -851,11 +797,9 @@ function App() {
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
-  const inputLiveTextRef = useRef('');
   const ttsPracticeLiveTextRef = useRef('');
   const kokoroPracticeLiveTextRef = useRef('');
 
-  const trackerRef = useRef(new TypingTracker());
   const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const qwenCloudAdapterRef = useRef<QwenCloudAudioAdapter | null>(null);
   const telemetryRef = useRef<SessionTelemetry | null>(null);
@@ -1033,7 +977,6 @@ function App() {
   }, [adminProfileFilter, appProfile, supabaseClient]);
 
   const config = useMemo(() => configForDifficulty(difficulty), [difficulty]);
-  const controllerRef = useRef(new SyncController(config));
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [sessions, activeSessionId],
@@ -1042,15 +985,13 @@ function App() {
     () => sessions.find((session) => session.id === dashboardSessionId) ?? activeSession,
     [activeSession, dashboardSessionId, sessions],
   );
-  const activeInputMode = activeSession?.inputMode ?? 'input1';
+  const activeInputMode = activeSession?.inputMode ?? 'input2';
   const activeInputLabel =
-    activeInputMode === 'input1'
-      ? 'Input # 1 - Original Audio'
-      : activeInputMode === 'input2'
-        ? 'Input # 2 - Text to Speech (TTS)'
-        : activeInputMode === 'input3'
-          ? 'Input # 3 - Kokoro TTS Local'
-          : 'Input # 4 - CosyVoice2 Cache';
+    activeInputMode === 'input2'
+      ? 'Input # 2 - Text to Speech (TTS)'
+      : activeInputMode === 'input3'
+        ? 'Input # 3 - Kokoro TTS Local'
+        : 'Input # 4 - CosyVoice2 Cache';
   const activeInputFeatureLabel =
     activeInputMode === 'input2'
       ? 'Built-in browser feature'
@@ -1060,11 +1001,7 @@ function App() {
           ? 'Cached CosyVoice2 audio'
           : '';
   const activeInputWorkspaceMode: WorkspaceMode =
-    activeInputMode === 'input1'
-      ? 'training'
-      : activeInputMode === 'input2' || activeInputMode === 'input4'
-        ? 'tts'
-        : 'kokoro';
+    activeInputMode === 'input2' || activeInputMode === 'input4' ? 'tts' : 'kokoro';
   const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
   const assignedOpenRouterModel =
     syncConfig.authRequired && appProfile?.role === 'member' ? appProfile.assignedOpenRouterModel?.trim() ?? '' : '';
@@ -1166,14 +1103,6 @@ function App() {
     [adminProfileFilter, adminRemoteSessions, sessions, adminLanguageView],
   );
   const adminStorageSummary = useMemo(() => buildAdminStorageSummary(adminSessions), [adminSessions]);
-  const transcriptSegments = useMemo(() => buildTranscriptSegments(transcript), [transcript]);
-  const activeTranscriptSegmentIndex = useMemo(
-    () => transcriptSegments.findIndex((segment) => currentAudioTime >= segment.start && currentAudioTime <= segment.end),
-    [transcriptSegments, currentAudioTime],
-  );
-  const activeTranscriptSegment = activeTranscriptSegmentIndex >= 0 ? transcriptSegments[activeTranscriptSegmentIndex] : null;
-  const nextTranscriptSegment =
-    activeTranscriptSegmentIndex >= 0 ? transcriptSegments[activeTranscriptSegmentIndex + 1] ?? null : transcriptSegments[0] ?? null;
 
   useEffect(() => {
     perfDiagnostics.recordRender('App', appRenderCountRef.current);
@@ -1412,23 +1341,6 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    controllerRef.current = new SyncController(config);
-  }, [config]);
-
-  const targetWords = useMemo(() => {
-    if (!transcript) return [];
-    return buildTargetWords(transcript);
-  }, [transcript]);
-
-  const attemptEvaluation = useMemo(() => evaluateTranscriptAttempt(inputText, transcript), [inputText, transcript]);
-  const typedWords = attemptEvaluation.typedWords;
-  const visibleAccuracy = typedWords.length > 0 && targetWords.length > 0 ? accuracy : 0;
-  const visibleScore =
-    typedWords.length > 0 && targetWords.length > 0
-      ? computeSessionScore({ accuracy, lagSec, wpm, rate, points: attemptEvaluation.points })
-      : 0;
-
   const lastSessionForLanguage = useMemo(
     () => findLastSessionForLanguage(sessionsWithVoiceDuration, metricsLanguageView),
     [sessionsWithVoiceDuration, metricsLanguageView],
@@ -1487,30 +1399,23 @@ function App() {
   const activePoints =
     activeInputMode === 'input2' || activeInputMode === 'input4'
       ? ttsPracticeEvaluation.points
-      : activeInputMode === 'input3'
-        ? kokoroPracticeEvaluation.points
-        : attemptEvaluation.points;
+      : kokoroPracticeEvaluation.points;
   const activeVisibleAccuracy =
     activeInputMode === 'input2' || activeInputMode === 'input4'
       ? ttsVisibleAccuracy
-      : activeInputMode === 'input3'
-        ? kokoroVisibleAccuracy
-        : visibleAccuracy;
+      : kokoroVisibleAccuracy;
   const activeVisibleScore =
     activeInputMode === 'input2' || activeInputMode === 'input4'
       ? ttsVisibleScore
-      : activeInputMode === 'input3'
-        ? kokoroVisibleScore
-        : visibleScore;
+      : kokoroVisibleScore;
   const activeMaxPoints = useMemo(
     () =>
       computeSessionMaxPoints({
         inputMode: activeInputMode,
-        transcript,
         ttsText,
         kokoroText,
       }),
-    [activeInputMode, kokoroText, transcript, ttsText],
+    [activeInputMode, kokoroText, ttsText],
   );
   const activeLivePointsLabel = formatSessionPointsLabel(activePoints, activeMaxPoints);
   const activeLiveScoreHelpText = buildSessionScoreHelpText({
@@ -1523,113 +1428,6 @@ function App() {
   });
   const activeLivePointsHelpText = buildSessionPointsHelpText(activeMaxPoints);
   const activeLiveAccuracyHelpText = 'Accuracy is matched target words divided by typed words, including exact and one-character typo matches.';
-
-  useEffect(() => {
-    if (!running || !transcript || !hasAudioEngine() || targetWords.length === 0) {
-      return;
-    }
-
-    const id = window.setInterval(() => {
-      const audioTime = getAudioCurrentTime();
-      setAudioCurrentTime(audioTime);
-      const tracker = trackerRef.current;
-      const typedWordIndex = tracker.getTypedWordIndex();
-      const currentWpm = tracker.getWpm(audioTime);
-      const currentAccuracy = tracker.getAccuracyPercent();
-
-      const currentPlaybackRate = getAudioRate();
-      const sync = deriveSyncState({
-        transcript,
-        audioTime,
-        typedWordIndex,
-        wpm: currentWpm,
-        accuracy: currentAccuracy,
-      });
-
-      const historyProfile = getHistoricalPerformanceProfile('audio', transcriptionLanguage);
-      const audioTelemetry = buildAudioTelemetryFrame({
-        inputMode: 'audio',
-        phraseId: `audio-${sync.expectedWordIndex}`,
-        audioTime,
-        phraseDurationSec: transcript.words[transcript.words.length - 1]?.end ?? 0,
-        typedProgressRatio: transcript.words.length > 0 ? typedWordIndex / transcript.words.length : 0,
-        typedWordIndex,
-        expectedWordIndex: sync.expectedWordIndex,
-        lagWords: sync.lagWords,
-        lagChars: Math.abs(sync.lagWords) * 5,
-        phraseDifficulty: 1,
-        phraseLengthWords: transcript.words.length,
-        phraseLengthChars: transcript.words.length * 5,
-        currentPlaybackRate,
-        currentPauseAfterPhraseMs: config.tickMs,
-        language: transcriptionLanguage,
-        trend,
-        accuracy: clamp01(sync.accuracy / 100),
-        errorRate: clamp01(1 - sync.accuracy / 100),
-        wpm: currentWpm,
-        pauseMs: 0,
-        longestPauseMs: 0,
-        backspaceRate: 0,
-        correctionRate: 0,
-      });
-
-      const adaptiveDecision = adaptiveControllerRef.current.decide(buildAdaptiveAudioInput(audioTelemetry, historyProfile));
-      const syncDecision = controllerRef.current.decide(sync, currentPlaybackRate, performance.now(), transcript);
-
-      let nextRate = adaptiveDecision.playbackRate;
-      if (syncDecision.action === 'pause_repeat' && syncDecision.repeatFromSec !== undefined) {
-        pauseAudio();
-        seekAudio(syncDecision.repeatFromSec);
-        setAudioRate(syncDecision.nextRate);
-        setTimeout(() => {
-          void playAudio();
-        }, 150);
-        } else {
-          if (syncDecision.action === 'speed_down') {
-            nextRate = Math.min(nextRate, syncDecision.nextRate);
-          }
-        if (syncDecision.action === 'speed_up') {
-          nextRate = Math.max(nextRate, syncDecision.nextRate);
-        }
-          setAudioRate(nextRate);
-        }
-
-        recordAdaptiveBenchmark(audioTelemetry, adaptiveDecision, {
-          actualPlaybackRate: getAudioRate(),
-          event: syncDecision.action === 'pause_repeat' ? 'replay' : syncDecision.action === 'speed_up' || syncDecision.action === 'speed_down' ? 'rate_change' : undefined,
-          throttleMs: 1000,
-        });
-
-      const actualPlaybackRate = getAudioRate();
-      setControllerState(syncDecision.action);
-      setRate(actualPlaybackRate);
-      setLagSec(sync.lagSec);
-      setLagWords(sync.lagWords);
-      setWpm(sync.wpm);
-      setAccuracy(sync.accuracy);
-      const lagImproved = Math.abs(sync.lagSec) < Math.abs(previousLagRef.current);
-      const accuracyImproved = sync.accuracy > previousAccuracyRef.current + 0.5;
-      const worsening = Math.abs(sync.lagSec) > Math.abs(previousLagRef.current) + 0.4 && sync.accuracy + 1 < previousAccuracyRef.current;
-      if (lagImproved || accuracyImproved) {
-        setTrend('improving');
-      } else if (worsening) {
-        setTrend('declining');
-      } else {
-        setTrend('stable');
-      }
-      previousLagRef.current = sync.lagSec;
-      previousAccuracyRef.current = sync.accuracy;
-
-      const prev = telemetryRef.current;
-      if (!prev) return;
-    const next = { ...prev, rateDistribution: prev.rateDistribution.map((entry) => ({ ...entry })), actions: [...prev.actions], lagSeries: [...prev.lagSeries], wpmSeries: [...prev.wpmSeries], accuracySeries: [...prev.accuracySeries] };
-      trackSample(next, sync.lagSec, sync.wpm, sync.accuracy, actualPlaybackRate);
-      trackAction(next, audioTime, syncDecision.action, actualPlaybackRate);
-      telemetryRef.current = next;
-    }, config.tickMs);
-
-    return () => window.clearInterval(id);
-  }, [running, transcript, targetWords.length, config.tickMs]);
 
   useEffect(() => {
     if (activeInputMode !== 'input2' || activeSessionFinished || !ttsHasText) {
@@ -1681,14 +1479,6 @@ function App() {
     if (!activeSession) return;
 
     hydratingSessionIdRef.current = activeSession.id;
-    setAudioUrl(activeSession.audioUrl);
-    setAudioSourceUrlInput(activeSession.audioSourceUrlInput);
-    setLoadedAudioFromUrl(activeSession.audioUrl.startsWith('blob:') ? '' : activeSession.audioUrl);
-    setAudioFile(null);
-    setTranscriptionLanguage(activeSession.transcriptionLanguage ?? 'de');
-    setTranscript(activeSession.transcript);
-    setInputText(activeSession.inputText);
-    inputLiveTextRef.current = activeSession.inputText;
     setDifficulty(activeSession.difficulty);
     setInputSettingsLocked(Boolean(activeSession.inputSettingsLocked));
     setTtsLanguage(activeSession.ttsLanguage ?? 'de');
@@ -1701,14 +1491,6 @@ function App() {
     kokoroPracticeLiveTextRef.current = activeSession.kokoroPracticeText ?? '';
     setKokoroChunks(activeSession.kokoroChunks ?? []);
     setSessionStatus(activeSession.status);
-    setAudioReadyState(
-      Boolean(activeSession.audioUrl),
-      activeSession.audioUrl
-        ? `Audio ready: ${activeSession.audioLabel || 'Saved source'}`
-        : activeSession.audioLabel
-          ? activeSession.audioLabel
-          : '',
-    );
     setTtsText(activeSession.ttsText ?? '');
     setTtsStatus(activeSession.inputMode === 'input2' && activeSession.status === 'finished' ? 'finished' : activeSession.ttsText ? 'ready' : 'idle');
     setKokoroStatus(activeSession.inputMode === 'input3' && activeSession.status === 'finished' ? 'finished' : activeSession.kokoroText ? 'ready' : 'idle');
@@ -1719,11 +1501,6 @@ function App() {
     setKokoroPacingMode('balanced');
     setKokoroSpeechRate(1);
     setKokoroManualBias(0);
-    setTranscriptReadyMessage(
-      activeSession.transcript
-        ? `Transcript loaded (${activeSession.transcript.words.length} words).`
-        : '',
-    );
     setRunning(false);
     const hydratedMetrics = activeSession.status === 'finished' ? activeSession.metrics : null;
     setRate(hydratedMetrics?.rate ?? 1);
@@ -1731,7 +1508,6 @@ function App() {
     setLagWords(hydratedMetrics?.lagWords ?? 0);
     setWpm(hydratedMetrics?.wpm ?? 0);
     setAccuracy(hydratedMetrics?.accuracy ?? 100);
-    setAudioCurrentTime(0);
     setTrend(hydratedMetrics?.trend ?? 'stable');
     setControllerState(hydratedMetrics?.controllerState ?? 'hold');
     ttsUiLastPublishedAtRef.current = 0;
@@ -1750,9 +1526,6 @@ function App() {
     setTrainingSubmitMessage(activeSession.status === 'finished' ? buildTrainingSubmitMessage(sessions, activeSession.id) : '');
     previousLagRef.current = 0;
     previousAccuracyRef.current = 100;
-    trackerRef.current.reset();
-    controllerRef.current.reset();
-    resetAudio();
     ttsStartedAtMsRef.current = null;
     ttsChunkStartMsRef.current = null;
     ttsChunkStartWordIndexRef.current = 0;
@@ -1812,12 +1585,6 @@ function App() {
         if (session.id !== activeSession.id) {
           return session;
         }
-        const nextAudioLabel = audioFile
-          ? `Local file selected: ${audioFile.name} (re-attach after reload)`
-          : loadedAudioFromUrl
-            ? 'URL audio source'
-            : session.audioLabel;
-        const nextAudioUrl = audioFile ? '' : audioUrl;
         const nextTelemetry = cloneTelemetry(telemetryRef.current);
         const nextStatus = normalizeLiveSessionStatusForPersistence(sessionStatus, nextTelemetry, running);
         const isExplicitFinishedReset = allowFinishedSessionResetRef.current === session.id && nextStatus !== 'finished';
@@ -1833,12 +1600,6 @@ function App() {
           return session;
         }
         const changed =
-          session.audioUrl !== nextAudioUrl ||
-          session.audioSourceUrlInput !== audioSourceUrlInput ||
-          session.audioLabel !== nextAudioLabel ||
-          session.transcriptionLanguage !== transcriptionLanguage ||
-          session.transcript !== transcript ||
-          session.inputText !== inputText ||
           session.inputSettingsLocked !== inputSettingsLocked ||
           session.ttsText !== ttsText ||
           session.ttsLanguage !== ttsLanguage ||
@@ -1867,12 +1628,6 @@ function App() {
 
         return {
           ...session,
-          audioUrl: nextAudioUrl,
-          audioSourceUrlInput,
-          audioLabel: nextAudioLabel,
-          transcriptionLanguage,
-          transcript,
-          inputText,
           inputSettingsLocked,
           ttsText,
           ttsLanguage,
@@ -1902,11 +1657,7 @@ function App() {
     );
   }, [
     activeSession,
-    audioFile,
-    audioSourceUrlInput,
-    audioUrl,
     difficulty,
-    inputText,
     inputSettingsLocked,
     kokoroLanguage,
     kokoroChunks,
@@ -1915,10 +1666,7 @@ function App() {
     kokoroVoice,
     lagSec,
     lagWords,
-    loadedAudioFromUrl,
     rate,
-    transcript,
-    transcriptionLanguage,
     ttsText,
     ttsLanguage,
     ttsPracticeText,
@@ -1933,38 +1681,6 @@ function App() {
     wpm,
   ]);
 
-  function onAudioFile(file: File | null): void {
-    if (!file) return;
-    if (setupLocked) {
-      setError('Input settings are locked for this session.');
-      return;
-    }
-    setAudioFile(file);
-    setLoadedAudioFromUrl('');
-    const url = URL.createObjectURL(file);
-    setAudioUrl(url);
-    loadAudioSource(url, `Audio loaded successfully: ${file.name}`);
-  }
-
-  function onAudioUrlLoad(): void {
-    if (setupLocked) {
-      setError('Input settings are locked for this session.');
-      return;
-    }
-    if (!hasAudioElement()) return;
-    const url = normalizeAudioUrl(audioSourceUrlInput.trim());
-    if (!url) {
-      setError('Enter a valid audio URL.');
-      return;
-    }
-
-    setAudioUrl(url);
-    setAudioFile(null);
-    setLoadedAudioFromUrl(url);
-    loadAudioSource(url, 'Audio URL loaded successfully.');
-    setError('');
-  }
-
   useEffect(() => {
     if (ttsStatus !== 'playing') return;
     const interval = window.setInterval(() => setTtsPlayerProgressTick((value) => value + 1), 500);
@@ -1977,193 +1693,13 @@ function App() {
     return () => window.clearInterval(interval);
   }, [kokoroStatus]);
 
-  async function generateTranscriptFromAudio(): Promise<void> {
-    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
-      setError('WhisperX transcription is local-only in the Vercel build. Generate transcripts from the local dev app.');
-      return;
-    }
-    if (setupLocked) {
-      setError('Input settings are locked for this session.');
-      return;
-    }
-    if (!audioFile) {
-      if (!loadedAudioFromUrl) {
-        setError('Upload an audio file or load an audio URL first.');
-        return;
-      }
-    }
-
-    setTranscribing(true);
-    setTranscriptionProgress(6);
-    setError('');
-
-    try {
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          audioFile
-            ? await buildFilePayload(audioFile, transcriptionLanguage)
-            : {
-                audioUrl: loadedAudioFromUrl,
-                language: transcriptionLanguage,
-              },
-        ),
-      });
-
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || 'Transcription failed');
-      }
-      setTranscriptionProgress(92);
-
-      const payload = (await response.json()) as Transcript;
-      const normalized = normalizeTranscript(payload);
-      setTranscript(normalized);
-      setTranscriptReadyMessage(`Transcription loaded (${normalized.words.length} words).`);
-      setTranscriptionProgress(100);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not generate transcript.');
-      setTranscriptReadyMessage('');
-      setTranscriptionProgress(0);
-    } finally {
-      setTranscribing(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!transcribing) {
-      if (transcriptionProgress >= 100) {
-        const doneReset = window.setTimeout(() => setTranscriptionProgress(0), 1200);
-        return () => window.clearTimeout(doneReset);
-      }
-      return;
-    }
-
-    const id = window.setInterval(() => {
-      setTranscriptionProgress((prev) => {
-        if (prev >= 88) return prev;
-        const step = prev < 30 ? 4 : prev < 65 ? 2.5 : 1.2;
-        return Math.min(88, prev + step);
-      });
-    }, 250);
-
-    return () => window.clearInterval(id);
-  }, [transcribing, transcriptionProgress]);
-
-  async function onTranscriptFile(file: File | null): Promise<void> {
-    if (!file) return;
-    if (setupLocked) {
-      setError('Input settings are locked for this session.');
-      return;
-    }
-    try {
-      const text = await file.text();
-      const parsed = parseTranscript(text);
-      const normalized = normalizeTranscript(parsed);
-      setTranscript(normalized);
-      setTranscriptReadyMessage(`Transcript file loaded (${normalized.words.length} words).`);
-      setError('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not parse transcript file.');
-      setTranscriptReadyMessage('');
-    }
-  }
-
-  async function startSession(): Promise<void> {
-    if (!hasAudioEngine() || !transcript || activeSessionFinished) {
-      setError('Load audio and transcript before starting.');
-      return;
-    }
-
-    if (sessionStatus !== 'paused') {
-      trackerRef.current.reset();
-      controllerRef.current.reset();
-      telemetryRef.current = createTelemetry();
-      beginAdaptiveSessionFeedback('audio', transcriptionLanguage, transcript.words.length);
-      setTrend('stable');
-      previousLagRef.current = 0;
-      previousAccuracyRef.current = 100;
-    }
-    setRunning(true);
-    setSessionStatus('running');
-    setError('');
-    await playAudio();
-  }
-
-  function pauseSession(): void {
-    if (activeSessionFinished) return;
-    pauseAudio();
-    setRunning(false);
-    setSessionStatus('paused');
-  }
-
-  function finishSession(latestInputText = inputText): void {
-    if (activeSessionFinished) return;
-    if (latestInputText !== inputText) {
-      inputLiveTextRef.current = latestInputText;
-      setInputText(latestInputText);
-      const audioTime = hasAudioEngine() ? getAudioCurrentTime() : currentAudioTime;
-      trackerRef.current.onInput(latestInputText, audioTime, targetWords);
-    }
-    pauseAudio();
-    setRunning(false);
-    const finishedAt = new Date().toISOString();
-    const finalTelemetry = { ...ensureAttemptTelemetry(), finishedAt };
-    telemetryRef.current = finalTelemetry;
-    const finalEvaluation = evaluateTranscriptAttempt(latestInputText, transcript);
-    const finalTypedWords = finalEvaluation.typedWords;
-    const finalAccuracy = finalTypedWords.length > 0 && targetWords.length > 0 ? finalEvaluation.accuracy : 0;
-    const finalScore =
-      finalTypedWords.length > 0 && targetWords.length > 0
-        ? computeSessionScore({ accuracy: finalAccuracy, lagSec, wpm, rate, points: finalEvaluation.points })
-        : 0;
-    const finalMetrics: SessionMetrics = {
-      controllerState,
-      rate,
-      lagSec,
-      lagWords,
-      wpm,
-      accuracy: finalAccuracy,
-      trend,
-      score: finalScore,
-      points: finalEvaluation.points,
-    };
-    const nextSessions = sessions.map((session) =>
-      session.id === activeSessionId
-        ? {
-            ...session,
-            inputText: latestInputText,
-            status: 'finished' as const,
-            metrics: finalMetrics,
-            telemetry: finalTelemetry,
-            updatedAt: finishedAt,
-          }
-        : session,
-    );
-    const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
-    setSessions(nextSessions);
-    persistAndPushSessionsNow(nextSessions, { criticalSessionIds: activeSessionId ? [activeSessionId] : [] });
-    setSessionStatus('finished');
-    completeAdaptiveSessionFeedback(finalizedSession);
-    setError('');
-    if (activeSessionId) {
-      setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
-    }
-  }
-
   function resetSession(options: { preserveInputSettingsLock?: boolean } = {}): void {
     const nextInputSettingsLocked = options.preserveInputSettingsLock ? inputSettingsLocked : false;
     if (activeSession?.status === 'finished') {
       allowFinishedSessionResetRef.current = activeSession.id;
     }
-    resetAudio();
     stopTtsPlayback();
     stopKokoroPlayback();
-    trackerRef.current.reset();
-    controllerRef.current.reset();
-    setInputText('');
-    inputLiveTextRef.current = '';
     setTtsPracticeText('');
     ttsPracticeLiveTextRef.current = '';
     setKokoroPracticeText('');
@@ -2198,7 +1734,6 @@ function App() {
     setLagWords(0);
     setWpm(0);
     setAccuracy(100);
-    setAudioCurrentTime(0);
     setControllerState('hold');
     ttsUiLastPublishedAtRef.current = 0;
     ttsPublishedUiRef.current = {
@@ -2214,9 +1749,7 @@ function App() {
     setTrainingSubmitMessage('');
     setInputSettingsLocked(nextInputSettingsLocked);
     if (!nextInputSettingsLocked) {
-      if (activeInputMode === 'input1') {
-        setSetupExpanded(true);
-      } else if (activeInputMode === 'input2') {
+      if (activeInputMode === 'input2') {
         setTtsExpanded(true);
       } else if (activeInputMode === 'input4') {
         setQwenExpanded(true);
@@ -2226,10 +1759,6 @@ function App() {
     }
     telemetryRef.current = null;
     resetAdaptiveSessionFeedbackTracking(activeSession?.id);
-    setAudioReadyState(Boolean(audioUrl), audioUrl ? 'Audio loaded successfully.' : '');
-    setTranscriptReadyMessage(
-      transcript ? `Transcript loaded (${transcript.words.length} words).` : '',
-    );
   }
 
   function getAuthHeaders(): Record<string, string> {
@@ -2507,21 +2036,9 @@ function App() {
     setSessionCreationName('');
     setDictationScriptJson('');
     setDictationScriptValidation(null);
-    setSetupExpanded(true);
     setTtsExpanded(true);
     setQwenExpanded(true);
     setKokoroExpanded(true);
-  }
-
-  function createManualInput1SessionFromAdmin(name: string): void {
-    if (!ensureCanCreateDictationSession('export')) return;
-    suppressSidebarAutoSelectRef.current = true;
-    const nextSession = prependSessionAndPersistNow((prev) => createStoredSession(getNextSessionIndex(prev), 'input1', name));
-    setActiveSessionId(nextSession.id);
-    showTrainingWorkspace();
-    setSetupExpanded(true);
-    setError('');
-    setExportMessage('Manual Input #1 session created.');
   }
 
   function validateScriptImport(): void {
@@ -2541,7 +2058,7 @@ function App() {
       setDictationScriptValidation({
         ok: false,
         script: null,
-        errors: ['inputMode must match input1/input2/input3/input4 or audio/browser-tts/kokoro/cosyvoice-cache. Legacy qwen-cloud is still accepted.'],
+        errors: ['inputMode must match input2/input3/input4 or browser-tts/kokoro/cosyvoice-cache. Legacy qwen-cloud is still accepted for Input 4.'],
       });
       return;
     }
@@ -2557,7 +2074,6 @@ function App() {
     setSessionCreationName('');
     setDictationScriptJson('');
     setDictationScriptValidation(null);
-    setSetupExpanded(false);
     setTtsExpanded(false);
     setQwenExpanded(false);
     setKokoroExpanded(false);
@@ -2574,7 +2090,7 @@ function App() {
     const generationOrigin = options.generationOrigin ?? 'openrouter';
     const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
     if (!inputMode) {
-      setOpenRouterError('Generated script inputMode must match input1/input2/input3/input4 or audio/browser-tts/kokoro/cosyvoice-cache. Legacy qwen-cloud is still accepted.');
+      setOpenRouterError('Generated script inputMode must match input2/input3/input4 or browser-tts/kokoro/cosyvoice-cache. Legacy qwen-cloud is still accepted for Input 4.');
       return;
     }
 
@@ -2593,7 +2109,6 @@ function App() {
     setSessionCreationName('');
     setDictationScriptJson('');
     setDictationScriptValidation(null);
-    setSetupExpanded(false);
     setTtsExpanded(false);
     setQwenExpanded(false);
     setKokoroExpanded(false);
@@ -2673,9 +2188,6 @@ function App() {
   }
 
   function getActiveTypingLanguage(): TypingLanguage | null {
-    if (activeInputMode === 'input1') {
-      return transcriptionLanguage;
-    }
     if (activeInputMode === 'input2' || activeInputMode === 'input4') {
       return ttsLanguage;
     }
@@ -3021,18 +2533,6 @@ function App() {
     const selectionEnd = textarea.selectionEnd ?? selectionStart;
     textarea.setRangeText(mappedChar, selectionStart, selectionEnd, 'end');
     applyValue(textarea.value);
-  }
-
-  function onTypingChange(value: string): void {
-    if (activeSessionFinished) return;
-    inputLiveTextRef.current = value;
-    setInputText(value);
-    const audioTime = getAudioCurrentTime();
-    trackerRef.current.onInput(value, audioTime, targetWords);
-  }
-
-  function onTypingKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
-    handleEsKeyboardRemapKeyDown(event, onTypingChange);
   }
 
   function onTtsTextChange(value: string): void {
@@ -5381,18 +4881,11 @@ function App() {
     }
   }
 
-  const transcriptPreviewStart = Math.max(0, attemptEvaluation.lastMatchedTargetIndex + 1);
-  const transcriptPreview = targetWords.slice(transcriptPreviewStart, transcriptPreviewStart + 12).join(' ');
   const {
-    canGenerateTranscript,
-    canStartSession,
-    canPauseSession,
-    canFinishSession,
     inputSettingsReady,
     setupLocked,
     canSubmitTtsSession,
     canSubmitKokoroSession,
-    readyChecklist,
     lockInputSettings,
     focusedTrainingControls,
   } = useTrainingSessionLifecycle({
@@ -5402,11 +4895,6 @@ function App() {
       activeSessionFinished,
       sessionStatus,
       running,
-      audioReady,
-      canGenerateTranscriptSource: Boolean(audioFile || loadedAudioFromUrl),
-      transcriptWordCount: transcript?.words.length ?? 0,
-      typedWordCount: typedWords.length,
-      currentAudioTime,
       ttsHasText,
       ttsStatus,
       kokoroHasText,
@@ -5414,16 +4902,11 @@ function App() {
       inputSettingsLocked,
     },
     text: {
-      inputText,
       ttsPracticeText,
       kokoroPracticeText,
     },
     actions: {
-      startAudioSession: startSession,
-      pauseAudioSession: pauseSession,
-      finishAudioSession: finishSession,
       resetSession,
-      onAudioTextChange: onTypingChange,
       playTts,
       resumeTts,
       pauseTts,
@@ -5440,7 +4923,6 @@ function App() {
       setError,
       setExportMessage,
       collapseSetupPanels: () => {
-        setSetupExpanded(false);
         setTtsExpanded(false);
         setQwenExpanded(false);
         setKokoroExpanded(false);
@@ -5470,16 +4952,7 @@ function App() {
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
   const lockedInputSummaryItems: LockedInputSummaryItem[] =
-    activeInputMode === 'input1'
-      ? [
-          { label: 'Audio source', value: audioSourceUrlInput.trim() || activeSession?.audioLabel || (audioUrl ? 'Loaded audio' : 'Not set') },
-          { label: 'Audio ready', value: audioReady ? 'Ready' : 'Not set' },
-          { label: 'Transcript', value: transcript ? `${transcript.words.length} words` : 'Not set' },
-          { label: 'Language', value: transcriptionLanguage ?? 'Not set' },
-          { label: 'Difficulty', value: difficulty },
-          { label: 'Status', value: formatSessionStatus(sessionStatus) },
-        ]
-      : activeInputMode === 'input2'
+    activeInputMode === 'input2'
         ? [
             { label: 'Source', value: ttsHasText ? `${ttsTranscript?.words.length ?? 0} words` : 'Not set' },
             { label: 'Text length', value: ttsHasText ? `${ttsText.length} chars` : 'Not set' },
@@ -5537,18 +5010,13 @@ function App() {
   const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
   const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) ?? null : null;
   const insightsDiagnosticInputOptions: Array<{ inputMode: InputMode; label: string }> = [
-    { inputMode: 'audio', label: 'Input 1' },
     { inputMode: 'browser-tts', label: 'Input 2' },
     { inputMode: 'kokoro', label: 'Input 3' },
     { inputMode: COSYVOICE_CACHE_INPUT_MODE, label: 'Input 4' },
   ];
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedProgressLabel =
-    activeInputMode === 'input1'
-      ? transcriptSegments.length > 0
-        ? `Segment ${Math.max(1, activeTranscriptSegmentIndex + 1)}/${transcriptSegments.length}`
-        : 'No transcript loaded'
-      : activeInputMode === 'input3'
+    activeInputMode === 'input3'
         ? adaptiveSemanticDebug.totalSemanticPhrases > 0
           ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
           : kokoroPlayerWordCount > 0
@@ -5560,11 +5028,7 @@ function App() {
             ? `Word ${Math.min(ttsPlayerCurrentWord, ttsPlayerWordCount)}/${ttsPlayerWordCount}`
             : 'No source loaded';
   const focusedSourceLabel =
-    activeInputMode === 'input1'
-      ? audioReady
-        ? activeSession?.audioLabel || 'Audio source loaded'
-        : 'Audio not loaded'
-      : activeInputMode === 'input3'
+    activeInputMode === 'input3'
         ? kokoroHasText
           ? `${kokoroTranscript?.words.length ?? 0} words · ${kokoroLanguage?.toUpperCase()}`
           : 'Kokoro source not loaded'
@@ -5572,29 +5036,19 @@ function App() {
           ? `${ttsTranscript?.words.length ?? 0} words · ${ttsLanguage?.toUpperCase()}`
           : 'TTS source not loaded';
   const focusedTextValue =
-    activeInputMode === 'input1'
-      ? inputText
-      : activeInputMode === 'input3'
+    activeInputMode === 'input3'
         ? kokoroPracticeText
         : ttsPracticeText;
   const focusedTextPlaceholder =
     activeSessionFinished
       ? 'Session submitted.'
-      : activeInputMode === 'input1'
-        ? 'Type what you hear...'
-        : 'Type the dictation here...';
+      : 'Type the dictation here...';
   const focusedInputHandler =
-    activeInputMode === 'input1'
-      ? onTypingChange
-      : activeInputMode === 'input3'
+    activeInputMode === 'input3'
         ? onKokoroPracticeChange
         : onTtsPracticeChange;
   const focusedImmediateInputHandler =
-    activeInputMode === 'input1'
-      ? (value: string) => {
-          inputLiveTextRef.current = value;
-        }
-      : activeInputMode === 'input3'
+    activeInputMode === 'input3'
         ? (value: string) => {
             kokoroPracticeLiveTextRef.current = value;
           }
@@ -5608,9 +5062,7 @@ function App() {
             ttsPracticeLiveTextRef.current = value;
           };
   const focusedKeyDownHandler =
-    activeInputMode === 'input1'
-      ? onTypingKeyDown
-      : activeInputMode === 'input3'
+    activeInputMode === 'input3'
         ? onKokoroPracticeKeyDown
         : onTtsPracticeKeyDown;
   const focusedTrainingMessage = error || trainingSubmitMessage || [exportMessage, openRouterJobStatus, openRouterError].filter(Boolean).join(' ');
@@ -5736,10 +5188,6 @@ function App() {
     },
   ] : [];
 
-  function replayFocusedAudio(): void {
-    rewindAudio(5);
-  }
-
   function replayFocusedTts(): void {
     seekTtsPlayback(Math.max(0, ttsPlayerProgressPercent / 100 - 0.08));
   }
@@ -5754,14 +5202,7 @@ function App() {
     statusLabel:
       activeInputMode === 'input3'
         ? kokoroStatus
-        : activeInputMode === 'input1'
-          ? formatSessionStatus(sessionStatus)
-          : ttsStatus,
-    audioRef,
-    audioUrl,
-    onAudioTimeUpdate: handleAudioTimeUpdate,
-    onAudioEnded: () => finishSession(),
-    showAudioElement: activeInputMode === 'input1' && Boolean(audioUrl),
+        : ttsStatus,
     currentTextValue: focusedTextValue,
     onTextChange: focusedInputHandler,
     onImmediateTextChange: focusedImmediateInputHandler,
@@ -5783,15 +5224,11 @@ function App() {
     canPause: focusedTrainingControls.canPause,
     onPause: focusedTrainingControls.onPause,
     canReplay:
-      activeInputMode === 'input1'
-        ? audioReady
-        : activeInputMode === 'input3'
+      activeInputMode === 'input3'
           ? Boolean(kokoroCurrentChunk)
           : ttsHasText && ttsPlayerDurationSec > 0,
     onReplay:
-      activeInputMode === 'input1'
-        ? replayFocusedAudio
-        : activeInputMode === 'input3'
+      activeInputMode === 'input3'
           ? replayKokoroPhrase
           : replayFocusedTts,
     canStop: focusedTrainingControls.canStop,
@@ -6011,33 +5448,7 @@ function App() {
           ) : null}
         </AppShellHeader>
         {!setupLocked ? (
-              activeInputMode === 'input1' ? (
-                <AudioInputSetupCard
-                  activeInputLabel={activeInputLabel}
-                  setupExpanded={setupExpanded}
-                  setupLocked={setupLocked}
-                  audioSourceUrlInput={audioSourceUrlInput}
-                  transcribing={transcribing}
-                  transcriptionProgress={transcriptionProgress}
-                  transcriptionLanguage={transcriptionLanguage}
-                  supportedLanguages={SUPPORTED_LANGUAGES}
-                  difficulty={difficulty}
-                  canGenerateTranscript={canGenerateTranscript}
-                  inputSettingsReady={inputSettingsReady}
-                  audioReadyMessage={audioReadyMessage}
-                  transcriptReadyMessage={transcriptReadyMessage}
-                  error={error}
-                  onToggleExpanded={() => setSetupExpanded((value) => !value)}
-                  onAudioFile={onAudioFile}
-                  onAudioSourceUrlInputChange={setAudioSourceUrlInput}
-                  onAudioUrlLoad={onAudioUrlLoad}
-                  onTranscriptFile={onTranscriptFile}
-                  onTranscriptionLanguageChange={setTranscriptionLanguage}
-                  onGenerateTranscriptFromAudio={generateTranscriptFromAudio}
-                  onDifficultyChange={setDifficulty}
-                  onLockInputSettings={lockInputSettings}
-                />
-              ) : activeInputMode === 'input2' ? (
+              activeInputMode === 'input2' ? (
                 <BrowserTtsSetupCard
                   activeInputLabel={activeInputLabel}
                   activeInputFeatureLabel={activeInputFeatureLabel}
@@ -6505,7 +5916,6 @@ function App() {
                 onCopyLocalStorage={() => void copyDictaLocalStorage(setExportMessage)}
                 onExportLocalStorage={downloadDictaLocalStorage}
                 onImportLocalStorage={importDictaLocalStorageSnapshot}
-                onCreateManualInput1Session={createManualInput1SessionFromAdmin}
                 onExportSession={downloadSessionSnapshot}
                 onCopySession={(session) => void copySessionSnapshot(session, setExportMessage)}
                 appProfile={appProfile}
@@ -6564,55 +5974,9 @@ function App() {
                 SessionDeviceIconComponent={SessionDeviceIcon}
               />
             ) : (
-              <>
-              {lockedInputSummary}
-              <div className="workspace-columns">
-                <div className="workspace-column workspace-column-primary">
-                  <AudioSourceCard
-                    audioRef={audioRef}
-                    audioUrl={audioUrl}
-                    transcriptSegments={transcriptSegments}
-                    activeTranscriptSegmentIndex={activeTranscriptSegmentIndex}
-                    onTimeUpdate={handleAudioTimeUpdate}
-                    onEnded={() => finishSession()}
-                    formatTimestamp={formatTimestamp}
-                  />
-
-                </div>
-
-                <div className="workspace-column">
-                  <AudioPracticeCard
-                    canStartSession={canStartSession}
-                    canPauseSession={canPauseSession}
-                    canFinishSession={canFinishSession}
-                    activeSessionFinished={activeSessionFinished}
-                    readyChecklist={readyChecklist}
-                    exportMessage={exportMessage}
-                    trainingSubmitMessage={trainingSubmitMessage}
-                    activeTranscriptSegment={activeTranscriptSegment}
-                    nextTranscriptSegment={nextTranscriptSegment}
-                    transcriptPreview={transcriptPreview}
-                    keyboardProfileLabel={keyboardProfileLabel}
-                    keyboardProfile={keyboardProfile}
-                    inputText={inputText}
-                    controllerState={controllerState}
-                    rate={rate}
-                    lagSec={lagSec}
-                    lagWords={lagWords}
-                    wpm={wpm}
-                    visibleAccuracy={visibleAccuracy}
-                    onStartSession={() => void startSession()}
-                    onPauseSession={pauseSession}
-                    onFinishSession={() => finishSession()}
-                    onResetSession={() => resetSession()}
-                    onTypingChange={onTypingChange}
-                    onTypingKeyDown={onTypingKeyDown}
-                    formatTimestamp={formatTimestamp}
-                    RuntimeMetricsPanelComponent={RuntimeMetricsPanel}
-                  />
-                </div>
-              </div>
-              </>
+              <section className="panel workspace-panel">
+                <p className="hint">Choose Browser TTS, Kokoro, or CosyVoice cache to train.</p>
+              </section>
             )}
           </section>
         </section>
@@ -6665,7 +6029,6 @@ function AdminWorkspace({
   onCopyLocalStorage,
   onExportLocalStorage,
   onImportLocalStorage,
-  onCreateManualInput1Session,
   onExportSession,
   onCopySession,
   appProfile,
@@ -6692,7 +6055,6 @@ function AdminWorkspace({
   onCopyLocalStorage: () => void;
   onExportLocalStorage: () => void;
   onImportLocalStorage: (rawJson: string) => void;
-  onCreateManualInput1Session: (name: string) => void;
   onExportSession: (session: StoredSession) => void;
   onCopySession: (session: StoredSession) => void;
   appProfile: DictaAppProfile | null;
@@ -6711,7 +6073,6 @@ function AdminWorkspace({
   onRefreshOpenRouterModels: () => Promise<void>;
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
-  const [manualInput1Name, setManualInput1Name] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserDisplayName, setNewUserDisplayName] = useState('');
@@ -6747,13 +6108,6 @@ function AdminWorkspace({
     event.target.value = '';
     if (!file) return;
     onImportLocalStorage(await file.text());
-  }
-
-  function submitManualInput1Session(): void {
-    const name = manualInput1Name.trim();
-    if (!name) return;
-    onCreateManualInput1Session(name);
-    setManualInput1Name('');
   }
 
   async function createDictaUser(): Promise<void> {
@@ -6883,12 +6237,6 @@ function AdminWorkspace({
           onChangeNewUserProfileId={setNewUserProfileId}
           onChangeNewUserRole={setNewUserRole}
           onCreateUser={() => void createDictaUser()}
-        />
-
-        <AdminManualInputSessionCard
-          manualInput1Name={manualInput1Name}
-          onChangeManualInput1Name={setManualInput1Name}
-          onSubmit={submitManualInput1Session}
         />
 
         <AdminBrowserStorageCard
@@ -7073,7 +6421,7 @@ function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummar
       counts[session.inputMode] += 1;
       return counts;
     },
-    { input1: 0, input2: 0, input3: 0, input4: 0 },
+    { input2: 0, input3: 0, input4: 0 },
   );
 
   return {
@@ -7082,16 +6430,12 @@ function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummar
     inputModeCounts,
     localStorageEntries,
     dictaLocalStorageBytes: localStorageEntries.reduce((sum, entry) => sum + entry.bytes, 0),
-    totalTranscriptWords: sessions.reduce((sum, session) => sum + (session.transcript?.words.length ?? 0), 0),
     ttsTextChars: sessions.reduce((sum, session) => sum + session.ttsText.length, 0),
     kokoroTextChars: sessions.reduce((sum, session) => sum + session.kokoroText.length, 0),
-    typedTextChars: sessions.reduce((sum, session) => sum + session.inputText.length + session.ttsPracticeText.length + session.kokoroPracticeText.length, 0),
+    typedTextChars: sessions.reduce((sum, session) => sum + session.ttsPracticeText.length + session.kokoroPracticeText.length, 0),
     telemetrySamples: sessions.reduce((sum, session) => sum + countTelemetrySamples(session.telemetry), 0),
     telemetryActions: sessions.reduce((sum, session) => sum + session.telemetry.actions.length, 0),
     ttsChunks: sessions.reduce((sum, session) => sum + session.telemetry.ttsChunks.length + session.kokoroChunks.length, 0),
-    blobAudioRefs: sessions.filter((session) => session.audioUrl.startsWith('blob:')).length,
-    remoteAudioRefs: sessions.filter((session) => /^https?:\/\//.test(session.audioUrl)).length,
-    audioLabels: sessions.filter((session) => session.audioLabel.trim().length > 0).length,
   };
 }
 
@@ -7111,8 +6455,8 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Partial<StoredSession> & { deleted?: boolean };
   if (record.deleted === true || typeof record.id !== 'string') return null;
-  const inputMode: SessionInputMode =
-    record.inputMode === 'input2' || record.inputMode === 'input3' || record.inputMode === 'input4' ? record.inputMode : 'input1';
+  const inputMode = coerceSessionInputMode(record.inputMode);
+  if (!inputMode) return null;
   const scriptResult = validateDictationScript(record.dictationScript);
   return normalizeRestoredStoredSession({
     id: record.id,
@@ -7121,12 +6465,6 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
     updatedAt: record.updatedAt ?? new Date(0).toISOString(),
     inputMode,
     inputSettingsLocked: Boolean(record.inputSettingsLocked),
-    audioUrl: record.audioUrl ?? '',
-    audioSourceUrlInput: record.audioSourceUrlInput ?? '',
-    audioLabel: record.audioLabel ?? '',
-    transcriptionLanguage: isSupportedLanguage(record.transcriptionLanguage) ? record.transcriptionLanguage : null,
-    transcript: record.transcript ?? null,
-    inputText: record.inputText ?? '',
     ttsText: record.ttsText ?? '',
     ttsLanguage: isSupportedLanguage(record.ttsLanguage) ? record.ttsLanguage : null,
     ttsVoiceURI: inputMode === 'input2' && typeof record.ttsVoiceURI === 'string' ? record.ttsVoiceURI : null,
@@ -7263,14 +6601,12 @@ function byteSize(value: string): number {
 }
 
 function formatSessionInputMode(mode: SessionInputMode): string {
-  if (mode === 'input1') return 'Original audio';
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
   return 'CosyVoice cache';
 }
 
 function formatInputModeLabel(mode: InputMode): string {
-  if (mode === 'audio') return 'Original audio';
   if (mode === 'browser-tts') return 'Browser TTS';
   if (mode === 'kokoro') return 'Kokoro local';
   return 'CosyVoice cache';
@@ -7290,13 +6626,6 @@ function formatAdaptiveModeFromSession(session: StoredSession): string {
 
 function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
   return [
-    {
-      inputMode: 'input1',
-      title: 'Input #1 - Original Audio',
-      adapter: 'audioTelemetryAdapter',
-      execution: 'Controls native audio playback rate, lag sync, repeat, and seek behavior against a Whisper transcript.',
-      controls: 'Rate + repeat/seek',
-    },
     {
       inputMode: 'input2',
       title: 'Input #2 - Browser TTS',
@@ -7333,7 +6662,7 @@ function SessionDeviceIcon({ session }: { session: StoredSession }) {
 
 export default App;
 
-function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', name?: string): StoredSession {
+function createStoredSession(index = 1, inputMode: SessionInputMode = 'input2', name?: string): StoredSession {
   const now = new Date().toISOString();
   const deviceMetadata = detectCreatedDeviceMetadata();
   return {
@@ -7343,12 +6672,6 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input1', 
     updatedAt: now,
     inputMode,
     inputSettingsLocked: false,
-    audioUrl: '',
-    audioSourceUrlInput: '',
-    audioLabel: '',
-    transcriptionLanguage: inputMode === 'input1' ? 'de' : null,
-    transcript: null,
-    inputText: '',
     ttsText: '',
     ttsLanguage: inputMode === 'input2' || inputMode === 'input4' ? 'de' : null,
     ttsVoiceURI: null,
@@ -7385,15 +6708,6 @@ function createSessionFromScript(
     sessionSource: 'dictationScript',
     dictationScript: titledScript,
   };
-
-  if (inputMode === 'input1') {
-    return {
-      ...session,
-      transcriptionLanguage: language,
-      transcript: buildTextTranscript(text),
-      audioLabel: 'DictationScript transcript source',
-    };
-  }
 
   if (inputMode === 'input3') {
     return {
@@ -7436,9 +6750,6 @@ function createGeneratedErrorSession({
     generationError: message,
   };
 
-  if (inputMode === 'input1') {
-    return { ...session, transcriptionLanguage: language };
-  }
   if (inputMode === 'input3') {
     return { ...session, kokoroLanguage: language };
   }
@@ -7494,7 +6805,6 @@ function truncateTitle(title: string): string {
 
 function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMode | null {
   const normalized = String(inputMode).trim().toLowerCase().replace(/_/g, '-');
-  if (normalized === 'input1' || normalized === 'audio') return 'input1';
   if (normalized === 'input2' || normalized === 'browser-tts' || normalized === 'browsertts') return 'input2';
   if (normalized === 'input3' || normalized === 'kokoro' || normalized === 'kokoro-tts') return 'input3';
   if (
@@ -7559,24 +6869,18 @@ function loadSessions(): StoredSession[] {
     }
     const deletedIds = loadDeletedSessionIds();
     return parsed.map((session, index) => {
-      const inputMode: SessionInputMode =
-        session.inputMode === 'input2' || session.inputMode === 'input3' || session.inputMode === 'input4' ? session.inputMode : 'input1';
+      const inputMode = coerceSessionInputMode(session.inputMode);
+      if (!inputMode) return null;
       const scriptResult = validateDictationScript(session.dictationScript);
 
       const base: StoredSession = {
         id: session.id ?? createStoredSession(index + 1).id,
         name: session.name ?? `Session ${index + 1}`,
         createdAt: session.createdAt ?? new Date().toISOString(),
-        updatedAt: session.updatedAt ?? new Date().toISOString(),
-        inputMode,
-        inputSettingsLocked: Boolean(session.inputSettingsLocked),
-        audioUrl: session.audioUrl ?? '',
-        audioSourceUrlInput: session.audioSourceUrlInput ?? '',
-        audioLabel: session.audioLabel ?? '',
-        transcriptionLanguage: isSupportedLanguage(session.transcriptionLanguage) ? session.transcriptionLanguage : null,
-        transcript: session.transcript ?? null,
-        inputText: session.inputText ?? '',
-        ttsText: session.ttsText ?? '',
+    updatedAt: session.updatedAt ?? new Date().toISOString(),
+    inputMode,
+    inputSettingsLocked: Boolean(session.inputSettingsLocked),
+    ttsText: session.ttsText ?? '',
         ttsLanguage: isSupportedLanguage(session.ttsLanguage) ? session.ttsLanguage : null,
         ttsVoiceURI: inputMode === 'input2' && typeof session.ttsVoiceURI === 'string' ? session.ttsVoiceURI : null,
         ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
@@ -7605,7 +6909,7 @@ function loadSessions(): StoredSession[] {
       };
 
       return normalizeRestoredStoredSession(base);
-    }).filter((session) => !deletedIds.has(session.id) && !isTransientGenerationErrorSessionLike(session));
+    }).filter((session): session is StoredSession => Boolean(session && !deletedIds.has(session.id) && !isTransientGenerationErrorSessionLike(session)));
   } catch {
     return [];
   }
@@ -7663,6 +6967,10 @@ function isSessionStatus(value: unknown): value is SessionStatus {
   return value === 'ready' || value === 'running' || value === 'paused' || value === 'finished' || value === 'error';
 }
 
+function coerceSessionInputMode(value: unknown): SessionInputMode | null {
+  return value === 'input2' || value === 'input3' || value === 'input4' ? value : null;
+}
+
 function sameBrowserTtsEnvironment(
   left: BrowserTtsEnvironmentFingerprint | null | undefined,
   right: BrowserTtsEnvironmentFingerprint | null | undefined,
@@ -7670,52 +6978,6 @@ function sameBrowserTtsEnvironment(
   const normalizedLeft = normalizeBrowserTtsEnvironmentFingerprint(left);
   const normalizedRight = normalizeBrowserTtsEnvironmentFingerprint(right);
   return JSON.stringify(normalizedLeft) === JSON.stringify(normalizedRight);
-}
-
-function buildTranscriptSegments(transcript: Transcript | null): Array<{ start: number; end: number; text: string }> {
-  if (!transcript || transcript.words.length === 0) {
-    return [];
-  }
-
-  const segments: Array<{ start: number; end: number; text: string }> = [];
-  let bucket = [transcript.words[0]];
-
-  for (let i = 1; i < transcript.words.length; i += 1) {
-    const word = transcript.words[i];
-    const bucketStart = bucket[0].start;
-    const shouldSplit =
-      bucket.length >= 12 ||
-      word.start - bucketStart >= 7 ||
-      word.start - bucket[bucket.length - 1].end >= 1.4;
-
-    if (shouldSplit) {
-      segments.push({
-        start: bucket[0].start,
-        end: bucket[bucket.length - 1].end,
-        text: bucket.map((entry) => entry.word).join(' '),
-      });
-      bucket = [word];
-    } else {
-      bucket.push(word);
-    }
-  }
-
-  if (bucket.length > 0) {
-    segments.push({
-      start: bucket[0].start,
-      end: bucket[bucket.length - 1].end,
-      text: bucket.map((entry) => entry.word).join(' '),
-    });
-  }
-
-  return segments;
-}
-
-function formatTimestamp(seconds: number): string {
-  const safeSeconds = Math.max(0, Math.floor(seconds));
-  const mins = Math.floor(safeSeconds / 60);
-  const secs = safeSeconds % 60;
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
 function createDefaultMetrics(): SessionMetrics {
@@ -7805,7 +7067,7 @@ function buildLeaderboardRangeMetrics(
 }
 
 function formatLeaderboardSessionStatus(session: StoredSession): string {
-  if (session.status === 'finished' && session.inputMode !== 'input1' && !hasSubmittedSessionStats(session)) {
+  if (session.status === 'finished' && !hasSubmittedSessionStats(session)) {
     return 'Not submitted';
   }
   return formatSessionStatus(session.status);
@@ -7825,7 +7087,6 @@ function hasSubmittedSessionStats(session: StoredSession): boolean {
 function isSessionReadyForTraining(session: StoredSession): boolean {
   if (session.status === 'error') return false;
   if (session.status !== 'finished') return false;
-  if (session.inputMode === 'input1') return true;
   return hasSubmittedSessionStats(session);
 }
 
@@ -8135,14 +7396,12 @@ function averageNumbers(values: number[], fallback = 0): number {
 }
 
 function mapSessionInputMode(mode: SessionInputMode): InputMode {
-  if (mode === 'input1') return 'audio';
   if (mode === 'input2') return 'browser-tts';
   if (mode === 'input4') return COSYVOICE_CACHE_INPUT_MODE;
   return 'kokoro';
 }
 
 function resolveStoredSessionLanguage(session: StoredSession): LanguageCode {
-  if (session.inputMode === 'input1') return session.transcriptionLanguage ?? 'unknown';
   if (session.inputMode === 'input2' || session.inputMode === 'input4') return session.ttsLanguage ?? 'unknown';
   if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
   return 'unknown';
@@ -8332,21 +7591,15 @@ function buildRepeatWordStats({
   };
 
   for (const session of withinWindow) {
-    let transcript: Transcript | null = session.transcript;
-    if (!transcript) {
-      if (session.inputMode === 'input2' || session.inputMode === 'input4') {
-        transcript = buildTextTranscript(session.ttsText);
-      } else if (session.inputMode === 'input3') {
-        transcript = buildTextTranscript(session.kokoroText);
-      } else {
-        continue;
-      }
-    }
+    const transcript =
+      session.inputMode === 'input3'
+        ? buildTextTranscript(session.kokoroText)
+        : buildTextTranscript(session.ttsText);
 
-    let typedText = '';
-    if (session.inputMode === 'input1') typedText = session.inputText;
-    if (session.inputMode === 'input2' || session.inputMode === 'input4') typedText = session.ttsPracticeText;
-    if (session.inputMode === 'input3') typedText = session.kokoroPracticeText;
+    const typedText =
+      session.inputMode === 'input3'
+        ? session.kokoroPracticeText
+        : session.ttsPracticeText;
 
     const evaluation = evaluateTranscriptAttempt(typedText, transcript);
     if (evaluation.targetWords.length === 0) continue;
@@ -8421,38 +7674,6 @@ async function copySessionSnapshot(
 ): Promise<void> {
   await navigator.clipboard.writeText(sessionSnapshotJson(session));
   setExportMessage(`Session JSON copied for ${session.name || 'session'}.`);
-}
-
-function normalizeAudioUrl(rawUrl: string): string {
-  try {
-    const url = new URL(rawUrl);
-    if (url.hostname.includes('archive.org') && url.pathname.startsWith('/details/')) {
-      const parts = url.pathname.split('/').filter(Boolean);
-      if (parts.length >= 3) {
-        const identifier = parts[1];
-        const filename = parts.slice(2).join('/');
-        url.pathname = `/download/${identifier}/${filename}`;
-        url.search = '';
-      }
-    }
-    return url.toString();
-  } catch {
-    return rawUrl;
-  }
-}
-
-async function buildFilePayload(file: File, language: TtsLanguage): Promise<{ fileName: string; audioBase64: string; language: TtsLanguage }> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  const audioBase64 = btoa(binary);
-  return {
-    fileName: file.name,
-    audioBase64,
-    language,
-  };
 }
 
 declare global {

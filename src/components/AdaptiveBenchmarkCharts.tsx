@@ -64,9 +64,9 @@ export function SweetSpotGauge({ score }: { score: number }) {
 
 type Zone = { lagMin: number; lagMax: number; accuracyMin: number; accuracyMax: number };
 
-function defaultTargetZone(profile: InputLanguageBenchmarkMetrics): Zone {
+function defaultTargetZone(): Zone {
   // A pragmatic default: target high accuracy + near-zero lag. Tune later per input if needed.
-  const accuracyMin = profile.inputMode === 'audio' ? 0.9 : 0.9;
+  const accuracyMin = 0.9;
   const accuracyMax = 1;
   const lagMin = -0.6;
   const lagMax = 0.6;
@@ -90,7 +90,7 @@ export function TargetZoneChart({
     event: point.event ?? 'rate_change',
   }));
 
-  const zone = defaultTargetZone(profile);
+  const zone = defaultTargetZone();
   const lagValues = data.map((d) => d.lag);
   const minLag = Math.min(zone.lagMin - 0.5, ...lagValues, -2.5);
   const maxLag = Math.max(zone.lagMax + 0.5, ...lagValues, 2.5);

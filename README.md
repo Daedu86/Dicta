@@ -16,7 +16,7 @@ If a change updates behavior, keep `AGENTS.md`, `README.md`, and `docs/architect
 
 ## Product Overview
 
-Dicta is an invite/admin-managed dictation trainer for practicing listening and typing across **4 inputs x 5 languages**.
+Dicta is an invite/admin-managed dictation trainer for practicing listening and typing across **3 inputs x 5 languages**.
 
 Languages:
 
@@ -28,7 +28,6 @@ Languages:
 
 Input modes:
 
-- Input #1 / `audio`: original uploaded or recorded audio plus a word-level transcript.
 - Input #2 / `browser-tts`: browser `SpeechSynthesis`, adaptive semantic chunking, and browser/OS voice behavior.
 - Input #3 / `kokoro`: local Kokoro TTS sidecar. English and Spanish are native in this setup; German, French, and Portuguese remain blocked/experimental until native model paths are confirmed.
 - Input #4 / `cosyvoice-cache`: CosyVoice2 WAV cache files under `public/tts-cache/cosyvoice/{language}/`, with browser TTS fallback when cached audio is missing. Legacy stored/cache data may still use `qwen-cloud`; new adaptive and OpenRouter job state uses `cosyvoice-cache`.
@@ -76,7 +75,6 @@ Useful checks:
 npm run test
 npm run build
 npm run test:e2e:mobile
-npm run ingest:dryrun
 ```
 
 ## Vercel Deployment
@@ -86,7 +84,7 @@ Dicta can be deployed to Vercel as a static Vite app with lightweight API routes
 - Browser TTS works in the hosted app and keeps using browser `localStorage`.
 - OpenRouter generation works through `/api/openrouter/models`, `/api/openrouter/chat`, and `/api/openrouter/jobs` when `OPENROUTER_API_KEY` is configured server-side.
 - Ollama Cloud testing works through `/api/ollama/models` and `/api/ollama/chat` when `OLLAMA_API_KEY` is configured server-side.
-- Kokoro, WhisperX transcription, CosyVoice/Input #4 cache generation, and local file inventory remain local-only workflows.
+- Kokoro, CosyVoice/Input #4 cache generation, and local file inventory remain local-only workflows.
 - Hosted public beta access should use Supabase Auth (`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`) plus RLS.
 
 Set OpenRouter in Vercel before using hosted generation:
@@ -196,7 +194,6 @@ Server-side rules:
 
 1. Pick an input mode and language.
 2. Provide content:
-   - Audio mode: load an audio file plus transcript JSON, or generate one locally via the ingestion pipeline.
    - TTS modes: provide text; Dicta chunks it into semantic phrases.
    - OpenRouter mode: generate structured scripts for the selected `(inputMode, language)` using current benchmark context and the trainer prescription.
 3. Start a session and type what you hear.
@@ -229,7 +226,6 @@ Important rules:
 
 Key files:
 
-- `src/app/useAudioPlaybackRuntime.ts`
 - `src/app/useBrowserTtsRuntime.ts`
 - `src/app/useKokoroRuntime.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
@@ -289,35 +285,16 @@ Supabase sync notes:
 - Session deletes are tombstones. Remote tombstones must not be overwritten by local `ready`/pending copies; only a newer locally submitted finished session may repair an older tombstone.
 - Completed feedback rows are treated as completion evidence for their session id, so a stale `ready` session row from another browser tab/device cannot keep a practiced session in the pending lane.
 
-## Local Ingestion Pipeline (WhisperX)
+## Python Dependencies
 
-Install core Python dependencies:
+Install local service Python dependencies only for sidecars you run:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Install the optional full local alignment stack:
-
-```bash
-pip install -r requirements-alignment.txt
-```
-
-Generate a transcript from audio:
-
-```bash
-python scripts/transcribe_align.py --audio path/to/audio.mp3 --output fixtures/my-transcript.json --model small
-```
-
-Dry run:
-
-```bash
-npm run ingest:dryrun
-```
-
 Security note:
 
-- The WhisperX/Torch alignment stack is optional and isolated in `requirements-alignment.txt`.
 - Do not load untrusted Hugging Face or PyTorch checkpoints.
 - Do not resume runs from unknown checkpoint directories.
 
