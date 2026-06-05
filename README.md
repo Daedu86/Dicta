@@ -226,6 +226,7 @@ Important rules:
 Key files:
 
 - `src/app/useAudioPlaybackRuntime.ts`
+- `src/app/useBrowserTtsRuntime.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/core/adaptive/types.ts`

@@ -222,6 +222,7 @@ import {
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useAudioPlaybackRuntime } from './app/useAudioPlaybackRuntime';
+import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
   ADAPTIVE_SESSION_FEEDBACK_KEY,
@@ -570,7 +571,13 @@ function App() {
 
 
   const [ttsLanguage, setTtsLanguage] = useState<TtsLanguage>('de');
-  const [browserTtsVoices, setBrowserTtsVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const {
+    browserTtsVoices,
+    isBrowserTtsSupported,
+    speakBrowserTts,
+    resumeBrowserTts,
+    cancelBrowserTts,
+  } = useBrowserTtsRuntime();
   const [ttsPracticeText, setTtsPracticeText] = useState('');
   const [ttsStatus, setTtsStatus] = useState<TtsStatus>('idle');
   const [ttsCurrentChunk, setTtsCurrentChunk] = useState('');
@@ -605,25 +612,6 @@ function App() {
   const [kokoroManualBias, setKokoroManualBias] = useState(0);
   const [kokoroServiceReady, setKokoroServiceReady] = useState<boolean | null>(null);
   const [kokoroEnabled, setKokoroEnabled] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!('speechSynthesis' in window)) return;
-    const speech = window.speechSynthesis;
-    const refreshVoices = () => {
-      const voices = speech.getVoices();
-      setBrowserTtsVoices(voices);
-      perfDiagnostics.recordTtsVoices(voices.map((voice) => ({
-        lang: voice.lang,
-        name: voice.name,
-        voiceURI: voice.voiceURI,
-        default: voice.default,
-        localService: voice.localService,
-      })));
-    };
-    refreshVoices();
-    speech.addEventListener('voiceschanged', refreshVoices);
-    return () => speech.removeEventListener('voiceschanged', refreshVoices);
-  }, []);
 
   useEffect(() => {
     if (browserTtsVoices.length === 0) return;
@@ -3511,7 +3499,7 @@ function App() {
       return;
     }
 
-    if (!('speechSynthesis' in window)) {
+    if (!isBrowserTtsSupported()) {
       setError('This browser does not support speech synthesis.');
       return;
     }
@@ -3523,7 +3511,6 @@ function App() {
       return;
     }
 
-    const speech = window.speechSynthesis;
     const browserTtsVoice = resolveActiveBrowserTtsVoice();
     const browserTtsEnvironment = collectBrowserTtsEnvironmentForSession(
       activeSession,
@@ -3960,7 +3947,7 @@ function App() {
       };
 
       perfDiagnostics.recordTtsSpeak(perfUtteranceId);
-      speech.speak(utterance);
+      speakBrowserTts(utterance);
     };
 
     speakNext();
@@ -4664,9 +4651,9 @@ function App() {
       } else {
         qwenCloudAdapterRef.current?.pause();
       }
-    } else if ('speechSynthesis' in window) {
+    } else if (isBrowserTtsSupported()) {
       ttsPausedAtWordIndexRef.current = estimateTtsSpokenWordIndex();
-      window.speechSynthesis.cancel();
+      cancelBrowserTts();
       ttsUtteranceRef.current = null;
       ttsChunkStartMsRef.current = null;
     }
@@ -4711,12 +4698,12 @@ function App() {
       return;
     }
 
-    if (!('speechSynthesis' in window)) return;
+    if (!isBrowserTtsSupported()) return;
     if (ttsPausedAtWordIndexRef.current !== null) {
       playTtsFromWord(ttsPausedAtWordIndexRef.current);
       return;
     }
-    window.speechSynthesis.resume();
+    resumeBrowserTts();
     recordTtsTelemetryAction('resume');
     if (ttsStartedAtMsRef.current === null) {
       ttsStartedAtMsRef.current = performance.now();
@@ -4738,8 +4725,8 @@ function App() {
       } else {
         qwenCloudAdapterRef.current?.reset();
       }
-    } else if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    } else if (isBrowserTtsSupported()) {
+      cancelBrowserTts();
     }
     ttsUtteranceRef.current = null;
     ttsChunkStartMsRef.current = null;
@@ -4761,8 +4748,8 @@ function App() {
     const wordCount = ttsTranscript?.words.length ?? 0;
     if (wordCount === 0) return;
     const targetWordIndex = Math.floor(clamp(percent, 0, 1) * Math.max(0, wordCount - 1));
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    if (isBrowserTtsSupported()) {
+      cancelBrowserTts();
     }
     ttsPausedAtWordIndexRef.current = null;
     ttsCompletedSourceWordsRef.current = targetWordIndex;

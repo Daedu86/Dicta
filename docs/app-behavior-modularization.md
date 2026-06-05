@@ -2,7 +2,7 @@
 
 Phase 2: behavior-aware modularization.
 
-Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, `useSessionPersistenceSync`, `useAdaptiveRuntime`, `useTrainingSessionLifecycle`, and `useAudioPlaybackRuntime` boundaries have been extracted; no later Phase 2 boundary has started.
+Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, `useSessionPersistenceSync`, `useAdaptiveRuntime`, `useTrainingSessionLifecycle`, `useAudioPlaybackRuntime`, and `useBrowserTtsRuntime` boundaries have been extracted; Kokoro and CosyVoice cache playback runtime boundaries have not started.
 
 `src/App.tsx` still owns substantial runtime behavior: workspace orchestration, hook-shaped state boundaries, side-effect ownership, polling, persistence, sync, adaptive wiring, playback lifecycle, auth/profile glue, generated-session handoff, and browser lifecycle logic. Phase 2 exists to move those behavior boundaries deliberately, one at a time, without changing product behavior.
 
@@ -168,7 +168,7 @@ Risk: highest.
 
 Move one input mode per PR. Do not move multiple input playback runtimes in the same PR.
 
-Status: in progress. `useAudioPlaybackRuntime` is complete for Input #1 only; Browser TTS, Kokoro, and CosyVoice cache runtimes are not started.
+Status: in progress. `useAudioPlaybackRuntime` is complete for Input #1 only. `useBrowserTtsRuntime` is complete for Input #2 direct Browser TTS voice discovery and SpeechSynthesis commands only; Input #4 browser fallback remains App-owned/direct. Kokoro and CosyVoice cache runtimes are not started.
 
 ### G. useGeneratedSessionCreation
 
@@ -196,7 +196,7 @@ Stop the Phase 2 extraction if:
 
 Phase 2 started with `useWorkspaceRouting`.
 
-Input #1 `useAudioPlaybackRuntime` is now complete. Continue Playback Runtimes with only one remaining input mode per PR after fresh measurement and mode-specific replay/lifecycle tests. Browser TTS remains the highest-risk runtime because it owns SpeechSynthesis, adaptive sampling, phrase advancement, and mobile typing pressure, so keep it isolated from Kokoro and CosyVoice cache runtime work.
+Input #1 `useAudioPlaybackRuntime` and Input #2 direct `useBrowserTtsRuntime` are now complete. Continue Playback Runtimes with only one remaining input mode per PR after fresh measurement and mode-specific replay/lifecycle tests. The next candidate should be Kokoro or CosyVoice cache, with Kokoro likely simpler because Input #4 still carries legacy `qwen-cloud` aliasing plus browser fallback behavior. Keep Input #4 browser fallback separate from the direct Browser TTS runtime.
 
 ## Closeout Log
 
@@ -279,4 +279,18 @@ Behavior preserved: Input #1 still uses the same AudioEngine operations, ready m
 Validation: git status; git pull origin main; pre-change App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile; focused useAudioPlaybackRuntime tests.
 Manual smoke test: automated Playwright mobile training guard passed; no separate browser manual smoke was needed for this non-visual media-runtime extraction.
 Follow-ups: continue Playback Runtimes one input mode per PR. Remaining candidates are useBrowserTtsRuntime, useKokoroRuntime, and useCosyVoiceCacheRuntime; Browser TTS should stay isolated because of SpeechSynthesis, adaptive sampling cadence, and mobile typing pressure.
+```
+
+```text
+Boundary: useBrowserTtsRuntime (Input #2 Browser TTS direct runtime only)
+Status: complete
+PR/commit: pending
+Pre-change App.tsx lines: 8077
+Post-change App.tsx lines: 8065
+Reduction: 12 lines (0.15%)
+Files added/moved: src/app/useBrowserTtsRuntime.ts; tests/useBrowserTtsRuntime.test.ts
+Behavior preserved: Input #2 still uses SpeechSynthesis for direct Browser TTS, existing chunking/onend/onerror callbacks, adaptive sampling cadence, benchmark/session feedback, ttsEnvironment fingerprinting, voice assignment behavior, pause-as-cancel/resume-by-word-index behavior, submit/finalization, and LowLatencyTextarea behavior. Input #4 browser fallback still lives in App.tsx and is not part of this phase. Storage keys, Supabase row shapes, OpenRouter payload shapes, secrets, auth, and rate limits were not changed.
+Validation: git status; git pull origin main; pre-change App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile; focused useBrowserTtsRuntime tests.
+Manual smoke test: automated Playwright mobile training guard passed; no separate browser manual smoke was needed for this non-visual SpeechSynthesis runtime extraction.
+Follow-ups: continue Playback Runtimes one input mode per PR. Remaining candidates are useKokoroRuntime and useCosyVoiceCacheRuntime; keep Input #4 browser fallback separate.
 ```
