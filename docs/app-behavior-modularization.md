@@ -2,7 +2,7 @@
 
 Phase 2: behavior-aware modularization.
 
-Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, `useSessionPersistenceSync`, and `useAdaptiveRuntime` boundaries have been extracted; no later Phase 2 boundary has started.
+Status: active. The `useWorkspaceRouting`, `useOpenRouterJobsRuntime`, `useSessionPersistenceSync`, `useAdaptiveRuntime`, and `useTrainingSessionLifecycle` boundaries have been extracted; no later Phase 2 boundary has started.
 
 `src/App.tsx` still owns substantial runtime behavior: workspace orchestration, hook-shaped state boundaries, side-effect ownership, polling, persistence, sync, adaptive wiring, playback lifecycle, auth/profile glue, generated-session handoff, and browser lifecycle logic. Phase 2 exists to move those behavior boundaries deliberately, one at a time, without changing product behavior.
 
@@ -151,6 +151,8 @@ Move start/pause/resume/stop/reset/submit orchestration, active/pending transiti
 
 Preserve LowLatencyTextarea behavior and mobile E2E typing latency.
 
+Status: complete.
+
 ### F. Playback Runtimes
 
 Proposed files:
@@ -192,7 +194,7 @@ Stop the Phase 2 extraction if:
 
 Phase 2 started with `useWorkspaceRouting`.
 
-`useAdaptiveRuntime` is now complete. The next listed boundary is `useTrainingSessionLifecycle`; start only after fresh measurement and focused lifecycle tests for start, pause, resume, stop, reset, and submit orchestration.
+`useTrainingSessionLifecycle` is now complete. The next listed boundary is Playback Runtimes; start with only one input mode in a separate PR after fresh measurement and replay/lifecycle tests for that mode. Browser TTS remains the highest-risk runtime because it owns SpeechSynthesis, adaptive sampling, phrase advancement, and mobile typing pressure, so keep it isolated from audio, Kokoro, and CosyVoice cache runtime work.
 
 ## Closeout Log
 
@@ -247,4 +249,18 @@ Behavior preserved: adaptive controller heuristics, benchmark calculation/scorin
 Validation: git status; git pull origin main; pre-change App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile; focused useAdaptiveRuntime fixture/replay tests.
 Manual smoke test: automated Playwright mobile training guard passed; no separate browser manual smoke was needed for this non-visual runtime extraction.
 Follow-ups: next recommended candidate is useTrainingSessionLifecycle because it is the next listed Phase 2 boundary and can separate start/pause/resume/stop/reset/submit orchestration without entering the higher-risk playback runtimes. Keep useBrowserTtsRuntime and useGeneratedSessionCreation in separate PRs with their own replay tests.
+```
+
+```text
+Boundary: useTrainingSessionLifecycle
+Status: complete
+PR/commit: pending
+Pre-change App.tsx lines: 8139
+Post-change App.tsx lines: 8088
+Reduction: 51 lines (0.63%)
+Files added/moved: src/app/useTrainingSessionLifecycle.ts; tests/useTrainingSessionLifecycle.test.ts
+Behavior preserved: audio, Browser TTS, Kokoro, and CosyVoice/cache playback runtimes still live in App-owned callbacks; adaptive heuristics, benchmark/feedback payloads, selected `(inputMode, language)` semantics, localStorage keys, Supabase row shapes, OpenRouter payload shapes, persistence/sync implementation, generated-session creation, and LowLatencyTextarea uncontrolled typing behavior were not changed. Focused Training pause/stop/submit paths still flush the latest local draft text before invoking lifecycle actions.
+Validation: git status; git pull origin main; pre-change App.tsx line count; npm run test -- --reporter=verbose; npm run build; npm run test:e2e:mobile; focused useTrainingSessionLifecycle tests.
+Manual smoke test: automated Playwright mobile training guard passed; no separate browser manual smoke was needed for this non-visual lifecycle extraction.
+Follow-ups: next listed candidate is Playback Runtimes. Move one input mode per PR, with fresh measurement and mode-specific replay/lifecycle tests before touching browser TTS, Kokoro, audio, or CosyVoice cache runtime code.
 ```

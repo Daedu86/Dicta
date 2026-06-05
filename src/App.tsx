@@ -221,6 +221,7 @@ import {
   type WorkspaceMode,
 } from './app/useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
+import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
   ADAPTIVE_SESSION_FEEDBACK_KEY,
@@ -2267,31 +2268,6 @@ function App() {
     setTranscriptReadyMessage(
       transcript ? `Transcript loaded (${transcript.words.length} words).` : '',
     );
-  }
-
-  function resetFocusedTrainingAttempt(): void {
-    resetSession({ preserveInputSettingsLock: true });
-  }
-
-  function lockInputSettings(): void {
-    if (inputSettingsLocked) return;
-    if (!inputSettingsReady) {
-      if (activeInputMode === 'input1') {
-        setError('Load audio and transcript before locking Input #1.');
-      } else if (activeInputMode === 'input2' || activeInputMode === 'input4') {
-        setError('Paste TTS text before locking this input.');
-      } else {
-        setError('Paste Kokoro source text before locking Input #3.');
-      }
-      return;
-    }
-    setInputSettingsLocked(true);
-    setSetupExpanded(false);
-    setTtsExpanded(false);
-    setQwenExpanded(false);
-    setKokoroExpanded(false);
-    setError('');
-    setExportMessage('Input settings locked for this session.');
   }
 
   function getAuthHeaders(): Record<string, string> {
@@ -5492,24 +5468,70 @@ function App() {
 
   const transcriptPreviewStart = Math.max(0, attemptEvaluation.lastMatchedTargetIndex + 1);
   const transcriptPreview = targetWords.slice(transcriptPreviewStart, transcriptPreviewStart + 12).join(' ');
-  const canGenerateTranscript = Boolean(audioFile || loadedAudioFromUrl);
-  const canStartSession = Boolean(audioReady && transcript && transcript.words.length > 0 && !activeSessionFinished && sessionStatus !== 'error');
-  const canPauseSession = running && sessionStatus === 'running';
-  const canFinishSession = !activeSessionFinished && sessionStatus !== 'error' && (running || typedWords.length > 0 || currentAudioTime > 0);
-  const inputSettingsReady =
-    activeInputMode === 'input1'
-      ? Boolean(audioReady && transcript && transcript.words.length > 0)
-      : activeInputMode === 'input2' || activeInputMode === 'input4'
-        ? ttsHasText
-        : kokoroHasText;
-  const setupLocked = activeSessionFinished || sessionStatus === 'error' || inputSettingsLocked;
-  const canSubmitTtsSession =
-    (activeInputMode === 'input2' || activeInputMode === 'input4') &&
-    !activeSessionFinished &&
-    sessionStatus !== 'error' &&
-    ttsHasText;
-  const canSubmitKokoroSession =
-    activeInputMode === 'input3' && !activeSessionFinished && sessionStatus !== 'error' && kokoroHasText;
+  const {
+    canGenerateTranscript,
+    canStartSession,
+    canPauseSession,
+    canFinishSession,
+    inputSettingsReady,
+    setupLocked,
+    canSubmitTtsSession,
+    canSubmitKokoroSession,
+    readyChecklist,
+    lockInputSettings,
+    focusedTrainingControls,
+  } = useTrainingSessionLifecycle({
+    state: {
+      activeInputMode,
+      activeSessionPresent: Boolean(activeSession),
+      activeSessionFinished,
+      sessionStatus,
+      running,
+      audioReady,
+      canGenerateTranscriptSource: Boolean(audioFile || loadedAudioFromUrl),
+      transcriptWordCount: transcript?.words.length ?? 0,
+      typedWordCount: typedWords.length,
+      currentAudioTime,
+      ttsHasText,
+      ttsStatus,
+      kokoroHasText,
+      kokoroStatus,
+      inputSettingsLocked,
+    },
+    text: {
+      inputText,
+      ttsPracticeText,
+      kokoroPracticeText,
+    },
+    actions: {
+      startAudioSession: startSession,
+      pauseAudioSession: pauseSession,
+      finishAudioSession: finishSession,
+      resetSession,
+      onAudioTextChange: onTypingChange,
+      playTts,
+      resumeTts,
+      pauseTts,
+      stopTts: stopTtsPlayback,
+      onTtsPracticeChange,
+      submitTtsSession,
+      playKokoro,
+      resumeKokoro,
+      pauseKokoro,
+      stopKokoro: stopKokoroPlayback,
+      onKokoroPracticeChange,
+      submitKokoroSession,
+      setInputSettingsLocked,
+      setError,
+      setExportMessage,
+      collapseSetupPanels: () => {
+        setSetupExpanded(false);
+        setTtsExpanded(false);
+        setQwenExpanded(false);
+        setKokoroExpanded(false);
+      },
+    },
+  });
   const ttsPlayerWordCount = ttsTranscript?.words.length ?? 0;
   const ttsPlayerCurrentWord = ttsHasText ? estimateTtsSpokenWordIndex() : 0;
   const ttsPlayerWordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
@@ -5532,10 +5554,6 @@ function App() {
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
-  const readyChecklist = [
-    { label: 'Audio loaded', ready: audioReady },
-    { label: 'Transcript loaded', ready: Boolean(transcript && transcript.words.length > 0) },
-  ];
   const lockedInputSummaryItems: LockedInputSummaryItem[] =
     activeInputMode === 'input1'
       ? [
@@ -5848,51 +5866,11 @@ function App() {
     liveLagHelpText:
       'Lag compares typed progress with expected playback progress. Positive means you are behind; negative means you are ahead.',
     readOnly: activeSessionFinished,
-    canPlay:
-      activeInputMode === 'input1'
-        ? canStartSession
-      : activeInputMode === 'input3'
-          ? kokoroHasText && kokoroStatus !== 'playing' && !activeSessionFinished
-          : ttsHasText && ttsStatus !== 'playing' && !activeSessionFinished,
-    playLabel:
-      activeInputMode === 'input1'
-        ? sessionStatus === 'paused'
-          ? 'Resume'
-          : 'Play'
-        : activeInputMode === 'input3'
-          ? kokoroStatus === 'paused'
-            ? 'Resume'
-            : 'Play'
-          : ttsStatus === 'paused'
-            ? 'Resume'
-            : 'Play',
-    onPlay:
-      activeInputMode === 'input1'
-        ? () => void startSession()
-        : activeInputMode === 'input3'
-          ? () => (kokoroStatus === 'paused' ? void resumeKokoro() : void playKokoro())
-          : () => (ttsStatus === 'paused' ? resumeTts() : playTts()),
-    canPause:
-      activeInputMode === 'input1'
-        ? canPauseSession
-        : activeInputMode === 'input3'
-          ? kokoroStatus === 'playing'
-          : ttsStatus === 'playing',
-    onPause:
-      activeInputMode === 'input1'
-        ? (latestTextValue?: string) => {
-            if (latestTextValue !== undefined && latestTextValue !== inputText) onTypingChange(latestTextValue);
-            pauseSession();
-          }
-        : activeInputMode === 'input3'
-          ? (latestTextValue?: string) => {
-              if (latestTextValue !== undefined && latestTextValue !== kokoroPracticeText) onKokoroPracticeChange(latestTextValue);
-              pauseKokoro();
-            }
-          : (latestTextValue?: string) => {
-              if (latestTextValue !== undefined && latestTextValue !== ttsPracticeText) onTtsPracticeChange(latestTextValue);
-              pauseTts();
-            },
+    canPlay: focusedTrainingControls.canPlay,
+    playLabel: focusedTrainingControls.playLabel,
+    onPlay: focusedTrainingControls.onPlay,
+    canPause: focusedTrainingControls.canPause,
+    onPause: focusedTrainingControls.onPause,
     canReplay:
       activeInputMode === 'input1'
         ? audioReady
@@ -5905,44 +5883,13 @@ function App() {
         : activeInputMode === 'input3'
           ? replayKokoroPhrase
           : replayFocusedTts,
-    canStop:
-      activeInputMode === 'input1'
-        ? sessionStatus === 'running' || sessionStatus === 'paused'
-        : activeInputMode === 'input3'
-          ? kokoroStatus !== 'idle'
-          : ttsStatus !== 'idle',
-    onStop:
-      activeInputMode === 'input1'
-        ? (latestTextValue?: string) => {
-            if (latestTextValue !== undefined && latestTextValue !== inputText) onTypingChange(latestTextValue);
-            finishSession(latestTextValue);
-          }
-        : activeInputMode === 'input3'
-          ? (latestTextValue?: string) => {
-              if (latestTextValue !== undefined && latestTextValue !== kokoroPracticeText) onKokoroPracticeChange(latestTextValue);
-              stopKokoroPlayback('stop');
-            }
-          : (latestTextValue?: string) => {
-              if (latestTextValue !== undefined && latestTextValue !== ttsPracticeText) onTtsPracticeChange(latestTextValue);
-              stopTtsPlayback('stop');
-            },
-    canReset: Boolean(activeSession),
-    onReset: resetFocusedTrainingAttempt,
-    canSubmit:
-      activeInputMode === 'input1'
-        ? canFinishSession
-        : activeInputMode === 'input3'
-          ? canSubmitKokoroSession
-          : canSubmitTtsSession,
-    onSubmit:
-      activeInputMode === 'input1'
-        ? (latestTextValue?: string) => finishSession(latestTextValue)
-        : activeInputMode === 'input3'
-          ? (latestTextValue?: string) => {
-              submitKokoroSession(latestTextValue);
-            }
-          : (latestTextValue?: string) => submitTtsSession(latestTextValue),
-    submitLabel: activeInputMode === 'input1' ? 'Finish session' : 'Submit / Check',
+    canStop: focusedTrainingControls.canStop,
+    onStop: focusedTrainingControls.onStop,
+    canReset: focusedTrainingControls.canReset,
+    onReset: focusedTrainingControls.onReset,
+    canSubmit: focusedTrainingControls.canSubmit,
+    onSubmit: focusedTrainingControls.onSubmit,
+    submitLabel: focusedTrainingControls.submitLabel,
     message: focusedTrainingMessage,
     messageTone: focusedTrainingMessageTone,
     textCommitDelayMs: activeInputMode === 'input2' || activeInputMode === 'input4' ? 250 : 0,

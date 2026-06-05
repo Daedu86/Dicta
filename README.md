@@ -225,6 +225,7 @@ Important rules:
 
 Key files:
 
+- `src/app/useTrainingSessionLifecycle.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/core/adaptive/types.ts`
 - `src/core/adaptive/AdaptiveDictationController.ts`
@@ -244,6 +245,7 @@ Preserve these behaviors:
 
 - `LowLatencyTextarea` uses native textarea updates instead of React state updates per key.
 - Parent state commits are delayed and flushed on blur, pause/stop, submit, session change, and unmount.
+- Focused training lifecycle controls route through `src/app/useTrainingSessionLifecycle.ts` and must keep pause/stop/submit text flushes before invoking playback or submit actions.
 - Browser TTS runtime metrics are throttled to avoid full-tree rerender pressure.
 - `dicta.sessions.v1` localStorage writes are debounced, with immediate persistence preserved for finalization and lifecycle exits.
 - Finished-session Supabase rows are kept in a critical sync buffer and sent with a best-effort `keepalive` flush on page exit to protect mobile/PWA submits.
