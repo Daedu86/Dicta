@@ -121,6 +121,8 @@ import { TrainingView, type TrainingViewProps } from './components/TrainingView'
 import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { PendingSessionLane } from './components/training/PendingSessionLane';
+import type { TrainingGenerationButton } from './components/training/TrainingGenerationCard';
+import { TrainingHeader } from './components/training/TrainingHeader';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
 import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
@@ -2709,8 +2711,7 @@ function App() {
       return;
     }
     const inputMode = mapSessionInputMode(activeSession.inputMode);
-    const languageCandidate = resolveStoredSessionLanguage(activeSession);
-    const language: BenchmarkLanguageButton = isSupportedLanguage(languageCandidate) ? languageCandidate : 'en';
+    const language: BenchmarkLanguageButton = dictaLanguageView;
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     setBenchmarkExportMessage('');
@@ -2750,8 +2751,7 @@ function App() {
     }
     const model = effectiveOpenRouterDefaultModel.trim();
     const inputMode = mapSessionInputMode(activeSession.inputMode);
-    const languageCandidate = resolveStoredSessionLanguage(activeSession);
-    const language: BenchmarkLanguageButton = isSupportedLanguage(languageCandidate) ? languageCandidate : 'en';
+    const language: BenchmarkLanguageButton = dictaLanguageView;
 
     if (!model) {
       setOpenRouterError('Set a default OpenRouter model before generating the next session.');
@@ -2955,8 +2955,7 @@ function App() {
   function openAdaptiveExportsForActiveInput(): void {
     if (!activeSession) return;
     const inputMode = mapSessionInputMode(activeSession.inputMode);
-    const languageCandidate = resolveStoredSessionLanguage(activeSession);
-    const language: BenchmarkLanguageButton = isSupportedLanguage(languageCandidate) ? languageCandidate : 'en';
+    const language: BenchmarkLanguageButton = dictaLanguageView;
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
     setBenchmarkExportMessage('');
@@ -5948,7 +5947,11 @@ function App() {
   if (isFocusedTrainingRoute) {
     return (
       <main className={`app training-route-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
-        <TrainingHeader onBackToApp={() => navigateAppRoute('/')} />
+        <TrainingHeader
+          selectedLanguage={dictaLanguageView}
+          onChangeLanguage={setDictaLanguageView}
+          onBackToApp={() => navigateAppRoute('/')}
+        />
         <TrainingView {...focusedTrainingProps} />
         <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />
       </main>
@@ -7325,34 +7328,6 @@ function SessionDeviceIcon({ session }: { session: StoredSession }) {
     <span className="session-device-icon" title={formatCreatedDeviceTooltip(session.createdDeviceKind, session.createdDeviceLabel)} aria-label={formatCreatedDeviceTooltip(session.createdDeviceKind, session.createdDeviceLabel)}>
       {icon}
     </span>
-  );
-}
-
-type TrainingGenerationButton = {
-  id: string;
-  label: string;
-  onClick: () => void;
-  disabled: boolean;
-  title: string;
-  helpText?: string;
-  statusMessage?: string;
-  statusTone?: 'hint' | 'success' | 'error';
-};
-
-function TrainingHeader({ onBackToApp }: { onBackToApp: () => void }) {
-  return (
-    <header className="training-header">
-      <div className="training-header-brand">
-        <span className="training-header-mark" aria-hidden="true">🪗</span>
-        <div>
-          <h1>Dicta</h1>
-          <p>Training Mode</p>
-        </div>
-      </div>
-      <button type="button" className="secondary-button training-header-button" onClick={onBackToApp}>
-        Full app
-      </button>
-    </header>
   );
 }
 
