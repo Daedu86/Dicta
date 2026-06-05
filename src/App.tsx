@@ -23,7 +23,6 @@ import type {
   PacingMode,
 } from './core/adaptive/types';
 import { COSYVOICE_CACHE_INPUT_MODE, LEGACY_QWEN_CLOUD_INPUT_MODE } from './core/adaptive/inputModes';
-import { AudioEngine } from './core/audioEngine';
 import { configForDifficulty, type Difficulty } from './core/config';
 import {
   evaluateTranscriptAttempt,
@@ -222,6 +221,7 @@ import {
 } from './app/useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
+import { useAudioPlaybackRuntime } from './app/useAudioPlaybackRuntime';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
   ADAPTIVE_SESSION_FEEDBACK_KEY,
@@ -479,15 +479,32 @@ type AdaptiveSemanticDebug = {
 function App() {
   const appRenderCountRef = useRef(0);
   appRenderCountRef.current += 1;
-  const audioRef = useRef<HTMLAudioElement>(null);
   const [sessions, setSessions] = useState<StoredSession[]>(() => loadSessions());
   const [activeSessionId, setActiveSessionId] = useState<string>(() => loadSessions()[0]?.id ?? '');
   const [audioUrl, setAudioUrl] = useState<string>('');
+  const {
+    audioRef,
+    audioReady,
+    audioReadyMessage,
+    currentAudioTime,
+    hasAudioElement,
+    hasAudioEngine,
+    loadAudioSource,
+    setAudioReadyState,
+    setAudioCurrentTime,
+    handleAudioTimeUpdate,
+    playAudio,
+    pauseAudio,
+    resetAudio,
+    seekAudio,
+    rewindAudio,
+    getAudioCurrentTime,
+    getAudioRate,
+    setAudioRate,
+  } = useAudioPlaybackRuntime(audioUrl);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioSourceUrlInput, setAudioSourceUrlInput] = useState<string>('');
   const [loadedAudioFromUrl, setLoadedAudioFromUrl] = useState<string>('');
-  const [audioReady, setAudioReady] = useState(false);
-  const [audioReadyMessage, setAudioReadyMessage] = useState('');
   const [transcriptionLanguage, setTranscriptionLanguage] = useState<TtsLanguage>('de');
   const [transcribing, setTranscribing] = useState(false);
   const [transcriptionProgress, setTranscriptionProgress] = useState(0);
@@ -498,7 +515,6 @@ function App() {
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('ready');
   const [controllerState, setControllerState] = useState<ControlAction>('hold');
   const [rate, setRate] = useState(1);
-  const [currentAudioTime, setCurrentAudioTime] = useState(0);
   const [lagSec, setLagSec] = useState(0);
   const [lagWords, setLagWords] = useState(0);
   const [wpm, setWpm] = useState(0);
@@ -839,7 +855,6 @@ function App() {
   const kokoroPracticeLiveTextRef = useRef('');
 
   const trackerRef = useRef(new TypingTracker());
-  const engineRef = useRef<AudioEngine | null>(null);
   const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const qwenCloudAdapterRef = useRef<QwenCloudAudioAdapter | null>(null);
   const telemetryRef = useRef<SessionTelemetry | null>(null);
@@ -1539,21 +1554,19 @@ function App() {
   const activeLiveAccuracyHelpText = 'Accuracy is matched target words divided by typed words, including exact and one-character typo matches.';
 
   useEffect(() => {
-    if (!running || !transcript || !engineRef.current || targetWords.length === 0) {
+    if (!running || !transcript || !hasAudioEngine() || targetWords.length === 0) {
       return;
     }
 
     const id = window.setInterval(() => {
-      const engine = engineRef.current;
-      if (!engine) return;
-
-      const audioTime = engine.getCurrentTime();
-      setCurrentAudioTime(audioTime);
+      const audioTime = getAudioCurrentTime();
+      setAudioCurrentTime(audioTime);
       const tracker = trackerRef.current;
       const typedWordIndex = tracker.getTypedWordIndex();
       const currentWpm = tracker.getWpm(audioTime);
       const currentAccuracy = tracker.getAccuracyPercent();
 
+      const currentPlaybackRate = getAudioRate();
       const sync = deriveSyncState({
         transcript,
         audioTime,
@@ -1576,7 +1589,7 @@ function App() {
         phraseDifficulty: 1,
         phraseLengthWords: transcript.words.length,
         phraseLengthChars: transcript.words.length * 5,
-        currentPlaybackRate: engine.getRate(),
+        currentPlaybackRate,
         currentPauseAfterPhraseMs: config.tickMs,
         language: transcriptionLanguage,
         trend,
@@ -1590,15 +1603,15 @@ function App() {
       });
 
       const adaptiveDecision = adaptiveControllerRef.current.decide(buildAdaptiveAudioInput(audioTelemetry, historyProfile));
-      const syncDecision = controllerRef.current.decide(sync, engine.getRate(), performance.now(), transcript);
+      const syncDecision = controllerRef.current.decide(sync, currentPlaybackRate, performance.now(), transcript);
 
       let nextRate = adaptiveDecision.playbackRate;
       if (syncDecision.action === 'pause_repeat' && syncDecision.repeatFromSec !== undefined) {
-        engine.pause();
-        engine.seek(syncDecision.repeatFromSec);
-        engine.setRate(syncDecision.nextRate);
+        pauseAudio();
+        seekAudio(syncDecision.repeatFromSec);
+        setAudioRate(syncDecision.nextRate);
         setTimeout(() => {
-          void engine.play();
+          void playAudio();
         }, 150);
         } else {
           if (syncDecision.action === 'speed_down') {
@@ -1607,17 +1620,18 @@ function App() {
         if (syncDecision.action === 'speed_up') {
           nextRate = Math.max(nextRate, syncDecision.nextRate);
         }
-          engine.setRate(nextRate);
+          setAudioRate(nextRate);
         }
 
         recordAdaptiveBenchmark(audioTelemetry, adaptiveDecision, {
-          actualPlaybackRate: engine.getRate(),
+          actualPlaybackRate: getAudioRate(),
           event: syncDecision.action === 'pause_repeat' ? 'replay' : syncDecision.action === 'speed_up' || syncDecision.action === 'speed_down' ? 'rate_change' : undefined,
           throttleMs: 1000,
         });
 
-        setControllerState(syncDecision.action);
-      setRate(engine.getRate());
+      const actualPlaybackRate = getAudioRate();
+      setControllerState(syncDecision.action);
+      setRate(actualPlaybackRate);
       setLagSec(sync.lagSec);
       setLagWords(sync.lagWords);
       setWpm(sync.wpm);
@@ -1638,8 +1652,8 @@ function App() {
       const prev = telemetryRef.current;
       if (!prev) return;
     const next = { ...prev, rateDistribution: prev.rateDistribution.map((entry) => ({ ...entry })), actions: [...prev.actions], lagSeries: [...prev.lagSeries], wpmSeries: [...prev.wpmSeries], accuracySeries: [...prev.accuracySeries] };
-      trackSample(next, sync.lagSec, sync.wpm, sync.accuracy, engine.getRate());
-      trackAction(next, audioTime, syncDecision.action, engine.getRate());
+      trackSample(next, sync.lagSec, sync.wpm, sync.accuracy, actualPlaybackRate);
+      trackAction(next, audioTime, syncDecision.action, actualPlaybackRate);
       telemetryRef.current = next;
     }, config.tickMs);
 
@@ -1716,7 +1730,14 @@ function App() {
     kokoroPracticeLiveTextRef.current = activeSession.kokoroPracticeText ?? '';
     setKokoroChunks(activeSession.kokoroChunks ?? []);
     setSessionStatus(activeSession.status);
-    setAudioReady(Boolean(activeSession.audioUrl));
+    setAudioReadyState(
+      Boolean(activeSession.audioUrl),
+      activeSession.audioUrl
+        ? `Audio ready: ${activeSession.audioLabel || 'Saved source'}`
+        : activeSession.audioLabel
+          ? activeSession.audioLabel
+          : '',
+    );
     setTtsText(activeSession.ttsText ?? '');
     setTtsStatus(activeSession.inputMode === 'input2' && activeSession.status === 'finished' ? 'finished' : activeSession.ttsText ? 'ready' : 'idle');
     setKokoroStatus(activeSession.inputMode === 'input3' && activeSession.status === 'finished' ? 'finished' : activeSession.kokoroText ? 'ready' : 'idle');
@@ -1727,13 +1748,6 @@ function App() {
     setKokoroPacingMode('balanced');
     setKokoroSpeechRate(1);
     setKokoroManualBias(0);
-    setAudioReadyMessage(
-      activeSession.audioUrl
-        ? `Audio ready: ${activeSession.audioLabel || 'Saved source'}`
-        : activeSession.audioLabel
-          ? activeSession.audioLabel
-          : '',
-    );
     setTranscriptReadyMessage(
       activeSession.transcript
         ? `Transcript loaded (${activeSession.transcript.words.length} words).`
@@ -1746,7 +1760,7 @@ function App() {
     setLagWords(hydratedMetrics?.lagWords ?? 0);
     setWpm(hydratedMetrics?.wpm ?? 0);
     setAccuracy(hydratedMetrics?.accuracy ?? 100);
-    setCurrentAudioTime(0);
+    setAudioCurrentTime(0);
     setTrend(hydratedMetrics?.trend ?? 'stable');
     setControllerState(hydratedMetrics?.controllerState ?? 'hold');
     ttsUiLastPublishedAtRef.current = 0;
@@ -1767,7 +1781,7 @@ function App() {
     previousAccuracyRef.current = 100;
     trackerRef.current.reset();
     controllerRef.current.reset();
-    engineRef.current?.reset();
+    resetAudio();
     ttsStartedAtMsRef.current = null;
     ttsChunkStartMsRef.current = null;
     ttsChunkStartWordIndexRef.current = 0;
@@ -1958,12 +1972,7 @@ function App() {
     setLoadedAudioFromUrl('');
     const url = URL.createObjectURL(file);
     setAudioUrl(url);
-    if (audioRef.current) {
-      engineRef.current = new AudioEngine(audioRef.current);
-      engineRef.current.load(url);
-      setAudioReady(true);
-      setAudioReadyMessage(`Audio loaded successfully: ${file.name}`);
-    }
+    loadAudioSource(url, `Audio loaded successfully: ${file.name}`);
   }
 
   function onAudioUrlLoad(): void {
@@ -1971,7 +1980,7 @@ function App() {
       setError('Input settings are locked for this session.');
       return;
     }
-    if (!audioRef.current) return;
+    if (!hasAudioElement()) return;
     const url = normalizeAudioUrl(audioSourceUrlInput.trim());
     if (!url) {
       setError('Enter a valid audio URL.');
@@ -1981,26 +1990,9 @@ function App() {
     setAudioUrl(url);
     setAudioFile(null);
     setLoadedAudioFromUrl(url);
-    if (audioRef.current) {
-      engineRef.current = new AudioEngine(audioRef.current);
-      engineRef.current.load(url);
-      setAudioReady(true);
-      setAudioReadyMessage('Audio URL loaded successfully.');
-    }
+    loadAudioSource(url, 'Audio URL loaded successfully.');
     setError('');
   }
-
-  useEffect(() => {
-    if (!audioRef.current || !audioUrl) return;
-    if (!engineRef.current) {
-      engineRef.current = new AudioEngine(audioRef.current);
-    }
-    engineRef.current.load(audioUrl);
-    setAudioReady(true);
-    if (!audioReadyMessage) {
-      setAudioReadyMessage('Audio loaded successfully.');
-    }
-  }, [audioUrl]);
 
   useEffect(() => {
     if (ttsStatus !== 'playing') return;
@@ -2108,7 +2100,7 @@ function App() {
   }
 
   async function startSession(): Promise<void> {
-    if (!engineRef.current || !transcript || activeSessionFinished) {
+    if (!hasAudioEngine() || !transcript || activeSessionFinished) {
       setError('Load audio and transcript before starting.');
       return;
     }
@@ -2125,12 +2117,12 @@ function App() {
     setRunning(true);
     setSessionStatus('running');
     setError('');
-    await engineRef.current.play();
+    await playAudio();
   }
 
   function pauseSession(): void {
     if (activeSessionFinished) return;
-    engineRef.current?.pause();
+    pauseAudio();
     setRunning(false);
     setSessionStatus('paused');
   }
@@ -2140,10 +2132,10 @@ function App() {
     if (latestInputText !== inputText) {
       inputLiveTextRef.current = latestInputText;
       setInputText(latestInputText);
-      const audioTime = engineRef.current?.getCurrentTime() ?? currentAudioTime;
+      const audioTime = hasAudioEngine() ? getAudioCurrentTime() : currentAudioTime;
       trackerRef.current.onInput(latestInputText, audioTime, targetWords);
     }
-    engineRef.current?.pause();
+    pauseAudio();
     setRunning(false);
     const finishedAt = new Date().toISOString();
     const finalTelemetry = { ...ensureAttemptTelemetry(), finishedAt };
@@ -2194,7 +2186,7 @@ function App() {
     if (activeSession?.status === 'finished') {
       allowFinishedSessionResetRef.current = activeSession.id;
     }
-    engineRef.current?.reset();
+    resetAudio();
     stopTtsPlayback();
     stopKokoroPlayback();
     trackerRef.current.reset();
@@ -2235,7 +2227,7 @@ function App() {
     setLagWords(0);
     setWpm(0);
     setAccuracy(100);
-    setCurrentAudioTime(0);
+    setAudioCurrentTime(0);
     setControllerState('hold');
     ttsUiLastPublishedAtRef.current = 0;
     ttsPublishedUiRef.current = {
@@ -2263,8 +2255,7 @@ function App() {
     }
     telemetryRef.current = null;
     resetAdaptiveSessionFeedbackTracking(activeSession?.id);
-    setAudioReady(Boolean(audioUrl));
-    setAudioReadyMessage(audioUrl ? 'Audio loaded successfully.' : '');
+    setAudioReadyState(Boolean(audioUrl), audioUrl ? 'Audio loaded successfully.' : '');
     setTranscriptReadyMessage(
       transcript ? `Transcript loaded (${transcript.words.length} words).` : '',
     );
@@ -3058,7 +3049,7 @@ function App() {
     if (activeSessionFinished) return;
     inputLiveTextRef.current = value;
     setInputText(value);
-    const audioTime = engineRef.current?.getCurrentTime() ?? 0;
+    const audioTime = getAudioCurrentTime();
     trackerRef.current.onInput(value, audioTime, targetWords);
   }
 
@@ -5822,11 +5813,7 @@ function App() {
   ] : [];
 
   function replayFocusedAudio(): void {
-    const currentTime = engineRef.current?.getCurrentTime() ?? audioRef.current?.currentTime ?? 0;
-    engineRef.current?.seek(Math.max(0, currentTime - 5));
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, currentTime - 5);
-    }
+    rewindAudio(5);
   }
 
   function replayFocusedTts(): void {
@@ -5848,7 +5835,7 @@ function App() {
           : ttsStatus,
     audioRef,
     audioUrl,
-    onAudioTimeUpdate: () => setCurrentAudioTime(audioRef.current?.currentTime ?? 0),
+    onAudioTimeUpdate: handleAudioTimeUpdate,
     onAudioEnded: () => finishSession(),
     showAudioElement: activeInputMode === 'input1' && Boolean(audioUrl),
     currentTextValue: focusedTextValue,
@@ -6658,7 +6645,7 @@ function App() {
                     audioUrl={audioUrl}
                     transcriptSegments={transcriptSegments}
                     activeTranscriptSegmentIndex={activeTranscriptSegmentIndex}
-                    onTimeUpdate={() => setCurrentAudioTime(audioRef.current?.currentTime ?? 0)}
+                    onTimeUpdate={handleAudioTimeUpdate}
                     onEnded={() => finishSession()}
                     formatTimestamp={formatTimestamp}
                   />
