@@ -149,6 +149,7 @@ Browser storage keys:
 
 Supabase sync stores JSON rows in `dicta_sync_items`. Session deletes are synced as tombstones, not hard deletes. Do not reintroduce hard-delete-only behavior, or deleted sessions can reappear on another device.
 Authenticated Supabase sessions must complete the initial pull/merge before rendering profile-scoped session UI, so a hard refresh does not briefly show stale localStorage rows. Remote session tombstones are sticky against local `ready`/pending copies; only a newer locally submitted finished session may repair an older tombstone.
+Completed session feedback rows are completion evidence for their session id, so stale `ready` copies from another tab/device must not keep a practiced session pending or overwrite the repaired finished session.
 
 Supabase env vars are public Vite build vars and must be set locally and in Vercel:
 

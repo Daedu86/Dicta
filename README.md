@@ -280,6 +280,7 @@ Supabase sync notes:
 
 - Authenticated profile UI waits for the initial Supabase pull/merge before showing profile-scoped sessions, preventing hard-refresh flashes from stale local snapshots.
 - Session deletes are tombstones. Remote tombstones must not be overwritten by local `ready`/pending copies; only a newer locally submitted finished session may repair an older tombstone.
+- Completed feedback rows are treated as completion evidence for their session id, so a stale `ready` session row from another browser tab/device cannot keep a practiced session in the pending lane.
 
 ## Local Ingestion Pipeline (WhisperX)
 

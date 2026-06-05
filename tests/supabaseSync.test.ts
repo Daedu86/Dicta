@@ -350,6 +350,137 @@ describe('supabaseSync', () => {
     expect(selectPushableSyncRows(localRows, remoteRows)).toEqual([]);
   });
 
+  it('repairs a remote pending session when completed feedback exists for the same session', () => {
+    const rows = toSyncRows('profile-1', [
+      {
+        itemType: 'session',
+        itemKey: 's1',
+        updatedAt: '2026-05-03T10:00:00.000Z',
+        payload: {
+          id: 's1',
+          updatedAt: '2026-05-03T10:00:00.000Z',
+          inputMode: 'input2',
+          status: 'ready',
+          telemetry: { actions: [], lagSeries: [], wpmSeries: [], accuracySeries: [] },
+          marker: 'remote-pending',
+        },
+      },
+      {
+        itemType: 'feedback',
+        itemKey: 's1',
+        updatedAt: '2026-05-03T10:08:00.000Z',
+        payload: {
+          sessionId: 's1',
+          inputMode: 'browser-tts',
+          language: 'de',
+          createdAt: '2026-05-03T10:00:00.000Z',
+          completedAt: '2026-05-03T10:08:00.000Z',
+          marker: 'completed-feedback',
+        },
+      },
+    ]);
+
+    const merged = mergeSyncRows({ sessions: [], benchmarks: {}, feedback: {} }, rows);
+
+    expect(merged.sessions).toHaveLength(1);
+    expect(merged.sessions[0]).toMatchObject({
+      id: 's1',
+      status: 'finished',
+      updatedAt: '2026-05-03T10:08:00.000Z',
+      telemetry: {
+        finishedAt: '2026-05-03T10:08:00.000Z',
+      },
+    });
+    expect(merged.feedback['browser-tts'].de[0]).toMatchObject({ marker: 'completed-feedback' });
+  });
+
+  it('does not push a stale local pending session over completed remote feedback', () => {
+    const localRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-03T10:10:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-03T10:10:00.000Z',
+        inputMode: 'input2',
+        status: 'ready',
+        marker: 'local-pending',
+      },
+    }]);
+    const remoteRows = toSyncRows('profile-1', [
+      {
+        itemType: 'session',
+        itemKey: 's1',
+        updatedAt: '2026-05-03T10:00:00.000Z',
+        payload: {
+          id: 's1',
+          updatedAt: '2026-05-03T10:00:00.000Z',
+          inputMode: 'input2',
+          status: 'ready',
+          marker: 'remote-pending',
+        },
+      },
+      {
+        itemType: 'feedback',
+        itemKey: 's1',
+        updatedAt: '2026-05-03T10:08:00.000Z',
+        payload: {
+          sessionId: 's1',
+          inputMode: 'browser-tts',
+          language: 'de',
+          createdAt: '2026-05-03T10:00:00.000Z',
+          completedAt: '2026-05-03T10:08:00.000Z',
+        },
+      },
+    ]);
+
+    expect(selectPushableSyncRows(localRows, remoteRows)).toEqual([]);
+  });
+
+  it('allows a repaired local finished session to replace a remote pending session with completed feedback', () => {
+    const localRows = toSyncRows('profile-1', [{
+      itemType: 'session',
+      itemKey: 's1',
+      updatedAt: '2026-05-03T10:08:00.000Z',
+      payload: {
+        id: 's1',
+        updatedAt: '2026-05-03T10:08:00.000Z',
+        inputMode: 'input2',
+        status: 'finished',
+        telemetry: { finishedAt: '2026-05-03T10:08:00.000Z', actions: [] },
+        marker: 'local-repaired',
+      },
+    }]);
+    const remoteRows = toSyncRows('profile-1', [
+      {
+        itemType: 'session',
+        itemKey: 's1',
+        updatedAt: '2026-05-03T10:10:00.000Z',
+        payload: {
+          id: 's1',
+          updatedAt: '2026-05-03T10:10:00.000Z',
+          inputMode: 'input2',
+          status: 'ready',
+          marker: 'remote-pending',
+        },
+      },
+      {
+        itemType: 'feedback',
+        itemKey: 's1',
+        updatedAt: '2026-05-03T10:08:00.000Z',
+        payload: {
+          sessionId: 's1',
+          inputMode: 'browser-tts',
+          language: 'de',
+          createdAt: '2026-05-03T10:00:00.000Z',
+          completedAt: '2026-05-03T10:08:00.000Z',
+        },
+      },
+    ]);
+
+    expect(selectPushableSyncRows(localRows, remoteRows)).toHaveLength(1);
+  });
+
   it('does not push a stale local pending session over a finalized remote session without submit action', () => {
     const localRows = toSyncRows('profile-1', [{
       itemType: 'session',

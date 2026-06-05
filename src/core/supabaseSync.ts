@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { isSubmittedFinishedAttempt } from './sessionNormalization';
+import { computeSessionScore } from './sessionScore';
 
 export const DICTA_SYNC_TABLE = 'dicta_sync_items';
 
@@ -46,6 +47,19 @@ export type DictaSyncMergeResult = DictaSyncState & {
   imported: number;
   skipped: number;
   deletedSessionIds: string[];
+};
+
+type CompletedFeedbackEvidence = {
+  sessionId: string;
+  completedAt: string;
+  startedAt: string | null;
+  lagSeries: number[];
+  wpmSeries: number[];
+  accuracySeries: number[];
+  lagSec: number | null;
+  wpm: number | null;
+  accuracy: number | null;
+  rate: number | null;
 };
 
 export type PullSyncRowsOptions = {
@@ -145,6 +159,7 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
   let changed = false;
   let imported = 0;
   let skipped = 0;
+  const completedFeedbackBySessionId = collectCompletedFeedbackEvidence(rows);
   const sessionsById = new Map<string, unknown>();
   for (const session of local.sessions) {
     const id = getStringField(session, 'id');
@@ -186,7 +201,7 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
       }
       const localSession = sessionsById.get(id);
       if (!localSession || shouldRemoteSessionReplaceLocal(row, localSession)) {
-        sessionsById.set(id, row.payload);
+        sessionsById.set(id, repairPendingSessionFromCompletedFeedback(row.payload, completedFeedbackBySessionId.get(id)));
         changed = true;
         imported += 1;
       }
@@ -235,6 +250,15 @@ export function mergeSyncRows(local: DictaSyncState, rows: DictaSyncRow[]): Dict
         ...inputFeedback,
         [language]: nextLanguageFeedback.slice(0, 12),
       };
+      changed = true;
+      imported += 1;
+    }
+  }
+
+  for (const [sessionId, session] of sessionsById) {
+    const repairedSession = repairPendingSessionFromCompletedFeedback(session, completedFeedbackBySessionId.get(sessionId));
+    if (repairedSession !== session) {
+      sessionsById.set(sessionId, repairedSession);
       changed = true;
       imported += 1;
     }
@@ -293,6 +317,7 @@ export async function pushSyncRowsDetailed(
 
 export function selectPushableSyncRows(localRows: DictaSyncRow[], remoteRows: DictaSyncRow[]): DictaSyncRow[] {
   const remoteByKey = new Map<string, DictaSyncRow>();
+  const completedFeedbackBySessionId = collectCompletedFeedbackEvidence(remoteRows);
   for (const row of remoteRows) {
     if (!isValidSyncRow(row)) continue;
     remoteByKey.set(syncRowIdentity(row), row);
@@ -300,6 +325,13 @@ export function selectPushableSyncRows(localRows: DictaSyncRow[], remoteRows: Di
 
   return localRows.filter((localRow) => {
     if (!isValidSyncRow(localRow)) return false;
+    if (
+      localRow.item_type === 'session' &&
+      completedFeedbackBySessionId.has(localRow.item_key) &&
+      !isSubmittedFinishedSession(localRow.payload)
+    ) {
+      return false;
+    }
     const remoteRow = remoteByKey.get(syncRowIdentity(localRow));
     if (!remoteRow) return true;
     if (localRow.item_type === 'session' && isSessionTombstonePayload(remoteRow.payload)) {
@@ -402,6 +434,161 @@ function shouldLocalRowReplaceRemoteTombstone(localRow: DictaSyncRow, remoteTomb
   );
 }
 
+function repairPendingSessionFromCompletedFeedback(session: unknown, evidence: CompletedFeedbackEvidence | undefined): unknown {
+  if (!evidence || !isRecord(session) || isSubmittedFinishedSession(session) || isSessionTombstonePayload(session)) {
+    return session;
+  }
+  if (getStringField(session, 'status') === 'error') return session;
+
+  const telemetry = isRecord(session.telemetry) ? session.telemetry : {};
+  const metrics = isRecord(session.metrics) ? session.metrics : {};
+  const nextAccuracy = evidence.accuracy ?? numberField(metrics, 'accuracy');
+  const nextLagSec = evidence.lagSec ?? numberField(metrics, 'lagSec');
+  const nextWpm = evidence.wpm ?? numberField(metrics, 'wpm');
+  const recoveredRate = evidence.rate ?? numberField(metrics, 'rate');
+  const nextRate = recoveredRate || 1;
+  const existingPoints = numberField(metrics, 'points');
+  const repairedPoints =
+    existingPoints > 0
+      ? existingPoints
+      : estimatePointsFromAccuracy(session, nextAccuracy);
+  const existingScore = numberField(metrics, 'score');
+  const repairedScore =
+    existingScore > 0
+      ? existingScore
+      : computeSessionScore({
+          accuracy: nextAccuracy,
+          lagSec: nextLagSec,
+          wpm: nextWpm,
+          rate: nextRate,
+          points: repairedPoints,
+        });
+  const existingActions = Array.isArray(telemetry.actions) ? telemetry.actions : [];
+  const hasSubmitAction = existingActions.some((entry) => isRecord(entry) && entry.action === 'submit');
+  const startedAt = typeof telemetry.startedAt === 'string' && telemetry.startedAt
+    ? telemetry.startedAt
+    : evidence.startedAt ?? '';
+  const submitOffsetSec =
+    startedAt && timestampFrom(startedAt)
+      ? Math.max(0, (new Date(evidence.completedAt).getTime() - new Date(startedAt).getTime()) / 1000)
+      : 0;
+
+  return {
+    ...session,
+    status: 'finished',
+    updatedAt: evidence.completedAt,
+    metrics: {
+      ...metrics,
+      controllerState: typeof metrics.controllerState === 'string' ? metrics.controllerState : 'hold',
+      rate: nextRate,
+      lagSec: nextLagSec,
+      lagWords: numberField(metrics, 'lagWords'),
+      wpm: nextWpm,
+      accuracy: nextAccuracy,
+      trend: typeof metrics.trend === 'string' ? metrics.trend : 'stable',
+      points: repairedPoints,
+      score: repairedScore,
+    },
+    telemetry: {
+      ...telemetry,
+      startedAt,
+      finishedAt: evidence.completedAt,
+      lagSeries: normalizeNumberArray(telemetry.lagSeries, evidence.lagSeries),
+      wpmSeries: normalizeNumberArray(telemetry.wpmSeries, evidence.wpmSeries),
+      accuracySeries: normalizeNumberArray(telemetry.accuracySeries, evidence.accuracySeries),
+      actions: hasSubmitAction
+        ? existingActions
+        : [
+            ...existingActions,
+            {
+              t: submitOffsetSec,
+              action: 'submit',
+              rate: nextRate,
+            },
+          ],
+    },
+  };
+}
+
+function collectCompletedFeedbackEvidence(rows: DictaSyncRow[]): Map<string, CompletedFeedbackEvidence> {
+  const bySessionId = new Map<string, CompletedFeedbackEvidence>();
+  for (const row of rows) {
+    if (!isValidSyncRow(row) || row.item_type !== 'feedback') continue;
+    const sessionId = getStringField(row.payload, 'sessionId');
+    if (!sessionId || sessionId !== row.item_key) continue;
+    const completedAt =
+      timestampFrom(asRecord(row.payload).completedAt) ??
+      timestampFrom(asRecord(row.payload).createdAt) ??
+      timestampFrom(row.updated_at);
+    if (!completedAt) continue;
+    const evidence = deriveCompletedFeedbackEvidence(row.payload, sessionId, completedAt);
+
+    const previous = bySessionId.get(sessionId);
+    if (!previous || compareTimestamp(completedAt, previous.completedAt) > 0) {
+      bySessionId.set(sessionId, evidence);
+    }
+  }
+  return bySessionId;
+}
+
+function deriveCompletedFeedbackEvidence(
+  payload: unknown,
+  sessionId: string,
+  completedAt: string,
+): CompletedFeedbackEvidence {
+  const benchmarkAfter = asRecord(asRecord(payload).benchmarkAfter);
+  const samples = getFeedbackTimelineSamples(payload, sessionId);
+  const lastSample = samples.at(-1) ?? null;
+  const fallbackAccuracy = normalizeAccuracy(numberFrom(benchmarkAfter.averageAccuracy));
+  return {
+    sessionId,
+    completedAt,
+    startedAt: samples[0]?.timestampMs ? new Date(samples[0].timestampMs).toISOString() : null,
+    lagSeries: samples.map((sample) => sample.lagSec),
+    wpmSeries: samples.map((sample) => sample.wpm),
+    accuracySeries: samples.map((sample) => sample.accuracy),
+    lagSec: lastSample?.lagSec ?? numberFrom(benchmarkAfter.stableAverageLagSec ?? benchmarkAfter.averageLagSec),
+    wpm: lastSample?.wpm ?? numberFrom(benchmarkAfter.averageWpm),
+    accuracy: lastSample?.accuracy ?? fallbackAccuracy,
+    rate: lastSample?.rate ?? numberFrom(benchmarkAfter.preferredPlaybackRate),
+  };
+}
+
+type FeedbackTimelineSample = {
+  timestampMs: number;
+  lagSec: number;
+  wpm: number;
+  accuracy: number;
+  rate: number;
+};
+
+function getFeedbackTimelineSamples(payload: unknown, sessionId: string): FeedbackTimelineSample[] {
+  const benchmarkAfter = asRecord(asRecord(payload).benchmarkAfter);
+  const timeline = Array.isArray(benchmarkAfter.timeline) ? benchmarkAfter.timeline : [];
+  return timeline
+    .map((entry) => normalizeTimelineSample(entry, sessionId))
+    .filter((sample): sample is FeedbackTimelineSample => Boolean(sample))
+    .sort((a, b) => a.timestampMs - b.timestampMs);
+}
+
+function normalizeTimelineSample(entry: unknown, sessionId: string): FeedbackTimelineSample | null {
+  const record = asRecord(entry);
+  if (getStringField(record, 'sessionId') !== sessionId) return null;
+  const timestampMs = numberFrom(record.timestampMs);
+  const lagSec = numberFrom(record.stableLagSec ?? record.lagSec);
+  const wpm = numberFrom(record.wpm);
+  const rawAccuracy = numberFrom(record.accuracy);
+  const rate = numberFrom(record.playbackRate);
+  if (timestampMs === null || lagSec === null || wpm === null || rawAccuracy === null) return null;
+  return {
+    timestampMs,
+    lagSec,
+    wpm,
+    accuracy: normalizeAccuracy(rawAccuracy) ?? 0,
+    rate: rate ?? 1,
+  };
+}
+
 function remoteSubmittedSessionOutranksLocal(remotePayload: unknown, localPayload: unknown): boolean {
   return isSubmittedFinishedSession(remotePayload) && !isSubmittedFinishedSession(localPayload);
 }
@@ -442,6 +629,41 @@ function compareTimestamp(a: string, b: string): number {
 function getStringField(value: unknown, field: string): string {
   const record = asRecord(value);
   return typeof record[field] === 'string' ? record[field] : '';
+}
+
+function numberField(value: unknown, field: string): number {
+  return numberFrom(asRecord(value)[field]) ?? 0;
+}
+
+function numberFrom(value: unknown): number | null {
+  const numberValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function normalizeAccuracy(value: number | null): number | null {
+  if (value === null) return null;
+  return value <= 1 ? value * 100 : value;
+}
+
+function normalizeNumberArray(primary: unknown, fallback: number[]): number[] {
+  if (Array.isArray(primary)) {
+    return primary.filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  }
+  return fallback;
+}
+
+function estimatePointsFromAccuracy(session: Record<string, unknown>, accuracy: number): number {
+  if (accuracy <= 0) return 0;
+  const sourceText =
+    getStringField(session, 'ttsText') ||
+    getStringField(session, 'kokoroText') ||
+    getStringField(session, 'inputText');
+  const wordCount = countWords(sourceText);
+  return wordCount > 0 ? Math.round(wordCount * Math.max(0, Math.min(100, accuracy)) / 100) : 0;
+}
+
+function countWords(text: string): number {
+  return text.match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
 }
 
 function syncRowIdentity(row: DictaSyncRow): string {
