@@ -35,6 +35,8 @@ Input modes:
 
 The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, recommendation, and session feedback package is scoped by `(inputMode, language)`, so `browser-tts/de` and `browser-tts/en` are different adaptive profiles. The adaptive benchmark rolling window is **30 days** (`rollingWindowDays: 30`), and dashboard/leaderboard "Month" views also mean the last 30 days.
 
+`ListeningTrainerPolicy` is the central pedagogical layer for next-session generation. It takes the current profile-specific benchmark, latest matching feedback, and user intent, then produces a `ListeningTrainingPrescription` for listening comprehension. This is the main future iteration point for training quality; it must not mix benchmarks across inputs or languages.
+
 ## Access and Security Model
 
 Current access model:
@@ -196,7 +198,7 @@ Server-side rules:
 2. Provide content:
    - Audio mode: load an audio file plus transcript JSON, or generate one locally via the ingestion pipeline.
    - TTS modes: provide text; Dicta chunks it into semantic phrases.
-   - OpenRouter mode: generate structured scripts for the selected `(inputMode, language)` using current benchmark context.
+   - OpenRouter mode: generate structured scripts for the selected `(inputMode, language)` using current benchmark context and the trainer prescription.
 3. Start a session and type what you hear.
 4. The input adapter publishes live telemetry.
 5. The Adaptive Pace Layer decides rate, pause, chunking, recovery, and phrase-size actions.
@@ -219,6 +221,8 @@ Important rules:
 
 - Treat each `(inputMode, language)` as its own profile.
 - Do not share fixes across profiles unless the task explicitly requires it.
+- Direct mobile generation buttons express user intent (`recover`, `progress`, `challenge`) rather than absolute difficulty; `ListeningTrainerPolicy` may downgrade an unsafe challenge to stabilize or recover.
+- OpenRouter/LLMs generate only structured training material. Dicta runtime still controls playback, rate, pauses, chunking, recovery, and Browser TTS execution.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior such as shorter chunks, slower rate, and longer pauses.
 - Browser TTS benchmark samples and completed session feedback carry a structured `ttsEnvironment` fingerprint with a hashed user agent, platform/PWA mode, selected voice metadata, and voice counts so reports can distinguish learner progress from browser, OS, voice, or speechSynthesis changes.
 - Training text input is intentionally low-latency and uncontrolled. Do not reintroduce per-keystroke React state for visible text.
@@ -232,6 +236,7 @@ Key files:
 - `src/app/useAdaptiveRuntime.ts`
 - `src/core/adaptive/types.ts`
 - `src/core/adaptive/AdaptiveDictationController.ts`
+- `src/core/adaptive/ListeningTrainerPolicy.ts`
 - `src/core/adaptive/SemanticPhrasePlanner.ts`
 - `src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts`
 - `src/core/adaptive/sessionFeedback.ts`

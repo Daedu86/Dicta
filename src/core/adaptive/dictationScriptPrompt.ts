@@ -44,6 +44,8 @@ export function buildDictationScriptPrompt(profile: InputLanguageBenchmarkMetric
     '- Use continuation intonation for incomplete clauses.',
     '- Use falling intonation for full sentences.',
     '- Keep difficulty in the learner training zone, based on the benchmark recommendation.',
+    '- If a trainer prescription is provided, support it with safe semantic boundaries, replayable phrases, the requested phrase difficulty range, content guidance, and pacing-compatible phrase lengths.',
+    '- Do not make the script responsible for runtime playback control; Dicta applies rate, pauses, chunking, recovery, and replay behavior during practice.',
     '- Set estimatedDurationSec to the expected voice/audio playback duration only; do not include learner typing or submit time.',
     '- Target the weakAreas listed above.',
     '- Use sentence/clause/minor boundaries when safe; use unsafe only when the text truly requires continuation.',

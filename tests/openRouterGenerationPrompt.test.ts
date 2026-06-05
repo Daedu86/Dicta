@@ -118,6 +118,14 @@ describe('openRouterGenerationPrompt', () => {
     expect(payload.prompt).toContain('"recommendation"');
     expect(payload.prompt).toContain('"targetRateRange"');
     expect(payload.prompt).toContain('"weakAreas"');
+    expect(payload.prompt).toContain('"trainingPrescription"');
+    expect(payload.prompt).toContain('"profileKey": "browser-tts/es"');
+    expect(payload.prompt).toContain('"inputMode": "browser-tts"');
+    expect(payload.prompt).toContain('"language": "es"');
+    expect(payload.prompt).toContain('The LLM generates structured training material only.');
+    expect(payload.prompt).toContain('Dicta runtime and the Adaptive Pace Layer control playback');
+    expect(payload.prompt).toContain('Follow trainingPrescription as the pedagogical source of truth.');
+    expect(payload.prompt).toContain('Use benchmark and latest feedback as context, but do not override trainingPrescription.');
     expect(payload.prompt).toContain('"lag"');
     expect(payload.prompt).toContain('"title": "Specific content title in the target language"');
     expect(payload.prompt).toContain('"phrases"');
@@ -184,6 +192,8 @@ describe('openRouterGenerationPrompt', () => {
 
     expect(browserDePayload.prompt).toContain('inputMode "browser-tts"');
     expect(browserDePayload.prompt).toContain('language "de"');
+    expect(browserDePayload.prompt).toContain('"profileKey": "browser-tts/de"');
+    expect(browserDePayload.prompt).toContain('"trainingPrescription"');
     expect(browserDePayload.prompt).toContain('Write all phrase text naturally in German.');
     expect(browserDePayload.prompt).toContain('"language": "de"');
     expect(browserDePayload.prompt).toContain('German browser recovery only.');
@@ -191,6 +201,8 @@ describe('openRouterGenerationPrompt', () => {
 
     expect(cosyvoicePtPayload.prompt).toContain('inputMode "cosyvoice-cache"');
     expect(cosyvoicePtPayload.prompt).toContain('language "pt"');
+    expect(cosyvoicePtPayload.prompt).toContain('"profileKey": "cosyvoice-cache/pt"');
+    expect(cosyvoicePtPayload.prompt).toContain('"trainingPrescription"');
     expect(cosyvoicePtPayload.prompt).toContain('Write all phrase text naturally in Portuguese.');
     expect(cosyvoicePtPayload.prompt).toContain('"language": "pt"');
     expect(cosyvoicePtPayload.prompt).toContain('Portuguese cache fluency only.');
@@ -341,7 +353,49 @@ describe('openRouterGenerationPrompt', () => {
     expect(payload.prompt).toContain('approximately 156 words total');
     expect(payload.prompt).toContain('Create at least 10 phrases');
     expect(payload.prompt).toContain('Set "difficulty" exactly to "easy"');
+    expect(payload.trainingPrescription.userIntent).toBe('auto');
+    expect(payload.trainingPrescription.difficulty).toBe('easy');
     expect(payload.prompt).toContain('0.25-0.45');
+  });
+
+  it('does not let hard target difficulty override an unstable compact adaptive v2 prescription', () => {
+    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    profile.sampleCount = 10;
+    profile.sessionCount = 3;
+    profile.averageAccuracy = 0.72;
+    profile.averageLagSec = 3.5;
+    profile.stableAverageLagSec = 3.4;
+    profile.p75LagSec = 3.8;
+    profile.p90AbsLagSec = 4.6;
+    profile.flowStabilityScore = 0.34;
+    profile.learningEffectivenessScore = 0.2;
+    profile.weakAreas = ['lag', 'low_accuracy', 'unsafe_boundary_pressure', 'support_dependency', 'flow_instability'];
+    profile.recommendation = {
+      targetRateRange: [1.05, 1.1],
+      targetPhraseSize: 'medium',
+      targetPauseMs: 700,
+      nextTrainingFocus: ['Recover German Browser TTS flow'],
+      confidence: 0.22,
+      summary: 'Unstable German Browser TTS profile.',
+    };
+
+    const payload = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 2,
+      userIntent: 'challenge',
+      targetDifficulty: 'hard',
+      difficultyInstruction: 'Challenge intent: use harder content only if the trainer prescription keeps the session in challenge mode.',
+    });
+
+    expect(payload.trainingPrescription.profileKey).toBe('browser-tts/de');
+    expect(payload.trainingPrescription.mode).toBe('recover');
+    expect(payload.trainingPrescription.difficulty).toBe('easy');
+    expect(payload.prompt).toContain('Set "difficulty" exactly to "easy"');
+    expect(payload.prompt).toContain('User requested difficulty "hard", resolved trainer difficulty "easy".');
+    expect(payload.prompt).toContain('"boundaryPolicy": "strict_semantic"');
+    expect(payload.prompt).not.toContain('Set "difficulty" exactly to "hard"');
   });
 
   it('can request an advanced two-minute compact adaptive script', () => {

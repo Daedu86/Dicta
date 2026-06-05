@@ -3,7 +3,13 @@ import type { DictationScriptDifficulty } from './dictationScriptValidation';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './dictationScriptPrompt';
 import { buildBenchmarkFeedbackPromptPackage } from './sessionFeedback';
 import { normalizeInputLanguageBenchmarkForRecommendation } from './AdaptiveInputLanguageBenchmarkService';
-import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics } from './types';
+import { buildListeningTrainingPrescription } from './ListeningTrainerPolicy';
+import type {
+  AdaptiveSessionFeedback,
+  InputLanguageBenchmarkMetrics,
+  ListeningTrainingIntent,
+  ListeningTrainingPrescription,
+} from './types';
 import { formatSupportedLanguage } from '../languages';
 
 export type OpenRouterGeneratePromptSource =
@@ -22,6 +28,7 @@ export type OpenRouterGenerationPromptArgs = {
   sessionFeedback: AdaptiveSessionFeedback | null;
   promptSource: OpenRouterGeneratePromptSource;
   durationMinutes: OpenRouterDurationMinutes;
+  userIntent?: ListeningTrainingIntent;
   targetDifficulty?: DictationScriptDifficulty;
   difficultyInstruction?: string;
   diversificationHints?: string[];
@@ -30,6 +37,7 @@ export type OpenRouterGenerationPromptArgs = {
 export type OpenRouterGenerationPromptPayload = {
   prompt: string;
   outputTemplate: string;
+  trainingPrescription: ListeningTrainingPrescription;
 };
 
 export type OpenRouterPromptSizeEstimate = {
@@ -71,11 +79,19 @@ export function buildOpenRouterGenerationPrompt({
   sessionFeedback,
   promptSource,
   durationMinutes,
+  userIntent,
   targetDifficulty,
   difficultyInstruction,
   diversificationHints,
 }: OpenRouterGenerationPromptArgs): OpenRouterGenerationPromptPayload {
   const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
+  const trainingPrescription = buildListeningTrainingPrescription({
+    profile: normalizedProfile,
+    latestFeedback: sessionFeedback,
+    userIntent,
+    durationMinutes,
+    targetDifficulty,
+  });
   const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(normalizedProfile), null, 2);
   const llmPrompt = buildDictationScriptPrompt(normalizedProfile);
   const outputTemplate = buildDictationScriptTemplate(normalizedProfile.inputMode, normalizedProfile.language);
@@ -138,6 +154,7 @@ export function buildOpenRouterGenerationPrompt({
       profileKey: `${normalizedProfile.inputMode}/${normalizedProfile.language}`,
       inputMode: normalizedProfile.inputMode,
       language: normalizedProfile.language,
+      trainingPrescription,
       sessionCount: normalizedProfile.sessionCount,
       sampleCount: normalizedProfile.sampleCount,
       weakAreas: normalizedProfile.weakAreas,
@@ -214,13 +231,21 @@ export function buildOpenRouterGenerationPrompt({
     'Return only valid JSON. Do not use Markdown or code fences.',
     `Use exactly inputMode "${normalizedProfile.inputMode}" and language "${normalizedProfile.language}".`,
     `Write all phrase text naturally in ${languageName}.`,
-    ...(targetDifficulty ? [`Set "difficulty" exactly to "${targetDifficulty}".`] : []),
-    ...(difficultyInstruction ? [difficultyInstruction] : []),
+    'The LLM generates structured training material only.',
+    'Dicta runtime and the Adaptive Pace Layer control playback, pacing, recovery, rate, pauses, chunking, and Browser TTS execution.',
+    'Follow trainingPrescription as the pedagogical source of truth.',
+    'Use benchmark and latest feedback as context, but do not override trainingPrescription.',
+    `Set "difficulty" exactly to "${trainingPrescription.difficulty}".`,
+    `Set "recommendedRateRange" to ${JSON.stringify(trainingPrescription.targetRateRange)}.`,
+    `Set "recommendedPhraseSize" to "${trainingPrescription.targetPhraseSize}".`,
+    `Set "recommendedPauseMs" close to ${trainingPrescription.targetPauseMs}.`,
+    `Keep phrase-level "difficulty" values in ${trainingPrescription.phraseDifficultyRange[0].toFixed(2)}-${trainingPrescription.phraseDifficultyRange[1].toFixed(2)}.`,
+    ...buildTrainingPrescriptionRequestNotes(trainingPrescription, targetDifficulty, difficultyInstruction),
     `Target voice playback duration: ${durationLabel}; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
     `Combined spoken phrase text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
     `Create at least ${minimumPhraseCount} phrases unless phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
-    'Use semantic phrase boundaries. Avoid unsafe mid-grammar splits. Keep phrases replayable independently when possible.',
-    'Use the adaptive context to target weakAreas, recommendation, and latest feedback when present.',
+    'Generate semantic phrases compatible with trainingPrescription.',
+    'Use safe semantic boundaries, replayable phrases when possible, the prescribed phrase difficulty range, content guidance, and pacing-compatible phrase lengths.',
     'Do not satisfy duration by changing only "estimatedDurationSec"; generate enough phrase text.',
     ...(diversificationHints && diversificationHints.length > 0
       ? [
@@ -258,15 +283,34 @@ export function buildOpenRouterGenerationPrompt({
     return {
       prompt: compactAdaptiveV2Prompt,
       outputTemplate,
+      trainingPrescription,
     };
   }
 
   return {
     prompt: `${hardRules}\n\nGeneration context:\n${sourcePayload}`,
     outputTemplate,
+    trainingPrescription,
   };
 }
 
 function formatDurationMinutes(minutes: OpenRouterDurationMinutes): string {
   return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
+function buildTrainingPrescriptionRequestNotes(
+  trainingPrescription: ListeningTrainingPrescription,
+  targetDifficulty?: DictationScriptDifficulty,
+  difficultyInstruction?: string,
+): string[] {
+  const notes: string[] = [];
+  if (targetDifficulty) {
+    notes.push(
+      `User requested difficulty "${targetDifficulty}", resolved trainer difficulty "${trainingPrescription.difficulty}". Use the resolved trainer difficulty.`,
+    );
+  }
+  if (difficultyInstruction) {
+    notes.push(`Original difficulty note is secondary to trainingPrescription: ${difficultyInstruction}`);
+  }
+  return notes;
 }

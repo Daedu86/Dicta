@@ -87,6 +87,10 @@ Languages:
 
 The rolling adaptive benchmark window is 30 days (`rollingWindowDays: 30`). Dashboard and leaderboard "Month" views also mean 30 days.
 
+`src/core/adaptive/ListeningTrainerPolicy.ts` is the central pedagogical policy layer for next-session generation. It converts one profile-specific benchmark, latest matching feedback, and user intent into a `ListeningTrainingPrescription`. Keep this policy pure and deterministic: no localStorage, no network calls, no Supabase access, and no cross-language or cross-input averaging.
+
+OpenRouter and other LLM paths generate structured training material only. The Dicta runtime and Adaptive Pace Layer still control actual playback, rate, pauses, chunking, recovery, and Browser TTS execution. Direct mobile generation buttons represent user intent (`recover`, `progress`, `challenge`), not unconditional difficulty commands; the policy may downgrade difficulty when the active `(inputMode, language)` profile is unstable.
+
 Browser TTS benchmark samples and completed session feedback include a structured `ttsEnvironment` fingerprint (hashed user agent, platform/PWA mode, selected voice metadata, and voice counts) so analysis can separate learner progress from browser, OS, voice, or speechSynthesis changes without storing the raw user agent.
 
 When fixing benchmark, telemetry, recommendation, feedback, lag, pacing, or phrase-boundary behavior for one input/language pair, do not change the others unless the request explicitly says to. Prefer guards such as:
@@ -101,6 +105,7 @@ Key brain files:
 
 - `src/core/adaptive/types.ts`
 - `src/core/adaptive/AdaptiveDictationController.ts`
+- `src/core/adaptive/ListeningTrainerPolicy.ts`
 - `src/core/adaptive/SemanticPhrasePlanner.ts`
 - `src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts`
 - `src/core/adaptive/sessionFeedback.ts`

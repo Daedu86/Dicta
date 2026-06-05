@@ -51,6 +51,7 @@ Core TypeScript domain:
 - `src/core/buildInfo.ts`: build metadata formatting for browser display.
 - `src/core/languages.ts`: supported languages.
 - `src/app/useAdaptiveRuntime.ts`: browser-side adaptive controller wiring, benchmark update dispatch, selected profile glue, live telemetry application, and session feedback orchestration.
+- `ListeningTrainerPolicy`: pure profile-specific pedagogical policy that converts one `(inputMode, language)` benchmark, latest matching feedback, and user intent into a `ListeningTrainingPrescription` for next-session generation.
 - `SemanticPhrasePlanner`: language-aware phrase boundaries.
 - `AdaptiveDictationController`: rate, pause, replay, and chunk decisions.
 - `AdaptiveInputLanguageBenchmarkService`: 30-day rolling profiles.
@@ -112,6 +113,9 @@ Important implementation details:
 - Timeline storage is capped and pruned by timestamp.
 - Browser TTS German has extra recovery, lag, and unsafe-boundary filtering. Keep changes narrowly guarded.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior.
+- `ListeningTrainerPolicy` is the main future iteration point for listening-training quality. It preserves benchmark separation per `(inputMode, language)` and does not read localStorage, call network APIs, mutate benchmark data, or average across languages/inputs.
+- OpenRouter and other LLM paths generate structured training material only. The trainer prescription is the pedagogical source of truth for generation, while the runtime/adaptive pace layer controls actual playback, rate, pauses, chunking, recovery, and Browser TTS execution.
+- Direct mobile generation buttons represent user intent (`recover`, `progress`, `challenge`) rather than absolute difficulty commands; the policy can downgrade an unsafe challenge to stabilize or recover.
 - Browser TTS benchmark samples and completed session feedback are tagged with a structured `ttsEnvironment` fingerprint (hashed user agent, platform/PWA mode, selected voice metadata, and voice counts) so benchmark/report analysis can separate learner progress from browser, OS, voice, or speechSynthesis changes without storing the raw user agent.
 - Training text input is intentionally low-latency and uncontrolled.
 - Low-latency typing is covered by contract/regression tests plus the Playwright mobile guard for the dedicated training harness.
@@ -232,6 +236,7 @@ App runtime and adaptive core:
 - `src/core/buildInfo.ts`
 - `src/core/adaptive/types.ts`
 - `src/core/adaptive/AdaptiveDictationController.ts`
+- `src/core/adaptive/ListeningTrainerPolicy.ts`
 - `src/core/adaptive/SemanticPhrasePlanner.ts`
 - `src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts`
 - `src/core/adaptive/sessionFeedback.ts`

@@ -16,6 +16,7 @@ import type {
   InputLanguageBenchmarkMetrics,
   InputMode,
   LanguageCode,
+  ListeningTrainingIntent,
   LiveTelemetryFrame,
   PhrasePlaybackEvent,
   PhraseBoundaryType,
@@ -2724,6 +2725,7 @@ function App() {
     durationMinutes,
     isBusy,
     setBusy,
+    userIntent,
     targetDifficulty,
     difficultyInstruction,
   }: {
@@ -2732,6 +2734,7 @@ function App() {
     durationMinutes: OpenRouterDurationMinutes;
     isBusy: boolean;
     setBusy: (value: boolean) => void;
+    userIntent?: ListeningTrainingIntent;
     targetDifficulty?: DictationScriptDifficulty;
     difficultyInstruction?: string;
   }): Promise<void> {
@@ -2757,7 +2760,7 @@ function App() {
 
     void requestTrainingNotificationPermission();
 
-    const endPerfSpan = perfDiagnostics.startSpan('openrouter.generateDirectSession', { targetDifficulty, durationMinutes });
+    const endPerfSpan = perfDiagnostics.startSpan('openrouter.generateDirectSession', { userIntent, targetDifficulty, durationMinutes });
     const generationStartedAt = new Date().toISOString();
     setBusy(true);
     setOpenRouterError('');
@@ -2776,6 +2779,7 @@ function App() {
         sessionFeedback,
         promptSource: 'compact-adaptive-v2' as const,
         durationMinutes,
+        userIntent,
         targetDifficulty,
         difficultyInstruction,
         diversificationHints: buildOpenRouterDiversificationHints({
@@ -2790,11 +2794,12 @@ function App() {
           }),
         }),
       };
-      const { prompt } = buildOpenRouterGenerationPrompt(directPromptArgs);
+      const { prompt, trainingPrescription } = buildOpenRouterGenerationPrompt(directPromptArgs);
+      const resolvedTargetDifficulty = trainingPrescription.difficulty;
       const promptSize = estimateOpenRouterPromptSize(prompt, {
         promptMode: 'compact-adaptive-v2',
         durationMinutes,
-        ...(targetDifficulty ? { targetDifficulty } : {}),
+        targetDifficulty: resolvedTargetDifficulty,
         inputMode,
         language,
       });
@@ -2809,7 +2814,7 @@ function App() {
           inputMode,
           language,
           durationMinutes,
-          targetDifficulty,
+          targetDifficulty: resolvedTargetDifficulty,
         }),
       });
       if (!response.ok) {
@@ -2826,7 +2831,7 @@ function App() {
         inputMode,
         language,
         durationMinutes,
-        ...(targetDifficulty ? { targetDifficulty } : {}),
+        targetDifficulty: resolvedTargetDifficulty,
         promptMode: promptSize.promptMode,
         promptCharacterCount: promptSize.characterCount,
         promptApproximateTokenCount: promptSize.approximateTokenCount,
@@ -2876,8 +2881,9 @@ function App() {
       durationMinutes: 2,
       isBusy: directOpenRouterBusy,
       setBusy: setDirectOpenRouterBusy,
+      userIntent: 'recover',
       targetDifficulty: 'easy',
-      difficultyInstruction: 'Use easy content and keep phrase-level "difficulty" values low, roughly 0.25-0.45.',
+      difficultyInstruction: 'Recovery intent: keep material accessible and obey the trainer prescription if it narrows the range.',
     });
   }
 
@@ -2888,8 +2894,9 @@ function App() {
       durationMinutes: 2,
       isBusy: directIntermediateOpenRouterBusy,
       setBusy: setDirectIntermediateOpenRouterBusy,
+      userIntent: 'progress',
       targetDifficulty: 'normal',
-      difficultyInstruction: 'Keep phrase-level "difficulty" values in an intermediate range, roughly 0.45-0.65.',
+      difficultyInstruction: 'Progress intent: use moderate phrase difficulty only when the trainer prescription allows it.',
     });
   }
 
@@ -2900,8 +2907,9 @@ function App() {
       durationMinutes: 2,
       isBusy: directAdvancedOpenRouterBusy,
       setBusy: setDirectAdvancedOpenRouterBusy,
+      userIntent: 'challenge',
       targetDifficulty: 'hard',
-      difficultyInstruction: 'Use advanced content and keep phrase-level "difficulty" values high, roughly 0.70-0.90.',
+      difficultyInstruction: 'Challenge intent: use harder content only if the trainer prescription keeps the session in challenge mode.',
     });
   }
 
@@ -2912,8 +2920,9 @@ function App() {
       durationMinutes: 1,
       isBusy: expressEasyOpenRouterBusy,
       setBusy: setExpressEasyOpenRouterBusy,
+      userIntent: 'recover',
       targetDifficulty: 'easy',
-      difficultyInstruction: 'Use easy content and keep phrase-level "difficulty" values low, roughly 0.25-0.45.',
+      difficultyInstruction: 'Express recovery intent: keep material accessible and obey the trainer prescription if it narrows the range.',
     });
   }
 
@@ -2924,8 +2933,9 @@ function App() {
       durationMinutes: 1,
       isBusy: expressIntermediateOpenRouterBusy,
       setBusy: setExpressIntermediateOpenRouterBusy,
+      userIntent: 'progress',
       targetDifficulty: 'normal',
-      difficultyInstruction: 'Keep phrase-level "difficulty" values in an intermediate range, roughly 0.45-0.65.',
+      difficultyInstruction: 'Express progress intent: use moderate phrase difficulty only when the trainer prescription allows it.',
     });
   }
 
@@ -2936,8 +2946,9 @@ function App() {
       durationMinutes: 1,
       isBusy: expressAdvancedOpenRouterBusy,
       setBusy: setExpressAdvancedOpenRouterBusy,
+      userIntent: 'challenge',
       targetDifficulty: 'hard',
-      difficultyInstruction: 'Use advanced content and keep phrase-level "difficulty" values high, roughly 0.70-0.90.',
+      difficultyInstruction: 'Express challenge intent: use harder content only if the trainer prescription keeps the session in challenge mode.',
     });
   }
 
@@ -7891,11 +7902,11 @@ function buildOpenRouterDiversificationHints({
     ...activityHints,
   ];
   if (targetDifficulty === 'hard') {
-    hints.push('Use advanced grammar and vocabulary; avoid reusing simpler beginner sentence patterns.');
+    hints.push('Challenge intent: use richer grammar and vocabulary only if the trainer prescription keeps the session in challenge/hard mode.');
   } else if (targetDifficulty === 'normal') {
-    hints.push('Keep medium complexity and avoid highly advanced sentence nesting.');
+    hints.push('Progress intent: keep medium complexity unless the trainer prescription selects recovery or stabilization.');
   } else if (targetDifficulty === 'easy') {
-    hints.push('Use simpler vocabulary, shorter clauses, and everyday topics.');
+    hints.push('Recovery intent: use simpler vocabulary, shorter clauses, and everyday topics when the trainer prescription selects easy recovery.');
   }
   const recentOpeners = recentSessions
     .map((session) => session.opener.replace(/\s+/g, ' ').trim())

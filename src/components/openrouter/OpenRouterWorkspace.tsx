@@ -421,6 +421,7 @@ export function OpenRouterWorkspace({
         sessionFeedback: generateSessionFeedback,
         promptSource: generatePromptSource,
         durationMinutes: generateDurationMinutes,
+        userIntent: 'auto',
       }),
     [generateDurationMinutes, generateProfile, generatePromptSource, generateSessionFeedback],
   );
