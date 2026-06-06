@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
   plugins: [
     react(),
     {
-      name: 'local-transcribe-api',
+      name: 'dicta-local-dev-api',
       configureServer(server) {
         const envLocalPath = path.resolve(process.cwd(), '.env.local');
         const maxJsonBodyBytes = 64 * 1024;
