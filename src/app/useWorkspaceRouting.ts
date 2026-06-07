@@ -7,8 +7,6 @@ export type WorkspaceMode =
   | 'training'
   | 'leaderboard'
   | 'dashboard'
-  | 'tts'
-  | 'kokoro'
   | 'adaptive'
   | 'admin'
   | 'openrouter'
