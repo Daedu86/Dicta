@@ -23,7 +23,6 @@ type AppShellHeaderProps = {
   onOpenOllama: () => void;
   onToggleTheme: () => void;
   onSignOut: () => void | Promise<void>;
-  [key: string]: unknown;
 };
 
 export function AppShellHeader({
