@@ -40,7 +40,6 @@ export function AppShellHeader({
   syncStatusText,
   children,
   onOpenLeaderboard,
-  onOpenDesktopTraining,
   onOpenMobileTraining,
   onOpenAdaptive,
   onOpenAdmin,
@@ -82,13 +81,6 @@ export function AppShellHeader({
           onClick={onOpenLeaderboard}
         >
           Leaderboard
-        </button>
-        <button
-          type="button"
-          className="secondary-button brand-training-desktop-button"
-          onClick={onOpenDesktopTraining}
-        >
-          Training Mode (desktop ver)
         </button>
         <button
           type="button"
