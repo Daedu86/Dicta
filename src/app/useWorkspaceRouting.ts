@@ -24,7 +24,6 @@ type WorkspaceRouting = {
   navigateAppRoute: (path: AppRoutePath) => void;
   showWorkspaceMode: (mode: WorkspaceMode) => void;
   showLeaderboardWorkspace: () => void;
-  showTrainingWorkspace: () => void;
   showAdminWorkspace: () => void;
   showOpenRouterWorkspace: () => void;
   showOllamaWorkspace: () => void;
@@ -79,7 +78,6 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   }, []);
 
   const showLeaderboardWorkspace = useCallback(() => showWorkspace('leaderboard'), [showWorkspace]);
-  const showTrainingWorkspace = useCallback(() => showWorkspace('training'), [showWorkspace]);
   const showAdminWorkspace = useCallback(() => showWorkspace('admin'), [showWorkspace]);
   const showOpenRouterWorkspace = useCallback(() => showWorkspace('openrouter'), [showWorkspace]);
   const showOllamaWorkspace = useCallback(() => showWorkspace('ollama'), [showWorkspace]);
@@ -103,7 +101,6 @@ export function useWorkspaceRouting(): WorkspaceRouting {
     navigateAppRoute,
     showWorkspaceMode,
     showLeaderboardWorkspace,
-    showTrainingWorkspace,
     showAdminWorkspace,
     showOpenRouterWorkspace,
     showOllamaWorkspace,

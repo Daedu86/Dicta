@@ -493,7 +493,6 @@ function App() {
     navigateAppRoute,
     showWorkspaceMode,
     showLeaderboardWorkspace,
-    showTrainingWorkspace,
     showAdminWorkspace,
     showOpenRouterWorkspace,
     showOllamaWorkspace,
@@ -5411,7 +5410,6 @@ function App() {
           syncStatusState={supabaseSyncStatus.state}
           syncStatusText={appShellSyncStatusText}
           onOpenLeaderboard={showLeaderboardWorkspace}
-          onOpenDesktopTraining={showTrainingWorkspace}
           onOpenMobileTraining={() => navigateAppRoute('/training')}
           onOpenAdaptive={openAdaptiveWorkspaceFromHeader}
           onOpenAdmin={showAdminWorkspace}
@@ -5745,7 +5743,7 @@ function App() {
                 formatSessionDate={formatSessionDate}
                 formatSessionPlaybackDuration={(session) => formatSessionPlaybackDuration(session as StoredSession)}
                 onBackToLeaderboard={showLeaderboardWorkspace}
-                onBackToTraining={showTrainingWorkspace}
+                onBackToTraining={showLeaderboardWorkspace}
               />
             ) : workspaceMode === 'adaptive' ? (
               <section className="panel workspace-panel adaptive-workspace">
@@ -5758,7 +5756,7 @@ function App() {
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={showTrainingWorkspace}
+                      onClick={showLeaderboardWorkspace}
                     >
                       Back to training
                     </button>
@@ -5854,7 +5852,7 @@ function App() {
                 status={openRouterStatus}
                 error={openRouterError}
                 onRefreshModels={refreshOpenRouterModels}
-                onBackToTraining={showTrainingWorkspace}
+                onBackToTraining={showLeaderboardWorkspace}
                 exportProfile={selectedBenchmarkProfile}
                 exportSessionFeedback={selectedSessionFeedback}
                 exportActiveSessionStatus={getBenchmarkActiveSessionStatus(selectedBenchmarkProfile)}
@@ -5900,7 +5898,7 @@ function App() {
                   window.localStorage.setItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(nextModel));
                 }}
                 onRefreshModels={refreshOllamaModels}
-                onBackToTraining={showTrainingWorkspace}
+                onBackToTraining={showLeaderboardWorkspace}
               />
             ) : workspaceMode === 'admin' ? (
               isDictaAdmin(appProfile) || !syncConfig.authRequired ? <AdminWorkspace
@@ -5912,7 +5910,7 @@ function App() {
                 syncStatus={supabaseSyncStatus}
                 languageView={adminLanguageView}
                 onChangeLanguage={setAdminLanguageView}
-                onBackToTraining={showTrainingWorkspace}
+                onBackToTraining={showLeaderboardWorkspace}
                 onCopyLocalStorage={() => void copyDictaLocalStorage(setExportMessage)}
                 onExportLocalStorage={downloadDictaLocalStorage}
                 onImportLocalStorage={importDictaLocalStorageSnapshot}
@@ -5959,7 +5957,7 @@ function App() {
                   void copySessionSnapshot(session, setExportMessage);
                 }}
                 onDeleteSession={deleteSession}
-                onBackToTraining={showTrainingWorkspace}
+                onBackToTraining={showLeaderboardWorkspace}
                 formatLeaderboardSessionStatus={formatLeaderboardSessionStatus}
                 formatSessionGenerationOrigin={formatSessionGenerationOrigin}
                 formatSessionPlaybackDuration={formatSessionPlaybackDuration}
