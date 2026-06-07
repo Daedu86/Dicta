@@ -117,7 +117,6 @@ import { TrainingView, type TrainingViewProps } from './components/TrainingView'
 import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { PendingSessionLane } from './components/training/PendingSessionLane';
-import type { TrainingGenerationButton } from './components/training/TrainingGenerationCard';
 import { TrainingHeader } from './components/training/TrainingHeader';
 import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
 import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
@@ -5124,68 +5123,7 @@ function App() {
   const expressEasyGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express easy direct session');
   const expressMediumGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express intermediate direct session');
   const expressHardGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express advanced direct session');
-  const desktopOpenRouterGenerationButtons: TrainingGenerationButton[] = openRouterAccessAllowed ? [
-    {
-      id: 'easy',
-      label: directOpenRouterBusy ? 'Requesting easy...' : easyDirectGenerationRunning ? 'Generating easy...' : 'New Easy Session',
-      onClick: () => void generateEasyNextSessionFromOpenRouter(),
-      disabled: !isOnline || directOpenRouterBusy || easyDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-      title: sessionQuotaStatus.blocked
-        ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-      helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
-    },
-    {
-      id: 'medium',
-      label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : mediumDirectGenerationRunning ? 'Generating medium...' : 'New Medium Session',
-      onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-      disabled: !isOnline || directIntermediateOpenRouterBusy || mediumDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-      title: sessionQuotaStatus.blocked
-        ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-      helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
-    },
-    {
-      id: 'hard',
-      label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : hardDirectGenerationRunning ? 'Generating hard...' : 'New Hard Session',
-      onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-      disabled: !isOnline || directAdvancedOpenRouterBusy || hardDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-      title: sessionQuotaStatus.blocked
-        ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-      helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
-    },
-    {
-      id: 'express-easy',
-      label: expressEasyOpenRouterBusy ? 'Requesting express easy...' : expressEasyGenerationRunning ? 'Generating express easy...' : 'Express Easy Session',
-      onClick: () => void generateExpressEasyNextSessionFromOpenRouter(),
-      disabled: !isOnline || expressEasyOpenRouterBusy || expressEasyGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-      title: sessionQuotaStatus.blocked
-        ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate an easy one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-      helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
-    },
-    {
-      id: 'express-medium',
-      label: expressIntermediateOpenRouterBusy ? 'Requesting express medium...' : expressMediumGenerationRunning ? 'Generating express medium...' : 'Express Medium Session',
-      onClick: () => void generateExpressIntermediateNextSessionFromOpenRouter(),
-      disabled: !isOnline || expressIntermediateOpenRouterBusy || expressMediumGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-      title: sessionQuotaStatus.blocked
-        ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a medium one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-      helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
-    },
-    {
-      id: 'express-hard',
-      label: expressAdvancedOpenRouterBusy ? 'Requesting express hard...' : expressHardGenerationRunning ? 'Generating express hard...' : 'Express Hard Session',
-      onClick: () => void generateExpressAdvancedNextSessionFromOpenRouter(),
-      disabled: !isOnline || expressAdvancedOpenRouterBusy || expressHardGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-      title: sessionQuotaStatus.blocked
-        ? sessionQuotaStatus.message
-        : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a hard one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-      helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
-    },
-  ] : [];
+
 
   function replayFocusedTts(): void {
     seekTtsPlayback(Math.max(0, ttsPlayerProgressPercent / 100 - 0.08));
@@ -5345,7 +5283,7 @@ function App() {
   void canSubmitTtsSession;
   void kokoroPlayerProgressPercent;
   void lockedInputSummary;
-  void desktopOpenRouterGenerationButtons;
+
   void HelpIcon;
   void RuntimeMetricsPanel;
 
