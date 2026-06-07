@@ -88,9 +88,12 @@ export function useWorkspaceRouting(): WorkspaceRouting {
     setWorkspaceMode('dashboard');
   }, []);
 
-  const showSessionInputWorkspace = useCallback((inputMode: SessionInputMode) => {
+  const showSessionInputWorkspace = useCallback((_inputMode: SessionInputMode) => {
     setDashboardSessionId(null);
-    setWorkspaceMode(getWorkspaceModeForSessionInput(inputMode));
+    if (window.location.pathname !== '/training') {
+      window.history.pushState(null, '', '/training');
+    }
+    setCurrentPath('/training');
   }, []);
 
   return {
