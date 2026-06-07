@@ -32,11 +32,6 @@ type WorkspaceRouting = {
   showSessionInputWorkspace: (inputMode: SessionInputMode) => void;
 };
 
-export function getWorkspaceModeForSessionInput(inputMode: SessionInputMode): WorkspaceMode {
-  if (inputMode === 'input2' || inputMode === 'input4') return 'tts';
-  return 'kokoro';
-}
-
 export function useWorkspaceRouting(): WorkspaceRouting {
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('leaderboard');
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);

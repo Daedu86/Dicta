@@ -5330,6 +5330,25 @@ function App() {
     ] : [],
   };
 
+  void BrowserTtsPracticeCard;
+  void BrowserTtsSourceCard;
+  void KokoroPracticeCard;
+  void KokoroSourceCard;
+  void toggleKokoroEnabled;
+  void ttsPracticeMissing;
+  void kokoroPracticeMissing;
+  void openAdaptiveExportsForActiveInput;
+  void keyboardProfileLabel;
+  void rewindKokoroPhrase;
+  void adjustKokoroManualPace;
+  void resetKokoroPace;
+  void canSubmitTtsSession;
+  void kokoroPlayerProgressPercent;
+  void lockedInputSummary;
+  void desktopOpenRouterGenerationButtons;
+  void HelpIcon;
+  void RuntimeMetricsPanel;
+
   const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
@@ -5538,204 +5557,7 @@ function App() {
               onOpenSession={openWorkspaceForSession}
               onDeleteSession={deleteSession}
             />
-            {workspaceMode === 'kokoro' ? (
-              <section className="panel workspace-panel tts-workspace kokoro-workspace">
-                <div className="tts-workspace-header">
-                  <div>
-                    <p className="dashboard-eyebrow">Local Kokoro sidecar</p>
-                    <h2>Input # 3 - Kokoro TTS Local</h2>
-                    <p className="dashboard-meta">Generate phrase audio locally, listen, type, and adapt pace from your telemetry.</p>
-                    {!LOCAL_DEV_FEATURES_AVAILABLE ? (
-                      <p className="dashboard-meta">Kokoro needs a local Python sidecar and is disabled in hosted Vercel builds.</p>
-                    ) : null}
-                  </div>
-                  <div className="dashboard-header-actions">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={openAdaptiveExportsForActiveInput}
-                    >
-                      Adaptive Pace Layer
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => {
-                        showLeaderboardWorkspace();
-                      }}
-                    >
-                      Back to sessions
-                    </button>
-                  </div>
-                </div>
-
-                {lockedInputSummary}
-
-                <div className="tts-workspace-grid">
-                  <KokoroSourceCard
-                    kokoroStatus={kokoroStatus}
-                    kokoroHasText={kokoroHasText}
-                    kokoroText={kokoroText}
-                    kokoroTranscript={kokoroTranscript}
-                    kokoroLanguage={kokoroLanguage}
-                    kokoroPacingMode={kokoroPacingMode}
-                    kokoroSpeechRate={kokoroSpeechRate}
-                    kokoroVoice={kokoroVoice}
-                    kokoroPlayerCurrentSec={kokoroPlayerCurrentSec}
-                    kokoroPlayerDurationSec={kokoroPlayerDurationSec}
-                    kokoroPlayerProgressPercent={kokoroPlayerProgressPercent}
-                    kokoroPlayerCurrentWord={kokoroPlayerCurrentWord}
-                    kokoroPlayerWordCount={kokoroPlayerWordCount}
-                    kokoroLanguageWarning={kokoroLanguageWarning}
-                    kokoroCurrentChunk={kokoroCurrentChunk}
-                    localDevFeaturesAvailable={LOCAL_DEV_FEATURES_AVAILABLE}
-                    kokoroEnabled={kokoroEnabled}
-                    kokoroLanguageBlocked={isKokoroLanguageBlocked(kokoroLanguage)}
-                    onStartOrResumeKokoro={() => {
-                      if (kokoroStatus === 'paused') {
-                        void resumeKokoro();
-                      } else {
-                        void playKokoro();
-                      }
-                    }}
-                    onPauseKokoro={pauseKokoro}
-                    onStopKokoro={() => stopKokoroPlayback('stop')}
-                    formatDuration={formatDuration}
-                    formatTtsPacingMode={formatTtsPacingMode}
-                  />
-
-                  <KokoroPracticeCard
-                    keyboardProfileLabel={keyboardProfileLabel}
-                    keyboardProfile={keyboardProfile}
-                    kokoroStatus={kokoroStatus}
-                    kokoroHasText={kokoroHasText}
-                    kokoroEnabled={kokoroEnabled}
-                    kokoroPracticeText={kokoroPracticeText}
-                    activeSessionFinished={activeSessionFinished}
-                    controllerState={controllerState}
-                    rate={rate}
-                    lagSec={lagSec}
-                    lagWords={lagWords}
-                    wpm={wpm}
-                    kokoroVisibleAccuracy={kokoroVisibleAccuracy}
-                    canSubmitKokoroSession={canSubmitKokoroSession}
-                    desktopOpenRouterGenerationButtons={desktopOpenRouterGenerationButtons}
-                    openRouterAccessAllowed={openRouterAccessAllowed}
-                    sessionQuotaStatus={sessionQuotaStatus}
-                    openRouterOfflineTitle={openRouterOfflineTitle}
-                    trainingSubmitMessage={trainingSubmitMessage}
-                    kokoroPracticeMatchedWords={kokoroPracticeEvaluation.matchedWords}
-                    kokoroPracticeExtraWords={kokoroPracticeEvaluation.extraWords}
-                    kokoroPracticeMissing={kokoroPracticeMissing}
-                    kokoroPracticeWordsCount={kokoroPracticeWords.length}
-                    localDevFeaturesAvailable={LOCAL_DEV_FEATURES_AVAILABLE}
-                    kokoroLanguageBlocked={isKokoroLanguageBlocked(kokoroLanguage)}
-                    hasKokoroCurrentChunk={Boolean(kokoroCurrentChunk)}
-                    RuntimeMetricsPanelComponent={RuntimeMetricsPanel}
-                    MetricComponent={Metric}
-                    HelpIconComponent={HelpIcon}
-                    onToggleKokoroEnabled={() => void toggleKokoroEnabled()}
-                    onPlayKokoro={() => void playKokoro()}
-                    onPauseKokoro={pauseKokoro}
-                    onResumeKokoro={() => void resumeKokoro()}
-                    onReplayKokoroPhrase={replayKokoroPhrase}
-                    onRewindKokoroPhrase={rewindKokoroPhrase}
-                    onSlowKokoroPace={() => adjustKokoroManualPace(-0.05, 'manual_slow')}
-                    onFastKokoroPace={() => adjustKokoroManualPace(0.05, 'manual_fast')}
-                    onResetKokoroPace={resetKokoroPace}
-                    onKokoroPracticeChange={onKokoroPracticeChange}
-                    onKokoroPracticeKeyDown={onKokoroPracticeKeyDown}
-                    onSubmitKokoroSession={() => submitKokoroSession()}
-                    onOpenAdaptiveExportsForActiveInput={openAdaptiveExportsForActiveInput}
-                    onOpenOpenRouterGenerateForActiveInput={openOpenRouterGenerateForActiveInput}
-                    onResetSession={() => resetSession()}
-                  />
-                </div>
-              </section>
-            ) : workspaceMode === 'tts' ? (
-              <section className="panel workspace-panel tts-workspace">
-                <div className="tts-workspace-header">
-                  <div>
-                    <p className="dashboard-eyebrow">{activeInputFeatureLabel || 'Built-in browser feature'}</p>
-                    <h2>{activeInputLabel}</h2>
-                    <p className="dashboard-meta">
-                      {activeInputMode === 'input4'
-                        ? 'Listen, type, and pace against cached CosyVoice2 phrase audio.'
-                        : 'Listen, type, and pace against browser TTS.'}
-                    </p>
-                  </div>
-                  <div className="dashboard-header-actions">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => {
-                        showLeaderboardWorkspace();
-                      }}
-                    >
-                      Back to sessions
-                    </button>
-                  </div>
-                </div>
-
-                {lockedInputSummary}
-
-                <div className="tts-workspace-grid">
-                  <BrowserTtsSourceCard
-                    ttsStatus={ttsStatus}
-                    ttsHasText={ttsHasText}
-                    ttsText={ttsText}
-                    ttsTranscript={ttsTranscript}
-                    ttsLanguage={ttsLanguage}
-                    ttsPacingMode={ttsPacingMode}
-                    ttsPlayerCurrentSec={ttsPlayerCurrentSec}
-                    ttsPlayerDurationSec={ttsPlayerDurationSec}
-                    ttsPlayerProgressPercent={ttsPlayerProgressPercent}
-                    onPlayTts={() => void playTts()}
-                    onResumeTts={() => void resumeTts()}
-                    onPauseTts={pauseTts}
-                    onStopTts={() => stopTtsPlayback('stop')}
-                    onSeekTtsPlayback={seekTtsPlayback}
-                    formatDuration={formatDuration}
-                    formatTtsPacingMode={formatTtsPacingMode}
-                  />
-
-                  <BrowserTtsPracticeCard
-                    keyboardProfileLabel={keyboardProfileLabel}
-                    keyboardProfile={keyboardProfile}
-                    ttsStatus={ttsStatus}
-                    ttsHasText={ttsHasText}
-                    ttsPracticeText={ttsPracticeText}
-                    activeSessionFinished={activeSessionFinished}
-                    controllerState={controllerState}
-                    rate={rate}
-                    lagSec={lagSec}
-                    lagWords={lagWords}
-                    wpm={wpm}
-                    ttsVisibleAccuracy={ttsVisibleAccuracy}
-                    canSubmitTtsSession={canSubmitTtsSession}
-                    desktopOpenRouterGenerationButtons={desktopOpenRouterGenerationButtons}
-                    openRouterAccessAllowed={openRouterAccessAllowed}
-                    sessionQuotaStatus={sessionQuotaStatus}
-                    openRouterOfflineTitle={openRouterOfflineTitle}
-                    trainingSubmitMessage={trainingSubmitMessage}
-                    ttsPracticeMatchedWords={ttsPracticeEvaluation.matchedWords}
-                    ttsPracticeExtraWords={ttsPracticeEvaluation.extraWords}
-                    ttsPracticeMissing={ttsPracticeMissing}
-                    ttsPracticeWordsCount={ttsPracticeWords.length}
-                    onPlayTts={() => void playTts()}
-                    onPauseTts={pauseTts}
-                    onResumeTts={() => void resumeTts()}
-                    onStopTts={() => stopTtsPlayback('stop')}
-                    onTtsPracticeChange={onTtsPracticeChange}
-                    onTtsPracticeKeyDown={onTtsPracticeKeyDown}
-                    onSubmitTtsSession={() => submitTtsSession()}
-                    onOpenAdaptiveExportsForActiveInput={openAdaptiveExportsForActiveInput}
-                    onOpenOpenRouterGenerateForActiveInput={openOpenRouterGenerateForActiveInput}
-                    onResetSession={() => resetSession()}
-                  />
-                </div>
-              </section>
-            ) : workspaceMode === 'dashboard' && dashboardSession ? (
+            {workspaceMode === 'dashboard' && dashboardSession ? (
               <SessionDashboard
                 session={dashboardSession}
                 sessions={sessions}
