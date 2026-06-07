@@ -16,7 +16,6 @@ type AppShellHeaderProps = {
   syncStatusText: string;
   children?: ReactNode;
   onOpenLeaderboard: () => void;
-  onOpenDesktopTraining: () => void;
   onOpenMobileTraining: () => void;
   onOpenAdaptive: () => void;
   onOpenAdmin: () => void;
@@ -24,6 +23,7 @@ type AppShellHeaderProps = {
   onOpenOllama: () => void;
   onToggleTheme: () => void;
   onSignOut: () => void | Promise<void>;
+  [key: string]: unknown;
 };
 
 export function AppShellHeader({
