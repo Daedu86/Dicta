@@ -120,7 +120,6 @@ Data/display:
 Callbacks:
 
 - `onOpenLeaderboard`
-- `onOpenDesktopTraining`
 - `onOpenMobileTraining`
 - `onOpenAdaptive`
 - `onOpenAdmin`
@@ -165,3 +164,4 @@ Stop and do not extract if:
 - the component needs to mutate localStorage;
 - the component needs to own session creation state or validation;
 - the diff touches runtime adapters, adaptive controller logic, Supabase/RLS, API routes, persistence, sync, or training textarea behavior.
+
