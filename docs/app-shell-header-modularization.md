@@ -1,10 +1,12 @@
 # AppShellHeader modularization plan
 
-_Last updated: 2026-06-04_
+_Last updated: 2026-06-07_
 
 ## Status
 
 Complete. The main app shell header was extracted as a UI-only component.
+
+The shell header now exposes only the focused mobile training entrypoint. The previous separate desktop training entrypoint has been removed from the header component, `src/App.tsx`, the public workspace-routing helper surface, and this documentation. Keep `/training` and `Training Mode (Mobile ver)` intact because they are the supported training route and button.
 
 This plan covers the main app shell header in `src/App.tsx` after the AuthWorkspace extraction.
 
@@ -62,7 +64,7 @@ Keep in `App.tsx`:
 - session creation/import state, validation, and callbacks;
 - persistence, sync, auth, server/API behavior, and adaptive state.
 
-The new component should receive explicit display props and callbacks. It should not import App-local types, mutate storage, inspect Supabase auth state, or decide profile access.
+The component receives explicit display props and callbacks. It should not import App-local types, mutate storage, inspect Supabase auth state, or decide profile access.
 
 ## Completed scope
 
@@ -90,12 +92,25 @@ Left in `src/App.tsx`:
 - sign-out implementation;
 - `SessionCreateCard` state, validation, and callbacks.
 
+## Training entrypoints
+
+Supported:
+
+- `Training Mode (Mobile ver)` in `AppShellHeader` opens `/training`.
+- `/training` renders the focused training route.
+
+Removed:
+
+- the app shell no longer exposes a separate desktop training button;
+- `AppShellHeaderProps` no longer accepts a desktop-training callback;
+- `useWorkspaceRouting` no longer returns a dedicated desktop-training navigation helper.
+
 ## Do not change
 
 Do not change:
 
-- visible header copy;
-- button class names;
+- visible header copy for supported buttons;
+- button class names for supported buttons;
 - button titles and aria labels;
 - sync status text;
 - OpenRouter model status text;
@@ -103,7 +118,8 @@ Do not change:
 - theme toggle behavior;
 - sign-out behavior;
 - `SessionCreateCard` behavior;
-- adaptive `(inputMode, language)` behavior.
+- adaptive `(inputMode, language)` behavior;
+- `/training` focused training behavior.
 
 ## Expected props
 
@@ -130,7 +146,7 @@ Callbacks:
 
 ## Validation
 
-For the code patch:
+For code patches:
 
 ```bash
 npm run test -- --reporter=verbose
@@ -140,7 +156,7 @@ git diff --stat
 git status --short
 ```
 
-Validation result for the completed patch:
+Validation result for the completed extraction patch:
 
 ```text
 npm run test -- --reporter=verbose
@@ -155,6 +171,16 @@ expected UI present: true
 console errors: 0
 ```
 
+Validation result for the training-entrypoint cleanup:
+
+```text
+npm run build
+passed
+npm run test -- --reporter=verbose
+60 test files passed, 417 tests passed
+repository search for removed desktop-training identifiers returned no current matches
+```
+
 ## Stop conditions
 
 Stop and do not extract if:
@@ -164,4 +190,3 @@ Stop and do not extract if:
 - the component needs to mutate localStorage;
 - the component needs to own session creation state or validation;
 - the diff touches runtime adapters, adaptive controller logic, Supabase/RLS, API routes, persistence, sync, or training textarea behavior.
-
