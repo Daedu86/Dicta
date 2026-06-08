@@ -12,44 +12,44 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
   const enProfile = resolveBrowserTtsAdaptiveProfile('en');
   const deProfile = resolveBrowserTtsAdaptiveProfile('de');
 
-  it('enforces balanced and flow floor at 0.84', () => {
+  it('enforces EN balanced and flow floor at 0.80', () => {
     expect(applyBrowserTtsRuntimeRateFloor({
       mode: 'balanced',
-      requestedRate: 0.82,
+      requestedRate: 0.78,
       lagSec: 1.2,
       accuracy: 0.9,
       profile: enProfile,
-    })).toBe(0.84);
+    })).toBe(0.8);
     expect(applyBrowserTtsRuntimeRateFloor({
       mode: 'flow',
-      requestedRate: 0.8,
+      requestedRate: 0.78,
       lagSec: 0.2,
       accuracy: 0.97,
       profile: enProfile,
-    })).toBe(0.84);
+    })).toBe(0.8);
   });
 
-  it('enforces support floor at 0.82 for normal support', () => {
+  it('enforces EN support floor at 0.78 for normal support', () => {
     expect(applyBrowserTtsRuntimeRateFloor({
       mode: 'support',
-      requestedRate: 0.79,
+      requestedRate: 0.76,
       lagSec: 2.8,
       accuracy: 0.84,
-      profile: enProfile,
-    })).toBe(0.82);
-  });
-
-  it('enforces extreme support floor at 0.78', () => {
-    expect(applyBrowserTtsRuntimeRateFloor({
-      mode: 'support',
-      requestedRate: 0.75,
-      lagSec: 4.4,
-      accuracy: 0.72,
       profile: enProfile,
     })).toBe(0.78);
   });
 
-  it('caps support-needed rate at 0.92', () => {
+  it('enforces EN extreme support floor at 0.74', () => {
+    expect(applyBrowserTtsRuntimeRateFloor({
+      mode: 'support',
+      requestedRate: 0.72,
+      lagSec: 4.4,
+      accuracy: 0.72,
+      profile: enProfile,
+    })).toBe(0.74);
+  });
+
+  it('caps EN support-needed rate at 0.88', () => {
     expect(applyBrowserTtsRuntimeRateFloor({
       mode: 'support',
       requestedRate: 1.0,
@@ -57,7 +57,7 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
       accuracy: 0.83,
       supportNeeded: true,
       profile: enProfile,
-    })).toBe(0.92);
+    })).toBe(0.88);
   });
 
   it('uses conservative DE profile values', () => {
