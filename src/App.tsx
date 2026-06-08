@@ -4808,38 +4808,66 @@ function countLocalChangesPendingSync({
   feedback: AdaptiveSessionFeedbackByInputLanguage;
   lastSyncedAt: string | null;
 }): PendingSyncSummary {
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
+  const benchmarkInputs = benchmarks && typeof benchmarks === 'object' ? Object.values(benchmarks) : [];
+  const feedbackInputs = feedback && typeof feedback === 'object' ? Object.values(feedback) : [];
+
   if (!lastSyncedAt) {
-    const totalFeedback = Object.values(feedback).reduce(
-      (inputTotal, byLanguage) =>
+    const totalFeedback = feedbackInputs.reduce((inputTotal, byLanguage) => {
+      const lists = byLanguage && typeof byLanguage === 'object' ? Object.values(byLanguage) : [];
+      return (
         inputTotal +
-        Object.values(byLanguage && typeof byLanguage === 'object' ? byLanguage : {}).reduce(
+        lists.reduce(
           (languageTotal, list) => languageTotal + (Array.isArray(list) ? list.length : 0),
           0,
-        ),
-      0,
-    );
-    const totalBenchmarks = Object.values(benchmarks).reduce(
-      (inputTotal, byLanguage) => inputTotal + Object.keys(byLanguage).length,
-      0,
-    );
-    const count = sessions.length + totalBenchmarks + totalFeedback;
+        )
+      );
+    }, 0);
+
+    const totalBenchmarks = benchmarkInputs.reduce((inputTotal, byLanguage) => {
+      if (!byLanguage || typeof byLanguage !== 'object') return inputTotal;
+      return inputTotal + Object.keys(byLanguage).length;
+    }, 0);
+
+    const count = safeSessions.length + totalBenchmarks + totalFeedback;
     return { count, hasPending: count > 0 };
   }
 
   const lastSyncedTime = new Date(lastSyncedAt).getTime();
   if (!Number.isFinite(lastSyncedTime)) return { count: 0, hasPending: false };
 
-  let count = sessions.filter((session) => isTimestampAfterSync(session.updatedAt, lastSyncedTime)).length;
-  for (const byLanguage of Object.values(benchmarks)) {
+  let count = safeSessions.filter((session) => isTimestampAfterSync(session.updatedAt, lastSyncedTime)).length;
+
+  for (const byLanguage of benchmarkInputs) {
+    if (!byLanguage || typeof byLanguage !== 'object') continue;
     for (const benchmark of Object.values(byLanguage)) {
-      if (isTimestampAfterSync(benchmark.lastUpdatedAt, lastSyncedTime)) count += 1;
+      if (
+        benchmark &&
+        typeof benchmark === 'object' &&
+        'lastUpdatedAt' in benchmark &&
+        isTimestampAfterSync(String(benchmark.lastUpdatedAt), lastSyncedTime)
+      ) {
+        count += 1;
+      }
     }
   }
-  for (const byLanguage of Object.values(feedback)) {
+
+  for (const byLanguage of feedbackInputs) {
+    if (!byLanguage || typeof byLanguage !== 'object') continue;
     for (const list of Object.values(byLanguage)) {
-      count += list.filter((item) => isTimestampAfterSync(item.completedAt ?? item.createdAt, lastSyncedTime)).length;
+      if (!Array.isArray(list)) continue;
+      count += list.filter(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          isTimestampAfterSync(
+            String(('completedAt' in item ? item.completedAt : null) ?? ('createdAt' in item ? item.createdAt : null) ?? ''),
+            lastSyncedTime,
+          ),
+      ).length;
     }
   }
+
   return { count, hasPending: count > 0 };
 }
 
