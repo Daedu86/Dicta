@@ -116,6 +116,12 @@ describe('dictationScriptValidation', () => {
     expect(result.errors.join(' ')).toContain('phrases');
   });
 
+  it('fails removed Input 4 script modes', () => {
+    const result = validateDictationScript({ ...validScript, inputMode: 'cosyvoice-cache' });
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(' ')).toContain('browser-tts or kokoro');
+  });
+
   it('fails invalid boundaryType', () => {
     const result = validateDictationScript({
       ...validScript,
