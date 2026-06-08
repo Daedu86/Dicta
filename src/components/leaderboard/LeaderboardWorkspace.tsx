@@ -49,6 +49,15 @@ type LeaderboardSection = {
 type MetricComponentType = (props: { label: string; value: string; title?: string }) => ReactElement;
 type SessionDeviceIconComponentType<TSession extends LeaderboardSession = LeaderboardSession> = ComponentType<{ session: TSession }>;
 
+const LEADERBOARD_INTENT_LABELS: Record<LeaderboardSectionId, string> = {
+  'easy-express': 'Express Precision',
+  'medium-express': 'Express Stabilize',
+  'hard-express': 'Express Challenge',
+  'easy-standard': 'Precision',
+  'medium-standard': 'Stabilize',
+  'hard-standard': 'Challenge',
+};
+
 export type LeaderboardWorkspaceProps<TSession extends LeaderboardSession = LeaderboardSession> = {
   leaderboard: Array<LeaderboardEntry<TSession>>;
   leaderboardSections: Array<Omit<LeaderboardSection, 'sessions'> & { sessions: Array<LeaderboardEntry<TSession>> }>;
@@ -80,6 +89,10 @@ export type LeaderboardWorkspaceProps<TSession extends LeaderboardSession = Lead
   MetricComponent: MetricComponentType;
   SessionDeviceIconComponent: SessionDeviceIconComponentType<TSession>;
 };
+
+export function formatLeaderboardSectionIntentLabel(section: { id: string; label: string }): string {
+  return LEADERBOARD_INTENT_LABELS[section.id as LeaderboardSectionId] ?? section.label;
+}
 
 export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
   leaderboard,
@@ -160,6 +173,7 @@ export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
           ) : null}
           {leaderboardSections.map((section) => {
             const sectionExpanded = Boolean(leaderboardSectionExpanded[section.id]);
+            const sectionLabel = formatLeaderboardSectionIntentLabel(section);
             return (
               <section key={section.id} className="leaderboard-difficulty-section">
                 <button
@@ -169,7 +183,7 @@ export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
                   aria-expanded={sectionExpanded}
                 >
                   <span>
-                    <strong>{section.label}</strong>
+                    <strong>{sectionLabel}</strong>
                     <small>
                       {section.sessions.length} {section.sessions.length === 1 ? 'session' : 'sessions'}
                     </small>
@@ -180,7 +194,7 @@ export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
                 </button>
                 {sectionExpanded ? (
                   <div className="leaderboard-section-body">
-                    <div className="leaderboard-range-metrics" aria-label={`${section.label} average metrics`}>
+                    <div className="leaderboard-range-metrics" aria-label={`${sectionLabel} average metrics`}>
                       {section.rangeMetrics.map((rangeMetric) => (
                         <section key={rangeMetric.range} className="leaderboard-range-panel">
                           <h4>{rangeMetric.label}</h4>
@@ -212,7 +226,7 @@ export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
                       </div>
                       {section.sessions.length === 0 ? (
                         <div className="leaderboard-empty">
-                          No {section.label.toLowerCase()} sessions yet for {leaderboardLanguageView.toUpperCase()}.
+                          No {sectionLabel.toLowerCase()} sessions yet for {leaderboardLanguageView.toUpperCase()}.
                         </div>
                       ) : null}
                       {section.sessions.map(({ rank, session }) => {
