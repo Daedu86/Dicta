@@ -10,20 +10,18 @@ describe('input modes', () => {
   it('recognizes only active two-input modes', () => {
     expect(isCanonicalInputMode('browser-tts')).toBe(true);
     expect(isCanonicalInputMode('kokoro')).toBe(true);
-    expect(isCanonicalInputMode('cosyvoice-cache')).toBe(false);
-    expect(isCanonicalInputMode('qwen-cloud')).toBe(false);
+    expect(isCanonicalInputMode('removed-legacy-input')).toBe(false);
 
     expect(isStoredInputMode('browser-tts')).toBe(true);
     expect(isStoredInputMode('kokoro')).toBe(true);
-    expect(isStoredInputMode('qwen-cloud')).toBe(false);
+    expect(isStoredInputMode('removed-legacy-input')).toBe(false);
 
     expect(normalizeInputMode('browser-tts')).toBe('browser-tts');
     expect(normalizeInputMode('kokoro')).toBe('kokoro');
-    expect(normalizeInputMode('qwen-cloud')).toBeNull();
-    expect(normalizeInputMode('cosyvoice-cache')).toBeNull();
+    expect(normalizeInputMode('removed-legacy-input')).toBeNull();
 
     expect(formatInputModeLabel('browser-tts')).toBe('Browser TTS');
     expect(formatInputModeLabel('kokoro')).toBe('Kokoro');
-    expect(formatInputModeLabel('qwen-cloud')).toBe('Unknown input');
+    expect(formatInputModeLabel('removed-legacy-input')).toBe('Unknown input');
   });
 });

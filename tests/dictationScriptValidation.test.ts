@@ -116,8 +116,8 @@ describe('dictationScriptValidation', () => {
     expect(result.errors.join(' ')).toContain('phrases');
   });
 
-  it('fails removed Input 4 script modes', () => {
-    const result = validateDictationScript({ ...validScript, inputMode: 'cosyvoice-cache' });
+  it('fails removed legacy script modes', () => {
+    const result = validateDictationScript({ ...validScript, inputMode: 'removed-legacy-input' });
     expect(result.ok).toBe(false);
     expect(result.errors.join(' ')).toContain('browser-tts or kokoro');
   });

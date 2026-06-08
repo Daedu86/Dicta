@@ -55,12 +55,12 @@ describe('OpenRouter jobs route payload validation', () => {
     });
   });
 
-  it('rejects removed Input 4 durable session generation jobs', () => {
+  it('rejects removed legacy durable session generation jobs', () => {
     expect(() =>
       readCreateJobPayload({
         model: 'openrouter/free',
         prompt: 'Generate a Portuguese Dicta session.',
-        inputMode: 'cosyvoice-cache',
+        inputMode: 'removed-legacy-input-a',
         language: 'pt',
         slotLabel: 'Session PT',
         durationMinutes: 2,
@@ -71,7 +71,7 @@ describe('OpenRouter jobs route payload validation', () => {
       readCreateJobPayload({
         model: 'openrouter/free',
         prompt: 'Generate a Portuguese Dicta session.',
-        inputMode: 'qwen-cloud',
+        inputMode: 'removed-legacy-input-b',
         language: 'pt',
         slotLabel: 'Session PT',
         durationMinutes: 2,

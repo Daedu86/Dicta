@@ -137,7 +137,7 @@ describe('openRouterGenerationPrompt', () => {
   });
 
   it('uses Portuguese language labels and exact pt output contract', () => {
-    const profile = createEmptyInputLanguageBenchmark('cosyvoice-cache', 'pt');
+    const profile = createEmptyInputLanguageBenchmark('kokoro', 'pt');
     const payload = buildOpenRouterGenerationPrompt({
       profile,
       sessionFeedback: null,
@@ -145,7 +145,7 @@ describe('openRouterGenerationPrompt', () => {
       durationMinutes: 2,
     });
 
-    expect(payload.prompt).toContain('inputMode "cosyvoice-cache"');
+    expect(payload.prompt).toContain('inputMode "kokoro"');
     expect(payload.prompt).toContain('language "pt"');
     expect(payload.prompt).toContain('Write all phrase text naturally in Portuguese.');
     expect(payload.prompt).toContain('"language": "pt"');
@@ -166,15 +166,15 @@ describe('openRouterGenerationPrompt', () => {
       summary: 'German browser recovery only.',
     };
 
-    const cosyvoicePtProfile = createEmptyInputLanguageBenchmark('cosyvoice-cache', 'pt');
-    cosyvoicePtProfile.weakAreas = ['flow_instability'];
-    cosyvoicePtProfile.recommendation = {
+    const kokoroPtProfile = createEmptyInputLanguageBenchmark('kokoro', 'pt');
+    kokoroPtProfile.weakAreas = ['flow_instability'];
+    kokoroPtProfile.recommendation = {
       targetRateRange: [0.9, 1],
       targetPhraseSize: 'medium',
       targetPauseMs: 700,
-      nextTrainingFocus: ['Portuguese cache fluency only'],
+      nextTrainingFocus: ['Portuguese Kokoro fluency only'],
       confidence: 0.7,
-      summary: 'Portuguese cache fluency only.',
+      summary: 'Portuguese Kokoro fluency only.',
     };
 
     const browserDePayload = buildOpenRouterGenerationPrompt({
@@ -183,8 +183,8 @@ describe('openRouterGenerationPrompt', () => {
       promptSource: 'compact-adaptive-v2',
       durationMinutes: 3,
     });
-    const cosyvoicePtPayload = buildOpenRouterGenerationPrompt({
-      profile: cosyvoicePtProfile,
+    const kokoroPtPayload = buildOpenRouterGenerationPrompt({
+      profile: kokoroPtProfile,
       sessionFeedback: null,
       promptSource: 'compact-adaptive-v2',
       durationMinutes: 1,
@@ -197,16 +197,16 @@ describe('openRouterGenerationPrompt', () => {
     expect(browserDePayload.prompt).toContain('Write all phrase text naturally in German.');
     expect(browserDePayload.prompt).toContain('"language": "de"');
     expect(browserDePayload.prompt).toContain('German browser recovery only.');
-    expect(browserDePayload.prompt).not.toContain('Portuguese cache fluency only.');
+    expect(browserDePayload.prompt).not.toContain('Portuguese Kokoro fluency only.');
 
-    expect(cosyvoicePtPayload.prompt).toContain('inputMode "cosyvoice-cache"');
-    expect(cosyvoicePtPayload.prompt).toContain('language "pt"');
-    expect(cosyvoicePtPayload.prompt).toContain('"profileKey": "cosyvoice-cache/pt"');
-    expect(cosyvoicePtPayload.prompt).toContain('"trainingPrescription"');
-    expect(cosyvoicePtPayload.prompt).toContain('Write all phrase text naturally in Portuguese.');
-    expect(cosyvoicePtPayload.prompt).toContain('"language": "pt"');
-    expect(cosyvoicePtPayload.prompt).toContain('Portuguese cache fluency only.');
-    expect(cosyvoicePtPayload.prompt).not.toContain('German browser recovery only.');
+    expect(kokoroPtPayload.prompt).toContain('inputMode "kokoro"');
+    expect(kokoroPtPayload.prompt).toContain('language "pt"');
+    expect(kokoroPtPayload.prompt).toContain('"profileKey": "kokoro/pt"');
+    expect(kokoroPtPayload.prompt).toContain('"trainingPrescription"');
+    expect(kokoroPtPayload.prompt).toContain('Write all phrase text naturally in Portuguese.');
+    expect(kokoroPtPayload.prompt).toContain('"language": "pt"');
+    expect(kokoroPtPayload.prompt).toContain('Portuguese Kokoro fluency only.');
+    expect(kokoroPtPayload.prompt).not.toContain('German browser recovery only.');
   });
 
   it('includes compact adaptive v2 feedback only when feedback is provided', () => {

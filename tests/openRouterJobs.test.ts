@@ -89,7 +89,7 @@ describe('openRouterJobs', () => {
     clearActiveOpenRouterJob();
   });
 
-  it('restores supported legacy job metadata while ignoring removed Input 4 jobs', () => {
+  it('restores supported legacy job metadata while ignoring removed legacy jobs', () => {
     clearActiveOpenRouterJob();
     window.localStorage.setItem(
       OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
@@ -104,10 +104,10 @@ describe('openRouterJobs', () => {
           startedAt: '2026-05-17T10:00:00.000Z',
         },
         {
-          jobId: 'job-removed-input4',
+          jobId: 'job-removed-legacy',
           model: 'openrouter/free',
-          slotLabel: 'Removed Input 4 job',
-          inputMode: 'qwen-cloud',
+          slotLabel: 'Removed legacy job',
+          inputMode: 'removed-legacy-input',
           language: 'pt',
           durationMinutes: 4,
           promptMode: 'compact-adaptive',

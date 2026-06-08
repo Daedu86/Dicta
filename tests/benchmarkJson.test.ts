@@ -177,7 +177,6 @@ describe('benchmarkJson', () => {
       createEmptyInputLanguageBenchmark('browser-tts', 'es'),
       createEmptyInputLanguageBenchmark('browser-tts', 'fr'),
       createEmptyInputLanguageBenchmark('kokoro', 'de'),
-      createEmptyInputLanguageBenchmark('cosyvoice-cache', 'de'),
     ];
 
     for (const profile of profiles) {

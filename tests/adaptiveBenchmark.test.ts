@@ -222,13 +222,11 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const profiles = [
       createEmptyInputLanguageBenchmark('browser-tts', 'pt'),
       createEmptyInputLanguageBenchmark('kokoro', 'pt'),
-      createEmptyInputLanguageBenchmark('cosyvoice-cache', 'pt'),
     ];
 
     expect(profiles.map((profile) => `${profile.inputMode}/${profile.language}`)).toEqual([
       'browser-tts/pt',
       'kokoro/pt',
-      'cosyvoice-cache/pt',
     ]);
   });
 
@@ -803,7 +801,6 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
       createEmptyInputLanguageBenchmark('browser-tts', 'es'),
       createEmptyInputLanguageBenchmark('browser-tts', 'fr'),
       createEmptyInputLanguageBenchmark('kokoro', 'de'),
-      createEmptyInputLanguageBenchmark('cosyvoice-cache', 'de'),
     ];
 
     for (const profile of profiles) {
@@ -1037,11 +1034,10 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     const es = buildPressureProfile('browser-tts', 'es');
     const fr = buildPressureProfile('browser-tts', 'fr');
     const kokoro = buildPressureProfile('kokoro', 'de');
-    const cosyvoice = buildPressureProfile('cosyvoice-cache', 'de');
 
     expect(de.recommendation.targetRateRange).toEqual([0.8, 0.85]);
     expect(de.recommendation.targetPauseMs).toBe(1200);
-    for (const profile of [en, es, fr, kokoro, cosyvoice]) {
+    for (const profile of [en, es, fr, kokoro]) {
       expect(profile.recommendation.targetRateRange).not.toEqual([0.95, 1]);
       expect(profile.recommendation.summary).not.toContain('support-mode pressure remains high');
     }
