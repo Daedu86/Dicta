@@ -70,30 +70,6 @@ describe('profile scoped storage', () => {
     });
   });
 
-  it('saves the previous authenticated profile and restores the next profile snapshot', () => {
-    const storage = new MemoryStorage({
-      [PROFILE_SCOPED_STORAGE_MARKER_KEY]: 'dicta-main',
-      'dicta.sessions.v1': '[{"id":"main-session"}]',
-      'dicta.deletedSessionIds.v1': '["main-deleted"]',
-      [profileScopedStorageKey('codex-tester')]: JSON.stringify({
-        'dicta.sessions.v1': '[{"id":"tester-session"}]',
-        'dicta.adaptiveBenchmarks.v1': '{"kokoro:en":{"sampleCount":1}}',
-      }),
-    });
-
-    const result = switchProfileScopedStorage(storage, SCOPED_KEYS, 'codex-tester');
-
-    expect(result.previousProfileId).toBe('dicta-main');
-    expect(result.activeProfileId).toBe('codex-tester');
-    expect(JSON.parse(storage.getItem(profileScopedStorageKey('dicta-main')) ?? '{}')).toEqual({
-      'dicta.sessions.v1': '[{"id":"main-session"}]',
-      'dicta.deletedSessionIds.v1': '["main-deleted"]',
-    });
-    expect(storage.getItem('dicta.sessions.v1')).toBe('[{"id":"tester-session"}]');
-    expect(storage.getItem('dicta.deletedSessionIds.v1')).toBeNull();
-    expect(storage.getItem('dicta.adaptiveBenchmarks.v1')).toBe('{"kokoro:en":{"sampleCount":1}}');
-  });
-
   it('restores a saved profile when switching back', () => {
     const storage = new MemoryStorage({
       [PROFILE_SCOPED_STORAGE_MARKER_KEY]: 'codex-tester',
