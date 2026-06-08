@@ -21,15 +21,14 @@ Do not start implementation by guessing at a file. First map the request to the 
 
 ## Project Snapshot
 
-Dicta trains listening and typing across 3 input modes and 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 30 days.
+Dicta trains listening and typing across 2 input modes and 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 30 days.
 
 Inputs:
 
 - `browser-tts` / input 2 / browser SpeechSynthesis
 - `kokoro` / input 3 / local Kokoro TTS sidecar
-- `cosyvoice-cache` / input 4 / CosyVoice2 cached WAV playback with browser fallback
 
-Legacy stored/cache data may still use `qwen-cloud`; normalize it to `cosyvoice-cache` before writing new adaptive or OpenRouter job state.
+Input 4 / `cosyvoice-cache` / historical `qwen-cloud` is removed from active product entry points. Do not add new Input 4 creation, generation, benchmark, or UI paths.
 
 Languages:
 
@@ -64,7 +63,7 @@ Before finishing code changes, run `npm run test` and `npm run build` unless the
 
 ## Adaptive Pace Layer Rules
 
-The Adaptive Pace Layer is shared across 3 inputs and 5 languages. Benchmarks, telemetry, recommendations, and session feedback are scoped per:
+The Adaptive Pace Layer is shared across 2 inputs and 5 languages. Benchmarks, telemetry, recommendations, and session feedback are scoped per:
 
 `(inputMode, language)`
 
@@ -72,7 +71,6 @@ Inputs:
 
 - `browser-tts` / input 2
 - `kokoro` / input 3
-- `cosyvoice-cache` / input 4 (CosyVoice2 cache path; `qwen-cloud` is a legacy alias)
 
 Languages:
 
@@ -110,7 +108,7 @@ Key brain files:
 - `src/core/adaptive/dictationScriptValidation.ts`
 - `src/core/adaptive/benchmarkJson.ts`
 
-Browser TTS specific adapters live under `src/inputs/browserTts/`.
+Browser TTS specific adapters live under `src/inputs/browserTts/`. Kokoro specific adapters live under `src/inputs/kokoro/`.
 
 ## Training Mode Performance Rules
 
@@ -150,7 +148,9 @@ Browser storage keys:
 - `dicta.openrouterActiveJobs.v1`
 
 Supabase sync stores JSON rows in `dicta_sync_items`. Session deletes are synced as tombstones, not hard deletes. Do not reintroduce hard-delete-only behavior, or deleted sessions can reappear on another device.
+
 Authenticated Supabase sessions must complete the initial pull/merge before rendering profile-scoped session UI, so a hard refresh does not briefly show stale localStorage rows. Remote session tombstones are sticky against local `ready`/pending copies; only a newer locally submitted finished session may repair an older tombstone.
+
 Completed session feedback rows are completion evidence for their session id, so stale `ready` copies from another tab/device must not keep a practiced session pending or overwrite the repaired finished session.
 
 Supabase env vars are public Vite build vars and must be set locally and in Vercel:
