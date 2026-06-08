@@ -1,5 +1,6 @@
 import type {
   AdaptivePacingInput,
+  ListeningPrecisionMetrics,
   PacingDecision,
   PacingMode,
   PhraseSize,
@@ -65,6 +66,49 @@ function chooseMode(input: AdaptivePacingInput): PacingMode {
   }
 
   return 'balanced';
+}
+
+function computeListeningPrecisionControlScore(metrics: ListeningPrecisionMetrics): number {
+  return clamp(
+    metrics.listeningRecallScore * 0.3 +
+      metrics.contentWordRecall * 0.25 +
+      metrics.detailPrecisionScore * 0.15 +
+      metrics.functionWordAccuracy * 0.15 +
+      metrics.wordOrderAccuracy * 0.1 +
+      (1 - metrics.lateCompletionRate) * 0.05,
+    0,
+    1,
+  );
+}
+
+function resolveListeningPrecisionRateCeiling(
+  metrics: ListeningPrecisionMetrics | undefined,
+  mode: PacingMode,
+  supportRateCeiling: number,
+): number | null {
+  if (!metrics) return null;
+  const precisionScore = computeListeningPrecisionControlScore(metrics);
+  const severePrecisionRisk =
+    precisionScore < 0.78 ||
+    metrics.contentWordRecall < 0.75 ||
+    metrics.omissionRate > 0.18;
+  if (severePrecisionRisk) return mode === 'support' ? supportRateCeiling : 0.92;
+
+  const unstablePrecisionRisk =
+    precisionScore < 0.86 ||
+    metrics.detailPrecisionScore < 0.78 ||
+    metrics.functionWordAccuracy < 0.78 ||
+    metrics.wordOrderAccuracy < 0.8 ||
+    metrics.lateCompletionRate > 0.35;
+  if (unstablePrecisionRisk) return mode === 'flow' ? 0.98 : 0.96;
+
+  const emergingPrecisionRisk =
+    precisionScore < 0.92 ||
+    metrics.omissionRate > 0.08 ||
+    metrics.lateCompletionRate > 0.2;
+  if (emergingPrecisionRisk) return mode === 'flow' ? 1.02 : 1;
+
+  return null;
 }
 
 export class AdaptiveDictationController {
@@ -213,7 +257,7 @@ export class AdaptiveDictationController {
       nextPhraseSize = 'medium';
     }
 
-    const replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, MAX_PLAYBACK_RATE);
+    let replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, MAX_PLAYBACK_RATE);
 
     const reason = [`mode=${mode}`];
     if (phraseOverload) {
@@ -291,11 +335,24 @@ export class AdaptiveDictationController {
       playbackRate = Number(Math.min(supportRateCeiling, playbackRate).toFixed(2));
     }
 
+    const precisionRateCeiling = resolveListeningPrecisionRateCeiling(live.listeningPrecision, mode, supportRateCeiling);
+    if (precisionRateCeiling !== null) {
+      const cappedRate = Number(Math.max(modeFloor, Math.min(precisionRateCeiling, playbackRate)).toFixed(2));
+      if (cappedRate < playbackRate) {
+        playbackRate = cappedRate;
+        reason.push('listening-precision-rate-ceiling');
+      }
+    }
+
+    const finalPlaybackRate = deferPauseUntilSafeBoundary
+      ? Number(Math.max(modeFloor, Number((playbackRate - 0.04).toFixed(2))).toFixed(2))
+      : playbackRate;
+    replayRate = Number(clamp(Math.min(replayRate, finalPlaybackRate - 0.02), modeFloor, MAX_PLAYBACK_RATE).toFixed(2));
+    this.previousRate = finalPlaybackRate;
+
     return {
       mode,
-      playbackRate: deferPauseUntilSafeBoundary
-        ? Number(Math.max(modeFloor, Number((playbackRate - 0.04).toFixed(2))).toFixed(2))
-        : playbackRate,
+      playbackRate: finalPlaybackRate,
       pauseAfterPhraseMs,
       shouldPauseNow,
       shouldReplayPhrase,
