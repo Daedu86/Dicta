@@ -14,6 +14,24 @@ export type BrowserTtsSessionWarmupProfile = {
   promotionMaxLagSecAbs: number;
 };
 
+export type BrowserTtsAdaptivePauseProfile = {
+  enabled: boolean;
+  minPauseMs: number;
+  maxPauseMs: number;
+  lowAccuracyPauseMs: number;
+  veryLowAccuracyPauseMs: number;
+  lagBehindPauseMs: number;
+  severeLagBehindPauseMs: number;
+  progressBehindPauseMs: number;
+  lowAccuracyThreshold: number;
+  veryLowAccuracyThreshold: number;
+  lagBehindSec: number;
+  severeLagBehindSec: number;
+  progressBehindRatio: number;
+  historyLowAccuracyThreshold: number;
+  historyHighLagSec: number;
+};
+
 export type BrowserTtsAdaptiveProfile = {
   supportRateFloor: number;
   extremeSupportRateFloor: number;
@@ -24,6 +42,7 @@ export type BrowserTtsAdaptiveProfile = {
   recommendationCalibrationEnabled: boolean;
   recommendationCalibrationGate?: BrowserTtsCalibrationGate;
   sessionWarmup: BrowserTtsSessionWarmupProfile;
+  adaptivePause: BrowserTtsAdaptivePauseProfile;
   supportRecoveryAggressiveness: 'low' | 'medium' | 'high';
   phraseGrowthConservatism: 'low' | 'medium' | 'high';
   germanShortBias: {
@@ -49,6 +68,23 @@ export const BROWSER_TTS_BASE_PROFILE: BrowserTtsAdaptiveProfile = {
     phraseSize: 'short',
     promotionMinAccuracy: 0.88,
     promotionMaxLagSecAbs: 0.8,
+  },
+  adaptivePause: {
+    enabled: true,
+    minPauseMs: 1200,
+    maxPauseMs: 2600,
+    lowAccuracyPauseMs: 1600,
+    veryLowAccuracyPauseMs: 2000,
+    lagBehindPauseMs: 1700,
+    severeLagBehindPauseMs: 2200,
+    progressBehindPauseMs: 1800,
+    lowAccuracyThreshold: 0.84,
+    veryLowAccuracyThreshold: 0.76,
+    lagBehindSec: 1.5,
+    severeLagBehindSec: 3.0,
+    progressBehindRatio: 0.1,
+    historyLowAccuracyThreshold: 0.82,
+    historyHighLagSec: 2.0,
   },
   supportRecoveryAggressiveness: 'medium',
   phraseGrowthConservatism: 'medium',
@@ -85,6 +121,23 @@ export const BROWSER_TTS_EN_PROFILE: BrowserTtsAdaptiveProfile = {
     phraseSize: 'short',
     promotionMinAccuracy: 0.88,
     promotionMaxLagSecAbs: 0.8,
+  },
+  adaptivePause: {
+    enabled: true,
+    minPauseMs: 1600,
+    maxPauseMs: 3200,
+    lowAccuracyPauseMs: 2200,
+    veryLowAccuracyPauseMs: 2600,
+    lagBehindPauseMs: 2200,
+    severeLagBehindPauseMs: 2800,
+    progressBehindPauseMs: 2400,
+    lowAccuracyThreshold: 0.88,
+    veryLowAccuracyThreshold: 0.76,
+    lagBehindSec: 1.2,
+    severeLagBehindSec: 3.0,
+    progressBehindRatio: 0.08,
+    historyLowAccuracyThreshold: 0.82,
+    historyHighLagSec: 1.8,
   },
   recommendationCalibrationEnabled: false,
   supportRecoveryAggressiveness: 'high',
