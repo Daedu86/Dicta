@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { ControlAction } from '../types/dictation';
 
-export type TrainingLifecycleInputMode = 'input2' | 'input3' | 'input4';
+export type TrainingLifecycleInputMode = 'input2' | 'input3';
 export type TrainingLifecycleSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 export type TrainingLifecyclePlaybackStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 
@@ -95,18 +95,10 @@ export function deriveTrainingLifecycleState({
   kokoroHasText,
   inputSettingsLocked,
 }: TrainingLifecycleStateInput): TrainingLifecycleDerivedState {
-  const inputSettingsReady =
-    activeInputMode === 'input2' || activeInputMode === 'input4'
-        ? ttsHasText
-        : kokoroHasText;
+  const inputSettingsReady = activeInputMode === 'input2' ? ttsHasText : kokoroHasText;
   const setupLocked = activeSessionFinished || sessionStatus === 'error' || inputSettingsLocked;
-  const canSubmitTtsSession =
-    (activeInputMode === 'input2' || activeInputMode === 'input4') &&
-    !activeSessionFinished &&
-    sessionStatus !== 'error' &&
-    ttsHasText;
-  const canSubmitKokoroSession =
-    activeInputMode === 'input3' && !activeSessionFinished && sessionStatus !== 'error' && kokoroHasText;
+  const canSubmitTtsSession = activeInputMode === 'input2' && !activeSessionFinished && sessionStatus !== 'error' && ttsHasText;
+  const canSubmitKokoroSession = activeInputMode === 'input3' && !activeSessionFinished && sessionStatus !== 'error' && kokoroHasText;
 
   return {
     inputSettingsReady,
@@ -134,7 +126,7 @@ export function useTrainingSessionLifecycle({
   const lockInputSettings = useCallback((): void => {
     if (state.inputSettingsLocked) return;
     if (!derivedState.inputSettingsReady) {
-      if (state.activeInputMode === 'input2' || state.activeInputMode === 'input4') {
+      if (state.activeInputMode === 'input2') {
         actions.setError('Paste TTS text before locking this input.');
       } else {
         actions.setError('Paste Kokoro source text before locking Input #3.');
