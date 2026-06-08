@@ -22,8 +22,6 @@ export function estimateSessionVoiceDurationSec(session: SessionDurationInput): 
     return estimateTextDurationSec(session.kokoroText ?? '');
   }
 
-  const ttsChunkDuration = sumChunkDurations(session.telemetry?.ttsChunks ?? []);
-  if (session.inputMode === 'input4' && ttsChunkDuration !== null) return ttsChunkDuration;
   return estimateTextDurationSec(session.ttsText ?? '');
 }
 
