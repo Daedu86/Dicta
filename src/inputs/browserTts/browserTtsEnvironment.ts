@@ -1,7 +1,7 @@
 import type { BrowserTtsEnvironmentFingerprint } from '../../types/dictation';
 import { voicesForBrowserTtsLanguage, type BrowserTtsLanguage } from './browserTtsVoices';
 
-type BrowserTtsEnvironmentInputMode = 'browser-tts' | 'kokoro';
+type BrowserTtsEnvironmentInputMode = 'browser-tts';
 
 export type BrowserTtsEnvironmentVoiceLike = {
   lang?: string;

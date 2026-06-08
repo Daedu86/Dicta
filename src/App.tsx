@@ -2019,7 +2019,7 @@ function App() {
       setDictationScriptValidation({
         ok: false,
         script: null,
-        errors: ['inputMode must match input2/kokoro or browser-tts/kokoro.'],
+        errors: ['inputMode must match input2 or browser-tts.'],
       });
       return;
     }
@@ -2050,7 +2050,7 @@ function App() {
     const generationOrigin = options.generationOrigin ?? 'openrouter';
     const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
     if (!inputMode) {
-      setOpenRouterError('Generated script inputMode must match input2/kokoro or browser-tts/kokoro.');
+      setOpenRouterError('Generated script inputMode must match input2 or browser-tts.');
       return;
     }
 
@@ -5252,7 +5252,7 @@ function truncateTitle(title: string): string {
 function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMode | null {
   const normalized = String(inputMode).trim().toLowerCase().replace(/_/g, '-');
   if (normalized === 'input2' || normalized === 'browser-tts' || normalized === 'browsertts') return 'input2';
-  if (normalized === 'kokoro' || normalized === 'kokoro' || normalized === 'kokoro-tts') return 'input3';
+  
   return null;
 }
 

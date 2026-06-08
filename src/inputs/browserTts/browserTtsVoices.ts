@@ -7,7 +7,7 @@ export type BrowserTtsVoiceLike = {
 };
 
 export type BrowserTtsLanguage = SupportedLanguage;
-export type BrowserTtsSessionInputMode = 'input2' | 'input3' | string;
+export type BrowserTtsSessionInputMode = 'input2' | string;
 
 export type BrowserTtsVoiceResolution<TVoice extends BrowserTtsVoiceLike> = {
   voice: TVoice | null;

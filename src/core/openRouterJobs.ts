@@ -183,7 +183,7 @@ function finiteNumberField(record: Record<string, unknown>, key: string): number
 }
 
 function isActiveInputMode(value: string): boolean {
-  return value === 'browser-tts' || value === 'kokoro';
+  return value === 'browser-tts';
 }
 
 function isLanguage(value: string): value is LanguageCode {

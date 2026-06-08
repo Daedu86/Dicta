@@ -10,7 +10,7 @@ import {
 const validScript: DictationScript = {
   title: 'Generated Dictation',
   language: 'en',
-  inputMode: 'kokoro',
+  inputMode: 'browser-tts',
   difficulty: 'normal',
   estimatedDurationSec: 90,
   targetSkills: [],
@@ -102,7 +102,7 @@ describe('dictationScriptValidation', () => {
       }),
     );
     expect(result.ok).toBe(true);
-    expect(result.ok ? result.script.inputMode : '').toBe('kokoro');
+    expect(result.ok ? result.script.inputMode : '').toBe('browser-tts');
   });
 
   it('fails invalid JSON', () => {
@@ -119,7 +119,7 @@ describe('dictationScriptValidation', () => {
   it('fails removed legacy script modes', () => {
     const result = validateDictationScript({ ...validScript, inputMode: 'removed-legacy-input' });
     expect(result.ok).toBe(false);
-    expect(result.errors.join(' ')).toContain('browser-tts or kokoro');
+    expect(result.errors.join(' ')).toContain('browser-tts');
   });
 
   it('fails invalid boundaryType', () => {
