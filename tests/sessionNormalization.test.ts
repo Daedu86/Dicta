@@ -25,14 +25,6 @@ describe('sessionNormalization', () => {
         telemetry: {},
       }).kokoroLanguage,
     ).toBe('fr');
-    expect(
-      normalizeSessionForPersistence({
-        inputMode: 'input4' as const,
-        ttsLanguage: 'pt' as const,
-        kokoroLanguage: 'fr' as const,
-        telemetry: {},
-      }).ttsLanguage,
-    ).toBe('pt');
   });
 
   it('input2 only keeps ttsLanguage', () => {
@@ -71,6 +63,17 @@ describe('sessionNormalization', () => {
     };
 
     const normalized = normalizeSessionForPersistence(session);
+    expect(normalized.kokoroLanguage).toBeNull();
+  });
+
+  it('clears languages for removed legacy inputs', () => {
+    const normalized = normalizeSessionForPersistence({
+      inputMode: 'removed-input' as const,
+      ttsLanguage: 'pt' as const,
+      kokoroLanguage: 'fr' as const,
+      telemetry: {},
+    });
+    expect(normalized.ttsLanguage).toBeNull();
     expect(normalized.kokoroLanguage).toBeNull();
   });
 
