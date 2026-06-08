@@ -20,9 +20,8 @@ export interface WordAlignmentPair {
 }
 
 export type SessionPointsSource = {
-  inputMode?: 'input2' | 'input3' | string;
+  inputMode?: string;
   ttsText?: string | null;
-  kokoroText?: string | null;
 };
 
 export function evaluateTranscriptAttempt(input: string, transcript: Transcript | null): AttemptEvaluation {
@@ -69,8 +68,6 @@ export function computeSessionMaxPoints(session: SessionPointsSource | null | un
   let maxPoints = 0;
   if (session.inputMode === 'input2') {
     maxPoints = countNormalizedTextWords(session.ttsText ?? '');
-  } else if (session.inputMode === 'input3') {
-    maxPoints = countNormalizedTextWords(session.kokoroText ?? '');
   }
 
   return maxPoints > 0 ? maxPoints : null;

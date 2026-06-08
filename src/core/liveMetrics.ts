@@ -8,7 +8,6 @@ export type SessionInputMode = string;
 export type SessionLanguageLike = {
   inputMode: SessionInputMode;
   ttsLanguage?: SupportedLanguage | null;
-  kokoroLanguage?: SupportedLanguage | null;
 };
 
 export type SessionForMetrics = SessionLanguageLike & {
@@ -43,9 +42,6 @@ export type LanguageRangeSummary = {
 export function resolveSessionLanguage(session: SessionLanguageLike): MetricsLanguageView | null {
   if (session.inputMode === 'input2') {
     return session.ttsLanguage ?? null;
-  }
-  if (session.inputMode === 'input3') {
-    return session.kokoroLanguage ?? null;
   }
   return null;
 }

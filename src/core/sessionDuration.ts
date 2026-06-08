@@ -1,45 +1,34 @@
-import type { SessionTelemetry } from '../types/dictation';
-
-const TTS_BASE_WORDS_PER_SECOND = 2.6;
+const DEFAULT_WORDS_PER_SECOND = 2.6;
 
 export type SessionDurationInput = {
   inputMode?: string;
-  voiceDurationSec?: number | null;
   ttsText?: string;
-  kokoroText?: string;
-  kokoroChunks?: Array<{ durationSec?: number }>;
-  metrics?: { rate?: number };
-  telemetry?: Partial<SessionTelemetry> | null;
+  telemetry?: {
+    ttsChunks?: Array<{ durationSec?: number }>;
+  };
+  voiceDurationSec?: number | null;
 };
 
-export function estimateSessionVoiceDurationSec(session: SessionDurationInput): number | null {
-  const explicitDuration = finitePositiveOrNull(session.voiceDurationSec);
-  if (explicitDuration !== null) return explicitDuration;
-
-  if (session.inputMode === 'input3') {
-    const chunkDuration = sumChunkDurations(session.kokoroChunks ?? []);
-    if (chunkDuration !== null) return chunkDuration;
-    return estimateTextDurationSec(session.kokoroText ?? '');
+export function estimateSessionVoiceDurationSec(session: SessionDurationInput): number {
+  if (typeof session.voiceDurationSec === 'number' && Number.isFinite(session.voiceDurationSec) && session.voiceDurationSec > 0) {
+    return session.voiceDurationSec;
   }
+
+  const chunkDuration = sumChunkDurations(session.telemetry?.ttsChunks ?? []);
+  if (chunkDuration > 0) return chunkDuration;
 
   return estimateTextDurationSec(session.ttsText ?? '');
 }
 
-function sumChunkDurations(chunks: Array<{ durationSec?: number }>): number | null {
-  const durations = chunks
-    .map((chunk) => finitePositiveOrNull(chunk.durationSec))
-    .filter((value): value is number => value !== null);
-  if (durations.length === 0) return null;
-  return durations.reduce((sum, value) => sum + value, 0);
+export function sumChunkDurations(chunks: Array<{ durationSec?: number }>): number {
+  return chunks.reduce((sum, chunk) => {
+    const duration = Number(chunk.durationSec);
+    return Number.isFinite(duration) && duration > 0 ? sum + duration : sum;
+  }, 0);
 }
 
-function estimateTextDurationSec(text: string): number | null {
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
-  if (wordCount === 0) return null;
-  return wordCount / TTS_BASE_WORDS_PER_SECOND;
-}
-
-function finitePositiveOrNull(value: unknown): number | null {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+export function estimateTextDurationSec(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  if (words === 0) return 0;
+  return Math.max(1, words / DEFAULT_WORDS_PER_SECOND);
 }

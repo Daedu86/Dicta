@@ -967,7 +967,7 @@ function App() {
     activeInputMode === 'input2'
       ? 'Built-in browser feature'
       : 'Local Python sidecar';
-  const activeInputWorkspaceMode: WorkspaceMode = activeInputMode === 'input2' ? 'tts' : 'kokoro';
+  const activeInputWorkspaceMode: WorkspaceMode = 'tts';
   const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
   const assignedOpenRouterModel =
     syncConfig.authRequired && appProfile?.role === 'member' ? appProfile.assignedOpenRouterModel?.trim() ?? '' : '';
@@ -1377,7 +1377,6 @@ function App() {
       computeSessionMaxPoints({
         inputMode: activeInputMode,
         ttsText,
-        kokoroText,
       }),
     [activeInputMode, kokoroText, ttsText],
   );
@@ -1596,8 +1595,7 @@ function App() {
           ttsText,
           ttsLanguage,
           ttsPracticeText,
-          kokoroText,
-          kokoroLanguage,
+            kokoroLanguage,
           kokoroVoice,
           kokoroPracticeText,
           kokoroChunks,
@@ -5055,13 +5053,11 @@ function byteSize(value: string): number {
 
 function formatSessionInputMode(mode: string): string {
   if (mode === 'input2') return 'Browser TTS';
-  if (mode === 'kokoro') return 'Kokoro local';
   return 'Removed legacy input';
 }
 
 function formatInputModeLabel(mode: InputMode): string {
   if (mode === 'browser-tts') return 'Browser TTS';
-  if (mode === 'kokoro') return 'Kokoro local';
   return 'Removed legacy input';
 }
 
