@@ -8,7 +8,6 @@ type HarnessSession = {
   inputMode: 'input2';
   inputSettingsLocked: boolean;
   ttsLanguage: 'de';
-  kokoroLanguage: null;
   difficulty: 'normal';
   status: 'running';
   createdDeviceKind: 'unknown';
@@ -21,7 +20,6 @@ const session: HarnessSession = {
   inputMode: 'input2',
   inputSettingsLocked: true,
   ttsLanguage: 'de',
-  kokoroLanguage: null,
   difficulty: 'normal',
   status: 'running',
   createdDeviceKind: 'unknown',

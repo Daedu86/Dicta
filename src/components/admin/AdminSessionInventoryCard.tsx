@@ -1,7 +1,7 @@
 import type { SessionTelemetry } from '../../types/dictation';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input2' | 'input3' | string;
+type SessionInputMode = string;
 type MetricsLanguageView = 'en' | 'es' | 'de' | 'fr' | 'pt' | 'all';
 
 type AdminInventorySessionBase = {
@@ -10,7 +10,6 @@ type AdminInventorySessionBase = {
   inputMode: SessionInputMode;
   updatedAt: string;
   ttsPracticeText: string;
-  kokoroPracticeText: string;
   status: SessionStatus;
   telemetry: SessionTelemetry;
   [key: string]: unknown;
@@ -32,7 +31,7 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
 }
 
 function countSessionTypedWords(session: AdminInventorySessionBase): number {
-  const text = session.inputMode === 'input3' ? session.kokoroPracticeText : session.ttsPracticeText;
+  const text = session.ttsPracticeText;
   return text.split(/\s+/).filter(Boolean).length;
 }
 
@@ -53,7 +52,6 @@ function formatBytes(bytes: number): string {
 
 function formatSessionInputMode(mode: SessionInputMode): string {
   if (mode === 'input2') return 'Browser TTS';
-  if (mode === 'input3') return 'Kokoro local';
   return 'Removed legacy input';
 }
 

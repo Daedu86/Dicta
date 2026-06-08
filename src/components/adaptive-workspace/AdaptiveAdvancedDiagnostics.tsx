@@ -20,7 +20,7 @@ type AdaptiveSessionMetrics = SessionScoreMetrics & {
   trend: 'improving' | 'stable' | 'declining';
 };
 
-type AdaptiveLatestSession = Omit<SessionDurationInput, 'inputMode' | 'telemetry' | 'kokoroChunks' | 'transcript'> &
+type AdaptiveLatestSession = Omit<SessionDurationInput, 'inputMode' | 'telemetry' | 'transcript'> &
   Omit<SessionPointsSource, 'inputMode' | 'transcript'> & {
   name?: string | null;
   updatedAt: string;
@@ -28,7 +28,6 @@ type AdaptiveLatestSession = Omit<SessionDurationInput, 'inputMode' | 'telemetry
   transcript?: Transcript | null;
   metrics: AdaptiveSessionMetrics;
   telemetry: SessionTelemetry;
-  kokoroChunks: Array<{ durationSec?: number }>;
 };
 
 type AdaptiveSemanticDebug = {
@@ -55,7 +54,6 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
 
 function formatSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): string {
   if (mode === 'input2') return 'Browser TTS';
-  if (mode === 'input3') return 'Kokoro local';
   return 'Removed legacy input';
 }
 
@@ -413,10 +411,6 @@ export function AdaptiveAdvancedDiagnostics({
                   <div className="metric" aria-label={`TTS chunks: ${String(latestSession.telemetry.ttsChunks.length)}`}>
                     <span>TTS chunks</span>
                     <strong>{String(latestSession.telemetry.ttsChunks.length)}</strong>
-                  </div>
-                  <div className="metric" aria-label={`Kokoro chunks: ${String(latestSession.kokoroChunks.length)}`}>
-                    <span>Kokoro chunks</span>
-                    <strong>{String(latestSession.kokoroChunks.length)}</strong>
                   </div>
                 </div>
                 <div className="today-summary-grid">

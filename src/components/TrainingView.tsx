@@ -15,7 +15,7 @@ import { TrainingSessionCard, type TrainingSessionSubmissionMeta } from './train
 import { TrainingSubmitCard } from './training/TrainingSubmitCard';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input2' | 'input3';
+type SessionInputMode = string;
 
 type SupabaseSyncStatus = {
   enabled: boolean;
@@ -37,7 +37,6 @@ type TrainingViewSession = {
   inputMode: SessionInputMode;
   inputSettingsLocked: boolean;
   ttsLanguage: LanguageCode | null;
-  kokoroLanguage: LanguageCode | null;
   difficulty: Difficulty;
   status: SessionStatus;
   createdDeviceKind: CreatedDeviceKind;

@@ -7,7 +7,6 @@ function clamp01(value: number): number {
 
 export function benchmarkSubtitle(inputMode: InputMode): string {
   if (inputMode === 'browser-tts') return 'Browser or OS voice baseline and fallback execution.';
-  if (inputMode === 'kokoro') return 'Local model execution with native EN/ES support and experimental DE/FR entries.';
   return 'Cached semantic chunks with browser fallback.';
 }
 

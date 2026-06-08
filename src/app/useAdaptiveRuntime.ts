@@ -39,7 +39,7 @@ import type {
 } from '../components/openrouter/types';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 
-export type AdaptiveRuntimeSessionInputMode = 'input2' | 'input3';
+export type AdaptiveRuntimeSessionInputMode = string;
 export type AdaptiveRuntimeSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error' | string;
 export type AdaptiveRuntimeSessionSource = 'plainText' | 'dictationScript' | string;
 
@@ -50,10 +50,7 @@ export type AdaptiveRuntimeSessionInput = {
   inputMode: AdaptiveRuntimeSessionInputMode;
   status: AdaptiveRuntimeSessionStatus;
   ttsText?: string;
-  kokoroText?: string;
-  kokoroChunks?: Array<{ durationSec?: number }>;
   ttsLanguage?: LanguageCode | null;
-  kokoroLanguage?: LanguageCode | null;
   metrics: {
     rate: number;
     wpm: number;
@@ -401,7 +398,7 @@ function buildHistoricalPerformanceProfile(
         language:
           (mode === 'browser-tts'
             ? session.ttsLanguage
-            : session.kokoroLanguage) ?? undefined,
+            : session.ttsLanguage) ?? undefined,
         durationSec: Math.max(1, estimateSessionVoiceDurationSec(session) ?? session.metrics.points * 2),
         averagePlaybackRate: clamp(session.metrics.rate, 0.75, 1.15),
         averageWpm: session.metrics.wpm,
@@ -483,8 +480,7 @@ function mapRuntimeSessionInputMode(_mode: AdaptiveRuntimeSessionInputMode): Inp
 }
 
 function resolveRuntimeSessionLanguage(session: AdaptiveRuntimeSessionInput): LanguageCode {
-  if (session.inputMode === 'input2') return session.ttsLanguage ?? 'unknown';
-  return 'unknown';
+  return session.ttsLanguage ?? 'unknown';
 }
 
 function clamp01(value: number): number {
