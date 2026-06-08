@@ -10,7 +10,7 @@ export const LEGACY_QWEN_CLOUD_INPUT_MODE = 'qwen-cloud';
 
 export function normalizeInputMode(value: string | null | undefined): InputMode | null {
   const normalized = (value ?? '').trim();
-  if (normalized === LEGACY_QWEN_CLOUD_INPUT_MODE) return COSYVOICE_CACHE_INPUT_MODE;
+  if (normalized === COSYVOICE_CACHE_INPUT_MODE || normalized === LEGACY_QWEN_CLOUD_INPUT_MODE) return null;
   return isCanonicalInputMode(normalized) ? normalized : null;
 }
 
@@ -29,8 +29,6 @@ export function formatInputModeLabel(inputMode: string | null | undefined): stri
       return 'Browser TTS';
     case 'kokoro':
       return 'Kokoro';
-    case 'cosyvoice-cache':
-      return 'CosyVoice cache';
     default:
       return 'Unknown input';
   }
