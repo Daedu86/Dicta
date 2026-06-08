@@ -18,12 +18,6 @@ export type ComputeListeningPrecisionMetricsArgs = {
   typedTextAtPlaybackEnd?: string | null;
 };
 
-type EditCounts = {
-  substitutions: number;
-  insertions: number;
-  deletions: number;
-};
-
 const DEFAULT_PRECISION_METRICS: ListeningPrecisionMetrics = {
   listeningRecallScore: 1,
   contentWordRecall: 1,
@@ -71,7 +65,9 @@ export function computeListeningPrecisionMetrics({
   const functionWords = resolveFunctionWords(language);
   const exactOverlap = countMultisetOverlap(targetTokens, typedTokens);
   const orderedMatches = longestCommonSubsequenceLength(targetTokens, typedTokens);
-  const editCounts = computeEditCounts(targetTokens, typedTokens);
+  const missingTargetTokenCount = Math.max(0, targetTokens.length - exactOverlap);
+  const extraTypedTokenCount = Math.max(0, typedTokens.length - exactOverlap);
+  const substitutionCount = Math.min(missingTargetTokenCount, extraTypedTokenCount);
   const contentTargetTokens = targetTokens.filter((token) => isContentWord(token, functionWords));
   const contentTypedTokens = typedTokens.filter((token) => isContentWord(token, functionWords));
   const functionTargetTokens = targetTokens.filter((token) => isFunctionWord(token, functionWords));
@@ -88,8 +84,8 @@ export function computeListeningPrecisionMetrics({
     listeningRecallScore: roundMetric(orderedMatches / targetTokens.length),
     contentWordRecall: ratioOrOne(countMultisetOverlap(contentTargetTokens, contentTypedTokens), contentTargetTokens.length),
     detailPrecisionScore: ratioOrOne(countMultisetOverlap(detailTargetTokens, detailTypedTokens), detailTargetTokens.length),
-    omissionRate: roundMetric(editCounts.deletions / targetTokens.length),
-    substitutionRate: roundMetric(editCounts.substitutions / targetTokens.length),
+    omissionRate: roundMetric(missingTargetTokenCount / targetTokens.length),
+    substitutionRate: roundMetric(substitutionCount / targetTokens.length),
     wordOrderAccuracy: exactOverlap === 0 ? 0 : roundMetric(orderedMatches / exactOverlap),
     functionWordAccuracy: ratioOrOne(countMultisetOverlap(functionTargetTokens, functionTypedTokens), functionTargetTokens.length),
     lateCompletionRate: missingAtPlaybackEnd === 0 ? 0 : roundMetric(lateCompletions / missingAtPlaybackEnd),
@@ -158,62 +154,6 @@ function longestCommonSubsequenceLength(left: string[], right: string[]): number
     current.fill(0);
   }
   return previous[right.length];
-}
-
-function computeEditCounts(source: string[], target: string[]): EditCounts {
-  const rows = source.length + 1;
-  const cols = target.length + 1;
-  const distance: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(0));
-  const counts: EditCounts[][] = Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => ({ substitutions: 0, insertions: 0, deletions: 0 })),
-  );
-
-  for (let i = 1; i < rows; i += 1) {
-    distance[i][0] = i;
-    counts[i][0] = { substitutions: 0, insertions: 0, deletions: i };
-  }
-  for (let j = 1; j < cols; j += 1) {
-    distance[0][j] = j;
-    counts[0][j] = { substitutions: 0, insertions: j, deletions: 0 };
-  }
-
-  for (let i = 1; i < rows; i += 1) {
-    for (let j = 1; j < cols; j += 1) {
-      if (source[i - 1] === target[j - 1]) {
-        distance[i][j] = distance[i - 1][j - 1];
-        counts[i][j] = counts[i - 1][j - 1];
-        continue;
-      }
-
-      const candidates = [
-        {
-          distance: distance[i - 1][j - 1] + 1,
-          counts: incrementCount(counts[i - 1][j - 1], 'substitutions'),
-        },
-        {
-          distance: distance[i][j - 1] + 1,
-          counts: incrementCount(counts[i][j - 1], 'insertions'),
-        },
-        {
-          distance: distance[i - 1][j] + 1,
-          counts: incrementCount(counts[i - 1][j], 'deletions'),
-        },
-      ];
-      candidates.sort((a, b) => a.distance - b.distance || a.counts.substitutions - b.counts.substitutions);
-      distance[i][j] = candidates[0].distance;
-      counts[i][j] = candidates[0].counts;
-    }
-  }
-
-  return counts[source.length][target.length];
-}
-
-function incrementCount(counts: EditCounts, key: keyof EditCounts): EditCounts {
-  return {
-    substitutions: counts.substitutions + (key === 'substitutions' ? 1 : 0),
-    insertions: counts.insertions + (key === 'insertions' ? 1 : 0),
-    deletions: counts.deletions + (key === 'deletions' ? 1 : 0),
-  };
 }
 
 function roundMetric(value: number): number {
