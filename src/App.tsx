@@ -534,10 +534,6 @@ function App() {
   const [kokoroManualBias, setKokoroManualBias] = useState(0);
   const kokoroServiceReady = false;
   const toggleKokoroEnabled = async (): Promise<void> => undefined;
-  const playKokoro = async (): Promise<void> => undefined;
-  const resumeKokoro = (): void => undefined;
-  const pauseKokoro = (): void => undefined;
-  const submitKokoroSession = (): void => undefined;
   const replayKokoroPhrase = (): void => undefined;
   const rewindKokoroPhrase = (): void => undefined;
   const adjustKokoroManualPace = (_delta: number): void => undefined;
@@ -3683,7 +3679,6 @@ function App() {
     inputSettingsReady,
     setupLocked,
     canSubmitTtsSession,
-    canSubmitKokoroSession,
     lockInputSettings,
     focusedTrainingControls,
   } = useTrainingSessionLifecycle({
@@ -3695,13 +3690,10 @@ function App() {
       running,
       ttsHasText,
       ttsStatus,
-      kokoroHasText,
-      kokoroStatus,
       inputSettingsLocked,
     },
     text: {
       ttsPracticeText,
-      kokoroPracticeText,
     },
     actions: {
       resetSession,
@@ -3711,18 +3703,11 @@ function App() {
       stopTts: stopTtsPlayback,
       onTtsPracticeChange,
       submitTtsSession,
-      playKokoro,
-      resumeKokoro,
-      pauseKokoro,
-      stopKokoro: stopKokoroPlayback,
-      onKokoroPracticeChange,
-      submitKokoroSession,
       setInputSettingsLocked,
       setError,
       setExportMessage,
       collapseSetupPanels: () => {
         setTtsExpanded(false);
-        setKokoroExpanded(false);
       },
     },
   });
@@ -3737,7 +3722,6 @@ function App() {
   const kokoroPlayerCurrentWord = 0;
   void ttsPlayerProgressTick;
   void kokoroPlayerProgressTick;
-  void canSubmitKokoroSession;
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
