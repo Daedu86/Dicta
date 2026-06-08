@@ -3,6 +3,7 @@ import type {
   AdaptiveSessionFeedback,
   AdaptiveWeakArea,
   InputLanguageBenchmarkMetrics,
+  ListeningPrecisionMetrics,
   ListeningTrainingIntent,
   ListeningTrainingMode,
   ListeningTrainingPrescription,
@@ -64,6 +65,7 @@ export function buildListeningTrainingPrescription(args: {
   const hasChallengeBlocker = hasAny(weakAreas, CHALLENGE_BLOCKING_WEAK_AREAS);
   const hasBoundarySupportInstability = hasAny(weakAreas, BOUNDARY_SUPPORT_WEAK_AREAS);
   const feedbackPressure = assessFeedbackPressure(latestFeedback);
+  const precisionPressure = assessListeningPrecisionPressure(profile, latestFeedback);
 
   const lowConfidence = confidence < 0.45 || sampleCount < 8;
   const lowAccuracy = hasAccuracySignal && averageAccuracy < 0.8;
@@ -79,7 +81,8 @@ export function buildListeningTrainingPrescription(args: {
     poorFlow ||
     strongBoundaryInstability ||
     feedbackPressure.isRecoveryPressure ||
-    hasRecoveryWeakArea && confidence < 0.55;
+    precisionPressure.isRecoveryPressure ||
+    (hasRecoveryWeakArea && confidence < 0.55);
 
   const stableEnough =
     confidence >= 0.55 &&
@@ -89,7 +92,9 @@ export function buildListeningTrainingPrescription(args: {
     p90AbsLagSec <= 3 &&
     flowStabilityScore >= 0.6 &&
     !strongBoundaryInstability &&
-    !feedbackPressure.isRecoveryPressure;
+    !feedbackPressure.isRecoveryPressure &&
+    !precisionPressure.isRecoveryPressure &&
+    !precisionPressure.isStabilizationPressure;
 
   const challengeSafe =
     confidence >= 0.68 &&
@@ -100,24 +105,30 @@ export function buildListeningTrainingPrescription(args: {
     flowStabilityScore >= 0.72 &&
     learningEffectivenessScore >= 0.35 &&
     !hasChallengeBlocker &&
-    !feedbackPressure.isAnyPressure;
+    !feedbackPressure.isAnyPressure &&
+    !precisionPressure.isAnyPressure;
 
   const mode = resolveTrainingMode({
     userIntent,
     recoveryRecommended,
     stableEnough,
     challengeSafe,
-    severeRecovery: veryLowAccuracy || highLag || poorFlow || feedbackPressure.isRecoveryPressure,
+    severeRecovery: veryLowAccuracy || highLag || poorFlow || feedbackPressure.isRecoveryPressure || precisionPressure.isRecoveryPressure,
   });
   const difficulty = resolveDifficulty({ mode, targetDifficulty, challengeSafe, recoveryRecommended });
   const baseRateRange = sanitizeRateRange(profile.recommendation?.targetRateRange, profile.preferredPlaybackRate);
   const basePauseMs = finitePositiveOr(profile.recommendation?.targetPauseMs, profile.preferredPauseAfterPhraseMs || 700);
   const basePhraseSize = profile.recommendation?.targetPhraseSize ?? profile.preferredPhraseSize ?? 'medium';
-  const targetRateRange = adjustRateRangeForMode(baseRateRange, mode);
-  const targetPauseMs = adjustPauseForMode(basePauseMs, mode);
-  const targetPhraseSize = adjustPhraseSizeForMode(basePhraseSize, mode, hasBoundarySupportInstability);
+  const targetRateRange = adjustRateRangeForPrecision(adjustRateRangeForMode(baseRateRange, mode), precisionPressure);
+  const targetPauseMs = adjustPauseForPrecision(adjustPauseForMode(basePauseMs, mode), precisionPressure);
+  const targetPhraseSize = adjustPhraseSizeForPrecision(
+    adjustPhraseSizeForMode(basePhraseSize, mode, hasBoundarySupportInstability),
+    precisionPressure,
+  );
   const phraseDifficultyRange = phraseDifficultyRangeForDifficulty(difficulty);
-  const boundaryPolicy = mode === 'recover' || hasBoundarySupportInstability ? 'strict_semantic' : 'normal_semantic';
+  const boundaryPolicy = mode === 'recover' || hasBoundarySupportInstability || precisionPressure.requiresStrictBoundary
+    ? 'strict_semantic'
+    : 'normal_semantic';
 
   return {
     goal: 'listening_comprehension',
@@ -136,7 +147,7 @@ export function buildListeningTrainingPrescription(args: {
     phraseDifficultyRange,
     phrasePolicy: phrasePolicyForMode(mode),
     boundaryPolicy,
-    contentGuidance: buildContentGuidance(weakAreas, mode),
+    contentGuidance: buildContentGuidance(weakAreas, mode, precisionPressure),
     pacingGuidance: buildPacingGuidance({
       mode,
       targetRateRange,
@@ -144,6 +155,7 @@ export function buildListeningTrainingPrescription(args: {
       targetPhraseSize,
       phraseDifficultyRange,
       boundaryPolicy,
+      precisionPressure,
     }),
     rationale: buildRationale({
       profileKey,
@@ -158,6 +170,7 @@ export function buildListeningTrainingPrescription(args: {
       flowStabilityScore,
       weakAreas,
       feedbackPressure,
+      precisionPressure,
       challengeSafe,
       recoveryRecommended,
     }),
@@ -236,11 +249,33 @@ function adjustRateRangeForMode(base: [number, number], mode: ListeningTrainingM
   return base;
 }
 
+function adjustRateRangeForPrecision(base: [number, number], precisionPressure: ListeningPrecisionPressure): [number, number] {
+  const [low, high] = base;
+  if (precisionPressure.isRecoveryPressure) {
+    const cappedHigh = Math.min(high, 0.95);
+    return [round2(clamp(Math.min(low, cappedHigh), 0.65, 1.25)), round2(clamp(cappedHigh, 0.65, 1.25))];
+  }
+  if (precisionPressure.isStabilizationPressure) {
+    return [round2(clamp(low, 0.65, 1.25)), round2(clamp(Math.min(high, 1), 0.65, 1.25))];
+  }
+  if (precisionPressure.isAnyPressure) {
+    return [round2(clamp(low, 0.65, 1.25)), round2(clamp(Math.min(high, 1.05), 0.65, 1.25))];
+  }
+  return base;
+}
+
 function adjustPauseForMode(basePauseMs: number, mode: ListeningTrainingMode): number {
   if (mode === 'recover') return Math.round(clamp(Math.max(basePauseMs + 200, 900), 400, 2000));
   if (mode === 'stabilize') return Math.round(clamp(Math.max(basePauseMs, 700), 400, 1800));
   if (mode === 'challenge') return Math.round(clamp(basePauseMs - 100, 350, 1400));
   return Math.round(clamp(basePauseMs, 400, 1600));
+}
+
+function adjustPauseForPrecision(basePauseMs: number, precisionPressure: ListeningPrecisionPressure): number {
+  if (precisionPressure.isRecoveryPressure) return Math.round(clamp(Math.max(basePauseMs + 200, 1000), 400, 2200));
+  if (precisionPressure.isStabilizationPressure) return Math.round(clamp(Math.max(basePauseMs + 100, 800), 400, 1900));
+  if (precisionPressure.isAnyPressure) return Math.round(clamp(Math.max(basePauseMs, 700), 400, 1800));
+  return basePauseMs;
 }
 
 function adjustPhraseSizeForMode(
@@ -251,6 +286,12 @@ function adjustPhraseSizeForMode(
   if (mode === 'recover' || hasBoundarySupportInstability) return 'short';
   if (mode === 'stabilize' && basePhraseSize === 'long') return 'medium';
   if (mode === 'challenge' && basePhraseSize === 'short') return 'medium';
+  return basePhraseSize;
+}
+
+function adjustPhraseSizeForPrecision(basePhraseSize: PhraseSize, precisionPressure: ListeningPrecisionPressure): PhraseSize {
+  if (precisionPressure.isRecoveryPressure) return 'short';
+  if (precisionPressure.isStabilizationPressure && basePhraseSize === 'long') return 'medium';
   return basePhraseSize;
 }
 
@@ -286,7 +327,11 @@ function defaultDurationForMode(mode: ListeningTrainingMode): 1 | 2 | 3 | 4 {
   return 2;
 }
 
-function buildContentGuidance(weakAreas: Set<AdaptiveWeakArea>, mode: ListeningTrainingMode): string[] {
+function buildContentGuidance(
+  weakAreas: Set<AdaptiveWeakArea>,
+  mode: ListeningTrainingMode,
+  precisionPressure: ListeningPrecisionPressure,
+): string[] {
   const guidance = [
     'Train listening comprehension with natural, meaningful content rather than typing speed drills.',
     'Use self-contained semantic phrases that can be practiced independently when possible.',
@@ -306,6 +351,15 @@ function buildContentGuidance(weakAreas: Set<AdaptiveWeakArea>, mode: ListeningT
   if (weakAreas.has('flow_instability')) {
     guidance.push('Keep topic transitions smooth and avoid abrupt jumps in grammar or vocabulary load.');
   }
+  if (precisionPressure.reasons.some((reason) => reason.includes('content word'))) {
+    guidance.push('Prioritize clear content-word anchors before adding denser vocabulary.');
+  }
+  if (precisionPressure.reasons.some((reason) => reason.includes('detail') || reason.includes('function-word') || reason.includes('word order'))) {
+    guidance.push('Use short contrastive phrases that make details, function words, and word order audible.');
+  }
+  if (precisionPressure.reasons.some((reason) => reason.includes('completion window'))) {
+    guidance.push('Keep phrase length and syntax inside a window the learner can complete before playback ends.');
+  }
   if (mode === 'challenge') {
     guidance.push('Use richer vocabulary and syntax only inside clear, semantically complete phrases.');
   }
@@ -319,6 +373,7 @@ function buildPacingGuidance({
   targetPhraseSize,
   phraseDifficultyRange,
   boundaryPolicy,
+  precisionPressure,
 }: {
   mode: ListeningTrainingMode;
   targetRateRange: [number, number];
@@ -326,8 +381,9 @@ function buildPacingGuidance({
   targetPhraseSize: PhraseSize;
   phraseDifficultyRange: [number, number];
   boundaryPolicy: ListeningTrainingPrescription['boundaryPolicy'];
+  precisionPressure: ListeningPrecisionPressure;
 }): string[] {
-  return [
+  const guidance = [
     `Use the benchmark-derived rate range ${targetRateRange[0].toFixed(2)}x-${targetRateRange[1].toFixed(2)}x as script metadata; Dicta runtime controls actual playback.`,
     `Use about ${targetPauseMs}ms pause metadata and ${targetPhraseSize} phrases unless semantic completeness requires a safer split.`,
     `Keep phrase difficulty values within ${phraseDifficultyRange[0].toFixed(2)}-${phraseDifficultyRange[1].toFixed(2)} for ${mode} mode.`,
@@ -335,6 +391,10 @@ function buildPacingGuidance({
       ? 'Use strict semantic boundaries with no unsafe mid-grammar cuts.'
       : 'Use normal semantic boundaries and keep phrases replayable when possible.',
   ];
+  if (precisionPressure.isAnyPressure) {
+    guidance.push(`Precision pressure is active; avoid increasing speed until ${precisionPressure.reasons.join(', ')} improves.`);
+  }
+  return guidance;
 }
 
 function buildRationale({
@@ -350,6 +410,7 @@ function buildRationale({
   flowStabilityScore,
   weakAreas,
   feedbackPressure,
+  precisionPressure,
   challengeSafe,
   recoveryRecommended,
 }: {
@@ -365,6 +426,7 @@ function buildRationale({
   flowStabilityScore: number;
   weakAreas: Set<AdaptiveWeakArea>;
   feedbackPressure: FeedbackPressure;
+  precisionPressure: ListeningPrecisionPressure;
   challengeSafe: boolean;
   recoveryRecommended: boolean;
 }): string[] {
@@ -374,6 +436,9 @@ function buildRationale({
     `Target accuracy stays in the listening training zone instead of chasing near-perfect typing accuracy.`,
     `Profile signals: confidence ${confidence.toFixed(2)}, accuracy ${hasAccuracySignal ? averageAccuracy.toFixed(2) : 'n/a'}, lag ${averageLagSec.toFixed(2)}s, flow ${flowStabilityScore.toFixed(2)}.`,
   ];
+  if (precisionPressure.isAnyPressure) {
+    rationale.push(`Listening precision pressure: score ${precisionPressure.score.toFixed(2)}; ${precisionPressure.reasons.join(', ')}.`);
+  }
   if (weakAreas.size > 0) {
     rationale.push(`Weak areas considered: ${Array.from(weakAreas).join(', ')}.`);
   }
@@ -381,7 +446,7 @@ function buildRationale({
     rationale.push(`Requested ${targetDifficulty} difficulty was adjusted to ${difficulty} because the trainer policy treats button choice as intent, not an absolute command.`);
   }
   if (userIntent === 'challenge' && !challengeSafe) {
-    rationale.push('Challenge intent was gated because benchmark confidence, lag, flow, accuracy, boundary safety, or feedback was not stable enough.');
+    rationale.push('Challenge intent was gated because benchmark confidence, lag, flow, accuracy, boundary safety, listening precision, or feedback was not stable enough.');
   }
   if (recoveryRecommended && mode === 'recover') {
     rationale.push('Recovery mode was selected to rebuild listening flow before increasing difficulty.');
@@ -422,6 +487,76 @@ function assessFeedbackPressure(feedback: AdaptiveSessionFeedback | null): Feedb
     isRecoveryPressure,
     reasons,
   };
+}
+
+type ListeningPrecisionPressure = {
+  isAnyPressure: boolean;
+  isRecoveryPressure: boolean;
+  isStabilizationPressure: boolean;
+  requiresStrictBoundary: boolean;
+  score: number;
+  reasons: string[];
+};
+
+function assessListeningPrecisionPressure(
+  profile: InputLanguageBenchmarkMetrics,
+  latestFeedback: AdaptiveSessionFeedback | null,
+): ListeningPrecisionPressure {
+  const metrics = latestFeedback?.listeningPrecisionSummary ?? profile.listeningPrecisionAverages;
+  if (!metrics) {
+    return {
+      isAnyPressure: false,
+      isRecoveryPressure: false,
+      isStabilizationPressure: false,
+      requiresStrictBoundary: false,
+      score: 1,
+      reasons: [],
+    };
+  }
+
+  const score = computeListeningPrecisionPolicyScore(metrics);
+  const reasons: string[] = [];
+  const recoveryReasons: string[] = [];
+  const stabilizationReasons: string[] = [];
+
+  if (score < 0.78) recoveryReasons.push(`low listening precision score ${score.toFixed(2)}`);
+  if (metrics.contentWordRecall < 0.75) recoveryReasons.push(`content word recall ${metrics.contentWordRecall.toFixed(2)}`);
+  if (metrics.omissionRate > 0.18) recoveryReasons.push(`omission rate ${metrics.omissionRate.toFixed(2)}`);
+  if (metrics.completionWindowScore < 0.65) recoveryReasons.push(`completion window score ${metrics.completionWindowScore.toFixed(2)}`);
+
+  if (score < 0.86) stabilizationReasons.push(`listening precision score ${score.toFixed(2)}`);
+  if (metrics.detailPrecisionScore < 0.78) stabilizationReasons.push(`detail precision ${metrics.detailPrecisionScore.toFixed(2)}`);
+  if (metrics.functionWordAccuracy < 0.78) stabilizationReasons.push(`function-word accuracy ${metrics.functionWordAccuracy.toFixed(2)}`);
+  if (metrics.wordOrderAccuracy < 0.8) stabilizationReasons.push(`word order ${metrics.wordOrderAccuracy.toFixed(2)}`);
+  if (metrics.completionWindowScore < 0.8) stabilizationReasons.push(`completion window score ${metrics.completionWindowScore.toFixed(2)}`);
+
+  if (score < 0.92) reasons.push(`emerging listening precision score ${score.toFixed(2)}`);
+  if (metrics.omissionRate > 0.08) reasons.push(`emerging omission rate ${metrics.omissionRate.toFixed(2)}`);
+  if (metrics.completionWindowScore < 0.9) reasons.push(`emerging completion window score ${metrics.completionWindowScore.toFixed(2)}`);
+
+  const mergedReasons = [...new Set([...recoveryReasons, ...stabilizationReasons, ...reasons])];
+  const isRecoveryPressure = recoveryReasons.length > 0;
+  const isStabilizationPressure = isRecoveryPressure || stabilizationReasons.length > 0;
+
+  return {
+    isAnyPressure: mergedReasons.length > 0,
+    isRecoveryPressure,
+    isStabilizationPressure,
+    requiresStrictBoundary: metrics.wordOrderAccuracy < 0.8 || metrics.completionWindowScore < 0.8,
+    score,
+    reasons: mergedReasons,
+  };
+}
+
+function computeListeningPrecisionPolicyScore(metrics: ListeningPrecisionMetrics): number {
+  return clamp01(
+    metrics.listeningRecallScore * 0.28 +
+    metrics.contentWordRecall * 0.23 +
+    metrics.detailPrecisionScore * 0.14 +
+    metrics.functionWordAccuracy * 0.14 +
+    metrics.wordOrderAccuracy * 0.09 +
+    metrics.completionWindowScore * 0.12,
+  );
 }
 
 function hasAny(values: Set<AdaptiveWeakArea>, targets: Set<AdaptiveWeakArea>): boolean {
