@@ -1,7 +1,7 @@
 import type { SessionTelemetry } from '../../types/dictation';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input2' | 'input3' | 'input4';
+type SessionInputMode = 'input2' | 'input3' | string;
 type MetricsLanguageView = 'en' | 'es' | 'de' | 'fr' | 'pt' | 'all';
 
 type AdminInventorySessionBase = {
@@ -32,10 +32,7 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
 }
 
 function countSessionTypedWords(session: AdminInventorySessionBase): number {
-  const text =
-    session.inputMode === 'input2' || session.inputMode === 'input4'
-      ? session.ttsPracticeText
-      : session.kokoroPracticeText;
+  const text = session.inputMode === 'input3' ? session.kokoroPracticeText : session.ttsPracticeText;
   return text.split(/\s+/).filter(Boolean).length;
 }
 
@@ -57,7 +54,7 @@ function formatBytes(bytes: number): string {
 function formatSessionInputMode(mode: SessionInputMode): string {
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
-  return 'CosyVoice cache';
+  return 'Removed legacy input';
 }
 
 function formatSessionStatus(value: SessionStatus): string {
