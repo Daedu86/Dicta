@@ -1356,7 +1356,6 @@ function App() {
     [deferredTtsPracticeText, ttsTranscript],
   );
   const ttsPracticeWords = ttsPracticeEvaluation.typedWords;
-  const ttsPracticeMissing = Math.max((ttsTranscript?.words.length ?? 0) - ttsPracticeEvaluation.matchedWords, 0);
   const ttsVisibleAccuracy =
     ttsPracticeWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0 ? ttsPracticeEvaluation.accuracy : 0;
   const ttsVisibleScore =
@@ -1377,7 +1376,6 @@ function App() {
     [kokoroPracticeText, kokoroTranscript],
   );
   const kokoroPracticeWords = kokoroPracticeEvaluation.typedWords;
-  const kokoroPracticeMissing = Math.max((kokoroTranscript?.words.length ?? 0) - kokoroPracticeEvaluation.matchedWords, 0);
   const kokoroVisibleAccuracy =
     kokoroPracticeWords.length > 0 && (kokoroTranscript?.words.length ?? 0) > 0 ? kokoroPracticeEvaluation.accuracy : 0;
   const kokoroVisibleScore =
@@ -2488,12 +2486,6 @@ function App() {
   }
 
   const keyboardProfile = resolveKeyboardProfile();
-  const keyboardProfileLabel = keyboardProfile === 'es-virtual'
-    ? 'ES virtual layout'
-    : keyboardProfile === 'de-keyboard'
-      ? 'DE keyboard layout'
-      : null;
-
   function normalizePhysicalKey(event: KeyboardEvent<HTMLTextAreaElement>, language: TypingLanguage | null): string | null {
     if (language !== 'es') {
       return null;
@@ -4932,14 +4924,6 @@ function App() {
   const ttsPlayerProgressPercent = ttsPlayerDurationSec > 0 ? clamp((ttsPlayerCurrentSec / ttsPlayerDurationSec) * 100, 0, 100) : 0;
   const kokoroPlayerWordCount = kokoroTranscript?.words.length ?? 0;
   const kokoroPlayerCurrentWord = kokoroHasText ? estimateKokoroSpokenWordIndex() : 0;
-  const kokoroPlayerWordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * kokoroSpeechRate);
-  const kokoroPlayerDurationSec = kokoroPlayerWordCount > 0 ? kokoroPlayerWordCount / kokoroPlayerWordsPerSecond : 0;
-  const kokoroPlayerCurrentSec =
-    kokoroPlayerWordCount > 0
-      ? Math.min(kokoroPlayerDurationSec, (kokoroPlayerCurrentWord / kokoroPlayerWordCount) * kokoroPlayerDurationSec)
-      : 0;
-  const kokoroPlayerProgressPercent =
-    kokoroPlayerDurationSec > 0 ? clamp((kokoroPlayerCurrentSec / kokoroPlayerDurationSec) * 100, 0, 100) : 0;
   void ttsPlayerProgressTick;
   void kokoroPlayerProgressTick;
   const sessionCreationNameTrimmed = sessionCreationName.trim();
@@ -5265,15 +5249,11 @@ function App() {
   };
 
   void toggleKokoroEnabled;
-  void ttsPracticeMissing;
-  void kokoroPracticeMissing;
   void openAdaptiveExportsForActiveInput;
-  void keyboardProfileLabel;
   void rewindKokoroPhrase;
   void adjustKokoroManualPace;
   void resetKokoroPace;
   void canSubmitTtsSession;
-  void kokoroPlayerProgressPercent;
   void lockedInputSummary;
 
   void HelpIcon;
