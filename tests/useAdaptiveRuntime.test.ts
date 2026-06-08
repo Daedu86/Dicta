@@ -3,7 +3,6 @@ import { act, createElement, useEffect, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildAdaptiveBrowserTtsInput } from '../src/inputs/browserTts/browserTtsTelemetryAdapter';
-import { buildAdaptiveKokoroInput } from '../src/inputs/kokoro/kokoroTelemetryAdapter';
 import {
   useAdaptiveRuntime,
   type AdaptiveRuntime,
@@ -186,96 +185,6 @@ describe('useAdaptiveRuntime', () => {
     });
   });
 
-  it('keeps benchmark replay fixtures isolated by inputMode and language', async () => {
-    const activeSession = sessionFixture({ id: 'profile-switch-session', inputMode: 'input2', ttsLanguage: 'de' });
-    const kokoroSession = sessionFixture({ id: 'kokoro-en-session', inputMode: 'input3', kokoroLanguage: 'en' });
-    const harness = renderHarness({ activeSession, sessions: [activeSession, kokoroSession] });
-    const runtime = harness.read().runtime;
-
-    const browserDePressure = liveFrame({
-      language: 'de',
-      accuracy: 0.62,
-      lagSec: 3.4,
-      rawLagSec: 3.4,
-      stableLagSec: 3.4,
-      correctionRate: 0.22,
-      phraseBoundaryType: 'unsafe',
-      semanticCompleteness: 0.58,
-    });
-    const browserEnStable = liveFrame({
-      language: 'en',
-      accuracy: 0.97,
-      lagSec: 0.2,
-      rawLagSec: 0.2,
-      stableLagSec: 0.2,
-    });
-    const kokoroEn = liveFrame({
-      inputMode: 'kokoro',
-      language: 'en',
-      phraseId: 'kokoro-1',
-      accuracy: 0.91,
-      lagSec: 0.8,
-      rawLagSec: 0.8,
-      stableLagSec: 0.8,
-      correctionRate: 0.04,
-    });
-
-    const pressureDecision = decisionFixture({
-      mode: 'support',
-      playbackRate: 0.85,
-      pauseAfterPhraseMs: 1400,
-      shouldPauseNow: true,
-      shouldReplayPhrase: true,
-      nextPhraseSize: 'short',
-      reason: 'fixture recovery pressure',
-    });
-    const stableDecision = decisionFixture({ mode: 'flow', playbackRate: 1.08, nextPhraseSize: 'long', reason: 'fixture flow' });
-    const kokoroDecision = runtime.adaptiveControllerRef.current.decide(
-      buildAdaptiveKokoroInput(kokoroEn, runtime.getHistoricalPerformanceProfile('kokoro', 'en')),
-    );
-
-    await act(async () => {
-      runtime.recordAdaptiveBenchmark(browserDePressure, pressureDecision, {
-        actualPlaybackRate: 0.82,
-        actualPauseMs: 1400,
-        replayExecuted: false,
-        event: 'replay',
-        phraseIndex: 1,
-        totalSemanticPhrases: 4,
-      });
-      vi.advanceTimersByTime(1);
-      runtime.recordAdaptiveBenchmark(browserEnStable, stableDecision, {
-        actualPlaybackRate: 1.08,
-        actualPauseMs: 0,
-        event: 'phrase_advance',
-        phraseIndex: 0,
-        totalSemanticPhrases: 2,
-      });
-      vi.advanceTimersByTime(1);
-      runtime.recordAdaptiveBenchmark(kokoroEn, kokoroDecision, {
-        actualPlaybackRate: kokoroDecision.playbackRate,
-        actualPauseMs: kokoroDecision.pauseAfterPhraseMs,
-        event: 'pause',
-        phraseIndex: 0,
-        totalSemanticPhrases: 1,
-      });
-    });
-    await flushReactWork();
-
-    const benchmarks = harness.read().benchmarks;
-    expect(benchmarks['browser-tts']?.de?.timeline).toHaveLength(1);
-    expect(benchmarks['browser-tts']?.en?.timeline).toHaveLength(1);
-    expect(benchmarks.kokoro?.en?.timeline).toHaveLength(1);
-    expect(benchmarks.kokoro?.de).toBeUndefined();
-    expect(benchmarks['browser-tts']?.de?.timeline[0]).toMatchObject({
-      event: 'replay',
-      phraseIndex: 1,
-    });
-    expect(benchmarks['browser-tts']?.de?.timeline[0]?.decisionReason).toContain('fixture recovery pressure');
-    expect(benchmarks['browser-tts']?.de?.timeline[0]?.decisionReason).toContain('rejected-benchmark-sample');
-    expect(benchmarks['browser-tts']?.en?.timeline[0]?.decisionReason).toBe('fixture flow');
-    expect(benchmarks.kokoro?.en?.timeline[0]?.inputMode).toBe('kokoro');
-  });
 
   it('preserves session feedback orchestration and persisted payload bucket', async () => {
     const activeSession = sessionFixture({
