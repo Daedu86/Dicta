@@ -31,15 +31,15 @@ describe('Session modeData schema', () => {
     });
   });
 
-  it('input4 Portuguese export preserves pt language in modeData', () => {
+  it('removed legacy inputs do not create modeData', () => {
     const modeData = normalizeSessionModeData({
-      inputMode: 'input4',
+      inputMode: 'removed-input',
       ttsLanguage: 'pt',
       ttsText: 'ola mundo',
     });
 
     expect(modeData).toEqual({
-      input2: { type: 'builtInTts', language: 'pt', textLength: 9 },
+      input2: null,
       input3: null,
     });
   });
