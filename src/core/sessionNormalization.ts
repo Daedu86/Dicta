@@ -2,7 +2,7 @@ import type { SessionTelemetry } from '../types/dictation';
 import { getKokoroProcessedLanguage, isKokoroNativeLanguage } from './kokoroSupport';
 import { isSupportedLanguage, type SupportedLanguage } from './languages';
 
-export type SessionInputMode = 'input2' | 'input3' | 'input4';
+export type SessionInputMode = 'input2' | 'input3' | string;
 export type Input2Language = SupportedLanguage;
 
 export type SessionLanguageFields = {
@@ -32,10 +32,6 @@ export type SessionModeData = {
 };
 
 type UnknownRecord = Record<string, unknown>;
-
-function isInputMode(value: unknown): value is SessionInputMode {
-  return value === 'input2' || value === 'input3' || value === 'input4';
-}
 
 function isInput2Language(value: unknown): value is Input2Language {
   return isSupportedLanguage(value);
@@ -129,7 +125,7 @@ export function isSubmittedFinishedAttempt(payload: unknown): boolean {
 
   const inputMode = session.inputMode;
   if (hasFinalizedAttemptTelemetry(session.telemetry)) return true;
-  if (inputMode !== 'input2' && inputMode !== 'input3' && inputMode !== 'input4') return false;
+  if (inputMode !== 'input2' && inputMode !== 'input3') return false;
 
   const metrics = asRecord(session.metrics);
   const points = numberOr(metrics.points, 0);
@@ -159,13 +155,12 @@ export function normalizeSessionLanguages(
   if (session.inputMode === 'input3') {
     return { ttsLanguage: null, kokoroLanguage: session.kokoroLanguage };
   }
-  // input4 reuses TTS language and settings
-  return { ttsLanguage: session.ttsLanguage, kokoroLanguage: null };
+  return { ttsLanguage: null, kokoroLanguage: null };
 }
 
 export function normalizeSessionModeData(session: unknown): SessionModeData {
   const input = asRecord(session);
-  const inputMode: SessionInputMode = isInputMode(input.inputMode) ? input.inputMode : 'input2';
+  const inputMode = typeof input.inputMode === 'string' ? input.inputMode : 'input2';
 
   const existingModeData = input.modeData && typeof input.modeData === 'object' ? (input.modeData as UnknownRecord) : null;
   const existingInput2 =
@@ -189,7 +184,7 @@ export function normalizeSessionModeData(session: unknown): SessionModeData {
     input3: null,
   };
 
-  if (inputMode === 'input2' || inputMode === 'input4') {
+  if (inputMode === 'input2') {
     modeData.input2 = {
       type: 'builtInTts',
       language: input2Language,
