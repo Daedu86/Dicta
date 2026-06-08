@@ -122,13 +122,9 @@ import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace
 import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
 import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
-import { BrowserTtsPracticeCard } from './components/runtime-workspaces/BrowserTtsPracticeCard';
 import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsSetupCard';
-import { BrowserTtsSourceCard } from './components/runtime-workspaces/BrowserTtsSourceCard';
 import { Input4SetupCard } from './components/runtime-workspaces/Input4SetupCard';
-import { KokoroPracticeCard } from './components/runtime-workspaces/KokoroPracticeCard';
 import { KokoroSetupCard } from './components/runtime-workspaces/KokoroSetupCard';
-import { KokoroSourceCard } from './components/runtime-workspaces/KokoroSourceCard';
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
@@ -5268,10 +5264,6 @@ function App() {
     ] : [],
   };
 
-  void BrowserTtsPracticeCard;
-  void BrowserTtsSourceCard;
-  void KokoroPracticeCard;
-  void KokoroSourceCard;
   void toggleKokoroEnabled;
   void ttsPracticeMissing;
   void kokoroPracticeMissing;
