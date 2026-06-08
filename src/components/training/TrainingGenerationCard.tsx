@@ -115,26 +115,30 @@ function buildIntentButtonTitle(intent: Exclude<TrainingGenerationIntent, 'custo
   const duration = isExpress ? 'one-minute express' : 'two-minute';
   switch (intent) {
     case 'precision':
-      return `Generate a ${duration} precision session focused on clear recall, content-word anchors, and a safer completion window.`;
+      return `Generate a ${duration} Precision session: short, clear listening phrases that prioritize recall, content-word anchors, and on-time completion.`;
     case 'stabilize':
-      return `Generate a ${duration} stabilization session focused on steady listening flow, balanced phrases, and controlled pacing.`;
+      return `Generate a ${duration} Stabilize session: balanced semantic phrases that protect flow, word order, and controlled pacing.`;
     case 'challenge':
-      return `Generate a ${duration} challenge session only when listening precision, flow, and completion timing are stable.`;
+      return `Generate a ${duration} Challenge session: denser language only when listening precision, flow, word order, and completion timing are stable.`;
     default:
       return fallback;
   }
 }
 
 function buildIntentButtonHelpText(intent: Exclude<TrainingGenerationIntent, 'custom'>, isExpress: boolean): string {
-  const duration = isExpress ? 'About 1 minute.' : 'About 2 minutes.';
-  switch (intent) {
-    case 'precision':
-      return `${duration} Rebuilds listening precision with shorter, clearer phrases and strong content-word anchors.`;
-    case 'stabilize':
-      return `${duration} Stabilizes flow with balanced vocabulary, semantic phrases, and conservative pacing.`;
-    case 'challenge':
-      return `${duration} Challenges listening only after precision, word order, and completion-window timing are stable.`;
+  if (intent === 'precision') {
+    return isExpress
+      ? 'About 1 minute. Compact precision reset: shorter phrases, clearer content-word anchors, and a safer completion window.'
+      : 'About 2 minutes. Rebuilds listening precision with shorter phrases, clearer content-word anchors, detail recall, and a safer completion window.';
   }
+  if (intent === 'stabilize') {
+    return isExpress
+      ? 'About 1 minute. Compact flow stabilization: balanced vocabulary, semantic phrases, and conservative pacing.'
+      : 'About 2 minutes. Stabilizes listening flow with balanced vocabulary, semantic phrase boundaries, word-order practice, and controlled pacing.';
+  }
+  return isExpress
+    ? 'About 1 minute. Compact challenge: denser language while keeping precision, word order, and completion timing under control.'
+    : 'About 2 minutes. Challenges listening with richer vocabulary and grammar only after precision, word order, and completion-window timing are stable.';
 }
 
 function HelpIcon({ tooltip, ariaLabel = 'Help' }: { tooltip: string; ariaLabel?: string }) {
