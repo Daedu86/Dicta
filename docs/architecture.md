@@ -10,17 +10,18 @@ Before proposing or making behavior changes, agents must read and understand the
 
 After reading them, propose changes from the architecture rather than from an isolated file edit. A valid proposal should identify the affected boundary: browser, core TypeScript domain, input adapter, Vercel/server route, Supabase/RLS, or local-only sidecar. If adaptive behavior is involved, identify the affected `(inputMode, language)` profile and how neighboring profiles stay unchanged.
 
-Dicta is a Vite/React adaptive dictation trainer. The browser owns the training UI, local session state, and the Adaptive Pace Layer. Vercel/server routes protect secrets and cloud calls. Supabase Auth and RLS provide invite/admin-created accounts, cross-device sync, durable OpenRouter jobs, persistent job rate limits, and member quotas. Local-only Python sidecars handle Kokoro TTS and CosyVoice2 cache generation during development.
+Dicta is a Vite/React adaptive dictation trainer. The browser owns the training UI, local session state, and the Adaptive Pace Layer. Vercel/server routes protect secrets and cloud calls. Supabase Auth and RLS provide invite/admin-created accounts, cross-device sync, durable OpenRouter jobs, persistent job rate limits, and member quotas. The local-only Python sidecar handles Kokoro TTS during development.
 
 ## Product Matrix
 
-Dicta is built around 3 input modes x 5 languages.
+Dicta is built around 2 input modes x 5 languages.
 
 Inputs:
 
 - `browser-tts`: browser SpeechSynthesis with adaptive semantic chunking.
 - `kokoro`: local Kokoro TTS sidecar. Native in this setup: `en`, `es`. Blocked or experimental: `de`, `fr`, `pt`.
-- `cosyvoice-cache`: CosyVoice2 WAV cache files with browser TTS fallback when cache files are missing. Historical `qwen-cloud` values are treated as a legacy alias when reading stored/cache data.
+
+Input #4 / `cosyvoice-cache` / historical `qwen-cloud` has been removed from active product entry points. Do not add new Input #4 creation, generation, benchmark, or UI paths.
 
 Languages: `en`, `es`, `de`, `fr`, `pt`.
 
@@ -62,7 +63,6 @@ Input adapters:
 
 - `browser-tts`: SpeechSynthesis plus dynamic chunk planner.
 - `kokoro`: Kokoro sidecar plus telemetry adapter.
-- `cosyvoice-cache`: CosyVoice2 cache plus browser fallback, with `qwen-cloud` accepted as a legacy cache/input alias.
 
 Server routes and local dev middleware:
 
@@ -89,13 +89,12 @@ Ollama Cloud uses `OLLAMA_API_KEY` through server routes only. It currently has 
 Local-only services:
 
 - `services/kokoro_tts/*`: Kokoro TTS sidecar.
-- `services/cosyvoice_cache/*`: CosyVoice2 cache sidecar.
 
 ## Adaptive Brain Loop
 
-1. A session source provides typed text, OpenRouter script, or cached phrases.
+1. A session source provides typed text or an OpenRouter script.
 2. `SemanticPhrasePlanner` produces phrase boundaries and difficulty.
-3. The active input engine plays TTS or cached output.
+3. The active input engine plays TTS or generated local audio.
 4. `LowLatencyTextarea` captures learner typing without per-keystroke React state for visible text.
 5. Input telemetry adapters produce `LiveTelemetryFrame`.
 6. `HistoricalPerformanceService` and the 30-day benchmark provide profile context.
@@ -214,7 +213,6 @@ Local Vite dev mirrors the Ollama models/chat/status routes and exposes dev-only
 These paths are not production Vercel backend features:
 
 - `/api/kokoro/start`.
-- `/api/cosyvoice/start` and `/api/cosyvoice/bootstrap`.
 - `/api/admin/files`.
 - `/api/openrouter/key*`.
 - `/api/ollama/key*`.
@@ -244,8 +242,6 @@ Input adapters:
 - `src/inputs/browserTts/browserTtsTelemetryAdapter.ts`
 - `src/inputs/browserTts/ttsDynamicChunkPlanner.ts`
 - `src/inputs/kokoro/kokoroTelemetryAdapter.ts`
-- `src/inputs/qwenCloud/qwenCloudTelemetryAdapter.ts`
-- `src/inputs/qwenCloud/qwenCloudAudioAdapter.ts`
 
 Auth/sync/server:
 
@@ -264,11 +260,9 @@ Auth/sync/server:
 Local services:
 
 - `services/kokoro_tts/*`
-- `services/cosyvoice_cache/*`
 
 ## Known Gaps
 
 - Production transcription still needs a deployed backend, object storage, and long-running job handling.
 - Kokoro support for `de`, `fr`, and `pt` remains blocked or experimental.
-- Input #4 still needs legacy `qwen-cloud` compatibility for existing manifests, stored sessions, and active OpenRouter jobs.
 - Full-tree render volume during long Browser TTS runs can still be reduced.
