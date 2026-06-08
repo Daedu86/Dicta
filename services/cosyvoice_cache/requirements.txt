@@ -1,8 +1,0 @@
-fastapi==0.135.4
-uvicorn[standard]>=0.48.0
-pydantic>=2.13.4
-numpy>=2.4.6
-soundfile>=0.13.1
-
-# CosyVoice/CosyVoice2 dependencies are intentionally not pinned here because
-# they vary by checkpoint and repo setup. See README.md and cosyvoice_engine.py.
