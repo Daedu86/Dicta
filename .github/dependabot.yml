@@ -69,28 +69,6 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
-  - package-ecosystem: "pip"
-    directory: "/services/cosyvoice_cache"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "05:30"
-      timezone: "Europe/Paris"
-    open-pull-requests-limit: 5
-    groups:
-      cosyvoice-python-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    labels:
-      - "dependencies"
-      - "python"
-      - "cosyvoice"
-    commit-message:
-      prefix: "chore(deps)"
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

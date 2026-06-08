@@ -16,7 +16,6 @@ dist-ssr
 *.local
 
 # Local-only cached TTS assets (generated via Colab or local sidecar)
-public/tts-cache/cosyvoice/
 public/tts-cache/qwen/
 
 # Editor directories and files
@@ -34,7 +33,6 @@ public/tts-cache/qwen/
 .env
 .env.*
 !.env.example
-third_party/CosyVoice/
 .vercel
 supabase/.temp/
 
