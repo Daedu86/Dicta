@@ -4810,7 +4810,12 @@ function countLocalChangesPendingSync({
 }): PendingSyncSummary {
   if (!lastSyncedAt) {
     const totalFeedback = Object.values(feedback).reduce(
-      (inputTotal, byLanguage) => inputTotal + Object.values(byLanguage).reduce((languageTotal, list) => languageTotal + list.length, 0),
+      (inputTotal, byLanguage) =>
+        inputTotal +
+        Object.values(byLanguage && typeof byLanguage === 'object' ? byLanguage : {}).reduce(
+          (languageTotal, list) => languageTotal + (Array.isArray(list) ? list.length : 0),
+          0,
+        ),
       0,
     );
     const totalBenchmarks = Object.values(benchmarks).reduce(
