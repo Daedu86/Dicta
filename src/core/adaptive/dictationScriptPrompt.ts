@@ -1,12 +1,10 @@
 import type { InputLanguageBenchmarkMetrics, InputMode, LanguageCode } from './types';
 
 function inputSpecificGuidance(inputMode: InputMode): string {
-  const guidance: Record<InputMode, string> = {
-    'browser-tts': 'Use clean clauses and conservative pauses that browser/system TTS can speak predictably.',
-    kokoro: 'Use precise phrase-level chunks with complete metadata for local Kokoro generation.',
-    'cosyvoice-cache': 'Use cache-friendly and replay-safe chunks for reusable CosyVoice cached audio.',
-  };
-  return guidance[inputMode];
+  if (inputMode === 'kokoro') {
+    return 'Use precise phrase-level chunks with complete metadata for local Kokoro generation.';
+  }
+  return 'Use clean clauses and conservative pauses that browser/system TTS can speak predictably.';
 }
 
 function stringify(value: unknown): string {
