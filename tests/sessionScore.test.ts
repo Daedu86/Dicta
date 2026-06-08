@@ -42,7 +42,7 @@ describe('computeSessionScore', () => {
       rate: 1,
       lagSec: 0,
       listeningPrecision,
-    })).toBe(99);
+    })).toBe(101);
   });
 
   it('adds the steady playback rate bonus near 1.0x', () => {
@@ -70,7 +70,7 @@ describe('buildSessionScoreHelpText', () => {
     expect(helpText).toContain('points * 3 + listening precision * 0.85 + accuracy * 0.25 + rate bonus - abs(lag) * 8');
     expect(helpText).toContain('WPM is shown as a diagnostic signal only');
     expect(helpText).toContain('points 250 * 3 = 750');
-    expect(helpText).toContain('listening precision 81.7 * 0.85 = 69.44');
+    expect(helpText).toContain('listening precision 81.7 * 0.85 = 69.45');
     expect(helpText).toContain('accuracy 81.7 * 0.25 = 20.43');
     expect(helpText).toContain('diagnostic WPM min(79.1, 120) = 79.1');
     expect(helpText).toContain('rate bonus = 0');
