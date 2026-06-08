@@ -9,6 +9,7 @@ Before proposing or making code changes, read these files in order:
 1. `AGENTS.md` for repo rules, guardrails, and the required change workflow.
 2. `README.md` for product terminology, deployment assumptions, and current access/security model.
 3. `docs/architecture.md` for topology, data flow, runtime boundaries, and known gaps.
+4. `docs/listening-first-architecture.md` for the listening-first score/policy model, Precision/Stabilize/Challenge terminology, and legacy compatibility matrix.
 
 After reading them, propose changes from the architecture. Do not start from an isolated file edit. A proposal should identify the affected boundary: browser, core TypeScript domain, input adapter, Vercel/server route, Supabase/RLS, or local-only sidecar. If the change touches adaptive behavior, it must also identify the affected `(inputMode, language)` profile and explain how neighboring profiles stay unchanged.
 
@@ -32,7 +33,7 @@ Input modes:
 
 The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, recommendation, and session feedback package is scoped by `(inputMode, language)`, so `browser-tts/de` and `browser-tts/en` are different adaptive profiles. The adaptive benchmark rolling window is **30 days** (`rollingWindowDays: 30`), and dashboard/leaderboard "Month" views also mean the last 30 days.
 
-`ListeningTrainerPolicy` is the central pedagogical layer for next-session generation. It takes the current profile-specific benchmark, latest matching feedback, and user intent, then produces a `ListeningTrainingPrescription` for listening comprehension. This is the main future iteration point for training quality; it must not mix benchmarks across inputs or languages.
+`ListeningTrainerPolicy` is the central pedagogical layer for next-session generation. It takes the current profile-specific benchmark, latest matching feedback, and user intent, then produces a `ListeningTrainingPrescription` for listening comprehension. User-facing training intents are `Precision`, `Stabilize`, and `Challenge`; internal storage and job contracts still use historical values like `easy`, `normal`, `hard`, and legacy slot labels. See `docs/listening-first-architecture.md` before changing this mapping. This is the main future iteration point for training quality; it must not mix benchmarks across inputs or languages.
 
 ## Access and Security Model
 
@@ -214,110 +215,7 @@ Important rules:
 
 - Treat each `(inputMode, language)` as its own profile.
 - Do not share fixes across profiles unless the task explicitly requires it.
-- Direct mobile generation buttons express user intent (`recover`, `progress`, `challenge`) rather than absolute difficulty; `ListeningTrainerPolicy` may downgrade an unsafe challenge to stabilize or recover.
+- Direct mobile generation buttons express listening intent (`Precision`, `Stabilize`, `Challenge`) rather than absolute difficulty; `ListeningTrainerPolicy` may downgrade an unsafe challenge to stabilize or recover.
 - OpenRouter/LLMs generate only structured training material. Dicta runtime still controls playback, rate, pauses, chunking, recovery, and Browser TTS execution.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior such as shorter chunks, slower rate, and longer pauses.
 - Browser TTS benchmark samples and completed session feedback carry a structured `ttsEnvironment` fingerprint with a hashed user agent, platform/PWA mode, selected voice metadata, and voice counts so reports can distinguish learner progress from browser, OS, voice, or speechSynthesis changes.
-- Training text input is intentionally low-latency and uncontrolled. Do not reintroduce per-keystroke React state for visible text.
-
-Key files:
-
-- `src/app/useBrowserTtsRuntime.ts`
-- `src/app/useTrainingSessionLifecycle.ts`
-- `src/app/useAdaptiveRuntime.ts`
-- `src/core/adaptive/types.ts`
-- `src/core/adaptive/AdaptiveDictationController.ts`
-- `src/core/adaptive/ListeningTrainerPolicy.ts`
-- `src/core/adaptive/SemanticPhrasePlanner.ts`
-- `src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts`
-- `src/core/adaptive/sessionFeedback.ts`
-- `src/core/adaptive/dictationScriptPrompt.ts`
-- `src/core/adaptive/dictationScriptValidation.ts`
-- `src/core/adaptive/openRouterGenerationPrompt.ts`
-- `src/core/adaptive/benchmarkJson.ts`
-
-## Training Mode Performance
-
-Focused Training Mode (`/training`) uses a low-latency input path validated on Android/PWA runtime.
-
-Preserve these behaviors:
-
-- `LowLatencyTextarea` uses native textarea updates instead of React state updates per key.
-- Parent state commits are delayed and flushed on blur, pause/stop, submit, session change, and unmount.
-- Focused training lifecycle controls route through `src/app/useTrainingSessionLifecycle.ts` and must keep pause/stop/submit text flushes before invoking playback or submit actions.
-- Browser TTS runtime metrics are throttled to avoid full-tree rerender pressure.
-- `dicta.sessions.v1` localStorage writes are debounced, with immediate persistence preserved for finalization and lifecycle exits.
-- Finished-session Supabase rows are kept in a critical sync buffer and sent with a best-effort `keepalive` flush on page exit to protect mobile/PWA submits.
-- `?perf=1` and `dicta.perfDiagnostics.v1` are used for field profiling.
-
-Low-latency typing is protected by contract and regression tests (`LowLatencyTextareaContract`, `lowLatencyTextarea`, and `lowLatencyPerformanceGate`). A dedicated real-browser mobile guard is available through `npm run test:e2e:mobile`; it serves `e2e-training.html`, mounts `src/e2e/trainingPerfHarness.tsx`, and runs `e2e/training-mobile.spec.ts` under Playwright's Pixel 7 profile to verify local textarea updates, batched parent commits, and bounded render counts.
-
-## Local Storage Keys
-
-Primary browser-side state:
-
-- `dicta.sessions.v1`
-- `dicta.deletedSessionIds.v1`
-- `dicta.adaptiveBenchmarks.v1`
-- `dicta.adaptiveSessionFeedback.v1`
-- `dicta.perfDiagnostics.v1`
-- `dicta.openrouterDefaultModel.v1`
-- `dicta.ollamaDefaultModel.v1`
-- `dicta.openrouterGeneratedVariants.v1`
-- `dicta.openrouterActiveJobs.v1`
-- `dicta.workspaceMode.v1`
-- `dicta.liveMetricsLanguage.v1`
-- `dicta.liveMetricsRange.v1`
-- `dicta.leaderboardLanguage.v1`
-- `dicta.adminLanguage.v1`
-
-OpenRouter credentials are intentionally not stored in `localStorage`.
-
-Supabase sync notes:
-
-- Authenticated profile UI waits for the initial Supabase pull/merge before showing profile-scoped sessions, preventing hard-refresh flashes from stale local snapshots.
-- Session deletes are tombstones. Remote tombstones must not be overwritten by local `ready`/pending copies; only a newer locally submitted finished session may repair an older tombstone.
-- Completed feedback rows are treated as completion evidence for their session id, so a stale `ready` session row from another browser tab/device cannot keep a practiced session in the pending lane.
-
-## Python Dependencies
-
-Install local service Python dependencies only for sidecars you run:
-
-```bash
-pip install -r requirements.txt
-```
-
-Security note:
-
-- Do not load untrusted Hugging Face or PyTorch checkpoints.
-- Do not resume runs from unknown checkpoint directories.
-
-## Docs
-
-- `AGENTS.md`: first-read agent workflow, guardrails, and change protocol.
-- `README.md`: product overview, deployment/security model, and developer onboarding.
-- `ARCHITECTURE.md`: short pointer for agents/tools looking for a root architecture file.
-- `docs/architecture.md`: topology, data flow, runtime boundaries, and known gaps.
-- `docs/android-pwa-performance-debugging.md`: S22/PWA diagnostics workflow, `?perf=1`, and remote debugging notes.
-
-## Tests
-
-```bash
-npm test
-npm run test:e2e:mobile
-```
-
-Test coverage currently includes:
-
-- Unit tests for the sync controller.
-- Adaptive controller, benchmark service, session feedback, semantic planner, and OpenRouter prompt profile-scope guardrails.
-- Integration simulation test for convergence / no excessive oscillation.
-- Ingestion smoke test (`--dry-run`) for output schema path.
-- Playwright mobile E2E guard for the focused `/training` typing performance harness. GitHub CI runs it after `npm run build` and uploads Playwright trace, screenshot, and video artifacts only on failure.
-
-Before finishing code changes, run `npm run test` and `npm run build` unless the change is docs-only or you clearly explain why not.
-
-## Known Gaps
-
-- Production transcription still needs a deployed backend, object storage, and long-running job handling.
-- Full-tree render volume during long Browser TTS runs can still be reduced.
