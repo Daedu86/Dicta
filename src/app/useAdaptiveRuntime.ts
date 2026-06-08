@@ -7,7 +7,6 @@ import {
   type SetStateAction,
 } from 'react';
 import type { BrowserTtsEnvironmentFingerprint, SessionTelemetry } from '../types/dictation';
-import { COSYVOICE_CACHE_INPUT_MODE } from '../core/adaptive/inputModes';
 import { AdaptiveDictationController } from '../core/adaptive/AdaptiveDictationController';
 import {
   createEmptyInputLanguageBenchmark,
@@ -400,7 +399,7 @@ function buildHistoricalPerformanceProfile(
       return {
         inputMode: mode,
         language:
-          (mode === 'browser-tts' || mode === COSYVOICE_CACHE_INPUT_MODE
+          (mode === 'browser-tts'
             ? session.ttsLanguage
             : session.kokoroLanguage) ?? undefined,
         durationSec: Math.max(1, estimateSessionVoiceDurationSec(session) ?? session.metrics.points * 2),

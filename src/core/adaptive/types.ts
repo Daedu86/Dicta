@@ -1,6 +1,6 @@
 import type { InputMode, StoredInputMode } from './inputModes';
 import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
-export type { InputMode, LegacyInputMode, StoredInputMode } from './inputModes';
+export type { InputMode, StoredInputMode } from './inputModes';
 
 export type PhraseSize = 'short' | 'medium' | 'long';
 export type PacingMode = 'support' | 'balanced' | 'flow';

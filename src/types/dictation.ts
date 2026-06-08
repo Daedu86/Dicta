@@ -28,7 +28,7 @@ export type ControlAction =
   | 'phrase_end';
 
 export type TtsPacingMode = 'slow' | 'balanced' | 'flow';
-export type TtsEngine = 'browser' | 'kokoro' | 'cosyvoice-cache' | 'qwen-cloud';
+export type TtsEngine = 'browser' | 'kokoro';
 
 export interface BrowserTtsEnvironmentFingerprint {
   engine: 'browser';
