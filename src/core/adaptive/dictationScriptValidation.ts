@@ -37,6 +37,7 @@ const BOUNDARY_TYPES: PhraseBoundaryType[] = ['sentence', 'clause', 'minor', 'un
 const DIFFICULTIES: DictationScriptDifficulty[] = ['easy', 'normal', 'hard'];
 const PHRASE_SIZES: PhraseSize[] = ['short', 'medium', 'long'];
 const INTONATION_HINTS: DictationScriptIntonationHint[] = ['falling', 'continuation', 'contrast', 'question', 'neutral'];
+const ACTIVE_SCRIPT_INPUT_MODES = ['browser-tts', 'kokoro'] as const;
 type UnknownRecord = Record<string, unknown>;
 
 export function parseDictationScriptJson(raw: string): DictationScriptValidationResult {
@@ -255,7 +256,11 @@ function collectValidationErrors(value: unknown): string[] {
 
   if (typeof input.title !== 'string' || input.title.trim().length === 0) errors.push('title must exist.');
   if (typeof input.language !== 'string' || input.language.trim().length === 0) errors.push('language must exist.');
-  if (typeof input.inputMode !== 'string' || input.inputMode.trim().length === 0) errors.push('inputMode must exist.');
+  if (typeof input.inputMode !== 'string' || input.inputMode.trim().length === 0) {
+    errors.push('inputMode must exist.');
+  } else if (!ACTIVE_SCRIPT_INPUT_MODES.includes(input.inputMode.trim() as (typeof ACTIVE_SCRIPT_INPUT_MODES)[number])) {
+    errors.push('inputMode must be browser-tts or kokoro.');
+  }
   if (!Array.isArray(input.phrases) || input.phrases.length === 0) {
     errors.push('phrases must be a non-empty array.');
     return errors;
