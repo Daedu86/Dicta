@@ -1,9 +1,12 @@
+import type { ListeningPrecisionMetrics } from './adaptive/listeningPrecisionMetrics';
+
 export type SessionScoreInput = {
   accuracy: number;
   lagSec: number;
   wpm: number;
   rate: number;
   points: number;
+  listeningPrecision?: ListeningPrecisionMetrics;
 };
 
 export type SessionScoreMetrics = SessionScoreInput & {
@@ -13,22 +16,27 @@ export type SessionScoreMetrics = SessionScoreInput & {
 export function computeSessionScore({
   accuracy,
   lagSec,
-  wpm,
   rate,
   points,
+  listeningPrecision,
 }: SessionScoreInput): number {
   const lagPenalty = Math.abs(lagSec) * 8;
-  const accuracyWeight = accuracy * 0.65;
-  const paceWeight = Math.min(wpm, 120) * 0.35;
+  const accuracyPercent = normalizePercent(accuracy);
+  const precisionPercent = resolvePrecisionPercent(listeningPrecision, accuracyPercent);
   const pointsWeight = points * 3;
+  const precisionWeight = precisionPercent * 0.85;
+  const accuracyWeight = accuracyPercent * 0.25;
   const rateWeight = Math.abs(rate - 1) < 0.01 ? 4 : 0;
-  return Math.max(0, Math.round(pointsWeight + accuracyWeight + paceWeight + rateWeight - lagPenalty));
+  return Math.max(0, Math.round(pointsWeight + precisionWeight + accuracyWeight + rateWeight - lagPenalty));
 }
 
 export function buildSessionScoreHelpText(metrics: SessionScoreMetrics): string {
   const pointsWeight = metrics.points * 3;
-  const accuracyWeight = metrics.accuracy * 0.65;
-  const paceWeight = Math.min(metrics.wpm, 120) * 0.35;
+  const accuracyPercent = normalizePercent(metrics.accuracy);
+  const precisionPercent = resolvePrecisionPercent(metrics.listeningPrecision, accuracyPercent);
+  const precisionWeight = precisionPercent * 0.85;
+  const accuracyWeight = accuracyPercent * 0.25;
+  const diagnosticWpm = Math.min(metrics.wpm, 120);
   const rateBonus = Math.abs(metrics.rate - 1) < 0.01 ? 4 : 0;
   const lagPenalty = Math.abs(metrics.lagSec) * 8;
   const finalScore = typeof metrics.score === 'number' && Number.isFinite(metrics.score)
@@ -36,10 +44,36 @@ export function buildSessionScoreHelpText(metrics: SessionScoreMetrics): string 
     : computeSessionScore(metrics);
 
   return [
-    'Score is a weighted session score: matched-word points are multiplied by 3, accuracy and WPM add credit, steady 1.0x playback can add a small bonus, and timing lag subtracts points.',
-    'Formula: points * 3 + accuracy * 0.65 + min(WPM, 120) * 0.35 + rate bonus - abs(lag) * 8.',
-    `Breakdown: points ${formatScorePart(metrics.points)} * 3 = ${formatScorePart(pointsWeight)}; accuracy ${formatScorePart(metrics.accuracy)} * 0.65 = ${formatScorePart(accuracyWeight)}; WPM min(${formatScorePart(metrics.wpm)}, 120) * 0.35 = ${formatScorePart(paceWeight)}; rate bonus = ${formatScorePart(rateBonus)}; lag penalty abs(${formatScorePart(metrics.lagSec)}) * 8 = ${formatScorePart(lagPenalty)}; final score = ${formatScorePart(finalScore)}.`,
+    'Score is listening-first: matched-word points and listening precision drive the score, accuracy adds supporting signal, and timing lag subtracts points.',
+    'WPM is shown as a diagnostic signal only.',
+    'Formula: points * 3 + listening precision * 0.85 + accuracy * 0.25 + rate bonus - abs(lag) * 8.',
+    `Breakdown: points ${formatScorePart(metrics.points)} * 3 = ${formatScorePart(pointsWeight)}; listening precision ${formatScorePart(precisionPercent)} * 0.85 = ${formatScorePart(precisionWeight)}; accuracy ${formatScorePart(accuracyPercent)} * 0.25 = ${formatScorePart(accuracyWeight)}; diagnostic WPM min(${formatScorePart(metrics.wpm)}, 120) = ${formatScorePart(diagnosticWpm)}; rate bonus = ${formatScorePart(rateBonus)}; lag penalty abs(${formatScorePart(metrics.lagSec)}) * 8 = ${formatScorePart(lagPenalty)}; final score = ${formatScorePart(finalScore)}.`,
   ].join(' ');
+}
+
+function resolvePrecisionPercent(
+  listeningPrecision: ListeningPrecisionMetrics | undefined,
+  fallbackAccuracyPercent: number,
+): number {
+  if (!listeningPrecision) return fallbackAccuracyPercent;
+  const precisionScore =
+    listeningPrecision.listeningRecallScore * 0.3 +
+    listeningPrecision.contentWordRecall * 0.25 +
+    listeningPrecision.detailPrecisionScore * 0.15 +
+    listeningPrecision.functionWordAccuracy * 0.15 +
+    listeningPrecision.wordOrderAccuracy * 0.1 +
+    (1 - listeningPrecision.lateCompletionRate) * 0.05;
+  return clampPercent(precisionScore * 100);
+}
+
+function normalizePercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return clampPercent(value <= 1 ? value * 100 : value);
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
 }
 
 function formatScorePart(value: number): string {
