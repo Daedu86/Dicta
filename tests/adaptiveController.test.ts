@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AdaptiveDictationController } from '../src/core/adaptive/AdaptiveDictationController';
+import { buildBrowserTtsTelemetryFrame } from '../src/inputs/browserTts/browserTtsTelemetryAdapter';
 import type { AdaptivePacingInput, HistoricalPerformanceProfile, InputCapabilities, LiveTelemetryFrame } from '../src/core/adaptive/types';
 
 const baseHistory: HistoricalPerformanceProfile = {
@@ -73,6 +74,100 @@ function input(overrides: Partial<LiveTelemetryFrame> = {}, historyOverrides: Pa
 }
 
 describe('AdaptiveDictationController profile guardrails', () => {
+  it('starts Browser TTS English in conservative session warmup before adapting upward', () => {
+    const controller = new AdaptiveDictationController();
+    const warmupDecision = controller.decide(
+      input({
+        phraseId: 'tts-0',
+        sessionChunkIndex: 0,
+        language: 'en',
+        lagSec: 0,
+        accuracy: 1,
+        chunkAccuracy: 1,
+        rollingAccuracyLast3: 1,
+        rollingAccuracyLast5: 1,
+        correctionRate: 0,
+        wpm: 60,
+      }),
+    );
+
+    expect(warmupDecision.mode).toBe('support');
+    expect(warmupDecision.playbackRate).toBe(0.78);
+    expect(warmupDecision.pauseAfterPhraseMs).toBe(1800);
+    expect(warmupDecision.nextPhraseSize).toBe('short');
+    expect(warmupDecision.reason).toContain('session-warmup-calibration');
+
+    const postWarmupDecision = controller.decide(
+      input({
+        phraseId: 'tts-3',
+        sessionChunkIndex: 3,
+        language: 'en',
+        lagSec: 0.1,
+        accuracy: 0.98,
+        chunkAccuracy: 0.98,
+        rollingAccuracyLast3: 0.98,
+        rollingAccuracyLast5: 0.98,
+        correctionRate: 0.01,
+        phraseDifficulty: 0.2,
+        wpm: 60,
+      }),
+    );
+
+    expect(postWarmupDecision.reason).not.toContain('session-warmup-calibration');
+    expect(postWarmupDecision.playbackRate).toBeGreaterThan(warmupDecision.playbackRate);
+  });
+
+  it('derives Browser TTS session chunk index from runtime phrase ids', () => {
+    const telemetry = buildBrowserTtsTelemetryFrame({
+      inputMode: 'browser-tts',
+      phraseId: 'tts-2-chunk',
+      estimatedSpokenRatio: 0,
+      typedProgressRatio: 0,
+      lagSec: 0,
+      lagWords: 0,
+      lagChars: 0,
+      accuracy: 1,
+      errorRate: 0,
+      wpm: 0,
+      charsPerMinute: 0,
+      pauseMs: 700,
+      longestPauseMs: 0,
+      backspaceRate: 0,
+      correctionRate: 0,
+      phraseDifficulty: 0.3,
+      phraseLengthWords: 4,
+      phraseLengthChars: 20,
+      currentPlaybackRate: 1,
+      currentPauseAfterPhraseMs: 700,
+      language: 'en',
+      trend: 'stable',
+    });
+
+    expect(telemetry.sessionChunkIndex).toBe(2);
+  });
+
+  it('does not apply English warmup to Spanish Browser TTS', () => {
+    const controller = new AdaptiveDictationController();
+    const decision = controller.decide(
+      input({
+        phraseId: 'tts-0',
+        sessionChunkIndex: 0,
+        language: 'es',
+        lagSec: 0.1,
+        accuracy: 0.98,
+        chunkAccuracy: 0.98,
+        rollingAccuracyLast3: 0.98,
+        rollingAccuracyLast5: 0.98,
+        correctionRate: 0.01,
+        phraseDifficulty: 0.2,
+        wpm: 60,
+      }),
+    );
+
+    expect(decision.reason).not.toContain('session-warmup-calibration');
+    expect(decision.playbackRate).not.toBe(0.78);
+  });
+
   it('converts Browser TTS replay pressure into recovery instead of replay execution', () => {
     const controller = new AdaptiveDictationController();
     const decision = controller.decide(
