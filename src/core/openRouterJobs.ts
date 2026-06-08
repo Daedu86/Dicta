@@ -2,7 +2,7 @@ import type { DictationScriptDifficulty } from './adaptive/dictationScriptValida
 import type { OpenRouterDurationMinutes } from './adaptive/openRouterGenerationPrompt';
 import type { InputMode, LanguageCode } from './adaptive/types';
 import { isSupportedLanguage } from './languages';
-import { isStoredInputMode, normalizeInputMode } from './adaptive/inputModes';
+import { normalizeInputMode } from './adaptive/inputModes';
 
 export const OPENROUTER_ACTIVE_JOB_STORAGE_KEY = 'dicta.openrouterActiveJob.v1';
 export const OPENROUTER_ACTIVE_JOBS_STORAGE_KEY = 'dicta.openrouterActiveJobs.v1';
@@ -142,7 +142,7 @@ function normalizeActiveOpenRouterJob(value: unknown): ActiveOpenRouterJob | nul
   const startedAt = stringField(record, 'startedAt');
   const canonicalInputMode = normalizeInputMode(inputMode);
 
-  if (!jobId || !model || !slotLabel || !isInputMode(inputMode) || !canonicalInputMode || !isLanguage(language) || !isDuration(durationMinutes) || !startedAt) {
+  if (!jobId || !model || !slotLabel || !isActiveInputMode(inputMode) || !canonicalInputMode || !isLanguage(language) || !isDuration(durationMinutes) || !startedAt) {
     return null;
   }
 
@@ -182,8 +182,8 @@ function finiteNumberField(record: Record<string, unknown>, key: string): number
   return Number.isFinite(value) ? value : null;
 }
 
-function isInputMode(value: string): boolean {
-  return isStoredInputMode(value);
+function isActiveInputMode(value: string): boolean {
+  return value === 'browser-tts' || value === 'kokoro';
 }
 
 function isLanguage(value: string): value is LanguageCode {
