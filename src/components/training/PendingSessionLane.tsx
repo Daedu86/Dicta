@@ -6,7 +6,7 @@ import { formatCreatedDeviceIcon, formatCreatedDeviceTooltip, type CreatedDevice
 import { isSubmittedFinishedAttempt } from '../../core/sessionNormalization';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input2' | 'input3' | 'input4';
+type SessionInputMode = 'input2' | 'input3';
 
 type PendingSessionLaneSession = {
   id: string;
@@ -97,7 +97,7 @@ function SessionDeviceIcon({ session }: { session: PendingSessionLaneSession }) 
 function formatSessionInputMode(mode: SessionInputMode): string {
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
-  return 'CosyVoice cache';
+  return 'Removed legacy input';
 }
 
 function getPendingSessionReason(session: PendingSessionLaneSession): string {
@@ -118,7 +118,7 @@ function getSessionDisplayTitle(session: PendingSessionLaneSession): string {
 }
 
 function resolveStoredSessionLanguage(session: PendingSessionLaneSession): LanguageCode {
-  if (session.inputMode === 'input2' || session.inputMode === 'input4') return session.ttsLanguage ?? 'unknown';
+  if (session.inputMode === 'input2') return session.ttsLanguage ?? 'unknown';
   if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
   return 'unknown';
 }

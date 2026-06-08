@@ -51,7 +51,7 @@ export function OpenRouterPromptControls<
   selectedPromptSource,
   onSelectPromptSource,
 }: OpenRouterPromptControlsProps<InputModeValue, LanguageValue, PromptSourceValue, DurationValue>) {
-  const visibleInputModeOptions = inputModeOptions.filter((option) => option.value !== 'cosyvoice-cache');
+  const visibleInputModeOptions = inputModeOptions;
 
   return (
     <div className="openrouter-generate-controls">

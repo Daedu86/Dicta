@@ -7,7 +7,7 @@ import type { TtsPacingMode } from '../../types/dictation';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
 type RuntimeWorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter' | 'ollama';
 type RuntimeTtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
-type RuntimeSessionInputMode = 'input2' | 'input3' | 'input4';
+type RuntimeSessionInputMode = 'input2' | 'input3';
 
 type LiveMetricsDockProps = {
   insightsCollapsed: boolean;

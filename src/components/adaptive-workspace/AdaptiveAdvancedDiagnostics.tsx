@@ -56,7 +56,7 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
 function formatSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): string {
   if (mode === 'input2') return 'Browser TTS';
   if (mode === 'input3') return 'Kokoro local';
-  return 'CosyVoice cache';
+  return 'Removed legacy input';
 }
 
 function formatDuration(seconds: number): string {

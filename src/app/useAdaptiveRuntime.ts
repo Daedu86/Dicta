@@ -40,7 +40,7 @@ import type {
 } from '../components/openrouter/types';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 
-export type AdaptiveRuntimeSessionInputMode = 'input2' | 'input3' | 'input4';
+export type AdaptiveRuntimeSessionInputMode = 'input2' | 'input3';
 export type AdaptiveRuntimeSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error' | string;
 export type AdaptiveRuntimeSessionSource = 'plainText' | 'dictationScript' | string;
 
@@ -481,12 +481,11 @@ function getRuntimeSessionFinishedAtMs(session: AdaptiveRuntimeSessionInput): nu
 
 function mapRuntimeSessionInputMode(mode: AdaptiveRuntimeSessionInputMode): InputMode {
   if (mode === 'input2') return 'browser-tts';
-  if (mode === 'input4') return COSYVOICE_CACHE_INPUT_MODE;
   return 'kokoro';
 }
 
 function resolveRuntimeSessionLanguage(session: AdaptiveRuntimeSessionInput): LanguageCode {
-  if (session.inputMode === 'input2' || session.inputMode === 'input4') return session.ttsLanguage ?? 'unknown';
+  if (session.inputMode === 'input2') return session.ttsLanguage ?? 'unknown';
   if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
   return 'unknown';
 }

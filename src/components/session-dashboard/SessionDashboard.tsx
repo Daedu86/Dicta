@@ -20,7 +20,7 @@ const DashboardActionTimeline = lazy(() =>
 );
 
 type SessionDashboardStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionDashboardInputMode = 'input2' | 'input3' | 'input4';
+type SessionDashboardInputMode = 'input2' | 'input3';
 
 type SessionDashboardMetrics = SessionScoreMetrics & {
   lagWords: number;

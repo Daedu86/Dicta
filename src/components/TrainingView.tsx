@@ -15,7 +15,7 @@ import { TrainingSessionCard, type TrainingSessionSubmissionMeta } from './train
 import { TrainingSubmitCard } from './training/TrainingSubmitCard';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input2' | 'input3' | 'input4';
+type SessionInputMode = 'input2' | 'input3';
 
 type SupabaseSyncStatus = {
   enabled: boolean;

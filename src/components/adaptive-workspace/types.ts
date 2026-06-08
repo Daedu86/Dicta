@@ -1,5 +1,5 @@
 export type AdaptiveAdapterCardConfig = {
-  inputMode: 'input2' | 'input3' | 'input4';
+  inputMode: 'input2' | 'input3';
   title: string;
   adapter: string;
   execution: string;

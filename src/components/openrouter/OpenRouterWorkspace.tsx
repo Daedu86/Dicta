@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { InputMode } from '../../core/adaptive/types';
-import { COSYVOICE_CACHE_INPUT_MODE } from '../../core/adaptive/inputModes';
 import { createEmptyInputLanguageBenchmark } from '../../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildSelectedBenchmarkExportPayload } from '../../core/adaptive/benchmarkJson';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from '../../core/adaptive/dictationScriptPrompt';
@@ -521,7 +520,6 @@ export function OpenRouterWorkspace({
   const profileInputModeOptions: Array<{ value: InputMode; label: string; description: string }> = [
     { value: 'browser-tts', label: 'Input #2', description: 'Browser TTS' },
     { value: 'kokoro', label: 'Input #3', description: 'Kokoro' },
-    { value: COSYVOICE_CACHE_INPUT_MODE, label: 'Input #4', description: 'CosyVoice cache' },
   ];
   const generateInputModeOptions = LOCAL_DEV_FEATURES_AVAILABLE
     ? profileInputModeOptions
