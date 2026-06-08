@@ -18,6 +18,7 @@ export const browserTtsInputCapabilities: InputCapabilities = {
 export interface BrowserTtsTelemetryParams {
   inputMode: 'browser-tts';
   phraseId: string;
+  sessionChunkIndex?: number;
   estimatedSpokenRatio: number;
   typedProgressRatio: number;
   lagSec: number;
@@ -59,6 +60,7 @@ export function buildBrowserTtsTelemetryFrame(params: BrowserTtsTelemetryParams)
   return {
     inputMode: params.inputMode,
     phraseId: params.phraseId,
+    sessionChunkIndex: params.sessionChunkIndex,
     spokenProgressRatio: clamp(params.estimatedSpokenRatio, 0, 1),
     typedProgressRatio: clamp(params.typedProgressRatio, 0, 1),
     lagSec: params.lagSec,
