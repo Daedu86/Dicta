@@ -21,7 +21,7 @@ describe('dictationScriptPrompt', () => {
   });
 
   it('includes weak areas and recommendation context', () => {
-    const profile = createEmptyInputLanguageBenchmark('cosyvoice-cache', 'de');
+    const profile = createEmptyInputLanguageBenchmark('kokoro', 'de');
     profile.weakAreas = ['punctuation', 'lag'];
     profile.recommendation = {
       targetRateRange: [0.92, 0.98],
