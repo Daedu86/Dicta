@@ -376,7 +376,7 @@ function buildSystemAdjustments(
 }
 
 function formatWeakAreaNeed(weakArea: AdaptiveWeakArea): string {
-  const labels: Record<AdaptiveWeakArea, string> = {
+  const labels: Partial<Record<AdaptiveWeakArea, string>> = {
     long_phrases: 'Long phrases are a weak area; shorten phrase length.',
     numbers: 'Numbers are a weak area; add focused number practice.',
     names: 'Names are a weak area; reduce unfamiliar names or practice them deliberately.',
