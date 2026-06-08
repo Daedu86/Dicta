@@ -313,8 +313,8 @@ export function mapOpenRouterJobResultToPersistedGeneration(job: OpenRouterJobRe
   if (!result || typeof result !== 'object') return null;
   const text = 'text' in result && typeof result.text === 'string' ? result.text : '';
   if (!text.trim()) return null;
-  const requestInputMode =
-    normalizeInputMode(typeof job.request?.inputMode === 'string' ? job.request.inputMode : '') ?? 'browser-tts';
+  const requestInputMode = normalizeInputMode(typeof job.request?.inputMode === 'string' ? job.request.inputMode : '');
+  if (requestInputMode !== 'browser-tts' && requestInputMode !== 'kokoro') return null;
   return {
     text,
     json: text,
