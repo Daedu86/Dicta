@@ -16,7 +16,7 @@ If a change updates behavior, keep `AGENTS.md`, `README.md`, and `docs/architect
 
 ## Product Overview
 
-Dicta is an invite/admin-managed dictation trainer for practicing listening and typing across **3 inputs x 5 languages**.
+Dicta is an invite/admin-managed dictation trainer for practicing listening and typing across **2 inputs x 5 languages**.
 
 Languages:
 
@@ -30,7 +30,8 @@ Input modes:
 
 - Input #2 / `browser-tts`: browser `SpeechSynthesis`, adaptive semantic chunking, and browser/OS voice behavior.
 - Input #3 / `kokoro`: local Kokoro TTS sidecar. English and Spanish are native in this setup; German, French, and Portuguese remain blocked/experimental until native model paths are confirmed.
-- Input #4 / `cosyvoice-cache`: CosyVoice2 WAV cache files under `public/tts-cache/cosyvoice/{language}/`, with browser TTS fallback when cached audio is missing. Legacy stored/cache data may still use `qwen-cloud`; new adaptive and OpenRouter job state uses `cosyvoice-cache`.
+
+Input #4 / `cosyvoice-cache` / historical `qwen-cloud` has been removed from active product entry points. Do not add new Input #4 creation, generation, benchmark, or UI paths.
 
 The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, recommendation, and session feedback package is scoped by `(inputMode, language)`, so `browser-tts/de` and `browser-tts/en` are different adaptive profiles. The adaptive benchmark rolling window is **30 days** (`rollingWindowDays: 30`), and dashboard/leaderboard "Month" views also mean the last 30 days.
 
@@ -60,7 +61,7 @@ Server-only secrets:
 - Rule-based sync controller + adaptive pacing layer
 - Supabase Auth/RLS for multiuser sync and admin/member access
 - Vercel server routes for OpenRouter and admin APIs
-- Local Python ingestion CLI and local-only TTS/cache sidecars
+- Local Python ingestion CLI and local-only TTS sidecars
 
 ## Quick Start
 
@@ -84,7 +85,7 @@ Dicta can be deployed to Vercel as a static Vite app with lightweight API routes
 - Browser TTS works in the hosted app and keeps using browser `localStorage`.
 - OpenRouter generation works through `/api/openrouter/models`, `/api/openrouter/chat`, and `/api/openrouter/jobs` when `OPENROUTER_API_KEY` is configured server-side.
 - Ollama Cloud testing works through `/api/ollama/models` and `/api/ollama/chat` when `OLLAMA_API_KEY` is configured server-side.
-- Kokoro, CosyVoice/Input #4 cache generation, and local file inventory remain local-only workflows.
+- Kokoro remains a local-only workflow.
 - Hosted public beta access should use Supabase Auth (`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`) plus RLS.
 
 Set OpenRouter in Vercel before using hosted generation:
@@ -192,9 +193,10 @@ Server-side rules:
 
 ## Typical Training Flow
 
-1. Pick an input mode and language.
+1. Pick Input #2 or Input #3 and a language.
 2. Provide content:
-   - TTS modes: provide text; Dicta chunks it into semantic phrases.
+   - Browser TTS: provide text; Dicta chunks it into semantic phrases.
+   - Kokoro: provide text for the local sidecar workflow.
    - OpenRouter mode: generate structured scripts for the selected `(inputMode, language)` using current benchmark context and the trainer prescription.
 3. Start a session and type what you hear.
 4. The input adapter publishes live telemetry.
@@ -327,5 +329,4 @@ Before finishing code changes, run `npm run test` and `npm run build` unless the
 
 - Production transcription still needs a deployed backend, object storage, and long-running job handling.
 - Kokoro support for `de`, `fr`, and `pt` remains blocked/experimental.
-- Input #4 still accepts the historical `qwen-cloud` alias for existing cache manifests, stored sessions, and active OpenRouter jobs.
 - Full-tree render volume during long Browser TTS runs can still be reduced.
