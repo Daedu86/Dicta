@@ -46,6 +46,19 @@ describe('listening precision metrics', () => {
 
     expect(metrics.omissionRate).toBe(0);
     expect(metrics.lateCompletionRate).toBe(1);
+    expect(metrics.completionWindowScore).toBe(0);
+  });
+
+  it('keeps completion window score high when the attempt is complete before playback ends', () => {
+    const metrics = computeListeningPrecisionMetrics({
+      language: 'en',
+      targetText: 'the box is on the table',
+      typedTextAtPlaybackEnd: 'the box is on the table',
+      typedText: 'the box is on the table',
+    });
+
+    expect(metrics.lateCompletionRate).toBe(0);
+    expect(metrics.completionWindowScore).toBe(1);
   });
 
   it('tokenizes the five target languages with accented words', () => {
