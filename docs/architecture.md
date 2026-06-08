@@ -21,7 +21,7 @@ Inputs:
 - `browser-tts`: browser SpeechSynthesis with adaptive semantic chunking.
 - `kokoro`: local Kokoro TTS sidecar. Native in this setup: `en`, `es`. Blocked or experimental: `de`, `fr`, `pt`.
 
-Input #4 / `cosyvoice-cache` / historical `qwen-cloud` has been removed from active product entry points. Do not add new Input #4 creation, generation, benchmark, or UI paths.
+The active product architecture has two inputs only: Browser TTS and Kokoro. Do not reintroduce removed legacy input creation, generation, benchmark, or UI paths.
 
 Languages: `en`, `es`, `de`, `fr`, `pt`.
 

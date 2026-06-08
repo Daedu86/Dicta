@@ -28,7 +28,7 @@ Inputs:
 - `browser-tts` / input 2 / browser SpeechSynthesis
 - `kokoro` / input 3 / local Kokoro TTS sidecar
 
-Input 4 / `cosyvoice-cache` / historical `qwen-cloud` is removed from active product entry points. Do not add new Input 4 creation, generation, benchmark, or UI paths.
+The active product architecture has two inputs only: Browser TTS and Kokoro. Do not reintroduce removed legacy input creation, generation, benchmark, or UI paths.
 
 Languages:
 

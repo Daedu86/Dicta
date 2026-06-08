@@ -31,7 +31,7 @@ Input modes:
 - Input #2 / `browser-tts`: browser `SpeechSynthesis`, adaptive semantic chunking, and browser/OS voice behavior.
 - Input #3 / `kokoro`: local Kokoro TTS sidecar. English and Spanish are native in this setup; German, French, and Portuguese remain blocked/experimental until native model paths are confirmed.
 
-Input #4 / `cosyvoice-cache` / historical `qwen-cloud` has been removed from active product entry points. Do not add new Input #4 creation, generation, benchmark, or UI paths.
+The active product architecture has two inputs only: Browser TTS and Kokoro. Do not reintroduce removed legacy input creation, generation, benchmark, or UI paths.
 
 The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, recommendation, and session feedback package is scoped by `(inputMode, language)`, so `browser-tts/de` and `browser-tts/en` are different adaptive profiles. The adaptive benchmark rolling window is **30 days** (`rollingWindowDays: 30`), and dashboard/leaderboard "Month" views also mean the last 30 days.
 
