@@ -1,3 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cat > src/components/runtime-workspaces/SessionCreateCard.tsx <<'TSX'
 import type { ReactElement } from 'react';
 
 type SessionSource = 'plainText' | 'dictationScript';
@@ -185,3 +189,79 @@ export function SessionCreateCard({
     </div>
   );
 }
+TSX
+
+PYTHON_BIN=""
+if command -v python >/dev/null 2>&1; then
+  PYTHON_BIN="python"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON_BIN="python3"
+else
+  echo "ERROR: python/python3 not found. Install Python or tell me and I will give you a Node/bash hybrid version."
+  exit 1
+fi
+
+"$PYTHON_BIN" <<'PY'
+from pathlib import Path
+import re
+
+path = Path("vite.config.ts")
+s = path.read_text(encoding="utf-8")
+
+s = s.replace("\nlet kokoroSidecarProcess: ChildProcess | null = null;\n", "\n")
+
+route_start = s.find("        server.middlewares.use('/api/kokoro/start'")
+if route_start != -1:
+    route_end = s.find("\n        });", route_start)
+    if route_end != -1:
+        s = s[:route_start] + s[route_end + len("\n        });"):]
+
+def remove_function(src: str, name: str) -> str:
+    m = re.search(rf"\n(?:async\s+)?function\s+{re.escape(name)}\s*\(", src)
+    if not m:
+        return src
+
+    open_brace = src.find("{", m.start())
+    if open_brace == -1:
+        return src
+
+    depth = 0
+    end = open_brace
+    while end < len(src):
+        ch = src[end]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end += 1
+                break
+        end += 1
+
+    return src[:m.start()] + "\n" + src[end:]
+
+for fn in ("ensureKokoroVenvReady", "isKokoroSidecarHealthy", "waitForKokoroSidecarReady"):
+    s = remove_function(s, fn)
+
+m = re.search(r"import \{([^}]+)\} from 'node:child_process';\n", s)
+if m:
+    import_line = m.group(0)
+    body = s.replace(import_line, "")
+    names = []
+    if re.search(r"\bexecFile\(", body):
+        names.append("execFile")
+    if re.search(r"\bexecFileSync\(", body):
+        names.append("execFileSync")
+    if re.search(r"\bspawn\(", body):
+        names.append("spawn")
+    if re.search(r"\bChildProcess\b", body):
+        names.append("type ChildProcess")
+
+    replacement = f"import {{ {', '.join(names)} }} from 'node:child_process';\n" if names else ""
+    s = s.replace(import_line, replacement)
+
+s = re.sub(r"\n{3,}", "\n\n", s)
+path.write_text(s, encoding="utf-8")
+PY
+
+echo "critical cleanup applied"

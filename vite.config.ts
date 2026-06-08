@@ -1,11 +1,10 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { execFile, execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-let kokoroSidecarProcess: ChildProcess | null = null;
 const localOpenRouterJobs = new Map<string, {
   jobId: string;
   status: 'queued' | 'running' | 'succeeded' | 'failed';
@@ -794,57 +793,6 @@ export default defineConfig(({ mode }) => {
           }
         });
 
-        server.middlewares.use('/api/kokoro/start', async (req, res) => {
-          if (req.method !== 'POST') {
-            res.statusCode = 405;
-            res.end('Method not allowed');
-            return;
-          }
-
-          try {
-            if (await isKokoroSidecarHealthy()) {
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ ok: true, started: false, ready: true }));
-              return;
-            }
-
-            if (kokoroSidecarProcess && !kokoroSidecarProcess.killed) {
-              const ready = await waitForKokoroSidecarReady();
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ ok: ready, started: false, ready }));
-              return;
-            }
-
-            const kokoroDir = path.resolve(process.cwd(), 'services', 'kokoro_tts');
-            await ensureKokoroVenvReady(kokoroDir);
-            const pythonCmd =
-              process.platform === 'win32'
-                ? path.join(kokoroDir, '.venv', 'Scripts', 'python.exe')
-                : path.join(kokoroDir, '.venv', 'bin', 'python');
-            const pythonExists = await fileExists(pythonCmd);
-            const command = pythonExists ? pythonCmd : process.platform === 'win32' ? 'python' : 'python3';
-
-            kokoroSidecarProcess = spawn(command, ['-m', 'uvicorn', 'app:app', '--host', '127.0.0.1', '--port', '8787'], {
-              cwd: kokoroDir,
-              stdio: 'ignore',
-              windowsHide: true,
-            });
-            kokoroSidecarProcess.unref();
-            kokoroSidecarProcess.on('exit', () => {
-              kokoroSidecarProcess = null;
-            });
-
-            const ready = await waitForKokoroSidecarReady();
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ ok: ready, started: true, ready }));
-          } catch (error) {
-            res.statusCode = 500;
-            res.end(error instanceof Error ? error.message : 'Failed to start Kokoro sidecar.');
-          }
-        });
-
-
-
       },
     },
   ],
@@ -923,40 +871,6 @@ function readGitValue(args: string[]): string {
   }
 }
 
-async function ensureKokoroVenvReady(kokoroDir: string): Promise<void> {
-  const venvPython =
-    process.platform === 'win32'
-      ? path.join(kokoroDir, '.venv', 'Scripts', 'python.exe')
-      : path.join(kokoroDir, '.venv', 'bin', 'python');
-
-  if (await fileExists(venvPython)) {
-    return;
-  }
-
-  {
-    const systemPython = process.platform === 'win32' ? 'python' : 'python3';
-    await new Promise<void>((resolve, reject) => {
-      execFile(systemPython, ['-m', 'venv', '.venv'], { cwd: kokoroDir }, (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(stderr || stdout || error.message));
-          return;
-        }
-        resolve();
-      });
-    });
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    execFile(venvPython, ['-m', 'pip', 'install', '-r', 'requirements.txt'], { cwd: kokoroDir }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(stderr || stdout || error.message));
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
 async function listKnownFiles(root: string): Promise<Array<{ name: string; ext: string; size: number }> | null> {
   try {
     const stat = await fs.stat(root);
@@ -991,34 +905,5 @@ async function listKnownFiles(root: string): Promise<Array<{ name: string; ext: 
 
   await walk(root);
   return found;
-}
-
-async function fileExists(pathToFile: string): Promise<boolean> {
-  try {
-    await fs.access(pathToFile);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function isKokoroSidecarHealthy(): Promise<boolean> {
-  try {
-    const response = await fetch('http://127.0.0.1:8787/health');
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function waitForKokoroSidecarReady(timeoutMs = 10_000): Promise<boolean> {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    if (await isKokoroSidecarHealthy()) {
-      return true;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  return false;
 }
 

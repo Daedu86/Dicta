@@ -967,7 +967,7 @@ function App() {
   const activeInputLabel =
     activeInputMode === 'input2'
       ? 'Input # 2 - Text to Speech (TTS)'
-      : 'Retired Local TTS - Kokoro TTS Local';
+      : 'Retired Local TTS';
   const activeInputFeatureLabel =
     activeInputMode === 'input2'
       ? 'Built-in browser feature'
@@ -5107,7 +5107,7 @@ function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
     },
     {
       inputMode: 'input3',
-      title: 'Retired Local TTS - Kokoro TTS Local',
+      title: 'Retired Local TTS',
       adapter: 'kokoroTelemetryAdapter',
       execution: 'Controls generated phrase size, Kokoro playback rate, replay behavior, and pause timing.',
       controls: 'Generation + replay + rate',
