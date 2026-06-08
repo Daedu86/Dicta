@@ -7,6 +7,7 @@ import type { TtsPacingMode } from '../../types/dictation';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
 type RuntimeWorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter' | 'ollama';
 type RuntimeTtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
+type RuntimeSessionInputMode = 'input2' | 'input3' | 'input4';
 
 type LiveMetricsDockProps = {
   insightsCollapsed: boolean;
@@ -34,7 +35,7 @@ type LiveMetricsDockProps = {
   onToggleInsightsCollapsed: () => void;
   onSelectInsightsDiagnosticFallbackReport: () => void;
   formatInputModeLabel: (inputMode: InputMode) => string;
-  formatSessionInputMode: (inputMode: string) => string;
+  formatSessionInputMode: (inputMode: RuntimeSessionInputMode) => string;
   formatDuration: (seconds: number) => string;
   formatSessionDate: (value: string) => string;
   formatTtsPacingMode: (mode: TtsPacingMode) => string;
@@ -189,7 +190,7 @@ export function LiveMetricsDock({
               {!lastSessionForLanguage ? <p className="hint">No sessions found for this language yet.</p> : null}
               <div className="bottom-summary-grid">
                 <Metric label="Name" value={lastSessionForLanguage?.name ?? '—'} />
-                <Metric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode) : '—'} />
+                <Metric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode as RuntimeSessionInputMode) : '—'} />
                 <Metric label="Difficulty" value={lastSessionForLanguage?.difficulty ? formatDifficultyLabel(lastSessionForLanguage.difficulty) : '—'} />
                 <Metric
                   label="Score"
