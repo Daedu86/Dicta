@@ -89,7 +89,7 @@ describe('openRouterJobs', () => {
     clearActiveOpenRouterJob();
   });
 
-  it('restores legacy direct jobs and custom workspace slot metadata from localStorage', () => {
+  it('restores supported legacy job metadata while ignoring removed Input 4 jobs', () => {
     clearActiveOpenRouterJob();
     window.localStorage.setItem(
       OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
@@ -104,9 +104,9 @@ describe('openRouterJobs', () => {
           startedAt: '2026-05-17T10:00:00.000Z',
         },
         {
-          jobId: 'job-custom',
+          jobId: 'job-removed-input4',
           model: 'openrouter/free',
-          slotLabel: 'Session 2',
+          slotLabel: 'Removed Input 4 job',
           inputMode: 'qwen-cloud',
           language: 'pt',
           durationMinutes: 4,
@@ -121,22 +121,15 @@ describe('openRouterJobs', () => {
     );
 
     const restoredJobs = loadActiveOpenRouterJobs();
+    expect(restoredJobs).toHaveLength(1);
     expect(restoredJobs[0]).toMatchObject({
       jobId: 'job-legacy',
+      inputMode: 'browser-tts',
       language: 'fr',
       durationMinutes: 1,
     });
     expect(restoredJobs[0]).not.toHaveProperty('origin');
     expect(restoredJobs[0]).not.toHaveProperty('customSlotId');
-    expect(restoredJobs[1]).toMatchObject({
-      jobId: 'job-custom',
-      inputMode: 'cosyvoice-cache',
-      language: 'pt',
-      origin: 'custom-workspace',
-      customSlotId: 'prompt2',
-      promptMode: 'compact-adaptive',
-      promptApproximateTokenCount: 1050,
-    });
     clearActiveOpenRouterJob();
   });
 });
