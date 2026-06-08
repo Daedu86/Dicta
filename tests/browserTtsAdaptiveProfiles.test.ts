@@ -22,15 +22,17 @@ describe('resolveBrowserTtsAdaptiveProfile', () => {
     expect(profile.recommendationCalibrationEnabled).toBe(true);
   });
 
-  it('returns EN profile values', () => {
+  it('returns EN conservative listening-first profile values', () => {
     const profile = resolveBrowserTtsAdaptiveProfile('en');
-    expect(profile.supportRateFloor).toBe(0.82);
-    expect(profile.extremeSupportRateFloor).toBe(0.78);
-    expect(profile.balancedFlowFloor).toBe(0.84);
-    expect(profile.supportRateCeiling).toBe(0.92);
+    expect(profile.supportRateFloor).toBe(0.78);
+    expect(profile.extremeSupportRateFloor).toBe(0.74);
+    expect(profile.balancedFlowFloor).toBe(0.8);
+    expect(profile.supportRateCeiling).toBe(0.88);
     expect(profile.unsafeBoundaryMinPauseMs).toBe(1200);
-    expect(profile.minRecommendedRate).toBe(0.84);
+    expect(profile.minRecommendedRate).toBe(0.78);
     expect(profile.recommendationCalibrationEnabled).toBe(false);
+    expect(profile.sessionWarmup.enabled).toBe(true);
+    expect(profile.adaptivePause.maxPauseMs).toBe(3200);
   });
 
   it('returns DE conservative profile values', () => {
