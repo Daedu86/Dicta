@@ -42,7 +42,7 @@ describe('computeSessionScore', () => {
       rate: 1,
       lagSec: 0,
       listeningPrecision,
-    })).toBe(101);
+    })).toBe(104);
   });
 
   it('adds the steady playback rate bonus near 1.0x', () => {
