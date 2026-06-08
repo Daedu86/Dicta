@@ -20,7 +20,7 @@ export interface WordAlignmentPair {
 }
 
 export type SessionPointsSource = {
-  inputMode?: 'input2' | 'input3' | 'input4';
+  inputMode?: 'input2' | 'input3' | string;
   ttsText?: string | null;
   kokoroText?: string | null;
 };
@@ -67,7 +67,7 @@ export function computeSessionMaxPoints(session: SessionPointsSource | null | un
   if (!session) return null;
 
   let maxPoints = 0;
-  if (session.inputMode === 'input2' || session.inputMode === 'input4') {
+  if (session.inputMode === 'input2') {
     maxPoints = countNormalizedTextWords(session.ttsText ?? '');
   } else if (session.inputMode === 'input3') {
     maxPoints = countNormalizedTextWords(session.kokoroText ?? '');
