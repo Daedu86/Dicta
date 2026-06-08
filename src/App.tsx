@@ -234,11 +234,11 @@ type StoredSession = {
   ttsVoiceURI?: string | null;
   ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
   ttsPracticeText: string;
-  kokoroText: string;
-  kokoroLanguage: TtsLanguage | null;
-  kokoroVoice: string;
-  kokoroPracticeText: string;
-  kokoroChunks: KokoroGeneratedChunk[];
+  retiredInputText: string;
+  retiredInputLanguage: TtsLanguage | null;
+  retiredInputVoice: string;
+  retiredInputPracticeText: string;
+  retiredInputChunks: RetiredInputChunk[];
   difficulty: Difficulty;
   status: SessionStatus;
   metrics: SessionMetrics;
@@ -253,7 +253,7 @@ type StoredSession = {
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 
-type KokoroGeneratedChunk = {
+type RetiredInputChunk = {
   id?: string;
   text?: string;
   sourceText?: string;
@@ -266,7 +266,7 @@ type KokoroGeneratedChunk = {
   rate?: number;
   [key: string]: unknown;
 };
-type SessionInputMode = 'input2' | 'input3';
+type SessionInputMode = 'input2';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
 type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
@@ -339,7 +339,6 @@ function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
 }
 
-
 type SessionMetrics = {
   controllerState: ControlAction;
   rate: number;
@@ -382,7 +381,7 @@ type AdminStorageSummary = {
   localStorageEntries: LocalStorageEntry[];
   dictaLocalStorageBytes: number;
   ttsTextChars: number;
-  kokoroTextChars: number;
+  retiredInputTextChars: number;
   typedTextChars: number;
   telemetrySamples: number;
   telemetryActions: number;
@@ -518,54 +517,54 @@ function App() {
   const [ttsPacingMode, setTtsPacingMode] = useState<TtsPacingMode>('balanced');
   const [ttsSpeechRate, setTtsSpeechRate] = useState(1);
 
-  // Retired Local TTS/Kokoro retired inert bindings.
+  // Retired legacy input inert bindings.
   // These keep legacy UI/lifecycle references harmless while the remaining UI residues are removed.
-  const [kokoroExpanded, setKokoroExpanded] = useState(false);
-  const [kokoroText, setKokoroText] = useState('');
-  const [kokoroLanguage, setKokoroLanguage] = useState<TtsLanguage>('en');
-  const [kokoroVoice, setKokoroVoice] = useState('default');
-  const [kokoroPracticeText, setKokoroPracticeText] = useState('');
-  const [kokoroStatus, setKokoroStatus] = useState<TtsStatus>('idle');
-  const [kokoroCurrentChunk, setKokoroCurrentChunk] = useState<KokoroGeneratedChunk | null>(null);
-  const [kokoroChunks, setKokoroChunks] = useState<KokoroGeneratedChunk[]>([]);
-  const [kokoroPlayerProgressTick, setKokoroPlayerProgressTick] = useState(0);
-  const [kokoroPacingMode, setKokoroPacingMode] = useState<TtsPacingMode>('balanced');
-  const [kokoroSpeechRate, setKokoroSpeechRate] = useState(1);
-  const [kokoroManualBias, setKokoroManualBias] = useState(0);
-  const kokoroServiceReady = false;
-  const toggleKokoroEnabled = async (): Promise<void> => undefined;
-  const rewindKokoroPhrase = (): void => undefined;
-  const adjustKokoroManualPace = (_delta: number): void => undefined;
-  const resetKokoroPace = (): void => undefined;
-  const estimateKokoroSpokenWordIndex = (): number => 0;
-  const onKokoroPracticeChange = (event: ChangeEvent<HTMLTextAreaElement> | string): void => {
-    setKokoroPracticeText(typeof event === 'string' ? event : event.currentTarget.value);
+  const [retiredInputExpanded, setRetiredInputExpanded] = useState(false);
+  const [retiredInputText, setRetiredInputText] = useState('');
+  const [retiredInputLanguage, setRetiredInputLanguage] = useState<TtsLanguage>('en');
+  const [retiredInputVoice, setRetiredInputVoice] = useState('default');
+  const [retiredInputPracticeText, setRetiredInputPracticeText] = useState('');
+  const [retiredInputStatus, setRetiredInputStatus] = useState<TtsStatus>('idle');
+  const [retiredInputCurrentChunk, setRetiredInputCurrentChunk] = useState<RetiredInputChunk | null>(null);
+  const [retiredInputChunks, setRetiredInputChunks] = useState<RetiredInputChunk[]>([]);
+  const [retiredInputPlayerProgressTick, setRetiredInputPlayerProgressTick] = useState(0);
+  const [retiredInputPacingMode, setRetiredInputPacingMode] = useState<TtsPacingMode>('balanced');
+  const [retiredInputSpeechRate, setRetiredInputSpeechRate] = useState(1);
+  const [retiredInputManualBias, setRetiredInputManualBias] = useState(0);
+  const retiredInputServiceReady = false;
+  const toggleRetiredInputEnabled = async (): Promise<void> => undefined;
+  const rewindRetiredInputPhrase = (): void => undefined;
+  const adjustRetiredInputManualPace = (_delta: number): void => undefined;
+  const resetRetiredInputPace = (): void => undefined;
+  const estimateRetiredInputSpokenWordIndex = (): number => 0;
+  const onRetiredInputPracticeChange = (event: ChangeEvent<HTMLTextAreaElement> | string): void => {
+    setRetiredInputPracticeText(typeof event === 'string' ? event : event.currentTarget.value);
   };
-  const onKokoroPracticeKeyDown = (_event: KeyboardEvent<HTMLTextAreaElement>): void => undefined;
-  const stopKokoroPlayback = (_nextState: ControlAction = 'hold'): void => {
-    setKokoroStatus(kokoroText.trim() ? 'ready' : 'idle');
-    setKokoroCurrentChunk(null);
+  const onRetiredInputPracticeKeyDown = (_event: KeyboardEvent<HTMLTextAreaElement>): void => undefined;
+  const stopRetiredInputPlayback = (_nextState: ControlAction = 'hold'): void => {
+    setRetiredInputStatus(retiredInputText.trim() ? 'ready' : 'idle');
+    setRetiredInputCurrentChunk(null);
   };
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
-  const kokoroEngineRef = useRef<{ stop: () => void } | null>(null);
-  const kokoroStartedAtMsRef = useRef<number | null>(null);
-  const kokoroChunkStartMsRef = useRef<number | null>(null);
-  const kokoroChunkStartWordIndexRef = useRef(0);
-  const kokoroChunkWordCountRef = useRef(0);
-  const kokoroCompletedSourceWordsRef = useRef(0);
-  const kokoroChunkIndexRef = useRef(0);
-  const kokoroLastControllerActionRef = useRef<ControlAction>('hold');
-  const kokoroCancelledRef = useRef(false);
-  const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
-  const kokoroSemanticPhraseReplayCountRef = useRef(0);
-  const applyKokoroPerformanceSample = (): void => undefined;
-  const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
-  void kokoroExpanded;
-  void kokoroManualBias;
-  void estimateKokoroSpokenWordIndex;
-  void applyKokoroPerformanceSample;
+  const retiredInputEngineRef = useRef<{ stop: () => void } | null>(null);
+  const retiredInputStartedAtMsRef = useRef<number | null>(null);
+  const retiredInputChunkStartMsRef = useRef<number | null>(null);
+  const retiredInputChunkStartWordIndexRef = useRef(0);
+  const retiredInputChunkWordCountRef = useRef(0);
+  const retiredInputCompletedSourceWordsRef = useRef(0);
+  const retiredInputChunkIndexRef = useRef(0);
+  const retiredInputLastControllerActionRef = useRef<ControlAction>('hold');
+  const retiredInputCancelledRef = useRef(false);
+  const retiredInputSemanticPhraseAdvanceCountRef = useRef(0);
+  const retiredInputSemanticPhraseReplayCountRef = useRef(0);
+  const applyRetiredInputPerformanceSample = (): void => undefined;
+  const applyRetiredInputPerformanceSampleRef = useRef<() => void>(() => undefined);
+  void retiredInputExpanded;
+  void retiredInputManualBias;
+  void estimateRetiredInputSpokenWordIndex;
+  void applyRetiredInputPerformanceSample;
   useEffect(() => {
     if (browserTtsVoices.length === 0) return;
     setSessions((prev) => {
@@ -607,8 +606,8 @@ function App() {
   }, [ttsPracticeText]);
 
   useEffect(() => {
-    kokoroPracticeLiveTextRef.current = kokoroPracticeText;
-  }, [kokoroPracticeText]);
+    retiredInputPracticeLiveTextRef.current = retiredInputPracticeText;
+  }, [retiredInputPracticeText]);
   const [directOpenRouterBusy, setDirectOpenRouterBusy] = useState(false);
   const [directIntermediateOpenRouterBusy, setDirectIntermediateOpenRouterBusy] = useState(false);
   const [directAdvancedOpenRouterBusy, setDirectAdvancedOpenRouterBusy] = useState(false);
@@ -788,7 +787,7 @@ function App() {
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
   const ttsPracticeLiveTextRef = useRef('');
-  const kokoroPracticeLiveTextRef = useRef('');
+  const retiredInputPracticeLiveTextRef = useRef('');
 
   const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const telemetryRef = useRef<SessionTelemetry | null>(null);
@@ -1340,45 +1339,45 @@ function App() {
           points: ttsPracticeEvaluation.points,
         })
       : 0;
-  const kokoroHasText = kokoroText.trim().length > 0;
-  const kokoroLanguageWarning = '';
-  const kokoroTranscript = useMemo(() => buildTextTranscript(kokoroText), [kokoroText]);
-  const kokoroPracticeEvaluation = useMemo(
-    () => evaluateTranscriptAttempt(kokoroPracticeText, kokoroTranscript),
-    [kokoroPracticeText, kokoroTranscript],
+  const retiredInputHasText = retiredInputText.trim().length > 0;
+  const retiredInputLanguageWarning = '';
+  const retiredInputTranscript = useMemo(() => buildTextTranscript(retiredInputText), [retiredInputText]);
+  const retiredInputPracticeEvaluation = useMemo(
+    () => evaluateTranscriptAttempt(retiredInputPracticeText, retiredInputTranscript),
+    [retiredInputPracticeText, retiredInputTranscript],
   );
-  const kokoroPracticeWords = kokoroPracticeEvaluation.typedWords;
-  const kokoroVisibleAccuracy =
-    kokoroPracticeWords.length > 0 && (kokoroTranscript?.words.length ?? 0) > 0 ? kokoroPracticeEvaluation.accuracy : 0;
-  const kokoroVisibleScore =
-    kokoroPracticeWords.length > 0 && (kokoroTranscript?.words.length ?? 0) > 0
+  const retiredInputPracticeWords = retiredInputPracticeEvaluation.typedWords;
+  const retiredInputVisibleAccuracy =
+    retiredInputPracticeWords.length > 0 && (retiredInputTranscript?.words.length ?? 0) > 0 ? retiredInputPracticeEvaluation.accuracy : 0;
+  const retiredInputVisibleScore =
+    retiredInputPracticeWords.length > 0 && (retiredInputTranscript?.words.length ?? 0) > 0
       ? computeSessionScore({
-          accuracy: kokoroVisibleAccuracy,
+          accuracy: retiredInputVisibleAccuracy,
           lagSec,
           wpm,
           rate,
-          points: kokoroPracticeEvaluation.points,
+          points: retiredInputPracticeEvaluation.points,
         })
       : 0;
   const activePoints =
     activeInputMode === 'input2'
       ? ttsPracticeEvaluation.points
-      : kokoroPracticeEvaluation.points;
+      : retiredInputPracticeEvaluation.points;
   const activeVisibleAccuracy =
     activeInputMode === 'input2'
       ? ttsVisibleAccuracy
-      : kokoroVisibleAccuracy;
+      : retiredInputVisibleAccuracy;
   const activeVisibleScore =
     activeInputMode === 'input2'
       ? ttsVisibleScore
-      : kokoroVisibleScore;
+      : retiredInputVisibleScore;
   const activeMaxPoints = useMemo(
     () =>
       computeSessionMaxPoints({
         inputMode: activeInputMode,
         ttsText,
       }),
-    [activeInputMode, kokoroText, ttsText],
+    [activeInputMode, retiredInputText, ttsText],
   );
   const activeLivePointsLabel = formatSessionPointsLabel(activePoints, activeMaxPoints);
   const activeLiveScoreHelpText = buildSessionScoreHelpText({
@@ -1415,26 +1414,26 @@ function App() {
   ]);
 
   useEffect(() => {
-    if (activeInputMode !== 'input3' || activeSessionFinished || !kokoroHasText || kokoroStatus !== 'playing') {
+    if (true || activeSessionFinished || !retiredInputHasText || retiredInputStatus !== 'playing') {
       return;
     }
 
     const id = window.setInterval(() => {
-      applyKokoroPerformanceSampleRef.current();
+      applyRetiredInputPerformanceSampleRef.current();
     }, config.tickMs);
 
     return () => window.clearInterval(id);
   }, [
     activeInputMode,
     config.tickMs,
-    kokoroHasText,
-    kokoroPracticeEvaluation.lastMatchedTargetIndex,
-    kokoroPracticeEvaluation.points,
-    kokoroPracticeWords.length,
-    kokoroSpeechRate,
-    kokoroStatus,
-    kokoroTranscript,
-    kokoroVisibleAccuracy,
+    retiredInputHasText,
+    retiredInputPracticeEvaluation.lastMatchedTargetIndex,
+    retiredInputPracticeEvaluation.points,
+    retiredInputPracticeWords.length,
+    retiredInputSpeechRate,
+    retiredInputStatus,
+    retiredInputTranscript,
+    retiredInputVisibleAccuracy,
     sessionStatus,
   ]);
 
@@ -1447,23 +1446,23 @@ function App() {
     setTtsLanguage(activeSession.ttsLanguage ?? 'de');
     setTtsPracticeText(activeSession.ttsPracticeText ?? '');
     ttsPracticeLiveTextRef.current = activeSession.ttsPracticeText ?? '';
-    setKokoroText(activeSession.kokoroText ?? '');
-    setKokoroLanguage(activeSession.kokoroLanguage ?? 'en');
-    setKokoroVoice(activeSession.kokoroVoice ?? 'default');
-    setKokoroPracticeText(activeSession.kokoroPracticeText ?? '');
-    kokoroPracticeLiveTextRef.current = activeSession.kokoroPracticeText ?? '';
-    setKokoroChunks(activeSession.kokoroChunks ?? []);
+    setRetiredInputText(activeSession.retiredInputText ?? '');
+    setRetiredInputLanguage(activeSession.retiredInputLanguage ?? 'en');
+    setRetiredInputVoice(activeSession.retiredInputVoice ?? 'default');
+    setRetiredInputPracticeText(activeSession.retiredInputPracticeText ?? '');
+    retiredInputPracticeLiveTextRef.current = activeSession.retiredInputPracticeText ?? '';
+    setRetiredInputChunks(activeSession.retiredInputChunks ?? []);
     setSessionStatus(activeSession.status);
     setTtsText(activeSession.ttsText ?? '');
     setTtsStatus(activeSession.inputMode === 'input2' && activeSession.status === 'finished' ? 'finished' : activeSession.ttsText ? 'ready' : 'idle');
-    setKokoroStatus(activeSession.inputMode === 'input3' && activeSession.status === 'finished' ? 'finished' : activeSession.kokoroText ? 'ready' : 'idle');
+    setRetiredInputStatus('idle');
     setTtsCurrentChunk('');
-    setKokoroCurrentChunk(null);
+    setRetiredInputCurrentChunk(null);
     setTtsPacingMode('balanced');
     setTtsSpeechRate(1);
-    setKokoroPacingMode('balanced');
-    setKokoroSpeechRate(1);
-    setKokoroManualBias(0);
+    setRetiredInputPacingMode('balanced');
+    setRetiredInputSpeechRate(1);
+    setRetiredInputManualBias(0);
     setRunning(false);
     const hydratedMetrics = activeSession.status === 'finished' ? activeSession.metrics : null;
     setRate(hydratedMetrics?.rate ?? 1);
@@ -1499,18 +1498,18 @@ function App() {
     ttsChunkAccuracyWindowRef.current = [];
     ttsLastAccuracySnapshotRef.current = { typedWords: 0, matchedWords: 0 };
     ttsLastControllerActionRef.current = 'hold';
-    kokoroStartedAtMsRef.current = null;
-    kokoroChunkStartMsRef.current = null;
-    kokoroChunkStartWordIndexRef.current = 0;
-    kokoroChunkWordCountRef.current = 0;
-    kokoroCompletedSourceWordsRef.current = 0;
-    kokoroChunkIndexRef.current = 0;
-    kokoroSemanticPhraseAdvanceCountRef.current = 0;
-    kokoroSemanticPhraseReplayCountRef.current = 0;
-    kokoroLastControllerActionRef.current = 'hold';
-    kokoroCancelledRef.current = false;
+    retiredInputStartedAtMsRef.current = null;
+    retiredInputChunkStartMsRef.current = null;
+    retiredInputChunkStartWordIndexRef.current = 0;
+    retiredInputChunkWordCountRef.current = 0;
+    retiredInputCompletedSourceWordsRef.current = 0;
+    retiredInputChunkIndexRef.current = 0;
+    retiredInputSemanticPhraseAdvanceCountRef.current = 0;
+    retiredInputSemanticPhraseReplayCountRef.current = 0;
+    retiredInputLastControllerActionRef.current = 'hold';
+    retiredInputCancelledRef.current = false;
     resetAdaptiveSessionFeedbackTracking(activeSessionId);
-    kokoroEngineRef.current?.stop();
+    retiredInputEngineRef.current?.stop();
   }, [activeSessionId]);
 
   useEffect(() => {
@@ -1521,8 +1520,8 @@ function App() {
     if (activeSession.inputMode === 'input2') {
       setTtsStatus('finished');
     }
-    if (activeSession.inputMode === 'input3') {
-      setKokoroStatus('finished');
+    if (false) {
+      setRetiredInputStatus('finished');
     }
     setControllerState(activeSession.metrics.controllerState);
     setRate(activeSession.metrics.rate);
@@ -1567,11 +1566,11 @@ function App() {
           session.ttsText !== ttsText ||
           session.ttsLanguage !== ttsLanguage ||
           session.ttsPracticeText !== ttsPracticeText ||
-          session.kokoroText !== kokoroText ||
-          session.kokoroLanguage !== kokoroLanguage ||
-          session.kokoroVoice !== kokoroVoice ||
-          session.kokoroPracticeText !== kokoroPracticeText ||
-          JSON.stringify(session.kokoroChunks) !== JSON.stringify(kokoroChunks) ||
+          session.retiredInputText !== retiredInputText ||
+          session.retiredInputLanguage !== retiredInputLanguage ||
+          session.retiredInputVoice !== retiredInputVoice ||
+          session.retiredInputPracticeText !== retiredInputPracticeText ||
+          JSON.stringify(session.retiredInputChunks) !== JSON.stringify(retiredInputChunks) ||
           session.difficulty !== difficulty ||
           session.status !== nextStatus ||
           session.metrics.controllerState !== controllerState ||
@@ -1595,10 +1594,10 @@ function App() {
           ttsText,
           ttsLanguage,
           ttsPracticeText,
-            kokoroLanguage,
-          kokoroVoice,
-          kokoroPracticeText,
-          kokoroChunks,
+            retiredInputLanguage,
+          retiredInputVoice,
+          retiredInputPracticeText,
+          retiredInputChunks,
           difficulty,
           status: nextStatus,
           metrics: {
@@ -1621,11 +1620,11 @@ function App() {
     activeSession,
     difficulty,
     inputSettingsLocked,
-    kokoroLanguage,
-    kokoroChunks,
-    kokoroPracticeText,
-    kokoroText,
-    kokoroVoice,
+    retiredInputLanguage,
+    retiredInputChunks,
+    retiredInputPracticeText,
+    retiredInputText,
+    retiredInputVoice,
     lagSec,
     lagWords,
     rate,
@@ -1650,10 +1649,10 @@ function App() {
   }, [ttsStatus]);
 
   useEffect(() => {
-    if (kokoroStatus !== 'playing') return;
-    const interval = window.setInterval(() => setKokoroPlayerProgressTick((value) => value + 1), 500);
+    if (retiredInputStatus !== 'playing') return;
+    const interval = window.setInterval(() => setRetiredInputPlayerProgressTick((value) => value + 1), 500);
     return () => window.clearInterval(interval);
-  }, [kokoroStatus]);
+  }, [retiredInputStatus]);
 
   function resetSession(options: { preserveInputSettingsLock?: boolean } = {}): void {
     const nextInputSettingsLocked = options.preserveInputSettingsLock ? inputSettingsLocked : false;
@@ -1661,35 +1660,35 @@ function App() {
       allowFinishedSessionResetRef.current = activeSession.id;
     }
     stopTtsPlayback();
-    stopKokoroPlayback();
+    stopRetiredInputPlayback();
     setTtsPracticeText('');
     ttsPracticeLiveTextRef.current = '';
-    setKokoroPracticeText('');
-    kokoroPracticeLiveTextRef.current = '';
-    setKokoroChunks([]);
+    setRetiredInputPracticeText('');
+    retiredInputPracticeLiveTextRef.current = '';
+    setRetiredInputChunks([]);
     setTtsStatus(ttsText.trim() ? 'ready' : 'idle');
-    setKokoroStatus(kokoroText.trim() ? 'ready' : 'idle');
+    setRetiredInputStatus(retiredInputText.trim() ? 'ready' : 'idle');
     setTtsCurrentChunk('');
-    setKokoroCurrentChunk(null);
+    setRetiredInputCurrentChunk(null);
     setTtsPacingMode('balanced');
     setTtsSpeechRate(1);
-    setKokoroPacingMode('balanced');
-    setKokoroSpeechRate(1);
-    setKokoroManualBias(0);
+    setRetiredInputPacingMode('balanced');
+    setRetiredInputSpeechRate(1);
+    setRetiredInputManualBias(0);
     ttsStartedAtMsRef.current = null;
     ttsChunkStartMsRef.current = null;
     ttsChunkStartWordIndexRef.current = 0;
     ttsChunkWordCountRef.current = 0;
     ttsCompletedSourceWordsRef.current = 0;
     ttsLastControllerActionRef.current = 'hold';
-    kokoroStartedAtMsRef.current = null;
-    kokoroChunkStartMsRef.current = null;
-    kokoroChunkStartWordIndexRef.current = 0;
-    kokoroChunkWordCountRef.current = 0;
-    kokoroCompletedSourceWordsRef.current = 0;
-    kokoroChunkIndexRef.current = 0;
-    kokoroLastControllerActionRef.current = 'hold';
-    kokoroCancelledRef.current = false;
+    retiredInputStartedAtMsRef.current = null;
+    retiredInputChunkStartMsRef.current = null;
+    retiredInputChunkStartWordIndexRef.current = 0;
+    retiredInputChunkWordCountRef.current = 0;
+    retiredInputCompletedSourceWordsRef.current = 0;
+    retiredInputChunkIndexRef.current = 0;
+    retiredInputLastControllerActionRef.current = 'hold';
+    retiredInputCancelledRef.current = false;
     setRunning(false);
     setRate(1);
     setLagSec(0);
@@ -1714,7 +1713,7 @@ function App() {
       if (activeInputMode === 'input2') {
         setTtsExpanded(true);
       } else {
-        setKokoroExpanded(true);
+        setRetiredInputExpanded(true);
       }
     }
     telemetryRef.current = null;
@@ -1997,7 +1996,7 @@ function App() {
     setDictationScriptJson('');
     setDictationScriptValidation(null);
     setTtsExpanded(true);
-    setKokoroExpanded(true);
+    setRetiredInputExpanded(true);
   }
 
   function validateScriptImport(): void {
@@ -2034,7 +2033,7 @@ function App() {
     setDictationScriptJson('');
     setDictationScriptValidation(null);
     setTtsExpanded(false);
-    setKokoroExpanded(false);
+    setRetiredInputExpanded(false);
     setError('');
     setExportMessage('DictationScript session created and locked.');
   }
@@ -2068,7 +2067,7 @@ function App() {
     setDictationScriptJson('');
     setDictationScriptValidation(null);
     setTtsExpanded(false);
-    setKokoroExpanded(false);
+    setRetiredInputExpanded(false);
     setError('');
     setOpenRouterError('');
     setExportMessage('OpenRouter DictationScript session created and locked.');
@@ -2148,8 +2147,8 @@ function App() {
     if (activeInputMode === 'input2') {
       return ttsLanguage;
     }
-    if (activeInputMode === 'input3') {
-      return kokoroLanguage;
+    if (false) {
+      return retiredInputLanguage;
     }
     return null;
   }
@@ -2555,12 +2554,9 @@ function App() {
 
   
 
-
   
 
-
   
-
 
   function ensureAttemptTelemetry(): SessionTelemetry {
     const next = cloneTelemetry(telemetryRef.current);
@@ -2580,15 +2576,11 @@ function App() {
 
   
 
+  
 
   
 
-
   
-
-
-  
-
 
   function estimateTtsSpokenWordIndex(now = performance.now()): number {
     const sourceWordCount = ttsTranscript?.words.length ?? 0;
@@ -3434,37 +3426,25 @@ function App() {
     }
   }
 
-
+  
 
   
 
+  
 
   
 
+  
 
   
 
+  
 
   
 
-
   
 
-
   
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
 
   function buildAdaptiveEventCounts(
     timelinePoints: AdaptiveTimelinePoint[],
@@ -3715,11 +3695,11 @@ function App() {
   const ttsPlayerCurrentSec =
     ttsPlayerWordCount > 0 ? Math.min(ttsPlayerDurationSec, (ttsPlayerCurrentWord / ttsPlayerWordCount) * ttsPlayerDurationSec) : 0;
   const ttsPlayerProgressPercent = ttsPlayerDurationSec > 0 ? clamp((ttsPlayerCurrentSec / ttsPlayerDurationSec) * 100, 0, 100) : 0;
-  const kokoroPlayerWordCount = kokoroTranscript?.words.length ?? 0;
-  const kokoroPlayerCurrentWord = 0;
+  const retiredInputPlayerWordCount = retiredInputTranscript?.words.length ?? 0;
+  const retiredInputPlayerCurrentWord = 0;
   void ttsPlayerProgressTick;
-  void kokoroPlayerProgressTick;
-  void kokoroPacingMode;
+  void retiredInputPlayerProgressTick;
+  void retiredInputPacingMode;
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
@@ -3734,19 +3714,19 @@ function App() {
           { label: 'Status', value: ttsStatus },
         ]
       : [
-          { label: 'Source', value: kokoroHasText ? `${kokoroTranscript?.words.length ?? 0} words` : 'Not set' },
-          { label: 'Text length', value: kokoroHasText ? `${kokoroText.length} chars` : 'Not set' },
-          { label: 'Language', value: kokoroLanguage ?? 'Not set' },
+          { label: 'Source', value: retiredInputHasText ? `${retiredInputTranscript?.words.length ?? 0} words` : 'Not set' },
+          { label: 'Text length', value: retiredInputHasText ? `${retiredInputText.length} chars` : 'Not set' },
+          { label: 'Language', value: retiredInputLanguage ?? 'Not set' },
           { label: 'Native support', value: false ? 'Experimental / not native' : 'Native' },
-          { label: 'Voice', value: kokoroVoice.trim() || 'default' },
-          { label: 'Service', value: kokoroServiceReady === false ? 'Offline' : kokoroServiceReady ? 'Ready' : 'Not checked' },
+          { label: 'Voice', value: retiredInputVoice.trim() || 'default' },
+          { label: 'Service', value: retiredInputServiceReady === false ? 'Offline' : retiredInputServiceReady ? 'Ready' : 'Not checked' },
         ];
   const lockedInputSummary = setupLocked ? (
     <LockedInputSetupSummary
       inputLabel={activeInputLabel}
       featureLabel={activeInputFeatureLabel}
       items={lockedInputSummaryItems}
-      warning={activeInputMode === 'input3' ? kokoroLanguageWarning : ''}
+      warning={false ? retiredInputLanguageWarning : ''}
     />
   ) : null;
   const adaptiveAdapters = buildAdaptiveAdapterCards();
@@ -3777,11 +3757,11 @@ function App() {
   ];
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedProgressLabel =
-    activeInputMode === 'input3'
+    false
         ? adaptiveSemanticDebug.totalSemanticPhrases > 0
           ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
-          : kokoroPlayerWordCount > 0
-            ? `Word ${Math.min(kokoroPlayerCurrentWord, kokoroPlayerWordCount)}/${kokoroPlayerWordCount}`
+          : retiredInputPlayerWordCount > 0
+            ? `Word ${Math.min(retiredInputPlayerCurrentWord, retiredInputPlayerWordCount)}/${retiredInputPlayerWordCount}`
             : 'No source loaded'
         : adaptiveSemanticDebug.totalSemanticPhrases > 0
           ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
@@ -3789,29 +3769,29 @@ function App() {
             ? `Word ${Math.min(ttsPlayerCurrentWord, ttsPlayerWordCount)}/${ttsPlayerWordCount}`
             : 'No source loaded';
   const focusedSourceLabel =
-    activeInputMode === 'input3'
-        ? kokoroHasText
-          ? `${kokoroTranscript?.words.length ?? 0} words · ${kokoroLanguage?.toUpperCase()}`
-          : 'Kokoro source not loaded'
+    false
+        ? retiredInputHasText
+          ? `${retiredInputTranscript?.words.length ?? 0} words · ${retiredInputLanguage?.toUpperCase()}`
+          : 'Source not loaded'
         : ttsHasText
           ? `${ttsTranscript?.words.length ?? 0} words · ${ttsLanguage?.toUpperCase()}`
           : 'TTS source not loaded';
   const focusedTextValue =
-    activeInputMode === 'input3'
-        ? kokoroPracticeText
+    false
+        ? retiredInputPracticeText
         : ttsPracticeText;
   const focusedTextPlaceholder =
     activeSessionFinished
       ? 'Session submitted.'
       : 'Type the dictation here...';
   const focusedInputHandler =
-    activeInputMode === 'input3'
-        ? onKokoroPracticeChange
+    false
+        ? onRetiredInputPracticeChange
         : onTtsPracticeChange;
   const focusedImmediateInputHandler =
-    activeInputMode === 'input3'
+    false
         ? (value: string) => {
-            kokoroPracticeLiveTextRef.current = value;
+            retiredInputPracticeLiveTextRef.current = value;
           }
         : (value: string) => {
             if (!telemetryRef.current || !telemetryRef.current.startedAt) {
@@ -3823,8 +3803,8 @@ function App() {
             ttsPracticeLiveTextRef.current = value;
           };
   const focusedKeyDownHandler =
-    activeInputMode === 'input3'
-        ? onKokoroPracticeKeyDown
+    false
+        ? onRetiredInputPracticeKeyDown
         : onTtsPracticeKeyDown;
   const focusedTrainingMessage = error || trainingSubmitMessage || [exportMessage, openRouterJobStatus, openRouterError].filter(Boolean).join(' ');
   const focusedTrainingMessageTone: 'error' | 'success' | 'hint' = error
@@ -3887,7 +3867,6 @@ function App() {
   const expressMediumGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express intermediate direct session');
   const expressHardGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express advanced direct session');
 
-
   function replayFocusedTts(): void {
     seekTtsPlayback(Math.max(0, ttsPlayerProgressPercent / 100 - 0.08));
   }
@@ -3900,8 +3879,8 @@ function App() {
     sourceLabel: focusedSourceLabel,
     progressLabel: focusedProgressLabel,
     statusLabel:
-      activeInputMode === 'input3'
-        ? kokoroStatus
+      false
+        ? retiredInputStatus
         : ttsStatus,
     currentTextValue: focusedTextValue,
     onTextChange: focusedInputHandler,
@@ -3924,11 +3903,11 @@ function App() {
     canPause: focusedTrainingControls.canPause,
     onPause: focusedTrainingControls.onPause,
     canReplay:
-      activeInputMode === 'input3'
-          ? Boolean(kokoroCurrentChunk)
+      false
+          ? Boolean(retiredInputCurrentChunk)
           : ttsHasText && ttsPlayerDurationSec > 0,
     onReplay:
-      activeInputMode === 'input3'
+      false
           ? (() => undefined)
           : replayFocusedTts,
     canStop: focusedTrainingControls.canStop,
@@ -4031,11 +4010,11 @@ function App() {
     ] : [],
   };
 
-  void toggleKokoroEnabled;
+  void toggleRetiredInputEnabled;
   void openAdaptiveExportsForActiveInput;
-  void rewindKokoroPhrase;
-  void adjustKokoroManualPace;
-  void resetKokoroPace;
+  void rewindRetiredInputPhrase;
+  void adjustRetiredInputManualPace;
+  void resetRetiredInputPace;
   void canSubmitTtsSession;
   void lockedInputSummary;
 
@@ -4872,7 +4851,7 @@ function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummar
       counts[session.inputMode] += 1;
       return counts;
     },
-    { input2: 0, input3: 0 },
+    { input2: 0 },
   );
 
   return {
@@ -4882,11 +4861,11 @@ function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummar
     localStorageEntries,
     dictaLocalStorageBytes: localStorageEntries.reduce((sum, entry) => sum + entry.bytes, 0),
     ttsTextChars: sessions.reduce((sum, session) => sum + session.ttsText.length, 0),
-    kokoroTextChars: sessions.reduce((sum, session) => sum + session.kokoroText.length, 0),
-    typedTextChars: sessions.reduce((sum, session) => sum + session.ttsPracticeText.length + session.kokoroPracticeText.length, 0),
+    retiredInputTextChars: sessions.reduce((sum, session) => sum + session.retiredInputText.length, 0),
+    typedTextChars: sessions.reduce((sum, session) => sum + session.ttsPracticeText.length + session.retiredInputPracticeText.length, 0),
     telemetrySamples: sessions.reduce((sum, session) => sum + countTelemetrySamples(session.telemetry), 0),
     telemetryActions: sessions.reduce((sum, session) => sum + session.telemetry.actions.length, 0),
-    ttsChunks: sessions.reduce((sum, session) => sum + session.telemetry.ttsChunks.length + session.kokoroChunks.length, 0),
+    ttsChunks: sessions.reduce((sum, session) => sum + session.telemetry.ttsChunks.length + session.retiredInputChunks.length, 0),
   };
 }
 
@@ -4921,11 +4900,11 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
     ttsVoiceURI: inputMode === 'input2' && typeof record.ttsVoiceURI === 'string' ? record.ttsVoiceURI : null,
     ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(record.ttsEnvironment) : undefined,
     ttsPracticeText: record.ttsPracticeText ?? '',
-    kokoroText: record.kokoroText ?? '',
-    kokoroLanguage: isSupportedLanguage(record.kokoroLanguage) ? record.kokoroLanguage : null,
-    kokoroVoice: record.kokoroVoice ?? 'default',
-    kokoroPracticeText: record.kokoroPracticeText ?? '',
-    kokoroChunks: record.kokoroChunks ?? [],
+    retiredInputText: record.retiredInputText ?? '',
+    retiredInputLanguage: isSupportedLanguage(record.retiredInputLanguage) ? record.retiredInputLanguage : null,
+    retiredInputVoice: record.retiredInputVoice ?? 'default',
+    retiredInputPracticeText: record.retiredInputPracticeText ?? '',
+    retiredInputChunks: record.retiredInputChunks ?? [],
     difficulty: record.difficulty ?? 'normal',
     status: normalizeRestoredSessionStatus(isSessionStatus(record.status) ? record.status : 'ready', cloneTelemetry(record.telemetry)),
     metrics: {
@@ -5083,10 +5062,10 @@ function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
       controls: 'Rate + chunks + pauses',
     },
     {
-      inputMode: 'input3',
+      inputMode: 'retiredInput',
       title: 'Retired Local TTS',
-      adapter: 'kokoroTelemetryAdapter',
-      execution: 'Controls generated phrase size, Kokoro playback rate, replay behavior, and pause timing.',
+      adapter: 'removedLegacyTelemetryAdapter',
+      execution: 'Controls generated phrase size, RetiredInput playback rate, replay behavior, and pause timing.',
       controls: 'Generation + replay + rate',
     },
   ];
@@ -5118,11 +5097,11 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input2', 
     ttsLanguage: inputMode === 'input2' ? 'de' : null,
     ttsVoiceURI: null,
     ttsPracticeText: '',
-    kokoroText: '',
-    kokoroLanguage: inputMode === 'input3' ? 'en' : null,
-    kokoroVoice: 'default',
-    kokoroPracticeText: '',
-    kokoroChunks: [],
+    retiredInputText: '',
+    retiredInputLanguage: false ? 'en' : null,
+    retiredInputVoice: 'default',
+    retiredInputPracticeText: '',
+    retiredInputChunks: [],
     difficulty: 'normal',
     status: 'ready',
     metrics: createDefaultMetrics(),
@@ -5151,13 +5130,7 @@ function createSessionFromScript(
     dictationScript: titledScript,
   };
 
-  if (inputMode === 'input3') {
-    return {
-      ...session,
-      kokoroText: text,
-      kokoroLanguage: language,
-    };
-  }
+  
 
   return {
     ...session,
@@ -5192,9 +5165,7 @@ function createGeneratedErrorSession({
     generationError: message,
   };
 
-  if (inputMode === 'input3') {
-    return { ...session, kokoroLanguage: language };
-  }
+  
   return { ...session, ttsLanguage: language };
 }
 
@@ -5321,11 +5292,11 @@ function loadSessions(): StoredSession[] {
         ttsVoiceURI: inputMode === 'input2' && typeof session.ttsVoiceURI === 'string' ? session.ttsVoiceURI : null,
         ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
         ttsPracticeText: session.ttsPracticeText ?? '',
-        kokoroText: session.kokoroText ?? '',
-        kokoroLanguage: isSupportedLanguage(session.kokoroLanguage) ? session.kokoroLanguage : null,
-        kokoroVoice: session.kokoroVoice ?? 'default',
-        kokoroPracticeText: session.kokoroPracticeText ?? '',
-        kokoroChunks: session.kokoroChunks ?? [],
+        retiredInputText: session.retiredInputText ?? '',
+        retiredInputLanguage: isSupportedLanguage(session.retiredInputLanguage) ? session.retiredInputLanguage : null,
+        retiredInputVoice: session.retiredInputVoice ?? 'default',
+        retiredInputPracticeText: session.retiredInputPracticeText ?? '',
+        retiredInputChunks: session.retiredInputChunks ?? [],
         difficulty: session.difficulty ?? 'normal',
         status: normalizeRestoredSessionStatus(isSessionStatus(session.status) ? session.status : 'ready', cloneTelemetry(session.telemetry)),
         metrics: {
@@ -5404,7 +5375,7 @@ function isSessionStatus(value: unknown): value is SessionStatus {
 }
 
 function coerceSessionInputMode(value: unknown): SessionInputMode | null {
-  return value === 'input2' || value === 'input3' ? value : null;
+  return value === 'input2' ? value : null;
 }
 
 function sameBrowserTtsEnvironment(
@@ -5543,8 +5514,6 @@ type TtsLiveSignal = {
   trend: PerformanceTrend;
   controllerState: ControlAction;
 };
-
-
 
 function buildOpenRouterDiversificationHints({
   durationMinutes,
@@ -5827,7 +5796,7 @@ function mapSessionInputMode(mode: string): InputMode {
 
 function resolveStoredSessionLanguage(session: StoredSession): LanguageCode {
   if (session.inputMode === 'input2') return session.ttsLanguage ?? 'unknown';
-  if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
+  if (false) return session.retiredInputLanguage ?? 'unknown';
   return 'unknown';
 }
 
@@ -5837,25 +5806,17 @@ function mapAdaptivePacingMode(mode: PacingMode): TtsPacingMode {
   return 'balanced';
 }
 
-
-
-
 function formatTtsPacingMode(mode: TtsPacingMode): string {
   if (mode === 'slow') return 'Slow phrase pacing';
   if (mode === 'flow') return 'Flow pacing';
   return 'Balanced phrase pacing';
 }
 
-
-
 function phraseSizeForTtsMode(mode: TtsPacingMode): PhraseSize {
   if (mode === 'slow') return 'short';
   if (mode === 'flow') return 'long';
   return 'medium';
 }
-
-
-
 
 function semanticPhraseIndexForWordIndex(phrases: SemanticPhrase[], wordIndex: number): number {
   let cursor = 0;
@@ -5870,9 +5831,6 @@ function semanticPhraseIndexForWordIndex(phrases: SemanticPhrase[], wordIndex: n
 function buildOrderedSemanticPhrases(text: string, language: string | undefined, mode: TtsPacingMode): SemanticPhrase[] {
   return planSemanticPhrases(text, language, phraseSizeForTtsMode(mode));
 }
-
-
-
 
 function deriveTtsControlAction({
   accuracy,
@@ -5958,13 +5916,13 @@ function buildRepeatWordStats({
 
   for (const session of withinWindow) {
     const transcript =
-      session.inputMode === 'input3'
-        ? buildTextTranscript(session.kokoroText)
+      false
+        ? buildTextTranscript(session.retiredInputText)
         : buildTextTranscript(session.ttsText);
 
     const typedText =
-      session.inputMode === 'input3'
-        ? session.kokoroPracticeText
+      false
+        ? session.retiredInputPracticeText
         : session.ttsPracticeText;
 
     const evaluation = evaluateTranscriptAttempt(typedText, transcript);
