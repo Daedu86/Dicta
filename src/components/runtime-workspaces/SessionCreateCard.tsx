@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 
 type SessionSource = 'plainText' | 'dictationScript';
+type SupportedCreationInputMode = 'input2' | 'input3';
 
 type SessionQuotaStatus = {
   blocked: boolean;
@@ -48,7 +49,7 @@ type SessionCreateCardProps = {
   validatedDictationScript: DictationScriptPreview | null;
   onSessionCreationSourceChange: (value: SessionSource) => void;
   onSessionCreationNameChange: (value: string) => void;
-  onCreateSessionWithMode: (inputMode: 'input2' | 'input3' | 'input4') => void;
+  onCreateSessionWithMode: (inputMode: SupportedCreationInputMode) => void;
   onDictationScriptJsonChange: (value: string) => void;
   onValidateScriptImport: () => void;
   onCreateSessionFromDictationScript: () => void;
@@ -132,24 +133,9 @@ export function SessionCreateCard({
             >
               Input # 3 - Kokoro TTS Local
             </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onCreateSessionWithMode('input4')}
-              disabled={!canCreateSessionFromDialog || !localDevFeaturesAvailable}
-              title={
-                sessionQuotaStatus.blocked
-                  ? sessionQuotaStatus.message
-                  : localDevFeaturesAvailable
-                  ? 'Create a local CosyVoice2 cache session.'
-                  : 'Input #4 cache generation is local-only and not part of the Vercel build.'
-              }
-            >
-              Input # 4 - CosyVoice2 Cache
-            </button>
           </div>
           {!localDevFeaturesAvailable ? (
-            <p className="session-create-hint">Hosted Vercel builds support Input #2. Kokoro and Input #4 remain local desktop workflows.</p>
+            <p className="session-create-hint">Hosted Vercel builds support Input #2. Kokoro remains a local desktop workflow.</p>
           ) : null}
         </>
       ) : (
