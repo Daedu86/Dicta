@@ -3,7 +3,7 @@ import type { SupportedLanguage } from './languages';
 
 export type MetricsLanguageView = SupportedLanguage;
 export type MetricsRangeView = 'today' | 'week' | 'twoWeeks' | 'threeWeeks' | 'month';
-export type SessionInputMode = 'input2' | 'input3';
+export type SessionInputMode = string;
 
 export type SessionLanguageLike = {
   inputMode: SessionInputMode;
