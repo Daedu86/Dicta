@@ -21,6 +21,7 @@ export interface InputCapabilities {
 export interface LiveTelemetryFrame {
   inputMode: InputMode;
   phraseId: string;
+  sessionChunkIndex?: number;
 
   spokenProgressRatio: number;
   typedProgressRatio: number;
