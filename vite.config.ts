@@ -6,7 +6,6 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 let kokoroSidecarProcess: ChildProcess | null = null;
-let cosyvoiceSidecarProcess: ChildProcess | null = null;
 const localOpenRouterJobs = new Map<string, {
   jobId: string;
   status: 'queued' | 'running' | 'succeeded' | 'failed';
@@ -770,7 +769,6 @@ export default defineConfig(({ mode }) => {
               [
                 { label: 'Fixtures', relativePath: 'fixtures' },
                 { label: 'Public assets', relativePath: 'public' },
-                { label: 'Input #4 cache', relativePath: path.join('public', 'tts-cache') },
               ].map(async (folder) => {
                 const absolutePath = path.resolve(process.cwd(), folder.relativePath);
                 const files = await listKnownFiles(absolutePath);
@@ -845,77 +843,8 @@ export default defineConfig(({ mode }) => {
           }
         });
 
-        server.middlewares.use('/api/cosyvoice/start', async (req, res) => {
-          if (req.method !== 'POST') {
-            res.statusCode = 405;
-            res.end('Method not allowed');
-            return;
-          }
 
-          try {
-            if (await isCosyVoiceSidecarHealthy()) {
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ ok: true, started: false, ready: true }));
-              return;
-            }
 
-            if (cosyvoiceSidecarProcess && !cosyvoiceSidecarProcess.killed) {
-              const ready = await waitForCosyVoiceSidecarReady();
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ ok: ready, started: false, ready }));
-              return;
-            }
-
-            const cosyVoiceDir = path.resolve(process.cwd(), 'services', 'cosyvoice_cache');
-            await ensureCosyVoiceVenvReady(cosyVoiceDir);
-            const pythonCmd =
-              process.platform === 'win32'
-                ? path.join(cosyVoiceDir, '.venv', 'Scripts', 'python.exe')
-                : path.join(cosyVoiceDir, '.venv', 'bin', 'python');
-            const pythonExists = await fileExists(pythonCmd);
-            const command = pythonExists ? pythonCmd : process.platform === 'win32' ? 'python' : 'python3';
-
-            cosyvoiceSidecarProcess = spawn(command, ['-m', 'uvicorn', 'app:app', '--host', '127.0.0.1', '--port', '8791'], {
-              cwd: cosyVoiceDir,
-              stdio: 'ignore',
-              windowsHide: true,
-            });
-            cosyvoiceSidecarProcess.unref();
-            cosyvoiceSidecarProcess.on('exit', () => {
-              cosyvoiceSidecarProcess = null;
-            });
-
-            const ready = await waitForCosyVoiceSidecarReady();
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ ok: ready, started: true, ready }));
-          } catch (error) {
-            res.statusCode = 500;
-            res.end(error instanceof Error ? error.message : 'Failed to start CosyVoice sidecar.');
-          }
-        });
-
-        server.middlewares.use('/api/cosyvoice/bootstrap', async (req, res) => {
-          if (req.method !== 'POST') {
-            res.statusCode = 405;
-            res.end('Method not allowed');
-            return;
-          }
-
-          try {
-            if (cosyvoiceSidecarProcess && !cosyvoiceSidecarProcess.killed) {
-              cosyvoiceSidecarProcess.kill();
-              cosyvoiceSidecarProcess = null;
-            }
-            const cosyVoiceDir = path.resolve(process.cwd(), 'services', 'cosyvoice_cache');
-            await ensureCosyVoiceVenvReady(cosyVoiceDir);
-            await ensureCosyVoiceRepoAndRequirements(cosyVoiceDir);
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ ok: true }));
-          } catch (error) {
-            res.statusCode = 500;
-            res.end(error instanceof Error ? error.message : 'Failed to bootstrap CosyVoice.');
-          }
-        });
       },
     },
   ],
@@ -1028,94 +957,6 @@ async function ensureKokoroVenvReady(kokoroDir: string): Promise<void> {
   });
 }
 
-async function ensureCosyVoiceVenvReady(cosyVoiceDir: string): Promise<void> {
-  const venvPython =
-    process.platform === 'win32'
-      ? path.join(cosyVoiceDir, '.venv', 'Scripts', 'python.exe')
-      : path.join(cosyVoiceDir, '.venv', 'bin', 'python');
-
-  if (await fileExists(venvPython)) {
-    return;
-  }
-
-  const systemPython = process.platform === 'win32' ? 'python' : 'python3';
-  await new Promise<void>((resolve, reject) => {
-    execFile(systemPython, ['-m', 'venv', '.venv'], { cwd: cosyVoiceDir }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(stderr || stdout || error.message));
-        return;
-      }
-      resolve();
-    });
-  });
-
-  // Install deps into the new venv
-  const pipPython =
-    process.platform === 'win32'
-      ? path.join(cosyVoiceDir, '.venv', 'Scripts', 'python.exe')
-      : path.join(cosyVoiceDir, '.venv', 'bin', 'python');
-  await new Promise<void>((resolve, reject) => {
-    execFile(pipPython, ['-m', 'pip', 'install', '-r', 'requirements.txt'], { cwd: cosyVoiceDir }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(stderr || stdout || error.message));
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
-async function ensureCosyVoiceRepoAndRequirements(cosyVoiceDir: string): Promise<void> {
-  const repoDir = path.resolve(process.cwd(), 'third_party', 'CosyVoice');
-  if (!(await fileExists(repoDir))) {
-    await fs.mkdir(path.dirname(repoDir), { recursive: true });
-    await new Promise<void>((resolve, reject) => {
-      execFile('git', ['clone', '--depth', '1', 'https://github.com/FunAudioLLM/CosyVoice.git', repoDir], { cwd: process.cwd() }, (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(stderr || stdout || error.message));
-          return;
-        }
-        resolve();
-      });
-    });
-  }
-
-  const venvPython =
-    process.platform === 'win32'
-      ? path.join(cosyVoiceDir, '.venv', 'Scripts', 'python.exe')
-      : path.join(cosyVoiceDir, '.venv', 'bin', 'python');
-
-  // Windows-friendly "minimal import" dependency set. We avoid installing the upstream pinned
-  // requirements.txt because it includes compiled pins (grpcio==1.57, pyworld, pyarrow, etc.)
-  // that fail on Windows + Python 3.13.
-  const deps = [
-    'tqdm',
-    'HyperPyYAML',
-    'modelscope',
-    'omegaconf',
-    'hydra-core',
-    'transformers',
-    'diffusers',
-    'conformer',
-    'inflect',
-    'rich',
-    'wget',
-    'wetext',
-    // Required for CosyVoice ONNX assets on Windows.
-    'onnxruntime',
-  ];
-
-  await new Promise<void>((resolve, reject) => {
-    execFile(venvPython, ['-m', 'pip', 'install', ...deps], { cwd: cosyVoiceDir }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(stderr || stdout || error.message));
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
 async function listKnownFiles(root: string): Promise<Array<{ name: string; ext: string; size: number }> | null> {
   try {
     const stat = await fs.stat(root);
@@ -1174,26 +1015,6 @@ async function waitForKokoroSidecarReady(timeoutMs = 10_000): Promise<boolean> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     if (await isKokoroSidecarHealthy()) {
-      return true;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  return false;
-}
-
-async function isCosyVoiceSidecarHealthy(): Promise<boolean> {
-  try {
-    const response = await fetch('http://127.0.0.1:8791/health');
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function waitForCosyVoiceSidecarReady(timeoutMs = 10_000): Promise<boolean> {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    if (await isCosyVoiceSidecarHealthy()) {
       return true;
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
