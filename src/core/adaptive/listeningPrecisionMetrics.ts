@@ -7,6 +7,7 @@ export type ListeningPrecisionMetrics = {
   wordOrderAccuracy: number;
   functionWordAccuracy: number;
   lateCompletionRate: number;
+  completionWindowScore: number;
 };
 
 export type ListeningPrecisionLanguage = 'en' | 'es' | 'de' | 'fr' | 'pt' | string;
@@ -27,6 +28,7 @@ const DEFAULT_PRECISION_METRICS: ListeningPrecisionMetrics = {
   wordOrderAccuracy: 1,
   functionWordAccuracy: 1,
   lateCompletionRate: 0,
+  completionWindowScore: 1,
 };
 
 const FUNCTION_WORDS_BY_LANGUAGE: Record<string, Set<string>> = {
@@ -79,6 +81,7 @@ export function computeListeningPrecisionMetrics({
   const playbackEndMatches = countMultisetOverlap(targetTokens, typedAtPlaybackEndTokens);
   const missingAtPlaybackEnd = Math.max(0, targetTokens.length - playbackEndMatches);
   const lateCompletions = Math.max(0, finalMatches - playbackEndMatches);
+  const lateCompletionRate = missingAtPlaybackEnd === 0 ? 0 : roundMetric(lateCompletions / missingAtPlaybackEnd);
 
   return {
     listeningRecallScore: roundMetric(orderedMatches / targetTokens.length),
@@ -88,7 +91,8 @@ export function computeListeningPrecisionMetrics({
     substitutionRate: roundMetric(substitutionCount / targetTokens.length),
     wordOrderAccuracy: exactOverlap === 0 ? 0 : roundMetric(orderedMatches / exactOverlap),
     functionWordAccuracy: ratioOrOne(countMultisetOverlap(functionTargetTokens, functionTypedTokens), functionTargetTokens.length),
-    lateCompletionRate: missingAtPlaybackEnd === 0 ? 0 : roundMetric(lateCompletions / missingAtPlaybackEnd),
+    lateCompletionRate,
+    completionWindowScore: roundMetric(1 - lateCompletionRate),
   };
 }
 
