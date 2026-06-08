@@ -100,6 +100,43 @@ export class AdaptiveDictationController {
     const hesitationScore = computeScore(1 - live.pauseMs / 2000, 0, 1);
     const confidenceScore = clamp(history.profileConfidence, 0, 1);
 
+    const sessionWarmup = browserTtsProfile?.sessionWarmup;
+    const sessionChunkIndex = typeof live.sessionChunkIndex === 'number' && Number.isFinite(live.sessionChunkIndex)
+      ? live.sessionChunkIndex
+      : null;
+    const shouldForceSessionWarmup = Boolean(
+      sessionWarmup?.enabled &&
+      sessionChunkIndex !== null &&
+      sessionChunkIndex < sessionWarmup.chunkCount,
+    );
+
+    if (shouldForceSessionWarmup && sessionWarmup) {
+      const warmupRate = Number(clamp(sessionWarmup.playbackRate, extremeSupportRateFloor, supportRateCeiling).toFixed(2));
+      this.previousRate = warmupRate;
+      this.struggleFrames = Math.max(this.struggleFrames, 1);
+      this.recoveryFrames = 0;
+      this.supportFrames += 1;
+      this.balancedFrames = 0;
+
+      return {
+        mode: 'support',
+        playbackRate: warmupRate,
+        pauseAfterPhraseMs: sessionWarmup.pauseMs,
+        shouldPauseNow: true,
+        shouldReplayPhrase: false,
+        boundaryStrictness: 'clause',
+        allowMidPhrasePause: false,
+        deferPauseUntilSafeBoundary: false,
+        replayRate: Number(clamp(warmupRate - 0.08, extremeSupportRateFloor, supportRateCeiling).toFixed(2)),
+        nextPhraseSize: sessionWarmup.phraseSize,
+        reason: 'mode=support, session-warmup-calibration, support-needed',
+        lagScore,
+        accuracyScore,
+        hesitationScore,
+        confidenceScore,
+      };
+    }
+
     const canPauseAfter = live.canPauseAfter ?? true;
     const canReplayIndependently = live.canReplayIndependently ?? true;
     const semanticCompleteness = live.semanticCompleteness ?? 1;
