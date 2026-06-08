@@ -6,7 +6,7 @@ import { formatCreatedDeviceIcon, formatCreatedDeviceTooltip, type CreatedDevice
 import { isSubmittedFinishedAttempt } from '../../core/sessionNormalization';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionInputMode = 'input2' | 'input3';
+type SessionInputMode = string;
 
 type PendingSessionLaneSession = {
   id: string;
@@ -14,7 +14,6 @@ type PendingSessionLaneSession = {
   inputMode: SessionInputMode;
   inputSettingsLocked: boolean;
   ttsLanguage: LanguageCode | null;
-  kokoroLanguage: LanguageCode | null;
   difficulty: Difficulty;
   status: SessionStatus;
   createdDeviceKind: CreatedDeviceKind;
@@ -96,7 +95,6 @@ function SessionDeviceIcon({ session }: { session: PendingSessionLaneSession }) 
 
 function formatSessionInputMode(mode: SessionInputMode): string {
   if (mode === 'input2') return 'Browser TTS';
-  if (mode === 'input3') return 'Kokoro local';
   return 'Removed legacy input';
 }
 
@@ -118,9 +116,7 @@ function getSessionDisplayTitle(session: PendingSessionLaneSession): string {
 }
 
 function resolveStoredSessionLanguage(session: PendingSessionLaneSession): LanguageCode {
-  if (session.inputMode === 'input2') return session.ttsLanguage ?? 'unknown';
-  if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
-  return 'unknown';
+  return session.ttsLanguage ?? 'unknown';
 }
 
 function normalizeGeneratedDictationScriptTitle(script: DictationScript): DictationScript {

@@ -20,7 +20,7 @@ const DashboardActionTimeline = lazy(() =>
 );
 
 type SessionDashboardStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-type SessionDashboardInputMode = 'input2' | 'input3';
+type SessionDashboardInputMode = string;
 
 type SessionDashboardMetrics = SessionScoreMetrics & {
   lagWords: number;
@@ -33,8 +33,6 @@ export type SessionDashboardSession = {
   inputMode: SessionDashboardInputMode;
   ttsText: string;
   ttsPracticeText: string;
-  kokoroText: string;
-  kokoroPracticeText: string;
   status: SessionDashboardStatus;
   metrics: SessionDashboardMetrics;
   telemetry: SessionTelemetry;
@@ -227,7 +225,7 @@ function DashboardKpi({ label, value, target, helpText }: { label: string; value
 
 function TranscriptReviewWidget({ review }: { review: TranscriptReview }) {
   const tooltip =
-    'Compares what you typed against the target text. Input 2 uses pasted TTS text, Input 3 uses Kokoro source text, and Input 4 uses cached TTS text.';
+    'Compares what you typed against the target Browser TTS text.';
   const typedWords = review.tokens.length;
   const totalPoints = review.tokens.reduce((sum, token) => sum + token.points, 0);
   const maxPoints = totalPoints + review.missed;
@@ -400,13 +398,8 @@ function Metric({ label, value, title }: { label: string; value: string; title?:
 }
 
 function buildTranscriptReview(session: SessionDashboardSession): TranscriptReview {
-  const typedSource = session.inputMode === 'input3' ? session.kokoroPracticeText : session.ttsPracticeText;
-  const targetTranscript =
-    session.inputMode === 'input2'
-      ? buildTextTranscript(session.ttsText)
-      : session.inputMode === 'input3'
-        ? buildTextTranscript(session.kokoroText)
-        : buildTextTranscript(session.ttsText);
+  const typedSource = session.ttsPracticeText;
+  const targetTranscript = buildTextTranscript(session.ttsText);
   const rawTypedWords = typedSource.split(/\s+/).filter(Boolean);
   const typedWords = rawTypedWords.map((word) => normalizeWord(word)).filter(Boolean);
   const targetWords = targetTranscript ? targetTranscript.words.map((word) => normalizeWord(word.word)).filter(Boolean) : [];

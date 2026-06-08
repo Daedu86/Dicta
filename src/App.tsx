@@ -3721,6 +3721,7 @@ function App() {
   const kokoroPlayerCurrentWord = 0;
   void ttsPlayerProgressTick;
   void kokoroPlayerProgressTick;
+  void kokoroPacingMode;
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
@@ -4430,7 +4431,7 @@ function App() {
               />
             ) : (
               <section className="panel workspace-panel">
-                <p className="hint">Choose Browser TTS or Kokoro to train.</p>
+                <p className="hint">Choose Browser TTS to train.</p>
               </section>
             )}
           </section>
@@ -4446,9 +4447,6 @@ function App() {
         insightsDiagnosticMessage={insightsDiagnosticMessage}
         insightsDiagnosticFallbackReport={insightsDiagnosticFallbackReport}
         workspaceMode={workspaceMode}
-        hasKokoroCurrentChunk={Boolean(kokoroCurrentChunk)}
-        kokoroPacingMode={kokoroPacingMode}
-        kokoroStatus={kokoroStatus}
         hasTtsCurrentChunk={Boolean(ttsCurrentChunk)}
         ttsPacingMode={ttsPacingMode}
         ttsStatus={ttsStatus}

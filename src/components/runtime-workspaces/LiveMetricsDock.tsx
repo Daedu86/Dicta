@@ -5,9 +5,9 @@ import type { InputMode } from '../../core/adaptive/types';
 import type { TtsPacingMode } from '../../types/dictation';
 
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
-type RuntimeWorkspaceMode = 'training' | 'leaderboard' | 'dashboard' | 'tts' | 'kokoro' | 'adaptive' | 'admin' | 'openrouter' | 'ollama';
+type RuntimeWorkspaceMode = string;
 type RuntimeTtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
-type RuntimeSessionInputMode = 'input2' | 'input3';
+type RuntimeSessionInputMode = string;
 
 type LiveMetricsDockProps = {
   insightsCollapsed: boolean;
@@ -19,9 +19,6 @@ type LiveMetricsDockProps = {
   insightsDiagnosticMessage: string;
   insightsDiagnosticFallbackReport: string;
   workspaceMode: RuntimeWorkspaceMode;
-  hasKokoroCurrentChunk: boolean;
-  kokoroPacingMode: TtsPacingMode;
-  kokoroStatus: RuntimeTtsStatus;
   hasTtsCurrentChunk: boolean;
   ttsPacingMode: TtsPacingMode;
   ttsStatus: RuntimeTtsStatus;
@@ -59,9 +56,6 @@ export function LiveMetricsDock({
   insightsDiagnosticMessage,
   insightsDiagnosticFallbackReport,
   workspaceMode,
-  hasKokoroCurrentChunk,
-  kokoroPacingMode,
-  kokoroStatus,
   hasTtsCurrentChunk,
   ttsPacingMode,
   ttsStatus,
@@ -80,14 +74,7 @@ export function LiveMetricsDock({
   formatSessionDate,
   formatTtsPacingMode,
 }: LiveMetricsDockProps) {
-  const playerStatus =
-    workspaceMode === 'kokoro'
-      ? hasKokoroCurrentChunk
-        ? formatTtsPacingMode(kokoroPacingMode)
-        : kokoroStatus
-      : hasTtsCurrentChunk
-        ? formatTtsPacingMode(ttsPacingMode)
-        : ttsStatus;
+  const playerStatus = hasTtsCurrentChunk ? formatTtsPacingMode(ttsPacingMode) : ttsStatus;
 
   return (
     <section className="bottom-metrics-dock">
@@ -173,9 +160,9 @@ export function LiveMetricsDock({
               />
             </div>
           ) : null}
-          {!insightsCollapsed && (workspaceMode === 'tts' || workspaceMode === 'kokoro') ? (
+          {!insightsCollapsed && workspaceMode === 'tts' ? (
             <div className="bottom-metrics-player tts-bottom-player live-metrics-section live-metrics-section-player">
-              <span className="bottom-metrics-player-label">{workspaceMode === 'kokoro' ? 'Kokoro local' : 'Browser TTS'}</span>
+              <span className="bottom-metrics-player-label">Browser TTS</span>
               <span>{playerStatus}</span>
             </div>
           ) : null}
