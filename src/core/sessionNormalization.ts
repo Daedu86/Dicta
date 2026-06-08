@@ -21,6 +21,15 @@ export type SessionModeData = {
 
 type UnknownRecord = Record<string, unknown>;
 
+type CommonRestoredSessionFields = {
+  ttsText: string;
+  ttsPracticeText: string;
+  retiredInputText: string;
+  retiredInputPracticeText: string;
+  retiredInputChunks: unknown[];
+  metrics: UnknownRecord;
+};
+
 function isInput2Language(value: unknown): value is Input2Language {
   return isSupportedLanguage(value);
 }
@@ -30,12 +39,45 @@ function numberOr(value: unknown, fallback: number): number {
   return Number.isFinite(num) ? num : fallback;
 }
 
+function stringOr(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
 function safeLength(value: unknown): number {
   return typeof value === 'string' ? value.length : 0;
 }
 
 function asRecord(value: unknown): UnknownRecord {
-  return value && typeof value === 'object' ? (value as UnknownRecord) : {};
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {};
+}
+
+function normalizeTrend(value: unknown): 'improving' | 'stable' | 'declining' {
+  return value === 'improving' || value === 'declining' || value === 'stable' ? value : 'stable';
+}
+
+function normalizeCommonRestoredSessionFields(session: unknown): CommonRestoredSessionFields {
+  const input = asRecord(session);
+  const metrics = asRecord(input.metrics);
+
+  return {
+    ttsText: stringOr(input.ttsText),
+    ttsPracticeText: stringOr(input.ttsPracticeText),
+    retiredInputText: stringOr(input.retiredInputText),
+    retiredInputPracticeText: stringOr(input.retiredInputPracticeText),
+    retiredInputChunks: Array.isArray(input.retiredInputChunks) ? input.retiredInputChunks : [],
+    metrics: {
+      ...metrics,
+      controllerState: typeof metrics.controllerState === 'string' ? metrics.controllerState : 'hold',
+      rate: numberOr(metrics.rate, 1),
+      lagSec: numberOr(metrics.lagSec, 0),
+      lagWords: numberOr(metrics.lagWords, 0),
+      wpm: numberOr(metrics.wpm, 0),
+      accuracy: numberOr(metrics.accuracy, 0),
+      trend: normalizeTrend(metrics.trend),
+      score: numberOr(metrics.score, 0),
+      points: numberOr(metrics.points, 0),
+    },
+  };
 }
 
 export function normalizeRateDistribution(input: unknown): Array<{ rate: number; seconds: number }> {
@@ -166,9 +208,11 @@ export function normalizeSessionForPersistence<T extends SessionLanguageFields &
   session: T,
 ): T & { telemetry: SessionTelemetry } {
   const normalizedLanguages = normalizeSessionLanguages(session);
+  const normalizedCommonFields = normalizeCommonRestoredSessionFields(session);
   return {
     ...session,
+    ...normalizedCommonFields,
     ttsLanguage: normalizedLanguages.ttsLanguage,
     telemetry: cloneTelemetry(session.telemetry),
-  };
+  } as T & { telemetry: SessionTelemetry };
 }
