@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { ControlAction } from '../types/dictation';
 
-export type TrainingLifecycleInputMode = 'input2' | 'input3';
+export type TrainingLifecycleInputMode = string;
 export type TrainingLifecycleSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 export type TrainingLifecyclePlaybackStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 
