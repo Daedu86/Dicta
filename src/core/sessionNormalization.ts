@@ -1,14 +1,12 @@
 import type { SessionTelemetry } from '../types/dictation';
-import { getKokoroProcessedLanguage, isKokoroNativeLanguage } from './kokoroSupport';
 import { isSupportedLanguage, type SupportedLanguage } from './languages';
 
-export type SessionInputMode = 'input2' | 'input3' | string;
+export type SessionInputMode = 'input2' | string;
 export type Input2Language = SupportedLanguage;
 
 export type SessionLanguageFields = {
   inputMode: SessionInputMode;
   ttsLanguage: Input2Language | null;
-  kokoroLanguage: Input2Language | null;
 };
 
 export type Input2ModeData = {
@@ -17,18 +15,8 @@ export type Input2ModeData = {
   textLength: number;
 };
 
-export type Input3ModeData = {
-  type: 'kokoro';
-  language: Input2Language | null;
-  textLength: number;
-  nativeLanguage: boolean;
-  processedLanguage: 'en' | 'es' | null;
-  fallback?: string;
-};
-
 export type SessionModeData = {
   input2: Input2ModeData | null;
-  input3: Input3ModeData | null;
 };
 
 type UnknownRecord = Record<string, unknown>;
@@ -123,9 +111,8 @@ export function isSubmittedFinishedAttempt(payload: unknown): boolean {
   const session = asRecord(payload);
   if (session.status !== 'finished') return false;
 
-  const inputMode = session.inputMode;
   if (hasFinalizedAttemptTelemetry(session.telemetry)) return true;
-  if (inputMode !== 'input2' && inputMode !== 'input3') return false;
+  if (session.inputMode !== 'input2') return false;
 
   const metrics = asRecord(session.metrics);
   const points = numberOr(metrics.points, 0);
@@ -136,26 +123,18 @@ export function isSubmittedFinishedAttempt(payload: unknown): boolean {
   const telemetry = cloneTelemetry(session.telemetry);
   if (telemetry.lagSeries.length > 0 || telemetry.wpmSeries.length > 0 || telemetry.accuracySeries.length > 0) return true;
 
-  // Legacy/mobile payloads may miss practice text even after a successful submit.
-  // If there are no stronger telemetry/metric signals, require both source and attempt text.
-  const sourceText = inputMode === 'input3' ? session.kokoroText : session.ttsText;
-  const attemptText = inputMode === 'input3' ? session.kokoroPracticeText : session.ttsPracticeText;
-  return hasNonEmptyText(sourceText) && hasNonEmptyText(attemptText);
+  return hasNonEmptyText(session.ttsText) && hasNonEmptyText(session.ttsPracticeText);
 }
 
 export function normalizeSessionLanguages(
-  session: Pick<SessionLanguageFields, 'inputMode' | 'ttsLanguage' | 'kokoroLanguage'>,
+  session: Pick<SessionLanguageFields, 'inputMode' | 'ttsLanguage'>,
 ): {
   ttsLanguage: SessionLanguageFields['ttsLanguage'] | null;
-  kokoroLanguage: SessionLanguageFields['kokoroLanguage'] | null;
 } {
   if (session.inputMode === 'input2') {
-    return { ttsLanguage: session.ttsLanguage, kokoroLanguage: null };
+    return { ttsLanguage: session.ttsLanguage };
   }
-  if (session.inputMode === 'input3') {
-    return { ttsLanguage: null, kokoroLanguage: session.kokoroLanguage };
-  }
-  return { ttsLanguage: null, kokoroLanguage: null };
+  return { ttsLanguage: null };
 }
 
 export function normalizeSessionModeData(session: unknown): SessionModeData {
@@ -165,57 +144,22 @@ export function normalizeSessionModeData(session: unknown): SessionModeData {
   const existingModeData = input.modeData && typeof input.modeData === 'object' ? (input.modeData as UnknownRecord) : null;
   const existingInput2 =
     existingModeData?.input2 && typeof existingModeData.input2 === 'object' ? (existingModeData.input2 as UnknownRecord) : null;
-  const existingInput3 =
-    existingModeData?.input3 && typeof existingModeData.input3 === 'object' ? (existingModeData.input3 as UnknownRecord) : null;
-
   const textSummary = input.textSummary && typeof input.textSummary === 'object' ? (input.textSummary as UnknownRecord) : null;
 
   const input2LanguageRaw = existingInput2?.language ?? input.ttsLanguage;
-  const input3LanguageRaw = existingInput3?.language ?? input.kokoroLanguage;
-
   const input2Language = isInput2Language(input2LanguageRaw) ? input2LanguageRaw : null;
-  const input3Language = isInput2Language(input3LanguageRaw) ? input3LanguageRaw : null;
-
   const ttsTextLength = numberOr(existingInput2?.textLength ?? textSummary?.ttsTextLength ?? safeLength(input.ttsText), 0);
-  const kokoroTextLength = numberOr(existingInput3?.textLength ?? textSummary?.kokoroTextLength ?? safeLength(input.kokoroText), 0);
 
-  const modeData: SessionModeData = {
-    input2: null,
-    input3: null,
+  return {
+    input2:
+      inputMode === 'input2'
+        ? {
+            type: 'builtInTts',
+            language: input2Language,
+            textLength: ttsTextLength,
+          }
+        : null,
   };
-
-  if (inputMode === 'input2') {
-    modeData.input2 = {
-      type: 'builtInTts',
-      language: input2Language,
-      textLength: ttsTextLength,
-    };
-  } else if (inputMode === 'input3') {
-    const latestKokoroChunk =
-      Array.isArray(input.kokoroChunks) && input.kokoroChunks.length > 0
-        ? asRecord(input.kokoroChunks[input.kokoroChunks.length - 1])
-        : null;
-    const language = input3Language;
-    const nativeLanguage =
-      typeof latestKokoroChunk?.nativeLanguage === 'boolean'
-        ? latestKokoroChunk.nativeLanguage
-        : isKokoroNativeLanguage(language);
-    const processedLanguage =
-      latestKokoroChunk?.processedLanguage === 'en' || latestKokoroChunk?.processedLanguage === 'es'
-        ? latestKokoroChunk.processedLanguage
-        : getKokoroProcessedLanguage(language);
-    const fallback = typeof latestKokoroChunk?.fallback === 'string' ? latestKokoroChunk.fallback : '';
-    modeData.input3 = {
-      type: 'kokoro',
-      language,
-      textLength: kokoroTextLength,
-      nativeLanguage,
-      processedLanguage,
-      ...(fallback ? { fallback } : {}),
-    };
-  }
-
-  return modeData;
 }
 
 export function normalizeSessionForPersistence<T extends SessionLanguageFields & { telemetry: unknown }>(
@@ -225,7 +169,6 @@ export function normalizeSessionForPersistence<T extends SessionLanguageFields &
   return {
     ...session,
     ttsLanguage: normalizedLanguages.ttsLanguage,
-    kokoroLanguage: normalizedLanguages.kokoroLanguage,
     telemetry: cloneTelemetry(session.telemetry),
   };
 }

@@ -26,9 +26,6 @@ Dicta trains listening and typing across 2 input modes and 5 languages. The shar
 Inputs:
 
 - `browser-tts` / input 2 / browser SpeechSynthesis
-- `kokoro` / input 3 / local Kokoro TTS sidecar
-
-The active product architecture has two inputs only: Browser TTS and Kokoro. Do not reintroduce removed legacy input creation, generation, benchmark, or UI paths.
 
 Languages:
 
@@ -70,7 +67,6 @@ The Adaptive Pace Layer is shared across 2 inputs and 5 languages. Benchmarks, t
 Inputs:
 
 - `browser-tts` / input 2
-- `kokoro` / input 3
 
 Languages:
 
@@ -107,8 +103,6 @@ Key brain files:
 - `src/core/adaptive/dictationScriptPrompt.ts`
 - `src/core/adaptive/dictationScriptValidation.ts`
 - `src/core/adaptive/benchmarkJson.ts`
-
-Browser TTS specific adapters live under `src/inputs/browserTts/`. Kokoro specific adapters live under `src/inputs/kokoro/`.
 
 ## Training Mode Performance Rules
 

@@ -10,8 +10,6 @@ Before proposing or making behavior changes, agents must read and understand the
 
 After reading them, propose changes from the architecture rather than from an isolated file edit. A valid proposal should identify the affected boundary: browser, core TypeScript domain, input adapter, Vercel/server route, Supabase/RLS, or local-only sidecar. If adaptive behavior is involved, identify the affected `(inputMode, language)` profile and how neighboring profiles stay unchanged.
 
-Dicta is a Vite/React adaptive dictation trainer. The browser owns the training UI, local session state, and the Adaptive Pace Layer. Vercel/server routes protect secrets and cloud calls. Supabase Auth and RLS provide invite/admin-created accounts, cross-device sync, durable OpenRouter jobs, persistent job rate limits, and member quotas. The local-only Python sidecar handles Kokoro TTS during development.
-
 ## Product Matrix
 
 Dicta is built around 2 input modes x 5 languages.
@@ -19,9 +17,6 @@ Dicta is built around 2 input modes x 5 languages.
 Inputs:
 
 - `browser-tts`: browser SpeechSynthesis with adaptive semantic chunking.
-- `kokoro`: local Kokoro TTS sidecar. Native in this setup: `en`, `es`. Blocked or experimental: `de`, `fr`, `pt`.
-
-The active product architecture has two inputs only: Browser TTS and Kokoro. Do not reintroduce removed legacy input creation, generation, benchmark, or UI paths.
 
 Languages: `en`, `es`, `de`, `fr`, `pt`.
 
@@ -34,7 +29,6 @@ Browser app:
 - `src/App.tsx`: workspace router and session orchestration host.
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `src/app/useBrowserTtsRuntime.ts`: Input #2 direct Browser TTS SpeechSynthesis voice discovery and command boundary.
-- `src/app/useKokoroRuntime.ts`: Input #3 Kokoro local sidecar availability, toggle, health/start polling, and inactivity timeout boundary.
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
 - Adaptive Pace Layer cockpit: benchmark and feedback diagnostics.
@@ -62,7 +56,6 @@ Core TypeScript domain:
 Input adapters:
 
 - `browser-tts`: SpeechSynthesis plus dynamic chunk planner.
-- `kokoro`: Kokoro sidecar plus telemetry adapter.
 
 Server routes and local dev middleware:
 
@@ -87,8 +80,6 @@ Supabase multiuser path:
 Ollama Cloud uses `OLLAMA_API_KEY` through server routes only. It currently has no durable job table, no Supabase/RLS schema changes, and no Adaptive Pace Layer profile behavior.
 
 Local-only services:
-
-- `services/kokoro_tts/*`: Kokoro TTS sidecar.
 
 ## Adaptive Brain Loop
 
@@ -151,7 +142,6 @@ Primary browser storage keys:
 - `dicta.ollamaDefaultModel.v1`
 - `dicta.openrouterGeneratedVariants.v1`
 - `dicta.openrouterActiveJobs.v1`
-- `dicta.kokoroEnabled.v1`
 
 Supabase sync stores JSON rows in `dicta_sync_items` with item types `session`, `benchmark`, and `feedback`.
 
@@ -212,7 +202,6 @@ Local Vite dev mirrors the Ollama models/chat/status routes and exposes dev-only
 
 These paths are not production Vercel backend features:
 
-- `/api/kokoro/start`.
 - `/api/admin/files`.
 - `/api/openrouter/key*`.
 - `/api/ollama/key*`.
@@ -222,7 +211,6 @@ These paths are not production Vercel backend features:
 App runtime and adaptive core:
 
 - `src/app/useBrowserTtsRuntime.ts`
-- `src/app/useKokoroRuntime.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/core/buildInfo.ts`
@@ -241,7 +229,6 @@ Input adapters:
 
 - `src/inputs/browserTts/browserTtsTelemetryAdapter.ts`
 - `src/inputs/browserTts/ttsDynamicChunkPlanner.ts`
-- `src/inputs/kokoro/kokoroTelemetryAdapter.ts`
 
 Auth/sync/server:
 
@@ -259,10 +246,7 @@ Auth/sync/server:
 
 Local services:
 
-- `services/kokoro_tts/*`
-
 ## Known Gaps
 
 - Production transcription still needs a deployed backend, object storage, and long-running job handling.
-- Kokoro support for `de`, `fr`, and `pt` remains blocked or experimental.
 - Full-tree render volume during long Browser TTS runs can still be reduced.

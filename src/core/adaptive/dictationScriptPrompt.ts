@@ -1,9 +1,6 @@
 import type { InputLanguageBenchmarkMetrics, InputMode, LanguageCode } from './types';
 
-function inputSpecificGuidance(inputMode: InputMode): string {
-  if (inputMode === 'kokoro') {
-    return 'Use precise phrase-level chunks with complete metadata for local Kokoro generation.';
-  }
+function inputSpecificGuidance(_inputMode: InputMode): string {
   return 'Use clean clauses and conservative pauses that browser/system TTS can speak predictably.';
 }
 

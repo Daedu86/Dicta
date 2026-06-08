@@ -9,8 +9,7 @@ import {
   buildSessionFeedbackJsonPayload,
   derivePlaybackDiagnosticsFromTimeline,
 } from '../../core/adaptive/sessionFeedback';
-import { formatSupportedLanguage, isSupportedLanguage, SUPPORTED_LANGUAGES } from '../../core/languages';
-import { isKokoroLanguageBlocked } from '../../core/kokoroSupport';
+import { SUPPORTED_LANGUAGES } from '../../core/languages';
 import type { AdaptiveBenchmarksByInputLanguage, BenchmarkLanguageButton } from '../openrouter/types';
 import type { AdaptiveAdapterCardConfig, AdaptiveWorkspaceFocusAnchor, RepeatWordStat } from './types';
 const SweetSpotGauge = lazy(() =>
@@ -57,9 +56,8 @@ function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
 }
 
-function mapSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): InputMode {
-  if (mode === 'input2') return 'browser-tts';
-  return 'kokoro';
+function mapSessionInputMode(_mode: AdaptiveAdapterCardConfig['inputMode']): InputMode {
+  return 'browser-tts';
 }
 export function AdaptiveAdapterCard({
   adapter,
@@ -188,7 +186,7 @@ export function AdaptiveBenchmarkSection({
         <>
           <div className="adaptive-section-header adaptive-subsection-header">
             <div>
-              <p className="dashboard-eyebrow">4 inputs x 5 languages</p>
+              <p className="dashboard-eyebrow">1 input x 5 languages</p>
               <h4>Profile matrix</h4>
             </div>
             <button
@@ -549,9 +547,6 @@ function AdaptiveBenchmarkWorkspace({
               <h3>{inputTitle} / {languageLabel}</h3>
               <p className="dashboard-meta">
                 Profile key: {profile.inputMode}/{profile.language}
-                {profile.inputMode === 'kokoro' && isSupportedLanguage(profile.language) && isKokoroLanguageBlocked(profile.language)
-                  ? ` · Kokoro ${formatSupportedLanguage(profile.language)} is non-native/blocked by default.`
-                  : ''}
               </p>
             </div>
           </div>

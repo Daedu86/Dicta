@@ -1,4 +1,4 @@
-export const CANONICAL_INPUT_MODES = ['browser-tts', 'kokoro'] as const;
+export const CANONICAL_INPUT_MODES = ['browser-tts'] as const;
 
 export type InputMode = (typeof CANONICAL_INPUT_MODES)[number];
 export type StoredInputMode = InputMode;
@@ -21,8 +21,6 @@ export function formatInputModeLabel(inputMode: string | null | undefined): stri
   switch (normalized) {
     case 'browser-tts':
       return 'Browser TTS';
-    case 'kokoro':
-      return 'Kokoro';
     default:
       return 'Unknown input';
   }

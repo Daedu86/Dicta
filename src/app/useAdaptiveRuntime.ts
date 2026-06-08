@@ -148,7 +148,7 @@ export function useAdaptiveRuntime({
   const sessionFeedbackContextRef = useRef<Record<string, { inputMode: InputMode; language: LanguageCode }>>({});
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
-  const [selectedBenchmarkInputMode, setSelectedBenchmarkInputMode] = useState<InputMode>('kokoro');
+  const [selectedBenchmarkInputMode, setSelectedBenchmarkInputMode] = useState<InputMode>('browser-tts');
 
   const getHistoricalPerformanceProfile = useCallback(
     (inputMode: InputMode, language?: string): HistoricalPerformanceProfile =>
@@ -478,14 +478,12 @@ function getRuntimeSessionFinishedAtMs(session: AdaptiveRuntimeSessionInput): nu
   return Number.isFinite(finishedAtMs) ? finishedAtMs : 0;
 }
 
-function mapRuntimeSessionInputMode(mode: AdaptiveRuntimeSessionInputMode): InputMode {
-  if (mode === 'input2') return 'browser-tts';
-  return 'kokoro';
+function mapRuntimeSessionInputMode(_mode: AdaptiveRuntimeSessionInputMode): InputMode {
+  return 'browser-tts';
 }
 
 function resolveRuntimeSessionLanguage(session: AdaptiveRuntimeSessionInput): LanguageCode {
   if (session.inputMode === 'input2') return session.ttsLanguage ?? 'unknown';
-  if (session.inputMode === 'input3') return session.kokoroLanguage ?? 'unknown';
   return 'unknown';
 }
 

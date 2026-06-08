@@ -171,7 +171,6 @@ Recommendation:
 - Changing focus-anchor behavior for `sessionFeedback` or `exports`.
 - Changing export payload content, prompt size hints, disabled states, or clipboard/status messages.
 - Moving session-history-dependent helpers out of `App.tsx` and expanding the prop/type surface too much.
-- Changing Browser TTS DE diagnostics display or Kokoro blocked-language labels.
 - Changing subsection default expansion, especially mobile default behavior.
 - Creating a broad shared `StoredSession` dependency for a UI-only extraction.
 

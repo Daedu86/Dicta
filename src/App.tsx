@@ -87,12 +87,7 @@ import {
   collectBrowserTtsEnvironmentFingerprint,
   normalizeBrowserTtsEnvironmentFingerprint,
 } from './inputs/browserTts/browserTtsEnvironment';
-import { buildKokoroTelemetryFrame, buildAdaptiveKokoroInput } from './inputs/kokoro/kokoroTelemetryAdapter';
 import { trackAction, trackSample } from './core/telemetry';
-import { KokoroAudioEngine } from './core/kokoroAudioEngine';
-import { generateKokoroChunk, type KokoroChunkResponse } from './core/kokoroClient';
-import { buildKokoroSourceWords, type KokoroPhraseChunk } from './core/kokoroPhraseChunking';
-import { getKokoroLanguageWarning, isKokoroLanguageBlocked } from './core/kokoroSupport';
 import { cloneTelemetry, isSubmittedFinishedAttempt, normalizeSessionForPersistence } from './core/sessionNormalization';
 import {
   LANGUAGE_LABELS,
@@ -113,7 +108,6 @@ import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
 import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
 import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsSetupCard';
-import { KokoroSetupCard } from './components/runtime-workspaces/KokoroSetupCard';
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
@@ -201,7 +195,6 @@ import {
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
-import { useKokoroRuntime } from './app/useKokoroRuntime';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
   ADAPTIVE_SESSION_FEEDBACK_KEY,
@@ -259,6 +252,20 @@ type StoredSession = {
 };
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
+
+type KokoroGeneratedChunk = {
+  id?: string;
+  text?: string;
+  sourceText?: string;
+  audioUrl?: string;
+  durationMs?: number;
+  durationSec?: number;
+  wordCount?: number;
+  charCount?: number;
+  pacingMode?: TtsPacingMode;
+  rate?: number;
+  [key: string]: unknown;
+};
 type SessionInputMode = 'input2' | 'input3';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
@@ -332,11 +339,6 @@ function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
 }
 
-type KokoroGeneratedChunk = KokoroPhraseChunk &
-  KokoroChunkResponse & {
-    pacingMode: TtsPacingMode;
-    rate: number;
-  };
 
 type SessionMetrics = {
   controllerState: ControlAction;
@@ -514,7 +516,11 @@ function App() {
   const [ttsCurrentChunk, setTtsCurrentChunk] = useState('');
   const [ttsPlayerProgressTick, setTtsPlayerProgressTick] = useState(0);
   const [ttsPacingMode, setTtsPacingMode] = useState<TtsPacingMode>('balanced');
-  const [ttsSpeechRate, setTtsSpeechRate] = useState(1);  const [kokoroExpanded, setKokoroExpanded] = useState(true);
+  const [ttsSpeechRate, setTtsSpeechRate] = useState(1);
+
+  // Retired Local TTS/Kokoro retired inert bindings.
+  // These keep legacy UI/lifecycle references harmless while the remaining UI residues are removed.
+  const [kokoroExpanded, setKokoroExpanded] = useState(false);
   const [kokoroText, setKokoroText] = useState('');
   const [kokoroLanguage, setKokoroLanguage] = useState<TtsLanguage>('en');
   const [kokoroVoice, setKokoroVoice] = useState('default');
@@ -526,19 +532,45 @@ function App() {
   const [kokoroPacingMode, setKokoroPacingMode] = useState<TtsPacingMode>('balanced');
   const [kokoroSpeechRate, setKokoroSpeechRate] = useState(1);
   const [kokoroManualBias, setKokoroManualBias] = useState(0);
-  const {
-    kokoroEnabled,
-    kokoroServiceReady,
-    setKokoroServiceReady,
-    toggleKokoroEnabled,
-  } = useKokoroRuntime({
-    localDevFeaturesAvailable: LOCAL_DEV_FEATURES_AVAILABLE,
-    kokoroText,
-    kokoroStatus,
-    setError,
-    onStopActivePlayback: () => stopKokoroPlayback('hold'),
-  });
-
+  const kokoroServiceReady = false;
+  const toggleKokoroEnabled = async (): Promise<void> => undefined;
+  const playKokoro = async (): Promise<void> => undefined;
+  const resumeKokoro = (): void => undefined;
+  const pauseKokoro = (): void => undefined;
+  const submitKokoroSession = (): void => undefined;
+  const replayKokoroPhrase = (): void => undefined;
+  const rewindKokoroPhrase = (): void => undefined;
+  const adjustKokoroManualPace = (_delta: number): void => undefined;
+  const resetKokoroPace = (): void => undefined;
+  const estimateKokoroSpokenWordIndex = (): number => 0;
+  const onKokoroPracticeChange = (event: ChangeEvent<HTMLTextAreaElement> | string): void => {
+    setKokoroPracticeText(typeof event === 'string' ? event : event.currentTarget.value);
+  };
+  const onKokoroPracticeKeyDown = (_event: KeyboardEvent<HTMLTextAreaElement>): void => undefined;
+  const stopKokoroPlayback = (_nextState: ControlAction = 'hold'): void => {
+    setKokoroStatus(kokoroText.trim() ? 'ready' : 'idle');
+    setKokoroCurrentChunk(null);
+  };
+  const suppressSidebarAutoSelectRef = useRef(false);
+  const hydratingSessionIdRef = useRef<string | null>(null);
+  const allowFinishedSessionResetRef = useRef<string | null>(null);
+  const kokoroEngineRef = useRef<{ stop: () => void } | null>(null);
+  const kokoroStartedAtMsRef = useRef<number | null>(null);
+  const kokoroChunkStartMsRef = useRef<number | null>(null);
+  const kokoroChunkStartWordIndexRef = useRef(0);
+  const kokoroChunkWordCountRef = useRef(0);
+  const kokoroCompletedSourceWordsRef = useRef(0);
+  const kokoroChunkIndexRef = useRef(0);
+  const kokoroLastControllerActionRef = useRef<ControlAction>('hold');
+  const kokoroCancelledRef = useRef(false);
+  const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
+  const kokoroSemanticPhraseReplayCountRef = useRef(0);
+  const applyKokoroPerformanceSample = (): void => undefined;
+  const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
+  void kokoroExpanded;
+  void kokoroManualBias;
+  void estimateKokoroSpokenWordIndex;
+  void applyKokoroPerformanceSample;
   useEffect(() => {
     if (browserTtsVoices.length === 0) return;
     setSessions((prev) => {
@@ -780,22 +812,6 @@ function App() {
   const applyTtsPerformanceSampleRef = useRef<() => void>(() => undefined);
   const ttsSemanticPhraseAdvanceCountRef = useRef(0);
   const ttsSemanticPhraseReplayCountRef = useRef(0);
-  const kokoroEngineRef = useRef<KokoroAudioEngine | null>(null);
-  const kokoroStartedAtMsRef = useRef<number | null>(null);
-  const kokoroChunkStartMsRef = useRef<number | null>(null);
-  const kokoroChunkStartWordIndexRef = useRef(0);
-  const kokoroChunkWordCountRef = useRef(0);
-  const kokoroCompletedSourceWordsRef = useRef(0);
-  const kokoroChunkIndexRef = useRef(0);
-  const kokoroLastControllerActionRef = useRef<ControlAction>('hold');
-  const kokoroCancelledRef = useRef(false);
-  const suppressSidebarAutoSelectRef = useRef(false);
-  const hydratingSessionIdRef = useRef<string | null>(null);
-  const allowFinishedSessionResetRef = useRef<string | null>(null);
-  const applyKokoroPerformanceSampleRef = useRef<() => void>(() => undefined);
-  const kokoroSemanticPhrasesRef = useRef<SemanticPhrase[]>([]);
-  const kokoroSemanticPhraseAdvanceCountRef = useRef(0);
-  const kokoroSemanticPhraseReplayCountRef = useRef(0);
   const ttsLiveSignalRef = useRef<TtsLiveSignal>({
     accuracy: 100,
     lagSec: 0,
@@ -951,7 +967,7 @@ function App() {
   const activeInputLabel =
     activeInputMode === 'input2'
       ? 'Input # 2 - Text to Speech (TTS)'
-      : 'Input # 3 - Kokoro TTS Local';
+      : 'Retired Local TTS - Kokoro TTS Local';
   const activeInputFeatureLabel =
     activeInputMode === 'input2'
       ? 'Built-in browser feature'
@@ -1330,7 +1346,7 @@ function App() {
         })
       : 0;
   const kokoroHasText = kokoroText.trim().length > 0;
-  const kokoroLanguageWarning = getKokoroLanguageWarning(kokoroLanguage);
+  const kokoroLanguageWarning = '';
   const kokoroTranscript = useMemo(() => buildTextTranscript(kokoroText), [kokoroText]);
   const kokoroPracticeEvaluation = useMemo(
     () => evaluateTranscriptAttempt(kokoroPracticeText, kokoroTranscript),
@@ -2008,7 +2024,7 @@ function App() {
       setDictationScriptValidation({
         ok: false,
         script: null,
-        errors: ['inputMode must match input2/input3 or browser-tts/kokoro.'],
+        errors: ['inputMode must match input2/kokoro or browser-tts/kokoro.'],
       });
       return;
     }
@@ -2039,7 +2055,7 @@ function App() {
     const generationOrigin = options.generationOrigin ?? 'openrouter';
     const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
     if (!inputMode) {
-      setOpenRouterError('Generated script inputMode must match input2/input3 or browser-tts/kokoro.');
+      setOpenRouterError('Generated script inputMode must match input2/kokoro or browser-tts/kokoro.');
       return;
     }
 
@@ -2544,27 +2560,14 @@ function App() {
     handleEsKeyboardRemapKeyDown(event, onTtsPracticeChange);
   }
 
-  function onKokoroTextChange(value: string): void {
-    if (inputSettingsLocked || activeSessionFinished) return;
-    setKokoroText(value);
-    setKokoroStatus(value.trim().length > 0 ? 'ready' : 'idle');
-  }
+  
 
-  function onKokoroPracticeChange(value: string): void {
-    if (activeSessionFinished) return;
-    if (!telemetryRef.current || !telemetryRef.current.startedAt) {
-      telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
-    }
-    if (kokoroStartedAtMsRef.current === null) {
-      kokoroStartedAtMsRef.current = performance.now();
-    }
-    kokoroPracticeLiveTextRef.current = value;
-    setKokoroPracticeText(value);
-  }
 
-  function onKokoroPracticeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
-    handleEsKeyboardRemapKeyDown(event, onKokoroPracticeChange);
-  }
+  
+
+
+  
+
 
   function ensureAttemptTelemetry(): SessionTelemetry {
     const next = cloneTelemetry(telemetryRef.current);
@@ -2582,50 +2585,17 @@ function App() {
     return Math.max(0, (now - ttsStartedAtMsRef.current) / 1000);
   }
 
-  function getKokoroElapsedSeconds(now = performance.now()): number {
-    if (kokoroStartedAtMsRef.current === null) {
-      return 0;
-    }
-    return Math.max(0, (now - kokoroStartedAtMsRef.current) / 1000);
-  }
+  
 
-  function estimateKokoroSpokenWordIndex(now = performance.now()): number {
-    const sourceWordCount = kokoroTranscript?.words.length ?? 0;
-    if (sourceWordCount === 0) {
-      return 0;
-    }
 
-    if (kokoroStatus === 'playing' && kokoroChunkStartMsRef.current !== null) {
-      const elapsedSec = Math.max(0, (now - kokoroChunkStartMsRef.current) / 1000);
-      const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * kokoroSpeechRate);
-      const spokenInChunk = Math.min(kokoroChunkWordCountRef.current, Math.floor(elapsedSec * wordsPerSecond));
-      return clamp(kokoroChunkStartWordIndexRef.current + spokenInChunk, 0, sourceWordCount);
-    }
+  
 
-    if (kokoroStatus === 'finished') {
-      return sourceWordCount;
-    }
 
-    return clamp(kokoroCompletedSourceWordsRef.current, 0, sourceWordCount);
-  }
+  
 
-  function recordKokoroTelemetryAction(action: ControlAction, actionRate = kokoroSpeechRate): void {
-    const telemetry = ensureAttemptTelemetry();
-    const next = cloneTelemetry(telemetry);
-    trackAction(next, getKokoroElapsedSeconds(), action, actionRate);
-    telemetryRef.current = next;
-  }
 
-  function recordKokoroChunkTelemetry(chunk: Omit<TtsChunkTelemetry, 't'>): void {
-    const telemetry = ensureAttemptTelemetry();
-    const next = cloneTelemetry(telemetry);
-    next.ttsChunks.push({
-      t: getKokoroElapsedSeconds(),
-      engine: 'kokoro',
-      ...chunk,
-    });
-    telemetryRef.current = next;
-  }
+  
+
 
   function estimateTtsSpokenWordIndex(now = performance.now()): number {
     const sourceWordCount = ttsTranscript?.words.length ?? 0;
@@ -3471,478 +3441,37 @@ function App() {
     }
   }
 
-  function applyKokoroPerformanceSample(
-    options: { action?: ControlAction; finalize?: boolean; practiceTextOverride?: string } = {},
-  ): { metrics: SessionMetrics; telemetry: SessionTelemetry } {
-    const now = performance.now();
-    if (kokoroStartedAtMsRef.current === null) {
-      kokoroStartedAtMsRef.current = now;
-    }
 
-    const practiceEvaluation = options.practiceTextOverride === undefined
-      ? kokoroPracticeEvaluation
-      : evaluateTranscriptAttempt(options.practiceTextOverride, kokoroTranscript);
-    const practiceWords = practiceEvaluation.typedWords;
-    const visiblePracticeAccuracy =
-      practiceWords.length > 0 && (kokoroTranscript?.words.length ?? 0) > 0 ? practiceEvaluation.accuracy : 0;
-    const sourceWordCount = kokoroTranscript?.words.length ?? 0;
-    const typedProgress = Math.max(0, practiceEvaluation.lastMatchedTargetIndex + 1);
-    const spokenPosition = estimateKokoroSpokenWordIndex(now);
-    const nextLagWords = sourceWordCount > 0 ? spokenPosition - typedProgress : 0;
-    const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * kokoroSpeechRate);
-    const nextLagSec = nextLagWords / wordsPerSecond;
-    const elapsedMinutes = Math.max(getKokoroElapsedSeconds(now) / 60, 1 / 60);
-    const nextWpm = practiceWords.length > 0 ? practiceWords.length / elapsedMinutes : 0;
-    const nextAccuracy = practiceWords.length > 0 ? visiblePracticeAccuracy : 100;
-    const nextPoints = practiceEvaluation.points;
-    const nextScore =
-      sourceWordCount > 0
-        ? computeSessionScore({
-            accuracy: nextAccuracy,
-            lagSec: nextLagSec,
-            wpm: nextWpm,
-            rate: kokoroSpeechRate,
-            points: nextPoints,
-          })
-        : 0;
-    const nextControllerAction = deriveTtsControlAction({
-      accuracy: nextAccuracy,
-      lagSec: nextLagSec,
-      wpm: nextWpm,
-      typedWords: practiceWords.length,
-    });
-    const nextTrend = derivePerformanceTrend(nextLagSec, nextAccuracy, previousLagRef.current, previousAccuracyRef.current);
 
-    ttsLiveSignalRef.current = {
-      accuracy: nextAccuracy,
-      lagSec: nextLagSec,
-      rawLagSec: nextLagSec,
-      stableLagSec: nextLagSec,
-      lagOutlierCount: ttsLagOutlierCountRef.current,
-      wpm: nextWpm,
-      trend: nextTrend,
-      controllerState: nextControllerAction,
-    };
+  
 
-    setControllerState(nextControllerAction);
-    setRate(kokoroSpeechRate);
-    setLagSec(nextLagSec);
-    setLagWords(nextLagWords);
-    setWpm(nextWpm);
-    setAccuracy(nextAccuracy);
-    setTrend(nextTrend);
-    previousLagRef.current = nextLagSec;
-    previousAccuracyRef.current = nextAccuracy;
 
-    const telemetry = ensureAttemptTelemetry();
-    const nextTelemetry = cloneTelemetry(telemetry);
-    trackSample(nextTelemetry, nextLagSec, nextWpm, nextAccuracy, kokoroSpeechRate);
+  
 
-    if (options.action) {
-      trackAction(nextTelemetry, getKokoroElapsedSeconds(now), options.action, kokoroSpeechRate);
-    } else if (nextControllerAction !== kokoroLastControllerActionRef.current) {
-      trackAction(nextTelemetry, getKokoroElapsedSeconds(now), nextControllerAction, kokoroSpeechRate);
-      kokoroLastControllerActionRef.current = nextControllerAction;
-    }
 
-    if (options.finalize) {
-      nextTelemetry.finishedAt = new Date().toISOString();
-    }
+  
 
-    telemetryRef.current = nextTelemetry;
-    return {
-      metrics: {
-        controllerState: nextControllerAction,
-        rate: kokoroSpeechRate,
-        lagSec: nextLagSec,
-        lagWords: nextLagWords,
-        wpm: nextWpm,
-        accuracy: nextAccuracy,
-        trend: nextTrend,
-        score: nextScore,
-        points: nextPoints,
-      },
-      telemetry: nextTelemetry,
-    };
-  }
 
-  applyKokoroPerformanceSampleRef.current = applyKokoroPerformanceSample;
+  
 
-  async function playKokoro(): Promise<void> {
-    if (!kokoroEnabled) {
-      setError('Kokoro TTS is disabled. Turn it on with the toggle.');
-      return;
-    }
-    if (activeSessionFinished) {
-      setError('Reset the finished session before playing Kokoro audio again.');
-      return;
-    }
-    if (!kokoroText.trim()) {
-      setError('Paste text before playing Kokoro TTS.');
-      return;
-    }
-    if (isKokoroLanguageBlocked(kokoroLanguage)) {
-      setError(getKokoroLanguageWarning(kokoroLanguage));
-      return;
-    }
 
-    kokoroCancelledRef.current = false;
-    kokoroStartedAtMsRef.current = performance.now();
-    kokoroCompletedSourceWordsRef.current = 0;
-    kokoroChunkIndexRef.current = 0;
-    kokoroSemanticPhrasesRef.current = buildSemanticPhrasesForCurrentSession(kokoroText, kokoroLanguage, kokoroPacingMode);
-    beginAdaptiveSessionFeedback('kokoro', kokoroLanguage, kokoroSemanticPhrasesRef.current.length);
-    kokoroSemanticPhraseAdvanceCountRef.current = 0;
-    kokoroSemanticPhraseReplayCountRef.current = 0;
-    kokoroLastControllerActionRef.current = 'hold';
-    ensureAttemptTelemetry();
-    recordKokoroTelemetryAction('play', kokoroSpeechRate);
-    setError('');
-    setKokoroStatus('playing');
-    setRunning(true);
-    setSessionStatus('running');
-    await playKokoroFromWord(0);
-  }
+  
 
-  async function playKokoroFromWord(wordIndex: number): Promise<void> {
-    const sourceWords = buildKokoroSourceWords(kokoroText);
-    const semanticPhrases =
-      kokoroSemanticPhrasesRef.current.length > 0
-        ? kokoroSemanticPhrasesRef.current
-        : buildSemanticPhrasesForCurrentSession(kokoroText, kokoroLanguage, kokoroPacingMode);
-    const currentPhraseIndex = semanticPhraseIndexForWordIndex(semanticPhrases, wordIndex);
-    if (kokoroCancelledRef.current) return;
-    if (isKokoroLanguageBlocked(kokoroLanguage)) {
-      setKokoroServiceReady(false);
-      setKokoroStatus(kokoroText.trim() ? 'ready' : 'idle');
-      setRunning(false);
-      setSessionStatus((current) => (current === 'finished' ? current : 'ready'));
-      setError(getKokoroLanguageWarning(kokoroLanguage));
-      return;
-    }
-    if (currentPhraseIndex >= semanticPhrases.length || wordIndex >= sourceWords.length) {
-      setKokoroCurrentChunk(null);
-      setKokoroStatus('finished');
-      setRunning(false);
-      setSessionStatus((current) => (current === 'finished' ? current : 'paused'));
-      kokoroCompletedSourceWordsRef.current = kokoroTranscript?.words.length ?? kokoroCompletedSourceWordsRef.current;
-      kokoroChunkStartMsRef.current = null;
-      applyKokoroPerformanceSample();
-      return;
-    }
 
-    try {
-      const historyProfile = getHistoricalPerformanceProfile('kokoro', kokoroLanguage);
-      const liveSignal = ttsLiveSignalRef.current;
-      const semanticPhrase = semanticPhrases[currentPhraseIndex];
-      const phraseStartWordIndex = wordIndexForSemanticPhrase(semanticPhrases, currentPhraseIndex);
-      recordPhrasePlaybackEvent('phrase_started', 'kokoro', kokoroLanguage, semanticPhrase, currentPhraseIndex);
-      const kokoroTelemetry = buildKokoroTelemetryFrame({
-        inputMode: 'kokoro',
-        phraseId: `kokoro-${currentPhraseIndex}`,
-        spokenProgressRatio: sourceWords.length > 0 ? Math.min(1, phraseStartWordIndex / sourceWords.length) : 0,
-        typedProgressRatio: sourceWords.length > 0 ? Math.max(0, kokoroPracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
-        lagSec: liveSignal.lagSec,
-        lagWords: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND)),
-        lagChars: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND * 5)),
-        accuracy: clamp01(liveSignal.accuracy / 100),
-        errorRate: clamp01(1 - liveSignal.accuracy / 100),
-        wpm: liveSignal.wpm,
-        charsPerMinute: 0,
-        pauseMs: ttsPlaybackProfile.pauseMs,
-        longestPauseMs: 0,
-        backspaceRate: 0,
-        correctionRate: 0,
-        phraseDifficulty: 1,
-        phraseLengthWords: sourceWords.length,
-        phraseLengthChars: kokoroText.length,
-        currentPlaybackRate: kokoroSpeechRate,
-        currentPauseAfterPhraseMs: ttsPlaybackProfile.pauseMs,
-        language: kokoroLanguage,
-        trend: liveSignal.trend,
-      });
-      const initialDecision = adaptiveControllerRef.current.decide(buildAdaptiveKokoroInput(kokoroTelemetry, historyProfile));
-      const initialPacingMode = mapAdaptivePacingMode(initialDecision.mode);
-      const chunk = buildAdaptiveTtsChunk(
-        sourceWords,
-        phraseStartWordIndex,
-        initialPacingMode,
-        chunkWordsForPhraseSize(initialDecision.nextPhraseSize),
-        kokoroLanguage,
-        semanticPhrase,
-      );
-      const semanticTelemetry = buildKokoroTelemetryFrame({
-        inputMode: 'kokoro',
-        phraseId: `${kokoroTelemetry.phraseId}-semantic`,
-        spokenProgressRatio: sourceWords.length > 0 ? Math.min(1, phraseStartWordIndex / sourceWords.length) : 0,
-        typedProgressRatio: sourceWords.length > 0 ? Math.max(0, kokoroPracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
-        lagSec: liveSignal.lagSec,
-        lagWords: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND)),
-        lagChars: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND * 5)),
-        accuracy: clamp01(liveSignal.accuracy / 100),
-        errorRate: clamp01(1 - liveSignal.accuracy / 100),
-        wpm: liveSignal.wpm,
-        charsPerMinute: 0,
-        pauseMs: ttsPlaybackProfile.pauseMs,
-        longestPauseMs: 0,
-        backspaceRate: 0,
-        correctionRate: 0,
-        phraseDifficulty: chunk.phraseDifficulty ?? kokoroTelemetry.phraseDifficulty,
-        phraseLengthWords: chunk.wordCount,
-        phraseLengthChars: chunk.text.length,
-        currentPlaybackRate: kokoroSpeechRate,
-        currentPauseAfterPhraseMs: ttsPlaybackProfile.pauseMs,
-        language: kokoroLanguage,
-        trend: liveSignal.trend,
-        phraseBoundaryType: chunk.phraseBoundaryType,
-        canPauseAfter: chunk.canPauseAfter,
-        canReplayIndependently: chunk.canReplayIndependently,
-        semanticCompleteness: chunk.semanticCompleteness,
-        punctuationLoad: chunk.punctuationLoad,
-        rareWordLoad: chunk.rareWordLoad,
-        syntaxComplexity: chunk.syntaxComplexity,
-      });
-      const decision = adaptiveControllerRef.current.decide(buildAdaptiveKokoroInput(semanticTelemetry, historyProfile));
-      const pacingMode = mapAdaptivePacingMode(decision.mode);
-      const nextRate = decision.playbackRate;
-      const pauseAtBoundary = chunk.canPauseAfter ?? true;
-      const replayAtBoundary = chunk.canReplayIndependently ?? true;
-      const semanticCompleteness = chunk.semanticCompleteness ?? 1;
-      const effectivePauseNow = decision.shouldPauseNow && pauseAtBoundary;
-      const effectiveReplay = decision.shouldReplayPhrase && replayAtBoundary && semanticCompleteness >= 0.65;
-      const generated = await generateKokoroChunk({
-        text: chunk.text,
-        voice: kokoroVoice.trim() || 'default',
-        language: kokoroLanguage,
-        baseSpeed: 1,
-      });
-      const nextChunk: KokoroGeneratedChunk = {
-        ...chunk,
-        ...generated,
-        pacingMode,
-        rate: nextRate,
-      };
+  
 
-      if (kokoroCancelledRef.current) return;
-      kokoroEngineRef.current?.stop();
-      kokoroEngineRef.current = new KokoroAudioEngine({
-        onEnded: () => {
-          recordPhrasePlaybackEvent('phrase_completed', 'kokoro', kokoroLanguage, semanticPhrase, currentPhraseIndex);
-          recordKokoroTelemetryAction('phrase_end', nextChunk.rate);
-          kokoroCompletedSourceWordsRef.current = nextChunk.startWordIndex + nextChunk.wordCount;
-          kokoroChunkIndexRef.current += 1;
-          const nextWordIndex = effectiveReplay ? nextChunk.startWordIndex : nextChunk.startWordIndex + nextChunk.wordCount;
-          if (effectiveReplay) {
-            kokoroSemanticPhraseReplayCountRef.current += 1;
-            recordPhrasePlaybackEvent('phrase_replayed', 'kokoro', kokoroLanguage, semanticPhrase, currentPhraseIndex);
-          } else {
-            kokoroSemanticPhraseAdvanceCountRef.current += 1;
-            recordPhrasePlaybackEvent('phrase_advanced', 'kokoro', kokoroLanguage, semanticPhrase, currentPhraseIndex + 1);
-          }
-          setAdaptiveSemanticDebug((current) => ({
-            ...current,
-            currentPhraseIndex: effectiveReplay ? currentPhraseIndex : currentPhraseIndex + 1,
-            currentPhraseId: effectiveReplay ? (semanticPhrase?.id ?? nextChunk.cacheKey) : (semanticPhrases[currentPhraseIndex + 1]?.id ?? 'complete'),
-            currentPhraseTextPreview: effectiveReplay ? nextChunk.text.slice(0, 80) : (semanticPhrases[currentPhraseIndex + 1]?.text.slice(0, 80) ?? ''),
-            totalSemanticPhrases: semanticPhrases.length,
-            phraseAdvanceCount: kokoroSemanticPhraseAdvanceCountRef.current,
-            phraseReplayCount: kokoroSemanticPhraseReplayCountRef.current,
-            lastPhraseAdvanceReason: effectiveReplay ? 'replay_same_phrase' : 'phrase_complete',
-          }));
-          const scheduleNext = () => {
-            void playKokoroFromWord(nextWordIndex);
-          };
-          if (effectivePauseNow) {
-            window.setTimeout(scheduleNext, decision.pauseAfterPhraseMs);
-          } else {
-            scheduleNext();
-          }
-        },
-        onError: () => {
-          setKokoroStatus('paused');
-          setRunning(false);
-          setSessionStatus((current) => (current === 'finished' ? current : 'paused'));
-          setError('Kokoro audio playback failed.');
-        },
-      });
 
-      setKokoroCurrentChunk(nextChunk);
-      setKokoroChunks((current) => {
-        const existingIndex = current.findIndex((entry) => entry.startWordIndex === nextChunk.startWordIndex);
-        if (existingIndex >= 0) {
-          const copy = [...current];
-          copy[existingIndex] = nextChunk;
-          return copy;
-        }
-        return [...current, nextChunk];
-      });
-      setKokoroPacingMode(pacingMode);
-      setKokoroSpeechRate(nextRate);
-      setRate(nextRate);
-      setKokoroServiceReady(true);
-      kokoroChunkStartMsRef.current = performance.now();
-      kokoroChunkStartWordIndexRef.current = nextChunk.startWordIndex;
-      kokoroChunkWordCountRef.current = nextChunk.wordCount;
-      kokoroCompletedSourceWordsRef.current = nextChunk.startWordIndex;
-      recordKokoroTelemetryAction('phrase_start', nextRate);
-      recordKokoroChunkTelemetry({
-        startWordIndex: nextChunk.startWordIndex,
-        wordCount: nextChunk.wordCount,
-        rate: nextRate,
-        pacingMode,
-        cacheKey: nextChunk.cacheKey,
-        durationSec: nextChunk.durationSec,
-      });
-      recordAdaptiveBenchmark(semanticTelemetry, decision, {
-        actualPlaybackRate: nextRate,
-        actualPauseMs: effectivePauseNow ? decision.pauseAfterPhraseMs : 0,
-        replayExecuted: effectiveReplay,
-        actualBoundaryType: chunk.phraseBoundaryType,
-        event: effectiveReplay ? 'replay' : effectivePauseNow ? 'pause' : decision.deferPauseUntilSafeBoundary ? 'defer_pause' : 'phrase_advance',
-        phraseIndex: currentPhraseIndex,
-        totalSemanticPhrases: semanticPhrases.length,
-      });
-      setAdaptiveSemanticDebug((current) => {
-        const phraseCount = current.safePauseCount + current.unsafePauseCount + current.deferredPauseCount + 1;
-        const avgCompleteness = ((current.averageSemanticCompleteness * (phraseCount - 1)) + semanticCompleteness) / phraseCount;
-        const difficulty = chunk.phraseDifficulty ?? 0.5;
-        const avgDifficulty = ((current.averagePhraseDifficulty * (phraseCount - 1)) + difficulty) / phraseCount;
-        const unsafePauseCount = current.unsafePauseCount + (decision.shouldPauseNow && !pauseAtBoundary ? 1 : 0);
-        const safePauseCount = current.safePauseCount + (effectivePauseNow ? 1 : 0);
-        const deferredPauseCount = current.deferredPauseCount + (decision.deferPauseUntilSafeBoundary ? 1 : 0);
-        const replayDeniedByBoundaryCount = current.replayDeniedByBoundaryCount + (decision.shouldReplayPhrase && !effectiveReplay ? 1 : 0);
-        const semanticCutPenalty = unsafePauseCount + replayDeniedByBoundaryCount * 0.5 + deferredPauseCount * 0.35;
-        const fidelityRaw = 1 - semanticCutPenalty / Math.max(1, phraseCount * 1.5);
-        return {
-          ...current,
-          semanticCutPenalty: Number(semanticCutPenalty.toFixed(2)),
-          unsafePauseCount,
-          safePauseCount,
-          deferredPauseCount,
-          replayDeniedByBoundaryCount,
-          averageSemanticCompleteness: Number(avgCompleteness.toFixed(3)),
-          averagePhraseDifficulty: Number(avgDifficulty.toFixed(3)),
-          inputExecutionFidelityScore: Number(clamp(fidelityRaw, 0, 1).toFixed(3)),
-          currentPhraseIndex,
-          currentPhraseId: semanticPhrase?.id ?? `phrase-${currentPhraseIndex}`,
-          currentPhraseTextPreview: chunk.text.slice(0, 80),
-          totalSemanticPhrases: semanticPhrases.length,
-          phraseAdvanceCount: kokoroSemanticPhraseAdvanceCountRef.current,
-          phraseReplayCount: kokoroSemanticPhraseReplayCountRef.current,
-          lastPhraseAdvanceReason: 'phrase_start',
-        };
-      });
-      kokoroEngineRef.current.load(nextChunk.audioUrl, nextRate);
-      await kokoroEngineRef.current.play();
-    } catch (e) {
-      setKokoroServiceReady(false);
-      setKokoroStatus(kokoroText.trim() ? 'ready' : 'idle');
-      setRunning(false);
-      setSessionStatus((current) => (current === 'finished' ? current : 'ready'));
-      setError(e instanceof Error ? e.message : 'Could not generate Kokoro audio.');
-    }
-  }
+  
 
-  function pauseKokoro(): void {
-    kokoroEngineRef.current?.pause();
-    recordKokoroTelemetryAction('pause');
-    setRunning(false);
-    setSessionStatus((current) => (current === 'finished' ? current : 'paused'));
-    setKokoroStatus((current) => (current === 'playing' ? 'paused' : current));
-  }
 
-  async function resumeKokoro(): Promise<void> {
-    if (!kokoroEngineRef.current) return;
-    recordKokoroTelemetryAction('resume');
-    setRunning(true);
-    setSessionStatus((current) => (current === 'finished' ? current : 'running'));
-    setKokoroStatus('playing');
-    await kokoroEngineRef.current.play();
-  }
+  
 
-  function stopKokoroPlayback(action?: ControlAction): void {
-    kokoroCancelledRef.current = true;
-    if (action) {
-      recordKokoroTelemetryAction(action);
-    }
-    kokoroEngineRef.current?.stop();
-    setKokoroCurrentChunk(null);
-    setKokoroPacingMode('balanced');
-    setRunning(false);
-    setSessionStatus((current) => {
-      if (current === 'finished') return current;
-      return kokoroPracticeText.trim() ? 'paused' : 'ready';
-    });
-    setKokoroStatus(kokoroText.trim() ? 'ready' : 'idle');
-  }
 
-  function replayKokoroPhrase(): void {
-    if (!kokoroCurrentChunk) return;
-    recordKokoroTelemetryAction('replay_phrase');
-    void playKokoroFromWord(kokoroCurrentChunk.startWordIndex);
-  }
+  
 
-  function rewindKokoroPhrase(): void {
-    recordKokoroTelemetryAction('rewind_phrase');
-    kokoroEngineRef.current?.rewind(2);
-  }
 
-  function adjustKokoroManualPace(delta: number, action: ControlAction): void {
-    const nextBias = clamp(kokoroManualBias + delta, -0.2, 0.2);
-    const nextRate = clamp(kokoroSpeechRate + delta, 0.75, 1.15);
-    setKokoroManualBias(nextBias);
-    setKokoroSpeechRate(nextRate);
-    setRate(nextRate);
-    kokoroEngineRef.current?.setRate(nextRate);
-    recordKokoroTelemetryAction(action, nextRate);
-  }
+  
 
-  function resetKokoroPace(): void {
-    setKokoroManualBias(0);
-    setKokoroSpeechRate(1);
-    setRate(1);
-    kokoroEngineRef.current?.setRate(1);
-    recordKokoroTelemetryAction('reset_pace', 1);
-  }
-
-  function submitKokoroSession(latestPracticeText = kokoroPracticeText): void {
-    if (!canSubmitKokoroSession || !latestPracticeText.trim()) {
-      setError('Paste Kokoro text and type your attempt before submitting.');
-      setTrainingSubmitMessage('');
-      return;
-    }
-
-    if (latestPracticeText !== kokoroPracticeText) {
-      kokoroPracticeLiveTextRef.current = latestPracticeText;
-      setKokoroPracticeText(latestPracticeText);
-    }
-    const finalSample = applyKokoroPerformanceSample({ action: 'submit', finalize: true, practiceTextOverride: latestPracticeText });
-    const finishedAt = new Date().toISOString();
-    const nextSessions = sessions.map((session) =>
-      session.id === activeSessionId
-        ? {
-            ...session,
-            kokoroPracticeText: latestPracticeText,
-            status: 'finished' as const,
-            metrics: finalSample.metrics,
-            telemetry: finalSample.telemetry,
-            updatedAt: finishedAt,
-          }
-        : session,
-    );
-    const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
-    setSessions(nextSessions);
-    persistAndPushSessionsNow(nextSessions, { criticalSessionIds: activeSessionId ? [activeSessionId] : [] });
-    stopKokoroPlayback();
-    setRunning(false);
-    setSessionStatus('finished');
-    setKokoroStatus('finished');
-    completeAdaptiveSessionFeedback(finalizedSession);
-    setError('');
-    if (activeSessionId) {
-      setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
-    }
-  }
 
   function buildAdaptiveEventCounts(
     timelinePoints: AdaptiveTimelinePoint[],
@@ -4205,9 +3734,10 @@ function App() {
     ttsPlayerWordCount > 0 ? Math.min(ttsPlayerDurationSec, (ttsPlayerCurrentWord / ttsPlayerWordCount) * ttsPlayerDurationSec) : 0;
   const ttsPlayerProgressPercent = ttsPlayerDurationSec > 0 ? clamp((ttsPlayerCurrentSec / ttsPlayerDurationSec) * 100, 0, 100) : 0;
   const kokoroPlayerWordCount = kokoroTranscript?.words.length ?? 0;
-  const kokoroPlayerCurrentWord = kokoroHasText ? estimateKokoroSpokenWordIndex() : 0;
+  const kokoroPlayerCurrentWord = 0;
   void ttsPlayerProgressTick;
   void kokoroPlayerProgressTick;
+  void canSubmitKokoroSession;
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
@@ -4225,7 +3755,7 @@ function App() {
           { label: 'Source', value: kokoroHasText ? `${kokoroTranscript?.words.length ?? 0} words` : 'Not set' },
           { label: 'Text length', value: kokoroHasText ? `${kokoroText.length} chars` : 'Not set' },
           { label: 'Language', value: kokoroLanguage ?? 'Not set' },
-          { label: 'Native support', value: isKokoroLanguageBlocked(kokoroLanguage) ? 'Experimental / not native' : 'Native' },
+          { label: 'Native support', value: false ? 'Experimental / not native' : 'Native' },
           { label: 'Voice', value: kokoroVoice.trim() || 'default' },
           { label: 'Service', value: kokoroServiceReady === false ? 'Offline' : kokoroServiceReady ? 'Ready' : 'Not checked' },
         ];
@@ -4262,7 +3792,6 @@ function App() {
   const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) ?? null : null;
   const insightsDiagnosticInputOptions: Array<{ inputMode: InputMode; label: string }> = [
     { inputMode: 'browser-tts', label: 'Input 2' },
-    { inputMode: 'kokoro', label: 'Input 3' },
   ];
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedProgressLabel =
@@ -4669,31 +4198,7 @@ function App() {
                   formatTtsPacingMode={formatTtsPacingMode}
                 />
               ) : (
-                <KokoroSetupCard
-                  activeInputLabel={activeInputLabel}
-                  activeInputFeatureLabel={activeInputFeatureLabel}
-                  kokoroExpanded={kokoroExpanded}
-                  kokoroHasText={kokoroHasText}
-                  kokoroText={kokoroText}
-                  kokoroLanguage={kokoroLanguage}
-                  kokoroVoice={kokoroVoice}
-                  kokoroStatus={kokoroStatus}
-                  kokoroSpeechRate={kokoroSpeechRate}
-                  kokoroServiceReady={kokoroServiceReady}
-                  supportedLanguages={SUPPORTED_LANGUAGES}
-                  setupLocked={setupLocked}
-                  inputSettingsReady={inputSettingsReady}
-                  localDevFeaturesAvailable={LOCAL_DEV_FEATURES_AVAILABLE}
-                  kokoroLanguageWarning={kokoroLanguageWarning}
-                  error={error}
-                  onToggleExpanded={() => setKokoroExpanded((value) => !value)}
-                  onKokoroTextChange={onKokoroTextChange}
-                  onKokoroLanguageChange={setKokoroLanguage}
-                  onKokoroVoiceChange={setKokoroVoice}
-                  onLockInputSettings={lockInputSettings}
-                  formatSupportedLanguage={formatSupportedLanguage}
-                  isKokoroLanguageBlocked={isKokoroLanguageBlocked}
-                />
+                null
               )) : null}
 
         <section className="workspace">
@@ -5569,7 +5074,7 @@ function byteSize(value: string): number {
 
 function formatSessionInputMode(mode: string): string {
   if (mode === 'input2') return 'Browser TTS';
-  if (mode === 'input3') return 'Kokoro local';
+  if (mode === 'kokoro') return 'Kokoro local';
   return 'Removed legacy input';
 }
 
@@ -5602,7 +5107,7 @@ function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
     },
     {
       inputMode: 'input3',
-      title: 'Input #3 - Kokoro TTS Local',
+      title: 'Retired Local TTS - Kokoro TTS Local',
       adapter: 'kokoroTelemetryAdapter',
       execution: 'Controls generated phrase size, Kokoro playback rate, replay behavior, and pause timing.',
       controls: 'Generation + replay + rate',
@@ -5766,7 +5271,7 @@ function truncateTitle(title: string): string {
 function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMode | null {
   const normalized = String(inputMode).trim().toLowerCase().replace(/_/g, '-');
   if (normalized === 'input2' || normalized === 'browser-tts' || normalized === 'browsertts') return 'input2';
-  if (normalized === 'input3' || normalized === 'kokoro' || normalized === 'kokoro-tts') return 'input3';
+  if (normalized === 'kokoro' || normalized === 'kokoro' || normalized === 'kokoro-tts') return 'input3';
   return null;
 }
 
@@ -6062,19 +5567,7 @@ type TtsLiveSignal = {
   controllerState: ControlAction;
 };
 
-type TtsAdaptiveChunk = {
-  text: string;
-  startWordIndex: number;
-  wordCount: number;
-  phraseBoundaryType?: PhraseBoundaryType;
-  canPauseAfter?: boolean;
-  canReplayIndependently?: boolean;
-  semanticCompleteness?: number;
-  punctuationLoad?: number;
-  rareWordLoad?: number;
-  syntaxComplexity?: number;
-  phraseDifficulty?: number;
-};
+
 
 function buildOpenRouterDiversificationHints({
   durationMinutes,
@@ -6351,7 +5844,7 @@ function averageNumbers(values: number[], fallback = 0): number {
 
 function mapSessionInputMode(mode: string): InputMode {
   if (mode === 'input2') return 'browser-tts';
-  if (mode === 'input3') return 'kokoro';
+  return 'browser-tts';
   throw new Error('Removed legacy input');
 }
 
@@ -6367,11 +5860,8 @@ function mapAdaptivePacingMode(mode: PacingMode): TtsPacingMode {
   return 'balanced';
 }
 
-function chunkWordsForPhraseSize(size: PhraseSize): number {
-  if (size === 'short') return 4;
-  if (size === 'long') return 10;
-  return 6;
-}
+
+
 
 function formatTtsPacingMode(mode: TtsPacingMode): string {
   if (mode === 'slow') return 'Slow phrase pacing';
@@ -6379,11 +5869,7 @@ function formatTtsPacingMode(mode: TtsPacingMode): string {
   return 'Balanced phrase pacing';
 }
 
-function getTtsTargetChunkWords(mode: TtsPacingMode, profileChunkWords: number): number {
-  if (mode === 'slow') return clamp(Math.round(profileChunkWords - 2), 3, 5);
-  if (mode === 'flow') return clamp(Math.round(profileChunkWords + 4), 9, 12);
-  return clamp(Math.round(profileChunkWords), 6, 8);
-}
+
 
 function phraseSizeForTtsMode(mode: TtsPacingMode): PhraseSize {
   if (mode === 'slow') return 'short';
@@ -6391,9 +5877,8 @@ function phraseSizeForTtsMode(mode: TtsPacingMode): PhraseSize {
   return 'medium';
 }
 
-function wordIndexForSemanticPhrase(phrases: SemanticPhrase[], phraseIndex: number): number {
-  return phrases.slice(0, phraseIndex).reduce((sum, phrase) => sum + phrase.wordCount, 0);
-}
+
+
 
 function semanticPhraseIndexForWordIndex(phrases: SemanticPhrase[], wordIndex: number): number {
   let cursor = 0;
@@ -6409,58 +5894,8 @@ function buildOrderedSemanticPhrases(text: string, language: string | undefined,
   return planSemanticPhrases(text, language, phraseSizeForTtsMode(mode));
 }
 
-function buildAdaptiveTtsChunk(
-  sourceWords: string[],
-  startWordIndex: number,
-  mode: TtsPacingMode,
-  profileChunkWords: number,
-  _language?: string,
-  semanticPhrase?: SemanticPhrase,
-): TtsAdaptiveChunk {
-  const targetWords = getTtsTargetChunkWords(mode, profileChunkWords);
-  if (semanticPhrase && semanticPhrase.text.trim()) {
-    return {
-      text: semanticPhrase.text,
-      startWordIndex,
-      wordCount: semanticPhrase.wordCount,
-      phraseBoundaryType: semanticPhrase.boundaryType,
-      canPauseAfter: semanticPhrase.canPauseAfter,
-      canReplayIndependently: semanticPhrase.canReplayIndependently,
-      semanticCompleteness: semanticPhrase.semanticCompleteness,
-      punctuationLoad: semanticPhrase.punctuationLoad,
-      rareWordLoad: semanticPhrase.rareWordLoad,
-      syntaxComplexity: semanticPhrase.syntaxComplexity,
-      phraseDifficulty: semanticPhrase.difficulty,
-    };
-  }
 
-  const minWords = Math.max(1, targetWords - 1);
-  const maxWords = Math.min(sourceWords.length - startWordIndex, targetWords + 1);
-  let wordCount = maxWords;
 
-  for (let offset = minWords; offset <= maxWords; offset += 1) {
-    const word = sourceWords[startWordIndex + offset - 1] ?? '';
-    if (/[.!?,;:]$/.test(word)) {
-      wordCount = offset;
-      break;
-    }
-  }
-
-  const words = sourceWords.slice(startWordIndex, startWordIndex + wordCount);
-  return {
-    text: words.join(' '),
-    startWordIndex,
-    wordCount,
-    phraseBoundaryType: words.length > 0 && /[.!?]$/.test(words[words.length - 1] ?? '') ? 'sentence' : 'minor',
-    canPauseAfter: words.length > 0 && /[.!?;:,]$/.test(words[words.length - 1] ?? ''),
-    canReplayIndependently: words.length > 0,
-    semanticCompleteness: words.length > 0 && /[.!?;:,]$/.test(words[words.length - 1] ?? '') ? 0.85 : 0.62,
-    punctuationLoad: words.length > 0 ? words.filter((word) => /[.!?;:,]/.test(word)).length / words.length : 0,
-    rareWordLoad: words.length > 0 ? words.filter((word) => normalizeWord(word).length >= 10).length / words.length : 0,
-    syntaxComplexity: 0.4,
-    phraseDifficulty: 0.45,
-  };
-}
 
 function deriveTtsControlAction({
   accuracy,

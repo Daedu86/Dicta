@@ -29,9 +29,6 @@ Languages:
 Input modes:
 
 - Input #2 / `browser-tts`: browser `SpeechSynthesis`, adaptive semantic chunking, and browser/OS voice behavior.
-- Input #3 / `kokoro`: local Kokoro TTS sidecar. English and Spanish are native in this setup; German, French, and Portuguese remain blocked/experimental until native model paths are confirmed.
-
-The active product architecture has two inputs only: Browser TTS and Kokoro. Do not reintroduce removed legacy input creation, generation, benchmark, or UI paths.
 
 The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, recommendation, and session feedback package is scoped by `(inputMode, language)`, so `browser-tts/de` and `browser-tts/en` are different adaptive profiles. The adaptive benchmark rolling window is **30 days** (`rollingWindowDays: 30`), and dashboard/leaderboard "Month" views also mean the last 30 days.
 
@@ -85,7 +82,6 @@ Dicta can be deployed to Vercel as a static Vite app with lightweight API routes
 - Browser TTS works in the hosted app and keeps using browser `localStorage`.
 - OpenRouter generation works through `/api/openrouter/models`, `/api/openrouter/chat`, and `/api/openrouter/jobs` when `OPENROUTER_API_KEY` is configured server-side.
 - Ollama Cloud testing works through `/api/ollama/models` and `/api/ollama/chat` when `OLLAMA_API_KEY` is configured server-side.
-- Kokoro remains a local-only workflow.
 - Hosted public beta access should use Supabase Auth (`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`) plus RLS.
 
 Set OpenRouter in Vercel before using hosted generation:
@@ -193,10 +189,8 @@ Server-side rules:
 
 ## Typical Training Flow
 
-1. Pick Input #2 or Input #3 and a language.
 2. Provide content:
    - Browser TTS: provide text; Dicta chunks it into semantic phrases.
-   - Kokoro: provide text for the local sidecar workflow.
    - OpenRouter mode: generate structured scripts for the selected `(inputMode, language)` using current benchmark context and the trainer prescription.
 3. Start a session and type what you hear.
 4. The input adapter publishes live telemetry.
@@ -229,7 +223,6 @@ Important rules:
 Key files:
 
 - `src/app/useBrowserTtsRuntime.ts`
-- `src/app/useKokoroRuntime.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/core/adaptive/types.ts`
@@ -272,7 +265,6 @@ Primary browser-side state:
 - `dicta.ollamaDefaultModel.v1`
 - `dicta.openrouterGeneratedVariants.v1`
 - `dicta.openrouterActiveJobs.v1`
-- `dicta.kokoroEnabled.v1`
 - `dicta.workspaceMode.v1`
 - `dicta.liveMetricsLanguage.v1`
 - `dicta.liveMetricsRange.v1`
@@ -328,5 +320,4 @@ Before finishing code changes, run `npm run test` and `npm run build` unless the
 ## Known Gaps
 
 - Production transcription still needs a deployed backend, object storage, and long-running job handling.
-- Kokoro support for `de`, `fr`, and `pt` remains blocked/experimental.
 - Full-tree render volume during long Browser TTS runs can still be reduced.
