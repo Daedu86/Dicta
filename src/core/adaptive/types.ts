@@ -1,6 +1,8 @@
 import type { InputMode, StoredInputMode } from './inputModes';
+import type { ListeningPrecisionMetrics } from './listeningPrecisionMetrics';
 import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
 export type { InputMode, StoredInputMode } from './inputModes';
+export type { ListeningPrecisionMetrics } from './listeningPrecisionMetrics';
 
 export type PhraseSize = 'short' | 'medium' | 'long';
 export type PacingMode = 'support' | 'balanced' | 'flow';
@@ -40,6 +42,7 @@ export interface LiveTelemetryFrame {
   rollingAccuracyLast5?: number;
   sessionAccuracy?: number;
   errorRate: number;
+  listeningPrecision?: ListeningPrecisionMetrics;
 
   wpm: number;
   charsPerMinute: number;
@@ -152,6 +155,7 @@ export interface AdaptiveTimelinePoint {
   correctionRate?: number;
   phraseBoundaryType?: PhraseBoundaryType;
   semanticCompleteness?: number;
+  listeningPrecision?: ListeningPrecisionMetrics;
   sessionId?: string;
   ttsEnvironmentId?: string;
   phraseId?: string;
@@ -202,7 +206,14 @@ export type AdaptiveWeakArea =
   | 'accuracy_instability'
   | 'support_dependency'
   | 'unsafe_boundary_pressure'
-  | 'flow_instability';
+  | 'flow_instability'
+  | 'omissions'
+  | 'detail_loss'
+  | 'function_words'
+  | 'prepositions'
+  | 'word_order'
+  | 'long_clause_overload'
+  | 'content_word_loss';
 
 export interface InputLanguageBenchmarkRecommendation {
   targetRateRange: [number, number];
@@ -242,6 +253,7 @@ export interface InputLanguageBenchmarkMetrics {
   replayDeniedByBoundaryCount: number;
   averageSemanticCompleteness: number;
   averagePhraseDifficulty: number;
+  listeningPrecisionAverages?: ListeningPrecisionMetrics;
   preferredPlaybackRate: number;
   preferredPhraseSize: PhraseSize;
   preferredPauseAfterPhraseMs: number;
@@ -327,6 +339,7 @@ export interface AdaptiveSessionFeedback {
   benchmarkBefore?: Partial<InputLanguageBenchmarkMetrics>;
   benchmarkAfter?: Partial<InputLanguageBenchmarkMetrics>;
   sessionCountDroppedReason?: string;
+  listeningPrecisionSummary?: ListeningPrecisionMetrics;
   improvementDelta: {
     accuracyDelta: number;
     lagDelta: number;
