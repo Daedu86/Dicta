@@ -91,7 +91,7 @@ async function getServiceWorkerRegistrationForNotification(): Promise<ServiceWor
 }
 
 function formatNotificationDifficulty(difficulty: DictationScriptDifficulty): string {
-  if (difficulty === 'easy') return 'Easy';
-  if (difficulty === 'hard') return 'Hard';
-  return 'Medium';
+  if (difficulty === 'easy') return 'Precision';
+  if (difficulty === 'hard') return 'Challenge';
+  return 'Stabilize';
 }
