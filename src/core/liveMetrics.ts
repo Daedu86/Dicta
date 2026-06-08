@@ -3,7 +3,7 @@ import type { SupportedLanguage } from './languages';
 
 export type MetricsLanguageView = SupportedLanguage;
 export type MetricsRangeView = 'today' | 'week' | 'twoWeeks' | 'threeWeeks' | 'month';
-export type SessionInputMode = 'input2' | 'input3' | 'input4';
+export type SessionInputMode = 'input2' | 'input3';
 
 export type SessionLanguageLike = {
   inputMode: SessionInputMode;
@@ -41,7 +41,7 @@ export type LanguageRangeSummary = {
 };
 
 export function resolveSessionLanguage(session: SessionLanguageLike): MetricsLanguageView | null {
-  if (session.inputMode === 'input2' || session.inputMode === 'input4') {
+  if (session.inputMode === 'input2') {
     return session.ttsLanguage ?? null;
   }
   if (session.inputMode === 'input3') {
