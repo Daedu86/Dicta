@@ -534,7 +534,6 @@ function App() {
   const [kokoroManualBias, setKokoroManualBias] = useState(0);
   const kokoroServiceReady = false;
   const toggleKokoroEnabled = async (): Promise<void> => undefined;
-  const replayKokoroPhrase = (): void => undefined;
   const rewindKokoroPhrase = (): void => undefined;
   const adjustKokoroManualPace = (_delta: number): void => undefined;
   const resetKokoroPace = (): void => undefined;
@@ -3931,7 +3930,7 @@ function App() {
           : ttsHasText && ttsPlayerDurationSec > 0,
     onReplay:
       activeInputMode === 'input3'
-          ? replayKokoroPhrase
+          ? (() => undefined)
           : replayFocusedTts,
     canStop: focusedTrainingControls.canStop,
     onStop: focusedTrainingControls.onStop,
