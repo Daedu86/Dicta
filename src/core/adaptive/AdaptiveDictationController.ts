@@ -244,6 +244,43 @@ export class AdaptiveDictationController {
       reason.push('low-history-confidence');
     }
 
+    const adaptivePause = browserTtsProfile?.adaptivePause;
+    if (adaptivePause?.enabled) {
+      const progressGap = Math.max(0, live.spokenProgressRatio - live.typedProgressRatio);
+      const historicalPressure = history.averageAccuracy < adaptivePause.historyLowAccuracyThreshold || Math.abs(history.averageLagSec) > adaptivePause.historyHighLagSec;
+      const catchUpTargets: number[] = [pauseAfterPhraseMs];
+
+      if (rollingAccuracyLast3 < adaptivePause.veryLowAccuracyThreshold) {
+        catchUpTargets.push(adaptivePause.veryLowAccuracyPauseMs);
+        reason.push('adaptive-pause-very-low-accuracy');
+      } else if (rollingAccuracyLast3 < adaptivePause.lowAccuracyThreshold) {
+        catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
+        reason.push('adaptive-pause-low-accuracy');
+      }
+      if (live.lagSec > adaptivePause.severeLagBehindSec) {
+        catchUpTargets.push(adaptivePause.severeLagBehindPauseMs);
+        reason.push('adaptive-pause-severe-lag');
+      } else if (live.lagSec > adaptivePause.lagBehindSec) {
+        catchUpTargets.push(adaptivePause.lagBehindPauseMs);
+        reason.push('adaptive-pause-lag');
+      }
+      if (progressGap > adaptivePause.progressBehindRatio) {
+        catchUpTargets.push(adaptivePause.progressBehindPauseMs);
+        reason.push('adaptive-pause-progress-gap');
+      }
+      if (historicalPressure && mode !== 'flow') {
+        catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
+        reason.push('adaptive-pause-history-pressure');
+      }
+      if (this.struggleFrames >= 2) {
+        catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
+        reason.push('adaptive-pause-session-pressure');
+      }
+
+      const adaptivePauseMs = Math.max(...catchUpTargets);
+      pauseAfterPhraseMs = Math.round(clamp(adaptivePauseMs, adaptivePause.minPauseMs, adaptivePause.maxPauseMs));
+    }
+
     const extremeSupport = mode === 'support' && live.lagSec > 4 && rollingAccuracyLast3 < 0.76;
     const modeFloor =
       mode === 'support'
