@@ -7,12 +7,14 @@ import {
 } from '../src/core/adaptive/inputModes';
 
 describe('inputModes', () => {
-  it('keeps cosyvoice-cache canonical while accepting qwen-cloud as stored legacy input', () => {
+  it('keeps removed Input 4 aliases from normalizing into active modes', () => {
+    expect(isCanonicalInputMode('browser-tts')).toBe(true);
+    expect(isCanonicalInputMode('kokoro')).toBe(true);
     expect(isCanonicalInputMode('cosyvoice-cache')).toBe(true);
     expect(isCanonicalInputMode('qwen-cloud')).toBe(false);
     expect(isStoredInputMode('qwen-cloud')).toBe(true);
-    expect(normalizeInputMode('qwen-cloud')).toBe('cosyvoice-cache');
-    expect(normalizeInputMode('cosyvoice-cache')).toBe('cosyvoice-cache');
-    expect(formatInputModeLabel('qwen-cloud')).toBe('CosyVoice cache');
+    expect(normalizeInputMode('qwen-cloud')).toBeNull();
+    expect(normalizeInputMode('cosyvoice-cache')).toBeNull();
+    expect(formatInputModeLabel('qwen-cloud')).toBe('Unknown input');
   });
 });
