@@ -60,7 +60,7 @@ export function buildBrowserTtsTelemetryFrame(params: BrowserTtsTelemetryParams)
   return {
     inputMode: params.inputMode,
     phraseId: params.phraseId,
-    sessionChunkIndex: params.sessionChunkIndex,
+    sessionChunkIndex: params.sessionChunkIndex ?? deriveSessionChunkIndex(params.phraseId),
     spokenProgressRatio: clamp(params.estimatedSpokenRatio, 0, 1),
     typedProgressRatio: clamp(params.typedProgressRatio, 0, 1),
     lagSec: params.lagSec,
@@ -101,6 +101,13 @@ export function buildBrowserTtsTelemetryFrame(params: BrowserTtsTelemetryParams)
 
 export function buildAdaptiveBrowserTtsInput(live: LiveTelemetryFrame, history: HistoricalPerformanceProfile): AdaptivePacingInput {
   return { live, history, capabilities: browserTtsInputCapabilities };
+}
+
+function deriveSessionChunkIndex(phraseId: string): number | undefined {
+  const match = /^tts-(\d+)(?:-chunk)?$/.exec(phraseId);
+  if (!match) return undefined;
+  const index = Number(match[1]);
+  return Number.isInteger(index) && index >= 0 ? index : undefined;
 }
 
 function clamp(value: number, min: number, max: number): number {
