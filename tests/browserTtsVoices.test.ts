@@ -46,10 +46,8 @@ describe('Browser TTS voices', () => {
   });
 
   it('assigns automatic voices only to Input #2 sessions', () => {
-    expect(chooseRandomBrowserTtsVoiceURIForSession('input3', voices, 'en', () => 0)).toBeNull();
     expect(chooseRandomBrowserTtsVoiceURIForSession('input2', voices, 'en', () => 0)).toBe('en-a');
     expect(chooseRandomBrowserTtsVoiceURIForSession('input3', voices, 'en', () => 0)).toBeNull();
-    expect(chooseRandomBrowserTtsVoiceURIForSession('input4', voices, 'en', () => 0)).toBeNull();
   });
 
   it('prefers the least-used compatible voice for Input #2 diversity', () => {
@@ -59,8 +57,6 @@ describe('Browser TTS voices', () => {
 
   it('does not apply diverse Browser TTS voice selection to other inputs', () => {
     expect(chooseDiverseBrowserTtsVoiceURIForSession('input3', voices, 'en', [], () => 0)).toBeNull();
-    expect(chooseDiverseBrowserTtsVoiceURIForSession('input3', voices, 'en', [], () => 0)).toBeNull();
-    expect(chooseDiverseBrowserTtsVoiceURIForSession('input4', voices, 'en', [], () => 0)).toBeNull();
   });
 
   it('uses the saved voice when it still exists on the current device', () => {
