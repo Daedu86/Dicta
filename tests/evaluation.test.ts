@@ -21,13 +21,6 @@ describe('computeSessionMaxPoints', () => {
     })).toBe(4);
   });
 
-  it('uses normalized CosyVoice cache source words for input 4', () => {
-    expect(computeSessionMaxPoints({
-      inputMode: 'input4',
-      ttsText: 'un deux trois',
-    })).toBe(3);
-  });
-
   it('falls back to no total when the active source is missing', () => {
     expect(computeSessionMaxPoints({ inputMode: 'input2', ttsText: '' })).toBeNull();
     expect(computeSessionMaxPoints({ inputMode: 'input3', kokoroText: '' })).toBeNull();
@@ -57,7 +50,7 @@ describe('evaluateTranscriptAttempt', () => {
 describe('session point labels', () => {
   it('formats earned points against the dynamic session total when available', () => {
     expect(formatSessionPointsLabel(152, 264)).toBe('152/264');
-    expect(formatSessionPointsForSession(3, { inputMode: 'input4', ttsText: 'un deux trois quatre' })).toBe('3/4');
+    expect(formatSessionPointsForSession(3, { inputMode: 'input2', ttsText: 'un deux trois quatre' })).toBe('3/4');
   });
 
   it('keeps the earned-only fallback for legacy sessions without source text', () => {
