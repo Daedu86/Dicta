@@ -132,7 +132,7 @@ describe('useTrainingSessionLifecycle', () => {
     const notReadyCalls: string[] = [];
     const notReady = renderLifecycle({
       state: stateFixture({
-        activeInputMode: 'input4',
+        activeInputMode: 'input2',
         ttsHasText: false,
       }),
       calls: notReadyCalls,
@@ -145,7 +145,7 @@ describe('useTrainingSessionLifecycle', () => {
     const readyCalls: string[] = [];
     const ready = renderLifecycle({
       state: stateFixture({
-        activeInputMode: 'input4',
+        activeInputMode: 'input2',
         ttsHasText: true,
       }),
       calls: readyCalls,
