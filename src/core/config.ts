@@ -16,9 +16,9 @@ export const DEFAULT_CONFIG: ControllerConfig = {
 export type Difficulty = 'easy' | 'normal' | 'hard';
 
 export function formatDifficultyLabel(difficulty: Difficulty): string {
-  if (difficulty === 'easy') return 'Easy';
-  if (difficulty === 'hard') return 'High';
-  return 'Medium';
+  if (difficulty === 'easy') return 'Precision';
+  if (difficulty === 'hard') return 'Challenge';
+  return 'Stabilize';
 }
 
 export function configForDifficulty(difficulty: Difficulty): ControllerConfig {
