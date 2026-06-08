@@ -44,7 +44,7 @@ export function buildSessionScoreHelpText(metrics: SessionScoreMetrics): string 
     : computeSessionScore(metrics);
 
   return [
-    'Score is listening-first: matched-word points and listening precision drive the score, accuracy adds supporting signal, and timing lag subtracts points.',
+    'Score is listening-first: matched-word points, listening precision, and completion-window timing drive the score; accuracy adds supporting signal and timing lag subtracts points.',
     'WPM is shown as a diagnostic signal only.',
     'Formula: points * 3 + listening precision * 0.85 + accuracy * 0.25 + rate bonus - abs(lag) * 8.',
     `Breakdown: points ${formatScorePart(metrics.points)} * 3 = ${formatScorePart(pointsWeight)}; listening precision ${formatScorePart(precisionPercent)} * 0.85 = ${formatScorePart(precisionWeight)}; accuracy ${formatScorePart(accuracyPercent)} * 0.25 = ${formatScorePart(accuracyWeight)}; diagnostic WPM min(${formatScorePart(metrics.wpm)}, 120) = ${formatScorePart(diagnosticWpm)}; rate bonus = ${formatScorePart(rateBonus)}; lag penalty abs(${formatScorePart(metrics.lagSec)}) * 8 = ${formatScorePart(lagPenalty)}; final score = ${formatScorePart(finalScore)}.`,
@@ -57,12 +57,12 @@ function resolvePrecisionPercent(
 ): number {
   if (!listeningPrecision) return fallbackAccuracyPercent;
   const precisionScore =
-    listeningPrecision.listeningRecallScore * 0.3 +
-    listeningPrecision.contentWordRecall * 0.25 +
-    listeningPrecision.detailPrecisionScore * 0.15 +
-    listeningPrecision.functionWordAccuracy * 0.15 +
-    listeningPrecision.wordOrderAccuracy * 0.1 +
-    (1 - listeningPrecision.lateCompletionRate) * 0.05;
+    listeningPrecision.listeningRecallScore * 0.28 +
+    listeningPrecision.contentWordRecall * 0.23 +
+    listeningPrecision.detailPrecisionScore * 0.14 +
+    listeningPrecision.functionWordAccuracy * 0.14 +
+    listeningPrecision.wordOrderAccuracy * 0.09 +
+    listeningPrecision.completionWindowScore * 0.12;
   return clampPercent(precisionScore * 100);
 }
 
