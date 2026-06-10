@@ -16,6 +16,7 @@
 @import './shared-controls.css';
 @import './dashboard-workspace.css';
 @import './admin.css';
+@import './adaptive-workspace.css';
 @import './dashboard.css';
 @import './dashboard-support.css';
 @import './today-summary.css';
