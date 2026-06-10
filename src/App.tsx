@@ -255,6 +255,7 @@ import { isMobileViewport } from './app/viewport';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
+import { formatSessionStatus } from './app/sessionStatusFormatters';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
@@ -4845,20 +4846,7 @@ function telemetryEquals(a: SessionTelemetry | null | undefined, b: SessionTelem
   return JSON.stringify(cloneTelemetry(a)) === JSON.stringify(cloneTelemetry(b));
 }
 
-function formatSessionStatus(value: SessionStatus): string {
-  switch (value) {
-    case 'running':
-      return 'Running';
-    case 'paused':
-      return 'Paused';
-    case 'finished':
-      return 'Finished';
-    case 'error':
-      return 'Error';
-    default:
-      return 'Ready';
-  }
-}
+
 
 function formatLeaderboardSessionStatus(session: StoredSession): string {
   if (session.status === 'finished' && !hasSubmittedSessionStats(session)) {
