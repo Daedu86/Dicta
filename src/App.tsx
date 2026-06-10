@@ -146,6 +146,13 @@ import {
 } from './core/sessionStatusNormalization';
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
+import {
+  copyDictaLocalStorage,
+  downloadDictaLocalStorage,
+  getDictaLocalStorageEntries,
+  getDictaLocalStorageSnapshot,
+  type LocalStorageEntry,
+} from './app/dictaLocalStorageSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
   DICTA_SYNC_TABLE,
@@ -309,12 +316,6 @@ type DictaDebugSampleAudit = {
   wpm: number;
   sessionId?: string;
   timestampMs: number;
-};
-
-type LocalStorageEntry = {
-  key: string;
-  bytes: number;
-  valuePreview: string;
 };
 
 type AdminStorageSummary = {
@@ -3465,7 +3466,7 @@ function App() {
         : 'No source loaded';
   const focusedSourceLabel =
     ttsHasText
-      ? `${ttsTranscript?.words.length ?? 0} words · ${ttsLanguage?.toUpperCase()}`
+      ? `${ttsTranscript?.words.length ?? 0} words Â· ${ttsLanguage?.toUpperCase()}`
       : 'TTS source not loaded';
   const focusedTextValue = ttsPracticeText;
   const focusedTextPlaceholder =
@@ -3687,8 +3688,8 @@ function App() {
 
   const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
-    supabaseSyncStatus.lastSyncedAt ? ` · ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
-  }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` · ${pendingSyncSummary.count} pending` : ''}`;
+    supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
+  }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` Â· ${pendingSyncSummary.count} pending` : ''}`;
 
   if (
     syncConfig.authRequired &&
@@ -4224,7 +4225,7 @@ function AdminWorkspace({
         throw new Error(text || `User creation failed (${response.status}).`);
       }
       const payload = (await response.json()) as { displayName?: string; profileId?: string };
-      setNewUserMessage(`Created ${payload.displayName ?? newUserEmail} · profile ${payload.profileId ?? newUserProfileId}. Refresh Admin to see the profile list.`);
+      setNewUserMessage(`Created ${payload.displayName ?? newUserEmail} Â· profile ${payload.profileId ?? newUserProfileId}. Refresh Admin to see the profile list.`);
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserDisplayName('');
@@ -4613,24 +4614,6 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
   });
 }
 
-function getDictaLocalStorageEntries(): LocalStorageEntry[] {
-  return Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index))
-    .filter((key): key is string => Boolean(key && key.startsWith('dicta.')))
-    .sort()
-    .map((key) => {
-      const value = window.localStorage.getItem(key) ?? '';
-      return {
-        key,
-        bytes: byteSize(`${key}${value}`),
-        valuePreview: value.length > 96 ? `${value.slice(0, 96)}...` : value,
-      };
-    });
-}
-
-function getDictaLocalStorageSnapshot(): Record<string, string> {
-  return Object.fromEntries(getDictaLocalStorageEntries().map((entry) => [entry.key, window.localStorage.getItem(entry.key) ?? '']));
-}
-
 function loadAdaptiveBenchmarks(): AdaptiveBenchmarksByInputLanguage {
   const raw = window.localStorage.getItem(ADAPTIVE_BENCHMARKS_KEY);
   if (!raw) return {};
@@ -4651,25 +4634,6 @@ function loadAdaptiveSessionFeedback(): AdaptiveSessionFeedbackByInputLanguage {
   } catch {
     return {};
   }
-}
-
-function downloadDictaLocalStorage(): void {
-  const payload = JSON.stringify(getDictaLocalStorageSnapshot(), null, 2);
-  const blob = new Blob([payload], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `dicta-local-storage-${Date.now()}.json`;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-async function copyDictaLocalStorage(setExportMessage: React.Dispatch<React.SetStateAction<string>>): Promise<void> {
-  await navigator.clipboard.writeText(JSON.stringify(getDictaLocalStorageSnapshot(), null, 2));
-  setExportMessage('Dicta localStorage JSON copied.');
 }
 
 async function writeTextToClipboard(text: string): Promise<boolean> {
@@ -4704,10 +4668,6 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
     telemetry.wpmSeries.length,
     telemetry.accuracySeries.length,
   );
-}
-
-function byteSize(value: string): number {
-  return new TextEncoder().encode(value).length;
 }
 
 function formatSessionInputMode(mode: string): string {
