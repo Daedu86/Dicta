@@ -15,3 +15,6 @@ Current largest files by line count:
   1207 src/components/openrouter/OpenRouterWorkspace.tsx
   1205 src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx
   1171 src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts
+```
+
+## Completed before this
