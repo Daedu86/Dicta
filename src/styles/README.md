@@ -15,7 +15,14 @@ src/styles/index.css is the ordered import entrypoint. src/App.css imports it at
 ## Current modules
 
 - auth.css (51 lines)
+- dashboard-support.css (26 lines)
+- dashboard.css (111 lines)
+- leaderboard-empty.css (16 lines)
+- leaderboard-shell.css (65 lines)
+- leaderboard.css (289 lines)
 - perf-overlay.css (48 lines)
+- shared-controls.css (47 lines)
+- today-summary.css (42 lines)
 - training-header.css (111 lines)
 - training-interaction.css (165 lines)
 - training-responsive.css (69 lines)
@@ -25,10 +32,12 @@ src/styles/index.css is the ordered import entrypoint. src/App.css imports it at
 
 ## Current metrics
 
-- Remaining src/App.css: 3869 lines
-- Extracted CSS module lines: 922 lines
-- Approximate extracted share: 19.2% of runtime CSS lines
+- Remaining src/App.css: 3279 lines
+- src/styles/index.css: 25 lines
+- Extracted CSS module lines: 1518 lines
+- Approximate extracted share: 31.5% of runtime CSS lines
 
-## Next likely module
+## Next likely modules
 
-- shared-controls.css
+- leaderboard-empty.css
+- dashboard-workspace.css

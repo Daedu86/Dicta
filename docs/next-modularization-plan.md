@@ -10,17 +10,26 @@ CSS modularization is active.
 
 src/App.css remains the runtime stylesheet, but it now imports src/styles/index.css at the top. src/styles/index.css is the ordered import list for CSS modules extracted from App.css.
 
+This checkpoint includes the second post-push local pass through the leaderboard shell modules.
+
 ## Current CSS modularization metrics
 
-- Remaining src/App.css: 3869 lines
-- src/styles/index.css: 18 lines
-- Extracted CSS module lines: 922 lines
-- Approximate extracted share: 19.2% of runtime CSS lines
+- Remaining src/App.css: 3279 lines
+- src/styles/index.css: 25 lines
+- Extracted CSS module lines: 1518 lines
+- Approximate extracted share: 31.5% of runtime CSS lines
 
 Extracted modules:
 
 - src/styles/auth.css (51 lines)
+- src/styles/dashboard-support.css (26 lines)
+- src/styles/dashboard.css (111 lines)
+- src/styles/leaderboard-empty.css (16 lines)
+- src/styles/leaderboard-shell.css (65 lines)
+- src/styles/leaderboard.css (289 lines)
 - src/styles/perf-overlay.css (48 lines)
+- src/styles/shared-controls.css (47 lines)
+- src/styles/today-summary.css (42 lines)
 - src/styles/training-header.css (111 lines)
 - src/styles/training-interaction.css (165 lines)
 - src/styles/training-responsive.css (69 lines)
@@ -33,7 +42,14 @@ Extracted modules:
 Extracted and wired:
 
 - src/styles/auth.css
+- src/styles/dashboard-support.css
+- src/styles/dashboard.css
+- src/styles/leaderboard-empty.css
+- src/styles/leaderboard-shell.css
+- src/styles/leaderboard.css
 - src/styles/perf-overlay.css
+- src/styles/shared-controls.css
+- src/styles/today-summary.css
 - src/styles/training-header.css
 - src/styles/training-interaction.css
 - src/styles/training-responsive.css
@@ -42,6 +58,15 @@ Extracted and wired:
 - src/styles/workspace-responsive.css
 
 Each extraction preserved cascade order and npm run build passed after the change.
+
+## Current local status
+
+The last pushed remote checkpoint was df6c223.
+
+The current local post-push modularization pass includes:
+
+- 6eac514 Extract leaderboard CSS module
+- 15f17d8 Extract leaderboard shell CSS module
 
 ## Strategy
 
@@ -57,13 +82,15 @@ Use incremental boundary-based extraction:
 
 ## Next recommended cuts
 
-1. src/styles/shared-controls.css
-   - Extract reusable button/input/help-icon/control selectors only if they form a clean contiguous block.
+1. src/styles/leaderboard-empty.css
+   - Extract only the isolated .leaderboard-empty block.
 
-2. Feature modules:
-   - session-dashboard.css
-   - leaderboard.css
+2. src/styles/dashboard-workspace.css
+   - Extract .dashboard-workspace only if it is isolated or safely bounded.
+
+3. Feature modules:
    - adaptive-workspace.css
+   - adaptive-benchmark.css
    - openrouter-workspace.css
    - admin.css
 
