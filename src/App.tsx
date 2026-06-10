@@ -109,6 +109,8 @@ import type {
 import { AdaptiveBenchmarkSection } from './components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
 import { AdaptiveAdvancedDiagnostics } from './components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
 import { AdminWorkspace } from './components/admin/AdminWorkspace';
+import { Metric } from './components/shared/Metric';
+import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
 import {
   buildTrainingGenerationButtonNotice,
   formatInterruptedOpenRouterMessage,
@@ -163,10 +165,6 @@ import {
   resolveEffectiveSyncProfileId,
   type DictaAppProfile,
 } from './core/appProfiles';
-import {
-  formatCreatedDeviceIcon,
-  formatCreatedDeviceTooltip,
-} from './core/sessionDevice';
 import {
   buildRangeSummaryForLanguage,
   findLastSessionForLanguage,
@@ -3972,25 +3970,6 @@ function App() {
         formatTtsPacingMode={formatTtsPacingMode}
       />
     </main>
-  );
-}
-
-function Metric({ label, value, title }: { label: string; value: string; title?: string }) {
-  return (
-    <div className="metric" title={title} aria-label={title ? `${label}: ${value}. ${title}` : undefined}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function SessionDeviceIcon({ session }: { session: StoredSession }) {
-  const icon = formatCreatedDeviceIcon(session.createdDeviceKind);
-  if (!icon) return null;
-  return (
-    <span className="session-device-icon" title={formatCreatedDeviceTooltip(session.createdDeviceKind, session.createdDeviceLabel)} aria-label={formatCreatedDeviceTooltip(session.createdDeviceKind, session.createdDeviceLabel)}>
-      {icon}
-    </span>
   );
 }
 
