@@ -1853,22 +1853,7 @@ textarea[readonly] {
   line-height: 1;
 }
 
-.dashboard-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-  height: 100%;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.9rem;
-  border: 1px dashed #a8c7ee;
-  border-radius: 14px;
-  color: #4e6076;
-  background: #f7fbff;
-  text-align: center;
-  overflow-wrap: anywhere;
-}
+
 
 .leaderboard-empty {
   display: flex;
