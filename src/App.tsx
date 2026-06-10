@@ -517,45 +517,11 @@ function App() {
   const [ttsPacingMode, setTtsPacingMode] = useState<TtsPacingMode>('balanced');
   const [ttsSpeechRate, setTtsSpeechRate] = useState(1);
 
-  // Retired legacy input inert bindings.
-  // These keep legacy UI/lifecycle references harmless while the remaining UI residues are removed.
-  const [retiredInputExpanded, setRetiredInputExpanded] = useState(false);
-  const [retiredInputText, setRetiredInputText] = useState('');
-  const [retiredInputLanguage, setRetiredInputLanguage] = useState<TtsLanguage>('en');
-  const [retiredInputVoice, setRetiredInputVoice] = useState('default');
-  const [retiredInputPracticeText, setRetiredInputPracticeText] = useState('');
-  const [retiredInputStatus, setRetiredInputStatus] = useState<TtsStatus>('idle');
-  const [, setRetiredInputCurrentChunk] = useState<RetiredInputChunk | null>(null);
-  const [retiredInputChunks, setRetiredInputChunks] = useState<RetiredInputChunk[]>([]);
-  const [retiredInputPlayerProgressTick, setRetiredInputPlayerProgressTick] = useState(0);
-  const [retiredInputPacingMode, setRetiredInputPacingMode] = useState<TtsPacingMode>('balanced');
-  const [retiredInputManualBias, setRetiredInputManualBias] = useState(0);
-  const toggleRetiredInputEnabled = async (): Promise<void> => undefined;
-  const rewindRetiredInputPhrase = (): void => undefined;
-  const adjustRetiredInputManualPace = (_delta: number): void => undefined;
-  const resetRetiredInputPace = (): void => undefined;
-  const estimateRetiredInputSpokenWordIndex = (): number => 0;
-  const stopRetiredInputPlayback = (_nextState: ControlAction = 'hold'): void => {
-    setRetiredInputStatus(retiredInputText.trim() ? 'ready' : 'idle');
-    setRetiredInputCurrentChunk(null);
-  };
+  // Retired legacy session fields are still normalized and persisted below,
+  // but the removed input no longer keeps live runtime state.
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
-  const retiredInputEngineRef = useRef<{ stop: () => void } | null>(null);
-  const retiredInputStartedAtMsRef = useRef<number | null>(null);
-  const retiredInputChunkStartMsRef = useRef<number | null>(null);
-  const retiredInputChunkStartWordIndexRef = useRef(0);
-  const retiredInputChunkWordCountRef = useRef(0);
-  const retiredInputCompletedSourceWordsRef = useRef(0);
-  const retiredInputChunkIndexRef = useRef(0);
-  const retiredInputLastControllerActionRef = useRef<ControlAction>('hold');
-  const retiredInputCancelledRef = useRef(false);
-  const retiredInputSemanticPhraseAdvanceCountRef = useRef(0);
-  const retiredInputSemanticPhraseReplayCountRef = useRef(0);
-  void retiredInputExpanded;
-  void retiredInputManualBias;
-  void estimateRetiredInputSpokenWordIndex;
   useEffect(() => {
     if (browserTtsVoices.length === 0) return;
     setSessions((prev) => {
@@ -596,9 +562,6 @@ function App() {
     ttsPracticeLiveTextRef.current = ttsPracticeText;
   }, [ttsPracticeText]);
 
-  useEffect(() => {
-    retiredInputPracticeLiveTextRef.current = retiredInputPracticeText;
-  }, [retiredInputPracticeText]);
   const [directOpenRouterBusy, setDirectOpenRouterBusy] = useState(false);
   const [directIntermediateOpenRouterBusy, setDirectIntermediateOpenRouterBusy] = useState(false);
   const [directAdvancedOpenRouterBusy, setDirectAdvancedOpenRouterBusy] = useState(false);
@@ -778,7 +741,6 @@ function App() {
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
   const ttsPracticeLiveTextRef = useRef('');
-  const retiredInputPracticeLiveTextRef = useRef('');
 
   const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const telemetryRef = useRef<SessionTelemetry | null>(null);
@@ -1384,22 +1346,12 @@ function App() {
     setTtsLanguage(activeSession.ttsLanguage ?? 'de');
     setTtsPracticeText(activeSession.ttsPracticeText ?? '');
     ttsPracticeLiveTextRef.current = activeSession.ttsPracticeText ?? '';
-    setRetiredInputText(activeSession.retiredInputText ?? '');
-    setRetiredInputLanguage(activeSession.retiredInputLanguage ?? 'en');
-    setRetiredInputVoice(activeSession.retiredInputVoice ?? 'default');
-    setRetiredInputPracticeText(activeSession.retiredInputPracticeText ?? '');
-    retiredInputPracticeLiveTextRef.current = activeSession.retiredInputPracticeText ?? '';
-    setRetiredInputChunks(activeSession.retiredInputChunks ?? []);
     setSessionStatus(activeSession.status);
     setTtsText(activeSession.ttsText ?? '');
     setTtsStatus(activeSession.inputMode === 'input2' && activeSession.status === 'finished' ? 'finished' : activeSession.ttsText ? 'ready' : 'idle');
-    setRetiredInputStatus('idle');
     setTtsCurrentChunk('');
-    setRetiredInputCurrentChunk(null);
     setTtsPacingMode('balanced');
     setTtsSpeechRate(1);
-    setRetiredInputPacingMode('balanced');
-    setRetiredInputManualBias(0);
     setRunning(false);
     const hydratedMetrics = activeSession.status === 'finished' ? activeSession.metrics : null;
     setRate(hydratedMetrics?.rate ?? 1);
@@ -1435,18 +1387,7 @@ function App() {
     ttsChunkAccuracyWindowRef.current = [];
     ttsLastAccuracySnapshotRef.current = { typedWords: 0, matchedWords: 0 };
     ttsLastControllerActionRef.current = 'hold';
-    retiredInputStartedAtMsRef.current = null;
-    retiredInputChunkStartMsRef.current = null;
-    retiredInputChunkStartWordIndexRef.current = 0;
-    retiredInputChunkWordCountRef.current = 0;
-    retiredInputCompletedSourceWordsRef.current = 0;
-    retiredInputChunkIndexRef.current = 0;
-    retiredInputSemanticPhraseAdvanceCountRef.current = 0;
-    retiredInputSemanticPhraseReplayCountRef.current = 0;
-    retiredInputLastControllerActionRef.current = 'hold';
-    retiredInputCancelledRef.current = false;
     resetAdaptiveSessionFeedbackTracking(activeSessionId);
-    retiredInputEngineRef.current?.stop();
   }, [activeSessionId]);
 
   useEffect(() => {
@@ -1456,9 +1397,6 @@ function App() {
     setSessionStatus('finished');
     if (activeSession.inputMode === 'input2') {
       setTtsStatus('finished');
-    }
-    if (false) {
-      setRetiredInputStatus('finished');
     }
     setControllerState(activeSession.metrics.controllerState);
     setRate(activeSession.metrics.rate);
@@ -1503,11 +1441,6 @@ function App() {
           session.ttsText !== ttsText ||
           session.ttsLanguage !== ttsLanguage ||
           session.ttsPracticeText !== ttsPracticeText ||
-          session.retiredInputText !== retiredInputText ||
-          session.retiredInputLanguage !== retiredInputLanguage ||
-          session.retiredInputVoice !== retiredInputVoice ||
-          session.retiredInputPracticeText !== retiredInputPracticeText ||
-          JSON.stringify(session.retiredInputChunks) !== JSON.stringify(retiredInputChunks) ||
           session.difficulty !== difficulty ||
           session.status !== nextStatus ||
           session.metrics.controllerState !== controllerState ||
@@ -1531,10 +1464,6 @@ function App() {
           ttsText,
           ttsLanguage,
           ttsPracticeText,
-            retiredInputLanguage,
-          retiredInputVoice,
-          retiredInputPracticeText,
-          retiredInputChunks,
           difficulty,
           status: nextStatus,
           metrics: {
@@ -1557,11 +1486,6 @@ function App() {
     activeSession,
     difficulty,
     inputSettingsLocked,
-    retiredInputLanguage,
-    retiredInputChunks,
-    retiredInputPracticeText,
-    retiredInputText,
-    retiredInputVoice,
     lagSec,
     lagWords,
     rate,
@@ -1585,46 +1509,24 @@ function App() {
     return () => window.clearInterval(interval);
   }, [ttsStatus]);
 
-  useEffect(() => {
-    if (retiredInputStatus !== 'playing') return;
-    const interval = window.setInterval(() => setRetiredInputPlayerProgressTick((value) => value + 1), 500);
-    return () => window.clearInterval(interval);
-  }, [retiredInputStatus]);
-
   function resetSession(options: { preserveInputSettingsLock?: boolean } = {}): void {
     const nextInputSettingsLocked = options.preserveInputSettingsLock ? inputSettingsLocked : false;
     if (activeSession?.status === 'finished') {
       allowFinishedSessionResetRef.current = activeSession.id;
     }
     stopTtsPlayback();
-    stopRetiredInputPlayback();
     setTtsPracticeText('');
     ttsPracticeLiveTextRef.current = '';
-    setRetiredInputPracticeText('');
-    retiredInputPracticeLiveTextRef.current = '';
-    setRetiredInputChunks([]);
     setTtsStatus(ttsText.trim() ? 'ready' : 'idle');
-    setRetiredInputStatus(retiredInputText.trim() ? 'ready' : 'idle');
     setTtsCurrentChunk('');
-    setRetiredInputCurrentChunk(null);
     setTtsPacingMode('balanced');
     setTtsSpeechRate(1);
-    setRetiredInputPacingMode('balanced');
-    setRetiredInputManualBias(0);
     ttsStartedAtMsRef.current = null;
     ttsChunkStartMsRef.current = null;
     ttsChunkStartWordIndexRef.current = 0;
     ttsChunkWordCountRef.current = 0;
     ttsCompletedSourceWordsRef.current = 0;
     ttsLastControllerActionRef.current = 'hold';
-    retiredInputStartedAtMsRef.current = null;
-    retiredInputChunkStartMsRef.current = null;
-    retiredInputChunkStartWordIndexRef.current = 0;
-    retiredInputChunkWordCountRef.current = 0;
-    retiredInputCompletedSourceWordsRef.current = 0;
-    retiredInputChunkIndexRef.current = 0;
-    retiredInputLastControllerActionRef.current = 'hold';
-    retiredInputCancelledRef.current = false;
     setRunning(false);
     setRate(1);
     setLagSec(0);
@@ -1649,7 +1551,6 @@ function App() {
       if (activeInputMode === 'input2') {
         setTtsExpanded(true);
       } else {
-        setRetiredInputExpanded(true);
       }
     }
     telemetryRef.current = null;
@@ -1932,7 +1833,6 @@ function App() {
     setDictationScriptJson('');
     setDictationScriptValidation(null);
     setTtsExpanded(true);
-    setRetiredInputExpanded(true);
   }
 
   function validateScriptImport(): void {
@@ -1969,7 +1869,6 @@ function App() {
     setDictationScriptJson('');
     setDictationScriptValidation(null);
     setTtsExpanded(false);
-    setRetiredInputExpanded(false);
     setError('');
     setExportMessage('DictationScript session created and locked.');
   }
@@ -2003,7 +1902,6 @@ function App() {
     setDictationScriptJson('');
     setDictationScriptValidation(null);
     setTtsExpanded(false);
-    setRetiredInputExpanded(false);
     setError('');
     setOpenRouterError('');
     setExportMessage('OpenRouter DictationScript session created and locked.');
@@ -3626,8 +3524,6 @@ function App() {
     ttsPlayerWordCount > 0 ? Math.min(ttsPlayerDurationSec, (ttsPlayerCurrentWord / ttsPlayerWordCount) * ttsPlayerDurationSec) : 0;
   const ttsPlayerProgressPercent = ttsPlayerDurationSec > 0 ? clamp((ttsPlayerCurrentSec / ttsPlayerDurationSec) * 100, 0, 100) : 0;
   void ttsPlayerProgressTick;
-  void retiredInputPlayerProgressTick;
-  void retiredInputPacingMode;
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
@@ -3895,11 +3791,7 @@ function App() {
     ] : [],
   };
 
-  void toggleRetiredInputEnabled;
   void openAdaptiveExportsForActiveInput;
-  void rewindRetiredInputPhrase;
-  void adjustRetiredInputManualPace;
-  void resetRetiredInputPace;
   void canSubmitTtsSession;
   void lockedInputSummary;
 
