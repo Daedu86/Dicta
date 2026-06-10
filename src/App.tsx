@@ -89,7 +89,7 @@ import {
 } from './inputs/browserTts/browserTtsEnvironment';
 import { sameBrowserTtsEnvironment } from './inputs/browserTts/browserTtsEnvironmentComparison';
 import { trackAction, trackSample } from './core/telemetry';
-import { cloneTelemetry, isSubmittedFinishedAttempt, normalizeSessionForPersistence } from './core/sessionNormalization';
+import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
 import { telemetryEquals } from './core/sessionTelemetryEquality';
 import { countTelemetrySamples } from './core/sessionTelemetrySummary';
 import {
@@ -257,11 +257,12 @@ import {
 import { isMobileViewport } from './app/viewport';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
-import { formatSessionDate, formatSubmittedAt } from './app/sessionDateFormatters';
+import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
 import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatters';
 import { formatDuration, formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
+import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmissionMeta';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -301,16 +302,6 @@ type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
 type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
-type TrainingSessionSubmissionMeta = {
-  positionLabel: string;
-  scoreLabel: string;
-  scoreHelpText: string;
-  accuracyLabel: string;
-  pointsLabel: string;
-  pointsHelpText: string;
-  durationLabel: string;
-  submittedAtLabel: string;
-};
 type TtsLanguage = SupportedLanguage;
 type TypingLanguage = SupportedLanguage;
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
@@ -4782,39 +4773,6 @@ function loadSessions(): StoredSession[] {
     return [];
   }
 }
-
-
-function buildTrainingSessionSubmissionMeta(
-  sessions: StoredSession[],
-  activeSession: StoredSession | null,
-): TrainingSessionSubmissionMeta | null {
-  if (!activeSession || activeSession.status !== 'finished' || !isSubmittedFinishedAttempt(activeSession)) {
-    return null;
-  }
-
-  const language = resolveSessionLanguage(activeSession);
-  const rankedByLanguage = [...sessions]
-    .filter((session) => resolveSessionLanguage(session) === language)
-    .sort((a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy);
-  const rank = rankedByLanguage.findIndex((session) => session.id === activeSession.id) + 1;
-  const submittedAt = activeSession.telemetry.finishedAt ?? activeSession.updatedAt;
-  const maxPoints = computeSessionMaxPoints(activeSession);
-
-  return {
-    positionLabel: rank > 0 ? `#${rank}` : 'n/a',
-    scoreLabel: String(activeSession.metrics.score),
-    scoreHelpText: buildSessionScoreHelpText(activeSession.metrics),
-    accuracyLabel: `${activeSession.metrics.accuracy.toFixed(1)}%`,
-    pointsLabel: formatSessionPointsLabel(activeSession.metrics.points, maxPoints),
-    pointsHelpText: buildSessionPointsHelpText(maxPoints),
-    durationLabel: formatSessionPlaybackDuration(activeSession),
-    submittedAtLabel: formatSubmittedAt(submittedAt),
-  };
-}
-
-
-
-
 
 
 type TtsPlaybackProfile = {
