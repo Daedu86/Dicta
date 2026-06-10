@@ -4668,7 +4668,6 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
   });
 }
 
-
 function countTelemetrySamples(telemetry: SessionTelemetry): number {
   return Math.max(
     telemetry.lagSeries.length,
@@ -4676,16 +4675,6 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
     telemetry.accuracySeries.length,
   );
 }
-
-
-
-
-
-
-
-
-
-
 
 function SessionDeviceIcon({ session }: { session: StoredSession }) {
   const icon = formatCreatedDeviceIcon(session.createdDeviceKind);
@@ -4731,10 +4720,6 @@ function createSessionFromScript(
   };
 }
 
-
-
-
-
 function buildSemanticPhrasesFromDictationScript(script: DictationScript): SemanticPhrase[] {
   return script.phrases.map((phrase, index) => {
     const words = buildTtsSourceWords(phrase.text);
@@ -4757,8 +4742,6 @@ function buildSemanticPhrasesFromDictationScript(script: DictationScript): Seman
     };
   });
 }
-
-
 
 function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
   return normalizeRestoredStoredSessionWithDependencies(session, {
@@ -4854,10 +4837,6 @@ function getSessionVoiceDurationSec(session: StoredSession): number | null {
   return estimateSessionVoiceDurationSec(session);
 }
 
-
-
-
-
 function sameBrowserTtsEnvironment(
   left: BrowserTtsEnvironmentFingerprint | null | undefined,
   right: BrowserTtsEnvironmentFingerprint | null | undefined,
@@ -4866,8 +4845,6 @@ function sameBrowserTtsEnvironment(
   const normalizedRight = normalizeBrowserTtsEnvironmentFingerprint(right);
   return JSON.stringify(normalizedLeft) === JSON.stringify(normalizedRight);
 }
-
-
 
 function telemetryEquals(a: SessionTelemetry | null | undefined, b: SessionTelemetry | null | undefined): boolean {
   return JSON.stringify(cloneTelemetry(a)) === JSON.stringify(cloneTelemetry(b));
