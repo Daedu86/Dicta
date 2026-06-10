@@ -14,13 +14,21 @@ src/styles/index.css is the ordered import entrypoint. src/App.css imports it at
 
 ## Current modules
 
-- auth.css
-- training-header.css
-- training-shell.css
-- training-session.css
-- training-interaction.css
-- perf-overlay.css
+- auth.css (51 lines)
+- perf-overlay.css (48 lines)
+- training-header.css (111 lines)
+- training-interaction.css (165 lines)
+- training-responsive.css (69 lines)
+- training-session.css (131 lines)
+- training-shell.css (13 lines)
+- workspace-responsive.css (334 lines)
+
+## Current metrics
+
+- Remaining src/App.css: 3869 lines
+- Extracted CSS module lines: 922 lines
+- Approximate extracted share: 19.2% of runtime CSS lines
 
 ## Next likely module
 
-- training-responsive.css
+- shared-controls.css

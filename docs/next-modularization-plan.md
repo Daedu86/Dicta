@@ -10,16 +10,36 @@ CSS modularization is active.
 
 src/App.css remains the runtime stylesheet, but it now imports src/styles/index.css at the top. src/styles/index.css is the ordered import list for CSS modules extracted from App.css.
 
+## Current CSS modularization metrics
+
+- Remaining src/App.css: 3869 lines
+- src/styles/index.css: 18 lines
+- Extracted CSS module lines: 922 lines
+- Approximate extracted share: 19.2% of runtime CSS lines
+
+Extracted modules:
+
+- src/styles/auth.css (51 lines)
+- src/styles/perf-overlay.css (48 lines)
+- src/styles/training-header.css (111 lines)
+- src/styles/training-interaction.css (165 lines)
+- src/styles/training-responsive.css (69 lines)
+- src/styles/training-session.css (131 lines)
+- src/styles/training-shell.css (13 lines)
+- src/styles/workspace-responsive.css (334 lines)
+
 ## Completed CSS modules
 
 Extracted and wired:
 
 - src/styles/auth.css
-- src/styles/training-header.css
-- src/styles/training-shell.css
-- src/styles/training-session.css
-- src/styles/training-interaction.css
 - src/styles/perf-overlay.css
+- src/styles/training-header.css
+- src/styles/training-interaction.css
+- src/styles/training-responsive.css
+- src/styles/training-session.css
+- src/styles/training-shell.css
+- src/styles/workspace-responsive.css
 
 Each extraction preserved cascade order and npm run build passed after the change.
 
@@ -37,14 +57,10 @@ Use incremental boundary-based extraction:
 
 ## Next recommended cuts
 
-1. src/styles/training-responsive.css
-   - Extract the first complete @media (max-width: 640px) block.
-   - Use brace matching.
-
-2. src/styles/shared-controls.css
+1. src/styles/shared-controls.css
    - Extract reusable button/input/help-icon/control selectors only if they form a clean contiguous block.
 
-3. Feature modules:
+2. Feature modules:
    - session-dashboard.css
    - leaderboard.css
    - adaptive-workspace.css
@@ -55,7 +71,7 @@ Use incremental boundary-based extraction:
 
 Do not reorder selectors casually.
 
-Do not split mixed @media blocks manually.
+Do not split mixed @media blocks manually unless the complete media block is moved.
 
 Do not mix CSS modularization with React or TypeScript refactors in the same commit.
 
