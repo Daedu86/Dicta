@@ -1,0 +1,5 @@
+.dashboard-workspace {
+  display: grid;
+  gap: 1rem;
+  min-height: 640px;
+}
