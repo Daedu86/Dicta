@@ -111,7 +111,6 @@ import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsS
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
-  AdaptiveAdapterCardConfig,
   AdaptiveWorkspaceFocusAnchor,
   RepeatWordStat,
 } from './components/adaptive-workspace/types';
@@ -147,6 +146,13 @@ import {
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
 import { writeTextToClipboard } from './app/clipboardText';
+import {
+  buildAdaptiveAdapterCards,
+  formatAdaptiveModeFromSession,
+  formatInputModeLabel,
+  formatSessionGenerationOrigin,
+  formatSessionInputMode,
+} from './app/sessionDisplayFormatters';
 import { normalizeGeneratedDictationScriptTitle } from './app/generatedDictationScriptTitle';
 import { createDefaultMetrics, createGeneratedErrorSession, createStoredSession, getNextSessionIndex } from './app/sessionFactory';
 import { normalizeRestoredStoredSession as normalizeRestoredStoredSessionWithDependencies } from './app/sessionRestoreNormalization';
@@ -4636,39 +4642,15 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
   );
 }
 
-function formatSessionInputMode(mode: string): string {
-  if (mode === BROWSER_TTS_SESSION_INPUT_MODE) return 'Browser TTS';
-  return 'Removed legacy input';
-}
 
-function formatInputModeLabel(mode: InputMode): string {
-  if (mode === 'browser-tts') return 'Browser TTS';
-  return 'Removed legacy input';
-}
 
-function formatSessionGenerationOrigin(origin: GenerationOrigin): string {
-  if (origin === 'openrouter') return 'OpenRouter generated';
-  if (origin === 'fallback-template') return 'Local fallback template';
-  return 'Manual/imported';
-}
 
-function formatAdaptiveModeFromSession(session: StoredSession): string {
-  if (session.metrics.trend === 'declining') return 'Support';
-  if (session.metrics.trend === 'improving') return 'Flow';
-  return 'Balanced';
-}
 
-function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
-  return [
-    {
-      inputMode: BROWSER_TTS_SESSION_INPUT_MODE,
-      title: 'Browser TTS',
-      adapter: 'browserTtsTelemetryAdapter',
-      execution: 'Controls browser utterance rate, phrase chunk size, and pause timing from typed progress.',
-      controls: 'Rate + chunks + pauses',
-    },
-  ];
-}
+
+
+
+
+
 
 function SessionDeviceIcon({ session }: { session: StoredSession }) {
   const icon = formatCreatedDeviceIcon(session.createdDeviceKind);
