@@ -14,74 +14,7 @@
   gap: 0.85rem;
 }
 
-@media (max-width: 640px) {
-  #root {
-    padding: 0.65rem;
-  }
 
-  .training-route-app {
-    max-width: 100%;
-  }
-
-  .training-card {
-    border-radius: 14px;
-    padding: 0.85rem;
-  }
-
-  .training-control-grid,
-  .training-generation-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .training-pending-session-lane {
-    padding: 0.7rem;
-  }
-
-  .sync-status-banner {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .sync-status-count {
-    justify-content: center;
-    white-space: normal;
-  }
-
-  .training-pending-session-lane .pending-session-lane-header {
-    align-items: flex-start;
-  }
-
-  .training-pending-session-lane .pending-session-strip {
-    grid-auto-columns: minmax(0, 100%);
-  }
-
-  .training-pending-session-lane .pending-session-chip,
-  .training-pending-session-lane .pending-session-open-button {
-    min-height: 66px;
-  }
-
-  .training-input-header,
-  .training-live-metrics {
-    align-items: stretch;
-    justify-content: stretch;
-  }
-
-  .training-input-header {
-    position: static;
-    z-index: auto;
-    margin: 0;
-  }
-
-  .training-live-metrics span {
-    flex: 1 1 42%;
-    justify-content: center;
-  }
-
-  .training-input-card textarea {
-    min-height: 38vh;
-    scroll-margin-top: 7rem;
-  }
-}
 
 body {
   margin: 0;
