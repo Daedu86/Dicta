@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
+import type { FormEvent, KeyboardEvent } from 'react';
 import type { Session as SupabaseAuthSession } from '@supabase/supabase-js';
 import './App.css';
 import type {
@@ -117,16 +117,8 @@ import type {
 } from './components/adaptive-workspace/types';
 import { AdaptiveBenchmarkSection } from './components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
 import { AdaptiveAdvancedDiagnostics } from './components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
-import { AdminHeader } from './components/admin/AdminHeader';
-import { AdminKpiGrid } from './components/admin/AdminKpiGrid';
-import { AdminUsersCard } from './components/admin/AdminUsersCard';
-import { AdminMemberAccessCard } from './components/admin/AdminMemberAccessCard';
-import { AdminCreateUserCard } from './components/admin/AdminCreateUserCard';
-import { AdminBrowserStorageCard } from './components/admin/AdminBrowserStorageCard';
-import { AdminProjectFilesCard } from './components/admin/AdminProjectFilesCard';
-import { AdminSessionInventoryCard } from './components/admin/AdminSessionInventoryCard';
+import { AdminWorkspace } from './components/admin/AdminWorkspace';
 import {
-  buildOpenRouterModelOptions,
   buildTrainingGenerationButtonNotice,
   formatInterruptedOpenRouterMessage,
   parseTimestampMs,
@@ -183,7 +175,6 @@ import {
   resolveOpenRouterAccessState,
   resolveEffectiveSyncProfileId,
   type DictaAppProfile,
-  type DictaAppRole,
 } from './core/appProfiles';
 import {
   formatCreatedDeviceIcon,
@@ -219,7 +210,6 @@ import {
   SESSION_STORAGE_KEY,
   loadDeletedSessionIds,
   useSessionPersistenceSync,
-  type SupabaseSyncStatus,
 } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import {
@@ -259,7 +249,7 @@ import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatte
 import { formatDuration, formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
 import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmissionMeta';
 import { countLocalChangesPendingSync, formatSupabaseSyncState } from './app/supabaseSyncPresentation';
-import { buildAdminStorageSummary, buildCurrentSyncState, type AdminStorageSummary } from './app/adminStorageSummary';
+import { buildAdminStorageSummary, buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -4109,254 +4099,6 @@ function App() {
   );
 }
 
-function AdminWorkspace({
-  sessions,
-  summary,
-  fileInventory,
-  fileInventoryError,
-  exportMessage,
-  syncStatus,
-  languageView,
-  onChangeLanguage,
-  onBackToTraining,
-  onCopyLocalStorage,
-  onExportLocalStorage,
-  onImportLocalStorage,
-  onExportSession,
-  onCopySession,
-  appProfile,
-  visibleProfiles,
-  selectedProfileFilter,
-  onChangeProfileFilter,
-  onUpdateProfileAccess,
-  authHeaders,
-  remoteAdminStatus,
-  openRouterModels,
-  openRouterModelStatus,
-  openRouterModelError,
-  onRefreshOpenRouterModels,
-}: {
-  sessions: StoredSession[];
-  summary: AdminStorageSummary;
-  fileInventory: AdminFileInventory | null;
-  fileInventoryError: string;
-  exportMessage: string;
-  syncStatus: SupabaseSyncStatus;
-  languageView: MetricsLanguageView;
-  onChangeLanguage: (value: MetricsLanguageView) => void;
-  onBackToTraining: () => void;
-  onCopyLocalStorage: () => void;
-  onExportLocalStorage: () => void;
-  onImportLocalStorage: (rawJson: string) => void;
-  onExportSession: (session: StoredSession) => void;
-  onCopySession: (session: StoredSession) => void;
-  appProfile: DictaAppProfile | null;
-  visibleProfiles: DictaAppProfile[];
-  selectedProfileFilter: string;
-  onChangeProfileFilter: (value: string) => void;
-  onUpdateProfileAccess: (
-    profile: DictaAppProfile,
-    patch: { canAccessOpenRouter: boolean; assignedOpenRouterModel: string; sessionLimit: number },
-  ) => Promise<DictaAppProfile>;
-  authHeaders: Record<string, string>;
-  remoteAdminStatus: string;
-  openRouterModels: OpenRouterModelSummary[];
-  openRouterModelStatus: 'idle' | 'loading' | 'ready' | 'error';
-  openRouterModelError: string;
-  onRefreshOpenRouterModels: () => Promise<void>;
-}) {
-  const importInputRef = useRef<HTMLInputElement | null>(null);
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserDisplayName, setNewUserDisplayName] = useState('');
-  const [newUserProfileId, setNewUserProfileId] = useState('');
-  const [newUserRole, setNewUserRole] = useState<DictaAppRole>('member');
-  const [newUserMessage, setNewUserMessage] = useState('');
-  const [newUserBusy, setNewUserBusy] = useState(false);
-  const [accessDrafts, setAccessDrafts] = useState<Record<string, { canAccessOpenRouter: boolean; assignedOpenRouterModel: string; sessionLimit: string }>>({});
-  const [accessBusyProfileId, setAccessBusyProfileId] = useState('');
-  const [accessMessage, setAccessMessage] = useState('');
-  const memberProfiles = visibleProfiles.filter((profile) => profile.role === 'member');
-  const memberModelOptions = buildOpenRouterModelOptions(openRouterModels, memberProfiles.map((profile) => profile.assignedOpenRouterModel));
-
-  useEffect(() => {
-    setAccessDrafts((current) => {
-      const next = { ...current };
-      for (const profile of visibleProfiles) {
-        if (profile.role !== 'member') continue;
-        if (!next[profile.profileId]) {
-          next[profile.profileId] = {
-            canAccessOpenRouter: profile.canAccessOpenRouter,
-            assignedOpenRouterModel: profile.assignedOpenRouterModel ?? '',
-            sessionLimit: String(profile.sessionLimit ?? 15),
-          };
-        }
-      }
-      return next;
-    });
-  }, [visibleProfiles]);
-
-  async function onImportFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = '';
-    if (!file) return;
-    onImportLocalStorage(await file.text());
-  }
-
-  async function createDictaUser(): Promise<void> {
-    setNewUserBusy(true);
-    setNewUserMessage('');
-    try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({
-          email: newUserEmail,
-          password: newUserPassword,
-          displayName: newUserDisplayName,
-          profileId: newUserProfileId,
-          role: newUserRole,
-        }),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `User creation failed (${response.status}).`);
-      }
-      const payload = (await response.json()) as { displayName?: string; profileId?: string };
-      setNewUserMessage(`Created ${payload.displayName ?? newUserEmail} Â· profile ${payload.profileId ?? newUserProfileId}. Refresh Admin to see the profile list.`);
-      setNewUserEmail('');
-      setNewUserPassword('');
-      setNewUserDisplayName('');
-      setNewUserProfileId('');
-      setNewUserRole('member');
-    } catch (error) {
-      setNewUserMessage(error instanceof Error ? error.message : 'User creation failed.');
-    } finally {
-      setNewUserBusy(false);
-    }
-  }
-
-  async function saveProfileAccess(profile: DictaAppProfile): Promise<void> {
-    const draft = accessDrafts[profile.profileId] ?? {
-      canAccessOpenRouter: profile.canAccessOpenRouter,
-      assignedOpenRouterModel: profile.assignedOpenRouterModel ?? '',
-      sessionLimit: String(profile.sessionLimit ?? 15),
-    };
-    const sessionLimitNumber = Number(draft.sessionLimit);
-    if (!Number.isFinite(sessionLimitNumber) || sessionLimitNumber < 0) {
-      setAccessMessage('Session limit must be zero or higher.');
-      return;
-    }
-    setAccessBusyProfileId(profile.profileId);
-    setAccessMessage('');
-    try {
-      const updated = await onUpdateProfileAccess(profile, {
-        canAccessOpenRouter: draft.canAccessOpenRouter,
-        assignedOpenRouterModel: draft.assignedOpenRouterModel.trim(),
-        sessionLimit: Math.floor(sessionLimitNumber),
-      });
-      setAccessDrafts((current) => ({
-        ...current,
-        [updated.profileId]: {
-          canAccessOpenRouter: updated.canAccessOpenRouter,
-          assignedOpenRouterModel: updated.assignedOpenRouterModel ?? '',
-          sessionLimit: String(updated.sessionLimit ?? 15),
-        },
-      }));
-      setAccessMessage(`Updated ${updated.displayName}.`);
-    } catch (error) {
-      setAccessMessage(error instanceof Error ? error.message : 'Profile access update failed.');
-    } finally {
-      setAccessBusyProfileId('');
-    }
-  }
-
-  function updateAccessDraft(
-    profileId: string,
-    draft: { canAccessOpenRouter: boolean; assignedOpenRouterModel: string; sessionLimit: string },
-  ): void {
-    setAccessDrafts((current) => ({
-      ...current,
-      [profileId]: draft,
-    }));
-  }
-
-  return (
-    <section className="panel workspace-panel admin-workspace">
-      <AdminHeader
-        appProfile={appProfile}
-        languageView={languageView}
-        onChangeLanguage={onChangeLanguage}
-        onBackToTraining={onBackToTraining}
-      />
-
-      {exportMessage ? <p className="success">{exportMessage}</p> : null}
-
-      <AdminKpiGrid summary={summary} syncStatus={syncStatus} />
-
-      <div className="admin-grid">
-        <AdminUsersCard
-          visibleProfiles={visibleProfiles}
-          selectedProfileFilter={selectedProfileFilter}
-          onChangeProfileFilter={onChangeProfileFilter}
-          remoteAdminStatus={remoteAdminStatus}
-        />
-
-        <AdminMemberAccessCard
-          memberProfiles={memberProfiles}
-          accessDrafts={accessDrafts}
-          accessBusyProfileId={accessBusyProfileId}
-          accessMessage={accessMessage}
-          memberModelOptions={memberModelOptions}
-          openRouterModels={openRouterModels}
-          openRouterModelStatus={openRouterModelStatus}
-          openRouterModelError={openRouterModelError}
-          onRefreshOpenRouterModels={onRefreshOpenRouterModels}
-          onChangeAccessDraft={updateAccessDraft}
-          onSaveProfileAccess={saveProfileAccess}
-        />
-
-        <AdminCreateUserCard
-          newUserEmail={newUserEmail}
-          newUserPassword={newUserPassword}
-          newUserDisplayName={newUserDisplayName}
-          newUserProfileId={newUserProfileId}
-          newUserRole={newUserRole}
-          newUserMessage={newUserMessage}
-          newUserBusy={newUserBusy}
-          onChangeNewUserEmail={setNewUserEmail}
-          onChangeNewUserPassword={setNewUserPassword}
-          onChangeNewUserDisplayName={setNewUserDisplayName}
-          onChangeNewUserProfileId={setNewUserProfileId}
-          onChangeNewUserRole={setNewUserRole}
-          onCreateUser={() => void createDictaUser()}
-        />
-
-        <AdminBrowserStorageCard
-          localStorageEntries={summary.localStorageEntries}
-          syncStatus={syncStatus}
-          importInputRef={importInputRef}
-          onCopyLocalStorage={onCopyLocalStorage}
-          onExportLocalStorage={onExportLocalStorage}
-          onImportFileChange={onImportFileChange}
-        />
-
-        <AdminProjectFilesCard
-          fileInventory={fileInventory}
-          fileInventoryError={fileInventoryError}
-        />
-      </div>
-
-        <AdminSessionInventoryCard
-          sessions={sessions}
-          languageView={languageView}
-          onExportSession={onExportSession}
-          onCopySession={onCopySession}
-        />
-    </section>
-  );
-}
-
 function HelpIcon({ tooltip, ariaLabel = 'Help' }: { tooltip: string; ariaLabel?: string }) {
   return (
     <button
@@ -4514,7 +4256,6 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
   });
 }
 
-
 function SessionDeviceIcon({ session }: { session: StoredSession }) {
   const icon = formatCreatedDeviceIcon(session.createdDeviceKind);
   if (!icon) return null;
@@ -4595,7 +4336,6 @@ function loadSessions(): StoredSession[] {
     return [];
   }
 }
-
 
 type TtsPlaybackProfile = {
   label: string;

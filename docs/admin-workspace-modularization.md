@@ -99,3 +99,30 @@ Potential future cleanups, to handle separately from this closeout:
 ## Closeout recommendation
 
 Treat `AdminWorkspace` UI modularization as closed. Future work should not reopen the extracted components unless there is a regression, a focused type cleanup, or a deliberate second pass on admin state management.
+
+
+## Second-pass App.tsx shell extraction
+
+Updated: 2026-06-10
+
+A follow-up App.tsx reduction pass moved the remaining `AdminWorkspace` shell/orchestration component out of `src/App.tsx` into:
+
+```text
+src/components/admin/AdminWorkspace.tsx
+```
+
+This keeps the same Admin stateful boundary documented above:
+
+- create-user form state remains inside `AdminWorkspace`;
+- member-access draft state remains inside `AdminWorkspace`;
+- `importInputRef` and localStorage import handling remain inside `AdminWorkspace`;
+- admin API calls and profile-access mutation wiring remain inside `AdminWorkspace`;
+- `src/App.tsx` now imports and renders `AdminWorkspace` instead of defining it inline.
+
+Validation for this pass:
+
+```bash
+npm run build
+wc -l src/App.tsx src/components/admin/AdminWorkspace.tsx
+git diff --stat
+```
