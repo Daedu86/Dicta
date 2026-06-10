@@ -204,6 +204,8 @@ import {
   type SupabaseSyncStatus,
 } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
+import type { SessionInputMode } from './core/sessionInputModes';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
@@ -248,8 +250,6 @@ type StoredSession = {
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 
-// Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
-type SessionInputMode = 'input2';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
 type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
@@ -509,11 +509,11 @@ function App() {
     setSessions((prev) => {
       let changed = false;
       const usedVoiceURIs = prev
-        .filter((session) => session.inputMode === 'input2' && session.ttsLanguage)
+        .filter((session) => session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE && session.ttsLanguage)
         .map((session) => session.ttsVoiceURI);
       const next = prev.map((session) => {
         if (
-          session.inputMode !== 'input2' ||
+          session.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE ||
           !session.inputSettingsLocked ||
           !session.ttsLanguage ||
           session.ttsVoiceURI ||
@@ -892,13 +892,13 @@ function App() {
     () => sessions.find((session) => session.id === dashboardSessionId) ?? activeSession,
     [activeSession, dashboardSessionId, sessions],
   );
-  const activeInputMode = activeSession?.inputMode ?? 'input2';
+  const activeInputMode = activeSession?.inputMode ?? BROWSER_TTS_SESSION_INPUT_MODE;
   const activeInputLabel =
-    activeInputMode === 'input2'
+    activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE
       ? 'Input # 2 - Text to Speech (TTS)'
       : 'Retired Local TTS';
   const activeInputFeatureLabel =
-    activeInputMode === 'input2'
+    activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE
       ? 'Built-in browser feature'
       : 'Local Python sidecar';
   const activeInputWorkspaceMode: WorkspaceMode = 'tts';
@@ -1298,7 +1298,7 @@ function App() {
   const activeLiveAccuracyHelpText = 'Accuracy is matched target words divided by typed words, including exact and one-character typo matches.';
 
   useEffect(() => {
-    if (activeInputMode !== 'input2' || activeSessionFinished || !ttsHasText) {
+    if (activeInputMode !== BROWSER_TTS_SESSION_INPUT_MODE || activeSessionFinished || !ttsHasText) {
       return;
     }
 
@@ -1330,7 +1330,7 @@ function App() {
     ttsPracticeLiveTextRef.current = activeSession.ttsPracticeText ?? '';
     setSessionStatus(activeSession.status);
     setTtsText(activeSession.ttsText ?? '');
-    setTtsStatus(activeSession.inputMode === 'input2' && activeSession.status === 'finished' ? 'finished' : activeSession.ttsText ? 'ready' : 'idle');
+    setTtsStatus(activeSession.inputMode === BROWSER_TTS_SESSION_INPUT_MODE && activeSession.status === 'finished' ? 'finished' : activeSession.ttsText ? 'ready' : 'idle');
     setTtsCurrentChunk('');
     setTtsPacingMode('balanced');
     setTtsSpeechRate(1);
@@ -1377,7 +1377,7 @@ function App() {
 
     setRunning(false);
     setSessionStatus('finished');
-    if (activeSession.inputMode === 'input2') {
+    if (activeSession.inputMode === BROWSER_TTS_SESSION_INPUT_MODE) {
       setTtsStatus('finished');
     }
     setControllerState(activeSession.metrics.controllerState);
@@ -1530,7 +1530,7 @@ function App() {
     setTrainingSubmitMessage('');
     setInputSettingsLocked(nextInputSettingsLocked);
     if (!nextInputSettingsLocked) {
-      if (activeInputMode === 'input2') {
+      if (activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE) {
         setTtsExpanded(true);
       } else {
       }
@@ -1902,7 +1902,7 @@ function App() {
   }, options: { navigateToLeaderboard?: boolean } = {}): void {
     if (!ensureCanCreateDictationSession('openrouter')) return;
     const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
-    const sessionInputMode = mapDictationScriptInputModeToSession(inputMode) ?? 'input2';
+    const sessionInputMode = mapDictationScriptInputModeToSession(inputMode) ?? BROWSER_TTS_SESSION_INPUT_MODE;
     suppressSidebarAutoSelectRef.current = true;
     const nextSession = prependSessionAndPersistNow((prev) =>
       createGeneratedErrorSession({
@@ -1960,7 +1960,7 @@ function App() {
   }
 
   function getActiveTypingLanguage(): TypingLanguage | null {
-    return activeInputMode === 'input2' ? ttsLanguage : null;
+    return activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE ? ttsLanguage : null;
   }
 
   function resolveKeyboardProfile(): KeyboardProfile {
@@ -2306,7 +2306,7 @@ function App() {
     selectedVoice: SpeechSynthesisVoice | null = null,
     selectedVoiceURI: string | null | undefined = session?.ttsVoiceURI,
   ): BrowserTtsEnvironmentFingerprint | null {
-    if (!session || session.inputMode !== 'input2') return null;
+    if (!session || session.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return null;
     return collectBrowserTtsEnvironmentFingerprint({
       inputMode: 'browser-tts',
       language: session.ttsLanguage,
@@ -2323,14 +2323,14 @@ function App() {
     selectedVoice: SpeechSynthesisVoice | null = null,
     selectedVoiceURI: string | null | undefined = session.ttsVoiceURI,
   ): StoredSession {
-    if (session.inputMode !== 'input2') return session;
+    if (session.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return session;
     const ttsEnvironment = collectBrowserTtsEnvironmentForSession(session, selectedVoice, selectedVoiceURI);
     if (sameBrowserTtsEnvironment(session.ttsEnvironment, ttsEnvironment)) return session;
     return { ...session, ttsEnvironment };
   }
 
   function resolveActiveBrowserTtsVoice(): SpeechSynthesisVoice | null {
-    if (!activeSession || activeSession.inputMode !== 'input2') return null;
+    if (!activeSession || activeSession.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return null;
     const resolution = resolveBrowserTtsSessionVoice(browserTtsVoices, ttsLanguage, activeSession.ttsVoiceURI);
     const nextVoiceURI = resolution.voiceURI ?? activeSession.ttsVoiceURI ?? null;
     const nextEnvironment = collectBrowserTtsEnvironmentForSession(activeSession, resolution.voice, nextVoiceURI);
@@ -2585,7 +2585,7 @@ function App() {
       const finalSample = applyTtsPerformanceSample({ action: 'submit', finalize: true, practiceTextOverride: latestPracticeText });
       const finishedAt = new Date().toISOString();
       const finalVoiceResolution =
-        activeSession?.inputMode === 'input2'
+        activeSession?.inputMode === BROWSER_TTS_SESSION_INPUT_MODE
           ? resolveBrowserTtsSessionVoice(browserTtsVoices, ttsLanguage, activeSession.ttsVoiceURI)
           : null;
       const finalVoiceURI = finalVoiceResolution?.voiceURI ?? activeSession?.ttsVoiceURI ?? null;
@@ -2594,8 +2594,8 @@ function App() {
         session.id === activeSessionId
           ? {
               ...session,
-              ttsVoiceURI: session.inputMode === 'input2' ? finalVoiceURI : session.ttsVoiceURI,
-              ttsEnvironment: session.inputMode === 'input2' ? finalTtsEnvironment : session.ttsEnvironment,
+              ttsVoiceURI: session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? finalVoiceURI : session.ttsVoiceURI,
+              ttsEnvironment: session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? finalTtsEnvironment : session.ttsEnvironment,
               ttsPracticeText: latestPracticeText,
               status: 'finished' as const,
               metrics: finalSample.metrics,
@@ -3215,7 +3215,7 @@ function App() {
   }
 
   function seekTtsPlayback(percent: number): void {
-    if (activeInputMode !== 'input2' || !ttsHasText || activeSessionFinished) return;
+    if (activeInputMode !== BROWSER_TTS_SESSION_INPUT_MODE || !ttsHasText || activeSessionFinished) return;
     const wordCount = ttsTranscript?.words.length ?? 0;
     if (wordCount === 0) return;
     const targetWordIndex = Math.floor(clamp(percent, 0, 1) * Math.max(0, wordCount - 1));
@@ -3896,7 +3896,7 @@ function App() {
           ) : null}
         </AppShellHeader>
         {!setupLocked ? (
-              activeInputMode === 'input2' ? (
+              activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE ? (
                 <BrowserTtsSetupCard
                   activeInputLabel={activeInputLabel}
                   activeInputFeatureLabel={activeInputFeatureLabel}
@@ -4643,7 +4643,7 @@ function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummar
       counts[session.inputMode] += 1;
       return counts;
     },
-    { input2: 0 },
+    { [BROWSER_TTS_SESSION_INPUT_MODE]: 0 },
   );
 
   return {
@@ -4688,8 +4688,8 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
     inputSettingsLocked: Boolean(record.inputSettingsLocked),
     ttsText: record.ttsText ?? '',
     ttsLanguage: isSupportedLanguage(record.ttsLanguage) ? record.ttsLanguage : null,
-    ttsVoiceURI: inputMode === 'input2' && typeof record.ttsVoiceURI === 'string' ? record.ttsVoiceURI : null,
-    ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(record.ttsEnvironment) : undefined,
+    ttsVoiceURI: inputMode === BROWSER_TTS_SESSION_INPUT_MODE && typeof record.ttsVoiceURI === 'string' ? record.ttsVoiceURI : null,
+    ttsEnvironment: inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? normalizeBrowserTtsEnvironmentFingerprint(record.ttsEnvironment) : undefined,
     ttsPracticeText: record.ttsPracticeText ?? '',
     difficulty: record.difficulty ?? 'normal',
     status: normalizeRestoredSessionStatus(isSessionStatus(record.status) ? record.status : 'ready', cloneTelemetry(record.telemetry)),
@@ -4817,7 +4817,7 @@ function byteSize(value: string): number {
 }
 
 function formatSessionInputMode(mode: string): string {
-  if (mode === 'input2') return 'Browser TTS';
+  if (mode === BROWSER_TTS_SESSION_INPUT_MODE) return 'Browser TTS';
   return 'Removed legacy input';
 }
 
@@ -4841,7 +4841,7 @@ function formatAdaptiveModeFromSession(session: StoredSession): string {
 function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
   return [
     {
-      inputMode: 'input2',
+      inputMode: BROWSER_TTS_SESSION_INPUT_MODE,
       title: 'Browser TTS',
       adapter: 'browserTtsTelemetryAdapter',
       execution: 'Controls browser utterance rate, phrase chunk size, and pause timing from typed progress.',
@@ -4862,7 +4862,7 @@ function SessionDeviceIcon({ session }: { session: StoredSession }) {
 
 export default App;
 
-function createStoredSession(index = 1, inputMode: SessionInputMode = 'input2', name?: string): StoredSession {
+function createStoredSession(index = 1, inputMode: SessionInputMode = BROWSER_TTS_SESSION_INPUT_MODE, name?: string): StoredSession {
   const now = new Date().toISOString();
   const deviceMetadata = detectCreatedDeviceMetadata();
   return {
@@ -4873,7 +4873,7 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input2', 
     inputMode,
     inputSettingsLocked: false,
     ttsText: '',
-    ttsLanguage: inputMode === 'input2' ? 'de' : null,
+    ttsLanguage: inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? 'de' : null,
     ttsVoiceURI: null,
     ttsPracticeText: '',
     difficulty: 'normal',
@@ -4947,7 +4947,7 @@ function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
   const telemetry = cloneTelemetry(session.telemetry);
   return normalizeSessionForPersistence({
     ...session,
-    ttsEnvironment: session.inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
+    ttsEnvironment: session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
     telemetry,
     status: normalizeRestoredSessionStatus(session.status, telemetry),
   });
@@ -4992,7 +4992,7 @@ function truncateTitle(title: string): string {
 
 function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMode | null {
   const normalized = String(inputMode).trim().toLowerCase().replace(/_/g, '-');
-  if (normalized === 'input2' || normalized === 'browser-tts' || normalized === 'browsertts') return 'input2';
+  if (normalized === BROWSER_TTS_SESSION_INPUT_MODE || normalized === 'browser-tts' || normalized === 'browsertts') return BROWSER_TTS_SESSION_INPUT_MODE;
   
   return null;
 }
@@ -5063,8 +5063,8 @@ function loadSessions(): StoredSession[] {
     inputSettingsLocked: Boolean(session.inputSettingsLocked),
     ttsText: session.ttsText ?? '',
         ttsLanguage: isSupportedLanguage(session.ttsLanguage) ? session.ttsLanguage : null,
-        ttsVoiceURI: inputMode === 'input2' && typeof session.ttsVoiceURI === 'string' ? session.ttsVoiceURI : null,
-        ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
+        ttsVoiceURI: inputMode === BROWSER_TTS_SESSION_INPUT_MODE && typeof session.ttsVoiceURI === 'string' ? session.ttsVoiceURI : null,
+        ttsEnvironment: inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
         ttsPracticeText: session.ttsPracticeText ?? '',
         difficulty: session.difficulty ?? 'normal',
         status: normalizeRestoredSessionStatus(isSessionStatus(session.status) ? session.status : 'ready', cloneTelemetry(session.telemetry)),
@@ -5144,7 +5144,7 @@ function isSessionStatus(value: unknown): value is SessionStatus {
 }
 
 function coerceSessionInputMode(value: unknown): SessionInputMode | null {
-  return value === 'input2' ? value : null;
+  return value === BROWSER_TTS_SESSION_INPUT_MODE ? value : null;
 }
 
 function sameBrowserTtsEnvironment(
@@ -5558,13 +5558,13 @@ function averageNumbers(values: number[], fallback = 0): number {
 }
 
 function mapSessionInputMode(mode: string): InputMode {
-  if (mode === 'input2') return 'browser-tts';
+  if (mode === BROWSER_TTS_SESSION_INPUT_MODE) return 'browser-tts';
   return 'browser-tts';
   throw new Error('Removed legacy input');
 }
 
 function resolveStoredSessionLanguage(session: StoredSession): LanguageCode {
-  return session.inputMode === 'input2' ? (session.ttsLanguage ?? 'unknown') : 'unknown';
+  return session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? (session.ttsLanguage ?? 'unknown') : 'unknown';
 }
 
 function mapAdaptivePacingMode(mode: PacingMode): TtsPacingMode {
