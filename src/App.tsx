@@ -4841,7 +4841,7 @@ function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
   return [
     {
       inputMode: 'input2',
-      title: 'Input #2 - Browser TTS',
+      title: 'Browser TTS',
       adapter: 'browserTtsTelemetryAdapter',
       execution: 'Controls browser utterance rate, phrase chunk size, and pause timing from typed progress.',
       controls: 'Rate + chunks + pauses',
