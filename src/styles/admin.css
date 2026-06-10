@@ -142,3 +142,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
 }
+
+.admin-language-tabs {
+  margin-top: 0.55rem;
+}
