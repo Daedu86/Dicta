@@ -3671,9 +3671,6 @@ function App() {
   void canSubmitTtsSession;
   void lockedInputSummary;
 
-  void HelpIcon;
-  void RuntimeMetricsPanel;
-
   const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
@@ -4099,20 +4096,6 @@ function App() {
   );
 }
 
-function HelpIcon({ tooltip, ariaLabel = 'Help' }: { tooltip: string; ariaLabel?: string }) {
-  return (
-    <button
-      type="button"
-      className="help-icon"
-      aria-label={ariaLabel}
-      data-tooltip={tooltip}
-      onClick={(event) => event.preventDefault()}
-    >
-      ?
-    </button>
-  );
-}
-
 function Metric({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
     <div className="metric" title={title} aria-label={title ? `${label}: ${value}. ${title}` : undefined}>
@@ -4149,38 +4132,6 @@ function LockedInputSetupSummary({
         ))}
       </div>
       {warning ? <p className="error locked-input-warning">{warning}</p> : null}
-    </section>
-  );
-}
-
-function RuntimeMetricsPanel({
-  controllerState,
-  rate,
-  lagSec,
-  lagWords,
-  wpm,
-  accuracy,
-}: {
-  controllerState: ControlAction;
-  rate: number;
-  lagSec: number;
-  lagWords: number;
-  wpm: number;
-  accuracy: number;
-}) {
-  return (
-    <section className="runtime-metrics-panel" aria-label="Runtime metrics">
-      <div className="bottom-summary-header">
-        <h3>Runtime</h3>
-      </div>
-      <div className="runtime-metrics-grid">
-        <Metric label="Controller" value={controllerState} />
-        <Metric label="Rate" value={`${rate.toFixed(2)}x`} />
-        <Metric label="Lag (sec)" value={lagSec.toFixed(2)} />
-        <Metric label="Lag (words)" value={String(lagWords)} />
-        <Metric label="WPM" value={wpm.toFixed(1)} />
-        <Metric label="Accuracy" value={`${accuracy.toFixed(1)}%`} />
-      </div>
     </section>
   );
 }
