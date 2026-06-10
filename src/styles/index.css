@@ -15,6 +15,7 @@
 @import './perf-overlay.css';
 @import './shared-controls.css';
 @import './workspace-shell.css';
+@import './sidebar-support.css';
 @import './tts-workspace.css';
 @import './session-status.css';
 @import './transcript-preview.css';
