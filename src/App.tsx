@@ -499,8 +499,6 @@ function App() {
   const [ttsPacingMode, setTtsPacingMode] = useState<TtsPacingMode>('balanced');
   const [ttsSpeechRate, setTtsSpeechRate] = useState(1);
 
-  // Retired legacy session fields are still normalized and persisted below,
-  // but the removed input no longer keeps live runtime state.
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
@@ -896,7 +894,7 @@ function App() {
   const activeInputLabel =
     activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE
       ? 'Input # 2 - Text to Speech (TTS)'
-      : 'Retired Local TTS';
+      : 'Browser TTS';
   const activeInputFeatureLabel =
     activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE
       ? 'Built-in browser feature'
