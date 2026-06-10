@@ -206,6 +206,14 @@ import {
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import { loadThemeMode, persistThemeMode, type ThemeMode } from './app/themeModeStorage';
 import {
+  loadInsightsCollapsed,
+  loadMetricsRangeView,
+  loadPersistedDictaLanguageView,
+  persistDictaLanguageView,
+  persistInsightsCollapsed,
+  persistMetricsRangeView,
+} from './app/uiPreferenceStorage';
+import {
   DEFAULT_LEADERBOARD_SECTION_EXPANDED,
   LEADERBOARD_RANGE_DEFINITIONS,
   LEADERBOARD_SECTION_DEFINITIONS,
@@ -223,11 +231,6 @@ declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
 const OLLAMA_DEFAULT_MODEL_STORAGE_KEY = 'dicta.ollamaDefaultModel.v1';
 const OLLAMA_RECOMMENDED_DEFAULT_MODEL = 'gemma3:27b-cloud';
-const LIVE_METRICS_LANGUAGE_KEY = 'dicta.liveMetricsLanguage.v1';
-const LIVE_METRICS_RANGE_KEY = 'dicta.liveMetricsRange.v1';
-const INSIGHTS_COLLAPSED_KEY = 'dicta.insightsCollapsed.v1';
-const LEADERBOARD_LANGUAGE_KEY = 'dicta.leaderboardLanguage.v1';
-const ADMIN_LANGUAGE_KEY = 'dicta.adminLanguage.v1';
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 const DICTA_BUILD_INFO = __DICTA_BUILD_INFO__;
@@ -518,9 +521,7 @@ function App() {
   const setMetricsLanguageView = setDictaLanguageView;
   const setLeaderboardLanguageView = setDictaLanguageView;
   const setAdminLanguageView = setDictaLanguageView;
-  const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => {
-    return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
-  });
+  const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => loadInsightsCollapsed());
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(true);
   const [leaderboardSectionExpanded, setLeaderboardSectionExpanded] = useState<Record<LeaderboardSectionId, boolean>>(
     () => ({ ...DEFAULT_LEADERBOARD_SECTION_EXPANDED }),
@@ -528,13 +529,7 @@ function App() {
   const [insightsDiagnosticInputMode, setInsightsDiagnosticInputMode] = useState<InputMode>('browser-tts');
   const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
   const [insightsDiagnosticFallbackReport, setInsightsDiagnosticFallbackReport] = useState('');
-  const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => {
-    const saved = window.localStorage.getItem(LIVE_METRICS_RANGE_KEY);
-    if (saved === 'today' || saved === 'week' || saved === 'twoWeeks' || saved === 'threeWeeks' || saved === 'month') {
-      return saved;
-    }
-    return 'today';
-  });
+  const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => loadMetricsRangeView());
   const [adaptiveSemanticDebug, setAdaptiveSemanticDebug] = useState<AdaptiveSemanticDebug>({
     semanticCutPenalty: 0,
     unsafePauseCount: 0,
@@ -1082,17 +1077,15 @@ function App() {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, dictaLanguageView);
-    window.localStorage.setItem(LEADERBOARD_LANGUAGE_KEY, dictaLanguageView);
-    window.localStorage.setItem(ADMIN_LANGUAGE_KEY, dictaLanguageView);
+    persistDictaLanguageView(dictaLanguageView);
   }, [dictaLanguageView]);
 
   useEffect(() => {
-    window.localStorage.setItem(LIVE_METRICS_RANGE_KEY, metricsRangeView);
+    persistMetricsRangeView(metricsRangeView);
   }, [metricsRangeView]);
 
   useEffect(() => {
-    window.localStorage.setItem(INSIGHTS_COLLAPSED_KEY, String(insightsCollapsed));
+    persistInsightsCollapsed(insightsCollapsed);
   }, [insightsCollapsed]);
 
   useEffect(() => {
@@ -4692,17 +4685,6 @@ function loadAdaptiveSessionFeedback(): AdaptiveSessionFeedbackByInputLanguage {
   } catch {
     return {};
   }
-}
-
-function loadPersistedDictaLanguageView(): MetricsLanguageView {
-  const keys = [LEADERBOARD_LANGUAGE_KEY, LIVE_METRICS_LANGUAGE_KEY, ADMIN_LANGUAGE_KEY];
-  for (const key of keys) {
-    const saved = window.localStorage.getItem(key);
-    if (isSupportedLanguage(saved)) {
-      return saved;
-    }
-  }
-  return 'en';
 }
 
 function downloadDictaLocalStorage(): void {
