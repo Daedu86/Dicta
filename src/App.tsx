@@ -234,11 +234,6 @@ type StoredSession = {
   ttsVoiceURI?: string | null;
   ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
   ttsPracticeText: string;
-  retiredInputText: string;
-  retiredInputLanguage: TtsLanguage | null;
-  retiredInputVoice: string;
-  retiredInputPracticeText: string;
-  retiredInputChunks: RetiredInputChunk[];
   difficulty: Difficulty;
   status: SessionStatus;
   metrics: SessionMetrics;
@@ -4708,11 +4703,6 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
     ttsVoiceURI: inputMode === 'input2' && typeof record.ttsVoiceURI === 'string' ? record.ttsVoiceURI : null,
     ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(record.ttsEnvironment) : undefined,
     ttsPracticeText: record.ttsPracticeText ?? '',
-    retiredInputText: record.retiredInputText ?? '',
-    retiredInputLanguage: isSupportedLanguage(record.retiredInputLanguage) ? record.retiredInputLanguage : null,
-    retiredInputVoice: record.retiredInputVoice ?? 'default',
-    retiredInputPracticeText: record.retiredInputPracticeText ?? '',
-    retiredInputChunks: record.retiredInputChunks ?? [],
     difficulty: record.difficulty ?? 'normal',
     status: normalizeRestoredSessionStatus(isSessionStatus(record.status) ? record.status : 'ready', cloneTelemetry(record.telemetry)),
     metrics: {
@@ -4898,11 +4888,6 @@ function createStoredSession(index = 1, inputMode: SessionInputMode = 'input2', 
     ttsLanguage: inputMode === 'input2' ? 'de' : null,
     ttsVoiceURI: null,
     ttsPracticeText: '',
-    retiredInputText: '',
-    retiredInputLanguage: false ? 'en' : null,
-    retiredInputVoice: 'default',
-    retiredInputPracticeText: '',
-    retiredInputChunks: [],
     difficulty: 'normal',
     status: 'ready',
     metrics: createDefaultMetrics(),
@@ -5093,11 +5078,6 @@ function loadSessions(): StoredSession[] {
         ttsVoiceURI: inputMode === 'input2' && typeof session.ttsVoiceURI === 'string' ? session.ttsVoiceURI : null,
         ttsEnvironment: inputMode === 'input2' ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
         ttsPracticeText: session.ttsPracticeText ?? '',
-        retiredInputText: session.retiredInputText ?? '',
-        retiredInputLanguage: isSupportedLanguage(session.retiredInputLanguage) ? session.retiredInputLanguage : null,
-        retiredInputVoice: session.retiredInputVoice ?? 'default',
-        retiredInputPracticeText: session.retiredInputPracticeText ?? '',
-        retiredInputChunks: session.retiredInputChunks ?? [],
         difficulty: session.difficulty ?? 'normal',
         status: normalizeRestoredSessionStatus(isSessionStatus(session.status) ? session.status : 'ready', cloneTelemetry(session.telemetry)),
         metrics: {
