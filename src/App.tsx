@@ -148,6 +148,7 @@ import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
 import { normalizeGeneratedDictationScriptTitle } from './app/generatedDictationScriptTitle';
 import { createDefaultMetrics, createGeneratedErrorSession, createStoredSession } from './app/sessionFactory';
+import { normalizeRestoredStoredSession as normalizeRestoredStoredSessionWithDependencies } from './app/sessionRestoreNormalization';
 import {
   coerceSessionInputMode,
   isSessionStatus,
@@ -4737,16 +4738,6 @@ function createSessionFromScript(
   };
 }
 
-function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
-  const telemetry = cloneTelemetry(session.telemetry);
-  return normalizeSessionForPersistence({
-    ...session,
-    ttsEnvironment: session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment) : undefined,
-    telemetry,
-    status: normalizeRestoredSessionStatus(session.status, telemetry),
-  });
-}
-
 
 
 
@@ -4784,6 +4775,16 @@ function getNextSessionIndex(sessions: StoredSession[]): number {
   }, 0);
 
   return Math.max(highestNamedIndex + 1, sessions.length + 1);
+}
+
+function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
+  return normalizeRestoredStoredSessionWithDependencies(session, {
+    browserTtsInputMode: BROWSER_TTS_SESSION_INPUT_MODE,
+    cloneTelemetry,
+    normalizeBrowserTtsEnvironmentFingerprint,
+    normalizeRestoredSessionStatus,
+    normalizeSessionForPersistence,
+  });
 }
 
 function loadSessions(): StoredSession[] {
