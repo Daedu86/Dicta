@@ -260,6 +260,7 @@ import type { SessionInputMode } from './core/sessionInputModes';
 import { formatSessionDate, formatSubmittedAt } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
+import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatters';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -4825,13 +4826,6 @@ function buildTrainingSessionSubmissionMeta(
 
 
 
-
-function formatLeaderboardSessionStatus(session: StoredSession): string {
-  if (session.status === 'finished' && !isSubmittedFinishedAttempt(session)) {
-    return 'Not submitted';
-  }
-  return formatSessionStatus(session.status);
-}
 
 
 
