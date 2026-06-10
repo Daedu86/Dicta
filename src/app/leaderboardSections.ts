@@ -4,7 +4,8 @@ import { buildRangeSummaryForLanguage, resolveSessionLanguage } from '../core/li
 import type { DictationScript } from '../core/adaptive/dictationScriptValidation';
 
 export type LeaderboardSessionLength = 'express' | 'standard';
+
 export type LeaderboardSectionId =
   | 'easy-express'
   | 'medium-express'
-  | 'hard-express'
+  | 'hard
