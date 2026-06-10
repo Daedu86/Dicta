@@ -91,7 +91,6 @@ import { sameBrowserTtsEnvironment } from './inputs/browserTts/browserTtsEnviron
 import { trackAction, trackSample } from './core/telemetry';
 import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
 import { telemetryEquals } from './core/sessionTelemetryEquality';
-import { countTelemetrySamples } from './core/sessionTelemetrySummary';
 import {
   LANGUAGE_LABELS,
   SUPPORTED_LANGUAGES,
@@ -168,16 +167,13 @@ import {
 import {
   copyDictaLocalStorage,
   downloadDictaLocalStorage,
-  getDictaLocalStorageEntries,
   getDictaLocalStorageSnapshot,
-  type LocalStorageEntry,
 } from './app/dictaLocalStorageSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
   DICTA_SYNC_TABLE,
   createDictaSupabaseClient,
   getDictaSyncConfig,
-  type DictaSyncState,
 } from './core/supabaseSync';
 import {
   getDictaSessionQuotaStatus,
@@ -264,6 +260,7 @@ import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatte
 import { formatDuration, formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
 import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmissionMeta';
 import { countLocalChangesPendingSync, formatSupabaseSyncState } from './app/supabaseSyncPresentation';
+import { buildAdminStorageSummary, buildCurrentSyncState, type AdminStorageSummary } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -336,19 +333,6 @@ type DictaDebugSampleAudit = {
   wpm: number;
   sessionId?: string;
   timestampMs: number;
-};
-
-type AdminStorageSummary = {
-  sessionCount: number;
-  finishedSessions: number;
-  inputModeCounts: Record<SessionInputMode, number>;
-  localStorageEntries: LocalStorageEntry[];
-  dictaLocalStorageBytes: number;
-  ttsTextChars: number;
-  typedTextChars: number;
-  telemetrySamples: number;
-  telemetryActions: number;
-  ttsChunks: number;
 };
 
 type TtsPerformanceSampleResult = {
@@ -4458,42 +4442,6 @@ function RuntimeMetricsPanel({
       </div>
     </section>
   );
-}
-
-function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummary {
-  const localStorageEntries = getDictaLocalStorageEntries();
-  const inputModeCounts = sessions.reduce<Record<SessionInputMode, number>>(
-    (counts, session) => {
-      counts[session.inputMode] += 1;
-      return counts;
-    },
-    { [BROWSER_TTS_SESSION_INPUT_MODE]: 0 },
-  );
-
-  return {
-    sessionCount: sessions.length,
-    finishedSessions: sessions.filter((session) => session.status === 'finished').length,
-    inputModeCounts,
-    localStorageEntries,
-    dictaLocalStorageBytes: localStorageEntries.reduce((sum, entry) => sum + entry.bytes, 0),
-    ttsTextChars: sessions.reduce((sum, session) => sum + session.ttsText.length, 0),
-    typedTextChars: sessions.reduce((sum, session) => sum + session.ttsPracticeText.length, 0),
-    telemetrySamples: sessions.reduce((sum, session) => sum + countTelemetrySamples(session.telemetry), 0),
-    telemetryActions: sessions.reduce((sum, session) => sum + session.telemetry.actions.length, 0),
-    ttsChunks: sessions.reduce((sum, session) => sum + session.telemetry.ttsChunks.length, 0),
-  };
-}
-
-function buildCurrentSyncState(
-  sessions: StoredSession[],
-  benchmarks: AdaptiveBenchmarksByInputLanguage,
-  feedback: AdaptiveSessionFeedbackByInputLanguage,
-): DictaSyncState {
-  return {
-    sessions: sessions.map((session) => normalizeSessionForPersistence(session)),
-    benchmarks,
-    feedback,
-  };
 }
 
 type StoredSessionRestoreFallbacks = {
