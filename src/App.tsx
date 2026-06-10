@@ -3,14 +3,13 @@ import type { FormEvent, KeyboardEvent } from 'react';
 import type { Session as SupabaseAuthSession } from '@supabase/supabase-js';
 import './App.css';
 import type {
-  BrowserTtsEnvironmentFingerprint, ControlAction, SessionTelemetry, Transcript, TtsChunkTelemetry, TtsPacingMode, } from './types/dictation';
+  BrowserTtsEnvironmentFingerprint, ControlAction, SessionTelemetry, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
 import type {
   AdaptiveTimelinePoint, AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics, InputMode, LanguageCode, ListeningTrainingIntent, LiveTelemetryFrame, PhrasePlaybackEvent, PhraseSize, } from './core/adaptive/types';
 import { configForDifficulty, type Difficulty } from './core/config';
 import {
   evaluateTranscriptAttempt, buildSessionPointsHelpText, computeSessionMaxPoints, formatSessionPointsForSession, formatSessionPointsLabel, } from './core/evaluation';
 import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
-import { normalizeWord } from './core/normalization';
 import {
   clampBrowserTtsDeDecisionToRecommendation, createEmptyInputLanguageBenchmark, getBrowserTtsDeBenchmarkRejectionReason, normalizeBenchmarkLanguage, } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildBenchmarkFilename, buildSelectedBenchmarkExportPayload } from './core/adaptive/benchmarkJson';
@@ -57,7 +56,7 @@ import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsS
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
 import type {
-  AdaptiveWorkspaceFocusAnchor, RepeatWordStat, } from './components/adaptive-workspace/types';
+  AdaptiveWorkspaceFocusAnchor } from './components/adaptive-workspace/types';
 import { AdaptiveBenchmarkSection } from './components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
 import { AdaptiveAdvancedDiagnostics } from './components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
 import { AdminWorkspace } from './components/admin/AdminWorkspace';
@@ -123,6 +122,7 @@ import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmiss
 import { countLocalChangesPendingSync, formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildAdminStorageSummary, buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
+import { buildRepeatWordStats, buildTextTranscript } from './app/repeatWordStats';
 import { buildSemanticPhrasesFromDictationScript, buildTtsSourceWords } from './app/dictationScriptSemanticPhrases';
 import { buildTtsPlaybackProfile, type TtsLiveSignal } from './app/ttsPlaybackProfile';
 import {
@@ -3915,89 +3915,6 @@ function derivePerformanceTrend(
   if (lagImproved || accuracyImproved) return 'improving';
   if (worsening) return 'declining';
   return 'stable';
-}
-
-function buildTextTranscript(text: string): Transcript | null {
-  const words = text
-    .split(/\s+/)
-    .map((word, index) => {
-      const normalized = normalizeWord(word);
-      return normalized
-        ? { word: normalized, start: index, end: index + 1 }
-        : null;
-    })
-    .filter((word): word is { word: string; start: number; end: number } => Boolean(word));
-
-  return words.length > 0 ? { words } : null;
-}
-
-function buildRepeatWordStats({
-  sessions,
-  inputMode,
-  language,
-  now,
-}: {
-  sessions: StoredSession[];
-  inputMode: InputMode;
-  language: BenchmarkLanguageButton;
-  now: Date;
-}): RepeatWordStat[] {
-  const cutoffMs = now.getTime() - 30 * 24 * 60 * 60 * 1000;
-  const withinWindow = sessions.filter((session) => {
-    if (session.status !== 'finished') return false;
-    if (mapSessionInputMode(session.inputMode) !== inputMode) return false;
-    const resolvedLanguage = resolveSessionLanguage(session);
-    if (resolvedLanguage !== language) return false;
-    const updatedAtMs = new Date(session.updatedAt).getTime();
-    return Number.isFinite(updatedAtMs) && updatedAtMs >= cutoffMs;
-  });
-
-  const missed = new Map<string, number>();
-  const typos = new Map<string, number>();
-
-  const bump = (bucket: Map<string, number>, word: string, delta = 1) => {
-    if (!word) return;
-    bucket.set(word, (bucket.get(word) ?? 0) + delta);
-  };
-
-  for (const session of withinWindow) {
-    const transcript = buildTextTranscript(session.ttsText);
-    const typedText = session.ttsPracticeText;
-
-    const evaluation = evaluateTranscriptAttempt(typedText, transcript);
-    if (evaluation.targetWords.length === 0) continue;
-
-    const matchedTargetIndices = new Set(evaluation.alignedPairs.map((pair) => pair.targetIndex));
-    for (let index = 0; index < evaluation.targetWords.length; index += 1) {
-      if (!matchedTargetIndices.has(index)) {
-        bump(missed, evaluation.targetWords[index] ?? '');
-      }
-    }
-
-    for (const pair of evaluation.alignedPairs) {
-      if (!pair.exact) {
-        bump(typos, evaluation.targetWords[pair.targetIndex] ?? '');
-      }
-    }
-  }
-
-  const words = new Set([...missed.keys(), ...typos.keys()]);
-  const combined: RepeatWordStat[] = [];
-  for (const word of words) {
-    const missedCount = missed.get(word) ?? 0;
-    const typoCount = typos.get(word) ?? 0;
-    const total = missedCount + typoCount;
-    if (total <= 0) continue;
-    combined.push({ word, total, missed: missedCount, typos: typoCount });
-  }
-
-  return combined
-    .sort((a, b) => {
-      if (b.total !== a.total) return b.total - a.total;
-      if (b.missed !== a.missed) return b.missed - a.missed;
-      return a.word.localeCompare(b.word);
-    })
-    .slice(0, 20);
 }
 
 function getTtsVoiceLang(language: TtsLanguage): string {
