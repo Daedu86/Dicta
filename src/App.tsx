@@ -354,11 +354,6 @@ type AdminFileInventory = {
   }>;
 };
 
-type LockedInputSummaryItem = {
-  label: string;
-  value: string;
-};
-
 type AdaptiveSemanticDebug = {
   semanticCutPenalty: number;
   unsafePauseCount: number;
@@ -3359,7 +3354,6 @@ function App() {
   const {
     inputSettingsReady,
     setupLocked,
-    canSubmitTtsSession,
     lockInputSettings,
     focusedTrainingControls,
   } = useTrainingSessionLifecycle({
@@ -3403,22 +3397,6 @@ function App() {
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
-  const lockedInputSummaryItems: LockedInputSummaryItem[] = [
-    { label: 'Source', value: ttsHasText ? `${ttsTranscript?.words.length ?? 0} words` : 'Not set' },
-    { label: 'Text length', value: ttsHasText ? `${ttsText.length} chars` : 'Not set' },
-    { label: 'Language', value: ttsLanguage ?? 'Not set' },
-    { label: 'Pacing', value: formatTtsPacingMode(ttsPacingMode) },
-    { label: 'Engine', value: 'Browser TTS' },
-    { label: 'Status', value: ttsStatus },
-  ];
-  const lockedInputSummary = setupLocked ? (
-    <LockedInputSetupSummary
-      inputLabel={activeInputLabel}
-      featureLabel={activeInputFeatureLabel}
-      items={lockedInputSummaryItems}
-      warning=""
-    />
-  ) : null;
   const adaptiveAdapters = buildAdaptiveAdapterCards();
   const selectedBenchmarkProfile =
     adaptiveBenchmarksByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage] ??
@@ -3668,8 +3646,6 @@ function App() {
   };
 
   void openAdaptiveExportsForActiveInput;
-  void canSubmitTtsSession;
-  void lockedInputSummary;
 
   const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
@@ -4102,37 +4078,6 @@ function Metric({ label, value, title }: { label: string; value: string; title?:
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
-  );
-}
-
-function LockedInputSetupSummary({
-  inputLabel,
-  featureLabel,
-  items,
-  warning,
-}: {
-  inputLabel: string;
-  featureLabel: string;
-  items: LockedInputSummaryItem[];
-  warning?: string;
-}) {
-  return (
-    <section className="locked-input-summary" aria-label="Locked input setup">
-      <div className="locked-input-summary-header">
-        <div>
-          <p className="dashboard-eyebrow">Locked input setup</p>
-          <h3>{inputLabel}</h3>
-          {featureLabel ? <p className="dashboard-meta">{featureLabel}</p> : null}
-        </div>
-        <span className="locked-input-status">Locked</span>
-      </div>
-      <div className="locked-input-summary-grid">
-        {items.map((item) => (
-          <Metric key={item.label} label={item.label} value={item.value || 'Not set'} />
-        ))}
-      </div>
-      {warning ? <p className="error locked-input-warning">{warning}</p> : null}
-    </section>
   );
 }
 
