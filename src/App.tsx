@@ -4797,7 +4797,7 @@ function buildTrainingSessionSubmissionMeta(
   sessions: StoredSession[],
   activeSession: StoredSession | null,
 ): TrainingSessionSubmissionMeta | null {
-  if (!activeSession || activeSession.status !== 'finished' || !hasSubmittedSessionStats(activeSession)) {
+  if (!activeSession || activeSession.status !== 'finished' || !isSubmittedFinishedAttempt(activeSession)) {
     return null;
   }
 
@@ -4825,7 +4825,7 @@ function buildTrainingSessionSubmissionMeta(
 
 
 function formatLeaderboardSessionStatus(session: StoredSession): string {
-  if (session.status === 'finished' && !hasSubmittedSessionStats(session)) {
+  if (session.status === 'finished' && !isSubmittedFinishedAttempt(session)) {
     return 'Not submitted';
   }
   return formatSessionStatus(session.status);
@@ -4838,14 +4838,10 @@ function getSessionDisplayTitle(session: StoredSession): string {
   return session.name || 'Untitled session';
 }
 
-function hasSubmittedSessionStats(session: StoredSession): boolean {
-  return isSubmittedFinishedAttempt(session);
-}
-
 function isSessionReadyForTraining(session: StoredSession): boolean {
   if (session.status === 'error') return false;
   if (session.status !== 'finished') return false;
-  return hasSubmittedSessionStats(session);
+  return isSubmittedFinishedAttempt(session);
 }
 
 type TtsPlaybackProfile = {
