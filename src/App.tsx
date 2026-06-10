@@ -530,7 +530,6 @@ function App() {
   const [retiredInputPlayerProgressTick, setRetiredInputPlayerProgressTick] = useState(0);
   const [retiredInputPacingMode, setRetiredInputPacingMode] = useState<TtsPacingMode>('balanced');
   const [retiredInputManualBias, setRetiredInputManualBias] = useState(0);
-  const retiredInputServiceReady = false;
   const toggleRetiredInputEnabled = async (): Promise<void> => undefined;
   const rewindRetiredInputPhrase = (): void => undefined;
   const adjustRetiredInputManualPace = (_delta: number): void => undefined;
@@ -1331,9 +1330,6 @@ function App() {
           points: ttsPracticeEvaluation.points,
         })
       : 0;
-  const retiredInputHasText = retiredInputText.trim().length > 0;
-  const retiredInputLanguageWarning = '';
-  const retiredInputTranscript = useMemo(() => buildTextTranscript(retiredInputText), [retiredInputText]);
   const activePoints = ttsPracticeEvaluation.points;
   const activeVisibleAccuracy = ttsVisibleAccuracy;
   const activeVisibleScore = ttsVisibleScore;
@@ -2084,13 +2080,7 @@ function App() {
   }
 
   function getActiveTypingLanguage(): TypingLanguage | null {
-    if (activeInputMode === 'input2') {
-      return ttsLanguage;
-    }
-    if (false) {
-      return retiredInputLanguage;
-    }
-    return null;
+    return activeInputMode === 'input2' ? ttsLanguage : null;
   }
 
   function resolveKeyboardProfile(): KeyboardProfile {
@@ -3641,30 +3631,20 @@ function App() {
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
-  const lockedInputSummaryItems: LockedInputSummaryItem[] =
-    activeInputMode === 'input2'
-      ? [
-          { label: 'Source', value: ttsHasText ? `${ttsTranscript?.words.length ?? 0} words` : 'Not set' },
-          { label: 'Text length', value: ttsHasText ? `${ttsText.length} chars` : 'Not set' },
-          { label: 'Language', value: ttsLanguage ?? 'Not set' },
-          { label: 'Pacing', value: formatTtsPacingMode(ttsPacingMode) },
-          { label: 'Engine', value: 'Browser TTS' },
-          { label: 'Status', value: ttsStatus },
-        ]
-      : [
-          { label: 'Source', value: retiredInputHasText ? `${retiredInputTranscript?.words.length ?? 0} words` : 'Not set' },
-          { label: 'Text length', value: retiredInputHasText ? `${retiredInputText.length} chars` : 'Not set' },
-          { label: 'Language', value: retiredInputLanguage ?? 'Not set' },
-          { label: 'Native support', value: false ? 'Experimental / not native' : 'Native' },
-          { label: 'Voice', value: retiredInputVoice.trim() || 'default' },
-          { label: 'Service', value: retiredInputServiceReady === false ? 'Offline' : retiredInputServiceReady ? 'Ready' : 'Not checked' },
-        ];
+  const lockedInputSummaryItems: LockedInputSummaryItem[] = [
+    { label: 'Source', value: ttsHasText ? `${ttsTranscript?.words.length ?? 0} words` : 'Not set' },
+    { label: 'Text length', value: ttsHasText ? `${ttsText.length} chars` : 'Not set' },
+    { label: 'Language', value: ttsLanguage ?? 'Not set' },
+    { label: 'Pacing', value: formatTtsPacingMode(ttsPacingMode) },
+    { label: 'Engine', value: 'Browser TTS' },
+    { label: 'Status', value: ttsStatus },
+  ];
   const lockedInputSummary = setupLocked ? (
     <LockedInputSetupSummary
       inputLabel={activeInputLabel}
       featureLabel={activeInputFeatureLabel}
       items={lockedInputSummaryItems}
-      warning={false ? retiredInputLanguageWarning : ''}
+      warning=""
     />
   ) : null;
   const adaptiveAdapters = buildAdaptiveAdapterCards();
