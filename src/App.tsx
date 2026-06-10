@@ -939,7 +939,7 @@ function App() {
       });
   }, [sessions]);
   const sessionsWithVoiceDuration = useMemo(
-    () => sessions.map((session) => ({ ...session, voiceDurationSec: getSessionVoiceDurationSec(session) })),
+    () => sessions.map((session) => ({ ...session, voiceDurationSec: estimateSessionVoiceDurationSec(session) })),
     [sessions],
   );
   const ttsPlaybackProfile = useMemo(
@@ -959,7 +959,7 @@ function App() {
     () =>
       buildLeaderboardSections(sessionsWithVoiceDuration, leaderboardLanguageView, {
         resolveSessionLanguage,
-        getSessionVoiceDurationSec,
+        getSessionVoiceDurationSec: estimateSessionVoiceDurationSec,
         buildRangeSummaryForLanguage,
         formatDuration,
       }),
@@ -4789,7 +4789,7 @@ function loadSessions(): StoredSession[] {
 
 
 function formatSessionPlaybackDuration(session: StoredSession): string {
-  const durationSec = getSessionVoiceDurationSec(session);
+  const durationSec = estimateSessionVoiceDurationSec(session);
   return durationSec !== null ? formatDuration(durationSec) : 'n/a';
 }
 
@@ -4821,10 +4821,6 @@ function buildTrainingSessionSubmissionMeta(
   };
 }
 
-
-function getSessionVoiceDurationSec(session: StoredSession): number | null {
-  return estimateSessionVoiceDurationSec(session);
-}
 
 
 
