@@ -80,7 +80,6 @@ import { applyBrowserTtsDeRecoveryPolicy, summarizeBrowserTtsDeRecoveryState } f
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
 import {
   chooseDiverseBrowserTtsVoiceURIForSession,
-  chooseRandomBrowserTtsVoiceURIForSession,
   resolveBrowserTtsSessionVoice,
 } from './inputs/browserTts/browserTtsVoices';
 import {
@@ -94,7 +93,6 @@ import { telemetryEquals } from './core/sessionTelemetryEquality';
 import {
   LANGUAGE_LABELS,
   SUPPORTED_LANGUAGES,
-  formatSupportedLanguage,
   getDefaultSpeechSynthesisLang,
   isSupportedLanguage,
   type SupportedLanguage,
@@ -155,8 +153,8 @@ import {
   formatSessionGenerationOrigin,
   formatSessionInputMode,
 } from './app/sessionDisplayFormatters';
-import { normalizeGeneratedDictationScriptTitle } from './app/generatedDictationScriptTitle';
 import { createDefaultMetrics, createGeneratedErrorSession, createStoredSession, getNextSessionIndex } from './app/sessionFactory';
+import { createSessionFromScript } from './app/sessionFromDictationScript';
 import { normalizeRestoredStoredSession as normalizeRestoredStoredSessionWithDependencies } from './app/sessionRestoreNormalization';
 import {
   coerceSessionInputMode,
@@ -4528,38 +4526,6 @@ function SessionDeviceIcon({ session }: { session: StoredSession }) {
 
 export default App;
 
-function createSessionFromScript(
-  script: DictationScript,
-  index: number,
-  inputMode: SessionInputMode,
-  options: { browserTtsVoices?: readonly SpeechSynthesisVoice[] } = {},
-): StoredSession {
-  const titledScript = normalizeGeneratedDictationScriptTitle(script, formatSupportedLanguage);
-  const text = titledScript.phrases.map((phrase) => phrase.text).join(' ');
-  const language = scriptLanguageToTtsLanguage(titledScript.language);
-  const session: StoredSession = {
-    ...createStoredSession(index, inputMode, titledScript.title),
-    inputSettingsLocked: true,
-    difficulty: titledScript.difficulty,
-    sessionSource: 'dictationScript',
-    dictationScript: titledScript,
-  };
-
-  
-
-  return {
-    ...session,
-    ttsText: text,
-    ttsLanguage: language,
-    ttsVoiceURI: chooseRandomBrowserTtsVoiceURIForSession(
-      inputMode,
-      options.browserTtsVoices ?? [],
-      language,
-      seededUnitInterval(`${inputMode}:${language}:${index}:${titledScript.title}`),
-    ),
-  };
-}
-
 function buildSemanticPhrasesFromDictationScript(script: DictationScript): SemanticPhrase[] {
   return script.phrases.map((phrase, index) => {
     const words = buildTtsSourceWords(phrase.text);
@@ -5087,15 +5053,6 @@ function buildRepeatWordStats({
 
 function getTtsVoiceLang(language: TtsLanguage): string {
   return getDefaultSpeechSynthesisLang(language);
-}
-
-function seededUnitInterval(seed: string): () => number {
-  let hash = 2166136261;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash ^= seed.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return () => (hash >>> 0) / 0x100000000;
 }
 
 function clamp(value: number, min: number, max: number): number {
