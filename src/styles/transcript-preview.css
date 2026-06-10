@@ -1,0 +1,156 @@
+.transcript-preview {
+  color: #37475b;
+  background: #f8fbff;
+  border: 1px solid #d7e4f1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.transcript-preview.long {
+  min-height: 480px;
+  line-height: 1.45;
+}
+
+.transcript-segment-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.transcript-segment {
+  border: 1px solid #d7e4f1;
+  border-radius: 12px;
+  padding: 0.7rem;
+  background: #fff;
+}
+
+.transcript-segment-active {
+  border-color: #5a94e8;
+  background: #eef5ff;
+  box-shadow: 0 0 0 2px rgba(90, 148, 232, 0.12);
+}
+
+.transcript-segment-time {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #173d71;
+}
+
+.transcript-segment p {
+  margin: 0;
+}
+
+.progress-wrap {
+  margin: -0.1rem 0 0.6rem;
+  min-height: 0.25rem;
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #40566f;
+  margin-bottom: 0.25rem;
+}
+
+.progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e7edf5;
+  border: 1px solid #d3deea;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b8cff, #39b778);
+  transition: width 0.25s ease;
+}
+
+.trend {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.trend-improving {
+  color: #0d6a2f;
+  background: #e8f7ed;
+  border-color: #8fddb0;
+}
+
+.trend-stable {
+  color: #4f5f74;
+  background: #eef3f8;
+  border-color: #d6e0ea;
+}
+
+.trend-declining {
+  color: #8b2a2a;
+  background: #fdeeee;
+  border-color: #efb5b5;
+}
+
+.repeat-words-table {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.repeat-words-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 64px 64px;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #24384f;
+}
+
+.repeat-words-header {
+  background: transparent;
+  border-color: transparent;
+  padding: 0 0.1rem;
+  color: #4e6076;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.repeat-words-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.widget-tools {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  z-index: 4;
+}
+
+.copy-help-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin-top: 0;
+  border-radius: 10px;
+  border: 1px solid #bfd2e8;
+  background: #eef4fb;
+  color: #274767;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1;
+}
