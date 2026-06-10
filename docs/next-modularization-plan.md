@@ -1,11 +1,12 @@
 # Next modularization pass
 
 Updated: 2026-06-10
-
 Branch: `product/input-2`
 
-## Current queue
+## CSS checkpoint
 
-1. Keep extracting `src/App.css` into `src/styles/*` modules.
-2. Keep `src/App.css` as the runtime entrypoint until the full stylesheet can be edited locally and verified.
-3. Next safe CSS cut: move the auth block from `src/App.css` into `src/styles/auth.css`, then import it through
+`src/styles/auth.css` exists as the first CSS module. Keep `src/App.css` as the runtime stylesheet until the full file can be edited locally and verified.
+
+## Next step
+
+Edit CSS locally: create `src/styles/index.css`, import CSS modules there, then replace `src/App.css` with ordered imports only after `npm run build` passes.
