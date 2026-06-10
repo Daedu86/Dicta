@@ -529,7 +529,6 @@ function App() {
   const [retiredInputChunks, setRetiredInputChunks] = useState<RetiredInputChunk[]>([]);
   const [retiredInputPlayerProgressTick, setRetiredInputPlayerProgressTick] = useState(0);
   const [retiredInputPacingMode, setRetiredInputPacingMode] = useState<TtsPacingMode>('balanced');
-  const [retiredInputSpeechRate, setRetiredInputSpeechRate] = useState(1);
   const [retiredInputManualBias, setRetiredInputManualBias] = useState(0);
   const retiredInputServiceReady = false;
   const toggleRetiredInputEnabled = async (): Promise<void> => undefined;
@@ -559,12 +558,9 @@ function App() {
   const retiredInputCancelledRef = useRef(false);
   const retiredInputSemanticPhraseAdvanceCountRef = useRef(0);
   const retiredInputSemanticPhraseReplayCountRef = useRef(0);
-  const applyRetiredInputPerformanceSample = (): void => undefined;
-  const applyRetiredInputPerformanceSampleRef = useRef<() => void>(() => undefined);
   void retiredInputExpanded;
   void retiredInputManualBias;
   void estimateRetiredInputSpokenWordIndex;
-  void applyRetiredInputPerformanceSample;
   useEffect(() => {
     if (browserTtsVoices.length === 0) return;
     setSessions((prev) => {
@@ -1414,30 +1410,6 @@ function App() {
   ]);
 
   useEffect(() => {
-    if (true || activeSessionFinished || !retiredInputHasText || retiredInputStatus !== 'playing') {
-      return;
-    }
-
-    const id = window.setInterval(() => {
-      applyRetiredInputPerformanceSampleRef.current();
-    }, config.tickMs);
-
-    return () => window.clearInterval(id);
-  }, [
-    activeInputMode,
-    config.tickMs,
-    retiredInputHasText,
-    retiredInputPracticeEvaluation.lastMatchedTargetIndex,
-    retiredInputPracticeEvaluation.points,
-    retiredInputPracticeWords.length,
-    retiredInputSpeechRate,
-    retiredInputStatus,
-    retiredInputTranscript,
-    retiredInputVisibleAccuracy,
-    sessionStatus,
-  ]);
-
-  useEffect(() => {
     if (!activeSession) return;
 
     hydratingSessionIdRef.current = activeSession.id;
@@ -1461,7 +1433,6 @@ function App() {
     setTtsPacingMode('balanced');
     setTtsSpeechRate(1);
     setRetiredInputPacingMode('balanced');
-    setRetiredInputSpeechRate(1);
     setRetiredInputManualBias(0);
     setRunning(false);
     const hydratedMetrics = activeSession.status === 'finished' ? activeSession.metrics : null;
@@ -1673,7 +1644,6 @@ function App() {
     setTtsPacingMode('balanced');
     setTtsSpeechRate(1);
     setRetiredInputPacingMode('balanced');
-    setRetiredInputSpeechRate(1);
     setRetiredInputManualBias(0);
     ttsStartedAtMsRef.current = null;
     ttsChunkStartMsRef.current = null;
