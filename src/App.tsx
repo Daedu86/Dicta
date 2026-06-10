@@ -261,6 +261,7 @@ import { formatSessionDate, formatSubmittedAt } from './app/sessionDateFormatter
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
 import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatters';
+import { formatDuration, formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -4472,14 +4473,6 @@ function RuntimeMetricsPanel({
   );
 }
 
-function formatDuration(seconds: number): string {
-  const roundedSeconds = Math.max(0, Math.round(seconds));
-  if (roundedSeconds < 60) return `${roundedSeconds}s`;
-  const minutes = Math.floor(roundedSeconds / 60);
-  const remaining = roundedSeconds % 60;
-  return `${minutes}m ${remaining}s`;
-}
-
 function formatSupabaseSyncState(status: SupabaseSyncStatus): string {
   if (!status.enabled) return 'Off';
   if (status.state === 'pulling') return 'Pulling';
@@ -4790,11 +4783,6 @@ function loadSessions(): StoredSession[] {
   }
 }
 
-
-function formatSessionPlaybackDuration(session: StoredSession): string {
-  const durationSec = estimateSessionVoiceDurationSec(session);
-  return durationSec !== null ? formatDuration(durationSec) : 'n/a';
-}
 
 function buildTrainingSessionSubmissionMeta(
   sessions: StoredSession[],
