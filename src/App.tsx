@@ -1338,42 +1338,16 @@ function App() {
   const retiredInputHasText = retiredInputText.trim().length > 0;
   const retiredInputLanguageWarning = '';
   const retiredInputTranscript = useMemo(() => buildTextTranscript(retiredInputText), [retiredInputText]);
-  const retiredInputPracticeEvaluation = useMemo(
-    () => evaluateTranscriptAttempt(retiredInputPracticeText, retiredInputTranscript),
-    [retiredInputPracticeText, retiredInputTranscript],
-  );
-  const retiredInputPracticeWords = retiredInputPracticeEvaluation.typedWords;
-  const retiredInputVisibleAccuracy =
-    retiredInputPracticeWords.length > 0 && (retiredInputTranscript?.words.length ?? 0) > 0 ? retiredInputPracticeEvaluation.accuracy : 0;
-  const retiredInputVisibleScore =
-    retiredInputPracticeWords.length > 0 && (retiredInputTranscript?.words.length ?? 0) > 0
-      ? computeSessionScore({
-          accuracy: retiredInputVisibleAccuracy,
-          lagSec,
-          wpm,
-          rate,
-          points: retiredInputPracticeEvaluation.points,
-        })
-      : 0;
-  const activePoints =
-    activeInputMode === 'input2'
-      ? ttsPracticeEvaluation.points
-      : retiredInputPracticeEvaluation.points;
-  const activeVisibleAccuracy =
-    activeInputMode === 'input2'
-      ? ttsVisibleAccuracy
-      : retiredInputVisibleAccuracy;
-  const activeVisibleScore =
-    activeInputMode === 'input2'
-      ? ttsVisibleScore
-      : retiredInputVisibleScore;
+  const activePoints = ttsPracticeEvaluation.points;
+  const activeVisibleAccuracy = ttsVisibleAccuracy;
+  const activeVisibleScore = ttsVisibleScore;
   const activeMaxPoints = useMemo(
     () =>
       computeSessionMaxPoints({
         inputMode: activeInputMode,
         ttsText,
       }),
-    [activeInputMode, retiredInputText, ttsText],
+    [activeInputMode, ttsText],
   );
   const activeLivePointsLabel = formatSessionPointsLabel(activePoints, activeMaxPoints);
   const activeLiveScoreHelpText = buildSessionScoreHelpText({
