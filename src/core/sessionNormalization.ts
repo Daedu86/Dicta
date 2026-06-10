@@ -24,9 +24,6 @@ type UnknownRecord = Record<string, unknown>;
 type CommonRestoredSessionFields = {
   ttsText: string;
   ttsPracticeText: string;
-  retiredInputText: string;
-  retiredInputPracticeText: string;
-  retiredInputChunks: unknown[];
   metrics: UnknownRecord;
 };
 
@@ -62,9 +59,6 @@ function normalizeCommonRestoredSessionFields(session: unknown): CommonRestoredS
   return {
     ttsText: stringOr(input.ttsText),
     ttsPracticeText: stringOr(input.ttsPracticeText),
-    retiredInputText: stringOr(input.retiredInputText),
-    retiredInputPracticeText: stringOr(input.retiredInputPracticeText),
-    retiredInputChunks: Array.isArray(input.retiredInputChunks) ? input.retiredInputChunks : [],
     metrics: {
       ...metrics,
       controllerState: typeof metrics.controllerState === 'string' ? metrics.controllerState : 'hold',

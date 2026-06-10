@@ -248,19 +248,6 @@ type StoredSession = {
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 
-type RetiredInputChunk = {
-  id?: string;
-  text?: string;
-  sourceText?: string;
-  audioUrl?: string;
-  durationMs?: number;
-  durationSec?: number;
-  wordCount?: number;
-  charCount?: number;
-  pacingMode?: TtsPacingMode;
-  rate?: number;
-  [key: string]: unknown;
-};
 type SessionInputMode = 'input2';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
