@@ -1,0 +1,8 @@
+.dashboard-empty-wrap {
+  min-height: 150px;
+  height: 100%;
+}
+
+.dashboard-insights {
+  grid-column: 1 / -1;
+}
