@@ -214,6 +214,13 @@ import {
   persistMetricsRangeView,
 } from './app/uiPreferenceStorage';
 import {
+  loadOllamaDefaultModel,
+  loadOpenRouterDefaultModel,
+  OLLAMA_RECOMMENDED_DEFAULT_MODEL,
+  persistOllamaDefaultModel,
+  persistOpenRouterDefaultModel,
+} from './app/modelPreferenceStorage';
+import {
   DEFAULT_LEADERBOARD_SECTION_EXPANDED,
   LEADERBOARD_RANGE_DEFINITIONS,
   LEADERBOARD_SECTION_DEFINITIONS,
@@ -228,9 +235,6 @@ import type { SessionInputMode } from './core/sessionInputModes';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
-const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
-const OLLAMA_DEFAULT_MODEL_STORAGE_KEY = 'dicta.ollamaDefaultModel.v1';
-const OLLAMA_RECOMMENDED_DEFAULT_MODEL = 'gemma3:27b-cloud';
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 const DICTA_BUILD_INFO = __DICTA_BUILD_INFO__;
@@ -1054,26 +1058,8 @@ function App() {
   }, [openRouterAccessState, showLeaderboardWorkspace, workspaceMode]);
 
   useEffect(() => {
-    const storedModel = window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY);
-    if (storedModel) {
-      try {
-        setOpenRouterDefaultModel(JSON.parse(storedModel) as string);
-      } catch {
-        setOpenRouterDefaultModel(storedModel);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const storedModel = window.localStorage.getItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY);
-    if (storedModel) {
-      try {
-        const parsed = JSON.parse(storedModel) as string;
-        setOllamaDefaultModel(parsed.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL);
-      } catch {
-        setOllamaDefaultModel(storedModel.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL);
-      }
-    }
+    setOpenRouterDefaultModel(loadOpenRouterDefaultModel());
+    setOllamaDefaultModel(loadOllamaDefaultModel());
   }, []);
 
   useEffect(() => {
@@ -1513,7 +1499,7 @@ function App() {
       setOpenRouterStatus('ready');
       if (!assignedOpenRouterModel && !openRouterDefaultModel && freeModels.length > 0) {
         setOpenRouterDefaultModel(freeModels[0].id);
-        window.localStorage.setItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(freeModels[0].id));
+        persistOpenRouterDefaultModel(freeModels[0].id);
       }
     } catch (err) {
       setOpenRouterModels([]);
@@ -1560,7 +1546,7 @@ function App() {
       if (!ollamaDefaultModel.trim()) {
         const nextDefault = nextModels[0]?.id ?? OLLAMA_RECOMMENDED_DEFAULT_MODEL;
         setOllamaDefaultModel(nextDefault);
-        window.localStorage.setItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(nextDefault));
+        persistOllamaDefaultModel(nextDefault);
       }
     } catch (err) {
       setOllamaModels([]);
@@ -3071,28 +3057,8 @@ function App() {
       setAdaptiveSessionFeedbackByInputLanguage(loadAdaptiveSessionFeedback());
       setDictaLanguageView(loadPersistedDictaLanguageView());
 
-      const storedModel = window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY);
-      if (storedModel) {
-        try {
-          setOpenRouterDefaultModel(JSON.parse(storedModel) as string);
-        } catch {
-          setOpenRouterDefaultModel(storedModel);
-        }
-      } else {
-        setOpenRouterDefaultModel('');
-      }
-
-      const storedOllamaModel = window.localStorage.getItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY);
-      if (storedOllamaModel) {
-        try {
-          const parsed = JSON.parse(storedOllamaModel) as string;
-          setOllamaDefaultModel(parsed.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL);
-        } catch {
-          setOllamaDefaultModel(storedOllamaModel.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL);
-        }
-      } else {
-        setOllamaDefaultModel(OLLAMA_RECOMMENDED_DEFAULT_MODEL);
-      }
+      setOpenRouterDefaultModel(loadOpenRouterDefaultModel());
+      setOllamaDefaultModel(loadOllamaDefaultModel());
 
       showLeaderboardWorkspace();
       setExportMessage(`Imported ${incoming.length} Dicta storage key(s). Leaderboard and adaptive profiles restored in this browser.`);
@@ -3979,7 +3945,7 @@ function App() {
                 authHeaders={getAuthHeaders()}
                 onSetDefaultModel={(value) => {
                   setOpenRouterDefaultModel(value);
-                  window.localStorage.setItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(value));
+                  persistOpenRouterDefaultModel(value);
                 }}
                 models={openRouterModels}
                 status={openRouterStatus}
@@ -4028,7 +3994,7 @@ function App() {
                 onSetDefaultModel={(value) => {
                   const nextModel = value.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL;
                   setOllamaDefaultModel(nextModel);
-                  window.localStorage.setItem(OLLAMA_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(nextModel));
+                  persistOllamaDefaultModel(nextModel);
                 }}
                 onRefreshModels={refreshOllamaModels}
                 onBackToTraining={showLeaderboardWorkspace}
