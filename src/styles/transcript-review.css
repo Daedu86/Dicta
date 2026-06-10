@@ -1,0 +1,122 @@
+.transcript-review-card {
+  gap: 1rem;
+}
+
+.transcript-review-header {
+  display: grid;
+  gap: 1rem;
+}
+
+.transcript-review-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.transcript-review-tools {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.transcript-review-tools .widget-tools {
+  position: static;
+}
+
+.transcript-review-description {
+  margin: -0.35rem 0 0;
+  color: #4e6076;
+}
+
+.transcript-review-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.transcript-review-analytics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.transcript-review-analytics .metric {
+  min-height: 82px;
+}
+
+.word-review-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  max-height: 360px;
+  overflow: auto;
+  padding: 0.75rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+
+.word-review-chip {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 74px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 14px;
+  background: #fff;
+  color: #182338;
+}
+
+.word-review-chip small {
+  width: fit-content;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.word-review-chip strong {
+  font-size: 0.98rem;
+  line-height: 1.15;
+}
+
+.word-review-chip em {
+  color: #4e6076;
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+.word-review-correct {
+  border-color: #9ad8b3;
+  background: #ecf9f0;
+}
+
+.word-review-correct small {
+  color: #0d6a2f;
+  background: #ccefd8;
+}
+
+.word-review-fuzzy {
+  border-color: #efd48b;
+  background: #fff8df;
+}
+
+.word-review-fuzzy small {
+  color: #805500;
+  background: #f7e4a9;
+}
+
+.word-review-extra {
+  border-color: #efb5b5;
+  background: #fff0f0;
+}
+
+.word-review-extra small {
+  color: #8b2a2a;
+  background: #f7d2d2;
+}
+
+.insight-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #24384f;
+  line-height: 1.55;
+}
