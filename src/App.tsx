@@ -145,7 +145,7 @@ import {
   normalizeRestoredSessionStatus,
 } from './core/sessionStatusNormalization';
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
-import { sessionSnapshotJson } from './core/sessionSnapshot';
+import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
   DICTA_SYNC_TABLE,
@@ -5630,28 +5630,6 @@ function seededUnitInterval(seed: string): () => number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function downloadSessionSnapshot(session: StoredSession): void {
-  const payload = sessionSnapshotJson(session);
-  const blob = new Blob([payload], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `dicta-session-${session.id}.json`;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-async function copySessionSnapshot(
-  session: StoredSession,
-  setExportMessage: React.Dispatch<React.SetStateAction<string>>,
-): Promise<void> {
-  await navigator.clipboard.writeText(sessionSnapshotJson(session));
-  setExportMessage(`Session JSON copied for ${session.name || 'session'}.`);
 }
 
 declare global {
