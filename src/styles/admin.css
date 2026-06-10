@@ -1,0 +1,144 @@
+.admin-workspace {
+  display: grid;
+  gap: 1rem;
+  min-height: 640px;
+}
+
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-card {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.dashboard-card.admin-card {
+  grid-template-rows: auto;
+  min-height: 0;
+}
+
+.admin-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.admin-card-header h3,
+.admin-session-card h4 {
+  margin: 0;
+}
+
+.admin-card-header p,
+.admin-session-card p {
+  margin: 0.25rem 0 0;
+  color: #4e6076;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.admin-table,
+.admin-session-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(90px, 0.45fr) minmax(0, 1.4fr);
+  gap: 0.65rem;
+  align-items: start;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #24384f;
+}
+
+.admin-table-header {
+  color: #4e6076;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: transparent;
+}
+
+.admin-table-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-table-row small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #5d7083;
+  font-size: 0.75rem;
+}
+
+.admin-access-table {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-access-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(130px, 0.7fr) minmax(180px, 1fr) minmax(110px, 0.55fr) minmax(90px, 0.45fr);
+  gap: 0.65rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #24384f;
+}
+
+.admin-access-row span,
+.admin-access-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-access-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.admin-access-toggle input {
+  width: auto;
+}
+
+.admin-session-card {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(0, 1.5fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.8rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fcfdff, #f6f9fc);
+}
+
+.admin-session-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
