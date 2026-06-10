@@ -259,6 +259,7 @@ import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
 import { formatSessionDate, formatSubmittedAt } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
+import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -4832,12 +4833,6 @@ function formatLeaderboardSessionStatus(session: StoredSession): string {
   return formatSessionStatus(session.status);
 }
 
-function getSessionDisplayTitle(session: StoredSession): string {
-  if (session.dictationScript) {
-    return normalizeGeneratedDictationScriptTitle(session.dictationScript, formatSupportedLanguage).title;
-  }
-  return session.name || 'Untitled session';
-}
 
 
 type TtsPlaybackProfile = {
