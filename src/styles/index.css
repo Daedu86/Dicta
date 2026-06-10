@@ -19,6 +19,7 @@
 @import './adaptive-workspace.css';
 @import './adaptive-timeline.css';
 @import './adaptive-charts.css';
+@import './bottom-metrics.css';
 @import './dashboard.css';
 @import './dashboard-support.css';
 @import './today-summary.css';
