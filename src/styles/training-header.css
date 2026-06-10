@@ -1,0 +1,110 @@
+.training-header {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #295a95;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(24, 59, 105, 0.96), rgba(17, 46, 82, 0.93));
+  box-shadow: 0 14px 36px -30px rgba(8, 20, 42, 0.95);
+}
+
+.training-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.training-header-brand h1,
+.training-header-brand p {
+  margin: 0;
+}
+
+.training-header-brand h1 {
+  color: #eaf3ff;
+  font-size: 1.1rem;
+}
+
+.training-header-brand p {
+  color: #a8bdd7;
+  font-size: 0.82rem;
+}
+
+.training-header-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #081c33;
+}
+
+.training-header-button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.training-header-language-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.training-header-language-tab {
+  width: 2.35rem;
+  min-height: 2.15rem;
+  border: 1px solid rgba(168, 189, 215, 0.55);
+  border-radius: 8px;
+  background: rgba(8, 28, 51, 0.38);
+  color: #d8e8fb;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.training-header-language-tab:hover {
+  border-color: #eaf3ff;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.training-header-language-tab-active {
+  border-color: #f59e0b;
+  background: #f59e0b;
+  color: #121826;
+}
+
+@media (max-width: 560px) {
+  .training-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .training-header-brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .training-header-button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .training-header-language-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: stretch;
+  }
+
+  .training-header-language-tab {
+    flex: 1 1 0;
+    width: auto;
+  }
+}
