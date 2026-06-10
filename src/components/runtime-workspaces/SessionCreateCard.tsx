@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 
 type SessionSource = 'plainText' | 'dictationScript';
+// Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
 type SupportedCreationInputMode = 'input2';
 
 type SessionQuotaStatus = {

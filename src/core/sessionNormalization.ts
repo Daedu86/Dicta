@@ -1,6 +1,7 @@
 import type { SessionTelemetry } from '../types/dictation';
 import { isSupportedLanguage, type SupportedLanguage } from './languages';
 
+// Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
 export type SessionInputMode = 'input2' | string;
 export type Input2Language = SupportedLanguage;
 

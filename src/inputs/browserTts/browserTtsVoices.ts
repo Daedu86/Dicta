@@ -7,6 +7,7 @@ export type BrowserTtsVoiceLike = {
 };
 
 export type BrowserTtsLanguage = SupportedLanguage;
+// Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
 export type BrowserTtsSessionInputMode = 'input2' | string;
 
 export type BrowserTtsVoiceResolution<TVoice extends BrowserTtsVoiceLike> = {

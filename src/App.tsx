@@ -248,6 +248,7 @@ type StoredSession = {
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 
+// Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
 type SessionInputMode = 'input2';
 type SessionSource = 'plainText' | 'dictationScript';
 type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
@@ -1833,7 +1834,7 @@ function App() {
       setDictationScriptValidation({
         ok: false,
         script: null,
-        errors: ['inputMode must match input2 or browser-tts.'],
+        errors: ['inputMode must be browser-tts.'],
       });
       return;
     }
@@ -1863,7 +1864,7 @@ function App() {
     const generationOrigin = options.generationOrigin ?? 'openrouter';
     const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
     if (!inputMode) {
-      setOpenRouterError('Generated script inputMode must match input2 or browser-tts.');
+      setOpenRouterError('Generated script inputMode must be browser-tts.');
       return;
     }
 
