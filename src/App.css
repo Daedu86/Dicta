@@ -1553,40 +1553,6 @@ textarea[readonly] {
   }
 }
 
-.adaptive-timeline-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.28rem;
-  min-height: 28px;
-  align-items: center;
-}
-
-.adaptive-timeline-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: #5a94e8;
-  border: 1px solid rgba(16, 47, 99, 0.22);
-}
-
-.adaptive-timeline-dot-pause,
-.adaptive-timeline-dot-defer_pause {
-  background: #e6a23c;
-}
-
-.adaptive-timeline-dot-replay {
-  background: #c44545;
-}
-
-.adaptive-timeline-dot-flow,
-.adaptive-timeline-dot-flow_entered {
-  background: #17825c;
-}
-
-.adaptive-timeline-dot-support,
-.adaptive-timeline-dot-support_entered {
-  background: #6b7fd7;
-}
 
 .line-chart {
   display: grid;
