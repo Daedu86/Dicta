@@ -21,11 +21,11 @@ Do not start implementation by guessing at a file. First map the request to the 
 
 ## Project Snapshot
 
-Dicta trains listening and typing across 2 input modes and 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 30 days.
+Dicta trains listening and typing with one canonical Browser TTS input across 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 30 days.
 
 Inputs:
 
-- `browser-tts` / input 2 / browser SpeechSynthesis
+- `browser-tts` / Browser TTS / browser SpeechSynthesis
 
 Languages:
 
@@ -60,13 +60,13 @@ Before finishing code changes, run `npm run test` and `npm run build` unless the
 
 ## Adaptive Pace Layer Rules
 
-The Adaptive Pace Layer is shared across 2 inputs and 5 languages. Benchmarks, telemetry, recommendations, and session feedback are scoped per:
+The Adaptive Pace Layer is shared across the Browser TTS input and 5 languages. Benchmarks, telemetry, recommendations, and session feedback are scoped per:
 
 `(inputMode, language)`
 
 Inputs:
 
-- `browser-tts` / input 2
+- `browser-tts` / Browser TTS
 
 Languages:
 

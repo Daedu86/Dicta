@@ -12,7 +12,7 @@ After reading them, propose changes from the architecture rather than from an is
 
 ## Product Matrix
 
-Dicta is built around 2 input modes x 5 languages.
+Dicta is built around one canonical Browser TTS input x 5 languages.
 
 Inputs:
 

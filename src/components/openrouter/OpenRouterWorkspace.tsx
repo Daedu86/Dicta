@@ -518,7 +518,7 @@ export function OpenRouterWorkspace({
   const exportHasSessionFeedback = Boolean(exportSessionFeedback);
   const exportLanguage: BenchmarkLanguageButton = isSupportedLanguage(exportProfile.language) ? exportProfile.language : 'en';
   const profileInputModeOptions: Array<{ value: InputMode; label: string; description: string }> = [
-    { value: 'browser-tts', label: 'Input #2', description: 'Browser TTS' },
+    { value: 'browser-tts', label: 'Browser TTS', description: 'Browser SpeechSynthesis' },
   ];
   const generateInputModeOptions = LOCAL_DEV_FEATURES_AVAILABLE
     ? profileInputModeOptions

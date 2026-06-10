@@ -3548,7 +3548,7 @@ function App() {
   const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
   const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) ?? null : null;
   const insightsDiagnosticInputOptions: Array<{ inputMode: InputMode; label: string }> = [
-    { inputMode: 'browser-tts', label: 'Input 2' },
+    { inputMode: 'browser-tts', label: 'Browser TTS' },
   ];
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedProgressLabel =

@@ -17,7 +17,7 @@ If a change updates behavior, keep `AGENTS.md`, `README.md`, and `docs/architect
 
 ## Product Overview
 
-Dicta is an invite/admin-managed dictation trainer for practicing listening and typing across **2 inputs x 5 languages**.
+Dicta is an invite/admin-managed dictation trainer for practicing listening and typing with **Browser TTS x 5 languages**.
 
 Languages:
 
@@ -29,7 +29,7 @@ Languages:
 
 Input modes:
 
-- Input #2 / `browser-tts`: browser `SpeechSynthesis`, adaptive semantic chunking, and browser/OS voice behavior.
+- Browser TTS / `browser-tts`: browser `SpeechSynthesis`, adaptive semantic chunking, and browser/OS voice behavior.
 
 The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, recommendation, and session feedback package is scoped by `(inputMode, language)`, so `browser-tts/de` and `browser-tts/en` are different adaptive profiles. The adaptive benchmark rolling window is **30 days** (`rollingWindowDays: 30`), and dashboard/leaderboard "Month" views also mean the last 30 days.
 
