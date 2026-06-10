@@ -13,5 +13,6 @@
 @import './training-session.css';
 @import './training-interaction.css';
 @import './perf-overlay.css';
+@import './shared-controls.css';
 @import './training-responsive.css';
 @import './workspace-responsive.css';
