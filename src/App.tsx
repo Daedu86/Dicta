@@ -149,6 +149,12 @@ import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnaps
 import { normalizeGeneratedDictationScriptTitle } from './app/generatedDictationScriptTitle';
 import { createDefaultMetrics, createGeneratedErrorSession, createStoredSession } from './app/sessionFactory';
 import {
+  coerceSessionInputMode,
+  isSessionStatus,
+  mapDictationScriptInputModeToSession,
+  scriptLanguageToTtsLanguage,
+} from './app/sessionRestoreGuards';
+import {
   copyDictaLocalStorage,
   downloadDictaLocalStorage,
   getDictaLocalStorageEntries,
@@ -4741,17 +4747,9 @@ function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
   });
 }
 
-function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMode | null {
-  const normalized = String(inputMode).trim().toLowerCase().replace(/_/g, '-');
-  if (normalized === BROWSER_TTS_SESSION_INPUT_MODE || normalized === 'browser-tts' || normalized === 'browsertts') return BROWSER_TTS_SESSION_INPUT_MODE;
-  
-  return null;
-}
 
-function scriptLanguageToTtsLanguage(language: string): TtsLanguage {
-  if (isSupportedLanguage(language)) return language;
-  return 'en';
-}
+
+
 
 function buildSemanticPhrasesFromDictationScript(script: DictationScript): SemanticPhrase[] {
   return script.phrases.map((phrase, index) => {
@@ -4890,13 +4888,9 @@ function getSessionVoiceDurationSec(session: StoredSession): number | null {
   return estimateSessionVoiceDurationSec(session);
 }
 
-function isSessionStatus(value: unknown): value is SessionStatus {
-  return value === 'ready' || value === 'running' || value === 'paused' || value === 'finished' || value === 'error';
-}
 
-function coerceSessionInputMode(value: unknown): SessionInputMode | null {
-  return value === BROWSER_TTS_SESSION_INPUT_MODE ? value : null;
-}
+
+
 
 function sameBrowserTtsEnvironment(
   left: BrowserTtsEnvironmentFingerprint | null | undefined,
