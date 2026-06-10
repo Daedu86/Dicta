@@ -91,6 +91,7 @@ import { sameBrowserTtsEnvironment } from './inputs/browserTts/browserTtsEnviron
 import { trackAction, trackSample } from './core/telemetry';
 import { cloneTelemetry, isSubmittedFinishedAttempt, normalizeSessionForPersistence } from './core/sessionNormalization';
 import { telemetryEquals } from './core/sessionTelemetryEquality';
+import { countTelemetrySamples } from './core/sessionTelemetrySummary';
 import {
   LANGUAGE_LABELS,
   SUPPORTED_LANGUAGES,
@@ -4672,13 +4673,6 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
   });
 }
 
-function countTelemetrySamples(telemetry: SessionTelemetry): number {
-  return Math.max(
-    telemetry.lagSeries.length,
-    telemetry.wpmSeries.length,
-    telemetry.accuracySeries.length,
-  );
-}
 
 function SessionDeviceIcon({ session }: { session: StoredSession }) {
   const icon = formatCreatedDeviceIcon(session.createdDeviceKind);
