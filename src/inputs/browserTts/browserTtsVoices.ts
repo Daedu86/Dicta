@@ -7,8 +7,8 @@ export type BrowserTtsVoiceLike = {
 };
 
 export type BrowserTtsLanguage = SupportedLanguage;
-// Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
-export type BrowserTtsSessionInputMode = 'input2' | string;
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../../core/sessionInputModes';
+import type { SessionInputMode as BrowserTtsSessionInputMode } from '../../core/sessionInputModes';
 
 export type BrowserTtsVoiceResolution<TVoice extends BrowserTtsVoiceLike> = {
   voice: TVoice | null;
@@ -42,7 +42,7 @@ export function chooseRandomBrowserTtsVoiceURIForSession<TVoice extends BrowserT
   language: BrowserTtsLanguage | null | undefined,
   random: () => number = Math.random,
 ): string | null {
-  if (inputMode !== 'input2') return null;
+  if (inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return null;
   return chooseRandomBrowserTtsVoiceURI(voices, language, random);
 }
 

@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react';
 
 type SessionSource = 'plainText' | 'dictationScript';
-// Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
-type SupportedCreationInputMode = 'input2';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../../core/sessionInputModes';
+import type { BrowserTtsSessionInputMode as SupportedCreationInputMode } from '../../core/sessionInputModes';
 
 type SessionQuotaStatus = {
   blocked: boolean;
@@ -115,7 +115,7 @@ export function SessionCreateCard({
             <button
               type="button"
               className="secondary-button"
-              onClick={() => onCreateSessionWithMode('input2')}
+              onClick={() => onCreateSessionWithMode(BROWSER_TTS_SESSION_INPUT_MODE)}
               disabled={!canCreateSessionFromDialog}
               title={sessionQuotaStatus.blocked ? sessionQuotaStatus.message : undefined}
             >

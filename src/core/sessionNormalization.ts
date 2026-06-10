@@ -2,7 +2,8 @@ import type { SessionTelemetry } from '../types/dictation';
 import { isSupportedLanguage, type SupportedLanguage } from './languages';
 
 // Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
-export type SessionInputMode = 'input2' | string;
+import { BROWSER_TTS_SESSION_INPUT_MODE } from './sessionInputModes';
+import type { SessionInputMode } from './sessionInputModes';
 export type Input2Language = SupportedLanguage;
 
 export type SessionLanguageFields = {
@@ -149,7 +150,7 @@ export function isSubmittedFinishedAttempt(payload: unknown): boolean {
   if (session.status !== 'finished') return false;
 
   if (hasFinalizedAttemptTelemetry(session.telemetry)) return true;
-  if (session.inputMode !== 'input2') return false;
+  if (session.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return false;
 
   const metrics = asRecord(session.metrics);
   const points = numberOr(metrics.points, 0);
@@ -168,7 +169,7 @@ export function normalizeSessionLanguages(
 ): {
   ttsLanguage: SessionLanguageFields['ttsLanguage'] | null;
 } {
-  if (session.inputMode === 'input2') {
+  if (session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE) {
     return { ttsLanguage: session.ttsLanguage };
   }
   return { ttsLanguage: null };
@@ -176,7 +177,7 @@ export function normalizeSessionLanguages(
 
 export function normalizeSessionModeData(session: unknown): SessionModeData {
   const input = asRecord(session);
-  const inputMode = typeof input.inputMode === 'string' ? input.inputMode : 'input2';
+  const inputMode = typeof input.inputMode === 'string' ? input.inputMode : BROWSER_TTS_SESSION_INPUT_MODE;
 
   const existingModeData = input.modeData && typeof input.modeData === 'object' ? (input.modeData as UnknownRecord) : null;
   const existingInput2 =
@@ -189,7 +190,7 @@ export function normalizeSessionModeData(session: unknown): SessionModeData {
 
   return {
     input2:
-      inputMode === 'input2'
+      inputMode === BROWSER_TTS_SESSION_INPUT_MODE
         ? {
             type: 'builtInTts',
             language: input2Language,

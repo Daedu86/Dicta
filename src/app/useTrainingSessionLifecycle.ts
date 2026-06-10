@@ -1,3 +1,4 @@
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../core/sessionInputModes';
 import { useCallback, useMemo } from 'react';
 import type { ControlAction } from '../types/dictation';
 
@@ -84,7 +85,7 @@ export function deriveTrainingLifecycleState({
   ttsHasText,
   inputSettingsLocked,
 }: TrainingLifecycleStateInput): TrainingLifecycleDerivedState {
-  const isBrowserTts = activeInputMode === 'input2';
+  const isBrowserTts = activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE;
   const inputSettingsReady = isBrowserTts && ttsHasText;
   const setupLocked = activeSessionFinished || sessionStatus === 'error' || inputSettingsLocked;
   const canSubmitTtsSession = isBrowserTts && !activeSessionFinished && sessionStatus !== 'error' && ttsHasText;
@@ -121,7 +122,7 @@ export function useTrainingSessionLifecycle({
   }, [actions, derivedState.inputSettingsReady, state.inputSettingsLocked]);
 
   const focusedTrainingControls = useMemo<FocusedTrainingLifecycleControls>(() => {
-    const canPlay = state.activeInputMode === 'input2' && state.ttsHasText && state.ttsStatus !== 'playing' && !state.activeSessionFinished;
+    const canPlay = state.activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE && state.ttsHasText && state.ttsStatus !== 'playing' && !state.activeSessionFinished;
     const playLabel = state.ttsStatus === 'paused' ? 'Resume' : 'Play';
 
     return {

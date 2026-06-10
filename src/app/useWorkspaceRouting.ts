@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { SessionInputMode } from '../core/sessionNormalization';
+import type { SessionInputMode } from '../core/sessionInputModes';
 
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 

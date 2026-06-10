@@ -1,3 +1,4 @@
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../../core/sessionInputModes';
 import { useState, type KeyboardEvent } from 'react';
 import { perfDiagnostics } from '../../core/perfDiagnostics';
 import { TrainingView } from '../TrainingView';
@@ -5,7 +6,7 @@ import { TrainingView } from '../TrainingView';
 type HarnessSession = {
   id: string;
   name: string;
-  inputMode: 'input2';
+  inputMode: typeof BROWSER_TTS_SESSION_INPUT_MODE;
   inputSettingsLocked: boolean;
   ttsLanguage: 'de';
   difficulty: 'normal';
@@ -17,7 +18,7 @@ type HarnessSession = {
 const session: HarnessSession = {
   id: 'e2e-training-session',
   name: 'E2E mobile training session',
-  inputMode: 'input2',
+  inputMode: BROWSER_TTS_SESSION_INPUT_MODE,
   inputSettingsLocked: true,
   ttsLanguage: 'de',
   difficulty: 'normal',
