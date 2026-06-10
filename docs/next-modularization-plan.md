@@ -120,3 +120,30 @@ Cascade rules:
 ## Historical note
 
 This document used to track remaining extraction work. It is now a status and guardrail document. Future modularization work should focus on naming cleanup, duplicate-rule review, and import-order clarity, not on removing selectors from `src/App.css`.
+
+<!-- app-shell-modularization-checkpoint:start -->
+## App shell modularization checkpoint — 2026-06-10
+
+A focused App shell reduction pass is complete. Current `src/App.tsx` size: **3933 lines**.
+
+Detailed checkpoint: `docs/app-shell-modularization-checkpoint.md`.
+
+Completed extraction groups:
+
+- Admin workspace shell
+- Session/debug/type models
+- TTS pacing helpers
+- Session storage/restore helpers
+- Adaptive feedback context helpers
+- Shared inline components
+- TTS playback profile helpers
+- Dictation script semantic phrase helpers
+- Repeat word stats helpers
+
+Next recommended pass:
+
+1. Inspect remaining `function`, `type`, and pure helper declarations in `src/App.tsx`.
+2. Extract only pure helpers first.
+3. Delay larger JSX or hook extraction until another green checkpoint is established.
+
+<!-- app-shell-modularization-checkpoint:end -->
