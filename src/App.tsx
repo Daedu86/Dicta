@@ -20,7 +20,6 @@ import type {
   LiveTelemetryFrame,
   PhrasePlaybackEvent,
   PhraseSize,
-  PacingMode,
 } from './core/adaptive/types';
 import { configForDifficulty, type Difficulty } from './core/config';
 import {
@@ -32,7 +31,6 @@ import {
 } from './core/evaluation';
 import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
 import { normalizeWord } from './core/normalization';
-import { planSemanticPhrases, type SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import {
   clampBrowserTtsDeDecisionToRecommendation,
   createEmptyInputLanguageBenchmark,
@@ -248,6 +246,13 @@ import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmiss
 import { countLocalChangesPendingSync, formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildAdminStorageSummary, buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
+import {
+  buildOrderedSemanticPhrases,
+  formatTtsPacingMode,
+  mapAdaptivePacingMode,
+  semanticPhraseIndexForWordIndex,
+} from './app/ttsPacingHelpers';
+import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
   AdaptiveSemanticDebug,
   AdminFileInventory,
@@ -4395,38 +4400,6 @@ function mapSessionInputMode(mode: string): InputMode {
 
 function resolveStoredSessionLanguage(session: StoredSession): LanguageCode {
   return session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? (session.ttsLanguage ?? 'unknown') : 'unknown';
-}
-
-function mapAdaptivePacingMode(mode: PacingMode): TtsPacingMode {
-  if (mode === 'support') return 'slow';
-  if (mode === 'flow') return 'flow';
-  return 'balanced';
-}
-
-function formatTtsPacingMode(mode: TtsPacingMode): string {
-  if (mode === 'slow') return 'Slow phrase pacing';
-  if (mode === 'flow') return 'Flow pacing';
-  return 'Balanced phrase pacing';
-}
-
-function phraseSizeForTtsMode(mode: TtsPacingMode): PhraseSize {
-  if (mode === 'slow') return 'short';
-  if (mode === 'flow') return 'long';
-  return 'medium';
-}
-
-function semanticPhraseIndexForWordIndex(phrases: SemanticPhrase[], wordIndex: number): number {
-  let cursor = 0;
-  for (let index = 0; index < phrases.length; index += 1) {
-    const nextCursor = cursor + phrases[index].wordCount;
-    if (wordIndex < nextCursor) return index;
-    cursor = nextCursor;
-  }
-  return phrases.length;
-}
-
-function buildOrderedSemanticPhrases(text: string, language: string | undefined, mode: TtsPacingMode): SemanticPhrase[] {
-  return planSemanticPhrases(text, language, phraseSizeForTtsMode(mode));
 }
 
 function deriveTtsControlAction({
