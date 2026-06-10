@@ -254,6 +254,7 @@ import {
 import { isMobileViewport } from './app/viewport';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
+import { formatSessionDate } from './app/sessionDateFormatters';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
@@ -4789,12 +4790,6 @@ function loadSessions(): StoredSession[] {
   }
 }
 
-function formatSessionDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
 
 function formatSessionPlaybackDuration(session: StoredSession): string {
   const durationSec = getSessionVoiceDurationSec(session);
