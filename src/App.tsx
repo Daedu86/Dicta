@@ -204,6 +204,7 @@ import {
   type SupabaseSyncStatus,
 } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
+import { loadThemeMode, persistThemeMode, type ThemeMode } from './app/themeModeStorage';
 import {
   DEFAULT_LEADERBOARD_SECTION_EXPANDED,
   LEADERBOARD_RANGE_DEFINITIONS,
@@ -222,7 +223,6 @@ declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
 const OLLAMA_DEFAULT_MODEL_STORAGE_KEY = 'dicta.ollamaDefaultModel.v1';
 const OLLAMA_RECOMMENDED_DEFAULT_MODEL = 'gemma3:27b-cloud';
-const THEME_MODE_KEY = 'dicta.themeMode.v1';
 const LIVE_METRICS_LANGUAGE_KEY = 'dicta.liveMetricsLanguage.v1';
 const LIVE_METRICS_RANGE_KEY = 'dicta.liveMetricsRange.v1';
 const INSIGHTS_COLLAPSED_KEY = 'dicta.insightsCollapsed.v1';
@@ -276,7 +276,6 @@ type TrainingSessionSubmissionMeta = {
 type TtsLanguage = SupportedLanguage;
 type TypingLanguage = SupportedLanguage;
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
-type ThemeMode = 'light' | 'dark';
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
 type LeaderboardSection = LeaderboardSectionBase<StoredSession>;
@@ -429,18 +428,12 @@ function App() {
   } = useWorkspaceRouting();
   const [perfDiagnosticsEnabled, setPerfDiagnosticsEnabled] = useState(false);
   const [openRouterGenerateFocusRequest, setOpenRouterGenerateFocusRequest] = useState(0);
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    const saved = window.localStorage.getItem(THEME_MODE_KEY);
-    if (saved === 'light' || saved === 'dark') {
-      return saved;
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => loadThemeMode());
   const [ttsExpanded, setTtsExpanded] = useState(true);
   const [ttsText, setTtsText] = useState('');
 
   useEffect(() => {
-    window.localStorage.setItem(THEME_MODE_KEY, themeMode);
+    persistThemeMode(themeMode);
     document.documentElement.setAttribute('data-theme', themeMode);
   }, [themeMode]);
 
