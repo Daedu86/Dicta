@@ -6,7 +6,7 @@ Updated: 2026-06-10
 
 Branch: `product/input-2`
 
-Current largest files by line count:
+Largest files currently driving the modularization queue:
 
 ```text
   5028 src/App.tsx
@@ -14,5 +14,4 @@ Current largest files by line count:
   4384 package-lock.json
   1207 src/components/openrouter/OpenRouterWorkspace.tsx
   1205 src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx
-  1171 src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts
-```
+  
