@@ -204,6 +204,16 @@ import {
   type SupabaseSyncStatus,
 } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
+import {
+  DEFAULT_LEADERBOARD_SECTION_EXPANDED,
+  LEADERBOARD_RANGE_DEFINITIONS,
+  LEADERBOARD_SECTION_DEFINITIONS,
+  type LeaderboardRangeMetric,
+  type LeaderboardSection as LeaderboardSectionBase,
+  type LeaderboardSectionId,
+  type LeaderboardSessionLength,
+} from './app/leaderboardSections';
+import { isMobileViewport } from './app/viewport';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
 
@@ -269,58 +279,8 @@ type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
 type ThemeMode = 'light' | 'dark';
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
-type LeaderboardSessionLength = 'express' | 'standard';
-type LeaderboardSectionId =
-  | 'easy-express'
-  | 'medium-express'
-  | 'hard-express'
-  | 'easy-standard'
-  | 'medium-standard'
-  | 'hard-standard';
-type LeaderboardRangeMetric = {
-  range: MetricsRangeView;
-  label: string;
-  sessionCount: number;
-  durationLabel: string;
-  avgPointsLabel: string;
-  avgScoreLabel: string;
-  avgAccuracyLabel: string;
-  avgWpmLabel: string;
-};
-type LeaderboardSection = {
-  id: LeaderboardSectionId;
-  label: string;
-  difficulty: Difficulty;
-  length: LeaderboardSessionLength;
-  sessions: Array<{ rank: number; session: StoredSession }>;
-  rangeMetrics: LeaderboardRangeMetric[];
-};
+type LeaderboardSection = LeaderboardSectionBase<StoredSession>;
 
-const LEADERBOARD_SECTION_DEFINITIONS: Array<{
-  id: LeaderboardSectionId;
-  label: string;
-  difficulty: Difficulty;
-  length: LeaderboardSessionLength;
-}> = [
-  { id: 'easy-express', label: 'Easy Express', difficulty: 'easy', length: 'express' },
-  { id: 'medium-express', label: 'Medium Express', difficulty: 'normal', length: 'express' },
-  { id: 'hard-express', label: 'Hard Express', difficulty: 'hard', length: 'express' },
-  { id: 'easy-standard', label: 'Easy Standard', difficulty: 'easy', length: 'standard' },
-  { id: 'medium-standard', label: 'Medium Standard', difficulty: 'normal', length: 'standard' },
-  { id: 'hard-standard', label: 'Hard Standard', difficulty: 'hard', length: 'standard' },
-];
-
-const LEADERBOARD_RANGE_DEFINITIONS: Array<{ range: MetricsRangeView; label: string }> = [
-  { range: 'today', label: 'Today' },
-  { range: 'week', label: 'Week' },
-  { range: 'twoWeeks', label: '2 Weeks' },
-  { range: 'threeWeeks', label: '3 Weeks' },
-  { range: 'month', label: 'Month' },
-];
-
-function isMobileViewport(): boolean {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
-}
 
 type SessionMetrics = {
   controllerState: ControlAction;
@@ -569,14 +529,9 @@ function App() {
     return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
   });
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(true);
-  const [leaderboardSectionExpanded, setLeaderboardSectionExpanded] = useState<Record<LeaderboardSectionId, boolean>>({
-    'easy-express': false,
-    'medium-express': false,
-    'hard-express': false,
-    'easy-standard': false,
-    'medium-standard': false,
-    'hard-standard': false,
-  });
+  const [leaderboardSectionExpanded, setLeaderboardSectionExpanded] = useState<Record<LeaderboardSectionId, boolean>>(
+    () => ({ ...DEFAULT_LEADERBOARD_SECTION_EXPANDED }),
+  );
   const [insightsDiagnosticInputMode, setInsightsDiagnosticInputMode] = useState<InputMode>('browser-tts');
   const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
   const [insightsDiagnosticFallbackReport, setInsightsDiagnosticFallbackReport] = useState('');
