@@ -1,3 +1,7 @@
+.today-summary-section {
+  margin-bottom: 0.75rem;
+}
+
 .today-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
