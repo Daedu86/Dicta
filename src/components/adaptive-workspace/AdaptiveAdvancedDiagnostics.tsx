@@ -5,6 +5,7 @@ import { buildSessionScoreHelpText, type SessionScoreMetrics } from '../../core/
 import type { SessionTelemetry, Transcript } from '../../types/dictation';
 import { AdaptiveAdapterCard } from './AdaptiveBenchmarkWorkspace';
 import type { AdaptiveAdapterCardConfig } from './types';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../../core/sessionInputModes';
 
 type AdaptiveAdvancedDiagnosticsExpandedState = {
   decision: boolean;
@@ -53,7 +54,7 @@ function countTelemetrySamples(telemetry: SessionTelemetry): number {
 }
 
 function formatSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): string {
-  if (mode === 'input2') return 'Browser TTS';
+  if (mode === BROWSER_TTS_SESSION_INPUT_MODE) return 'Browser TTS';
   return 'Removed legacy input';
 }
 

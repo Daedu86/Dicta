@@ -53,7 +53,7 @@ export function chooseDiverseBrowserTtsVoiceURIForSession<TVoice extends Browser
   usedVoiceURIs: readonly (string | null | undefined)[],
   random: () => number = Math.random,
 ): string | null {
-  if (inputMode !== 'input2') return null;
+  if (inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return null;
   const candidates = voicesForBrowserTtsLanguage(voices, language);
   if (candidates.length === 0) return null;
 

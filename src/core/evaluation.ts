@@ -1,5 +1,6 @@
 import { normalizeWord } from './normalization';
 import type { Transcript } from '../types/dictation';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from './sessionInputModes';
 
 export interface AttemptEvaluation {
   typedWords: string[];
@@ -66,7 +67,7 @@ export function computeSessionMaxPoints(session: SessionPointsSource | null | un
   if (!session) return null;
 
   let maxPoints = 0;
-  if (session.inputMode === 'input2') {
+  if (session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE) {
     maxPoints = countNormalizedTextWords(session.ttsText ?? '');
   }
 

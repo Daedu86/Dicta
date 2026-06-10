@@ -1,4 +1,5 @@
 import type { SessionTelemetry } from '../../types/dictation';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../../core/sessionInputModes';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = string;
@@ -51,7 +52,7 @@ function formatBytes(bytes: number): string {
 }
 
 function formatSessionInputMode(mode: SessionInputMode): string {
-  if (mode === 'input2') return 'Browser TTS';
+  if (mode === BROWSER_TTS_SESSION_INPUT_MODE) return 'Browser TTS';
   return 'Removed legacy input';
 }
 

@@ -1,5 +1,6 @@
 import type { Difficulty } from './config';
 import type { SupportedLanguage } from './languages';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from './sessionInputModes';
 
 export type MetricsLanguageView = SupportedLanguage;
 export type MetricsRangeView = 'today' | 'week' | 'twoWeeks' | 'threeWeeks' | 'month';
@@ -40,7 +41,7 @@ export type LanguageRangeSummary = {
 };
 
 export function resolveSessionLanguage(session: SessionLanguageLike): MetricsLanguageView | null {
-  if (session.inputMode === 'input2') {
+  if (session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE) {
     return session.ttsLanguage ?? null;
   }
   return null;

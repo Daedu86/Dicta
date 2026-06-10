@@ -4,6 +4,7 @@ import { formatDifficultyLabel, type Difficulty } from '../../core/config';
 import { formatSupportedLanguage } from '../../core/languages';
 import { formatCreatedDeviceIcon, formatCreatedDeviceTooltip, type CreatedDeviceKind } from '../../core/sessionDevice';
 import { isSubmittedFinishedAttempt } from '../../core/sessionNormalization';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../../core/sessionInputModes';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = string;
@@ -94,7 +95,7 @@ function SessionDeviceIcon({ session }: { session: PendingSessionLaneSession }) 
 }
 
 function formatSessionInputMode(mode: SessionInputMode): string {
-  if (mode === 'input2') return 'Browser TTS';
+  if (mode === BROWSER_TTS_SESSION_INPUT_MODE) return 'Browser TTS';
   return 'Removed legacy input';
 }
 
