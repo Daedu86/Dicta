@@ -220,14 +220,10 @@ import {
   persistOllamaDefaultModel,
   persistOpenRouterDefaultModel,
 } from './app/modelPreferenceStorage';
+import { buildLeaderboardSections, sortLeaderboardSessions } from './app/leaderboardSectionsBuilder';
 import {
   DEFAULT_LEADERBOARD_SECTION_EXPANDED,
-  LEADERBOARD_RANGE_DEFINITIONS,
-  LEADERBOARD_SECTION_DEFINITIONS,
-  type LeaderboardRangeMetric,
-  type LeaderboardSection as LeaderboardSectionBase,
   type LeaderboardSectionId,
-  type LeaderboardSessionLength,
 } from './app/leaderboardSections';
 import { isMobileViewport } from './app/viewport';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
@@ -285,8 +281,6 @@ type TypingLanguage = SupportedLanguage;
 type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 type PerformanceTrend = 'improving' | 'stable' | 'declining';
-type LeaderboardSection = LeaderboardSectionBase<StoredSession>;
-
 
 type SessionMetrics = {
   controllerState: ControlAction;
@@ -937,7 +931,13 @@ function App() {
     [sessionsWithVoiceDuration, leaderboardLanguageView],
   );
   const leaderboardSections = useMemo(
-    () => buildLeaderboardSections(sessionsWithVoiceDuration, leaderboardLanguageView),
+    () =>
+      buildLeaderboardSections(sessionsWithVoiceDuration, leaderboardLanguageView, {
+        resolveSessionLanguage,
+        getSessionVoiceDurationSec,
+        buildRangeSummaryForLanguage,
+        formatDuration,
+      }),
     [sessionsWithVoiceDuration, leaderboardLanguageView],
   );
   const adminSessions = useMemo(
@@ -5081,59 +5081,6 @@ function formatSessionStatus(value: SessionStatus): string {
     default:
       return 'Ready';
   }
-}
-
-function sortLeaderboardSessions<T extends StoredSession>(sessions: T[]): T[] {
-  return [...sessions].sort(
-    (a, b) => b.metrics.points - a.metrics.points || b.metrics.score - a.metrics.score || b.metrics.accuracy - a.metrics.accuracy,
-  );
-}
-
-function buildLeaderboardSections(
-  sessions: Array<StoredSession & { voiceDurationSec?: number | null }>,
-  language: MetricsLanguageView,
-): LeaderboardSection[] {
-  const languageSessions = sortLeaderboardSessions(sessions.filter((session) => resolveSessionLanguage(session) === language));
-  return LEADERBOARD_SECTION_DEFINITIONS.map((definition) => {
-    const sectionSessions = languageSessions.filter((session) => {
-      return session.difficulty === definition.difficulty && getLeaderboardSessionLength(session) === definition.length;
-    });
-    return {
-      ...definition,
-      sessions: sectionSessions.map((session, index) => ({ rank: index + 1, session })),
-      rangeMetrics: buildLeaderboardRangeMetrics(sectionSessions, language),
-    };
-  });
-}
-
-function getLeaderboardSessionLength(session: StoredSession & { voiceDurationSec?: number | null }): LeaderboardSessionLength {
-  const scriptDurationSec = session.dictationScript?.estimatedDurationSec;
-  if (typeof scriptDurationSec === 'number' && Number.isFinite(scriptDurationSec) && scriptDurationSec > 0) {
-    return scriptDurationSec <= 90 ? 'express' : 'standard';
-  }
-  const voiceDurationSec = typeof session.voiceDurationSec === 'number' ? session.voiceDurationSec : getSessionVoiceDurationSec(session);
-  return typeof voiceDurationSec === 'number' && Number.isFinite(voiceDurationSec) && voiceDurationSec > 0 && voiceDurationSec <= 90
-    ? 'express'
-    : 'standard';
-}
-
-function buildLeaderboardRangeMetrics(
-  sessions: Array<StoredSession & { voiceDurationSec?: number | null }>,
-  language: MetricsLanguageView,
-): LeaderboardRangeMetric[] {
-  return LEADERBOARD_RANGE_DEFINITIONS.map(({ range, label }) => {
-    const summary = buildRangeSummaryForLanguage(sessions, language, range);
-    return {
-      range,
-      label,
-      sessionCount: summary.sessionsInRange.length,
-      durationLabel: formatDuration(summary.durationSeconds),
-      avgPointsLabel: summary.avgPoints !== null ? summary.avgPoints.toFixed(1) : '—',
-      avgScoreLabel: summary.avgScore !== null ? summary.avgScore.toFixed(1) : '—',
-      avgAccuracyLabel: summary.avgAccuracy !== null ? `${summary.avgAccuracy.toFixed(1)}%` : '—',
-      avgWpmLabel: summary.avgWpm !== null ? summary.avgWpm.toFixed(1) : '—',
-    };
-  });
 }
 
 function formatLeaderboardSessionStatus(session: StoredSession): string {
