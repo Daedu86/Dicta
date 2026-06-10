@@ -52,12 +52,10 @@ import {
   type OpenRouterJobResponse,
 } from './core/openRouterJobs';
 import {
-  isTransientGenerationErrorSessionLike,
   isTransientOpenRouterGenerationError,
 } from './core/adaptive/openRouterFallbackScript';
 import {
   parseDictationScriptJson,
-  validateDictationScript,
   type DictationScript,
   type DictationScriptDifficulty,
   type DictationScriptValidationResult,
@@ -82,7 +80,6 @@ import {
 } from './inputs/browserTts/browserTtsVoices';
 import {
   collectBrowserTtsEnvironmentFingerprint,
-  normalizeBrowserTtsEnvironmentFingerprint,
 } from './inputs/browserTts/browserTtsEnvironment';
 import { sameBrowserTtsEnvironment } from './inputs/browserTts/browserTtsEnvironmentComparison';
 import { trackAction, trackSample } from './core/telemetry';
@@ -92,7 +89,6 @@ import {
   LANGUAGE_LABELS,
   SUPPORTED_LANGUAGES,
   getDefaultSpeechSynthesisLang,
-  isSupportedLanguage,
 } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
@@ -130,7 +126,6 @@ import type { OllamaModelSummary } from './components/ollama/types';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import {
   normalizeLiveSessionStatusForPersistence,
-  normalizeRestoredSessionStatus,
 } from './core/sessionStatusNormalization';
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
@@ -142,12 +137,9 @@ import {
   formatSessionGenerationOrigin,
   formatSessionInputMode,
 } from './app/sessionDisplayFormatters';
-import { createDefaultMetrics, createGeneratedErrorSession, createStoredSession, getNextSessionIndex } from './app/sessionFactory';
+import { createGeneratedErrorSession, createStoredSession, getNextSessionIndex } from './app/sessionFactory';
 import { createSessionFromScript } from './app/sessionFromDictationScript';
-import { normalizeRestoredStoredSession as normalizeRestoredStoredSessionWithDependencies } from './app/sessionRestoreNormalization';
 import {
-  coerceSessionInputMode,
-  isSessionStatus,
   mapDictationScriptInputModeToSession,
   scriptLanguageToTtsLanguage,
 } from './app/sessionRestoreGuards';
@@ -175,7 +167,6 @@ import {
 import {
   formatCreatedDeviceIcon,
   formatCreatedDeviceTooltip,
-  normalizeCreatedDeviceKind,
 } from './core/sessionDevice';
 import {
   buildRangeSummaryForLanguage,
@@ -203,7 +194,6 @@ import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
 import {
   SESSION_STORAGE_KEY,
-  loadDeletedSessionIds,
   useSessionPersistenceSync,
 } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
@@ -246,6 +236,7 @@ import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmiss
 import { countLocalChangesPendingSync, formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildAdminStorageSummary, buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
+import { asAdminRemoteStoredSession, loadSessions, normalizeRestoredStoredSession } from './app/sessionStorage';
 import {
   buildOrderedSemanticPhrases,
   formatTtsPacingMode,
@@ -3988,77 +3979,6 @@ function Metric({ label, value, title }: { label: string; value: string; title?:
   );
 }
 
-type StoredSessionRestoreFallbacks = {
-  id: () => string;
-  name: () => string;
-  createdAt: () => string;
-  updatedAt: () => string;
-};
-
-function restoreStoredSessionFromPartial(
-  session: Partial<StoredSession>,
-  fallbacks: StoredSessionRestoreFallbacks,
-): StoredSession | null {
-  const inputMode = coerceSessionInputMode(session.inputMode);
-  if (!inputMode) return null;
-
-  const scriptResult = validateDictationScript(session.dictationScript);
-  const telemetry = cloneTelemetry(session.telemetry);
-
-  return normalizeRestoredStoredSession({
-    id: session.id ?? fallbacks.id(),
-    name: session.name ?? fallbacks.name(),
-    createdAt: session.createdAt ?? fallbacks.createdAt(),
-    updatedAt: session.updatedAt ?? fallbacks.updatedAt(),
-    inputMode,
-    inputSettingsLocked: Boolean(session.inputSettingsLocked),
-    ttsText: session.ttsText ?? '',
-    ttsLanguage: isSupportedLanguage(session.ttsLanguage) ? session.ttsLanguage : null,
-    ttsVoiceURI:
-      inputMode === BROWSER_TTS_SESSION_INPUT_MODE && typeof session.ttsVoiceURI === 'string'
-        ? session.ttsVoiceURI
-        : null,
-    ttsEnvironment:
-      inputMode === BROWSER_TTS_SESSION_INPUT_MODE
-        ? normalizeBrowserTtsEnvironmentFingerprint(session.ttsEnvironment)
-        : undefined,
-    ttsPracticeText: session.ttsPracticeText ?? '',
-    difficulty: session.difficulty ?? 'normal',
-    status: normalizeRestoredSessionStatus(
-      isSessionStatus(session.status) ? session.status : 'ready',
-      telemetry,
-    ),
-    metrics: {
-      ...createDefaultMetrics(),
-      ...session.metrics,
-    },
-    telemetry,
-    sessionSource: session.sessionSource === 'dictationScript' && scriptResult.ok ? 'dictationScript' : 'plainText',
-    generationOrigin:
-      session.generationOrigin === 'openrouter' || session.generationOrigin === 'fallback-template'
-        ? session.generationOrigin
-        : 'manual',
-    createdDeviceKind: normalizeCreatedDeviceKind(session.createdDeviceKind),
-    createdDeviceLabel: typeof session.createdDeviceLabel === 'string' ? session.createdDeviceLabel : undefined,
-    dictationScript: scriptResult.ok ? scriptResult.script : null,
-    generationError: typeof session.generationError === 'string' ? session.generationError : undefined,
-  });
-}
-
-function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const record = value as Partial<StoredSession> & { deleted?: boolean };
-  if (record.deleted === true || typeof record.id !== 'string') return null;
-  const remoteSessionId = record.id;
-
-  return restoreStoredSessionFromPartial(record, {
-    id: () => remoteSessionId,
-    name: () => 'Remote session',
-    createdAt: () => new Date(0).toISOString(),
-    updatedAt: () => new Date(0).toISOString(),
-  });
-}
-
 function SessionDeviceIcon({ session }: { session: StoredSession }) {
   const icon = formatCreatedDeviceIcon(session.createdDeviceKind);
   if (!icon) return null;
@@ -4092,52 +4012,6 @@ function buildSemanticPhrasesFromDictationScript(script: DictationScript): Seman
       syntaxComplexity: phrase.requiresContinuation ? 0.65 : 0.35,
     };
   });
-}
-
-function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
-  return normalizeRestoredStoredSessionWithDependencies(session, {
-    browserTtsInputMode: BROWSER_TTS_SESSION_INPUT_MODE,
-    cloneTelemetry,
-    normalizeBrowserTtsEnvironmentFingerprint,
-    normalizeRestoredSessionStatus,
-    normalizeSessionForPersistence,
-  });
-}
-
-function loadSessions(): StoredSession[] {
-  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
-  if (!raw) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<StoredSession>[];
-    if (parsed.length === 0) {
-      return [];
-    }
-
-    const deletedIds = loadDeletedSessionIds();
-
-    return parsed
-      .map((session, index) =>
-        restoreStoredSessionFromPartial(session, {
-          id: () => createStoredSession(index + 1).id,
-          name: () => `Session ${index + 1}`,
-          createdAt: () => new Date().toISOString(),
-          updatedAt: () => new Date().toISOString(),
-        }),
-      )
-      .filter(
-        (session): session is StoredSession =>
-          Boolean(
-            session &&
-              !deletedIds.has(session.id) &&
-              !isTransientGenerationErrorSessionLike(session),
-          ),
-      );
-  } catch {
-    return [];
-  }
 }
 
 type TtsPlaybackProfile = {
