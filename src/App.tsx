@@ -381,7 +381,6 @@ type AdminStorageSummary = {
   localStorageEntries: LocalStorageEntry[];
   dictaLocalStorageBytes: number;
   ttsTextChars: number;
-  retiredInputTextChars: number;
   typedTextChars: number;
   telemetrySamples: number;
   telemetryActions: number;
@@ -4671,11 +4670,10 @@ function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummar
     localStorageEntries,
     dictaLocalStorageBytes: localStorageEntries.reduce((sum, entry) => sum + entry.bytes, 0),
     ttsTextChars: sessions.reduce((sum, session) => sum + session.ttsText.length, 0),
-    retiredInputTextChars: sessions.reduce((sum, session) => sum + session.retiredInputText.length, 0),
-    typedTextChars: sessions.reduce((sum, session) => sum + session.ttsPracticeText.length + session.retiredInputPracticeText.length, 0),
+    typedTextChars: sessions.reduce((sum, session) => sum + session.ttsPracticeText.length, 0),
     telemetrySamples: sessions.reduce((sum, session) => sum + countTelemetrySamples(session.telemetry), 0),
     telemetryActions: sessions.reduce((sum, session) => sum + session.telemetry.actions.length, 0),
-    ttsChunks: sessions.reduce((sum, session) => sum + session.telemetry.ttsChunks.length + session.retiredInputChunks.length, 0),
+    ttsChunks: sessions.reduce((sum, session) => sum + session.telemetry.ttsChunks.length, 0),
   };
 }
 
@@ -4870,13 +4868,6 @@ function buildAdaptiveAdapterCards(): AdaptiveAdapterCardConfig[] {
       adapter: 'browserTtsTelemetryAdapter',
       execution: 'Controls browser utterance rate, phrase chunk size, and pause timing from typed progress.',
       controls: 'Rate + chunks + pauses',
-    },
-    {
-      inputMode: 'retiredInput',
-      title: 'Retired Local TTS',
-      adapter: 'removedLegacyTelemetryAdapter',
-      execution: 'Controls generated phrase size, RetiredInput playback rate, replay behavior, and pause timing.',
-      controls: 'Generation + replay + rate',
     },
   ];
 }
@@ -5605,9 +5596,7 @@ function mapSessionInputMode(mode: string): InputMode {
 }
 
 function resolveStoredSessionLanguage(session: StoredSession): LanguageCode {
-  if (session.inputMode === 'input2') return session.ttsLanguage ?? 'unknown';
-  if (false) return session.retiredInputLanguage ?? 'unknown';
-  return 'unknown';
+  return session.inputMode === 'input2' ? (session.ttsLanguage ?? 'unknown') : 'unknown';
 }
 
 function mapAdaptivePacingMode(mode: PacingMode): TtsPacingMode {
@@ -5725,15 +5714,8 @@ function buildRepeatWordStats({
   };
 
   for (const session of withinWindow) {
-    const transcript =
-      false
-        ? buildTextTranscript(session.retiredInputText)
-        : buildTextTranscript(session.ttsText);
-
-    const typedText =
-      false
-        ? session.retiredInputPracticeText
-        : session.ttsPracticeText;
+    const transcript = buildTextTranscript(session.ttsText);
+    const typedText = session.ttsPracticeText;
 
     const evaluation = evaluateTranscriptAttempt(typedText, transcript);
     if (evaluation.targetWords.length === 0) continue;
