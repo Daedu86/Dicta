@@ -146,8 +146,9 @@ import {
 } from './core/sessionStatusNormalization';
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
+import { writeTextToClipboard } from './app/clipboardText';
 import { normalizeGeneratedDictationScriptTitle } from './app/generatedDictationScriptTitle';
-import { createDefaultMetrics, createGeneratedErrorSession, createStoredSession } from './app/sessionFactory';
+import { createDefaultMetrics, createGeneratedErrorSession, createStoredSession, getNextSessionIndex } from './app/sessionFactory';
 import { normalizeRestoredStoredSession as normalizeRestoredStoredSessionWithDependencies } from './app/sessionRestoreNormalization';
 import {
   coerceSessionInputMode,
@@ -4626,31 +4627,6 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
   });
 }
 
-async function writeTextToClipboard(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // Some embedded browsers expose the Clipboard API but reject writes.
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.setAttribute('readonly', 'true');
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-9999px';
-  textarea.style.top = '0';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-
-  try {
-    const copied = document.execCommand('copy');
-    return copied;
-  } finally {
-    document.body.removeChild(textarea);
-  }
-}
 
 function countTelemetrySamples(telemetry: SessionTelemetry): number {
   return Math.max(
@@ -4765,17 +4741,7 @@ function buildSemanticPhrasesFromDictationScript(script: DictationScript): Seman
   });
 }
 
-function getNextSessionIndex(sessions: StoredSession[]): number {
-  const highestNamedIndex = sessions.reduce((highest, session) => {
-    const match = /^Session\s+(\d+)$/i.exec(session.name.trim());
-    if (!match) {
-      return highest;
-    }
-    return Math.max(highest, Number(match[1]));
-  }, 0);
 
-  return Math.max(highestNamedIndex + 1, sessions.length + 1);
-}
 
 function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
   return normalizeRestoredStoredSessionWithDependencies(session, {

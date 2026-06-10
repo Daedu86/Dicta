@@ -93,3 +93,17 @@ export function createGeneratedErrorSession({
     ttsLanguage: language,
   };
 }
+
+export function getNextSessionIndex(sessions: Array<{ name: string }>): number {
+  const highestNamedIndex = sessions.reduce((highest, session) => {
+    const match = /^Session\s+(\d+)$/i.exec(session.name.trim());
+
+    if (!match) {
+      return highest;
+    }
+
+    return Math.max(highest, Number(match[1]));
+  }, 0);
+
+  return Math.max(highestNamedIndex + 1, sessions.length + 1);
+}
