@@ -10,19 +10,22 @@ CSS modularization is active.
 
 src/App.css remains the runtime stylesheet, but it now imports src/styles/index.css at the top. src/styles/index.css is the ordered import list for CSS modules extracted from App.css.
 
-This checkpoint includes the second post-push local pass through the leaderboard shell modules.
+This checkpoint includes the post-push dashboard/admin/adaptive pass through adaptive-workspace.css.
 
 ## Current CSS modularization metrics
 
-- Remaining src/App.css: 3279 lines
-- src/styles/index.css: 25 lines
-- Extracted CSS module lines: 1518 lines
-- Approximate extracted share: 31.5% of runtime CSS lines
+- Remaining src/App.css: 2171 lines
+- src/styles/index.css: 28 lines
+- Extracted CSS module lines: 2628 lines
+- Approximate extracted share: 54.4% of runtime CSS lines
 
 Extracted modules:
 
+- src/styles/adaptive-workspace.css (955 lines)
+- src/styles/admin.css (149 lines)
 - src/styles/auth.css (51 lines)
 - src/styles/dashboard-support.css (26 lines)
+- src/styles/dashboard-workspace.css (6 lines)
 - src/styles/dashboard.css (111 lines)
 - src/styles/leaderboard-empty.css (16 lines)
 - src/styles/leaderboard-shell.css (65 lines)
@@ -41,8 +44,11 @@ Extracted modules:
 
 Extracted and wired:
 
+- src/styles/adaptive-workspace.css
+- src/styles/admin.css
 - src/styles/auth.css
 - src/styles/dashboard-support.css
+- src/styles/dashboard-workspace.css
 - src/styles/dashboard.css
 - src/styles/leaderboard-empty.css
 - src/styles/leaderboard-shell.css
@@ -61,12 +67,13 @@ Each extraction preserved cascade order and npm run build passed after the chang
 
 ## Current local status
 
-The last pushed remote checkpoint was df6c223.
+Current local commits ahead of origin/product/input-2:
 
-The current local post-push modularization pass includes:
-
-- 6eac514 Extract leaderboard CSS module
-- 15f17d8 Extract leaderboard shell CSS module
+- 88340e6 Move adaptive shell CSS into workspace module
+- 4e20395 Extract adaptive workspace CSS module
+- 4ada8cc Move admin language tabs CSS into admin module
+- ad90d17 Extract admin CSS module
+- 5b03f8e Extract dashboard workspace CSS module
 
 ## Strategy
 
@@ -82,17 +89,17 @@ Use incremental boundary-based extraction:
 
 ## Next recommended cuts
 
-1. src/styles/leaderboard-empty.css
-   - Extract only the isolated .leaderboard-empty block.
+1. Move adaptive shell CSS into src/styles/adaptive-workspace.css
+   - Move the base .adaptive-workspace through .adaptive-section-toggle-icon-open block.
+   - Keep responsive @media blocks in src/App.css for now.
 
-2. src/styles/dashboard-workspace.css
-   - Extract .dashboard-workspace only if it is isolated or safely bounded.
+2. src/styles/adaptive-timeline.css
+   - Extract adaptive timeline/dot styles if they are safely bounded.
 
 3. Feature modules:
-   - adaptive-workspace.css
-   - adaptive-benchmark.css
+   - adaptive-responsive.css
    - openrouter-workspace.css
-   - admin.css
+   - remaining dashboard/admin support blocks if any are isolated.
 
 ## Guardrails
 

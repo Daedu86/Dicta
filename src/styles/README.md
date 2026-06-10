@@ -14,8 +14,11 @@ src/styles/index.css is the ordered import entrypoint. src/App.css imports it at
 
 ## Current modules
 
+- adaptive-workspace.css (955 lines)
+- admin.css (149 lines)
 - auth.css (51 lines)
 - dashboard-support.css (26 lines)
+- dashboard-workspace.css (6 lines)
 - dashboard.css (111 lines)
 - leaderboard-empty.css (16 lines)
 - leaderboard-shell.css (65 lines)
@@ -32,12 +35,13 @@ src/styles/index.css is the ordered import entrypoint. src/App.css imports it at
 
 ## Current metrics
 
-- Remaining src/App.css: 3279 lines
-- src/styles/index.css: 25 lines
-- Extracted CSS module lines: 1518 lines
-- Approximate extracted share: 31.5% of runtime CSS lines
+- Remaining src/App.css: 2171 lines
+- src/styles/index.css: 28 lines
+- Extracted CSS module lines: 2628 lines
+- Approximate extracted share: 54.4% of runtime CSS lines
 
 ## Next likely modules
 
-- leaderboard-empty.css
-- dashboard-workspace.css
+- adaptive-workspace.css shell completion
+- adaptive-timeline.css
+- adaptive-responsive.css
