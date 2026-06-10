@@ -254,7 +254,7 @@ import {
 import { isMobileViewport } from './app/viewport';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
-import { formatSessionDate } from './app/sessionDateFormatters';
+import { formatSessionDate, formatSubmittedAt } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -4825,9 +4825,6 @@ function buildTrainingSessionSubmissionMeta(
   };
 }
 
-function formatSubmittedAt(value: string): string {
-  return Number.isFinite(Date.parse(value)) ? formatSessionDate(value) : 'n/a';
-}
 
 function getSessionVoiceDurationSec(session: StoredSession): number | null {
   return estimateSessionVoiceDurationSec(session);
@@ -4845,8 +4842,6 @@ function sameBrowserTtsEnvironment(
 function telemetryEquals(a: SessionTelemetry | null | undefined, b: SessionTelemetry | null | undefined): boolean {
   return JSON.stringify(cloneTelemetry(a)) === JSON.stringify(cloneTelemetry(b));
 }
-
-
 
 function formatLeaderboardSessionStatus(session: StoredSession): string {
   if (session.status === 'finished' && !hasSubmittedSessionStats(session)) {

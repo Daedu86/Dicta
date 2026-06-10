@@ -4,3 +4,7 @@ export function formatSessionDate(value: string): string {
     timeStyle: 'short',
   }).format(new Date(value));
 }
+
+export function formatSubmittedAt(value: string): string {
+  return Number.isFinite(Date.parse(value)) ? formatSessionDate(value) : 'n/a';
+}
