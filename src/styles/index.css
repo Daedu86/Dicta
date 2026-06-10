@@ -1,0 +1,10 @@
+/*
+ * Modular CSS entrypoint.
+ *
+ * Keep this file as the ordered import list for styles migrated out of
+ * src/App.css. During the incremental migration, src/App.css remains the
+ * runtime stylesheet until each extracted block is removed from the monolith
+ * in the same order.
+ */
+
+@import './auth.css';
