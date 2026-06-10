@@ -1,5 +1,19 @@
 # Dicta (Local MVP)
 
+## Frontend Stylesheet Architecture
+
+Dicta runtime CSS is fully modularized.
+
+- `src/App.css` is intentionally a tiny stylesheet entrypoint. It should only import `src/styles/index.css`.
+- `src/styles/index.css` is the ordered cascade manifest for runtime CSS modules.
+- Feature, shell, dashboard, admin, leaderboard, training, workspace, sidebar, transcript, status, adaptive, and responsive styles live in focused files under `src/styles/`.
+- New runtime styles should go into the closest existing module, or into a new focused module imported through `src/styles/index.css` in cascade order.
+- Do not add component or feature CSS back into `src/App.css`.
+- Preserve import order deliberately. Many modules were extracted from the former monolithic `App.css`; order is part of the UI contract.
+
+For the extraction history and follow-up guardrails, see `docs/next-modularization-plan.md`.
+
+
 Real-time, adaptive dictation trainer. Dicta runs locally (Vite + React) and adapts pace, chunking, and recovery behavior based on how you type, what language you are practicing, and what the current input mode can actually execute.
 
 ## Required Reading Before Changes

@@ -1,112 +1,122 @@
-# Next modularization pass
+# CSS modularization status
 
 Updated: 2026-06-10
 
-Branch: product/input-2
+Branch: `product/input-2`
 
 ## Current checkpoint
 
-CSS modularization is active.
+CSS runtime modularization is complete.
 
-src/App.css remains the runtime stylesheet, but it now imports src/styles/index.css at the top. src/styles/index.css is the ordered import list for CSS modules extracted from App.css.
+`src/App.css` is now intentionally tiny and acts only as the stylesheet entrypoint:
 
-This checkpoint includes the post-push dashboard/admin/adaptive pass through adaptive-workspace.css.
+```css
+@import './styles/index.css';
+```
 
-## Current CSS modularization metrics
+`src/styles/index.css` is the ordered cascade manifest for runtime CSS modules.
 
-- Remaining src/App.css: 2171 lines
-- src/styles/index.css: 28 lines
-- Extracted CSS module lines: 2628 lines
-- Approximate extracted share: 54.4% of runtime CSS lines
+## Completed result
 
-Extracted modules:
+The former monolithic `src/App.css` has been decomposed into focused modules under `src/styles/`.
 
-- src/styles/adaptive-workspace.css (955 lines)
-- src/styles/admin.css (149 lines)
-- src/styles/auth.css (51 lines)
-- src/styles/dashboard-support.css (26 lines)
-- src/styles/dashboard-workspace.css (6 lines)
-- src/styles/dashboard.css (111 lines)
-- src/styles/leaderboard-empty.css (16 lines)
-- src/styles/leaderboard-shell.css (65 lines)
-- src/styles/leaderboard.css (289 lines)
-- src/styles/perf-overlay.css (48 lines)
-- src/styles/shared-controls.css (47 lines)
-- src/styles/today-summary.css (42 lines)
-- src/styles/training-header.css (111 lines)
-- src/styles/training-interaction.css (165 lines)
-- src/styles/training-responsive.css (69 lines)
-- src/styles/training-session.css (131 lines)
-- src/styles/training-shell.css (13 lines)
-- src/styles/workspace-responsive.css (334 lines)
+The latest completed extraction group ended at:
 
-## Completed CSS modules
+- `485c617 Extract 640px responsive CSS module`
 
-Extracted and wired:
+At that checkpoint:
 
-- src/styles/adaptive-workspace.css
-- src/styles/admin.css
-- src/styles/auth.css
-- src/styles/dashboard-support.css
-- src/styles/dashboard-workspace.css
-- src/styles/dashboard.css
-- src/styles/leaderboard-empty.css
-- src/styles/leaderboard-shell.css
-- src/styles/leaderboard.css
-- src/styles/perf-overlay.css
-- src/styles/shared-controls.css
-- src/styles/today-summary.css
-- src/styles/training-header.css
-- src/styles/training-interaction.css
-- src/styles/training-responsive.css
-- src/styles/training-session.css
-- src/styles/training-shell.css
-- src/styles/workspace-responsive.css
+- `src/App.css` contains no runtime selectors.
+- `src/App.css` contains no responsive media blocks.
+- `npm run build` passed.
+- `origin/product/input-2` was updated.
+- Vercel deployed the commit successfully.
 
-Each extraction preserved cascade order and npm run build passed after the change.
+## CSS module ownership map
 
-## Current local status
+Entrypoint and cascade:
 
-Current local commits ahead of origin/product/input-2:
+- `src/App.css`: stylesheet entrypoint only.
+- `src/styles/index.css`: ordered import manifest.
 
-- 88340e6 Move adaptive shell CSS into workspace module
-- 4e20395 Extract adaptive workspace CSS module
-- 4ada8cc Move admin language tabs CSS into admin module
-- ad90d17 Extract admin CSS module
-- 5b03f8e Extract dashboard workspace CSS module
+Core app/shell:
 
-## Strategy
+- `src/styles/app-shell.css`
+- `src/styles/auth.css`
+- `src/styles/shared-controls.css`
 
-Use incremental boundary-based extraction:
+Training:
 
-1. Identify one contiguous block in src/App.css.
-2. Move it to src/styles/<module>.css.
-3. Add the module to src/styles/index.css in the same cascade order.
-4. Remove the original block from src/App.css.
-5. Run npm run build.
-6. Commit locally.
-7. Push only after a clean group of local commits is ready.
+- `src/styles/training-shell.css`
+- `src/styles/training-header.css`
+- `src/styles/training-session.css`
+- `src/styles/training-interaction.css`
+- `src/styles/training-responsive.css`
 
-## Next recommended cuts
+Workspace, TTS, sessions, transcripts:
 
-1. Move adaptive shell CSS into src/styles/adaptive-workspace.css
-   - Move the base .adaptive-workspace through .adaptive-section-toggle-icon-open block.
-   - Keep responsive @media blocks in src/App.css for now.
+- `src/styles/workspace-shell.css`
+- `src/styles/workspace-responsive.css`
+- `src/styles/tts-workspace.css`
+- `src/styles/session-status.css`
+- `src/styles/transcript-preview.css`
+- `src/styles/transcript-review.css`
 
-2. src/styles/adaptive-timeline.css
-   - Extract adaptive timeline/dot styles if they are safely bounded.
+Sidebar and app chrome:
 
-3. Feature modules:
-   - adaptive-responsive.css
-   - openrouter-workspace.css
-   - remaining dashboard/admin support blocks if any are isolated.
+- `src/styles/sidebar-support.css`
+- `src/styles/sidebar-brand.css`
+- `src/styles/sidebar-controls.css`
 
-## Guardrails
+Dashboard/admin/leaderboard:
 
-Do not reorder selectors casually.
+- `src/styles/dashboard.css`
+- `src/styles/dashboard-support.css`
+- `src/styles/dashboard-workspace.css`
+- `src/styles/today-summary.css`
+- `src/styles/admin.css`
+- `src/styles/leaderboard.css`
+- `src/styles/leaderboard-shell.css`
+- `src/styles/leaderboard-empty.css`
 
-Do not split mixed @media blocks manually unless the complete media block is moved.
+Adaptive UI:
 
-Do not mix CSS modularization with React or TypeScript refactors in the same commit.
+- `src/styles/adaptive-workspace.css`
+- `src/styles/adaptive-timeline.css`
+- `src/styles/adaptive-charts.css`
+- `src/styles/bottom-metrics.css`
 
-Do not push until local commits are intentionally grouped and build has passed.
+Responsive/final overrides:
+
+- `src/styles/wide-responsive.css`
+- `src/styles/responsive-980.css`
+- `src/styles/responsive-640.css`
+
+Diagnostics:
+
+- `src/styles/perf-overlay.css`
+
+## Guardrails for future agents
+
+Do not add runtime CSS back to `src/App.css`.
+
+Use this workflow for future CSS changes:
+
+1. Identify the owning UI boundary.
+2. Edit the nearest existing module under `src/styles/`.
+3. If a new boundary is needed, create `src/styles/<focused-name>.css`.
+4. Add the import to `src/styles/index.css` at the correct cascade position.
+5. Run `npm run build`.
+6. Keep the commit CSS-focused unless the task explicitly crosses a React/TypeScript boundary.
+
+Cascade rules:
+
+- Do not reorder imports casually.
+- Place responsive overrides after the base modules they override.
+- Move complete media blocks when possible.
+- Do not split mixed media blocks unless the cascade impact has been checked.
+- Test visually at desktop and mobile widths when changing app shell, sidebar, training, TTS workspace, dashboard/admin, or adaptive styles.
+
+## Historical note
+
+This document used to track remaining extraction work. It is now a status and guardrail document. Future modularization work should focus on naming cleanup, duplicate-rule review, and import-order clarity, not on removing selectors from `src/App.css`.

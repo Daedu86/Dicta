@@ -1,5 +1,18 @@
 # Dicta Architecture
 
+## Frontend Stylesheet Architecture
+
+Runtime CSS is fully modularized.
+
+- `src/App.css` is intentionally retained as the Vite/React stylesheet entrypoint and should only import `src/styles/index.css`.
+- `src/styles/index.css` is the single ordered cascade manifest for extracted runtime CSS modules.
+- CSS modules under `src/styles/` are grouped by UI/runtime boundary: auth, training shell/session/header/interaction/responsive, workspace shell/responsive, TTS workspace, session status, transcript preview/review, sidebar support/brand/controls, dashboard, admin, leaderboard, adaptive workspace/timeline/charts, bottom metrics, shared controls, app shell, and final responsive breakpoints.
+- Responsive CSS that was formerly in `App.css` is now module-owned, including `responsive-980.css` and `responsive-640.css`, with imports ordered after the modules they override.
+- New runtime styles should be added to the closest existing module. If a new module is needed, import it through `src/styles/index.css` at the point that preserves the original cascade.
+- Do not reintroduce runtime selectors into `src/App.css`.
+- Do not reorder module imports without checking the cascade impact in desktop, mobile width, sidebar expanded/collapsed, training, TTS workspace, dashboard/admin, and adaptive views.
+
+
 This is the repo-owned architecture source of truth.
 
 Before proposing or making behavior changes, agents must read and understand these files in order:

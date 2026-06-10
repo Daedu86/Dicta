@@ -1,5 +1,18 @@
 # Agent Guide for Dicta
 
+## Frontend Stylesheet Rules
+
+Runtime CSS is modularized.
+
+- `src/App.css` is a stylesheet entrypoint only and should remain limited to `@import "./styles/index.css";`.
+- `src/styles/index.css` owns the ordered import graph for CSS modules.
+- Add or change UI styles in the closest focused module under `src/styles/`; create a new module only when a boundary is clear.
+- Always wire new CSS modules through `src/styles/index.css` in cascade order.
+- Do not paste feature, page, sidebar, workspace, dashboard, adaptive, transcript, or responsive CSS back into `src/App.css`.
+- Do not reorder CSS imports casually. Cascade order is intentional and part of the visual contract.
+- Keep CSS-only commits focused. Do not mix stylesheet modularization with React, TypeScript, Supabase, Vercel, or adaptive policy changes unless the task explicitly requires that larger boundary.
+
+
 This is the first file an agent should read before touching Dicta. Dicta is a Vite/React dictation trainer with a shared adaptive "brain" called the Adaptive Pace Layer.
 
 ## Required Change Protocol
