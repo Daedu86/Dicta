@@ -203,14 +203,18 @@ import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
 import {
-  ADAPTIVE_BENCHMARKS_KEY,
-  ADAPTIVE_SESSION_FEEDBACK_KEY,
   SESSION_STORAGE_KEY,
   loadDeletedSessionIds,
   useSessionPersistenceSync,
   type SupabaseSyncStatus,
 } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
+import {
+  loadAdaptiveBenchmarks,
+  loadAdaptiveSessionFeedback,
+  persistAdaptiveBenchmarks,
+  persistAdaptiveSessionFeedback,
+} from './app/adaptiveStorage';
 import { loadThemeMode, persistThemeMode, type ThemeMode } from './app/themeModeStorage';
 import {
   loadInsightsCollapsed,
@@ -1077,7 +1081,7 @@ function App() {
 
   useEffect(() => {
     if (!localStorageReadyForEffectiveProfile) return;
-    window.localStorage.setItem(ADAPTIVE_BENCHMARKS_KEY, JSON.stringify(adaptiveBenchmarksByInputLanguage));
+    persistAdaptiveBenchmarks(adaptiveBenchmarksByInputLanguage);
   }, [adaptiveBenchmarksByInputLanguage, localStorageReadyForEffectiveProfile]);
 
   useEffect(() => {
@@ -1087,7 +1091,7 @@ function App() {
   useEffect(() => {
     adaptiveSessionFeedbackRef.current = adaptiveSessionFeedbackByInputLanguage;
     if (!localStorageReadyForEffectiveProfile) return;
-    window.localStorage.setItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(adaptiveSessionFeedbackByInputLanguage));
+    persistAdaptiveSessionFeedback(adaptiveSessionFeedbackByInputLanguage);
   }, [adaptiveSessionFeedbackByInputLanguage, localStorageReadyForEffectiveProfile]);
 
   useEffect(() => {
@@ -4612,28 +4616,6 @@ function asAdminRemoteStoredSession(value: unknown): StoredSession | null {
     dictationScript: scriptResult.ok ? scriptResult.script : null,
     generationError: typeof record.generationError === 'string' ? record.generationError : undefined,
   });
-}
-
-function loadAdaptiveBenchmarks(): AdaptiveBenchmarksByInputLanguage {
-  const raw = window.localStorage.getItem(ADAPTIVE_BENCHMARKS_KEY);
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw) as AdaptiveBenchmarksByInputLanguage;
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function loadAdaptiveSessionFeedback(): AdaptiveSessionFeedbackByInputLanguage {
-  const raw = window.localStorage.getItem(ADAPTIVE_SESSION_FEEDBACK_KEY);
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw) as AdaptiveSessionFeedbackByInputLanguage;
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
 }
 
 async function writeTextToClipboard(text: string): Promise<boolean> {
