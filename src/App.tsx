@@ -263,6 +263,7 @@ import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
 import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatters';
 import { formatDuration, formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
 import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmissionMeta';
+import { countLocalChangesPendingSync, formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -348,11 +349,6 @@ type AdminStorageSummary = {
   telemetrySamples: number;
   telemetryActions: number;
   ttsChunks: number;
-};
-
-type PendingSyncSummary = {
-  count: number;
-  hasPending: boolean;
 };
 
 type TtsPerformanceSampleResult = {
@@ -4462,95 +4458,6 @@ function RuntimeMetricsPanel({
       </div>
     </section>
   );
-}
-
-function formatSupabaseSyncState(status: SupabaseSyncStatus): string {
-  if (!status.enabled) return 'Off';
-  if (status.state === 'pulling') return 'Pulling';
-  if (status.state === 'pushing') return 'Pushing';
-  if (status.state === 'error') return 'Error';
-  if (status.state === 'synced') return 'Synced';
-  return 'Ready';
-}
-
-function countLocalChangesPendingSync({
-  sessions,
-  benchmarks,
-  feedback,
-  lastSyncedAt,
-}: {
-  sessions: StoredSession[];
-  benchmarks: AdaptiveBenchmarksByInputLanguage;
-  feedback: AdaptiveSessionFeedbackByInputLanguage;
-  lastSyncedAt: string | null;
-}): PendingSyncSummary {
-  const safeSessions = Array.isArray(sessions) ? sessions : [];
-  const benchmarkInputs = benchmarks && typeof benchmarks === 'object' ? Object.values(benchmarks) : [];
-  const feedbackInputs = feedback && typeof feedback === 'object' ? Object.values(feedback) : [];
-
-  if (!lastSyncedAt) {
-    const totalFeedback = feedbackInputs.reduce((inputTotal, byLanguage) => {
-      const lists = byLanguage && typeof byLanguage === 'object' ? Object.values(byLanguage) : [];
-      return (
-        inputTotal +
-        lists.reduce(
-          (languageTotal, list) => languageTotal + (Array.isArray(list) ? list.length : 0),
-          0,
-        )
-      );
-    }, 0);
-
-    const totalBenchmarks = benchmarkInputs.reduce((inputTotal, byLanguage) => {
-      if (!byLanguage || typeof byLanguage !== 'object') return inputTotal;
-      return inputTotal + Object.keys(byLanguage).length;
-    }, 0);
-
-    const count = safeSessions.length + totalBenchmarks + totalFeedback;
-    return { count, hasPending: count > 0 };
-  }
-
-  const lastSyncedTime = new Date(lastSyncedAt).getTime();
-  if (!Number.isFinite(lastSyncedTime)) return { count: 0, hasPending: false };
-
-  let count = safeSessions.filter((session) => isTimestampAfterSync(session.updatedAt, lastSyncedTime)).length;
-
-  for (const byLanguage of benchmarkInputs) {
-    if (!byLanguage || typeof byLanguage !== 'object') continue;
-    for (const benchmark of Object.values(byLanguage)) {
-      if (
-        benchmark &&
-        typeof benchmark === 'object' &&
-        'lastUpdatedAt' in benchmark &&
-        isTimestampAfterSync(String(benchmark.lastUpdatedAt), lastSyncedTime)
-      ) {
-        count += 1;
-      }
-    }
-  }
-
-  for (const byLanguage of feedbackInputs) {
-    if (!byLanguage || typeof byLanguage !== 'object') continue;
-    for (const list of Object.values(byLanguage)) {
-      if (!Array.isArray(list)) continue;
-      count += list.filter(
-        (item) =>
-          item &&
-          typeof item === 'object' &&
-          isTimestampAfterSync(
-            String(('completedAt' in item ? item.completedAt : null) ?? ('createdAt' in item ? item.createdAt : null) ?? ''),
-            lastSyncedTime,
-          ),
-      ).length;
-    }
-  }
-
-  return { count, hasPending: count > 0 };
-}
-
-function isTimestampAfterSync(value: string | null | undefined, lastSyncedTime: number): boolean {
-  if (!value) return false;
-  const time = new Date(value).getTime();
-  return Number.isFinite(time) && time > lastSyncedTime;
 }
 
 function buildAdminStorageSummary(sessions: StoredSession[]): AdminStorageSummary {
