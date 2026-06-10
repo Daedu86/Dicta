@@ -1,20 +1,2 @@
 @import './styles/index.css';
 
-@media (max-width: 640px) {
-  #root {
-    padding: 0.65rem;
-  }
-
-  .training-route-app {
-    max-width: 100%;
-  }
-
-  .training-control-grid,
-  .training-generation-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .training-input-card textarea {
-    min-height: 38vh;
-  }
-}
