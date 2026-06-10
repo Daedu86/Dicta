@@ -1554,40 +1554,6 @@ textarea[readonly] {
 }
 
 
-.line-chart {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  min-height: 220px;
-  height: 100%;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.line-chart > div {
-  min-height: 180px;
-}
-
-.line-chart span {
-  color: #102f63;
-  font-weight: 800;
-}
-
-.rate-bars {
-  min-height: 220px;
-  height: 100%;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.action-timeline {
-  min-height: 220px;
-  height: 100%;
-  min-width: 0;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f7fbff, #eef6ff);
-  overflow: hidden;
-}
-
 .bottom-metrics-dock {
   margin-top: 1rem;
   min-width: 0;
