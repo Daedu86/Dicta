@@ -90,6 +90,7 @@ import {
 import { sameBrowserTtsEnvironment } from './inputs/browserTts/browserTtsEnvironmentComparison';
 import { trackAction, trackSample } from './core/telemetry';
 import { cloneTelemetry, isSubmittedFinishedAttempt, normalizeSessionForPersistence } from './core/sessionNormalization';
+import { telemetryEquals } from './core/sessionTelemetryEquality';
 import {
   LANGUAGE_LABELS,
   SUPPORTED_LANGUAGES,
@@ -4832,9 +4833,6 @@ function getSessionVoiceDurationSec(session: StoredSession): number | null {
 }
 
 
-function telemetryEquals(a: SessionTelemetry | null | undefined, b: SessionTelemetry | null | undefined): boolean {
-  return JSON.stringify(cloneTelemetry(a)) === JSON.stringify(cloneTelemetry(b));
-}
 
 function formatLeaderboardSessionStatus(session: StoredSession): string {
   if (session.status === 'finished' && !hasSubmittedSessionStats(session)) {
