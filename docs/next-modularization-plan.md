@@ -9,7 +9,7 @@ Branch: `product/input-2`
 Current largest files by line count:
 
 ```text
-  5314 src/App.tsx
+  5028 src/App.tsx
   4784 src/App.css
   4384 package-lock.json
   1207 src/components/openrouter/OpenRouterWorkspace.tsx
@@ -31,7 +31,7 @@ Current largest files by line count:
    390 tests/adaptiveController.test.ts
 ```
 
-Recent `App.tsx` helper extraction pass reduced `App.tsx` from the 5720-line checkpoint to roughly 5314 lines. The work was worthwhile because it moved coherent session restore, display, telemetry, Browser TTS comparison, and readiness helpers out of `App.tsx` without changing behavior.
+Recent `App.tsx` helper extraction pass reduced `App.tsx` from the 5720-line checkpoint to roughly 5028 lines. The work was worthwhile because it moved coherent session restore, display, telemetry, Browser TTS comparison, and readiness helpers out of `App.tsx` without changing behavior.
 
 ## Completed or closed-enough areas
 
@@ -78,3 +78,17 @@ Do not split `AdaptiveBenchmarkWorkspace.tsx` or `AdaptiveAdvancedDiagnostics.ts
 Do not modularize tests merely because they are large.
 
 Do not touch `src/core/supabaseSync.ts`, `src/app/useSessionPersistenceSync.ts`, or `api/openrouter/jobs.js` in the same pass as UI/helper extraction.
+
+## Latest checkpoint after helper extraction pass
+
+Current `App.tsx` size: 5028 lines.
+
+Additional extracted areas after the 5314-line checkpoint:
+
+- sync presentation helpers
+- admin storage summary helpers
+- dictation script session factory
+- OpenRouter diversification hints
+
+Stop condition remains: do not continue extracting helpers that require broad `StoredSession` exports, session restore changes, localStorage migration behavior, Supabase sync behavior, or TTS runtime ownership changes.
+
