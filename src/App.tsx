@@ -147,6 +147,7 @@ import {
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
 import { normalizeGeneratedDictationScriptTitle } from './app/generatedDictationScriptTitle';
+import { createDefaultMetrics, createGeneratedErrorSession, createStoredSession } from './app/sessionFactory';
 import {
   copyDictaLocalStorage,
   downloadDictaLocalStorage,
@@ -173,7 +174,6 @@ import {
   type DictaAppRole,
 } from './core/appProfiles';
 import {
-  detectCreatedDeviceMetadata,
   formatCreatedDeviceIcon,
   formatCreatedDeviceTooltip,
   normalizeCreatedDeviceKind,
@@ -4699,31 +4699,6 @@ function SessionDeviceIcon({ session }: { session: StoredSession }) {
 
 export default App;
 
-function createStoredSession(index = 1, inputMode: SessionInputMode = BROWSER_TTS_SESSION_INPUT_MODE, name?: string): StoredSession {
-  const now = new Date().toISOString();
-  const deviceMetadata = detectCreatedDeviceMetadata();
-  return {
-    id: crypto.randomUUID(),
-    name: name?.trim() || `Session ${index}`,
-    createdAt: now,
-    updatedAt: now,
-    inputMode,
-    inputSettingsLocked: false,
-    ttsText: '',
-    ttsLanguage: inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? 'de' : null,
-    ttsVoiceURI: null,
-    ttsPracticeText: '',
-    difficulty: 'normal',
-    status: 'ready',
-    metrics: createDefaultMetrics(),
-    telemetry: cloneTelemetry(null),
-    sessionSource: 'plainText',
-    generationOrigin: 'manual',
-    ...deviceMetadata,
-    dictationScript: null,
-  };
-}
-
 function createSessionFromScript(
   script: DictationScript,
   index: number,
@@ -4754,30 +4729,6 @@ function createSessionFromScript(
       seededUnitInterval(`${inputMode}:${language}:${index}:${titledScript.title}`),
     ),
   };
-}
-
-function createGeneratedErrorSession({
-  index,
-  inputMode,
-  language,
-  name,
-  message,
-}: {
-  index: number;
-  inputMode: SessionInputMode;
-  language: TtsLanguage;
-  name: string;
-  message: string;
-}): StoredSession {
-  const session: StoredSession = {
-    ...createStoredSession(index, inputMode, name),
-    inputSettingsLocked: true,
-    status: 'error',
-    generationError: message,
-  };
-
-  
-  return { ...session, ttsLanguage: language };
 }
 
 function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
@@ -4956,19 +4907,7 @@ function sameBrowserTtsEnvironment(
   return JSON.stringify(normalizedLeft) === JSON.stringify(normalizedRight);
 }
 
-function createDefaultMetrics(): SessionMetrics {
-  return {
-    controllerState: 'hold',
-    rate: 1,
-    lagSec: 0,
-    lagWords: 0,
-    wpm: 0,
-    accuracy: 0,
-    trend: 'stable',
-    score: 0,
-    points: 0,
-  };
-}
+
 
 function telemetryEquals(a: SessionTelemetry | null | undefined, b: SessionTelemetry | null | undefined): boolean {
   return JSON.stringify(cloneTelemetry(a)) === JSON.stringify(cloneTelemetry(b));
