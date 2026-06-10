@@ -146,6 +146,7 @@ import {
 } from './core/sessionStatusNormalization';
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
+import { normalizeGeneratedDictationScriptTitle } from './app/generatedDictationScriptTitle';
 import {
   copyDictaLocalStorage,
   downloadDictaLocalStorage,
@@ -4729,7 +4730,7 @@ function createSessionFromScript(
   inputMode: SessionInputMode,
   options: { browserTtsVoices?: readonly SpeechSynthesisVoice[] } = {},
 ): StoredSession {
-  const titledScript = normalizeGeneratedDictationScriptTitle(script);
+  const titledScript = normalizeGeneratedDictationScriptTitle(script, formatSupportedLanguage);
   const text = titledScript.phrases.map((phrase) => phrase.text).join(' ');
   const language = scriptLanguageToTtsLanguage(titledScript.language);
   const session: StoredSession = {
@@ -4787,43 +4788,6 @@ function normalizeRestoredStoredSession(session: StoredSession): StoredSession {
     telemetry,
     status: normalizeRestoredSessionStatus(session.status, telemetry),
   });
-}
-
-function normalizeGeneratedDictationScriptTitle(script: DictationScript): DictationScript {
-  const title = script.title.trim();
-  if (!isGenericGeneratedTitle(title)) return script;
-  return {
-    ...script,
-    title: buildFallbackDictationScriptTitle(script),
-  };
-}
-
-function isGenericGeneratedTitle(title: string): boolean {
-  const normalized = title.trim().toLowerCase().replace(/[\s_-]+/g, ' ');
-  return (
-    normalized.length === 0 ||
-    normalized === 'generated dictation' ||
-    normalized === 'dictation' ||
-    normalized === 'training script' ||
-    normalized === 'generated script' ||
-    normalized === 'untitled'
-  );
-}
-
-function buildFallbackDictationScriptTitle(script: DictationScript): string {
-  const firstPhrase = script.phrases.find((phrase) => phrase.text.trim().length > 0)?.text.trim() ?? '';
-  const words = firstPhrase.match(/[\p{L}\p{N}]+/gu) ?? [];
-  const titleWords = words.slice(0, 6);
-  if (titleWords.length > 0) {
-    return truncateTitle(titleWords.join(' '));
-  }
-
-  const language = formatSupportedLanguage(script.language);
-  return `${language} ${String(script.inputMode)} practice`;
-}
-
-function truncateTitle(title: string): string {
-  return title.length > 64 ? `${title.slice(0, 61).trim()}...` : title;
 }
 
 function mapDictationScriptInputModeToSession(inputMode: string): SessionInputMode | null {
@@ -5034,7 +4998,7 @@ function formatLeaderboardSessionStatus(session: StoredSession): string {
 
 function getSessionDisplayTitle(session: StoredSession): string {
   if (session.dictationScript) {
-    return normalizeGeneratedDictationScriptTitle(session.dictationScript).title;
+    return normalizeGeneratedDictationScriptTitle(session.dictationScript, formatSupportedLanguage).title;
   }
   return session.name || 'Untitled session';
 }
