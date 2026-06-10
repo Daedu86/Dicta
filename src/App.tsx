@@ -19,7 +19,6 @@ import type {
   ListeningTrainingIntent,
   LiveTelemetryFrame,
   PhrasePlaybackEvent,
-  PhraseBoundaryType,
   PhraseSize,
   PacingMode,
 } from './core/adaptive/types';
@@ -96,7 +95,6 @@ import {
   SUPPORTED_LANGUAGES,
   getDefaultSpeechSynthesisLang,
   isSupportedLanguage,
-  type SupportedLanguage,
 } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView, type TrainingViewProps } from './components/TrainingView';
@@ -180,7 +178,6 @@ import {
   formatCreatedDeviceIcon,
   formatCreatedDeviceTooltip,
   normalizeCreatedDeviceKind,
-  type CreatedDeviceKind,
 } from './core/sessionDevice';
 import {
   buildRangeSummaryForLanguage,
@@ -251,6 +248,23 @@ import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmiss
 import { countLocalChangesPendingSync, formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildAdminStorageSummary, buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
+import type {
+  AdaptiveSemanticDebug,
+  AdminFileInventory,
+  AuthView,
+  DictaDebugSampleAudit,
+  KeyboardProfile,
+  PerformanceTrend,
+  GenerationOrigin,
+  SessionSource,
+  SessionStatus,
+  StoredSession,
+  TtsLanguage,
+  TtsPerformanceSampleResult,
+  TtsPublishedUiState,
+  TtsStatus,
+  TypingLanguage,
+} from './app/sessionTypes';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
 
@@ -259,118 +273,6 @@ const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 const DICTA_BUILD_INFO = __DICTA_BUILD_INFO__;
 const DICTA_BUILD_INFO_LABEL = buildBuildInfoLabel(DICTA_BUILD_INFO);
 const DICTA_BUILD_INFO_TITLE = buildBuildInfoTitle(DICTA_BUILD_INFO);
-
-type StoredSession = {
-  id: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-  inputMode: SessionInputMode;
-  inputSettingsLocked: boolean;
-  ttsText: string;
-  ttsLanguage: TtsLanguage | null;
-  ttsVoiceURI?: string | null;
-  ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
-  ttsPracticeText: string;
-  difficulty: Difficulty;
-  status: SessionStatus;
-  metrics: SessionMetrics;
-  telemetry: SessionTelemetry;
-  sessionSource: SessionSource;
-  generationOrigin: GenerationOrigin;
-  createdDeviceKind: CreatedDeviceKind;
-  createdDeviceLabel?: string;
-  dictationScript: DictationScript | null;
-  generationError?: string;
-};
-
-type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
-
-type SessionSource = 'plainText' | 'dictationScript';
-type AuthView = 'signIn' | 'forgotPassword' | 'updatePassword';
-type GenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
-type TtsLanguage = SupportedLanguage;
-type TypingLanguage = SupportedLanguage;
-type KeyboardProfile = 'es-virtual' | 'de-keyboard' | null;
-type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
-type PerformanceTrend = 'improving' | 'stable' | 'declining';
-
-type SessionMetrics = {
-  controllerState: ControlAction;
-  rate: number;
-  lagSec: number;
-  lagWords: number;
-  wpm: number;
-  accuracy: number;
-  trend: PerformanceTrend;
-  score: number;
-  points: number;
-};
-
-type DictaDebugSampleAudit = {
-  acceptedForBenchmark: boolean;
-  rejectionReason: string | null;
-  event: AdaptiveTimelinePoint['event'];
-  phraseId?: string;
-  phraseIndex?: number;
-  rawLagSec?: number;
-  lagSec: number;
-  stableLagSec?: number;
-  phraseBoundaryType?: PhraseBoundaryType;
-  semanticCompleteness?: number;
-  accuracy: number;
-  wpm: number;
-  sessionId?: string;
-  timestampMs: number;
-};
-
-type TtsPerformanceSampleResult = {
-  metrics: SessionMetrics;
-  telemetry: SessionTelemetry;
-};
-
-type TtsPublishedUiState = {
-  controllerState: ControlAction;
-  rate: number;
-  lagSec: number;
-  lagWords: number;
-  wpm: number;
-  accuracy: number;
-  trend: PerformanceTrend;
-};
-
-type AdminFileInventory = {
-  projectRoot: string;
-  folders: Array<{
-    label: string;
-    relativePath: string;
-    absolutePath: string;
-    exists: boolean;
-    fileCount: number;
-    totalBytes: number;
-    wavCount: number;
-    jsonCount: number;
-    transcriptCount: number;
-  }>;
-};
-
-type AdaptiveSemanticDebug = {
-  semanticCutPenalty: number;
-  unsafePauseCount: number;
-  safePauseCount: number;
-  deferredPauseCount: number;
-  replayDeniedByBoundaryCount: number;
-  averageSemanticCompleteness: number;
-  averagePhraseDifficulty: number;
-  inputExecutionFidelityScore: number;
-  currentPhraseIndex: number;
-  currentPhraseId: string;
-  currentPhraseTextPreview: string;
-  totalSemanticPhrases: number;
-  phraseAdvanceCount: number;
-  phraseReplayCount: number;
-  lastPhraseAdvanceReason: string;
-};
 
 function App() {
   const appRenderCountRef = useRef(0);
