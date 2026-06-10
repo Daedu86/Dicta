@@ -1,0 +1,64 @@
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+  padding: 0.85rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fcfdff, #f6f9fc);
+}
+
+.leaderboard-row-active {
+  border-color: #5a94e8;
+  box-shadow: 0 0 0 2px rgba(90, 148, 232, 0.12);
+}
+
+.leaderboard-rank {
+  display: grid;
+  place-items: center;
+  height: 42px;
+  border-radius: 999px;
+  background: #102f63;
+  color: #fff;
+  font-weight: 800;
+}
+
+.leaderboard-main {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.leaderboard-workspace {
+  min-height: 0;
+}
+
+.leaderboard-collapse-button {
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaderboard-collapse-icon {
+  display: inline-block;
+  transform: rotate(180deg);
+  transition: transform 160ms ease;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.leaderboard-collapse-icon-open {
+  transform: rotate(0deg);
+}
+
+.leaderboard-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.75rem;
+  color: #425466;
+  font-size: 0.9rem;
+  margin-top: 0.45rem;
+}
