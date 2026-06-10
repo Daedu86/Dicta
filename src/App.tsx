@@ -525,7 +525,7 @@ function App() {
   const [retiredInputVoice, setRetiredInputVoice] = useState('default');
   const [retiredInputPracticeText, setRetiredInputPracticeText] = useState('');
   const [retiredInputStatus, setRetiredInputStatus] = useState<TtsStatus>('idle');
-  const [retiredInputCurrentChunk, setRetiredInputCurrentChunk] = useState<RetiredInputChunk | null>(null);
+  const [, setRetiredInputCurrentChunk] = useState<RetiredInputChunk | null>(null);
   const [retiredInputChunks, setRetiredInputChunks] = useState<RetiredInputChunk[]>([]);
   const [retiredInputPlayerProgressTick, setRetiredInputPlayerProgressTick] = useState(0);
   const [retiredInputPacingMode, setRetiredInputPacingMode] = useState<TtsPacingMode>('balanced');
@@ -536,10 +536,6 @@ function App() {
   const adjustRetiredInputManualPace = (_delta: number): void => undefined;
   const resetRetiredInputPace = (): void => undefined;
   const estimateRetiredInputSpokenWordIndex = (): number => 0;
-  const onRetiredInputPracticeChange = (event: ChangeEvent<HTMLTextAreaElement> | string): void => {
-    setRetiredInputPracticeText(typeof event === 'string' ? event : event.currentTarget.value);
-  };
-  const onRetiredInputPracticeKeyDown = (_event: KeyboardEvent<HTMLTextAreaElement>): void => undefined;
   const stopRetiredInputPlayback = (_nextState: ControlAction = 'hold'): void => {
     setRetiredInputStatus(retiredInputText.trim() ? 'ready' : 'idle');
     setRetiredInputCurrentChunk(null);
@@ -3639,8 +3635,6 @@ function App() {
   const ttsPlayerCurrentSec =
     ttsPlayerWordCount > 0 ? Math.min(ttsPlayerDurationSec, (ttsPlayerCurrentWord / ttsPlayerWordCount) * ttsPlayerDurationSec) : 0;
   const ttsPlayerProgressPercent = ttsPlayerDurationSec > 0 ? clamp((ttsPlayerCurrentSec / ttsPlayerDurationSec) * 100, 0, 100) : 0;
-  const retiredInputPlayerWordCount = retiredInputTranscript?.words.length ?? 0;
-  const retiredInputPlayerCurrentWord = 0;
   void ttsPlayerProgressTick;
   void retiredInputPlayerProgressTick;
   void retiredInputPacingMode;
@@ -3701,55 +3695,31 @@ function App() {
   ];
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedProgressLabel =
-    false
-        ? adaptiveSemanticDebug.totalSemanticPhrases > 0
-          ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
-          : retiredInputPlayerWordCount > 0
-            ? `Word ${Math.min(retiredInputPlayerCurrentWord, retiredInputPlayerWordCount)}/${retiredInputPlayerWordCount}`
-            : 'No source loaded'
-        : adaptiveSemanticDebug.totalSemanticPhrases > 0
-          ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
-          : ttsPlayerWordCount > 0
-            ? `Word ${Math.min(ttsPlayerCurrentWord, ttsPlayerWordCount)}/${ttsPlayerWordCount}`
-            : 'No source loaded';
+    adaptiveSemanticDebug.totalSemanticPhrases > 0
+      ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
+      : ttsPlayerWordCount > 0
+        ? `Word ${Math.min(ttsPlayerCurrentWord, ttsPlayerWordCount)}/${ttsPlayerWordCount}`
+        : 'No source loaded';
   const focusedSourceLabel =
-    false
-        ? retiredInputHasText
-          ? `${retiredInputTranscript?.words.length ?? 0} words · ${retiredInputLanguage?.toUpperCase()}`
-          : 'Source not loaded'
-        : ttsHasText
-          ? `${ttsTranscript?.words.length ?? 0} words · ${ttsLanguage?.toUpperCase()}`
-          : 'TTS source not loaded';
-  const focusedTextValue =
-    false
-        ? retiredInputPracticeText
-        : ttsPracticeText;
+    ttsHasText
+      ? `${ttsTranscript?.words.length ?? 0} words · ${ttsLanguage?.toUpperCase()}`
+      : 'TTS source not loaded';
+  const focusedTextValue = ttsPracticeText;
   const focusedTextPlaceholder =
     activeSessionFinished
       ? 'Session submitted.'
       : 'Type the dictation here...';
-  const focusedInputHandler =
-    false
-        ? onRetiredInputPracticeChange
-        : onTtsPracticeChange;
-  const focusedImmediateInputHandler =
-    false
-        ? (value: string) => {
-            retiredInputPracticeLiveTextRef.current = value;
-          }
-        : (value: string) => {
-            if (!telemetryRef.current || !telemetryRef.current.startedAt) {
-              telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
-            }
-            if (ttsStartedAtMsRef.current === null) {
-              ttsStartedAtMsRef.current = performance.now();
-            }
-            ttsPracticeLiveTextRef.current = value;
-          };
-  const focusedKeyDownHandler =
-    false
-        ? onRetiredInputPracticeKeyDown
-        : onTtsPracticeKeyDown;
+  const focusedInputHandler = onTtsPracticeChange;
+  const focusedImmediateInputHandler = (value: string): void => {
+    if (!telemetryRef.current || !telemetryRef.current.startedAt) {
+      telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
+    }
+    if (ttsStartedAtMsRef.current === null) {
+      ttsStartedAtMsRef.current = performance.now();
+    }
+    ttsPracticeLiveTextRef.current = value;
+  };
+  const focusedKeyDownHandler = onTtsPracticeKeyDown;
   const focusedTrainingMessage = error || trainingSubmitMessage || [exportMessage, openRouterJobStatus, openRouterError].filter(Boolean).join(' ');
   const focusedTrainingMessageTone: 'error' | 'success' | 'hint' = error
     ? 'error'
@@ -3822,10 +3792,7 @@ function App() {
     sessionStatus,
     sourceLabel: focusedSourceLabel,
     progressLabel: focusedProgressLabel,
-    statusLabel:
-      false
-        ? retiredInputStatus
-        : ttsStatus,
+    statusLabel: ttsStatus,
     currentTextValue: focusedTextValue,
     onTextChange: focusedInputHandler,
     onImmediateTextChange: focusedImmediateInputHandler,
@@ -3846,14 +3813,8 @@ function App() {
     onPlay: focusedTrainingControls.onPlay,
     canPause: focusedTrainingControls.canPause,
     onPause: focusedTrainingControls.onPause,
-    canReplay:
-      false
-          ? Boolean(retiredInputCurrentChunk)
-          : ttsHasText && ttsPlayerDurationSec > 0,
-    onReplay:
-      false
-          ? (() => undefined)
-          : replayFocusedTts,
+    canReplay: ttsHasText && ttsPlayerDurationSec > 0,
+    onReplay: replayFocusedTts,
     canStop: focusedTrainingControls.canStop,
     onStop: focusedTrainingControls.onStop,
     canReset: focusedTrainingControls.canReset,
@@ -3863,7 +3824,7 @@ function App() {
     submitLabel: focusedTrainingControls.submitLabel,
     message: focusedTrainingMessage,
     messageTone: focusedTrainingMessageTone,
-    textCommitDelayMs: activeInputMode === 'input2' ? 250 : 0,
+    textCommitDelayMs: 250,
     pendingSessions,
     activeSessionId,
     onOpenPendingSession: openWorkspaceForSession,
