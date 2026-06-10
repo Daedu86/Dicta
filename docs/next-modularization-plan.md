@@ -17,4 +17,6 @@ Current largest files by line count:
   1171 src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts
 ```
 
-## Completed before this
+## Completed before this checkpoint
+
+`src
