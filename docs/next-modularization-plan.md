@@ -23,16 +23,6 @@ Extracted and wired:
 
 Each extraction preserved cascade order and npm run build passed after the change.
 
-## Local CSS commits in this pass
-
-Known local commits after the remote auth wiring checkpoint:
-
-- a4d1371 Extract training header CSS module
-- 88ecdbd Extract training shell CSS module
-- eb57a96 Extract perf overlay CSS module
-
-There may also be local commits for training-session.css and training-interaction.css depending on the current local log.
-
 ## Strategy
 
 Use incremental boundary-based extraction:
@@ -46,8 +36,6 @@ Use incremental boundary-based extraction:
 7. Push only after a clean group of local commits is ready.
 
 ## Next recommended cuts
-
-Next cuts require extra care because they involve responsive or cross-feature CSS:
 
 1. src/styles/training-responsive.css
    - Extract the first complete @media (max-width: 640px) block.
