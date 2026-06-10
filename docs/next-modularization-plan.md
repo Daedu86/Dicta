@@ -2,19 +2,10 @@
 
 Updated: 2026-06-10
 
-## Current checkpoint
-
 Branch: `product/input-2`
 
-Largest files driving the queue:
+## Current queue
 
-```text
-5028 src/App.tsx
-4784 src/App.css
-1207 src/components/openrouter/OpenRouterWorkspace.tsx
-1205 src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx
-1171 src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts
-```
-
-## Completed
-
+1. Keep extracting `src/App.css` into `src/styles/*` modules.
+2. Keep `src/App.css` as the runtime entrypoint until the full stylesheet can be edited locally and verified.
+3. Next safe CSS cut: move the auth block from `src/App.css` into `src/styles/auth.css`, then import it through
