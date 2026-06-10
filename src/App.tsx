@@ -87,6 +87,7 @@ import {
   collectBrowserTtsEnvironmentFingerprint,
   normalizeBrowserTtsEnvironmentFingerprint,
 } from './inputs/browserTts/browserTtsEnvironment';
+import { sameBrowserTtsEnvironment } from './inputs/browserTts/browserTtsEnvironmentComparison';
 import { trackAction, trackSample } from './core/telemetry';
 import { cloneTelemetry, isSubmittedFinishedAttempt, normalizeSessionForPersistence } from './core/sessionNormalization';
 import {
@@ -4830,14 +4831,6 @@ function getSessionVoiceDurationSec(session: StoredSession): number | null {
   return estimateSessionVoiceDurationSec(session);
 }
 
-function sameBrowserTtsEnvironment(
-  left: BrowserTtsEnvironmentFingerprint | null | undefined,
-  right: BrowserTtsEnvironmentFingerprint | null | undefined,
-): boolean {
-  const normalizedLeft = normalizeBrowserTtsEnvironmentFingerprint(left);
-  const normalizedRight = normalizeBrowserTtsEnvironmentFingerprint(right);
-  return JSON.stringify(normalizedLeft) === JSON.stringify(normalizedRight);
-}
 
 function telemetryEquals(a: SessionTelemetry | null | undefined, b: SessionTelemetry | null | undefined): boolean {
   return JSON.stringify(cloneTelemetry(a)) === JSON.stringify(cloneTelemetry(b));
