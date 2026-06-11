@@ -22,6 +22,7 @@ import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationAct
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
+import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -157,10 +158,6 @@ import {
   loadAdaptiveBenchmarks,
   loadAdaptiveSessionFeedback,
   } from './app/adaptiveStorage';
-import {
-  OLLAMA_RECOMMENDED_DEFAULT_MODEL,
-  persistOllamaDefaultModel,
-  } from './app/modelPreferenceStorage';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
@@ -2322,6 +2319,17 @@ function App() {
       void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback),
   });
 
+  const ollamaWorkspaceProps = useOllamaWorkspaceProps({
+    defaultModel: ollamaDefaultModel,
+    getAuthHeaders,
+    setOllamaDefaultModel,
+    models: ollamaModels,
+    status: ollamaStatus,
+    error: ollamaError,
+    onRefreshModels: refreshOllamaModels,
+    onBackToTraining: showLeaderboardWorkspace,
+  });
+
   const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
@@ -2579,20 +2587,7 @@ function App() {
               <OpenRouterWorkspace {...openRouterWorkspaceProps} />
               )
             ) : workspaceMode === 'ollama' ? (
-              <OllamaWorkspace
-                defaultModel={ollamaDefaultModel}
-                authHeaders={getAuthHeaders()}
-                models={ollamaModels}
-                status={ollamaStatus}
-                error={ollamaError}
-                onSetDefaultModel={(value) => {
-                  const nextModel = value.trim() || OLLAMA_RECOMMENDED_DEFAULT_MODEL;
-                  setOllamaDefaultModel(nextModel);
-                  persistOllamaDefaultModel(nextModel);
-                }}
-                onRefreshModels={refreshOllamaModels}
-                onBackToTraining={showLeaderboardWorkspace}
-              />
+              <OllamaWorkspace {...ollamaWorkspaceProps} />
             ) : workspaceMode === 'admin' ? (
               isCurrentProfileAdmin || !syncConfig.authRequired ? <AdminWorkspace
                 sessions={adminSessions}
