@@ -23,6 +23,7 @@ import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessio
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
+import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -2330,10 +2331,29 @@ function App() {
     onBackToTraining: showLeaderboardWorkspace,
   });
 
-  const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
   }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` Â· ${pendingSyncSummary.count} pending` : ''}`;
+
+  const appShellHeaderProps = useAppShellHeaderProps({
+    themeMode,
+    showOpenRouterStatus: openRouterAccessAllowed,
+    effectiveOpenRouterDefaultModel,
+    buildInfoTitle: DICTA_BUILD_INFO_TITLE,
+    buildInfoLabel: DICTA_BUILD_INFO_LABEL,
+    showAdminButton: isCurrentProfileAdmin || !syncConfig.authRequired,
+    showOpenRouterButton: openRouterAccessAllowed,
+    syncStatusState: supabaseSyncStatus.state,
+    syncStatusText: appShellSyncStatusText,
+    onOpenLeaderboard: showLeaderboardWorkspace,
+    onOpenMobileTraining: () => navigateAppRoute('/training'),
+    onOpenAdaptive: openAdaptiveWorkspaceFromHeader,
+    onOpenAdmin: showAdminWorkspace,
+    onOpenOpenRouter: showOpenRouterWorkspace,
+    onOpenOllama: showOllamaWorkspace,
+    onToggleTheme: () => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark')),
+    onSignOut: signOut,
+  });
 
   if (
     syncConfig.authRequired &&
@@ -2397,27 +2417,7 @@ function App() {
   return (
     <main className={`app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
       <section className="layout">
-        <AppShellHeader
-          themeMode={themeMode}
-          showOpenRouterStatus={openRouterAccessAllowed}
-          openRouterModelIsSet={Boolean(appShellOpenRouterModel)}
-          openRouterModelTitle={appShellOpenRouterModel ? `Selected OpenRouter model: ${appShellOpenRouterModel}` : 'No OpenRouter model selected'}
-          openRouterModelLabel={appShellOpenRouterModel ? `Model set: ${appShellOpenRouterModel}` : 'No model set'}
-          buildInfoTitle={DICTA_BUILD_INFO_TITLE}
-          buildInfoLabel={DICTA_BUILD_INFO_LABEL}
-          showAdminButton={isCurrentProfileAdmin || !syncConfig.authRequired}
-          showOpenRouterButton={openRouterAccessAllowed}
-          syncStatusState={supabaseSyncStatus.state}
-          syncStatusText={appShellSyncStatusText}
-          onOpenLeaderboard={showLeaderboardWorkspace}
-          onOpenMobileTraining={() => navigateAppRoute('/training')}
-          onOpenAdaptive={openAdaptiveWorkspaceFromHeader}
-          onOpenAdmin={showAdminWorkspace}
-          onOpenOpenRouter={showOpenRouterWorkspace}
-          onOpenOllama={showOllamaWorkspace}
-          onToggleTheme={() => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark'))}
-          onSignOut={signOut}
-        >
+        <AppShellHeader {...appShellHeaderProps}>
           {sessionCreationMode ? (
             <SessionCreateCard
               sessionCreationSource={sessionCreationSource}

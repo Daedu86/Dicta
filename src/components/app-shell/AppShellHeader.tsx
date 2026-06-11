@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 type ThemeMode = 'light' | 'dark';
 
-type AppShellHeaderProps = {
+export type AppShellHeaderProps = {
   themeMode: ThemeMode;
   showOpenRouterStatus: boolean;
   openRouterModelIsSet: boolean;

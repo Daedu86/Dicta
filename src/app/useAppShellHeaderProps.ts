@@ -1,0 +1,86 @@
+import { useMemo } from 'react';
+import type { AppShellHeaderProps } from '../components/app-shell/AppShellHeader';
+
+type UseAppShellHeaderPropsArgs = {
+  themeMode: AppShellHeaderProps['themeMode'];
+  showOpenRouterStatus: boolean;
+  effectiveOpenRouterDefaultModel: string;
+  buildInfoTitle: string;
+  buildInfoLabel: string;
+  showAdminButton: boolean;
+  showOpenRouterButton: boolean;
+  syncStatusState: string;
+  syncStatusText: string;
+  onOpenLeaderboard: () => void;
+  onOpenMobileTraining: () => void;
+  onOpenAdaptive: () => void;
+  onOpenAdmin: () => void;
+  onOpenOpenRouter: () => void;
+  onOpenOllama: () => void;
+  onToggleTheme: () => void;
+  onSignOut: () => void | Promise<void>;
+};
+
+export function useAppShellHeaderProps({
+  themeMode,
+  showOpenRouterStatus,
+  effectiveOpenRouterDefaultModel,
+  buildInfoTitle,
+  buildInfoLabel,
+  showAdminButton,
+  showOpenRouterButton,
+  syncStatusState,
+  syncStatusText,
+  onOpenLeaderboard,
+  onOpenMobileTraining,
+  onOpenAdaptive,
+  onOpenAdmin,
+  onOpenOpenRouter,
+  onOpenOllama,
+  onToggleTheme,
+  onSignOut,
+}: UseAppShellHeaderPropsArgs): AppShellHeaderProps {
+  return useMemo(() => {
+    const openRouterModel = effectiveOpenRouterDefaultModel.trim();
+
+    return {
+      themeMode,
+      showOpenRouterStatus,
+      openRouterModelIsSet: Boolean(openRouterModel),
+      openRouterModelTitle: openRouterModel ? `Selected OpenRouter model: ${openRouterModel}` : 'No OpenRouter model selected',
+      openRouterModelLabel: openRouterModel ? `Model set: ${openRouterModel}` : 'No model set',
+      buildInfoTitle,
+      buildInfoLabel,
+      showAdminButton,
+      showOpenRouterButton,
+      syncStatusState,
+      syncStatusText,
+      onOpenLeaderboard,
+      onOpenMobileTraining,
+      onOpenAdaptive,
+      onOpenAdmin,
+      onOpenOpenRouter,
+      onOpenOllama,
+      onToggleTheme,
+      onSignOut,
+    };
+  }, [
+    themeMode,
+    showOpenRouterStatus,
+    effectiveOpenRouterDefaultModel,
+    buildInfoTitle,
+    buildInfoLabel,
+    showAdminButton,
+    showOpenRouterButton,
+    syncStatusState,
+    syncStatusText,
+    onOpenLeaderboard,
+    onOpenMobileTraining,
+    onOpenAdaptive,
+    onOpenAdmin,
+    onOpenOpenRouter,
+    onOpenOllama,
+    onToggleTheme,
+    onSignOut,
+  ]);
+}
