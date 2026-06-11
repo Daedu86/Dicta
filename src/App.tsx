@@ -18,6 +18,7 @@ import { useAdminFileInventory } from './app/useAdminFileInventory';
 import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries';
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
+import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -412,9 +413,14 @@ function App() {
     adaptiveSectionExpanded,
     setAdaptiveSectionExpanded,
   } = useDictaUiPreferences();
-  const [insightsDiagnosticInputMode, setInsightsDiagnosticInputMode] = useState<InputMode>('browser-tts');
-  const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
-  const [insightsDiagnosticFallbackReport, setInsightsDiagnosticFallbackReport] = useState('');
+  const {
+    insightsDiagnosticInputMode,
+    setInsightsDiagnosticInputMode,
+    insightsDiagnosticMessage,
+    setInsightsDiagnosticMessage,
+    insightsDiagnosticFallbackReport,
+    setInsightsDiagnosticFallbackReport,
+  } = useAdaptiveDiagnosticsUiState();
   const [adaptiveSemanticDebug, setAdaptiveSemanticDebug] = useState<AdaptiveSemanticDebug>({
     semanticCutPenalty: 0,
     unsafePauseCount: 0,
