@@ -17,6 +17,7 @@ import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions
 import { useAdminFileInventory } from './app/useAdminFileInventory';
 import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries';
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
+import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -359,12 +360,20 @@ function App() {
     ttsPracticeLiveTextRef.current = ttsPracticeText;
   }, [ttsPracticeText]);
 
-  const [directOpenRouterBusy, setDirectOpenRouterBusy] = useState(false);
-  const [directIntermediateOpenRouterBusy, setDirectIntermediateOpenRouterBusy] = useState(false);
-  const [directAdvancedOpenRouterBusy, setDirectAdvancedOpenRouterBusy] = useState(false);
-  const [expressEasyOpenRouterBusy, setExpressEasyOpenRouterBusy] = useState(false);
-  const [expressIntermediateOpenRouterBusy, setExpressIntermediateOpenRouterBusy] = useState(false);
-  const [expressAdvancedOpenRouterBusy, setExpressAdvancedOpenRouterBusy] = useState(false);
+  const {
+    directOpenRouterBusy,
+    setDirectOpenRouterBusy,
+    directIntermediateOpenRouterBusy,
+    setDirectIntermediateOpenRouterBusy,
+    directAdvancedOpenRouterBusy,
+    setDirectAdvancedOpenRouterBusy,
+    expressEasyOpenRouterBusy,
+    setExpressEasyOpenRouterBusy,
+    expressIntermediateOpenRouterBusy,
+    setExpressIntermediateOpenRouterBusy,
+    expressAdvancedOpenRouterBusy,
+    setExpressAdvancedOpenRouterBusy,
+  } = useOpenRouterGenerationBusyState();
   const {
     openRouterModels,
     openRouterStatus,

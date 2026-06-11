@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after workspace navigation effects extraction
+Updated: 2026-06-11 after OpenRouter generation busy state extraction
 
 ## Current working-tree status
 
@@ -10,14 +10,15 @@ This document began as a generated map. The detailed inventories below the curre
 | --- | ---: |
 | Branch | product/input-2 |
 | Latest committed baseline | 8876ed9 Extract Supabase auth actions (#61) |
-| Current working-tree App shell LOC | 3189 |
+| Current working-tree App shell LOC | 3198 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
+| Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
 | Current `src/app/useAdaptiveExportActions.ts` LOC | 303 |
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
 | Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
 | Current `src/app/useSessionCreationActions.ts` LOC | 211 |
-| App.tsx inline `useState` count | 47 |
+| App.tsx inline `useState` count | 41 |
 | App.tsx inline `useRef` count | 30 |
 | App.tsx inline `useMemo` count | 10 |
 | App.tsx inline `useEffect` count | 14 |
@@ -33,6 +34,7 @@ Completed since the original map:
 - `useSessionCreationActions` owns plain-text session creation, DictationScript import validation/creation, and OpenRouter script session creation actions.
 - `useWorkspaceSessionSummaries` owns derived session collections and workspace summaries.
 - `useWorkspaceNavigationEffects` owns non-TTS workspace navigation side effects.
+- `useOpenRouterGenerationBusyState` owns OpenRouter generation busy flags.
 
 Current recommendation:
 
