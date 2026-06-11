@@ -200,3 +200,26 @@ Current App shell metrics:
 | App.tsx inline function declarations | 25 |
 
 Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, and `playTtsFromWord` remained untouched in this sequence. The next small candidate is `AdaptiveBenchmarkSection` prop composition, while adaptive policy/export action behavior should stay in its existing owners.
+## Follow-up — 2026-06-11 Adaptive benchmark and live metrics props
+
+Latest committed baseline: `ad42cef Extract live metrics dock props`.
+
+This checkpoint covers the two most recent App shell prop-composition extractions:
+
+- `src/app/useAdaptiveBenchmarkSectionProps.ts` owns Adaptive benchmark section prop composition, benchmark selection message reset, and benchmark/session-feedback copy/export callback wiring.
+- `src/app/useLiveMetricsDockProps.ts` owns live metrics dock prop composition, metrics view setters, insights diagnostics callback wiring, collapsed-state toggling, and TTS-current-chunk presence mapping.
+
+Current App shell metrics after this checkpoint:
+
+| Item | Value |
+| --- | ---: |
+| `src/App.tsx` LOC | 2683 |
+| `src/app/useAdaptiveBenchmarkSectionProps.ts` LOC | 170 |
+| `src/app/useLiveMetricsDockProps.ts` LOC | 111 |
+
+Verified both cuts with `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched in this sequence.
+
+Next pass should start from a clean `ad42cef` baseline and inspect remaining low-risk prop-composition or non-TTS UI-state boundaries before touching runtime logic.
+
