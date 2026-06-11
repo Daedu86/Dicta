@@ -14,6 +14,7 @@ import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
+import { useAdminFileInventory } from './app/useAdminFileInventory';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -240,7 +241,6 @@ import {
 import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
   AdaptiveSemanticDebug,
-  AdminFileInventory,
   DictaDebugSampleAudit,
   PerformanceTrend,
   SessionSource,
@@ -384,8 +384,13 @@ function App() {
     refreshOpenRouterModels: refreshOpenRouterModelCatalog,
     refreshOllamaModels: refreshOllamaModelCatalog,
   } = useModelCatalogRuntime();
-  const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
-  const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
+  const {
+    adminFileInventory,
+    adminFileInventoryError,
+  } = useAdminFileInventory({
+    workspaceMode,
+    localDevFeaturesAvailable: LOCAL_DEV_FEATURES_AVAILABLE,
+  });
   const {
     dictaLanguageView,
     setDictaLanguageView,
@@ -949,40 +954,6 @@ function App() {
       showWorkspaceMode(activeInputWorkspaceMode);
     }
   }, [activeInputWorkspaceMode, activeSession, showWorkspaceMode, workspaceMode]);
-
-  useEffect(() => {
-    if (workspaceMode !== 'admin') return;
-    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
-      setAdminFileInventory(null);
-      setAdminFileInventoryError('Local file inventory is available only when running the Vite dev server.');
-      return;
-    }
-
-    let cancelled = false;
-    async function loadAdminFiles(): Promise<void> {
-      try {
-        const response = await fetch('/api/admin/files');
-        if (!response.ok) {
-          throw new Error(`File inventory unavailable (${response.status})`);
-        }
-        const payload = (await response.json()) as AdminFileInventory;
-        if (!cancelled) {
-          setAdminFileInventory(payload);
-          setAdminFileInventoryError('');
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setAdminFileInventory(null);
-          setAdminFileInventoryError(error instanceof Error ? error.message : 'File inventory unavailable');
-        }
-      }
-    }
-
-    void loadAdminFiles();
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceMode]);
 
   const lastSessionForLanguage = useMemo(
     () => findLastSessionForLanguage(sessionsWithVoiceDuration, metricsLanguageView),

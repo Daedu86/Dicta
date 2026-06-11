@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after session-creation actions extraction
+Updated: 2026-06-11 after admin file inventory runtime extraction
 
 ## Current working-tree status
 
@@ -10,16 +10,16 @@ This document began as a generated map. The detailed inventories below the curre
 | --- | ---: |
 | Branch | product/input-2 |
 | Latest committed baseline | 8876ed9 Extract Supabase auth actions (#61) |
-| Current working-tree App shell LOC | 3339 |
+| Current working-tree App shell LOC | 3273 |
 | Current `src/app/useAdaptiveExportActions.ts` LOC | 303 |
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
 | Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
 | Current `src/app/useSessionCreationActions.ts` LOC | 211 |
-| App.tsx inline `useState` count | 49 |
+| App.tsx inline `useState` count | 47 |
 | App.tsx inline `useRef` count | 30 |
-| App.tsx inline `useMemo` count | 23 |
-| App.tsx inline `useEffect` count | 18 |
-| App.tsx inline function declarations | 45 |
+| App.tsx inline `useMemo` count | 22 |
+| App.tsx inline `useEffect` count | 17 |
+| App.tsx inline function declarations | 28 |
 
 Completed since the original map:
 
