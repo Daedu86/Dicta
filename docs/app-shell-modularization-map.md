@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after app perf diagnostics runtime extraction
+Updated: 2026-06-11 after adaptive storage persistence effects extraction
 
 ## Current working-tree status
 
@@ -10,12 +10,13 @@ This document began as a generated map. The detailed inventories below the curre
 | --- | ---: |
 | Branch | product/input-2 |
 | Latest committed baseline | 8876ed9 Extract Supabase auth actions (#61) |
-| Current working-tree App shell LOC | 3189 |
+| Current working-tree App shell LOC | 3181 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
+| Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
 | Current `src/app/useAdaptiveExportActions.ts` LOC | 303 |
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
 | Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
@@ -23,7 +24,7 @@ This document began as a generated map. The detailed inventories below the curre
 | App.tsx inline `useState` count | 37 |
 | App.tsx inline `useRef` count | 29 |
 | App.tsx inline `useMemo` count | 10 |
-| App.tsx inline `useEffect` count | 12 |
+| App.tsx inline `useEffect` count | 9 |
 | App.tsx inline function declarations | 28 |
 
 Completed since the original map:
@@ -39,6 +40,7 @@ Completed since the original map:
 - `useOpenRouterGenerationBusyState` owns OpenRouter generation busy flags.
 - `useAdaptiveDiagnosticsUiState` owns adaptive diagnostics UI state.
 - `useAppPerfDiagnosticsRuntime` owns App render-count and perf diagnostics configuration; `App.tsx` still imports `perfDiagnostics` for active OpenRouter and TTS spans.
+- `useAdaptiveStoragePersistenceEffects` owns adaptive benchmark/feedback local persistence and ref sync effects.
 
 Current recommendation:
 

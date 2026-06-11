@@ -20,6 +20,7 @@ import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffec
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
+import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
@@ -188,8 +189,6 @@ import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import {
   loadAdaptiveBenchmarks,
   loadAdaptiveSessionFeedback,
-  persistAdaptiveBenchmarks,
-  persistAdaptiveSessionFeedback,
   } from './app/adaptiveStorage';
 import {
   OLLAMA_RECOMMENDED_DEFAULT_MODEL,
@@ -777,6 +776,14 @@ function App() {
     showWorkspaceMode,
   });
 
+  useAdaptiveStoragePersistenceEffects({
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveBenchmarksRef,
+    adaptiveSessionFeedbackByInputLanguage,
+    adaptiveSessionFeedbackRef,
+    localStorageReadyForEffectiveProfile,
+  });
+
   useEffect(() => {
     if (!perfDiagnosticsEnabled && !import.meta.env.DEV) {
       delete window.__DICTA_DEBUG_EXPORT__;
@@ -864,21 +871,6 @@ function App() {
     adaptiveSessionFeedbackByInputLanguage,
     perfDiagnosticsEnabled,
   ]);
-
-  useEffect(() => {
-    if (!localStorageReadyForEffectiveProfile) return;
-    persistAdaptiveBenchmarks(adaptiveBenchmarksByInputLanguage);
-  }, [adaptiveBenchmarksByInputLanguage, localStorageReadyForEffectiveProfile]);
-
-  useEffect(() => {
-    adaptiveBenchmarksRef.current = adaptiveBenchmarksByInputLanguage;
-  }, [adaptiveBenchmarksByInputLanguage]);
-
-  useEffect(() => {
-    adaptiveSessionFeedbackRef.current = adaptiveSessionFeedbackByInputLanguage;
-    if (!localStorageReadyForEffectiveProfile) return;
-    persistAdaptiveSessionFeedback(adaptiveSessionFeedbackByInputLanguage);
-  }, [adaptiveSessionFeedbackByInputLanguage, localStorageReadyForEffectiveProfile]);
 
   useEffect(() => {
     ensureLatestBrowserTtsDeDictationScriptFeedback(sessions);
