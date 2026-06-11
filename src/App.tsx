@@ -18,6 +18,7 @@ import { useAdminFileInventory } from './app/useAdminFileInventory';
 import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries';
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
+import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -40,7 +41,6 @@ import type {
   TtsPacingMode } from './types/dictation';
 import type {
   InputMode,
-  ListeningTrainingIntent,
   LiveTelemetryFrame,
   PhraseSize,
   } from './core/adaptive/types';
@@ -61,22 +61,8 @@ import {
   normalizeBenchmarkLanguage,
   } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import {
-  buildOpenRouterGenerationPrompt,
-  estimateOpenRouterPromptSize,
-  getOpenRouterGenerationMaxTokens,
-  type OpenRouterDurationMinutes,
-  } from './core/adaptive/openRouterGenerationPrompt';
-import { buildOpenRouterDiversificationHints } from './app/openRouterPromptHints';
-import {
   type ActiveOpenRouterJob,
-  type OpenRouterJobResponse,
   } from './core/openRouterJobs';
-import {
-  isTransientOpenRouterGenerationError,
-  } from './core/adaptive/openRouterFallbackScript';
-import {
-  type DictationScriptDifficulty,
-  } from './core/adaptive/dictationScriptValidation';
 import {
   selectLatestAdaptiveSessionFeedback,
   } from './core/adaptive/sessionFeedback';
@@ -128,8 +114,6 @@ import { Metric } from './components/shared/Metric';
 import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
 import {
   buildTrainingGenerationButtonNotice,
-  formatInterruptedOpenRouterMessage,
-  parseTimestampMs,
   shouldCreatePersistentGenerationErrorSession,
   } from './components/openrouter/openRouterViewHelpers';
 import type {
@@ -160,7 +144,6 @@ import {
   } from './core/appProfiles';
 import {
   buildGeneratedTrainingSessionNotification,
-  requestTrainingNotificationPermission,
   showGeneratedTrainingSessionNotification,
   } from './core/trainingNotifications';
 import {
@@ -213,9 +196,6 @@ import { buildSemanticPhrasesFromDictationScript,
   buildTtsSourceWords } from './app/dictationScriptSemanticPhrases';
 import { buildTtsPlaybackProfile,
   type TtsLiveSignal } from './app/ttsPlaybackProfile';
-import {
-  buildOpenRouterActivityHints,
-  } from './app/adaptiveFeedbackContext';
 import { loadSessions,
   normalizeRestoredStoredSession } from './app/sessionStorage';
 import {
@@ -1150,258 +1130,50 @@ function App() {
     ttsLanguage,
   });
 
-  function openOpenRouterGenerateForActiveInput(): void {
-    if (!activeSession) return;
-    if (!openRouterAccessAllowed) {
-      setOpenRouterError(openRouterAccessMessage);
-      return;
-    }
-    if (!ensureCanCreateDictationSession('openrouter')) return;
-    if (!isOnline) {
-      setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
-      return;
-    }
-    const inputMode = mapSessionInputMode(activeSession.inputMode);
-    const language: BenchmarkLanguageButton = dictaLanguageView;
-    setSelectedBenchmarkInputMode(inputMode);
-    setSelectedBenchmarkLanguage(language);
-    setBenchmarkExportMessage('');
-    setSessionFeedbackMessage('');
-    showOpenRouterWorkspace();
-    setOpenRouterGenerateFocusRequest((value) => value + 1);
-  }
-
-  async function generateDirectSessionFromOpenRouter({
-    slotLabel,
-    displayLabel,
-    durationMinutes,
-    isBusy,
-    setBusy,
-    userIntent,
-    targetDifficulty,
-    difficultyInstruction,
-  }: {
-    slotLabel: string;
-    displayLabel: string;
-    durationMinutes: OpenRouterDurationMinutes;
-    isBusy: boolean;
-    setBusy: (value: boolean) => void;
-    userIntent?: ListeningTrainingIntent;
-    targetDifficulty?: DictationScriptDifficulty;
-    difficultyInstruction?: string;
-  }): Promise<void> {
-    if (!activeSession || isBusy) return;
-    if (!openRouterAccessAllowed) {
-      setOpenRouterError(openRouterAccessMessage);
-      return;
-    }
-    if (!ensureCanCreateDictationSession('openrouter')) return;
-    if (!isOnline) {
-      setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
-      return;
-    }
-    const model = effectiveOpenRouterDefaultModel.trim();
-    const inputMode = mapSessionInputMode(activeSession.inputMode);
-    const language: BenchmarkLanguageButton = dictaLanguageView;
-
-    if (!model) {
-      setOpenRouterError('Set a default OpenRouter model before generating the next session.');
-      return;
-    }
-
-    void requestTrainingNotificationPermission();
-
-    const endPerfSpan = perfDiagnostics.startSpan('openrouter.generateDirectSession', { userIntent, targetDifficulty, durationMinutes });
-    const generationStartedAt = new Date().toISOString();
-    setBusy(true);
-    setOpenRouterError('');
-    setSelectedBenchmarkInputMode(inputMode);
-    setSelectedBenchmarkLanguage(language);
-    const targetMaxTokens = getOpenRouterGenerationMaxTokens(durationMinutes);
-    try {
-      const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
-      const sessionFeedback = selectLatestAdaptiveSessionFeedback(
-        adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language],
-        inputMode,
-        language,
-      );
-      const directPromptArgs = {
-        profile,
-        sessionFeedback,
-        promptSource: 'compact-adaptive-v2' as const,
-        durationMinutes,
-        userIntent,
-        targetDifficulty,
-        difficultyInstruction,
-        diversificationHints: buildOpenRouterDiversificationHints({
-          durationMinutes,
-          targetDifficulty,
-          recentSessions: recentDictationSessionHints,
-          activityHints: buildOpenRouterActivityHints({
-            sessions,
-            inputMode,
-            language,
-            benchmarkSessionCount: profile.sessionCount,
-          }),
-        }),
-      };
-      const { prompt, trainingPrescription } = buildOpenRouterGenerationPrompt(directPromptArgs);
-      const resolvedTargetDifficulty = trainingPrescription.difficulty;
-      const promptSize = estimateOpenRouterPromptSize(prompt, {
-        promptMode: 'compact-adaptive-v2',
-        durationMinutes,
-        targetDifficulty: resolvedTargetDifficulty,
-        inputMode,
-        language,
-      });
-      const response = await fetch('/api/openrouter/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({
-          model,
-          prompt,
-          maxTokens: targetMaxTokens,
-          slotLabel,
-          inputMode,
-          language,
-          durationMinutes,
-          targetDifficulty: resolvedTargetDifficulty,
-        }),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Generation request failed (${response.status}).`);
-      }
-      const payload = (await response.json()) as OpenRouterJobResponse;
-      const jobId = payload.jobId;
-      if (!jobId) throw new Error('OpenRouter job did not return an id.');
-      const activeJob: ActiveOpenRouterJob = {
-        jobId,
-        model,
-        slotLabel,
-        inputMode,
-        language,
-        durationMinutes,
-        targetDifficulty: resolvedTargetDifficulty,
-        promptMode: promptSize.promptMode,
-        promptCharacterCount: promptSize.characterCount,
-        promptApproximateTokenCount: promptSize.approximateTokenCount,
-        origin: 'direct-training',
-        startedAt: generationStartedAt,
-      };
-      trackOpenRouterJob(activeJob);
-    } catch (err) {
-      const message =
-        err instanceof TypeError
-          ? 'Failed to reach OpenRouter endpoint. Refresh the page and try a free model such as openrouter/free.'
-          : err instanceof Error
-            ? err.message
-            : 'OpenRouter generation failed.';
-      recordOpenRouterGenerationFailure({
-        slotLabel,
-        displayLabel,
-        model,
-        startedAt: generationStartedAt,
-        error: message,
-      });
-      if (isTransientOpenRouterGenerationError(message)) {
-        const nowMs = Date.now();
-        setOpenRouterError(
-          formatInterruptedOpenRouterMessage(slotLabel, model, Math.max(0, nowMs - parseTimestampMs(generationStartedAt, nowMs))),
-        );
-      } else if (shouldCreatePersistentGenerationErrorSession(message)) {
-        createOpenRouterErrorSession({
-          slotLabel,
-          inputMode,
-          language,
-          message,
-        }, { navigateToLeaderboard: false });
-      } else {
-        setOpenRouterError(message);
-      }
-    } finally {
-      setBusy(false);
-      endPerfSpan();
-    }
-  }
-
-  async function generateEasyNextSessionFromOpenRouter(): Promise<void> {
-    await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Easy direct session',
-      displayLabel: 'Easy session',
-      durationMinutes: 2,
-      isBusy: directOpenRouterBusy,
-      setBusy: setDirectOpenRouterBusy,
-      userIntent: 'recover',
-      targetDifficulty: 'easy',
-      difficultyInstruction: 'Recovery intent: keep material accessible and obey the trainer prescription if it narrows the range.',
-    });
-  }
-
-  async function generateIntermediateNextSessionFromOpenRouter(): Promise<void> {
-    await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Intermediate direct session',
-      displayLabel: 'Medium session',
-      durationMinutes: 2,
-      isBusy: directIntermediateOpenRouterBusy,
-      setBusy: setDirectIntermediateOpenRouterBusy,
-      userIntent: 'progress',
-      targetDifficulty: 'normal',
-      difficultyInstruction: 'Progress intent: use moderate phrase difficulty only when the trainer prescription allows it.',
-    });
-  }
-
-  async function generateAdvancedNextSessionFromOpenRouter(): Promise<void> {
-    await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Advanced direct session',
-      displayLabel: 'Hard session',
-      durationMinutes: 2,
-      isBusy: directAdvancedOpenRouterBusy,
-      setBusy: setDirectAdvancedOpenRouterBusy,
-      userIntent: 'challenge',
-      targetDifficulty: 'hard',
-      difficultyInstruction: 'Challenge intent: use harder content only if the trainer prescription keeps the session in challenge mode.',
-    });
-  }
-
-  async function generateExpressEasyNextSessionFromOpenRouter(): Promise<void> {
-    await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Express easy direct session',
-      displayLabel: 'Express easy session',
-      durationMinutes: 1,
-      isBusy: expressEasyOpenRouterBusy,
-      setBusy: setExpressEasyOpenRouterBusy,
-      userIntent: 'recover',
-      targetDifficulty: 'easy',
-      difficultyInstruction: 'Express recovery intent: keep material accessible and obey the trainer prescription if it narrows the range.',
-    });
-  }
-
-  async function generateExpressIntermediateNextSessionFromOpenRouter(): Promise<void> {
-    await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Express intermediate direct session',
-      displayLabel: 'Express medium session',
-      durationMinutes: 1,
-      isBusy: expressIntermediateOpenRouterBusy,
-      setBusy: setExpressIntermediateOpenRouterBusy,
-      userIntent: 'progress',
-      targetDifficulty: 'normal',
-      difficultyInstruction: 'Express progress intent: use moderate phrase difficulty only when the trainer prescription allows it.',
-    });
-  }
-
-  async function generateExpressAdvancedNextSessionFromOpenRouter(): Promise<void> {
-    await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Express advanced direct session',
-      displayLabel: 'Express hard session',
-      durationMinutes: 1,
-      isBusy: expressAdvancedOpenRouterBusy,
-      setBusy: setExpressAdvancedOpenRouterBusy,
-      userIntent: 'challenge',
-      targetDifficulty: 'hard',
-      difficultyInstruction: 'Express challenge intent: use harder content only if the trainer prescription keeps the session in challenge mode.',
-    });
-  }
+  const {
+    openOpenRouterGenerateForActiveInput,
+    generateEasyNextSessionFromOpenRouter,
+    generateIntermediateNextSessionFromOpenRouter,
+    generateAdvancedNextSessionFromOpenRouter,
+    generateExpressEasyNextSessionFromOpenRouter,
+    generateExpressIntermediateNextSessionFromOpenRouter,
+    generateExpressAdvancedNextSessionFromOpenRouter,
+  } = useOpenRouterGenerationActions({
+    sessions,
+    activeSession,
+    openRouterAccessAllowed,
+    openRouterAccessMessage,
+    isOnline,
+    effectiveOpenRouterDefaultModel,
+    dictaLanguageView,
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
+    recentDictationSessionHints,
+    getAuthHeaders,
+    ensureCanCreateDictationSession,
+    showOpenRouterWorkspace,
+    setOpenRouterGenerateFocusRequest,
+    setOpenRouterError,
+    setSelectedBenchmarkInputMode,
+    setSelectedBenchmarkLanguage,
+    setBenchmarkExportMessage,
+    setSessionFeedbackMessage,
+    trackOpenRouterJob,
+    recordOpenRouterGenerationFailure,
+    createOpenRouterErrorSession,
+    directOpenRouterBusy,
+    setDirectOpenRouterBusy,
+    directIntermediateOpenRouterBusy,
+    setDirectIntermediateOpenRouterBusy,
+    directAdvancedOpenRouterBusy,
+    setDirectAdvancedOpenRouterBusy,
+    expressEasyOpenRouterBusy,
+    setExpressEasyOpenRouterBusy,
+    expressIntermediateOpenRouterBusy,
+    setExpressIntermediateOpenRouterBusy,
+    expressAdvancedOpenRouterBusy,
+    setExpressAdvancedOpenRouterBusy,
+  });
 
   function openAdaptiveExportsForActiveInput(): void {
     if (!activeSession) return;

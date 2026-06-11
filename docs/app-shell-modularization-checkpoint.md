@@ -18,7 +18,7 @@ The current architecture keeps `App.tsx` as the orchestration shell while stable
 
 ## Follow-up â€” 2026-06-11
 
-The next App shell pass continued with hook-level runtime clusters and kept the same browser/App shell boundary. After extracting keyboard remapping, adaptive export/copy actions, Supabase auth action handlers, and session creation/import actions, `src/App.tsx` is **3339 lines** in the working tree.
+The next App shell pass continued with hook-level runtime clusters and kept the same browser/App shell boundary. After extracting keyboard remapping, adaptive export/copy actions, Supabase auth action handlers, session creation/import actions, workspace/session state hooks, and direct OpenRouter generation actions, `src/App.tsx` is **2859 lines** in the working tree.
 
 New modules added after this checkpoint:
 
@@ -28,6 +28,17 @@ New modules added after this checkpoint:
 - `src/app/useAdaptiveExportActions.ts`
 - `src/app/useSupabaseAuthActions.ts`
 - `src/app/useSessionCreationActions.ts`
+- `src/app/useWorkspaceSessionSummaries.ts`
+- `src/app/useWorkspaceNavigationEffects.ts`
+- `src/app/useOpenRouterGenerationBusyState.ts`
+- `src/app/useOpenRouterGenerationActions.ts`
+- `src/app/useAdaptiveDiagnosticsUiState.ts`
+- `src/app/useAppPerfDiagnosticsRuntime.ts`
+- `src/app/useAdaptiveStoragePersistenceEffects.ts`
+- `src/app/useDictaDebugExportEffect.ts`
+- `src/app/useAdaptiveWorkspaceState.ts`
+- `src/app/useDictaSupabaseRuntime.ts`
+- `src/app/useSessionCreationWorkspaceState.ts`
 
 The remaining high-risk area is still the Browser TTS playback loop. Do not extract `playTtsFromWord` or the TTS refs as a casual line move; start from a fresh boundary map and build after each cut.
 
@@ -123,7 +134,7 @@ a0f9f3c Remove dead App helpers
 1827c3f Extract AdminWorkspace shell
 ```
 
-## 2026-06-11 — Auth headers and model refresh extraction
+## 2026-06-11 ï¿½ Auth headers and model refresh extraction
 
 - Extracted reusable auth-header creation into `src/app/useAuthHeaders.ts`.
 - Extracted `refreshOpenRouterModels` and `refreshOllamaModels` into `src/app/useModelRefreshActions.ts`.

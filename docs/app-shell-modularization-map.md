@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after session creation workspace state extraction
+Updated: 2026-06-11 after OpenRouter generation actions extraction
 
 ## Current working-tree status
 
@@ -9,11 +9,12 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 8876ed9 Extract Supabase auth actions (#61) |
-| Current working-tree App shell LOC | 3088 |
+| Latest committed baseline | d5678ea Update App shell P0 modularization checkpoint |
+| Current working-tree App shell LOC | 2859 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
+| Current `src/app/useOpenRouterGenerationActions.ts` LOC | 440 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -29,7 +30,7 @@ This document began as a generated map. The detailed inventories below the curre
 | App.tsx inline `useRef` count | 27 |
 | App.tsx inline `useMemo` count | 8 |
 | App.tsx inline `useEffect` count | 8 |
-| App.tsx inline function declarations | 28 |
+| App.tsx inline function declarations | 27 |
 
 Completed since the original map:
 
@@ -42,6 +43,7 @@ Completed since the original map:
 - `useWorkspaceSessionSummaries` owns derived session collections and workspace summaries.
 - `useWorkspaceNavigationEffects` owns non-TTS workspace navigation side effects.
 - `useOpenRouterGenerationBusyState` owns OpenRouter generation busy flags.
+- `useOpenRouterGenerationActions` owns direct-training OpenRouter generation actions, prompt/job orchestration, generation failure notices, and OpenRouter generate-workspace focusing.
 - `useAdaptiveDiagnosticsUiState` owns adaptive diagnostics UI state.
 - `useAppPerfDiagnosticsRuntime` owns App render-count and perf diagnostics configuration; `App.tsx` still imports `perfDiagnostics` for active OpenRouter and TTS spans.
 - `useAdaptiveStoragePersistenceEffects` owns adaptive benchmark/feedback local persistence and ref sync effects.

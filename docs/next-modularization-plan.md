@@ -124,7 +124,7 @@ This document used to track remaining extraction work. It is now a status and gu
 <!-- app-shell-modularization-checkpoint:start -->
 ## App shell modularization checkpoint â€” 2026-06-10
 
-A focused App shell reduction pass continued after the original checkpoint. Current `src/App.tsx` size after the session-creation actions extraction is **3339 lines**.
+A focused App shell reduction pass continued after the original checkpoint. Current `src/App.tsx` size after the OpenRouter generation actions extraction is **2859 lines**.
 
 Top-level function inventory:
 
@@ -151,6 +151,8 @@ Completed extraction groups:
 - Adaptive export/copy actions hook
 - Supabase auth action handlers hook
 - Session creation/import action handlers hook
+- Workspace/session state hooks
+- Direct OpenRouter generation action handlers hook
 
 Next recommended pass:
 
