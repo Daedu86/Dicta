@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
 import type { FormEvent, KeyboardEvent } from 'react';
-import type { Session as SupabaseAuthSession } from '@supabase/supabase-js';
 import './App.css';
 import type {
   BrowserTtsEnvironmentFingerprint, ControlAction, SessionTelemetry, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
@@ -348,20 +348,12 @@ function App() {
   const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
   const syncConfig = useMemo(() => getDictaSyncConfig(import.meta.env), []);
   const supabaseClient = useMemo(() => createDictaSupabaseClient(syncConfig), [syncConfig]);
-  const [authSession, setAuthSession] = useState<SupabaseAuthSession | null>(null);
-  const [authLoading, setAuthLoading] = useState(() => Boolean(syncConfig.authRequired));
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [authView, setAuthView] = useState<AuthView>(() => {
-    const authParams = `${window.location.hash}${window.location.search}`;
-    return authParams.includes('type=recovery') || authParams.includes('type%3Drecovery') ? 'updatePassword' : 'signIn';
-  });
-  const [authNewPassword, setAuthNewPassword] = useState('');
-  const [authNewPasswordConfirm, setAuthNewPasswordConfirm] = useState('');
-  const [authMessage, setAuthMessage] = useState('');
-  const [authMessageTone, setAuthMessageTone] = useState<'hint' | 'success' | 'error'>('hint');
-  const [authBusy, setAuthBusy] = useState(false);
+  const {
+    authSession, setAuthSession, authLoading, setAuthLoading, authEmail, setAuthEmail, authPassword, setAuthPassword,
+    authError, setAuthError, authView, setAuthView, authNewPassword, setAuthNewPassword,
+    authNewPasswordConfirm, setAuthNewPasswordConfirm, authMessage, setAuthMessage, authMessageTone, setAuthMessageTone,
+    authBusy, setAuthBusy,
+  } = useAuthWorkspaceState({ authRequired: syncConfig.authRequired });
   const [appProfile, setAppProfile] = useState<DictaAppProfile | null>(null);
   const [appProfileError, setAppProfileError] = useState('');
   const openRouterAccessState = resolveOpenRouterAccessState({
