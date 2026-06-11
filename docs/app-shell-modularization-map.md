@@ -1,16 +1,46 @@
 # App shell modularization map
 
-Generated: 2026-06-11T07:24:21.096Z
+Updated: 2026-06-11 after adaptive export-actions extraction
+
+## Current working-tree status
+
+This document began as a generated map. The detailed inventories below the current status are historical unless explicitly updated.
+
+| Item | Value |
+| --- | ---: |
+| Branch | product/input-2 |
+| Latest committed baseline | 8f14e83 Extract keyboard remap runtime hook |
+| Current working-tree App shell LOC | 3498 |
+| Current `src/app/useAdaptiveExportActions.ts` LOC | 303 |
+| Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
+| App.tsx inline `useState` count | 31 |
+| App.tsx inline `useRef` count | 16 |
+| App.tsx inline `useMemo` count | 22 |
+| App.tsx inline `useEffect` count | 18 |
+| App.tsx inline function declarations | 52 |
+
+Completed since the original map:
+
+- `useModelCatalogRuntime` owns OpenRouter/Ollama model catalog state and refresh actions.
+- `useDictaLocalStorageImportRuntime` owns Dicta localStorage snapshot import restore actions.
+- `useKeyboardRemapRuntime` owns active typing-language resolution and Spanish physical-key remapping.
+- `useAdaptiveExportActions` owns adaptive benchmark/session-feedback copy, export, and insights diagnostic actions.
+
+Current recommendation:
+
+- Start the next pass from a fresh measurement before selecting another extraction.
+- Prefer small browser/App shell hooks with explicit inputs/outputs.
+- Avoid the Browser TTS playback loop, TTS refs, and regex/block-marker moves around `playTtsFromWord`.
 
 ## Baseline
 
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Commit | 7841693 |
-| Git status before checkpoint | ?? .tmp-create-app-repo-checkpoint.cjs |
+| Commit | 8f14e83 plus current working-tree modularization |
+| Git status before checkpoint | Modified docs/App shell extraction files |
 | App shell file | src/App.tsx |
-| App shell LOC | 3753 |
+| App shell LOC | 3498 |
 | Tracked text files | 289 |
 | Tracked text LOC | 49093 |
 | Tracked code files | 213 |
@@ -244,33 +274,22 @@ These are the highest-leverage candidates, but not all are safe to extract direc
 | `tests/useOpenRouterJobsRuntime.test.ts` | 1 | 139 |
 | `docs/session-dashboard-modularization.md` | 1 | 136 |
 
-## Balanced modularization recommendations
+## Historical balanced modularization recommendations
+
+These were the recommendations from the original generated map. Several are now complete; keep this section as historical context, not the active queue.
+
+### Completed from this list
+
+- OpenRouter/Ollama model catalog runtime.
+- Snapshot import/export runtime, scoped to Dicta localStorage import.
+- Keyboard/input remap runtime.
+- Adaptive export/workspace actions, scoped to benchmark/session-feedback copy/export and insights diagnostics.
 
 ### Recommended next run: medium, explicit, build-safe
 
 Do not attack TTS playback internals yet. The failed attempt showed that markers inside large functions are too dangerous without an AST-level move.
 
-Better next targets:
-
-1. **OpenRouter/Ollama model catalog runtime**
-   - Candidate scope: model arrays, loading/error status, refresh handlers, default model persistence wiring.
-   - Why balanced: meaningful App.tsx reduction, but less entangled than TTS playback.
-   - Risk: needs auth headers and assigned/default model inputs, so design the hook API first.
-
-2. **Snapshot import/export runtime**
-   - Candidate scope: localStorage snapshot import/export helpers and restore side effects.
-   - Why balanced: self-contained product area, and it exposed the model loader dependency.
-   - Risk: touches many setters; better extracted as pure utilities first, then hook.
-
-3. **Keyboard/input remap runtime**
-   - Candidate scope: active typing language, keyboard profile resolution, ES remap handler.
-   - Why balanced: medium-sized, behaviorally isolated, easier to test manually.
-   - Risk: depends on input lock/session language; likely manageable.
-
-4. **Adaptive export/workspace actions**
-   - Candidate scope: benchmark export/copy/download handlers and adaptive workspace open helpers.
-   - Why balanced: meaningful cluster but not core playback.
-   - Risk: interacts with selected benchmark state and workspace navigation.
+Better next targets should be selected from a new measurement. Good candidates remain small hook-level runtime clusters with explicit return values and no playback-loop surgery.
 
 ### Avoid for now
 

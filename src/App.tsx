@@ -7,6 +7,7 @@ import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
 import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
+import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import type {
   FormEvent,
   KeyboardEvent } from 'react';
@@ -18,14 +19,10 @@ import type {
   TtsChunkTelemetry,
   TtsPacingMode } from './types/dictation';
 import type {
-  AdaptiveTimelinePoint,
-  AdaptiveSessionFeedback,
-  InputLanguageBenchmarkMetrics,
   InputMode,
   LanguageCode,
   ListeningTrainingIntent,
   LiveTelemetryFrame,
-  PhrasePlaybackEvent,
   PhraseSize,
   } from './core/adaptive/types';
 import { configForDifficulty,
@@ -45,17 +42,12 @@ import {
   getBrowserTtsDeBenchmarkRejectionReason,
   normalizeBenchmarkLanguage,
   } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import { buildBenchmarkFilename,
-  buildSelectedBenchmarkExportPayload } from './core/adaptive/benchmarkJson';
-import { buildDictationScriptPrompt,
-  buildDictationScriptTemplate } from './core/adaptive/dictationScriptPrompt';
 import {
   buildOpenRouterGenerationPrompt,
   estimateOpenRouterPromptSize,
   getOpenRouterGenerationMaxTokens,
   type OpenRouterDurationMinutes,
   } from './core/adaptive/openRouterGenerationPrompt';
-import { buildAdaptiveUserSystemReport } from './core/adaptive/adaptiveUserSystemReport';
 import { buildOpenRouterDiversificationHints } from './app/openRouterPromptHints';
 import {
   type ActiveOpenRouterJob,
@@ -71,10 +63,6 @@ import {
   type DictationScriptValidationResult,
   } from './core/adaptive/dictationScriptValidation';
 import {
-  buildBenchmarkFeedbackPackage,
-  buildBenchmarkFeedbackPromptPackage,
-  buildSessionFeedbackJsonPayload,
-  derivePlaybackDiagnosticsFromTimeline,
   selectLatestAdaptiveSessionFeedback,
   } from './core/adaptive/sessionFeedback';
 import { buildBrowserTtsTelemetryFrame,
@@ -143,7 +131,6 @@ import {
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot,
   downloadSessionSnapshot } from './app/sessionSnapshotActions';
-import { writeTextToClipboard } from './app/clipboardText';
 import {
   buildAdaptiveAdapterCards,
   formatAdaptiveModeFromSession,
@@ -231,7 +218,6 @@ import {
   deriveTtsControlAction,
   getTtsVoiceLang,
   mapSessionInputMode,
-  resolveStoredSessionLanguage,
   } from './app/appRuntimeHelpers';
 import { buildRepeatWordStats,
   buildTextTranscript } from './app/repeatWordStats';
@@ -240,10 +226,7 @@ import { buildSemanticPhrasesFromDictationScript,
 import { buildTtsPlaybackProfile,
   type TtsLiveSignal } from './app/ttsPlaybackProfile';
 import {
-  buildBenchmarkActivitySummary,
-  buildLatestFinishedSessionFeedbackReference,
   buildOpenRouterActivityHints,
-  findLatestFinishedSessionForProfile,
   } from './app/adaptiveFeedbackContext';
 import { loadSessions,
   normalizeRestoredStoredSession } from './app/sessionStorage';
@@ -2762,212 +2745,6 @@ function App() {
 
   
 
-  function buildAdaptiveEventCounts(
-    timelinePoints: AdaptiveTimelinePoint[],
-    phraseEvents: PhrasePlaybackEvent[],
-  ): Record<string, number> {
-    const trackedEvents: Array<string> = [
-      'pause',
-      'defer_pause',
-      'phrase_advance',
-      'phrase_completed',
-      'rate_change',
-      'support_entered',
-      'flow_entered',
-      'phrase_started',
-      'phrase_completed',
-    ];
-    const counts = Object.fromEntries(trackedEvents.map((event) => [event, 0])) as Record<string, number>;
-    for (const point of timelinePoints) {
-      const event = point.event;
-      if (event && event in counts) counts[event] += 1;
-    }
-    for (const event of phraseEvents) {
-      if (event.event in counts) counts[event.event] += 1;
-    }
-    return counts;
-  }
-
-  function getBenchmarkActiveSessionStatus(profile: InputLanguageBenchmarkMetrics): string | undefined {
-    if (!activeSession || activeSessionFinished) return undefined;
-    const activeInputMode = mapSessionInputMode(activeSession.inputMode);
-    const activeLanguage = normalizeBenchmarkLanguage(getActiveTypingLanguage() ?? resolveStoredSessionLanguage(activeSession));
-    if (profile.inputMode !== activeInputMode || profile.language !== activeLanguage) return undefined;
-    return sessionStatus;
-  }
-
-  async function copySelectedBenchmarkJson(profile: InputLanguageBenchmarkMetrics): Promise<void> {
-    try {
-      const payload = buildSelectedBenchmarkExportPayload(profile);
-      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-      setBenchmarkExportMessage('Benchmark JSON copied.');
-    } catch {
-      setBenchmarkExportMessage('Could not copy benchmark JSON.');
-    }
-  }
-
-  function downloadSelectedBenchmarkJson(profile: InputLanguageBenchmarkMetrics): void {
-    const payload = buildSelectedBenchmarkExportPayload(profile);
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = buildBenchmarkFilename(profile.inputMode, String(profile.language), new Date());
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-    setBenchmarkExportMessage('Benchmark JSON exported.');
-  }
-
-  async function copyDictationScriptPrompt(profile: InputLanguageBenchmarkMetrics): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(buildDictationScriptPrompt(profile));
-      setExportMessage('LLM prompt copied.');
-    } catch {
-      setExportMessage('Could not copy LLM prompt.');
-    }
-  }
-
-  async function copyBenchmarkWithDictationScriptPrompt(profile: InputLanguageBenchmarkMetrics): Promise<void> {
-    try {
-      const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(profile), null, 2);
-      const prompt = buildDictationScriptPrompt(profile);
-      await navigator.clipboard.writeText(`Benchmark JSON context:\n${benchmarkJson}\n\nLLM prompt:\n${prompt}`);
-      setExportMessage('Benchmark JSON and LLM prompt copied.');
-    } catch {
-      setExportMessage('Could not copy benchmark and LLM prompt.');
-    }
-  }
-
-  async function copyDictationScriptTemplate(profile: InputLanguageBenchmarkMetrics): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(buildDictationScriptTemplate(profile.inputMode, profile.language));
-      setExportMessage('Sample output template copied.');
-    } catch {
-      setExportMessage('Could not copy sample output template.');
-    }
-  }
-
-  async function copySessionFeedbackJson(profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null): Promise<void> {
-    try {
-      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, profile);
-      await navigator.clipboard.writeText(JSON.stringify(buildSessionFeedbackJsonPayload(profile.inputMode, profile.language, feedback, {
-        activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
-        fallbackDiagnostics: derivePlaybackDiagnosticsFromTimeline(profile.timeline.slice(-60)),
-        latestFinishedSession,
-      }), null, 2));
-      setSessionFeedbackMessage('Session feedback JSON copied.');
-    } catch {
-      setSessionFeedbackMessage('Could not copy session feedback JSON.');
-    }
-  }
-
-  async function copyBenchmarkFeedbackJson(profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null): Promise<void> {
-    try {
-      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, profile);
-      await navigator.clipboard.writeText(JSON.stringify(buildBenchmarkFeedbackPackage(profile, feedback, {
-        activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
-        activitySummary: buildBenchmarkActivitySummary(sessions, profile),
-        latestFinishedSession,
-      }), null, 2));
-      setSessionFeedbackMessage('Benchmark + feedback package copied.');
-    } catch {
-      setSessionFeedbackMessage('Could not copy benchmark + feedback package.');
-    }
-  }
-
-  async function copyInsightsDiagnosticPackage(): Promise<void> {
-    try {
-      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, insightsDiagnosticProfile);
-      const latestFinishedFullSession = findLatestFinishedSessionForProfile(sessions, insightsDiagnosticProfile);
-      const technicalDebugData = buildBenchmarkFeedbackPackage(insightsDiagnosticProfile, insightsDiagnosticFeedback, {
-        activeSessionStatus: getBenchmarkActiveSessionStatus(insightsDiagnosticProfile),
-        activitySummary: buildBenchmarkActivitySummary(sessions, insightsDiagnosticProfile),
-        latestFinishedSession,
-      });
-      const report = buildAdaptiveUserSystemReport({
-        profile: insightsDiagnosticProfile,
-        feedback: insightsDiagnosticFeedback,
-        technicalDebugData,
-        inputModeLabel: formatInputModeLabel(insightsDiagnosticInputMode),
-        languageLabel: metricsLanguageView.toUpperCase(),
-        latestSession: latestFinishedFullSession
-          ? {
-              ...latestFinishedFullSession,
-              inputModeLabel: formatSessionInputMode(latestFinishedFullSession.inputMode),
-              language: String(resolveStoredSessionLanguage(latestFinishedFullSession)),
-              durationLabel: formatSessionPlaybackDuration(latestFinishedFullSession),
-            }
-          : null,
-      });
-      const reportJson = JSON.stringify(report, null, 2);
-      const copied = await writeTextToClipboard(reportJson);
-      if (copied) {
-        setInsightsDiagnosticFallbackReport('');
-        setInsightsDiagnosticMessage(
-          `Copied adaptive user/system report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`,
-        );
-        return;
-      }
-
-      setInsightsDiagnosticFallbackReport(reportJson);
-      setInsightsDiagnosticMessage('Clipboard access is blocked. Report generated below; select it and press Ctrl+C.');
-      window.setTimeout(selectInsightsDiagnosticFallbackReport, 0);
-    } catch (error) {
-      console.error('Copy insights report failed.', error);
-      const message = error instanceof Error ? error.message : String(error);
-      setInsightsDiagnosticFallbackReport('');
-      setInsightsDiagnosticMessage(`Could not prepare the insights report. ${message}`);
-    }
-  }
-
-  function selectInsightsDiagnosticFallbackReport(): void {
-    const textarea = document.getElementById('insights-diagnostic-fallback-report') as HTMLTextAreaElement | null;
-    if (!textarea) return;
-    textarea.focus();
-    textarea.select();
-  }
-
-  async function copyBenchmarkFeedbackPrompt(profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null): Promise<void> {
-    try {
-      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, profile);
-      await navigator.clipboard.writeText(buildBenchmarkFeedbackPromptPackage(profile, feedback, buildDictationScriptPrompt(profile), {
-        activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
-        activitySummary: buildBenchmarkActivitySummary(sessions, profile),
-        latestFinishedSession,
-      }));
-      setSessionFeedbackMessage('Benchmark + feedback + LLM prompt copied.');
-    } catch {
-      setSessionFeedbackMessage('Could not copy benchmark + feedback + LLM prompt.');
-    }
-  }
-
-  async function copyBenchmarkFeedbackPromptWithHumanFeedback(
-    profile: InputLanguageBenchmarkMetrics,
-    feedback: AdaptiveSessionFeedback | null,
-    humanFeedback: string,
-  ): Promise<void> {
-    try {
-      const latestFinishedSession = buildLatestFinishedSessionFeedbackReference(sessions, profile);
-      const base = buildBenchmarkFeedbackPackage(profile, feedback, {
-        activeSessionStatus: getBenchmarkActiveSessionStatus(profile),
-        activitySummary: buildBenchmarkActivitySummary(sessions, profile),
-        latestFinishedSession,
-      }) as Record<string, unknown>;
-      const payload = {
-        ...base,
-        llmPrompt: buildDictationScriptPrompt(profile),
-        humanFeedback: humanFeedback.trim(),
-      };
-      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-      setSessionFeedbackMessage('Copied JSON Benchmark + Feedback + LLM Prompt + Human feedback');
-    } catch {
-      setSessionFeedbackMessage('Could not copy benchmark + feedback + LLM prompt + human feedback.');
-    }
-  }
-
   const {
     inputSettingsReady,
     setupLocked,
@@ -3031,6 +2808,35 @@ function App() {
     insightsDiagnosticInputMode,
     metricsLanguageView,
   );
+  const {
+    getBenchmarkActiveSessionStatus,
+    copySelectedBenchmarkJson,
+    downloadSelectedBenchmarkJson,
+    copyDictationScriptPrompt,
+    copyBenchmarkWithDictationScriptPrompt,
+    copyDictationScriptTemplate,
+    copySessionFeedbackJson,
+    copyBenchmarkFeedbackJson,
+    copyInsightsDiagnosticPackage,
+    selectInsightsDiagnosticFallbackReport,
+    copyBenchmarkFeedbackPrompt,
+    copyBenchmarkFeedbackPromptWithHumanFeedback,
+  } = useAdaptiveExportActions({
+    sessions,
+    activeSession,
+    activeSessionFinished,
+    sessionStatus,
+    getActiveTypingLanguage,
+    insightsDiagnosticProfile,
+    insightsDiagnosticFeedback,
+    insightsDiagnosticInputMode,
+    metricsLanguageView,
+    setBenchmarkExportMessage,
+    setExportMessage,
+    setSessionFeedbackMessage,
+    setInsightsDiagnosticFallbackReport,
+    setInsightsDiagnosticMessage,
+  });
   const repeatWordStats = useMemo(
     () => buildRepeatWordStats({ sessions, inputMode: selectedBenchmarkInputMode, language: selectedBenchmarkLanguage, now: new Date() }),
     [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],

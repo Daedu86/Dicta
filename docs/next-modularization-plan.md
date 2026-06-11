@@ -1,6 +1,6 @@
 # CSS modularization status
 
-Updated: 2026-06-10
+Updated: 2026-06-11
 
 Branch: `product/input-2`
 
@@ -124,7 +124,7 @@ This document used to track remaining extraction work. It is now a status and gu
 <!-- app-shell-modularization-checkpoint:start -->
 ## App shell modularization checkpoint — 2026-06-10
 
-A focused App shell reduction pass is complete. Current `src/App.tsx` size: **3879 lines**.
+A focused App shell reduction pass continued after the original checkpoint. Current `src/App.tsx` size after the adaptive export-actions extraction is **3498 lines**.
 
 Top-level function inventory:
 
@@ -146,12 +146,15 @@ Completed extraction groups:
 - Dictation script semantic phrase helpers
 - Repeat word stats helpers
 - App runtime helpers
+- Dicta UI preferences, auth/profile, model preference/catalog, online/theme, and localStorage import runtime hooks
+- Keyboard remap runtime hook
+- Adaptive export/copy actions hook
 
 Next recommended pass:
 
 1. Inspect remaining declarations and closures inside `function App()`.
-2. Extract hook-level runtime clusters only after identifying clean boundaries.
+2. Pick only hook-level runtime clusters with explicit inputs/outputs.
 3. Keep JSX extraction small and build-verified.
-4. Continue using one commit per stable extraction.
+4. Avoid the Browser TTS playback loop until a fresh AST-level movement plan exists.
 
 <!-- app-shell-modularization-checkpoint:end -->

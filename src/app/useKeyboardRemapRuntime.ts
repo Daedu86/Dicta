@@ -4,9 +4,7 @@ import {
   BROWSER_TTS_SESSION_INPUT_MODE,
   type SessionInputMode,
 } from '../core/sessionInputModes';
-import type { TypingLanguage } from './sessionTypes';
-
-type KeyboardProfile = null | 'es-virtual' | 'de-keyboard';
+import type { KeyboardProfile, TypingLanguage } from './sessionTypes';
 
 type KeyboardRemapRuntimeOptions = {
   activeInputMode: SessionInputMode | null;

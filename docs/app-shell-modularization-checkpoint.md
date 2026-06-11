@@ -16,6 +16,19 @@ The key structural milestone is that `App.tsx` should now expose only the main t
 
 The current architecture keeps `App.tsx` as the orchestration shell while stable logic, reusable components, persistence helpers, diagnostic helpers, TTS helpers, and adaptive metrics helpers live in focused modules.
 
+## Follow-up — 2026-06-11
+
+The next App shell pass continued with hook-level runtime clusters and kept the same browser/App shell boundary. After extracting keyboard remapping and adaptive export/copy actions, `src/App.tsx` is **3498 lines** in the working tree.
+
+New modules added after this checkpoint:
+
+- `src/app/useModelCatalogRuntime.ts`
+- `src/app/useDictaLocalStorageImportRuntime.ts`
+- `src/app/useKeyboardRemapRuntime.ts`
+- `src/app/useAdaptiveExportActions.ts`
+
+The remaining high-risk area is still the Browser TTS playback loop. Do not extract `playTtsFromWord` or the TTS refs as a casual line move; start from a fresh boundary map and build after each cut.
+
 ## Extracted modules
 
 | Area | File | Lines |

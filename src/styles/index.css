@@ -1,10 +1,9 @@
 /*
  * Modular CSS entrypoint.
  *
- * Keep this file as the ordered import list for styles migrated out of
- * src/App.css. During the incremental migration, src/App.css remains the
- * runtime stylesheet until each extracted block is removed from the monolith
- * in the same order.
+ * Keep this file as the ordered cascade manifest for runtime CSS modules.
+ * src/App.css should remain only the Vite/React stylesheet entrypoint that
+ * imports this file.
  */
 
 @import './auth.css';
