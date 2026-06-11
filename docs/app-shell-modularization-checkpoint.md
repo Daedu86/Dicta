@@ -375,3 +375,28 @@ ROI result:
 
 Next work should inspect the remaining local dev API plugin before extracting model/prompt validation or admin file inventory.
 
+## Follow-up — 2026-06-11 Local dev API validation
+
+Latest committed baseline: `513affe Extract local dev API validation`.
+
+This checkpoint records extraction of local OpenRouter/Ollama input validation from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevApiValidation.ts` now owns API key validation, OpenRouter free-model normalization, Ollama model normalization, prompt length bounds, and `max_tokens` bounds. `dev/dictaLocalDevApiPlugin.ts` keeps route handling, request parsing, upstream proxy behavior, local job handling, and admin file inventory.
+
+Current metrics after this extraction:
+
+| Item                                  | Value |
+| ------------------------------------- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC   | 655 |
+| `dev/localDevApiValidation.ts` LOC    | 105 |
+| `dev/localDevEnvStore.ts` LOC         | 83 |
+
+ROI result:
+
+* Better ownership: local route middleware now delegates validation and normalization to a focused module.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 655 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect the remaining local dev API plugin before extracting admin file inventory or OpenRouter job route helpers.
+
