@@ -87,7 +87,7 @@ import {
 import {
   getDictaSessionQuotaStatus, isDictaAdmin, loadDictaAppProfile, loadVisibleDictaAppProfiles, normalizeDictaAppProfile, resolveOpenRouterAccessState, resolveEffectiveSyncProfileId, type DictaAppProfile, } from './core/appProfiles';
 import {
-  buildRangeSummaryForLanguage, findLastSessionForLanguage, resolveSessionLanguage, type MetricsLanguageView, type MetricsRangeView, } from './core/liveMetrics';
+  buildRangeSummaryForLanguage, findLastSessionForLanguage, resolveSessionLanguage } from './core/liveMetrics';
 import {
   buildGeneratedTrainingSessionNotification, requestTrainingNotificationPermission, showGeneratedTrainingSessionNotification, } from './core/trainingNotifications';
 import {
@@ -95,6 +95,9 @@ import {
 import {
   useWorkspaceRouting, type WorkspaceMode, } from './app/useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
+import { useDictaUiPreferences } from './app/useDictaUiPreferences';
+import { loadPersistedDictaLanguageView } from './app/uiPreferenceStorage';
+import { isMobileViewport } from './app/viewport';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
 import {
@@ -104,13 +107,8 @@ import {
   loadAdaptiveBenchmarks, loadAdaptiveSessionFeedback, persistAdaptiveBenchmarks, persistAdaptiveSessionFeedback, } from './app/adaptiveStorage';
 import { loadThemeMode, persistThemeMode, type ThemeMode } from './app/themeModeStorage';
 import {
-  loadInsightsCollapsed, loadMetricsRangeView, loadPersistedDictaLanguageView, persistDictaLanguageView, persistInsightsCollapsed, persistMetricsRangeView, } from './app/uiPreferenceStorage';
-import {
   loadOllamaDefaultModel, loadOpenRouterDefaultModel, OLLAMA_RECOMMENDED_DEFAULT_MODEL, persistOllamaDefaultModel, persistOpenRouterDefaultModel, } from './app/modelPreferenceStorage';
 import { buildLeaderboardSections, sortLeaderboardSessions } from './app/leaderboardSectionsBuilder';
-import {
-  DEFAULT_LEADERBOARD_SECTION_EXPANDED, type LeaderboardSectionId, } from './app/leaderboardSections';
-import { isMobileViewport } from './app/viewport';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
@@ -297,24 +295,29 @@ function App() {
   const [ollamaError, setOllamaError] = useState('');
   const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
   const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
-  const [dictaLanguageView, setDictaLanguageView] = useState<MetricsLanguageView>(() =>
-    loadPersistedDictaLanguageView(),
-  );
-  const metricsLanguageView = dictaLanguageView;
-  const leaderboardLanguageView = dictaLanguageView;
-  const adminLanguageView = dictaLanguageView;
-  const setMetricsLanguageView = setDictaLanguageView;
-  const setLeaderboardLanguageView = setDictaLanguageView;
-  const setAdminLanguageView = setDictaLanguageView;
-  const [insightsCollapsed, setInsightsCollapsed] = useState<boolean>(() => loadInsightsCollapsed());
-  const [leaderboardExpanded, setLeaderboardExpanded] = useState(true);
-  const [leaderboardSectionExpanded, setLeaderboardSectionExpanded] = useState<Record<LeaderboardSectionId, boolean>>(
-    () => ({ ...DEFAULT_LEADERBOARD_SECTION_EXPANDED }),
-  );
+  const {
+    dictaLanguageView,
+    setDictaLanguageView,
+    metricsLanguageView,
+    leaderboardLanguageView,
+    adminLanguageView,
+    setMetricsLanguageView,
+    setLeaderboardLanguageView,
+    setAdminLanguageView,
+    insightsCollapsed,
+    setInsightsCollapsed,
+    leaderboardExpanded,
+    setLeaderboardExpanded,
+    leaderboardSectionExpanded,
+    setLeaderboardSectionExpanded,
+    metricsRangeView,
+    setMetricsRangeView,
+    adaptiveSectionExpanded,
+    setAdaptiveSectionExpanded,
+  } = useDictaUiPreferences();
   const [insightsDiagnosticInputMode, setInsightsDiagnosticInputMode] = useState<InputMode>('browser-tts');
   const [insightsDiagnosticMessage, setInsightsDiagnosticMessage] = useState('');
   const [insightsDiagnosticFallbackReport, setInsightsDiagnosticFallbackReport] = useState('');
-  const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => loadMetricsRangeView());
   const [adaptiveSemanticDebug, setAdaptiveSemanticDebug] = useState<AdaptiveSemanticDebug>({
     semanticCutPenalty: 0,
     unsafePauseCount: 0,
@@ -341,15 +344,6 @@ function App() {
   );
   const adaptiveSessionFeedbackRef = useRef<AdaptiveSessionFeedbackByInputLanguage>(adaptiveSessionFeedbackByInputLanguage);
   const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<AdaptiveWorkspaceFocusAnchor>(null);
-  const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState(() => ({
-    decision: false,
-    architecture: false,
-    adapters: false,
-    latest: false,
-    live: false,
-    telemetry: false,
-    benchmarks: !isMobileViewport(),
-  }));
   const [benchmarkExportMessage, setBenchmarkExportMessage] = useState('');
   const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
   const syncConfig = useMemo(() => getDictaSyncConfig(import.meta.env), []);
@@ -848,18 +842,6 @@ function App() {
     setOpenRouterDefaultModel(loadOpenRouterDefaultModel());
     setOllamaDefaultModel(loadOllamaDefaultModel());
   }, []);
-
-  useEffect(() => {
-    persistDictaLanguageView(dictaLanguageView);
-  }, [dictaLanguageView]);
-
-  useEffect(() => {
-    persistMetricsRangeView(metricsRangeView);
-  }, [metricsRangeView]);
-
-  useEffect(() => {
-    persistInsightsCollapsed(insightsCollapsed);
-  }, [insightsCollapsed]);
 
   useEffect(() => {
     if (!localStorageReadyForEffectiveProfile) return;
