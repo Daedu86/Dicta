@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
 import { useAuthHeaders } from './app/useAuthHeaders';
 import {
@@ -22,6 +22,7 @@ import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationAct
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
+import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
@@ -65,10 +66,8 @@ import {
   buildSessionPointsHelpText,
   computeSessionMaxPoints,
   formatSessionPointsForSession,
-  formatSessionPointsLabel,
-  } from './core/evaluation';
-import { buildSessionScoreHelpText,
-  computeSessionScore } from './core/sessionScore';
+} from './core/evaluation';
+import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
 import {
   clampBrowserTtsDeDecisionToRecommendation,
   createEmptyInputLanguageBenchmark,
@@ -182,8 +181,7 @@ import {
   getTtsVoiceLang,
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
-import { buildRepeatWordStats,
-  buildTextTranscript } from './app/repeatWordStats';
+import { buildRepeatWordStats } from './app/repeatWordStats';
 import { buildSemanticPhrasesFromDictationScript,
   buildTtsSourceWords } from './app/dictationScriptSemanticPhrases';
 import { buildTtsPlaybackProfile,
@@ -769,48 +767,24 @@ function App() {
     ensureLatestBrowserTtsDeDictationScriptFeedback(sessions);
   }, [ensureLatestBrowserTtsDeDictationScriptFeedback, sessions]);
 
-  const ttsHasText = ttsText.trim().length > 0;
-  const ttsTranscript = useMemo(() => buildTextTranscript(ttsText), [ttsText]);
-  const deferredTtsPracticeText = useDeferredValue(ttsPracticeText);
-  const ttsPracticeEvaluation = useMemo(
-    () => evaluateTranscriptAttempt(deferredTtsPracticeText, ttsTranscript),
-    [deferredTtsPracticeText, ttsTranscript],
-  );
-  const ttsPracticeWords = ttsPracticeEvaluation.typedWords;
-  const ttsVisibleAccuracy =
-    ttsPracticeWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0 ? ttsPracticeEvaluation.accuracy : 0;
-  const ttsVisibleScore =
-    ttsPracticeWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0
-      ? computeSessionScore({
-          accuracy: ttsVisibleAccuracy,
-          lagSec,
-          wpm,
-          rate,
-          points: ttsPracticeEvaluation.points,
-        })
-      : 0;
-  const activePoints = ttsPracticeEvaluation.points;
-  const activeVisibleAccuracy = ttsVisibleAccuracy;
-  const activeVisibleScore = ttsVisibleScore;
-  const activeMaxPoints = useMemo(
-    () =>
-      computeSessionMaxPoints({
-        inputMode: activeInputMode,
-        ttsText,
-      }),
-    [activeInputMode, ttsText],
-  );
-  const activeLivePointsLabel = formatSessionPointsLabel(activePoints, activeMaxPoints);
-  const activeLiveScoreHelpText = buildSessionScoreHelpText({
-    accuracy: activeVisibleAccuracy,
+  const {
+    ttsHasText,
+    ttsTranscript,
+    activePoints,
+    activeVisibleAccuracy,
+    activeVisibleScore,
+    activeLivePointsLabel,
+    activeLiveScoreHelpText,
+    activeLivePointsHelpText,
+    activeLiveAccuracyHelpText,
+  } = useFocusedTrainingLiveMetrics({
+    activeInputMode,
+    ttsText,
+    ttsPracticeText,
     lagSec,
     wpm,
     rate,
-    points: activePoints,
-    score: activeVisibleScore,
   });
-  const activeLivePointsHelpText = buildSessionPointsHelpText(activeMaxPoints);
-  const activeLiveAccuracyHelpText = 'Accuracy is matched target words divided by typed words, including exact and one-character typo matches.';
 
   useEffect(() => {
     if (activeInputMode !== BROWSER_TTS_SESSION_INPUT_MODE || activeSessionFinished || !ttsHasText) {
