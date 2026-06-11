@@ -5,6 +5,12 @@ import { createLocalDevApiValidation } from './localDevApiValidation';
 import { buildLocalDevAdminFileInventory } from './localDevAdminFiles';
 import { createLocalDevOllamaHelpers } from './localDevOllamaHelpers';
 import {
+  createLocalDevHttpError,
+  maskLocalDevApiKeySuffix,
+  readLocalDevJsonRequestBody,
+  sendLocalDevError,
+} from './localDevHttpHelpers';
+import {
   countActiveLocalOpenRouterJobs,
   createQueuedLocalOpenRouterJob,
   getLocalOpenRouterJob,
@@ -29,11 +35,8 @@ export function createDictaLocalDevApiPlugin(): Plugin {
     const openRouterModelMaxChars = 160;
     const ollamaModelMaxChars = 160;
     const openRouterActiveJobLimit = 3;
-    const httpError = (message: string, statusCode: number): Error & { statusCode: number } =>
-      Object.assign(new Error(message), { statusCode });
-
     const localDevApiValidation = createLocalDevApiValidation({
-      httpError,
+      httpError: createLocalDevHttpError,
       maxOpenRouterKeyBytes,
       maxOllamaKeyBytes,
       openRouterFreeRouterModel,
@@ -44,52 +47,6 @@ export function createDictaLocalDevApiPlugin(): Plugin {
     });
 
     const localDevOllamaHelpers = createLocalDevOllamaHelpers(ollamaRecommendedModel);
-
-    const sendLocalError = (res: { statusCode: number; end: (body?: string) => void }, error: unknown, fallback: string): void => {
-      const statusCode = Number((error as { statusCode?: unknown } | null)?.statusCode);
-      res.statusCode = Number.isFinite(statusCode) ? statusCode : 500;
-      res.end(error instanceof Error ? error.message : fallback);
-    };
-
-    const readRequestBody = async (req: NodeJS.ReadableStream, maxBytes: number): Promise<string> =>
-      new Promise((resolve, reject) => {
-        let data = '';
-        let bytes = 0;
-        let settled = false;
-        const settle = (fn: () => void): void => {
-          if (settled) return;
-          settled = true;
-          fn();
-        };
-        req.on('data', (chunk: Buffer | string) => {
-          if (settled) return;
-          bytes += typeof chunk === 'string' ? Buffer.byteLength(chunk) : chunk.length;
-          if (bytes > maxBytes) {
-            settle(() => reject(httpError(`Request body too large. Limit is ${maxBytes} bytes.`, 413)));
-            return;
-          }
-          data += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
-        });
-        req.on('end', () => settle(() => resolve(data)));
-        req.on('error', (error) => settle(() => reject(error)));
-      });
-
-    const readJsonRequestBody = async <T>(req: NodeJS.ReadableStream, maxBytes: number): Promise<T> => {
-      const body = await readRequestBody(req, maxBytes);
-      try {
-        return JSON.parse(body) as T;
-      } catch {
-        throw httpError('Invalid JSON request body.', 400);
-      }
-    };
-
-    const maskApiKeySuffix = (value: string): string => {
-      const trimmed = value.trim();
-      if (!trimmed) return '';
-      const suffixLength = 4;
-      const suffix = trimmed.length > suffixLength ? trimmed.slice(-suffixLength) : trimmed;
-      return `…${suffix}`;
-    };
 
     server.middlewares.use('/api/openrouter/models', async (req, res) => {
       if (req.method !== 'GET') {
@@ -134,7 +91,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       try {
         const openRouterApiKey = await localDevEnvStore.getOpenRouterApiKey();
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ configured: Boolean(openRouterApiKey), suffix: maskApiKeySuffix(openRouterApiKey) }));
+        res.end(JSON.stringify({ configured: Boolean(openRouterApiKey), suffix: maskLocalDevApiKeySuffix(openRouterApiKey) }));
       } catch (error) {
         res.statusCode = 500;
         res.end(error instanceof Error ? error.message : 'OpenRouter key status failed.');
@@ -144,7 +101,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
     server.middlewares.use('/api/openrouter/key', async (req, res) => {
       if (req.method === 'POST') {
         try {
-          const parsed = await readJsonRequestBody<{ apiKey?: string }>(req, maxOpenRouterKeyBytes);
+          const parsed = await readLocalDevJsonRequestBody<{ apiKey?: string }>(req, maxOpenRouterKeyBytes);
           const nextKey = parsed.apiKey?.trim() ?? '';
           if (!nextKey) {
             res.statusCode = 400;
@@ -154,10 +111,10 @@ export function createDictaLocalDevApiPlugin(): Plugin {
 
           await localDevEnvStore.upsertOpenRouterApiKey(localDevApiValidation.validateOpenRouterApiKey(nextKey));
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
+          res.end(JSON.stringify({ ok: true, suffix: maskLocalDevApiKeySuffix(nextKey) }));
           return;
         } catch (error) {
-          sendLocalError(res, error, 'Failed to save OpenRouter key.');
+          sendLocalDevError(res, error, 'Failed to save OpenRouter key.');
           return;
         }
       }
@@ -229,7 +186,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       try {
         const ollamaApiKey = await localDevEnvStore.getOllamaApiKey();
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ configured: Boolean(ollamaApiKey), suffix: maskApiKeySuffix(ollamaApiKey) }));
+        res.end(JSON.stringify({ configured: Boolean(ollamaApiKey), suffix: maskLocalDevApiKeySuffix(ollamaApiKey) }));
       } catch (error) {
         res.statusCode = 500;
         res.end(error instanceof Error ? error.message : 'Ollama key status failed.');
@@ -239,7 +196,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
     server.middlewares.use('/api/ollama/key', async (req, res) => {
       if (req.method === 'POST') {
         try {
-          const parsed = await readJsonRequestBody<{ apiKey?: string }>(req, maxOllamaKeyBytes);
+          const parsed = await readLocalDevJsonRequestBody<{ apiKey?: string }>(req, maxOllamaKeyBytes);
           const nextKey = parsed.apiKey?.trim() ?? '';
           if (!nextKey) {
             res.statusCode = 400;
@@ -249,10 +206,10 @@ export function createDictaLocalDevApiPlugin(): Plugin {
 
           await localDevEnvStore.upsertOllamaApiKey(localDevApiValidation.validateOllamaApiKey(nextKey));
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
+          res.end(JSON.stringify({ ok: true, suffix: maskLocalDevApiKeySuffix(nextKey) }));
           return;
         } catch (error) {
-          sendLocalError(res, error, 'Failed to save Ollama key.');
+          sendLocalDevError(res, error, 'Failed to save Ollama key.');
           return;
         }
       }
@@ -289,7 +246,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
 
       try {
-        const parsed = await readJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
+        const parsed = await readLocalDevJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
         const model = localDevApiValidation.normalizeOllamaModel(parsed.model);
         const prompt = localDevApiValidation.normalizeOllamaPrompt(parsed.prompt);
         const maxTokens = localDevApiValidation.normalizeOllamaMaxTokens(parsed.maxTokens, 600);
@@ -327,7 +284,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
         res.end(responseBody);
       } catch (error) {
-        sendLocalError(res, error, 'Ollama test request failed.');
+        sendLocalDevError(res, error, 'Ollama test request failed.');
       }
     });
 
@@ -346,7 +303,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
 
       try {
-        const parsed = await readJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
+        const parsed = await readLocalDevJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
         const model = localDevApiValidation.normalizeOpenRouterModel(parsed.model);
         const prompt = localDevApiValidation.normalizeOpenRouterPrompt(parsed.prompt);
         const maxTokens = localDevApiValidation.normalizeOpenRouterMaxTokens(parsed.maxTokens, 600);
@@ -376,7 +333,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
         res.end(responseBody);
       } catch (error) {
-        sendLocalError(res, error, 'OpenRouter test request failed.');
+        sendLocalDevError(res, error, 'OpenRouter test request failed.');
       }
     });
 
@@ -409,7 +366,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
 
       try {
-        const parsed = await readJsonRequestBody<{
+        const parsed = await readLocalDevJsonRequestBody<{
           model?: string;
           prompt?: string;
           maxTokens?: number;
@@ -479,7 +436,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(job));
       } catch (error) {
-        sendLocalError(res, error, 'OpenRouter job request failed.');
+        sendLocalDevError(res, error, 'OpenRouter job request failed.');
       }
     });
 
