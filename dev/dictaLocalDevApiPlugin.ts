@@ -2,6 +2,7 @@ import type { Plugin } from 'vite';
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { createLocalDevEnvStore } from './localDevEnvStore';
 
 const localOpenRouterJobs = new Map<string, {
   jobId: string;
@@ -19,6 +20,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
   name: 'dicta-local-dev-api',
   configureServer(server) {
     const envLocalPath = path.resolve(process.cwd(), '.env.local');
+    const localDevEnvStore = createLocalDevEnvStore(envLocalPath);
     const maxJsonBodyBytes = 64 * 1024;
     const maxOpenRouterKeyBytes = 4096;
     const maxOllamaKeyBytes = 4096;
@@ -78,59 +80,6 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       return `…${suffix}`;
     };
 
-    const readEnvLocal = async (): Promise<string> => {
-      try {
-        return await fs.readFile(envLocalPath, 'utf-8');
-      } catch {
-        return '';
-      }
-    };
-
-    const parseEnvValue = (rawValue: string): string => {
-      const trimmed = rawValue.trim();
-      if (!trimmed) return '';
-      if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
-        try {
-          const parsed = JSON.parse(trimmed) as unknown;
-          return typeof parsed === 'string' ? parsed : '';
-        } catch {
-          return trimmed.slice(1, -1);
-        }
-      }
-      if (
-        (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2)
-      ) {
-        return trimmed.slice(1, -1);
-      }
-      return trimmed;
-    };
-
-    const getOpenRouterApiKey = async (): Promise<string> => {
-      const fromProcess = process.env.OPENROUTER_API_KEY?.trim();
-      if (fromProcess) return fromProcess;
-
-      const envText = await readEnvLocal();
-      const line = envText
-        .split(/\r?\n/)
-        .map((row) => row.trim())
-        .find((row) => row.startsWith('OPENROUTER_API_KEY='));
-      if (!line) return '';
-      return parseEnvValue(line.slice('OPENROUTER_API_KEY='.length)).trim();
-    };
-
-    const getOllamaApiKey = async (): Promise<string> => {
-      const fromProcess = process.env.OLLAMA_API_KEY?.trim();
-      if (fromProcess) return fromProcess;
-
-      const envText = await readEnvLocal();
-      const line = envText
-        .split(/\r?\n/)
-        .map((row) => row.trim())
-        .find((row) => row.startsWith('OLLAMA_API_KEY='));
-      if (!line) return '';
-      return parseEnvValue(line.slice('OLLAMA_API_KEY='.length)).trim();
-    };
-
     const validateOpenRouterApiKey = (apiKey: string): string => {
       const cleaned = apiKey.trim();
       if (!cleaned) throw httpError('Missing apiKey.', 400);
@@ -145,50 +94,6 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       if (/[\r\n]/.test(cleaned)) throw httpError('Ollama API key cannot contain line breaks.', 400);
       if (cleaned.length > maxOllamaKeyBytes) throw httpError('Ollama API key is too large.', 400);
       return cleaned;
-    };
-
-    const upsertOpenRouterApiKey = async (apiKey: string): Promise<void> => {
-      const cleaned = validateOpenRouterApiKey(apiKey);
-      const nextLine = `OPENROUTER_API_KEY=${JSON.stringify(cleaned)}`;
-      const envText = await readEnvLocal();
-      const lines = envText ? envText.split(/\r?\n/) : [];
-      let replaced = false;
-      const nextLines = lines.map((line) => {
-        if (line.trim().startsWith('OPENROUTER_API_KEY=')) {
-          replaced = true;
-          return nextLine;
-        }
-        return line;
-      });
-      if (!replaced) {
-        if (nextLines.length > 0 && nextLines[nextLines.length - 1].trim() !== '') {
-          nextLines.push('');
-        }
-        nextLines.push(nextLine);
-      }
-      await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
-    };
-
-    const upsertOllamaApiKey = async (apiKey: string): Promise<void> => {
-      const cleaned = validateOllamaApiKey(apiKey);
-      const nextLine = `OLLAMA_API_KEY=${JSON.stringify(cleaned)}`;
-      const envText = await readEnvLocal();
-      const lines = envText ? envText.split(/\r?\n/) : [];
-      let replaced = false;
-      const nextLines = lines.map((line) => {
-        if (line.trim().startsWith('OLLAMA_API_KEY=')) {
-          replaced = true;
-          return nextLine;
-        }
-        return line;
-      });
-      if (!replaced) {
-        if (nextLines.length > 0 && nextLines[nextLines.length - 1].trim() !== '') {
-          nextLines.push('');
-        }
-        nextLines.push(nextLine);
-      }
-      await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
     };
 
     const normalizeOpenRouterModel = (value: unknown): string => {
@@ -242,26 +147,6 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       const numeric = hasValue ? Number(value) : fallback;
       const bounded = Number.isFinite(numeric) ? numeric : fallback;
       return Math.max(128, Math.min(1800, Math.round(bounded)));
-    };
-
-    const removeOpenRouterApiKey = async (): Promise<boolean> => {
-      const envText = await readEnvLocal();
-      if (!envText) return false;
-      const lines = envText.split(/\r?\n/);
-      const nextLines = lines.filter((line) => !line.trim().startsWith('OPENROUTER_API_KEY='));
-      if (nextLines.length === lines.length) return false;
-      await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
-      return true;
-    };
-
-    const removeOllamaApiKey = async (): Promise<boolean> => {
-      const envText = await readEnvLocal();
-      if (!envText) return false;
-      const lines = envText.split(/\r?\n/);
-      const nextLines = lines.filter((line) => !line.trim().startsWith('OLLAMA_API_KEY='));
-      if (nextLines.length === lines.length) return false;
-      await fs.writeFile(envLocalPath, `${nextLines.join('\n')}\n`, 'utf-8');
-      return true;
     };
 
     const extractOllamaErrorText = (body: string): string => {
@@ -336,7 +221,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         return;
       }
 
-      const openRouterApiKey = await getOpenRouterApiKey();
+      const openRouterApiKey = await localDevEnvStore.getOpenRouterApiKey();
       if (!openRouterApiKey) {
         res.statusCode = 400;
         res.end('Missing OPENROUTER_API_KEY. Set it in .env.local (or via the OpenRouter UI) and try again.');
@@ -370,7 +255,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
 
       try {
-        const openRouterApiKey = await getOpenRouterApiKey();
+        const openRouterApiKey = await localDevEnvStore.getOpenRouterApiKey();
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ configured: Boolean(openRouterApiKey), suffix: maskApiKeySuffix(openRouterApiKey) }));
       } catch (error) {
@@ -390,7 +275,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
             return;
           }
 
-          await upsertOpenRouterApiKey(nextKey);
+          await localDevEnvStore.upsertOpenRouterApiKey(validateOpenRouterApiKey(nextKey));
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
           return;
@@ -402,7 +287,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
 
       if (req.method === 'DELETE') {
         try {
-          const removed = await removeOpenRouterApiKey();
+          const removed = await localDevEnvStore.removeOpenRouterApiKey();
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ ok: true, removed }));
           return;
@@ -424,7 +309,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         return;
       }
 
-      const ollamaApiKey = await getOllamaApiKey();
+      const ollamaApiKey = await localDevEnvStore.getOllamaApiKey();
       if (!ollamaApiKey) {
         res.statusCode = 400;
         res.end('Missing OLLAMA_API_KEY. Set it in .env.local (or via the Ollama UI) and try again.');
@@ -465,7 +350,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
 
       try {
-        const ollamaApiKey = await getOllamaApiKey();
+        const ollamaApiKey = await localDevEnvStore.getOllamaApiKey();
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ configured: Boolean(ollamaApiKey), suffix: maskApiKeySuffix(ollamaApiKey) }));
       } catch (error) {
@@ -485,7 +370,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
             return;
           }
 
-          await upsertOllamaApiKey(nextKey);
+          await localDevEnvStore.upsertOllamaApiKey(validateOllamaApiKey(nextKey));
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
           return;
@@ -497,7 +382,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
 
       if (req.method === 'DELETE') {
         try {
-          const removed = await removeOllamaApiKey();
+          const removed = await localDevEnvStore.removeOllamaApiKey();
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ ok: true, removed }));
           return;
@@ -519,7 +404,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         return;
       }
 
-      const ollamaApiKey = await getOllamaApiKey();
+      const ollamaApiKey = await localDevEnvStore.getOllamaApiKey();
       if (!ollamaApiKey) {
         res.statusCode = 400;
         res.end('Missing OLLAMA_API_KEY. Set it in .env.local and try again.');
@@ -576,7 +461,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         return;
       }
 
-      const openRouterApiKey = await getOpenRouterApiKey();
+      const openRouterApiKey = await localDevEnvStore.getOpenRouterApiKey();
       if (!openRouterApiKey) {
         res.statusCode = 400;
         res.end('Missing OPENROUTER_API_KEY. Set it in .env.local and try again.');
@@ -639,7 +524,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         return;
       }
 
-      const openRouterApiKey = await getOpenRouterApiKey();
+      const openRouterApiKey = await localDevEnvStore.getOpenRouterApiKey();
       if (!openRouterApiKey) {
         res.statusCode = 400;
         res.end('Missing OPENROUTER_API_KEY. Set it in .env.local and try again.');
