@@ -1,20 +1,16 @@
 import type { Plugin } from 'vite';
-import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { createLocalDevEnvStore } from './localDevEnvStore';
 import { createLocalDevApiValidation } from './localDevApiValidation';
 import { buildLocalDevAdminFileInventory } from './localDevAdminFiles';
-
-const localOpenRouterJobs = new Map<string, {
-  jobId: string;
-  status: 'queued' | 'running' | 'succeeded' | 'failed';
-  request: Record<string, unknown>;
-  result: unknown;
-  error: string;
-  createdAt: string;
-  updatedAt: string;
-  completedAt: string | null;
-}>();
+import {
+  countActiveLocalOpenRouterJobs,
+  createQueuedLocalOpenRouterJob,
+  getLocalOpenRouterJob,
+  markLocalOpenRouterJobFailed,
+  markLocalOpenRouterJobRunning,
+  markLocalOpenRouterJobSucceeded,
+} from './localDevOpenRouterJobs';
 
 export function createDictaLocalDevApiPlugin(): Plugin {
   return {
@@ -450,7 +446,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       if (req.method === 'GET') {
         const url = new URL(req.url ?? '', 'http://localhost');
         const jobId = url.searchParams.get('id') ?? '';
-        const job = localOpenRouterJobs.get(jobId);
+        const job = getLocalOpenRouterJob(jobId);
         if (!job) {
           res.statusCode = 404;
           res.end('OpenRouter job not found.');
@@ -492,19 +488,17 @@ export function createDictaLocalDevApiPlugin(): Plugin {
           res.end('Missing model or prompt.');
           return;
         }
-        const activeJobCount = [...localOpenRouterJobs.values()].filter((job) => job.status === 'queued' || job.status === 'running').length;
+        const activeJobCount = countActiveLocalOpenRouterJobs();
         if (activeJobCount >= openRouterActiveJobLimit) {
           res.statusCode = 429;
           res.end(`Too many active OpenRouter jobs. Wait for one of the ${openRouterActiveJobLimit} active jobs to finish.`);
           return;
         }
 
-        const now = new Date().toISOString();
-        const jobId = randomUUID();
         const durationMinutes = Number(parsed.durationMinutes);
         const fallbackMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : durationMinutes === 4 ? 1600 : 600;
         const maxTokens = localDevApiValidation.normalizeOpenRouterMaxTokens(parsed.maxTokens, fallbackMaxTokens);
-        const requestPayload = {
+        const job = createQueuedLocalOpenRouterJob({
           model,
           prompt,
           maxTokens,
@@ -513,22 +507,10 @@ export function createDictaLocalDevApiPlugin(): Plugin {
           slotLabel: parsed.slotLabel,
           durationMinutes: parsed.durationMinutes,
           targetDifficulty: parsed.targetDifficulty,
-        };
-        const job = {
-          jobId,
-          status: 'queued' as const,
-          request: requestPayload,
-          result: null,
-          error: '',
-          createdAt: now,
-          updatedAt: now,
-          completedAt: null,
-        };
-        localOpenRouterJobs.set(jobId, job);
+        });
 
         void (async () => {
-          const startedAt = new Date().toISOString();
-          localOpenRouterJobs.set(jobId, { ...job, status: 'running', updatedAt: startedAt });
+          markLocalOpenRouterJobRunning(job);
           try {
             const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
               method: 'POST',
@@ -549,23 +531,9 @@ export function createDictaLocalDevApiPlugin(): Plugin {
             const payload = JSON.parse(responseBody) as { choices?: Array<{ message?: { content?: string } }> };
             const text = typeof payload.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
             if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
-            const completedAt = new Date().toISOString();
-            localOpenRouterJobs.set(jobId, {
-              ...job,
-              status: 'succeeded',
-              result: { text, payload, model },
-              updatedAt: completedAt,
-              completedAt,
-            });
+            markLocalOpenRouterJobSucceeded(job, { text, payload, model });
           } catch (error) {
-            const completedAt = new Date().toISOString();
-            localOpenRouterJobs.set(jobId, {
-              ...job,
-              status: 'failed',
-              error: error instanceof Error ? error.message : 'OpenRouter job failed.',
-              updatedAt: completedAt,
-              completedAt,
-            });
+            markLocalOpenRouterJobFailed(job, error);
           }
         })();
 
