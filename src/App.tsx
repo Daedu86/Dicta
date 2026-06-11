@@ -21,6 +21,7 @@ import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationB
 import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
+import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
@@ -103,8 +104,7 @@ import {
   SUPPORTED_LANGUAGES,
   } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
-import { TrainingView,
-  type TrainingViewProps } from './components/TrainingView';
+import { TrainingView } from './components/TrainingView';
 import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { PendingSessionLane } from './components/training/PendingSessionLane';
@@ -2232,7 +2232,7 @@ function App() {
     seekTtsPlayback(Math.max(0, ttsPlayerProgressPercent / 100 - 0.08));
   }
 
-  const focusedTrainingProps: TrainingViewProps<StoredSession> = {
+  const focusedTrainingProps = useFocusedTrainingViewProps({
     activeSession,
     submissionMeta: activeTrainingSubmissionMeta,
     activeInputLabel,
@@ -2245,33 +2245,20 @@ function App() {
     onImmediateTextChange: focusedImmediateInputHandler,
     onTextKeyDown: focusedKeyDownHandler,
     textPlaceholder: focusedTextPlaceholder,
-    liveScoreLabel: String(activeVisibleScore),
+    activeVisibleScore,
     liveScoreHelpText: activeLiveScoreHelpText,
     livePointsLabel: activeLivePointsLabel,
     livePointsHelpText: activeLivePointsHelpText,
-    liveAccuracyLabel: `${activeVisibleAccuracy.toFixed(1)}%`,
+    activeVisibleAccuracy,
     liveAccuracyHelpText: activeLiveAccuracyHelpText,
-    liveLagLabel: `${lagSec.toFixed(2)}s`,
-    liveLagHelpText:
-      'Lag compares typed progress with expected playback progress. Positive means you are behind; negative means you are ahead.',
-    readOnly: activeSessionFinished,
-    canPlay: focusedTrainingControls.canPlay,
-    playLabel: focusedTrainingControls.playLabel,
-    onPlay: focusedTrainingControls.onPlay,
-    canPause: focusedTrainingControls.canPause,
-    onPause: focusedTrainingControls.onPause,
-    canReplay: ttsHasText && ttsPlayerDurationSec > 0,
-    onReplay: replayFocusedTts,
-    canStop: focusedTrainingControls.canStop,
-    onStop: focusedTrainingControls.onStop,
-    canReset: focusedTrainingControls.canReset,
-    onReset: focusedTrainingControls.onReset,
-    canSubmit: focusedTrainingControls.canSubmit,
-    onSubmit: focusedTrainingControls.onSubmit,
-    submitLabel: focusedTrainingControls.submitLabel,
+    lagSec,
+    activeSessionFinished,
+    focusedTrainingControls,
+    ttsHasText,
+    ttsPlayerDurationSec,
+    onReplayFocusedTts: replayFocusedTts,
     message: focusedTrainingMessage,
     messageTone: focusedTrainingMessageTone,
-    textCommitDelayMs: 250,
     pendingSessions,
     activeSessionId,
     onOpenPendingSession: openWorkspaceForSession,
@@ -2280,7 +2267,7 @@ function App() {
     pendingSyncSummary,
     isOnline,
     generationButtons: focusedTrainingGenerationButtons,
-  };
+  });
 
   void openAdaptiveExportsForActiveInput;
 
