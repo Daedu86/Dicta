@@ -20,6 +20,7 @@ import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffec
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
 import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
+import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -110,9 +111,6 @@ import { AdaptiveAdvancedDiagnostics } from './components/adaptive-workspace/Ada
 import { AdminWorkspace } from './components/admin/AdminWorkspace';
 import { Metric } from './components/shared/Metric';
 import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
-import {
-  buildTrainingGenerationButtonNotice,
-  } from './components/openrouter/openRouterViewHelpers';
 import type {
   BenchmarkLanguageButton,
   } from './components/openrouter/types';
@@ -2203,60 +2201,31 @@ function App() {
     : trainingSubmitMessage
       ? 'success'
       : 'hint';
-  const easyGenerationNotice = buildTrainingGenerationButtonNotice({
-    slotLabel: 'Easy direct session',
-    displayLabel: 'Easy session',
-    notices: trainingGenerationNotices,
-    jobNotifications: openRouterJobNotifications,
-    activeJobs: activeOpenRouterJobs,
-    nowMs: trainingGenerationNowMs,
+  const focusedTrainingGenerationButtons = useFocusedTrainingGenerationButtons({
+    openRouterAccessAllowed,
+    isOnline,
+    activeSession,
+    effectiveOpenRouterDefaultModel,
+    sessionQuotaStatus,
+    openRouterOfflineTitle,
+    activeOpenRouterJobs,
+    openRouterJobNotifications,
+    trainingGenerationNotices,
+    trainingGenerationNowMs,
+    directOpenRouterBusy,
+    directIntermediateOpenRouterBusy,
+    directAdvancedOpenRouterBusy,
+    expressEasyOpenRouterBusy,
+    expressIntermediateOpenRouterBusy,
+    expressAdvancedOpenRouterBusy,
+    generateEasyNextSessionFromOpenRouter,
+    generateIntermediateNextSessionFromOpenRouter,
+    generateAdvancedNextSessionFromOpenRouter,
+    generateExpressEasyNextSessionFromOpenRouter,
+    generateExpressIntermediateNextSessionFromOpenRouter,
+    generateExpressAdvancedNextSessionFromOpenRouter,
+    openOpenRouterGenerateForActiveInput,
   });
-  const mediumGenerationNotice = buildTrainingGenerationButtonNotice({
-    slotLabel: 'Intermediate direct session',
-    displayLabel: 'Medium session',
-    notices: trainingGenerationNotices,
-    jobNotifications: openRouterJobNotifications,
-    activeJobs: activeOpenRouterJobs,
-    nowMs: trainingGenerationNowMs,
-  });
-  const hardGenerationNotice = buildTrainingGenerationButtonNotice({
-    slotLabel: 'Advanced direct session',
-    displayLabel: 'Hard session',
-    notices: trainingGenerationNotices,
-    jobNotifications: openRouterJobNotifications,
-    activeJobs: activeOpenRouterJobs,
-    nowMs: trainingGenerationNowMs,
-  });
-  const expressEasyGenerationNotice = buildTrainingGenerationButtonNotice({
-    slotLabel: 'Express easy direct session',
-    displayLabel: 'Express easy session',
-    notices: trainingGenerationNotices,
-    jobNotifications: openRouterJobNotifications,
-    activeJobs: activeOpenRouterJobs,
-    nowMs: trainingGenerationNowMs,
-  });
-  const expressMediumGenerationNotice = buildTrainingGenerationButtonNotice({
-    slotLabel: 'Express intermediate direct session',
-    displayLabel: 'Express medium session',
-    notices: trainingGenerationNotices,
-    jobNotifications: openRouterJobNotifications,
-    activeJobs: activeOpenRouterJobs,
-    nowMs: trainingGenerationNowMs,
-  });
-  const expressHardGenerationNotice = buildTrainingGenerationButtonNotice({
-    slotLabel: 'Express advanced direct session',
-    displayLabel: 'Express hard session',
-    notices: trainingGenerationNotices,
-    jobNotifications: openRouterJobNotifications,
-    activeJobs: activeOpenRouterJobs,
-    nowMs: trainingGenerationNowMs,
-  });
-  const easyDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Easy direct session');
-  const mediumDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Intermediate direct session');
-  const hardDirectGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Advanced direct session');
-  const expressEasyGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express easy direct session');
-  const expressMediumGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express intermediate direct session');
-  const expressHardGenerationRunning = activeOpenRouterJobs.some((job) => job.slotLabel === 'Express advanced direct session');
 
   function replayFocusedTts(): void {
     seekTtsPlayback(Math.max(0, ttsPlayerProgressPercent / 100 - 0.08));
@@ -2309,87 +2278,7 @@ function App() {
     syncStatus: supabaseSyncStatus,
     pendingSyncSummary,
     isOnline,
-    generationButtons: openRouterAccessAllowed ? [
-      {
-        id: 'easy',
-        label: directOpenRouterBusy ? 'Requesting easy...' : easyDirectGenerationRunning ? 'Generating easy...' : 'New Easy Session',
-        onClick: () => void generateEasyNextSessionFromOpenRouter(),
-        disabled: !isOnline || directOpenRouterBusy || easyDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-        title: sessionQuotaStatus.blocked
-          ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate an easy two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-        helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
-        statusMessage: easyGenerationNotice?.message,
-        statusTone: easyGenerationNotice?.tone,
-      },
-      {
-        id: 'express-easy',
-        label: expressEasyOpenRouterBusy ? 'Requesting express easy...' : expressEasyGenerationRunning ? 'Generating express easy...' : 'Express Easy Session',
-        onClick: () => void generateExpressEasyNextSessionFromOpenRouter(),
-        disabled: !isOnline || expressEasyOpenRouterBusy || expressEasyGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-        title: sessionQuotaStatus.blocked
-          ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate an easy one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-        helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
-        statusMessage: expressEasyGenerationNotice?.message,
-        statusTone: expressEasyGenerationNotice?.tone,
-      },
-      {
-        id: 'medium',
-        label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : mediumDirectGenerationRunning ? 'Generating medium...' : 'New Medium Session',
-        onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-        disabled: !isOnline || directIntermediateOpenRouterBusy || mediumDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-        title: sessionQuotaStatus.blocked
-          ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a medium two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-        helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
-        statusMessage: mediumGenerationNotice?.message,
-        statusTone: mediumGenerationNotice?.tone,
-      },
-      {
-        id: 'express-medium',
-        label: expressIntermediateOpenRouterBusy ? 'Requesting express medium...' : expressMediumGenerationRunning ? 'Generating express medium...' : 'Express Medium Session',
-        onClick: () => void generateExpressIntermediateNextSessionFromOpenRouter(),
-        disabled: !isOnline || expressIntermediateOpenRouterBusy || expressMediumGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-        title: sessionQuotaStatus.blocked
-          ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a medium one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-        helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
-        statusMessage: expressMediumGenerationNotice?.message,
-        statusTone: expressMediumGenerationNotice?.tone,
-      },
-      {
-        id: 'hard',
-        label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : hardDirectGenerationRunning ? 'Generating hard...' : 'New Hard Session',
-        onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-        disabled: !isOnline || directAdvancedOpenRouterBusy || hardDirectGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-        title: sessionQuotaStatus.blocked
-          ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a hard two-minute session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-        helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
-        statusMessage: hardGenerationNotice?.message,
-        statusTone: hardGenerationNotice?.tone,
-      },
-      {
-        id: 'express-hard',
-        label: expressAdvancedOpenRouterBusy ? 'Requesting express hard...' : expressHardGenerationRunning ? 'Generating express hard...' : 'Express Hard Session',
-        onClick: () => void generateExpressAdvancedNextSessionFromOpenRouter(),
-        disabled: !isOnline || expressAdvancedOpenRouterBusy || expressHardGenerationRunning || !activeSession || !effectiveOpenRouterDefaultModel.trim() || sessionQuotaStatus.blocked,
-        title: sessionQuotaStatus.blocked
-          ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || (effectiveOpenRouterDefaultModel.trim() ? 'Generate a hard one-minute express session with OpenRouter.' : 'Set a default OpenRouter model first.'),
-        helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
-        statusMessage: expressHardGenerationNotice?.message,
-        statusTone: expressHardGenerationNotice?.tone,
-      },
-      {
-        id: 'custom',
-        label: 'New Custom Session',
-        onClick: openOpenRouterGenerateForActiveInput,
-        disabled: !isOnline || !activeSession || sessionQuotaStatus.blocked,
-        title: sessionQuotaStatus.blocked ? sessionQuotaStatus.message : openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.',
-      },
-    ] : [],
+    generationButtons: focusedTrainingGenerationButtons,
   };
 
   void openAdaptiveExportsForActiveInput;
