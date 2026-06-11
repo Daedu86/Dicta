@@ -25,6 +25,7 @@ import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
+import { useAppShellSyncStatusText } from './app/useAppShellSyncStatusText';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
 import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
@@ -2421,9 +2422,13 @@ function App() {
     copyBenchmarkFeedbackPromptWithHumanFeedback,
   });
 
-  const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
-    supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
-  }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` Â· ${pendingSyncSummary.count} pending` : ''}`;
+  const appShellSyncStatusText = useAppShellSyncStatusText({
+    isOnline,
+    supabaseSyncStatus,
+    pendingSyncSummary,
+    formatSupabaseSyncState,
+    formatSessionDate,
+  });
 
   const appShellHeaderProps = useAppShellHeaderProps({
     themeMode,
