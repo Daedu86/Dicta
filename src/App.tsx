@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
+import { useDictaAppProfileRuntime } from './app/useDictaAppProfileRuntime';
 import type { FormEvent, KeyboardEvent } from 'react';
 import './App.css';
 import type {
@@ -83,9 +84,9 @@ import {
   copyDictaLocalStorage, downloadDictaLocalStorage, getDictaLocalStorageSnapshot, } from './app/dictaLocalStorageSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
-  DICTA_SYNC_TABLE, createDictaSupabaseClient, getDictaSyncConfig, } from './core/supabaseSync';
+  createDictaSupabaseClient, getDictaSyncConfig, } from './core/supabaseSync';
 import {
-  getDictaSessionQuotaStatus, isDictaAdmin, loadDictaAppProfile, loadVisibleDictaAppProfiles, normalizeDictaAppProfile, resolveOpenRouterAccessState, resolveEffectiveSyncProfileId, type DictaAppProfile, } from './core/appProfiles';
+  getDictaSessionQuotaStatus, normalizeDictaAppProfile, type DictaAppProfile, } from './core/appProfiles';
 import {
   buildRangeSummaryForLanguage, findLastSessionForLanguage, resolveSessionLanguage } from './core/liveMetrics';
 import {
@@ -139,7 +140,7 @@ import {
   buildOpenRouterActivityHints,
   findLatestFinishedSessionForProfile,
 } from './app/adaptiveFeedbackContext';
-import { asAdminRemoteStoredSession, loadSessions, normalizeRestoredStoredSession } from './app/sessionStorage';
+import { loadSessions, normalizeRestoredStoredSession } from './app/sessionStorage';
 import {
   buildOrderedSemanticPhrases,
   formatTtsPacingMode,
@@ -354,25 +355,26 @@ function App() {
     authNewPasswordConfirm, setAuthNewPasswordConfirm, authMessage, setAuthMessage, authMessageTone, setAuthMessageTone,
     authBusy, setAuthBusy,
   } = useAuthWorkspaceState({ authRequired: syncConfig.authRequired });
-  const [appProfile, setAppProfile] = useState<DictaAppProfile | null>(null);
-  const [appProfileError, setAppProfileError] = useState('');
-  const openRouterAccessState = resolveOpenRouterAccessState({
-    authRequired: syncConfig.authRequired,
+  const {
+    appProfile,
+    setAppProfile,
+    appProfileError,
+    openRouterAccessState,
+    openRouterAccessAllowed,
+    openRouterAccessMessage,
+    visibleProfiles,
+    setVisibleProfiles,
+    adminProfileFilter,
+    setAdminProfileFilter,
+    adminRemoteSessions,
+    adminRemoteStatus,
+    effectiveProfileId,
+    isCurrentProfileAdmin,
+  } = useDictaAppProfileRuntime({
+    syncConfig,
+    supabaseClient,
+    authSession,
     authLoading,
-    hasAuthSession: Boolean(authSession),
-    profile: appProfile,
-    profileError: appProfileError,
-  });
-  const openRouterAccessAllowed = openRouterAccessState === 'allowed';
-  const openRouterAccessMessage = 'OpenRouter access is disabled for this Dicta account. Contact the admin.';
-  const [visibleProfiles, setVisibleProfiles] = useState<DictaAppProfile[]>([]);
-  const [adminProfileFilter, setAdminProfileFilter] = useState<string>('self');
-  const [adminRemoteSessions, setAdminRemoteSessions] = useState<StoredSession[]>([]);
-  const [adminRemoteStatus, setAdminRemoteStatus] = useState('');
-  const effectiveProfileId = resolveEffectiveSyncProfileId({
-    authRequired: syncConfig.authRequired,
-    profile: appProfile,
-    legacyProfileId: syncConfig.legacyProfileId,
   });
   const resetOpenRouterJobsRuntimeRef = useRef<() => void>(() => undefined);
   const {
