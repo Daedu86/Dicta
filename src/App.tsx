@@ -1,6 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
 import { useDictaAppProfileRuntime } from './app/useDictaAppProfileRuntime';
+import { useThemeModeRuntime } from './app/useThemeModeRuntime';
+import { useOnlineStatus } from './app/useOnlineStatus';
 import type { FormEvent, KeyboardEvent } from 'react';
 import './App.css';
 import type {
@@ -106,7 +108,6 @@ import {
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import {
   loadAdaptiveBenchmarks, loadAdaptiveSessionFeedback, persistAdaptiveBenchmarks, persistAdaptiveSessionFeedback, } from './app/adaptiveStorage';
-import { loadThemeMode, persistThemeMode, type ThemeMode } from './app/themeModeStorage';
 import {
   loadOllamaDefaultModel, loadOpenRouterDefaultModel, OLLAMA_RECOMMENDED_DEFAULT_MODEL, persistOllamaDefaultModel, persistOpenRouterDefaultModel, } from './app/modelPreferenceStorage';
 import { buildLeaderboardSections, sortLeaderboardSessions } from './app/leaderboardSectionsBuilder';
@@ -215,14 +216,9 @@ function App() {
   } = useWorkspaceRouting();
   const [perfDiagnosticsEnabled, setPerfDiagnosticsEnabled] = useState(false);
   const [openRouterGenerateFocusRequest, setOpenRouterGenerateFocusRequest] = useState(0);
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => loadThemeMode());
+  const { themeMode, setThemeMode } = useThemeModeRuntime();
   const [ttsExpanded, setTtsExpanded] = useState(true);
   const [ttsText, setTtsText] = useState('');
-
-  useEffect(() => {
-    persistThemeMode(themeMode);
-    document.documentElement.setAttribute('data-theme', themeMode);
-  }, [themeMode]);
 
   const [ttsLanguage, setTtsLanguage] = useState<TtsLanguage>('de');
   const {
@@ -453,7 +449,7 @@ function App() {
     },
   });
   resetOpenRouterJobsRuntimeRef.current = resetOpenRouterJobsRuntime;
-  const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  const isOnline = useOnlineStatus();
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
   const ttsPracticeLiveTextRef = useRef('');
@@ -822,16 +818,6 @@ function App() {
     };
   }, [workspaceMode]);
 
-  useEffect(() => {
-    const updateOnlineState = () => setIsOnline(navigator.onLine);
-    updateOnlineState();
-    window.addEventListener('online', updateOnlineState);
-    window.addEventListener('offline', updateOnlineState);
-    return () => {
-      window.removeEventListener('online', updateOnlineState);
-      window.removeEventListener('offline', updateOnlineState);
-    };
-  }, []);
 
   const lastSessionForLanguage = useMemo(
     () => findLastSessionForLanguage(sessionsWithVoiceDuration, metricsLanguageView),
