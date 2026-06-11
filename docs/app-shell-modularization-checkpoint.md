@@ -426,3 +426,30 @@ ROI result:
 
 Next work should inspect the remaining local dev API plugin before extracting OpenRouter job route helpers.
 
+## Follow-up — 2026-06-11 Local OpenRouter job store
+
+Latest committed baseline: `a3970d6 Extract local OpenRouter job store`.
+
+This checkpoint records extraction of the local OpenRouter job store from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevOpenRouterJobs.ts` now owns the in-memory job map, active job counting, queued job creation, and job state transitions for running, succeeded, and failed OpenRouter jobs. `dev/dictaLocalDevApiPlugin.ts` keeps the `/api/openrouter/jobs` middleware route, request parsing, validation, upstream OpenRouter call, and response handling.
+
+Current metrics after this extraction:
+
+| Item                                  | Value |
+| ------------------------------------- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC   | 567 |
+| `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
+| `dev/localDevAdminFiles.ts` LOC       | 86 |
+| `dev/localDevApiValidation.ts` LOC    | 105 |
+| `dev/localDevEnvStore.ts` LOC         | 83 |
+
+ROI result:
+
+* Better ownership: local job lifecycle state is separated from local API middleware routing.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 567 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting more from `/api/openrouter/jobs`; the remaining route still owns request parsing and the upstream OpenRouter call.
+
