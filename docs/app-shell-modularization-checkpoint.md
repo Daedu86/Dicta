@@ -453,3 +453,31 @@ ROI result:
 
 Next work should inspect before extracting more from `/api/openrouter/jobs`; the remaining route still owns request parsing and the upstream OpenRouter call.
 
+## Follow-up — 2026-06-11 Local dev Ollama helpers
+
+Latest committed baseline: `5acd4de Extract local dev Ollama helpers`.
+
+This checkpoint records extraction of local Ollama helper logic from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevOllamaHelpers.ts` now owns Ollama upstream error text extraction, user-facing Ollama auth/quota/error formatting, and Ollama model payload normalization with the recommended model fallback. `dev/dictaLocalDevApiPlugin.ts` keeps the Ollama middleware routes, key lookup, request parsing, upstream fetch calls, and response handling.
+
+Current metrics after this extraction:
+
+| Item                                  | Value |
+| ------------------------------------- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC   | 505 |
+| `dev/localDevOllamaHelpers.ts` LOC    | 77 |
+| `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
+| `dev/localDevAdminFiles.ts` LOC       | 86 |
+| `dev/localDevApiValidation.ts` LOC    | 105 |
+| `dev/localDevEnvStore.ts` LOC         | 83 |
+
+ROI result:
+
+* Better ownership: Ollama-specific model/error helper behavior is separated from local API middleware routing.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 505 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting more shared request/response helpers; the remaining plugin still owns route orchestration.
+
