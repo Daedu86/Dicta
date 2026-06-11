@@ -23,6 +23,7 @@ import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
 import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
+import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
@@ -154,10 +155,6 @@ import {
 import { copyDictaLocalStorage,
   downloadDictaLocalStorage } from './app/dictaLocalStorageSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
-import {
-  createDictaSupabaseClient,
-  getDictaSyncConfig,
-  } from './core/supabaseSync';
 import {
   getDictaSessionQuotaStatus,
   } from './core/appProfiles';
@@ -429,8 +426,10 @@ function App() {
     sessionFeedbackMessage,
     setSessionFeedbackMessage,
   } = useAdaptiveWorkspaceState();
-  const syncConfig = useMemo(() => getDictaSyncConfig(import.meta.env), []);
-  const supabaseClient = useMemo(() => createDictaSupabaseClient(syncConfig), [syncConfig]);
+  const {
+    syncConfig,
+    supabaseClient,
+  } = useDictaSupabaseRuntime();
   const {
     authSession,
     setAuthSession,

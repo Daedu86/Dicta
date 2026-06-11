@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after adaptive workspace state extraction
+Updated: 2026-06-11 after Dicta Supabase runtime extraction
 
 ## Current working-tree status
 
@@ -10,7 +10,7 @@ This document began as a generated map. The detailed inventories below the curre
 | --- | ---: |
 | Branch | product/input-2 |
 | Latest committed baseline | 8876ed9 Extract Supabase auth actions (#61) |
-| Current working-tree App shell LOC | 3083 |
+| Current working-tree App shell LOC | 3082 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
@@ -19,13 +19,14 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
 | Current `src/app/useDictaDebugExportEffect.ts` LOC | 119 |
 | Current `src/app/useAdaptiveWorkspaceState.ts` LOC | 64 |
+| Current `src/app/useDictaSupabaseRuntime.ts` LOC | 16 |
 | Current `src/app/useAdaptiveExportActions.ts` LOC | 303 |
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
 | Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
 | Current `src/app/useSessionCreationActions.ts` LOC | 211 |
 | App.tsx inline `useState` count | 31 |
 | App.tsx inline `useRef` count | 27 |
-| App.tsx inline `useMemo` count | 10 |
+| App.tsx inline `useMemo` count | 8 |
 | App.tsx inline `useEffect` count | 8 |
 | App.tsx inline function declarations | 28 |
 
@@ -45,6 +46,7 @@ Completed since the original map:
 - `useAdaptiveStoragePersistenceEffects` owns adaptive benchmark/feedback local persistence and ref sync effects.
 - `useDictaDebugExportEffect` owns the diagnostic `window.__DICTA_DEBUG_EXPORT__` registration and snapshot assembly.
 - `useAdaptiveWorkspaceState` owns adaptive workspace debug, benchmark, feedback, focus, and message state.
+- `useDictaSupabaseRuntime` owns Dicta sync config and Supabase client memoization.
 
 Current recommendation:
 
