@@ -350,11 +350,31 @@ function App() {
   const syncConfig = useMemo(() => getDictaSyncConfig(import.meta.env), []);
   const supabaseClient = useMemo(() => createDictaSupabaseClient(syncConfig), [syncConfig]);
   const {
-    authSession, setAuthSession, authLoading, setAuthLoading, authEmail, setAuthEmail, authPassword, setAuthPassword,
-    authError, setAuthError, authView, setAuthView, authNewPassword, setAuthNewPassword,
-    authNewPasswordConfirm, setAuthNewPasswordConfirm, authMessage, setAuthMessage, authMessageTone, setAuthMessageTone,
-    authBusy, setAuthBusy,
-  } = useAuthWorkspaceState({ authRequired: syncConfig.authRequired });
+    authSession,
+    setAuthSession,
+    authLoading,
+    authEmail,
+    setAuthEmail,
+    authPassword,
+    setAuthPassword,
+    authError,
+    setAuthError,
+    authView,
+    setAuthView,
+    authNewPassword,
+    setAuthNewPassword,
+    authNewPasswordConfirm,
+    setAuthNewPasswordConfirm,
+    authMessage,
+    setAuthMessage,
+    authMessageTone,
+    setAuthMessageTone,
+    authBusy,
+    setAuthBusy,
+  } = useAuthWorkspaceState({
+    authRequired: syncConfig.authRequired,
+    supabaseClient,
+  });
   const {
     appProfile,
     setAppProfile,
@@ -476,40 +496,7 @@ function App() {
     trend: 'stable',
   });
 
-  useEffect(() => {
-    if (!supabaseClient || !syncConfig.authRequired) {
-      setAuthLoading(false);
-      return;
-    }
-    let cancelled = false;
 
-    supabaseClient.auth.getSession().then(({ data }) => {
-      if (!cancelled) {
-        setAuthSession(data.session ?? null);
-        setAuthLoading(false);
-      }
-    });
-
-    const { data: listener } = supabaseClient.auth.onAuthStateChange((event, session) => {
-      setAuthSession(session);
-      if (event === 'PASSWORD_RECOVERY') {
-        setAuthView('updatePassword');
-        setAuthError('');
-        setAuthMessage('Enter a new password to finish recovery.');
-        setAuthMessageTone('hint');
-      }
-      if (!session) {
-        setAppProfile(null);
-        setVisibleProfiles([]);
-        setAdminProfileFilter('self');
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      listener.subscription.unsubscribe();
-    };
-  }, [supabaseClient, syncConfig.authRequired]);
 
 
 

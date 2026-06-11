@@ -1,8 +1,13 @@
-import { useState } from 'react';
-import type { Session as SupabaseAuthSession } from '@supabase/supabase-js';
+import { useEffect, useState } from 'react';
+import type { Session as SupabaseAuthSession, SupabaseClient } from '@supabase/supabase-js';
 import type { AuthView } from './sessionTypes';
 
-export function useAuthWorkspaceState({ authRequired }: { authRequired: boolean }) {
+type UseAuthWorkspaceStateOptions = {
+  authRequired: boolean;
+  supabaseClient: SupabaseClient | null;
+};
+
+export function useAuthWorkspaceState({ authRequired, supabaseClient }: UseAuthWorkspaceStateOptions) {
   const [authSession, setAuthSession] = useState<SupabaseAuthSession | null>(null);
   const [authLoading, setAuthLoading] = useState(() => Boolean(authRequired));
   const [authEmail, setAuthEmail] = useState('');
@@ -17,6 +22,37 @@ export function useAuthWorkspaceState({ authRequired }: { authRequired: boolean 
   const [authMessage, setAuthMessage] = useState('');
   const [authMessageTone, setAuthMessageTone] = useState<'hint' | 'success' | 'error'>('hint');
   const [authBusy, setAuthBusy] = useState(false);
+
+  useEffect(() => {
+    if (!supabaseClient || !authRequired) {
+      setAuthLoading(false);
+      return;
+    }
+    let cancelled = false;
+
+    supabaseClient.auth.getSession().then(({ data }) => {
+      if (!cancelled) {
+        setAuthSession(data.session ?? null);
+        setAuthLoading(false);
+      }
+    });
+
+    const { data: listener } = supabaseClient.auth.onAuthStateChange((event, session) => {
+      setAuthSession(session);
+      setAuthLoading(false);
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthView('updatePassword');
+        setAuthError('');
+        setAuthMessage('Enter a new password to finish recovery.');
+        setAuthMessageTone('hint');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      listener.subscription.unsubscribe();
+    };
+  }, [authRequired, supabaseClient]);
 
   return {
     authSession,

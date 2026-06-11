@@ -32,6 +32,16 @@ export function useDictaAppProfileRuntime({
   const [adminRemoteSessions, setAdminRemoteSessions] = useState<StoredSession[]>([]);
   const [adminRemoteStatus, setAdminRemoteStatus] = useState('');
 
+  useEffect(() => {
+    if (authSession) return;
+    setAppProfile(null);
+    setAppProfileError('');
+    setVisibleProfiles([]);
+    setAdminProfileFilter('self');
+    setAdminRemoteSessions([]);
+    setAdminRemoteStatus('');
+  }, [authSession]);
+
   const openRouterAccessState = resolveOpenRouterAccessState({
     authRequired: syncConfig.authRequired,
     authLoading,
