@@ -351,3 +351,27 @@ ROI result:
 
 Next work should inspect before extracting. The remaining App render tail is small; further App-shell work should require a stronger boundary than a prop-only wrapper.
 
+## Follow-up — 2026-06-11 Local dev env store
+
+Latest committed baseline: `d9143ee Extract local dev env store`.
+
+This checkpoint records extraction of `.env.local` API key persistence from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevEnvStore.ts` now owns local OpenRouter/Ollama API key lookup, `.env.local` parsing, JSON/string quote handling, key upsert, and key removal. `dev/dictaLocalDevApiPlugin.ts` keeps route validation, request handling, upstream proxy behavior, job handling, and admin file inventory.
+
+Current metrics after this extraction:
+
+| Item                               | Value |
+| ---------------------------------- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC | 712 |
+| `dev/localDevEnvStore.ts` LOC       | 83 |
+
+ROI result:
+
+* Better ownership: local key persistence is separated from local API middleware routing.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 712 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect the remaining local dev API plugin before extracting model/prompt validation or admin file inventory.
+
