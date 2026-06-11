@@ -2,19 +2,25 @@
 
 Date: 2026-06-10  
 Branch: `product/input-2`  
-Latest local commit at checkpoint time: `386749f (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Document App shell modularization checkpoint`
+Latest local commit at checkpoint time: `258db0a (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract App runtime helpers`
 
 ## Status
 
-The App shell has been reduced substantially through a series of behavior-preserving extractions. The current `src/App.tsx` size is **3933 lines**.
+The App shell reduction pass is complete for the current stage. `src/App.tsx` is now **3879 lines**.
 
-The current direction is still valid: keep `App.tsx` as the orchestration shell and move stable logic, type models, reusable components, persistence helpers, and diagnostic/adaptive helpers into focused modules.
+The key structural milestone is that `App.tsx` should now expose only the main top-level component function:
+
+```text
+178:function App() {
+```
+
+The current architecture keeps `App.tsx` as the orchestration shell while stable logic, reusable components, persistence helpers, diagnostic helpers, TTS helpers, and adaptive metrics helpers live in focused modules.
 
 ## Extracted modules
 
 | Area | File | Lines |
 | --- | --- | ---: |
-| App shell | `src/App.tsx` | 3933 |
+| App shell | `src/App.tsx` | 3879 |
 | Admin shell | `src/components/admin/AdminWorkspace.tsx` | 303 |
 | Session/local UI types | `src/app/sessionTypes.ts` | 127 |
 | TTS pacing helpers | `src/app/ttsPacingHelpers.ts` | 36 |
@@ -25,6 +31,7 @@ The current direction is still valid: keep `App.tsx` as the orchestration shell 
 | TTS playback profile helpers | `src/app/ttsPlaybackProfile.ts` | 83 |
 | Dictation script semantic phrase helpers | `src/app/dictationScriptSemanticPhrases.ts` | 35 |
 | Repeat word stats helpers | `src/app/repeatWordStats.ts` | 98 |
+| App runtime helpers | `src/app/appRuntimeHelpers.ts` | 71 |
 
 ## Completed in this pass
 
@@ -40,6 +47,7 @@ The current direction is still valid: keep `App.tsx` as the orchestration shell 
 - Extracted TTS playback profile logic to `src/app/ttsPlaybackProfile.ts`.
 - Extracted dictation script semantic phrase helpers to `src/app/dictationScriptSemanticPhrases.ts`.
 - Extracted repeat-word/transcript stats helpers to `src/app/repeatWordStats.ts`.
+- Extracted remaining App runtime helpers to `src/app/appRuntimeHelpers.ts`.
 
 ## Verification pattern used
 
@@ -56,7 +64,7 @@ git push origin product/input-2
 
 ## Recommended next steps
 
-Start tomorrow with inspection, not extraction:
+Start the next pass with inspection, not extraction:
 
 ```bash
 git status --short
@@ -69,25 +77,24 @@ grep -n "^const .*=>" src/App.tsx
 
 Then continue in this order:
 
-1. **Pure helpers still near the bottom of `App.tsx`**  
-   Prefer small functions that do not use React state, refs, JSX, or browser APIs directly.
+1. **Inspect remaining inline closures inside `function App()`**  
+   The top-level helper cleanup is mostly complete. The next reductions will likely require extracting hooks or workspace controller modules from inside `App()`.
 
-2. **TTS control/action helpers**  
-   Good candidates if they are pure and only consume typed inputs.
+2. **Prefer hook-level extraction over more file-splitting**  
+   Good candidates are runtime clusters with clear state/ref boundaries, such as TTS control, live metrics, session mutation, or adaptive diagnostics.
 
-3. **Live metrics / telemetry update helpers**  
-   Move only after confirming their dependencies. These are higher risk because they touch refs and session mutation.
+3. **Avoid large JSX extraction until the next stable checkpoint**  
+   JSX extraction is riskier than pure helper extraction. Keep visual moves small and isolated.
 
-4. **Workspace-level hooks**  
-   Once pure helpers are mostly gone, consider extracting hooks around large runtime clusters. Do this in smaller commits than the helper extractions.
-
-5. **Avoid large JSX moves for the next pass**  
-   JSX extraction is riskier now. Prefer one more round of non-visual logic extraction first.
+4. **Keep every pass build-verified**  
+   Continue with small commits and `npm run build` after each extraction.
 
 ## Recent commits
 
 ```text
-386749f (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Document App shell modularization checkpoint
+258db0a (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract App runtime helpers
+2bb0f2f Document App shell modularization checkpoint
+386749f Document App shell modularization checkpoint
 43633ac Extract repeat word stats helpers
 6a1ff4c Extract dictation script semantic phrases
 1134055 Extract TTS playback profile helpers

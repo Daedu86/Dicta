@@ -124,7 +124,13 @@ This document used to track remaining extraction work. It is now a status and gu
 <!-- app-shell-modularization-checkpoint:start -->
 ## App shell modularization checkpoint — 2026-06-10
 
-A focused App shell reduction pass is complete. Current `src/App.tsx` size: **3933 lines**.
+A focused App shell reduction pass is complete. Current `src/App.tsx` size: **3879 lines**.
+
+Top-level function inventory:
+
+```text
+178:function App() {
+```
 
 Detailed checkpoint: `docs/app-shell-modularization-checkpoint.md`.
 
@@ -139,11 +145,13 @@ Completed extraction groups:
 - TTS playback profile helpers
 - Dictation script semantic phrase helpers
 - Repeat word stats helpers
+- App runtime helpers
 
 Next recommended pass:
 
-1. Inspect remaining `function`, `type`, and pure helper declarations in `src/App.tsx`.
-2. Extract only pure helpers first.
-3. Delay larger JSX or hook extraction until another green checkpoint is established.
+1. Inspect remaining declarations and closures inside `function App()`.
+2. Extract hook-level runtime clusters only after identifying clean boundaries.
+3. Keep JSX extraction small and build-verified.
+4. Continue using one commit per stable extraction.
 
 <!-- app-shell-modularization-checkpoint:end -->
