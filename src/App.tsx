@@ -19,6 +19,8 @@ import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
+import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
+import { perfDiagnostics } from './core/perfDiagnostics';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -135,7 +137,6 @@ import type {
   AdaptiveSessionFeedbackByInputLanguage,
   BenchmarkLanguageButton,
   } from './components/openrouter/types';
-import { perfDiagnostics } from './core/perfDiagnostics';
 import {
   normalizeLiveSessionStatusForPersistence,
   } from './core/sessionStatusNormalization';
@@ -255,8 +256,7 @@ const DICTA_BUILD_INFO_LABEL = buildBuildInfoLabel(DICTA_BUILD_INFO);
 const DICTA_BUILD_INFO_TITLE = buildBuildInfoTitle(DICTA_BUILD_INFO);
 
 function App() {
-  const appRenderCountRef = useRef(0);
-  appRenderCountRef.current += 1;
+  const perfDiagnosticsEnabled = useAppPerfDiagnosticsRuntime();
   const [sessions, setSessions] = useState<StoredSession[]>(() => loadSessions());
   const [activeSessionId, setActiveSessionId] = useState<string>(() => loadSessions()[0]?.id ?? '');
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
@@ -293,7 +293,6 @@ function App() {
     showDashboardWorkspace,
     showSessionInputWorkspace,
   } = useWorkspaceRouting();
-  const [perfDiagnosticsEnabled, setPerfDiagnosticsEnabled] = useState(false);
   const [openRouterGenerateFocusRequest, setOpenRouterGenerateFocusRequest] = useState(0);
   const { themeMode, setThemeMode } = useThemeModeRuntime();
   const [ttsExpanded, setTtsExpanded] = useState(true);
@@ -777,20 +776,6 @@ function App() {
     showLeaderboardWorkspace,
     showWorkspaceMode,
   });
-
-  useEffect(() => {
-    perfDiagnostics.recordRender('App', appRenderCountRef.current);
-  });
-
-  useEffect(() => {
-    const enabled = perfDiagnostics.configure({
-      envDev: import.meta.env.DEV,
-      search: window.location.search,
-      storage: window.localStorage,
-    });
-    setPerfDiagnosticsEnabled(enabled);
-    return () => perfDiagnostics.dispose();
-  }, []);
 
   useEffect(() => {
     if (!perfDiagnosticsEnabled && !import.meta.env.DEV) {
