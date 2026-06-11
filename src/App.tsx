@@ -3,6 +3,7 @@ import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
 import { useDictaAppProfileRuntime } from './app/useDictaAppProfileRuntime';
 import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
+import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
 import type { FormEvent, KeyboardEvent } from 'react';
 import './App.css';
 import type {
@@ -109,7 +110,10 @@ import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import {
   loadAdaptiveBenchmarks, loadAdaptiveSessionFeedback, persistAdaptiveBenchmarks, persistAdaptiveSessionFeedback, } from './app/adaptiveStorage';
 import {
-  loadOllamaDefaultModel, loadOpenRouterDefaultModel, OLLAMA_RECOMMENDED_DEFAULT_MODEL, persistOllamaDefaultModel, persistOpenRouterDefaultModel, } from './app/modelPreferenceStorage';
+  OLLAMA_RECOMMENDED_DEFAULT_MODEL,
+  persistOllamaDefaultModel,
+  persistOpenRouterDefaultModel,
+} from './app/modelPreferenceStorage';
 import { buildLeaderboardSections, sortLeaderboardSessions } from './app/leaderboardSectionsBuilder';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
@@ -271,8 +275,12 @@ function App() {
       return changed ? next : prev;
     });
   }, [browserTtsVoices]);
-  const [openRouterDefaultModel, setOpenRouterDefaultModel] = useState('');
-  const [ollamaDefaultModel, setOllamaDefaultModel] = useState(OLLAMA_RECOMMENDED_DEFAULT_MODEL);
+  const {
+    openRouterDefaultModel,
+    setOpenRouterDefaultModel,
+    ollamaDefaultModel,
+    setOllamaDefaultModel,
+  } = useModelPreferenceRuntime();
 
   useEffect(() => {
     ttsPracticeLiveTextRef.current = ttsPracticeText;
@@ -732,10 +740,6 @@ function App() {
     setOpenRouterError(openRouterAccessMessage);
   }, [openRouterAccessState, showLeaderboardWorkspace, workspaceMode]);
 
-  useEffect(() => {
-    setOpenRouterDefaultModel(loadOpenRouterDefaultModel());
-    setOllamaDefaultModel(loadOllamaDefaultModel());
-  }, []);
 
   useEffect(() => {
     if (!localStorageReadyForEffectiveProfile) return;
