@@ -1,9 +1,9 @@
 import type { Plugin } from 'vite';
 import { randomUUID } from 'node:crypto';
-import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createLocalDevEnvStore } from './localDevEnvStore';
 import { createLocalDevApiValidation } from './localDevApiValidation';
+import { buildLocalDevAdminFileInventory } from './localDevAdminFiles';
 
 const localOpenRouterJobs = new Map<string, {
   jobId: string;
@@ -585,29 +585,9 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
 
       try {
-        const folders = await Promise.all(
-          [
-            { label: 'Fixtures', relativePath: 'fixtures' },
-            { label: 'Public assets', relativePath: 'public' },
-          ].map(async (folder) => {
-            const absolutePath = path.resolve(process.cwd(), folder.relativePath);
-            const files = await listKnownFiles(absolutePath);
-            return {
-              label: folder.label,
-              relativePath: folder.relativePath,
-              absolutePath,
-              exists: files !== null,
-              fileCount: files?.length ?? 0,
-              totalBytes: files?.reduce((sum, file) => sum + file.size, 0) ?? 0,
-              wavCount: files?.filter((file) => file.ext === '.wav').length ?? 0,
-              jsonCount: files?.filter((file) => file.ext === '.json').length ?? 0,
-              transcriptCount: files?.filter((file) => file.name.toLowerCase().includes('transcript')).length ?? 0,
-            };
-          }),
-        );
-
+        const inventory = await buildLocalDevAdminFileInventory(process.cwd());
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ projectRoot: process.cwd(), folders }));
+        res.end(JSON.stringify(inventory));
       } catch (error) {
         res.statusCode = 500;
         res.end(error instanceof Error ? error.message : 'Admin file inventory error');
@@ -616,40 +596,4 @@ export function createDictaLocalDevApiPlugin(): Plugin {
 
   },
 };
-}
-
-async function listKnownFiles(root: string): Promise<Array<{ name: string; ext: string; size: number }> | null> {
-  try {
-    const stat = await fs.stat(root);
-    if (!stat.isDirectory()) {
-      return null;
-    }
-  } catch {
-    return null;
-  }
-
-  const found: Array<{ name: string; ext: string; size: number }> = [];
-
-  async function walk(dir: string): Promise<void> {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const absolutePath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(absolutePath);
-        continue;
-      }
-      if (!entry.isFile()) {
-        continue;
-      }
-      const stat = await fs.stat(absolutePath);
-      found.push({
-        name: entry.name,
-        ext: path.extname(entry.name).toLowerCase(),
-        size: stat.size,
-      });
-    }
-  }
-
-  await walk(root);
-  return found;
 }
