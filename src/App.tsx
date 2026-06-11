@@ -30,6 +30,7 @@ import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
 import { useLeaderboardWorkspaceProps } from './app/useLeaderboardWorkspaceProps';
 import { useAdaptiveAdvancedDiagnosticsProps } from './app/useAdaptiveAdvancedDiagnosticsProps';
 import { useAdaptiveBenchmarkSectionProps } from './app/useAdaptiveBenchmarkSectionProps';
+import { useLiveMetricsDockProps } from './app/useLiveMetricsDockProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -2512,6 +2513,35 @@ function App() {
     MetricComponent: Metric,
   });
 
+  const liveMetricsDockProps = useLiveMetricsDockProps({
+    insightsCollapsed,
+    metricsLanguageView,
+    metricsRangeView,
+    trend,
+    insightsDiagnosticInputOptions,
+    insightsDiagnosticInputMode,
+    insightsDiagnosticMessage,
+    insightsDiagnosticFallbackReport,
+    workspaceMode,
+    ttsCurrentChunk,
+    ttsPacingMode,
+    ttsStatus,
+    lastSessionForLanguage,
+    lastSessionScoreHelpText,
+    languageTodaySummary,
+    setMetricsLanguageView,
+    setMetricsRangeView,
+    setInsightsDiagnosticInputMode,
+    copyInsightsDiagnosticPackage,
+    setInsightsCollapsed,
+    selectInsightsDiagnosticFallbackReport,
+    formatInputModeLabel,
+    formatSessionInputMode,
+    formatDuration,
+    formatSessionDate,
+    formatTtsPacingMode,
+  });
+
   if (
     syncConfig.authRequired &&
     (
@@ -2645,34 +2675,7 @@ function App() {
           </section>
         </section>
       </section>
-      <LiveMetricsDock
-        insightsCollapsed={insightsCollapsed}
-        metricsLanguageView={metricsLanguageView}
-        metricsRangeView={metricsRangeView}
-        trend={trend}
-        insightsDiagnosticInputOptions={insightsDiagnosticInputOptions}
-        insightsDiagnosticInputMode={insightsDiagnosticInputMode}
-        insightsDiagnosticMessage={insightsDiagnosticMessage}
-        insightsDiagnosticFallbackReport={insightsDiagnosticFallbackReport}
-        workspaceMode={workspaceMode}
-        hasTtsCurrentChunk={Boolean(ttsCurrentChunk)}
-        ttsPacingMode={ttsPacingMode}
-        ttsStatus={ttsStatus}
-        lastSessionForLanguage={lastSessionForLanguage}
-        lastSessionScoreHelpText={lastSessionScoreHelpText}
-        languageTodaySummary={languageTodaySummary}
-        onChangeMetricsLanguageView={setMetricsLanguageView}
-        onChangeMetricsRangeView={setMetricsRangeView}
-        onChangeInsightsDiagnosticInputMode={setInsightsDiagnosticInputMode}
-        onCopyInsightsDiagnosticPackage={copyInsightsDiagnosticPackage}
-        onToggleInsightsCollapsed={() => setInsightsCollapsed((value) => !value)}
-        onSelectInsightsDiagnosticFallbackReport={selectInsightsDiagnosticFallbackReport}
-        formatInputModeLabel={formatInputModeLabel}
-        formatSessionInputMode={formatSessionInputMode}
-        formatDuration={formatDuration}
-        formatSessionDate={formatSessionDate}
-        formatTtsPacingMode={formatTtsPacingMode}
-      />
+      <LiveMetricsDock {...liveMetricsDockProps} />
     </main>
   );
 }
