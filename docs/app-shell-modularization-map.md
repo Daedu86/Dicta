@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after adaptive export-actions extraction
+Updated: 2026-06-11 after Supabase auth-actions extraction
 
 ## Current working-tree status
 
@@ -10,9 +10,10 @@ This document began as a generated map. The detailed inventories below the curre
 | --- | ---: |
 | Branch | product/input-2 |
 | Latest committed baseline | 8f14e83 Extract keyboard remap runtime hook |
-| Current working-tree App shell LOC | 3498 |
+| Current working-tree App shell LOC | 3414 |
 | Current `src/app/useAdaptiveExportActions.ts` LOC | 303 |
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
+| Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
 | App.tsx inline `useState` count | 31 |
 | App.tsx inline `useRef` count | 16 |
 | App.tsx inline `useMemo` count | 22 |
@@ -25,6 +26,7 @@ Completed since the original map:
 - `useDictaLocalStorageImportRuntime` owns Dicta localStorage snapshot import restore actions.
 - `useKeyboardRemapRuntime` owns active typing-language resolution and Spanish physical-key remapping.
 - `useAdaptiveExportActions` owns adaptive benchmark/session-feedback copy, export, and insights diagnostic actions.
+- `useSupabaseAuthActions` owns Supabase sign-in, password reset/update, auth view switching, and sign-out handlers.
 
 Current recommendation:
 
@@ -40,7 +42,7 @@ Current recommendation:
 | Commit | 8f14e83 plus current working-tree modularization |
 | Git status before checkpoint | Modified docs/App shell extraction files |
 | App shell file | src/App.tsx |
-| App shell LOC | 3498 |
+| App shell LOC | 3414 |
 | Tracked text files | 289 |
 | Tracked text LOC | 49093 |
 | Tracked code files | 213 |
