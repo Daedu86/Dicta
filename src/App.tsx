@@ -9,6 +9,7 @@ import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImp
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
+import { useSessionCreationActions } from './app/useSessionCreationActions';
 import type {
   KeyboardEvent } from 'react';
 import './App.css';
@@ -57,8 +58,6 @@ import {
   isTransientOpenRouterGenerationError,
   } from './core/adaptive/openRouterFallbackScript';
 import {
-  parseDictationScriptJson,
-  type DictationScript,
   type DictationScriptDifficulty,
   type DictationScriptValidationResult,
   } from './core/adaptive/dictationScriptValidation';
@@ -139,12 +138,9 @@ import {
   formatSessionInputMode,
   } from './app/sessionDisplayFormatters';
 import { createGeneratedErrorSession,
-  createStoredSession,
   getNextSessionIndex } from './app/sessionFactory';
-import { createSessionFromScript } from './app/sessionFromDictationScript';
 import {
   mapDictationScriptInputModeToSession,
-  scriptLanguageToTtsLanguage,
   } from './app/sessionRestoreGuards';
 import { copyDictaLocalStorage,
   downloadDictaLocalStorage } from './app/dictaLocalStorageSnapshot';
@@ -242,7 +238,6 @@ import type {
   AdminFileInventory,
   DictaDebugSampleAudit,
   PerformanceTrend,
-  GenerationOrigin,
   SessionSource,
   SessionStatus,
   StoredSession,
@@ -547,6 +542,33 @@ function App() {
       clearDashboardSession();
       resetOpenRouterJobsRuntimeRef.current();
     },
+  });
+  const {
+    createSessionWithMode,
+    validateScriptImport,
+    createSessionFromDictationScript,
+    createSessionFromOpenRouterScript,
+  } = useSessionCreationActions({
+    sessionCreationName,
+    dictationScriptJson,
+    dictationScriptValidation,
+    browserTtsVoices,
+    suppressSidebarAutoSelectRef,
+    ensureCanCreateDictationSession,
+    prependSessionAndPersistNow,
+    showSessionInputWorkspace,
+    showLeaderboardWorkspace,
+    setActiveSessionId,
+    setLeaderboardLanguageView,
+    setSessionCreationMode,
+    setSessionCreationSource,
+    setSessionCreationName,
+    setDictationScriptJson,
+    setDictationScriptValidation,
+    setTtsExpanded,
+    setError,
+    setOpenRouterError,
+    setExportMessage,
   });
   const {
     activeOpenRouterJobs,
@@ -1299,103 +1321,6 @@ function App() {
       setError(message);
     }
     return false;
-  }
-
-  function createSessionWithMode(inputMode: SessionInputMode): void {
-    if (!ensureCanCreateDictationSession('error')) return;
-    const name = sessionCreationName.trim();
-    if (!name) {
-      setError('Enter a session name before creating the session.');
-      return;
-    }
-    suppressSidebarAutoSelectRef.current = true;
-    const nextSession = prependSessionAndPersistNow((prev) =>
-      createStoredSession(
-        getNextSessionIndex(prev),
-        inputMode,
-        name,
-      ),
-    );
-    setActiveSessionId(nextSession.id);
-    showSessionInputWorkspace(inputMode);
-    setSessionCreationMode(null);
-    setSessionCreationSource('plainText');
-    setSessionCreationName('');
-    setDictationScriptJson('');
-    setDictationScriptValidation(null);
-    setTtsExpanded(true);
-  }
-
-  function validateScriptImport(): void {
-    setDictationScriptValidation(parseDictationScriptJson(dictationScriptJson));
-  }
-
-  function createSessionFromDictationScript(): void {
-    if (!ensureCanCreateDictationSession('error')) return;
-    const result = dictationScriptValidation?.ok ? dictationScriptValidation : parseDictationScriptJson(dictationScriptJson);
-    setDictationScriptValidation(result);
-    if (!result.ok) {
-      return;
-    }
-
-    const inputMode = mapDictationScriptInputModeToSession(result.script.inputMode);
-    if (!inputMode) {
-      setDictationScriptValidation({
-        ok: false,
-        script: null,
-        errors: ['inputMode must be browser-tts.'],
-      });
-      return;
-    }
-
-    suppressSidebarAutoSelectRef.current = true;
-    const nextSession = prependSessionAndPersistNow((prev) =>
-      createSessionFromScript(result.script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
-    );
-    setActiveSessionId(nextSession.id);
-    showSessionInputWorkspace(inputMode);
-    setSessionCreationMode(null);
-    setSessionCreationSource('plainText');
-    setSessionCreationName('');
-    setDictationScriptJson('');
-    setDictationScriptValidation(null);
-    setTtsExpanded(false);
-    setError('');
-    setExportMessage('DictationScript session created and locked.');
-  }
-
-  function createSessionFromOpenRouterScript(
-    script: DictationScript,
-    options: { navigateToLeaderboard?: boolean; generationOrigin?: GenerationOrigin } = {},
-  ): void {
-    if (!ensureCanCreateDictationSession('openrouter')) return;
-    const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
-    const generationOrigin = options.generationOrigin ?? 'openrouter';
-    const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
-    if (!inputMode) {
-      setOpenRouterError('Generated script inputMode must be browser-tts.');
-      return;
-    }
-
-    suppressSidebarAutoSelectRef.current = true;
-    const nextSession = prependSessionAndPersistNow((prev) => ({
-      ...createSessionFromScript(script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
-      generationOrigin,
-    }));
-    setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
-    if (navigateToLeaderboard) {
-      setActiveSessionId(nextSession.id);
-      showLeaderboardWorkspace();
-    }
-    setSessionCreationMode(null);
-    setSessionCreationSource('plainText');
-    setSessionCreationName('');
-    setDictationScriptJson('');
-    setDictationScriptValidation(null);
-    setTtsExpanded(false);
-    setError('');
-    setOpenRouterError('');
-    setExportMessage('OpenRouter DictationScript session created and locked.');
   }
 
   function createOpenRouterErrorSession({
