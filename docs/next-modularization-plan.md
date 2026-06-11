@@ -124,7 +124,7 @@ This document used to track remaining extraction work. It is now a status and gu
 <!-- app-shell-modularization-checkpoint:start -->
 ## App shell modularization checkpoint â€” 2026-06-10
 
-A focused App shell reduction pass continued after the original checkpoint. Current `src/App.tsx` size after the Admin workspace props extraction is **2706 lines**.
+A focused App shell reduction pass continued after the original checkpoint. Current `src/App.tsx` size after the Leaderboard workspace props extraction is **2699 lines**.
 
 Top-level function inventory:
 
@@ -153,7 +153,7 @@ Completed extraction groups:
 - Session creation/import action handlers hook
 - Workspace/session state hooks
 - Direct OpenRouter generation action handlers hook
-- App/workspace prop composition hooks, including Admin workspace props
+- App/workspace prop composition hooks, including Admin and Leaderboard workspace props
 
 Next recommended pass:
 

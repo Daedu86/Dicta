@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after Admin workspace props extraction
+Updated: 2026-06-11 after Leaderboard workspace props extraction
 
 ## Current working-tree status
 
@@ -9,8 +9,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 5eea4cf Update App shell props checkpoint |
-| Current working-tree App shell LOC | 2706 |
+| Latest committed baseline | d697e11 Extract Admin workspace props |
+| Current working-tree App shell LOC | 2699 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
@@ -23,6 +23,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useAuthWorkspaceProps.ts` LOC | 90 |
 | Current `src/app/useSessionCreateCardProps.ts` LOC | 57 |
 | Current `src/app/useAdminWorkspaceProps.ts` LOC | 89 |
+| Current `src/app/useLeaderboardWorkspaceProps.ts` LOC | 114 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -56,6 +57,7 @@ Completed since the original map:
 - `useFocusedTrainingGenerationButtons` owns focused-training OpenRouter generation button composition, notices, running state labels, disabled/title wiring, and click handlers.
 - `useSessionCreateCardProps` owns session creation card prop composition for source/name state, quota state, script-import validation state, creation/import callbacks, and Metric wiring.
 - `useAdminWorkspaceProps` owns Admin workspace prop composition for session/admin summaries, localStorage/session snapshot actions, profile access callbacks, auth headers, and OpenRouter model refresh wiring.
+- `useLeaderboardWorkspaceProps` owns leaderboard workspace prop composition, leaderboard expand/collapse callbacks, session snapshot actions, session navigation callbacks, and display formatter wiring.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useOllamaWorkspaceProps` owns Ollama workspace prop composition and Ollama default model persistence wiring.

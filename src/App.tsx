@@ -27,6 +27,7 @@ import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
 import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
+import { useLeaderboardWorkspaceProps } from './app/useLeaderboardWorkspaceProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -123,8 +124,6 @@ import type {
 import {
   normalizeLiveSessionStatusForPersistence,
   } from './core/sessionStatusNormalization';
-import { copySessionSnapshot,
-  downloadSessionSnapshot } from './app/sessionSnapshotActions';
 import {
   buildAdaptiveAdapterCards,
   formatAdaptiveModeFromSession,
@@ -2357,6 +2356,37 @@ function App() {
     setExportMessage,
   });
 
+  const leaderboardWorkspaceProps = useLeaderboardWorkspaceProps({
+    leaderboard,
+    leaderboardSections,
+    leaderboardLanguageView,
+    leaderboardExpanded,
+    leaderboardSectionExpanded,
+    activeSessionId,
+    supportedLanguages: SUPPORTED_LANGUAGES,
+    languageLabels: LANGUAGE_LABELS,
+    onChangeLeaderboardLanguageView: setLeaderboardLanguageView,
+    setLeaderboardExpanded,
+    setLeaderboardSectionExpanded,
+    onOpenWorkspaceForSession: openWorkspaceForSession,
+    onOpenDashboardForSession: openDashboardForSession,
+    setExportMessage,
+    onDeleteSession: deleteSession,
+    onBackToTraining: showLeaderboardWorkspace,
+    formatLeaderboardSessionStatus,
+    formatSessionGenerationOrigin,
+    formatSessionPlaybackDuration,
+    formatSessionDate,
+    formatSessionPointsForSession,
+    buildSessionScoreHelpText,
+    buildSessionPointsHelpText,
+    computeSessionMaxPoints,
+    getSessionDisplayTitle,
+    isSessionReadyForTraining,
+    MetricComponent: Metric,
+    SessionDeviceIconComponent: SessionDeviceIcon,
+  });
+
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
   }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` Â· ${pendingSyncSummary.count} pending` : ''}`;
@@ -2625,44 +2655,7 @@ function App() {
                 </section>
               )
             ) : workspaceMode === 'leaderboard' ? (
-              <LeaderboardWorkspace
-                leaderboard={leaderboard}
-                leaderboardSections={leaderboardSections}
-                leaderboardLanguageView={leaderboardLanguageView}
-                leaderboardExpanded={leaderboardExpanded}
-                leaderboardSectionExpanded={leaderboardSectionExpanded}
-                activeSessionId={activeSessionId}
-                supportedLanguages={SUPPORTED_LANGUAGES}
-                languageLabels={LANGUAGE_LABELS}
-                onChangeLeaderboardLanguageView={setLeaderboardLanguageView}
-                onToggleLeaderboardExpanded={() => setLeaderboardExpanded((value) => !value)}
-                onToggleLeaderboardSectionExpanded={(sectionId) =>
-                  setLeaderboardSectionExpanded((current) => ({
-                    ...current,
-                    [sectionId]: !current[sectionId],
-                  }))
-                }
-                onOpenWorkspaceForSession={openWorkspaceForSession}
-                onOpenDashboardForSession={openDashboardForSession}
-                onDownloadSessionSnapshot={downloadSessionSnapshot}
-                onCopySessionSnapshot={(session) => {
-                  void copySessionSnapshot(session, setExportMessage);
-                }}
-                onDeleteSession={deleteSession}
-                onBackToTraining={showLeaderboardWorkspace}
-                formatLeaderboardSessionStatus={formatLeaderboardSessionStatus}
-                formatSessionGenerationOrigin={formatSessionGenerationOrigin}
-                formatSessionPlaybackDuration={formatSessionPlaybackDuration}
-                formatSessionDate={formatSessionDate}
-                formatSessionPointsForSession={formatSessionPointsForSession}
-                buildSessionScoreHelpText={buildSessionScoreHelpText}
-                buildSessionPointsHelpText={buildSessionPointsHelpText}
-                computeSessionMaxPoints={computeSessionMaxPoints}
-                getSessionDisplayTitle={getSessionDisplayTitle}
-                isSessionReadyForTraining={isSessionReadyForTraining}
-                MetricComponent={Metric}
-                SessionDeviceIconComponent={SessionDeviceIcon}
-              />
+              <LeaderboardWorkspace {...leaderboardWorkspaceProps} />
             ) : (
               <section className="panel workspace-panel">
                 <p className="hint">Choose Browser TTS to train.</p>
