@@ -222,4 +222,22 @@ Verified both cuts with `npm run lint`, `npm run test -- --reporter=verbose`, `n
 Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched in this sequence.
 
 Next pass should start from a clean `ad42cef` baseline and inspect remaining low-risk prop-composition or non-TTS UI-state boundaries before touching runtime logic.
+## Follow-up — 2026-06-11 Focused training view props
+
+Latest committed baseline: `522a983 Extract focused training view props`.
+
+This checkpoint adds `src/app/useFocusedTrainingViewProps.ts`, which owns focused `TrainingView` prop composition, visible score/accuracy/lag labels, focused training controls wiring, replay availability mapping, pending-session callbacks, sync summary props, and generation button props.
+
+Current App shell metrics after this checkpoint:
+
+| Item | Value |
+| --- | ---: |
+| `src/App.tsx` LOC | 2670 |
+| `src/app/useFocusedTrainingViewProps.ts` LOC | 177 |
+
+Verified with `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched. The hook receives `onReplayFocusedTts` as a callback and does not own replay logic.
+
+Next pass should start from a clean `522a983` baseline and inspect remaining low-risk prop-composition or non-TTS UI-state boundaries before touching runtime logic.
 
