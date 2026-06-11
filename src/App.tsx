@@ -4,6 +4,7 @@ import { useDictaAppProfileRuntime } from './app/useDictaAppProfileRuntime';
 import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
 import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
+import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
 import {
   loadOllamaDefaultModel,
   loadOpenRouterDefaultModel,
@@ -73,8 +74,7 @@ import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
 import {
   buildTrainingGenerationButtonNotice, formatInterruptedOpenRouterMessage, parseTimestampMs, shouldCreatePersistentGenerationErrorSession, } from './components/openrouter/openRouterViewHelpers';
 import type {
-  AdaptiveBenchmarksByInputLanguage, AdaptiveSessionFeedbackByInputLanguage, BenchmarkLanguageButton, OpenRouterModelSummary, } from './components/openrouter/types';
-import type { OllamaModelSummary } from './components/ollama/types';
+  AdaptiveBenchmarksByInputLanguage, AdaptiveSessionFeedbackByInputLanguage, BenchmarkLanguageButton, } from './components/openrouter/types';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import {
   normalizeLiveSessionStatusForPersistence, } from './core/sessionStatusNormalization';
@@ -296,12 +296,17 @@ function App() {
   const [expressEasyOpenRouterBusy, setExpressEasyOpenRouterBusy] = useState(false);
   const [expressIntermediateOpenRouterBusy, setExpressIntermediateOpenRouterBusy] = useState(false);
   const [expressAdvancedOpenRouterBusy, setExpressAdvancedOpenRouterBusy] = useState(false);
-  const [openRouterModels, setOpenRouterModels] = useState<OpenRouterModelSummary[]>([]);
-  const [openRouterStatus, setOpenRouterStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  const [openRouterError, setOpenRouterError] = useState('');
-  const [ollamaModels, setOllamaModels] = useState<OllamaModelSummary[]>([]);
-  const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  const [ollamaError, setOllamaError] = useState('');
+  const {
+    openRouterModels,
+    openRouterStatus,
+    openRouterError,
+    setOpenRouterError,
+    ollamaModels,
+    ollamaStatus,
+    ollamaError,
+    refreshOpenRouterModels: refreshOpenRouterModelCatalog,
+    refreshOllamaModels: refreshOllamaModelCatalog,
+  } = useModelCatalogRuntime();
   const [adminFileInventory, setAdminFileInventory] = useState<AdminFileInventory | null>(null);
   const [adminFileInventoryError, setAdminFileInventoryError] = useState('');
   const {
@@ -1131,89 +1136,20 @@ function App() {
   }
 
   async function refreshOpenRouterModels(): Promise<void> {
-    setOpenRouterStatus('loading');
-    setOpenRouterError('');
-    try {
-      const response = await fetch('/api/openrouter/models', { headers: getAuthHeaders() });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `OpenRouter request failed (${response.status}).`);
-      }
-      const payload = (await response.json()) as {
-        data?: Array<{
-          id: string;
-          name?: string;
-          context_length?: number;
-          pricing?: { prompt?: string | number; completion?: string | number };
-        }>;
-      };
-      const data = Array.isArray(payload.data) ? payload.data : [];
-      const freeModels = data
-        .filter((model) => {
-          const prompt = Number(model.pricing?.prompt ?? NaN);
-          const completion = Number(model.pricing?.completion ?? NaN);
-          return Number.isFinite(prompt) && Number.isFinite(completion) && prompt === 0 && completion === 0;
-        })
-        .map((model) => ({ id: model.id, name: model.name, context_length: model.context_length }))
-        .sort((a, b) => a.id.localeCompare(b.id));
-      setOpenRouterModels(freeModels);
-      setOpenRouterStatus('ready');
-      if (!assignedOpenRouterModel && !openRouterDefaultModel && freeModels.length > 0) {
-        setOpenRouterDefaultModel(freeModels[0].id);
-        persistOpenRouterDefaultModel(freeModels[0].id);
-      }
-    } catch (err) {
-      setOpenRouterModels([]);
-      setOpenRouterStatus('error');
-      setOpenRouterError(err instanceof Error ? err.message : 'OpenRouter model fetch failed.');
-    }
+    await refreshOpenRouterModelCatalog({
+      headers: getAuthHeaders(),
+      assignedOpenRouterModel,
+      openRouterDefaultModel,
+      setOpenRouterDefaultModel,
+    });
   }
 
   async function refreshOllamaModels(): Promise<void> {
-    setOllamaStatus('loading');
-    setOllamaError('');
-    try {
-      const response = await fetch('/api/ollama/models', { headers: getAuthHeaders() });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Ollama request failed (${response.status}).`);
-      }
-      const payload = (await response.json()) as {
-        data?: Array<{
-          id: string;
-          name?: string;
-          modified_at?: string;
-          size?: number;
-          details?: OllamaModelSummary['details'];
-        }>;
-      };
-      const data = Array.isArray(payload.data) ? payload.data : [];
-      const nextModels = data
-        .filter((model) => typeof model.id === 'string' && model.id.trim())
-        .map((model) => ({
-          id: model.id,
-          name: model.name,
-          modified_at: model.modified_at,
-          size: model.size,
-          details: model.details,
-        }))
-        .sort((a, b) => {
-          if (a.id === OLLAMA_RECOMMENDED_DEFAULT_MODEL) return -1;
-          if (b.id === OLLAMA_RECOMMENDED_DEFAULT_MODEL) return 1;
-          return a.id.localeCompare(b.id);
-        });
-      setOllamaModels(nextModels);
-      setOllamaStatus('ready');
-      if (!ollamaDefaultModel.trim()) {
-        const nextDefault = nextModels[0]?.id ?? OLLAMA_RECOMMENDED_DEFAULT_MODEL;
-        setOllamaDefaultModel(nextDefault);
-        persistOllamaDefaultModel(nextDefault);
-      }
-    } catch (err) {
-      setOllamaModels([]);
-      setOllamaStatus('error');
-      setOllamaError(err instanceof Error ? err.message : 'Ollama model fetch failed.');
-    }
+    await refreshOllamaModelCatalog({
+      headers: getAuthHeaders(),
+      ollamaDefaultModel,
+      setOllamaDefaultModel,
+    });
   }
 
   async function updateAdminProfileAccess(
