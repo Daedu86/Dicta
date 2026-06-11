@@ -24,6 +24,7 @@ import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime
 import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
 import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
+import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorkspaceState';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
@@ -75,7 +76,6 @@ import {
   } from './core/adaptive/openRouterFallbackScript';
 import {
   type DictationScriptDifficulty,
-  type DictationScriptValidationResult,
   } from './core/adaptive/dictationScriptValidation';
 import {
   selectLatestAdaptiveSessionFeedback,
@@ -189,7 +189,6 @@ import {
   persistOpenRouterDefaultModel,
   } from './app/modelPreferenceStorage';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
-import type { SessionInputMode } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
@@ -228,7 +227,6 @@ import {
 import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
   PerformanceTrend,
-  SessionSource,
   SessionStatus,
   StoredSession,
   TtsLanguage,
@@ -263,11 +261,6 @@ function App() {
   const [exportMessage, setExportMessage] = useState('');
   const [trainingSubmitMessage, setTrainingSubmitMessage] = useState('');
   const [inputSettingsLocked, setInputSettingsLocked] = useState(false);
-  const [sessionCreationMode, setSessionCreationMode] = useState<SessionInputMode | null>(null);
-  const [sessionCreationSource, setSessionCreationSource] = useState<SessionSource>('plainText');
-  const [sessionCreationName, setSessionCreationName] = useState('');
-  const [dictationScriptJson, setDictationScriptJson] = useState('');
-  const [dictationScriptValidation, setDictationScriptValidation] = useState<DictationScriptValidationResult | null>(null);
   const {
     workspaceMode,
     currentPath,
@@ -283,7 +276,20 @@ function App() {
     showDashboardWorkspace,
     showSessionInputWorkspace,
   } = useWorkspaceRouting();
-  const [openRouterGenerateFocusRequest, setOpenRouterGenerateFocusRequest] = useState(0);
+  const {
+    openRouterGenerateFocusRequest,
+    setOpenRouterGenerateFocusRequest,
+    sessionCreationMode,
+    setSessionCreationMode,
+    sessionCreationSource,
+    setSessionCreationSource,
+    sessionCreationName,
+    setSessionCreationName,
+    dictationScriptJson,
+    setDictationScriptJson,
+    dictationScriptValidation,
+    setDictationScriptValidation,
+  } = useSessionCreationWorkspaceState();
   const { themeMode, setThemeMode } = useThemeModeRuntime();
   const [ttsExpanded, setTtsExpanded] = useState(true);
   const [ttsText, setTtsText] = useState('');
