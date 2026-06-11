@@ -1,6 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
-import { useDictaAppProfileRuntime } from './app/useDictaAppProfileRuntime';
+import {
+  useDictaAppProfileRuntime,
+} from './app/useDictaAppProfileRuntime';
 import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
 import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
@@ -9,6 +11,7 @@ import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImp
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionQuotaActions } from './app/useSessionQuotaActions';
+import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -153,8 +156,6 @@ import {
   } from './core/supabaseSync';
 import {
   getDictaSessionQuotaStatus,
-  normalizeDictaAppProfile,
-  type DictaAppProfile,
   } from './core/appProfiles';
 import {
   buildRangeSummaryForLanguage,
@@ -1280,46 +1281,14 @@ function App() {
     });
   }
 
-  async function updateAdminProfileAccess(
-    profile: DictaAppProfile,
-    patch: { canAccessOpenRouter: boolean; assignedOpenRouterModel: string; sessionLimit: number },
-  ): Promise<DictaAppProfile> {
-    const response = await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({
-        userId: profile.userId,
-        canAccessOpenRouter: patch.canAccessOpenRouter,
-        assignedOpenRouterModel: patch.assignedOpenRouterModel,
-        sessionLimit: patch.sessionLimit,
-      }),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `Profile access update failed (${response.status}).`);
-    }
-    const payload = (await response.json()) as {
-      profile?: {
-        user_id: string;
-        profile_id: string;
-        display_name: string | null;
-        role: string;
-        active: boolean | null;
-        can_access_openrouter?: boolean | null;
-        assigned_openrouter_model?: string | null;
-        session_limit?: number | null;
-        created_at?: string;
-        updated_at?: string;
-      };
-    };
-    if (!payload.profile) throw new Error('Profile access update did not return a profile.');
-    const updated = normalizeDictaAppProfile(payload.profile);
-    setVisibleProfiles((current) => current.map((item) => (item.userId === updated.userId ? updated : item)));
-    if (appProfile?.userId === updated.userId) {
-      setAppProfile(updated);
-    }
-    return updated;
-  }
+  const {
+    updateAdminProfileAccess,
+  } = useAdminProfileAccessActions({
+    getAuthHeaders,
+    appProfile,
+    setAppProfile,
+    setVisibleProfiles,
+  });
 
   function createOpenRouterErrorSession({
     slotLabel,
