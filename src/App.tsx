@@ -7,6 +7,7 @@ import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
 import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
+import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -1373,25 +1374,20 @@ function App() {
     return buildOrderedSemanticPhrases(text, language, mode);
   }
 
-  function deleteSession(sessionId: string): void {
-    if (dashboardSessionId === sessionId) {
-      clearDashboardSession();
-      if (workspaceMode === 'dashboard') {
-        showLeaderboardWorkspace();
-      }
-    }
-    deleteSessionAndSync(sessionId);
-  }
-
-  function openDashboardForSession(sessionId: string): void {
-    setActiveSessionId(sessionId);
-    showDashboardWorkspace(sessionId);
-  }
-
-  function openWorkspaceForSession(session: StoredSession): void {
-    setActiveSessionId(session.id);
-    showSessionInputWorkspace(session.inputMode);
-  }
+  const {
+    deleteSession,
+    openDashboardForSession,
+    openWorkspaceForSession,
+  } = useSessionWorkspaceActions({
+    dashboardSessionId,
+    workspaceMode,
+    clearDashboardSession,
+    showLeaderboardWorkspace,
+    deleteSessionAndSync,
+    setActiveSessionId,
+    showDashboardWorkspace,
+    showSessionInputWorkspace,
+  });
 
   const {
     getActiveTypingLanguage,
