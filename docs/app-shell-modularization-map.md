@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after local dev API validation extraction
+Updated: 2026-06-11 after local dev admin file inventory extraction
 
 ## Current working-tree status
 
@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 513affe Extract local dev API validation |
+| Latest committed baseline | 68f8530 Extract local dev admin file inventory |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
@@ -32,7 +32,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useFocusedTrainingLiveMetrics.ts` LOC | 88 |
 | Current `src/app/AppWorkspaceContent.tsx` LOC | 128 |
 | Current `vite.config.ts` LOC | 88 |
-| Current `dev/dictaLocalDevApiPlugin.ts` LOC | 655 |
+| Current `dev/dictaLocalDevApiPlugin.ts` LOC | 599 |
+| Current `dev/localDevAdminFiles.ts` LOC | 86 |
 | Current `dev/localDevApiValidation.ts` LOC | 105 |
 | Current `dev/localDevEnvStore.ts` LOC | 83 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
@@ -78,6 +79,7 @@ Completed since the original map:
 - `dictaLocalDevApiPlugin` owns the local Vite dev API routes, OpenRouter/Ollama proxy routes, OpenRouter local job queue, and admin file inventory route.
 - `localDevEnvStore` owns local `.env.local` API key read, parse, upsert, and removal behavior for OpenRouter and Ollama.
 - `localDevApiValidation` owns local OpenRouter/Ollama API key validation, model id normalization, prompt bounds, and max-token bounds.
+- `localDevAdminFiles` owns local admin file inventory for fixtures and public assets.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useAppShellSyncStatusText` owns App shell sync/offline status label composition, pending-sync suffixes, and last-sync timestamp formatting glue.

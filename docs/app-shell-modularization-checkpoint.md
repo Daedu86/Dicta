@@ -400,3 +400,29 @@ ROI result:
 
 Next work should inspect the remaining local dev API plugin before extracting admin file inventory or OpenRouter job route helpers.
 
+## Follow-up — 2026-06-11 Local dev admin file inventory
+
+Latest committed baseline: `68f8530 Extract local dev admin file inventory`.
+
+This checkpoint records extraction of local admin file inventory from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevAdminFiles.ts` now owns fixture/public asset folder inventory, recursive file discovery, extension counts, transcript counts, and byte totals. `dev/dictaLocalDevApiPlugin.ts` keeps the `/api/admin/files` middleware route and delegates inventory construction.
+
+Current metrics after this extraction:
+
+| Item                                  | Value |
+| ------------------------------------- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC   | 599 |
+| `dev/localDevAdminFiles.ts` LOC       | 86 |
+| `dev/localDevApiValidation.ts` LOC    | 105 |
+| `dev/localDevEnvStore.ts` LOC         | 83 |
+
+ROI result:
+
+* Better ownership: admin file inventory is separated from local API middleware routing.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 599 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect the remaining local dev API plugin before extracting OpenRouter job route helpers.
+
