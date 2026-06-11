@@ -122,3 +122,12 @@ c98c52f Extract App session types
 a0f9f3c Remove dead App helpers
 1827c3f Extract AdminWorkspace shell
 ```
+
+## 2026-06-11 — Auth headers and model refresh extraction
+
+- Extracted reusable auth-header creation into `src/app/useAuthHeaders.ts`.
+- Extracted `refreshOpenRouterModels` and `refreshOllamaModels` into `src/app/useModelRefreshActions.ts`.
+- Kept Browser TTS playback/runtime, `resetSession`, telemetry refs, and OpenRouter generation paths untouched.
+- Current `src/App.tsx` line count after this cut: 3301.
+- New hook line counts: `useAuthHeaders.ts` = 22; `useModelRefreshActions.ts` = 69.
+- Verified with `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.

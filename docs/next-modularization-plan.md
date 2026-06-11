@@ -160,3 +160,11 @@ Next recommended pass:
 4. Avoid the Browser TTS playback loop until a fresh AST-level movement plan exists.
 
 <!-- app-shell-modularization-checkpoint:end -->
+
+## 2026-06-11 — App shell auth/model refresh checkpoint
+
+- Completed a low-risk App shell extraction for auth headers and model catalog refresh actions.
+- Added `src/app/useAuthHeaders.ts` and `src/app/useModelRefreshActions.ts`.
+- `src/App.tsx` now delegates auth-header construction and model refresh orchestration to hooks while leaving Browser TTS playback/runtime untouched.
+- Current `src/App.tsx` line count: 3301.
+- Verification completed: lint, unit tests, build, and mobile E2E.

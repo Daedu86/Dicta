@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
+import { useAuthHeaders } from './app/useAuthHeaders';
 import {
   useDictaAppProfileRuntime,
 } from './app/useDictaAppProfileRuntime';
@@ -7,6 +8,7 @@ import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
 import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
 import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
+import { useModelRefreshActions } from './app/useModelRefreshActions';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
@@ -510,6 +512,12 @@ function App() {
     setAuthMessageTone,
     setAuthBusy,
   });
+  const {
+    getAuthHeaders,
+  } = useAuthHeaders({
+    authSession,
+  });
+
   const resetOpenRouterJobsRuntimeRef = useRef<() => void>(() => undefined);
   const {
     localStorageReadyForEffectiveProfile,
@@ -670,6 +678,20 @@ function App() {
   const assignedOpenRouterModel =
     syncConfig.authRequired && appProfile?.role === 'member' ? appProfile.assignedOpenRouterModel?.trim() ?? '' : '';
   const effectiveOpenRouterDefaultModel = assignedOpenRouterModel || openRouterDefaultModel;
+  const {
+    refreshOpenRouterModels,
+    refreshOllamaModels,
+  } = useModelRefreshActions({
+    getAuthHeaders,
+    assignedOpenRouterModel,
+    openRouterDefaultModel,
+    setOpenRouterDefaultModel,
+    ollamaDefaultModel,
+    setOllamaDefaultModel,
+    refreshOpenRouterModelCatalog,
+    refreshOllamaModelCatalog,
+  });
+
   const latestSession = useMemo<StoredSession | null>(() => {
     if (sessions.length === 0) return null;
     return [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
@@ -1257,28 +1279,6 @@ function App() {
     }
     telemetryRef.current = null;
     resetAdaptiveSessionFeedbackTracking(activeSession?.id);
-  }
-
-  function getAuthHeaders(): Record<string, string> {
-    const token = authSession?.access_token;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }
-
-  async function refreshOpenRouterModels(): Promise<void> {
-    await refreshOpenRouterModelCatalog({
-      headers: getAuthHeaders(),
-      assignedOpenRouterModel,
-      openRouterDefaultModel,
-      setOpenRouterDefaultModel,
-    });
-  }
-
-  async function refreshOllamaModels(): Promise<void> {
-    await refreshOllamaModelCatalog({
-      headers: getAuthHeaders(),
-      ollamaDefaultModel,
-      setOllamaDefaultModel,
-    });
   }
 
   const {
