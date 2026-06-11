@@ -240,4 +240,41 @@ Verified with `npm run lint`, `npm run test -- --reporter=verbose`, `npm run bui
 Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched. The hook receives `onReplayFocusedTts` as a callback and does not own replay logic.
 
 Next pass should start from a clean `522a983` baseline and inspect remaining low-risk prop-composition or non-TTS UI-state boundaries before touching runtime logic.
+## Follow-up — 2026-06-11 Modularization ROI reassessment
+
+Latest committed baseline: `f0c2d4f Extract app shell sync status text`.
+
+This checkpoint recalibrates the App shell modularization strategy. The earlier phase successfully removed large prop-composition, workspace, action, persistence, auth, OpenRouter, adaptive, leaderboard, admin, and focused-training clusters from `src/App.tsx`.
+
+The remaining work should no longer be evaluated as "can this become a hook?" but as "does this extraction reduce App-shell complexity enough to justify another module?"
+
+Current App shell metrics at this reassessment:
+
+| Item | Value |
+| --- | ---: |
+| `src/App.tsx` LOC | 2675 |
+| `src/app/useAppShellSyncStatusText.ts` LOC | 43 |
+
+### Updated decision model
+
+Future extractions should be ranked by ROI:
+
+1. High ROI — derived-state or runtime/state clusters that remove meaningful App complexity, improve ownership, and create a testable seam.
+2. Medium ROI — isolated effects or UI-state boundaries that reduce coupling but require careful dependency plumbing.
+3. Low ROI — short labels, one-line callbacks, tiny prop wrappers, or cosmetic JSX moves.
+4. Rejected for now — Browser TTS playback loop, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, or block-marker/regex-driven moves.
+
+### Current assessment
+
+The broad props-composition phase is mostly complete. More props hooks should be created only when they collapse a large, coherent boundary. The next useful work should target derived-state or non-playback runtime clusters.
+
+Recommended next extraction: `useFocusedTrainingLiveMetrics`.
+
+This candidate should own focused-training metric derivation: transcript evaluation, visible accuracy/score, points/max-points, score help text, points help text, and static accuracy help text. It is safer than session hydration/persistence because it is pure derived state and does not mutate sessions, timers, refs, playback state, or telemetry.
+
+The expected benefit is not just line reduction. The main benefit is making listening metric derivation explicit and testable while reducing the number of derived values that `App.tsx` has to coordinate before building `focusedTrainingProps`.
+
+Validation requirement remains unchanged: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+After the next extraction, update this checkpoint with actual `App.tsx` LOC, new hook LOC, validation results, and whether the extraction produced net App-shell reduction.
 

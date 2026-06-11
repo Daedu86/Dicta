@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after Focused training view props extraction
+Updated: 2026-06-11 after App shell modularization ROI reassessment
 
 ## Current working-tree status
 
@@ -9,8 +9,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 522a983 Extract focused training view props |
-| Current working-tree App shell LOC | 2670 |
+| Latest committed baseline | f0c2d4f Extract app shell sync status text |
+| Current working-tree App shell LOC | 2675 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
@@ -20,6 +20,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useOpenRouterWorkspaceProps.ts` LOC | 164 |
 | Current `src/app/useOllamaWorkspaceProps.ts` LOC | 52 |
 | Current `src/app/useAppShellHeaderProps.ts` LOC | 86 |
+| Current `src/app/useAppShellSyncStatusText.ts` LOC | 43 |
 | Current `src/app/useAuthWorkspaceProps.ts` LOC | 90 |
 | Current `src/app/useSessionCreateCardProps.ts` LOC | 57 |
 | Current `src/app/useAdminWorkspaceProps.ts` LOC | 89 |
@@ -68,6 +69,7 @@ Completed since the original map:
 - `useFocusedTrainingViewProps` owns focused `TrainingView` prop composition, visible metric labels, training controls wiring, replay availability mapping, pending-session callbacks, sync summary props, and generation button props.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
+- `useAppShellSyncStatusText` owns App shell sync/offline status label composition, pending-sync suffixes, and last-sync timestamp formatting glue.
 - `useOllamaWorkspaceProps` owns Ollama workspace prop composition and Ollama default model persistence wiring.
 - `useOpenRouterWorkspaceProps` owns OpenRouter workspace prop composition, model persistence wiring, export profile selection wiring, job notifications, and benchmark/session-feedback copy callbacks.
 - `useAdaptiveDiagnosticsUiState` owns adaptive diagnostics UI state.
@@ -80,9 +82,48 @@ Completed since the original map:
 
 Current recommendation:
 
-- Start the next pass from the clean `522a983` baseline before selecting another extraction.
-- Prefer small browser/App shell hooks with explicit inputs/outputs and low-risk prop-composition boundaries.
-- Avoid the Browser TTS playback loop, TTS refs, phrase progression, telemetry timers, and regex/block-marker moves around `playTtsFromWord`.
+- Start the next pass from the clean `f0c2d4f` baseline before selecting another extraction.
+- Treat the broad props-hook phase as mostly complete; do not extract more one-line callbacks, short strings, or ceremonial wrappers just to reduce visual density.
+- Continue modularizing only when the candidate has positive ROI: meaningful App-shell LOC reduction, lower coupling, clearer ownership, better test seam, or lower future-change risk.
+- Avoid Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves unless a later dedicated runtime refactor defines a precise boundary.
+
+## ROI-based modularization policy
+
+The first modularization phase successfully removed large workspace/action/prop-composition clusters from `src/App.tsx`. The remaining work should not be driven by hook count alone. A proposed extraction should now pass a stricter decision gate.
+
+| Criterion | Positive signal | Negative signal |
+| --- | --- | --- |
+| App-shell reduction | Removes at least ~15-25 net lines from `src/App.tsx` or collapses a dense state/effect cluster | Adds an import and wrapper for a short expression, string, or one-line callback |
+| Ownership | Gives one module a coherent responsibility with explicit inputs/outputs | Splits a concept across App and a hook without reducing cognitive load |
+| Testability | Makes a derived-state or policy boundary easier to test outside App | Moves JSX/props only and does not expose a useful seam |
+| Runtime risk | Pure derivation, non-TTS UI state, or isolated effect with clear dependencies | Touches playback loop, TTS refs/timers/telemetry, phrase progression, or `resetSession` |
+| Change likelihood | Encapsulates logic likely to evolve independently | Extracts stable glue that rarely changes |
+
+Do not evaluate ROI purely by new hook LOC. Some hooks increase total LOC but still improve ownership. However, a hook that neither reduces App complexity nor creates a useful seam should be rejected.
+
+## Next recommended extraction
+
+Next candidate: `useFocusedTrainingLiveMetrics`.
+
+Why this candidate has positive ROI:
+
+- It is a derived-state cluster rather than another props wrapper.
+- It can own transcript evaluation, visible accuracy/score, points/max-points labels, and score/points help text.
+- It is close to user-facing listening metrics, so it has a useful test seam.
+- It should remove a dense block from `App.tsx` without touching playback, phrase progression, timers, refs, or utterance handlers.
+- It should feed the existing `useFocusedTrainingViewProps` hook with a smaller metrics object.
+
+Candidate boundary:
+
+- inputs: `ttsText`, `ttsPracticeText`, `activeInputMode`, `lagSec`, `wpm`, `rate`
+- outputs: `ttsHasText`, `activePoints`, `activeVisibleAccuracy`, `activeVisibleScore`, `activeMaxPoints`, `activeLivePointsLabel`, `activeLiveScoreHelpText`, `activeLivePointsHelpText`, `activeLiveAccuracyHelpText`
+
+Candidates to defer:
+
+- Active-session hydration/persistence effects: high ROI but high risk because they reset TTS state, telemetry refs, metrics, finished-session guards, and session persistence fields.
+- Browser TTS playback/runtime extraction: defer until a dedicated runtime-boundary design exists.
+- More tiny string/callback hooks: low ROI unless they are part of a larger coherent boundary.
+
 
 ## Baseline
 
