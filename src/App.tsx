@@ -8,6 +8,7 @@ import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
+import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -544,6 +545,16 @@ function App() {
       resetOpenRouterJobsRuntimeRef.current();
     },
   });
+  const sessionQuotaStatus = getDictaSessionQuotaStatus(syncConfig.authRequired ? appProfile : null, sessions.length);
+  const {
+    ensureCanCreateDictationSession,
+  } = useSessionQuotaActions({
+    sessionQuotaStatus,
+    setError,
+    setOpenRouterError,
+    setExportMessage,
+  });
+
   const {
     createSessionWithMode,
     validateScriptImport,
@@ -658,7 +669,6 @@ function App() {
   const assignedOpenRouterModel =
     syncConfig.authRequired && appProfile?.role === 'member' ? appProfile.assignedOpenRouterModel?.trim() ?? '' : '';
   const effectiveOpenRouterDefaultModel = assignedOpenRouterModel || openRouterDefaultModel;
-  const sessionQuotaStatus = getDictaSessionQuotaStatus(syncConfig.authRequired ? appProfile : null, sessions.length);
   const latestSession = useMemo<StoredSession | null>(() => {
     if (sessions.length === 0) return null;
     return [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
@@ -1309,19 +1319,6 @@ function App() {
       setAppProfile(updated);
     }
     return updated;
-  }
-
-  function ensureCanCreateDictationSession(messageTarget: 'error' | 'openrouter' | 'export' = 'error'): boolean {
-    if (!sessionQuotaStatus.blocked) return true;
-    const message = sessionQuotaStatus.message;
-    if (messageTarget === 'openrouter') {
-      setOpenRouterError(message);
-    } else if (messageTarget === 'export') {
-      setExportMessage(message);
-    } else {
-      setError(message);
-    }
-    return false;
   }
 
   function createOpenRouterErrorSession({
