@@ -29,6 +29,7 @@ import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
 import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
 import { useLeaderboardWorkspaceProps } from './app/useLeaderboardWorkspaceProps';
 import { useAdaptiveAdvancedDiagnosticsProps } from './app/useAdaptiveAdvancedDiagnosticsProps';
+import { useAdaptiveBenchmarkSectionProps } from './app/useAdaptiveBenchmarkSectionProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -2403,6 +2404,35 @@ function App() {
     setSessionFeedbackMessage,
   });
 
+  const adaptiveBenchmarkSectionProps = useAdaptiveBenchmarkSectionProps({
+    adaptiveAdapters,
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSectionExpanded,
+    adaptiveBenchmarksFocusAnchor,
+    selectedBenchmarkInputMode,
+    selectedBenchmarkLanguage,
+    selectedBenchmarkProfile,
+    repeatWordStats,
+    benchmarkExportMessage,
+    selectedSessionFeedback,
+    sessionFeedbackMessage,
+    formatSessionDate,
+    setAdaptiveSectionExpanded,
+    setSelectedBenchmarkInputMode,
+    setSelectedBenchmarkLanguage,
+    setBenchmarkExportMessage,
+    setSessionFeedbackMessage,
+    copySelectedBenchmarkJson,
+    downloadSelectedBenchmarkJson,
+    copyDictationScriptPrompt,
+    copyBenchmarkWithDictationScriptPrompt,
+    copyDictationScriptTemplate,
+    copySessionFeedbackJson,
+    copyBenchmarkFeedbackJson,
+    copyBenchmarkFeedbackPrompt,
+    copyBenchmarkFeedbackPromptWithHumanFeedback,
+  });
+
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
   }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` Â· ${pendingSyncSummary.count} pending` : ''}`;
@@ -2584,39 +2614,7 @@ function App() {
                 </div>
                 <div className="adaptive-workspace-grid">
                   <AdaptiveAdvancedDiagnostics {...adaptiveAdvancedDiagnosticsProps} />
-                  <AdaptiveBenchmarkSection
-                    id="adaptive-benchmarks"
-                    adapters={adaptiveAdapters}
-                    benchmarks={adaptiveBenchmarksByInputLanguage}
-                    expanded={adaptiveSectionExpanded.benchmarks}
-                    onToggleExpanded={() => setAdaptiveSectionExpanded((prev) => ({ ...prev, benchmarks: !prev.benchmarks }))}
-                    focusAnchor={adaptiveBenchmarksFocusAnchor}
-                    selectedInputMode={selectedBenchmarkInputMode}
-                    selectedLanguage={selectedBenchmarkLanguage}
-                    selectedProfile={selectedBenchmarkProfile}
-                    repeatWordStats={repeatWordStats}
-                    formatSessionDate={formatSessionDate}
-                    onSelect={(inputMode, language) => {
-                      setSelectedBenchmarkInputMode(inputMode);
-                      setSelectedBenchmarkLanguage(language);
-                      setBenchmarkExportMessage('');
-                      setSessionFeedbackMessage('');
-                    }}
-                    benchmarkExportMessage={benchmarkExportMessage}
-                    sessionFeedback={selectedSessionFeedback}
-                    sessionFeedbackMessage={sessionFeedbackMessage}
-                    onCopyBenchmark={(profile) => void copySelectedBenchmarkJson(profile)}
-                    onExportBenchmark={downloadSelectedBenchmarkJson}
-                    onCopyScriptPrompt={(profile) => void copyDictationScriptPrompt(profile)}
-                    onCopyBenchmarkWithScriptPrompt={(profile) => void copyBenchmarkWithDictationScriptPrompt(profile)}
-                    onCopyScriptTemplate={(profile) => void copyDictationScriptTemplate(profile)}
-                    onCopySessionFeedback={(profile, feedback) => void copySessionFeedbackJson(profile, feedback)}
-                    onCopyBenchmarkFeedback={(profile, feedback) => void copyBenchmarkFeedbackJson(profile, feedback)}
-                    onCopyBenchmarkFeedbackPrompt={(profile, feedback) => void copyBenchmarkFeedbackPrompt(profile, feedback)}
-                    onCopyBenchmarkFeedbackPromptWithHumanFeedback={(profile, feedback, humanFeedback) =>
-                      void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback)
-                    }
-                  />
+                  <AdaptiveBenchmarkSection {...adaptiveBenchmarkSectionProps} />
                 </div>
               </section>
             ) : workspaceMode === 'openrouter' ? (
