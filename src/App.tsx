@@ -6,50 +6,107 @@ import { useOnlineStatus } from './app/useOnlineStatus';
 import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
 import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
-import type { FormEvent, KeyboardEvent } from 'react';
+import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
+import type {
+  FormEvent,
+  KeyboardEvent } from 'react';
 import './App.css';
 import type {
-  BrowserTtsEnvironmentFingerprint, ControlAction, SessionTelemetry, TtsChunkTelemetry, TtsPacingMode } from './types/dictation';
+  BrowserTtsEnvironmentFingerprint,
+  ControlAction,
+  SessionTelemetry,
+  TtsChunkTelemetry,
+  TtsPacingMode } from './types/dictation';
 import type {
-  AdaptiveTimelinePoint, AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics, InputMode, LanguageCode, ListeningTrainingIntent, LiveTelemetryFrame, PhrasePlaybackEvent, PhraseSize, } from './core/adaptive/types';
-import { configForDifficulty, type Difficulty } from './core/config';
+  AdaptiveTimelinePoint,
+  AdaptiveSessionFeedback,
+  InputLanguageBenchmarkMetrics,
+  InputMode,
+  LanguageCode,
+  ListeningTrainingIntent,
+  LiveTelemetryFrame,
+  PhrasePlaybackEvent,
+  PhraseSize,
+  } from './core/adaptive/types';
+import { configForDifficulty,
+  type Difficulty } from './core/config';
 import {
-  evaluateTranscriptAttempt, buildSessionPointsHelpText, computeSessionMaxPoints, formatSessionPointsForSession, formatSessionPointsLabel, } from './core/evaluation';
-import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
+  evaluateTranscriptAttempt,
+  buildSessionPointsHelpText,
+  computeSessionMaxPoints,
+  formatSessionPointsForSession,
+  formatSessionPointsLabel,
+  } from './core/evaluation';
+import { buildSessionScoreHelpText,
+  computeSessionScore } from './core/sessionScore';
 import {
-  clampBrowserTtsDeDecisionToRecommendation, createEmptyInputLanguageBenchmark, getBrowserTtsDeBenchmarkRejectionReason, normalizeBenchmarkLanguage, } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import { buildBenchmarkFilename, buildSelectedBenchmarkExportPayload } from './core/adaptive/benchmarkJson';
-import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './core/adaptive/dictationScriptPrompt';
+  clampBrowserTtsDeDecisionToRecommendation,
+  createEmptyInputLanguageBenchmark,
+  getBrowserTtsDeBenchmarkRejectionReason,
+  normalizeBenchmarkLanguage,
+  } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
+import { buildBenchmarkFilename,
+  buildSelectedBenchmarkExportPayload } from './core/adaptive/benchmarkJson';
+import { buildDictationScriptPrompt,
+  buildDictationScriptTemplate } from './core/adaptive/dictationScriptPrompt';
 import {
-  buildOpenRouterGenerationPrompt, estimateOpenRouterPromptSize, getOpenRouterGenerationMaxTokens, type OpenRouterDurationMinutes, } from './core/adaptive/openRouterGenerationPrompt';
+  buildOpenRouterGenerationPrompt,
+  estimateOpenRouterPromptSize,
+  getOpenRouterGenerationMaxTokens,
+  type OpenRouterDurationMinutes,
+  } from './core/adaptive/openRouterGenerationPrompt';
 import { buildAdaptiveUserSystemReport } from './core/adaptive/adaptiveUserSystemReport';
 import { buildOpenRouterDiversificationHints } from './app/openRouterPromptHints';
 import {
-  type ActiveOpenRouterJob, type OpenRouterJobResponse, } from './core/openRouterJobs';
+  type ActiveOpenRouterJob,
+  type OpenRouterJobResponse,
+  } from './core/openRouterJobs';
 import {
-  isTransientOpenRouterGenerationError, } from './core/adaptive/openRouterFallbackScript';
+  isTransientOpenRouterGenerationError,
+  } from './core/adaptive/openRouterFallbackScript';
 import {
-  parseDictationScriptJson, type DictationScript, type DictationScriptDifficulty, type DictationScriptValidationResult, } from './core/adaptive/dictationScriptValidation';
+  parseDictationScriptJson,
+  type DictationScript,
+  type DictationScriptDifficulty,
+  type DictationScriptValidationResult,
+  } from './core/adaptive/dictationScriptValidation';
 import {
-  buildBenchmarkFeedbackPackage, buildBenchmarkFeedbackPromptPackage, buildSessionFeedbackJsonPayload, derivePlaybackDiagnosticsFromTimeline, selectLatestAdaptiveSessionFeedback, } from './core/adaptive/sessionFeedback';
-import { buildBrowserTtsTelemetryFrame, buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
+  buildBenchmarkFeedbackPackage,
+  buildBenchmarkFeedbackPromptPackage,
+  buildSessionFeedbackJsonPayload,
+  derivePlaybackDiagnosticsFromTimeline,
+  selectLatestAdaptiveSessionFeedback,
+  } from './core/adaptive/sessionFeedback';
+import { buildBrowserTtsTelemetryFrame,
+  buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
-import { applyBrowserTtsMobilePacingFallback, applyBrowserTtsRuntimeRateFloor, buildBrowserTtsControlLagSample } from './inputs/browserTts/browserTtsRatePolicy';
+import { applyBrowserTtsMobilePacingFallback,
+  applyBrowserTtsRuntimeRateFloor,
+  buildBrowserTtsControlLagSample } from './inputs/browserTts/browserTtsRatePolicy';
 import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
-import { applyBrowserTtsDeRecoveryPolicy, summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
+import { applyBrowserTtsDeRecoveryPolicy,
+  summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
 import {
-  chooseDiverseBrowserTtsVoiceURIForSession, resolveBrowserTtsSessionVoice, } from './inputs/browserTts/browserTtsVoices';
+  chooseDiverseBrowserTtsVoiceURIForSession,
+  resolveBrowserTtsSessionVoice,
+  } from './inputs/browserTts/browserTtsVoices';
 import {
-  collectBrowserTtsEnvironmentFingerprint, } from './inputs/browserTts/browserTtsEnvironment';
+  collectBrowserTtsEnvironmentFingerprint,
+  } from './inputs/browserTts/browserTtsEnvironment';
 import { sameBrowserTtsEnvironment } from './inputs/browserTts/browserTtsEnvironmentComparison';
-import { trackAction, trackSample } from './core/telemetry';
-import { cloneTelemetry, normalizeSessionForPersistence } from './core/sessionNormalization';
+import { trackAction,
+  trackSample } from './core/telemetry';
+import { cloneTelemetry,
+  normalizeSessionForPersistence } from './core/sessionNormalization';
 import { telemetryEquals } from './core/sessionTelemetryEquality';
 import {
-  LANGUAGE_LABELS, SUPPORTED_LANGUAGES, } from './core/languages';
+  LANGUAGE_LABELS,
+  SUPPORTED_LANGUAGES,
+  } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
-import { TrainingView, type TrainingViewProps } from './components/TrainingView';
+import { TrainingView,
+  type TrainingViewProps } from './components/TrainingView';
 import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { PendingSessionLane } from './components/training/PendingSessionLane';
@@ -69,35 +126,69 @@ import { AdminWorkspace } from './components/admin/AdminWorkspace';
 import { Metric } from './components/shared/Metric';
 import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
 import {
-  buildTrainingGenerationButtonNotice, formatInterruptedOpenRouterMessage, parseTimestampMs, shouldCreatePersistentGenerationErrorSession, } from './components/openrouter/openRouterViewHelpers';
+  buildTrainingGenerationButtonNotice,
+  formatInterruptedOpenRouterMessage,
+  parseTimestampMs,
+  shouldCreatePersistentGenerationErrorSession,
+  } from './components/openrouter/openRouterViewHelpers';
 import type {
-  AdaptiveBenchmarksByInputLanguage, AdaptiveSessionFeedbackByInputLanguage, BenchmarkLanguageButton, } from './components/openrouter/types';
+  AdaptiveBenchmarksByInputLanguage,
+  AdaptiveSessionFeedbackByInputLanguage,
+  BenchmarkLanguageButton,
+  } from './components/openrouter/types';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import {
-  normalizeLiveSessionStatusForPersistence, } from './core/sessionStatusNormalization';
+  normalizeLiveSessionStatusForPersistence,
+  } from './core/sessionStatusNormalization';
 import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
-import { copySessionSnapshot, downloadSessionSnapshot } from './app/sessionSnapshotActions';
+import { copySessionSnapshot,
+  downloadSessionSnapshot } from './app/sessionSnapshotActions';
 import { writeTextToClipboard } from './app/clipboardText';
 import {
-  buildAdaptiveAdapterCards, formatAdaptiveModeFromSession, formatInputModeLabel, formatSessionGenerationOrigin, formatSessionInputMode, } from './app/sessionDisplayFormatters';
-import { createGeneratedErrorSession, createStoredSession, getNextSessionIndex } from './app/sessionFactory';
+  buildAdaptiveAdapterCards,
+  formatAdaptiveModeFromSession,
+  formatInputModeLabel,
+  formatSessionGenerationOrigin,
+  formatSessionInputMode,
+  } from './app/sessionDisplayFormatters';
+import { createGeneratedErrorSession,
+  createStoredSession,
+  getNextSessionIndex } from './app/sessionFactory';
 import { createSessionFromScript } from './app/sessionFromDictationScript';
 import {
-  mapDictationScriptInputModeToSession, scriptLanguageToTtsLanguage, } from './app/sessionRestoreGuards';
-import { copyDictaLocalStorage, downloadDictaLocalStorage } from './app/dictaLocalStorageSnapshot';
+  mapDictationScriptInputModeToSession,
+  scriptLanguageToTtsLanguage,
+  } from './app/sessionRestoreGuards';
+import { copyDictaLocalStorage,
+  downloadDictaLocalStorage } from './app/dictaLocalStorageSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
-  createDictaSupabaseClient, getDictaSyncConfig, } from './core/supabaseSync';
+  createDictaSupabaseClient,
+  getDictaSyncConfig,
+  } from './core/supabaseSync';
 import {
-  getDictaSessionQuotaStatus, normalizeDictaAppProfile, type DictaAppProfile, } from './core/appProfiles';
+  getDictaSessionQuotaStatus,
+  normalizeDictaAppProfile,
+  type DictaAppProfile,
+  } from './core/appProfiles';
 import {
-  buildRangeSummaryForLanguage, findLastSessionForLanguage, resolveSessionLanguage } from './core/liveMetrics';
+  buildRangeSummaryForLanguage,
+  findLastSessionForLanguage,
+  resolveSessionLanguage } from './core/liveMetrics';
 import {
-  buildGeneratedTrainingSessionNotification, requestTrainingNotificationPermission, showGeneratedTrainingSessionNotification, } from './core/trainingNotifications';
+  buildGeneratedTrainingSessionNotification,
+  requestTrainingNotificationPermission,
+  showGeneratedTrainingSessionNotification,
+  } from './core/trainingNotifications';
 import {
-  buildBuildInfoLabel, buildBuildInfoTitle, type DictaBuildInfo, } from './core/buildInfo';
+  buildBuildInfoLabel,
+  buildBuildInfoTitle,
+  type DictaBuildInfo,
+  } from './core/buildInfo';
 import {
-  useWorkspaceRouting, type WorkspaceMode, } from './app/useWorkspaceRouting';
+  useWorkspaceRouting,
+  type WorkspaceMode,
+  } from './app/useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './app/useDictaUiPreferences';
 import { isMobileViewport } from './app/viewport';
@@ -106,23 +197,31 @@ import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
 import { useSessionPersistenceSync } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import {
-  loadAdaptiveBenchmarks, loadAdaptiveSessionFeedback, persistAdaptiveBenchmarks, persistAdaptiveSessionFeedback, } from './app/adaptiveStorage';
+  loadAdaptiveBenchmarks,
+  loadAdaptiveSessionFeedback,
+  persistAdaptiveBenchmarks,
+  persistAdaptiveSessionFeedback,
+  } from './app/adaptiveStorage';
 import {
   OLLAMA_RECOMMENDED_DEFAULT_MODEL,
   persistOllamaDefaultModel,
   persistOpenRouterDefaultModel,
-} from './app/modelPreferenceStorage';
-import { buildLeaderboardSections, sortLeaderboardSessions } from './app/leaderboardSectionsBuilder';
+  } from './app/modelPreferenceStorage';
+import { buildLeaderboardSections,
+  sortLeaderboardSessions } from './app/leaderboardSectionsBuilder';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
 import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatters';
-import { formatDuration, formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
+import { formatDuration,
+  formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
 import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmissionMeta';
-import { countLocalChangesPendingSync, formatSupabaseSyncState } from './app/supabaseSyncPresentation';
-import { buildAdminStorageSummary, buildCurrentSyncState } from './app/adminStorageSummary';
+import { countLocalChangesPendingSync,
+  formatSupabaseSyncState } from './app/supabaseSyncPresentation';
+import { buildAdminStorageSummary,
+  buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 import {
   averageNumbers,
@@ -133,30 +232,33 @@ import {
   getTtsVoiceLang,
   mapSessionInputMode,
   resolveStoredSessionLanguage,
-} from './app/appRuntimeHelpers';
-import { buildRepeatWordStats, buildTextTranscript } from './app/repeatWordStats';
-import { buildSemanticPhrasesFromDictationScript, buildTtsSourceWords } from './app/dictationScriptSemanticPhrases';
-import { buildTtsPlaybackProfile, type TtsLiveSignal } from './app/ttsPlaybackProfile';
+  } from './app/appRuntimeHelpers';
+import { buildRepeatWordStats,
+  buildTextTranscript } from './app/repeatWordStats';
+import { buildSemanticPhrasesFromDictationScript,
+  buildTtsSourceWords } from './app/dictationScriptSemanticPhrases';
+import { buildTtsPlaybackProfile,
+  type TtsLiveSignal } from './app/ttsPlaybackProfile';
 import {
   buildBenchmarkActivitySummary,
   buildLatestFinishedSessionFeedbackReference,
   buildOpenRouterActivityHints,
   findLatestFinishedSessionForProfile,
-} from './app/adaptiveFeedbackContext';
-import { loadSessions, normalizeRestoredStoredSession } from './app/sessionStorage';
+  } from './app/adaptiveFeedbackContext';
+import { loadSessions,
+  normalizeRestoredStoredSession } from './app/sessionStorage';
 import {
   buildOrderedSemanticPhrases,
   formatTtsPacingMode,
   mapAdaptivePacingMode,
   semanticPhraseIndexForWordIndex,
-} from './app/ttsPacingHelpers';
+  } from './app/ttsPacingHelpers';
 import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
   AdaptiveSemanticDebug,
   AdminFileInventory,
   AuthView,
   DictaDebugSampleAudit,
-  KeyboardProfile,
   PerformanceTrend,
   GenerationOrigin,
   SessionSource,
@@ -166,7 +268,6 @@ import type {
   TtsPerformanceSampleResult,
   TtsPublishedUiState,
   TtsStatus,
-  TypingLanguage,
 } from './app/sessionTypes';
 
 declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
@@ -1468,23 +1569,14 @@ function App() {
     showSessionInputWorkspace(session.inputMode);
   }
 
-  function getActiveTypingLanguage(): TypingLanguage | null {
-    return activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE ? ttsLanguage : null;
-  }
-
-  function resolveKeyboardProfile(): KeyboardProfile {
-    if (!inputSettingsLocked) {
-      return null;
-    }
-    const language = getActiveTypingLanguage();
-    if (language === 'es') {
-      return 'es-virtual';
-    }
-    if (language === 'en' || language === 'de' || language === 'fr' || language === 'pt') {
-      return 'de-keyboard';
-    }
-    return null;
-  }
+  const {
+    getActiveTypingLanguage,
+    handleEsKeyboardRemapKeyDown,
+  } = useKeyboardRemapRuntime({
+    activeInputMode,
+    inputSettingsLocked,
+    ttsLanguage,
+  });
 
   function openOpenRouterGenerateForActiveInput(): void {
     if (!activeSession) return;
@@ -1766,42 +1858,6 @@ function App() {
       }));
     }
     showAdaptiveWorkspace();
-  }
-
-  const keyboardProfile = resolveKeyboardProfile();
-  function normalizePhysicalKey(event: KeyboardEvent<HTMLTextAreaElement>, language: TypingLanguage | null): string | null {
-    if (language !== 'es') {
-      return null;
-    }
-    if (event.code === 'KeyY') {
-      return event.shiftKey ? 'Z' : 'z';
-    }
-    if (event.code === 'KeyZ') {
-      return event.shiftKey ? 'Y' : 'y';
-    }
-    return null;
-  }
-
-  function handleEsKeyboardRemapKeyDown(
-    event: KeyboardEvent<HTMLTextAreaElement>,
-    applyValue: (value: string) => void,
-  ): void {
-    if (event.ctrlKey || event.metaKey || event.altKey || event.nativeEvent.isComposing) {
-      return;
-    }
-    if (keyboardProfile !== 'es-virtual') {
-      return;
-    }
-    const mappedChar = normalizePhysicalKey(event, getActiveTypingLanguage());
-    if (!mappedChar) {
-      return;
-    }
-    event.preventDefault();
-    const textarea = event.currentTarget;
-    const selectionStart = textarea.selectionStart ?? textarea.value.length;
-    const selectionEnd = textarea.selectionEnd ?? selectionStart;
-    textarea.setRangeText(mappedChar, selectionStart, selectionEnd, 'end');
-    applyValue(textarea.value);
   }
 
   function onTtsTextChange(value: string): void {
