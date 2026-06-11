@@ -24,6 +24,7 @@ import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGen
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
+import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -2355,6 +2356,36 @@ function App() {
     onSignOut: signOut,
   });
 
+  const authWorkspaceProps = useAuthWorkspaceProps({
+    themeMode,
+    authLoading,
+    authView,
+    authSession,
+    appProfile,
+    appProfileError,
+    localStorageReadyForEffectiveProfile,
+    supabaseInitialSyncPending,
+    effectiveProfileId,
+    authEmail,
+    authPassword,
+    authNewPassword,
+    authNewPasswordConfirm,
+    authBusy,
+    authMessage,
+    authMessageTone,
+    authError,
+    perfDiagnosticsEnabled,
+    onSignIn: signInWithSupabase,
+    onRequestPasswordReset: requestSupabasePasswordReset,
+    onUpdatePassword: updateSupabasePassword,
+    onSignOut: signOut,
+    onShowAuthView: showAuthView,
+    onAuthEmailChange: setAuthEmail,
+    onAuthPasswordChange: setAuthPassword,
+    onAuthNewPasswordChange: setAuthNewPassword,
+    onAuthNewPasswordConfirmChange: setAuthNewPasswordConfirm,
+  });
+
   if (
     syncConfig.authRequired &&
     (
@@ -2368,35 +2399,7 @@ function App() {
     )
   ) {
     return (
-      <AuthWorkspace
-        themeMode={themeMode}
-        authLoading={authLoading}
-        authView={authView}
-        authSession={authSession}
-        appProfile={appProfile}
-        appProfileError={appProfileError}
-        localStorageReadyForEffectiveProfile={localStorageReadyForEffectiveProfile}
-        supabaseInitialSyncPending={supabaseInitialSyncPending}
-        effectiveProfileId={effectiveProfileId}
-        authEmail={authEmail}
-        authPassword={authPassword}
-        authNewPassword={authNewPassword}
-        authNewPasswordConfirm={authNewPasswordConfirm}
-        authBusy={authBusy}
-        authMessage={authMessage}
-        authMessageTone={authMessageTone}
-        authError={authError}
-        perfDiagnosticsEnabled={perfDiagnosticsEnabled}
-        onSignIn={signInWithSupabase}
-        onRequestPasswordReset={requestSupabasePasswordReset}
-        onUpdatePassword={updateSupabasePassword}
-        onSignOut={signOut}
-        onShowAuthView={showAuthView}
-        onAuthEmailChange={setAuthEmail}
-        onAuthPasswordChange={setAuthPassword}
-        onAuthNewPasswordChange={setAuthNewPassword}
-        onAuthNewPasswordConfirmChange={setAuthNewPasswordConfirm}
-      />
+      <AuthWorkspace {...authWorkspaceProps} />
     );
   }
 
