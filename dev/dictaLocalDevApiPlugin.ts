@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createLocalDevEnvStore } from './localDevEnvStore';
+import { createLocalDevApiValidation } from './localDevApiValidation';
 
 const localOpenRouterJobs = new Map<string, {
   jobId: string;
@@ -33,6 +34,17 @@ export function createDictaLocalDevApiPlugin(): Plugin {
     const openRouterActiveJobLimit = 3;
     const httpError = (message: string, statusCode: number): Error & { statusCode: number } =>
       Object.assign(new Error(message), { statusCode });
+
+    const localDevApiValidation = createLocalDevApiValidation({
+      httpError,
+      maxOpenRouterKeyBytes,
+      maxOllamaKeyBytes,
+      openRouterFreeRouterModel,
+      openRouterPromptMaxChars,
+      ollamaPromptMaxChars,
+      openRouterModelMaxChars,
+      ollamaModelMaxChars,
+    });
 
     const sendLocalError = (res: { statusCode: number; end: (body?: string) => void }, error: unknown, fallback: string): void => {
       const statusCode = Number((error as { statusCode?: unknown } | null)?.statusCode);
@@ -78,75 +90,6 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       const suffixLength = 4;
       const suffix = trimmed.length > suffixLength ? trimmed.slice(-suffixLength) : trimmed;
       return `…${suffix}`;
-    };
-
-    const validateOpenRouterApiKey = (apiKey: string): string => {
-      const cleaned = apiKey.trim();
-      if (!cleaned) throw httpError('Missing apiKey.', 400);
-      if (/[\r\n]/.test(cleaned)) throw httpError('OpenRouter API key cannot contain line breaks.', 400);
-      if (cleaned.length > maxOpenRouterKeyBytes) throw httpError('OpenRouter API key is too large.', 400);
-      return cleaned;
-    };
-
-    const validateOllamaApiKey = (apiKey: string): string => {
-      const cleaned = apiKey.trim();
-      if (!cleaned) throw httpError('Missing apiKey.', 400);
-      if (/[\r\n]/.test(cleaned)) throw httpError('Ollama API key cannot contain line breaks.', 400);
-      if (cleaned.length > maxOllamaKeyBytes) throw httpError('Ollama API key is too large.', 400);
-      return cleaned;
-    };
-
-    const normalizeOpenRouterModel = (value: unknown): string => {
-      const model = typeof value === 'string' ? value.trim() : '';
-      if (!model) return '';
-      if (model.length > openRouterModelMaxChars || !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model)) {
-        throw httpError('Invalid OpenRouter model id.', 400);
-      }
-      if (model !== openRouterFreeRouterModel && !model.endsWith(':free')) {
-        throw httpError('OpenRouter model must be openrouter/free or a :free model variant.', 400);
-      }
-      return model;
-    };
-
-    const normalizeOllamaModel = (value: unknown): string => {
-      const model = typeof value === 'string' ? value.trim() : '';
-      if (!model) return '';
-      if (model.length > ollamaModelMaxChars || !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model)) {
-        throw httpError('Invalid Ollama model id.', 400);
-      }
-      return model;
-    };
-
-    const normalizeOpenRouterPrompt = (value: unknown): string => {
-      const prompt = typeof value === 'string' ? value.trim() : '';
-      if (!prompt) return '';
-      if (prompt.length > openRouterPromptMaxChars) {
-        throw httpError(`Prompt is too large. Limit is ${openRouterPromptMaxChars} characters.`, 400);
-      }
-      return prompt;
-    };
-
-    const normalizeOllamaPrompt = (value: unknown): string => {
-      const prompt = typeof value === 'string' ? value.trim() : '';
-      if (!prompt) return '';
-      if (prompt.length > ollamaPromptMaxChars) {
-        throw httpError(`Prompt is too large. Limit is ${ollamaPromptMaxChars} characters.`, 400);
-      }
-      return prompt;
-    };
-
-    const normalizeOpenRouterMaxTokens = (value: unknown, fallback: number): number => {
-      const hasValue = value !== undefined && value !== null && value !== '';
-      const numeric = hasValue ? Number(value) : fallback;
-      const bounded = Number.isFinite(numeric) ? numeric : fallback;
-      return Math.max(128, Math.min(1800, Math.round(bounded)));
-    };
-
-    const normalizeOllamaMaxTokens = (value: unknown, fallback: number): number => {
-      const hasValue = value !== undefined && value !== null && value !== '';
-      const numeric = hasValue ? Number(value) : fallback;
-      const bounded = Number.isFinite(numeric) ? numeric : fallback;
-      return Math.max(128, Math.min(1800, Math.round(bounded)));
     };
 
     const extractOllamaErrorText = (body: string): string => {
@@ -275,7 +218,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
             return;
           }
 
-          await localDevEnvStore.upsertOpenRouterApiKey(validateOpenRouterApiKey(nextKey));
+          await localDevEnvStore.upsertOpenRouterApiKey(localDevApiValidation.validateOpenRouterApiKey(nextKey));
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
           return;
@@ -370,7 +313,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
             return;
           }
 
-          await localDevEnvStore.upsertOllamaApiKey(validateOllamaApiKey(nextKey));
+          await localDevEnvStore.upsertOllamaApiKey(localDevApiValidation.validateOllamaApiKey(nextKey));
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ ok: true, suffix: maskApiKeySuffix(nextKey) }));
           return;
@@ -413,9 +356,9 @@ export function createDictaLocalDevApiPlugin(): Plugin {
 
       try {
         const parsed = await readJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
-        const model = normalizeOllamaModel(parsed.model);
-        const prompt = normalizeOllamaPrompt(parsed.prompt);
-        const maxTokens = normalizeOllamaMaxTokens(parsed.maxTokens, 600);
+        const model = localDevApiValidation.normalizeOllamaModel(parsed.model);
+        const prompt = localDevApiValidation.normalizeOllamaPrompt(parsed.prompt);
+        const maxTokens = localDevApiValidation.normalizeOllamaMaxTokens(parsed.maxTokens, 600);
         if (!model || !prompt) {
           res.statusCode = 400;
           res.end('Missing model or prompt.');
@@ -470,9 +413,9 @@ export function createDictaLocalDevApiPlugin(): Plugin {
 
       try {
         const parsed = await readJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
-        const model = normalizeOpenRouterModel(parsed.model);
-        const prompt = normalizeOpenRouterPrompt(parsed.prompt);
-        const maxTokens = normalizeOpenRouterMaxTokens(parsed.maxTokens, 600);
+        const model = localDevApiValidation.normalizeOpenRouterModel(parsed.model);
+        const prompt = localDevApiValidation.normalizeOpenRouterPrompt(parsed.prompt);
+        const maxTokens = localDevApiValidation.normalizeOpenRouterMaxTokens(parsed.maxTokens, 600);
         if (!model || !prompt) {
           res.statusCode = 400;
           res.end('Missing model or prompt.');
@@ -542,8 +485,8 @@ export function createDictaLocalDevApiPlugin(): Plugin {
           durationMinutes?: number;
           targetDifficulty?: string;
         }>(req, maxJsonBodyBytes);
-        const model = normalizeOpenRouterModel(parsed.model);
-        const prompt = normalizeOpenRouterPrompt(parsed.prompt);
+        const model = localDevApiValidation.normalizeOpenRouterModel(parsed.model);
+        const prompt = localDevApiValidation.normalizeOpenRouterPrompt(parsed.prompt);
         if (!model || !prompt) {
           res.statusCode = 400;
           res.end('Missing model or prompt.');
@@ -560,7 +503,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         const jobId = randomUUID();
         const durationMinutes = Number(parsed.durationMinutes);
         const fallbackMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : durationMinutes === 4 ? 1600 : 600;
-        const maxTokens = normalizeOpenRouterMaxTokens(parsed.maxTokens, fallbackMaxTokens);
+        const maxTokens = localDevApiValidation.normalizeOpenRouterMaxTokens(parsed.maxTokens, fallbackMaxTokens);
         const requestPayload = {
           model,
           prompt,
