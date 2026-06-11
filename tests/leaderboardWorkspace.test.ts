@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatLeaderboardSectionIntentLabel } from '../src/components/leaderboard/LeaderboardWorkspace';
+import { formatLeaderboardSectionIntentLabel } from '../src/components/leaderboard/leaderboardViewHelpers';
 
 describe('LeaderboardWorkspace intent section labels', () => {
   it('maps legacy leaderboard section ids to listening-first intent labels', () => {

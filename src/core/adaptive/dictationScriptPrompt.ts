@@ -1,6 +1,9 @@
 import type { InputLanguageBenchmarkMetrics, InputMode, LanguageCode } from './types';
 
-function inputSpecificGuidance(_inputMode: InputMode): string {
+function inputSpecificGuidance(inputMode: InputMode): string {
+  if (inputMode === 'browser-tts') {
+    return 'Use clean clauses and conservative pauses that browser/system TTS can speak predictably.';
+  }
   return 'Use clean clauses and conservative pauses that browser/system TTS can speak predictably.';
 }
 

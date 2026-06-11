@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAdaptiveSessionFeedback,
   detectPlaybackIssues,
-  selectLatestAdaptiveSessionFeedback,
 } from '../src/core/adaptive/sessionFeedback';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import type { AdaptiveSessionFeedback, PhrasePlaybackEvent } from '../src/core/adaptive/types';
+import type { PhrasePlaybackEvent } from '../src/core/adaptive/types';
 
 function event(overrides: Partial<PhrasePlaybackEvent>): PhrasePlaybackEvent {
   return {
@@ -17,47 +16,6 @@ function event(overrides: Partial<PhrasePlaybackEvent>): PhrasePlaybackEvent {
     timestampMs: 1,
     inputMode: 'browser-tts',
     language: 'de',
-    ...overrides,
-  };
-}
-
-function feedback(overrides: Partial<AdaptiveSessionFeedback>): AdaptiveSessionFeedback {
-  return {
-    sessionId: 'session-1',
-    inputMode: 'browser-tts',
-    language: 'de',
-    createdAt: '2026-06-01T10:00:00.000Z',
-    sourceType: 'plain_text',
-    improvementDelta: {
-      accuracyDelta: 0,
-      lagDelta: 0,
-      wpmDelta: 0,
-      sweetSpotScoreDelta: 0,
-      semanticFidelityDelta: 0,
-      controlFidelityDelta: 0,
-      learningEffectivenessDelta: 0,
-      flowStabilityDelta: 0,
-      overallImprovementScore: 0.5,
-    },
-    playbackIssues: {
-      repeatedPhraseCount: 0,
-      maxRepeatCountForSinglePhrase: 0,
-      repeatedPhrases: [],
-      skippedPhraseCount: 0,
-      skippedPhrases: [],
-      outOfOrderAdvanceCount: 0,
-      replayAdvancedPhraseCount: 0,
-      phraseIndexJumpCount: 0,
-    },
-    phraseStats: {
-      totalPhrases: 1,
-      completedPhrases: 1,
-      replayCount: 0,
-      phraseAdvanceCount: 1,
-      averageRepeatsPerPhrase: 0,
-    },
-    verdict: 'stable',
-    notes: ['Verdict: stable.'],
     ...overrides,
   };
 }

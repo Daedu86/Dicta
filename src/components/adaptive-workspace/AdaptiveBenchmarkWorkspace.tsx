@@ -56,7 +56,8 @@ function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
 }
 
-function mapSessionInputMode(_mode: AdaptiveAdapterCardConfig['inputMode']): InputMode {
+function mapSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): InputMode {
+  if (mode === 'browser-tts') return 'browser-tts';
   return 'browser-tts';
 }
 export function AdaptiveAdapterCard({

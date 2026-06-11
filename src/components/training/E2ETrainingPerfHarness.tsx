@@ -1,6 +1,5 @@
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../../core/sessionInputModes';
-import { useState, type KeyboardEvent } from 'react';
-import { perfDiagnostics } from '../../core/perfDiagnostics';
+import { useState } from 'react';
 import { TrainingView } from '../TrainingView';
 
 type HarnessSession = {
@@ -42,7 +41,7 @@ export function E2ETrainingPerfHarness() {
       currentTextValue={text}
       onTextChange={setText}
       onImmediateTextChange={() => undefined}
-      onTextKeyDown={(_: KeyboardEvent<HTMLTextAreaElement>) => undefined}
+      onTextKeyDown={() => undefined}
       textPlaceholder="Type what you hear"
       liveScoreLabel="0"
       liveScoreHelpText="E2E score fixture"
@@ -80,9 +79,4 @@ export function E2ETrainingPerfHarness() {
       isOnline={true}
     />
   );
-}
-
-export function configureE2ETrainingPerf(): void {
-  perfDiagnostics.configure({ envDev: true, search: '?perf=1', storage: window.localStorage });
-  perfDiagnostics.reset();
 }

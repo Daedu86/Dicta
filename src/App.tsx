@@ -1194,7 +1194,6 @@ function App() {
     if (!nextInputSettingsLocked) {
       if (activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE) {
         setTtsExpanded(true);
-      } else {
       }
     }
     telemetryRef.current = null;

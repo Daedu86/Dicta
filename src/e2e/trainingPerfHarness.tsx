@@ -1,7 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../index.css';
-import { E2ETrainingPerfHarness, configureE2ETrainingPerf } from '../components/training/E2ETrainingPerfHarness';
+import { E2ETrainingPerfHarness } from '../components/training/E2ETrainingPerfHarness';
+import { configureE2ETrainingPerf } from '../components/training/e2eTrainingPerfConfig';
 
 configureE2ETrainingPerf();
 

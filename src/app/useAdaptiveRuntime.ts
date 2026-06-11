@@ -475,7 +475,8 @@ function getRuntimeSessionFinishedAtMs(session: AdaptiveRuntimeSessionInput): nu
   return Number.isFinite(finishedAtMs) ? finishedAtMs : 0;
 }
 
-function mapRuntimeSessionInputMode(_mode: AdaptiveRuntimeSessionInputMode): InputMode {
+function mapRuntimeSessionInputMode(mode: AdaptiveRuntimeSessionInputMode): InputMode {
+  if (mode === 'browser-tts') return 'browser-tts';
   return 'browser-tts';
 }
 

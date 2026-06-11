@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildTrainingGenerationButtonDisplay,
   type TrainingGenerationButton,
-} from '../src/components/training/TrainingGenerationCard';
+} from '../src/components/training/trainingGenerationDisplay';
 
 function button(partial: Partial<TrainingGenerationButton> & Pick<TrainingGenerationButton, 'id' | 'label'>): TrainingGenerationButton {
   return {

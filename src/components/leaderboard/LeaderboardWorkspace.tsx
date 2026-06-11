@@ -1,4 +1,5 @@
 import type { ComponentType, ReactElement } from 'react';
+import { formatLeaderboardSectionIntentLabel } from './leaderboardViewHelpers';
 
 type LeaderboardLanguageCode = 'en' | 'es' | 'de' | 'fr' | 'pt';
 type LeaderboardSectionId =
@@ -49,15 +50,6 @@ type LeaderboardSection = {
 type MetricComponentType = (props: { label: string; value: string; title?: string }) => ReactElement;
 type SessionDeviceIconComponentType<TSession extends LeaderboardSession = LeaderboardSession> = ComponentType<{ session: TSession }>;
 
-const LEADERBOARD_INTENT_LABELS: Record<LeaderboardSectionId, string> = {
-  'easy-express': 'Express Precision',
-  'medium-express': 'Express Stabilize',
-  'hard-express': 'Express Challenge',
-  'easy-standard': 'Precision',
-  'medium-standard': 'Stabilize',
-  'hard-standard': 'Challenge',
-};
-
 export type LeaderboardWorkspaceProps<TSession extends LeaderboardSession = LeaderboardSession> = {
   leaderboard: Array<LeaderboardEntry<TSession>>;
   leaderboardSections: Array<Omit<LeaderboardSection, 'sessions'> & { sessions: Array<LeaderboardEntry<TSession>> }>;
@@ -89,10 +81,6 @@ export type LeaderboardWorkspaceProps<TSession extends LeaderboardSession = Lead
   MetricComponent: MetricComponentType;
   SessionDeviceIconComponent: SessionDeviceIconComponentType<TSession>;
 };
-
-export function formatLeaderboardSectionIntentLabel(section: { id: string; label: string }): string {
-  return LEADERBOARD_INTENT_LABELS[section.id as LeaderboardSectionId] ?? section.label;
-}
 
 export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
   leaderboard,
