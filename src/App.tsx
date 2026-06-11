@@ -45,6 +45,7 @@ import { perfDiagnostics } from './core/perfDiagnostics';
 import { useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
+import { AppWorkspaceContent } from './app/AppWorkspaceContent';
 import type {
   KeyboardEvent } from 'react';
 import './App.css';
@@ -107,18 +108,10 @@ import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView } from './components/TrainingView';
 import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
-import { PendingSessionLane } from './components/training/PendingSessionLane';
 import { TrainingHeader } from './components/training/TrainingHeader';
-import { OpenRouterWorkspace } from './components/openrouter/OpenRouterWorkspace';
-import { OllamaWorkspace } from './components/ollama/OllamaWorkspace';
-import { LeaderboardWorkspace } from './components/leaderboard/LeaderboardWorkspace';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
 import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsSetupCard';
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
-import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
-import { AdaptiveBenchmarkSection } from './components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
-import { AdaptiveAdvancedDiagnostics } from './components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
-import { AdminWorkspace } from './components/admin/AdminWorkspace';
 import { Metric } from './components/shared/Metric';
 import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
 import type {
@@ -2573,73 +2566,28 @@ function App() {
                 null
               )) : null}
 
-        <section className="workspace">
-          <section className="workspace-shell">
-            <PendingSessionLane
-              sessions={pendingSessions}
-              activeSessionId={activeSessionId}
-              onOpenSession={openWorkspaceForSession}
-              onDeleteSession={deleteSession}
-            />
-            {workspaceMode === 'dashboard' && dashboardSession ? (
-              <SessionDashboard
-                session={dashboardSession}
-                sessions={sessions}
-                formatSessionStatus={formatSessionStatus}
-                formatSessionDate={formatSessionDate}
-                formatSessionPlaybackDuration={(session) => formatSessionPlaybackDuration(session as StoredSession)}
-                onBackToLeaderboard={showLeaderboardWorkspace}
-                onBackToTraining={showLeaderboardWorkspace}
-              />
-            ) : workspaceMode === 'adaptive' ? (
-              <section className="panel workspace-panel adaptive-workspace">
-                <div className="tts-workspace-header">
-                  <div>
-                    <p className="dashboard-eyebrow">Adaptive cockpit</p>
-                    <h2>Adaptive Pace Layer</h2>
-                  </div>
-                  <div className="dashboard-header-actions">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={showLeaderboardWorkspace}
-                    >
-                      Back to training
-                    </button>
-                  </div>
-                </div>
-                <div className="adaptive-workspace-grid">
-                  <AdaptiveAdvancedDiagnostics {...adaptiveAdvancedDiagnosticsProps} />
-                  <AdaptiveBenchmarkSection {...adaptiveBenchmarkSectionProps} />
-                </div>
-              </section>
-            ) : workspaceMode === 'openrouter' ? (
-              openRouterAccessState !== 'allowed' ? (
-                <section className="panel workspace-panel">
-                  <p className={openRouterAccessState === 'pending' ? 'hint' : 'error'}>
-                    {openRouterAccessState === 'pending' ? 'Checking OpenRouter access...' : openRouterAccessMessage}
-                  </p>
-                </section>
-              ) : (
-              <OpenRouterWorkspace {...openRouterWorkspaceProps} />
-              )
-            ) : workspaceMode === 'ollama' ? (
-              <OllamaWorkspace {...ollamaWorkspaceProps} />
-            ) : workspaceMode === 'admin' ? (
-              isCurrentProfileAdmin || !syncConfig.authRequired ? <AdminWorkspace {...adminWorkspaceProps} /> : (
-                <section className="panel workspace-panel">
-                  <p className="error">Admin access required.</p>
-                </section>
-              )
-            ) : workspaceMode === 'leaderboard' ? (
-              <LeaderboardWorkspace {...leaderboardWorkspaceProps} />
-            ) : (
-              <section className="panel workspace-panel">
-                <p className="hint">Choose Browser TTS to train.</p>
-              </section>
-            )}
-          </section>
-        </section>
+        <AppWorkspaceContent
+          pendingSessions={pendingSessions}
+          activeSessionId={activeSessionId}
+          onOpenPendingSession={openWorkspaceForSession}
+          onDeleteSession={deleteSession}
+          workspaceMode={workspaceMode}
+          dashboardSession={dashboardSession}
+          sessions={sessions}
+          formatSessionStatus={formatSessionStatus}
+          formatSessionDate={formatSessionDate}
+          formatSessionPlaybackDuration={formatSessionPlaybackDuration}
+          onBackToTraining={showLeaderboardWorkspace}
+          adaptiveAdvancedDiagnosticsProps={adaptiveAdvancedDiagnosticsProps}
+          adaptiveBenchmarkSectionProps={adaptiveBenchmarkSectionProps}
+          openRouterAccessState={openRouterAccessState}
+          openRouterAccessMessage={openRouterAccessMessage}
+          openRouterWorkspaceProps={openRouterWorkspaceProps}
+          ollamaWorkspaceProps={ollamaWorkspaceProps}
+          canAccessAdminWorkspace={isCurrentProfileAdmin || !syncConfig.authRequired}
+          adminWorkspaceProps={adminWorkspaceProps}
+          leaderboardWorkspaceProps={leaderboardWorkspaceProps}
+        />
       </section>
       <LiveMetricsDock {...liveMetricsDockProps} />
     </main>
