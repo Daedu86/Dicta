@@ -40,6 +40,7 @@ Adaptive benchmarks, telemetry, recommendations, and session feedback are scoped
 Browser app:
 
 - `src/App.tsx`: workspace router and session orchestration host.
+- `src/app/useSupabaseAuthActions.ts`: browser-side Supabase sign-in, password reset/update, and sign-out action handlers.
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `src/app/useBrowserTtsRuntime.ts`: Browser TTS SpeechSynthesis voice discovery and command boundary.
 - `src/app/useAdaptiveExportActions.ts`: browser-side adaptive benchmark/session-feedback export, copy, and insights diagnostic actions.
@@ -225,6 +226,7 @@ These paths are not production Vercel backend features:
 App runtime and adaptive core:
 
 - `src/app/useBrowserTtsRuntime.ts`
+- `src/app/useSupabaseAuthActions.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/app/useAdaptiveExportActions.ts`

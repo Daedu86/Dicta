@@ -8,8 +8,8 @@ import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
+import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import type {
-  FormEvent,
   KeyboardEvent } from 'react';
 import './App.css';
 import type {
@@ -240,7 +240,6 @@ import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
   AdaptiveSemanticDebug,
   AdminFileInventory,
-  AuthView,
   DictaDebugSampleAudit,
   PerformanceTrend,
   GenerationOrigin,
@@ -486,6 +485,32 @@ function App() {
     supabaseClient,
     authSession,
     authLoading,
+  });
+  const {
+    signInWithSupabase,
+    showAuthView,
+    requestSupabasePasswordReset,
+    updateSupabasePassword,
+    signOut,
+  } = useSupabaseAuthActions({
+    supabaseClient,
+    syncConfig,
+    authSession,
+    authEmail,
+    authPassword,
+    authNewPassword,
+    authNewPasswordConfirm,
+    setAuthSession,
+    setAppProfile,
+    setAuthEmail,
+    setAuthPassword,
+    setAuthNewPassword,
+    setAuthNewPasswordConfirm,
+    setAuthView,
+    setAuthError,
+    setAuthMessage,
+    setAuthMessageTone,
+    setAuthBusy,
   });
   const resetOpenRouterJobsRuntimeRef = useRef<() => void>(() => undefined);
   const {
@@ -1274,114 +1299,6 @@ function App() {
       setError(message);
     }
     return false;
-  }
-
-  async function signInWithSupabase(event?: FormEvent<HTMLFormElement>): Promise<void> {
-    event?.preventDefault();
-    if (!supabaseClient) return;
-    setAuthError('');
-    setAuthMessage('');
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email: authEmail.trim(),
-      password: authPassword,
-    });
-    if (error) {
-      setAuthError(error.message);
-      return;
-    }
-    setAuthPassword('');
-  }
-
-  function showAuthView(view: AuthView): void {
-    setAuthView(view);
-    setAuthError('');
-    setAuthMessage('');
-    if (view !== 'updatePassword') {
-      setAuthNewPassword('');
-      setAuthNewPasswordConfirm('');
-    }
-  }
-
-  async function requestSupabasePasswordReset(event?: FormEvent<HTMLFormElement>): Promise<void> {
-    event?.preventDefault();
-    if (!supabaseClient) return;
-    const email = authEmail.trim();
-    if (!email) {
-      setAuthError('Enter the account email first.');
-      return;
-    }
-    setAuthBusy(true);
-    setAuthError('');
-    setAuthMessage('');
-    try {
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/training`,
-      });
-      if (error) throw error;
-      setAuthMessage(`Password reset email sent to ${email}. Open the newest email on this device.`);
-      setAuthMessageTone('success');
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Failed to send password reset email.');
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function updateSupabasePassword(event?: FormEvent<HTMLFormElement>): Promise<void> {
-    event?.preventDefault();
-    if (!supabaseClient) return;
-    if (!authSession) {
-      setAuthError('Open the latest password reset email again, then set a new password.');
-      return;
-    }
-    if (authNewPassword.length < 8) {
-      setAuthError('Password must be at least 8 characters.');
-      return;
-    }
-    if (authNewPassword !== authNewPasswordConfirm) {
-      setAuthError('Passwords do not match.');
-      return;
-    }
-    const email = authSession.user.email ?? authEmail;
-    setAuthBusy(true);
-    setAuthError('');
-    setAuthMessage('');
-    try {
-      const { error } = await supabaseClient.auth.updateUser({ password: authNewPassword });
-      if (error) throw error;
-      await supabaseClient.auth.signOut();
-      setAuthSession(null);
-      setAppProfile(null);
-      setAuthEmail(email);
-      setAuthPassword('');
-      setAuthNewPassword('');
-      setAuthNewPasswordConfirm('');
-      setAuthView('signIn');
-      setAuthMessage('Password updated. Sign in with the new password.');
-      setAuthMessageTone('success');
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Failed to update password.');
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function signOut(): Promise<void> {
-    try {
-      await supabaseClient?.auth.signOut();
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } finally {
-      if (syncConfig.authRequired) {
-        setAuthSession(null);
-        setAppProfile(null);
-        setAuthView('signIn');
-        setAuthPassword('');
-        setAuthNewPassword('');
-        setAuthNewPasswordConfirm('');
-      } else {
-        window.location.href = '/login.html';
-      }
-    }
   }
 
   function createSessionWithMode(inputMode: SessionInputMode): void {
