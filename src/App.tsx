@@ -19,6 +19,7 @@ import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
 import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
+import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -60,9 +61,6 @@ import {
   createEmptyInputLanguageBenchmark,
   normalizeBenchmarkLanguage,
   } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import {
-  type ActiveOpenRouterJob,
-  } from './core/openRouterJobs';
 import {
   selectLatestAdaptiveSessionFeedback,
   } from './core/adaptive/sessionFeedback';
@@ -114,7 +112,6 @@ import { Metric } from './components/shared/Metric';
 import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
 import {
   buildTrainingGenerationButtonNotice,
-  shouldCreatePersistentGenerationErrorSession,
   } from './components/openrouter/openRouterViewHelpers';
 import type {
   BenchmarkLanguageButton,
@@ -131,11 +128,6 @@ import {
   formatSessionGenerationOrigin,
   formatSessionInputMode,
   } from './app/sessionDisplayFormatters';
-import { createGeneratedErrorSession,
-  getNextSessionIndex } from './app/sessionFactory';
-import {
-  mapDictationScriptInputModeToSession,
-  } from './app/sessionRestoreGuards';
 import { copyDictaLocalStorage,
   downloadDictaLocalStorage } from './app/dictaLocalStorageSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
@@ -567,6 +559,20 @@ function App() {
     setError,
     setOpenRouterError,
     setExportMessage,
+  });
+
+  const {
+    createOpenRouterErrorSession,
+    createCustomOpenRouterErrorSessionForJob,
+  } = useOpenRouterErrorSessionActions({
+    ensureCanCreateDictationSession,
+    suppressSidebarAutoSelectRef,
+    prependSessionAndPersistNow,
+    setLeaderboardLanguageView,
+    setActiveSessionId,
+    showLeaderboardWorkspace,
+    setError,
+    setOpenRouterError,
   });
   const {
     activeOpenRouterJobs,
@@ -1055,49 +1061,6 @@ function App() {
     setAppProfile,
     setVisibleProfiles,
   });
-
-  function createOpenRouterErrorSession({
-    slotLabel,
-    inputMode,
-    language,
-    message,
-  }: {
-    slotLabel: string;
-    inputMode: InputMode;
-    language: BenchmarkLanguageButton;
-    message: string;
-  }, options: { navigateToLeaderboard?: boolean } = {}): void {
-    if (!ensureCanCreateDictationSession('openrouter')) return;
-    const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
-    const sessionInputMode = mapDictationScriptInputModeToSession(inputMode) ?? BROWSER_TTS_SESSION_INPUT_MODE;
-    suppressSidebarAutoSelectRef.current = true;
-    const nextSession = prependSessionAndPersistNow((prev) =>
-      createGeneratedErrorSession({
-        index: getNextSessionIndex(prev),
-        inputMode: sessionInputMode,
-        language,
-        name: `${slotLabel} generation error`,
-        message,
-      }),
-    );
-    setLeaderboardLanguageView(language);
-    if (navigateToLeaderboard) {
-      setActiveSessionId(nextSession.id);
-      showLeaderboardWorkspace();
-    }
-    setError('');
-    setOpenRouterError(message);
-  }
-
-  function createCustomOpenRouterErrorSessionForJob(trackedJob: ActiveOpenRouterJob, message: string): void {
-    if (trackedJob.origin !== 'custom-workspace' || !shouldCreatePersistentGenerationErrorSession(message)) return;
-    createOpenRouterErrorSession({
-      slotLabel: trackedJob.slotLabel,
-      inputMode: trackedJob.inputMode,
-      language: trackedJob.language as BenchmarkLanguageButton,
-      message,
-    }, { navigateToLeaderboard: false });
-  }
 
   function buildSemanticPhrasesForCurrentSession(text: string, language: string | undefined, mode: TtsPacingMode): SemanticPhrase[] {
     if (activeSession?.sessionSource === 'dictationScript' && activeSession.dictationScript) {
