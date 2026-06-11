@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after focused training generation buttons extraction
+Updated: 2026-06-11 after App shell props extraction checkpoint
 
 ## Current working-tree status
 
@@ -9,14 +9,19 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 079e249 Extract focused training generation buttons |
-| Current working-tree App shell LOC | 2711 |
+| Latest committed baseline | 5f98d33 Extract session create card props |
+| Current working-tree App shell LOC | 2708 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
 | Current `src/app/useOpenRouterGenerationActions.ts` LOC | 440 |
 | Current `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
 | Current `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 208 |
+| Current `src/app/useOpenRouterWorkspaceProps.ts` LOC | 164 |
+| Current `src/app/useOllamaWorkspaceProps.ts` LOC | 52 |
+| Current `src/app/useAppShellHeaderProps.ts` LOC | 86 |
+| Current `src/app/useAuthWorkspaceProps.ts` LOC | 90 |
+| Current `src/app/useSessionCreateCardProps.ts` LOC | 57 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -48,6 +53,11 @@ Completed since the original map:
 - `useOpenRouterGenerationActions` owns direct-training OpenRouter generation actions, prompt/job orchestration, generation failure notices, and OpenRouter generate-workspace focusing.
 - `useOpenRouterErrorSessionActions` owns persistent OpenRouter generation-error session creation and custom-workspace job error persistence.
 - `useFocusedTrainingGenerationButtons` owns focused-training OpenRouter generation button composition, notices, running state labels, disabled/title wiring, and click handlers.
+- `useSessionCreateCardProps` owns session creation card prop composition for source/name state, quota state, script-import validation state, creation/import callbacks, and Metric wiring.
+- `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
+- `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
+- `useOllamaWorkspaceProps` owns Ollama workspace prop composition and Ollama default model persistence wiring.
+- `useOpenRouterWorkspaceProps` owns OpenRouter workspace prop composition, model persistence wiring, export profile selection wiring, job notifications, and benchmark/session-feedback copy callbacks.
 - `useAdaptiveDiagnosticsUiState` owns adaptive diagnostics UI state.
 - `useAppPerfDiagnosticsRuntime` owns App render-count and perf diagnostics configuration; `App.tsx` still imports `perfDiagnostics` for active OpenRouter and TTS spans.
 - `useAdaptiveStoragePersistenceEffects` owns adaptive benchmark/feedback local persistence and ref sync effects.
@@ -58,7 +68,7 @@ Completed since the original map:
 
 Current recommendation:
 
-- Start the next pass from this focused-training button checkpoint before selecting another extraction.
+- Start the next pass from this App shell props checkpoint before selecting another extraction.
 - Prefer small browser/App shell hooks with explicit inputs/outputs.
 - Avoid the Browser TTS playback loop, TTS refs, and regex/block-marker moves around `playTtsFromWord`.
 
