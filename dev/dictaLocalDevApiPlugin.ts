@@ -18,6 +18,7 @@ import {
   markLocalOpenRouterJobRunning,
   markLocalOpenRouterJobSucceeded,
 } from './localDevOpenRouterJobs';
+import { fetchLocalDevOpenRouterChatCompletion } from './localDevOpenRouterClient';
 
 export function createDictaLocalDevApiPlugin(): Plugin {
   return {
@@ -313,19 +314,12 @@ export function createDictaLocalDevApiPlugin(): Plugin {
           return;
         }
 
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${openRouterApiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': (req.headers.origin as string | undefined) ?? 'http://localhost:5173',
-            'X-Title': 'Dicta MVP (local)',
-          },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: maxTokens,
-          }),
+        const response = await fetchLocalDevOpenRouterChatCompletion({
+          apiKey: openRouterApiKey,
+          origin: req.headers.origin as string | undefined,
+          model,
+          prompt,
+          maxTokens,
         });
 
         const responseBody = await response.text();
@@ -407,19 +401,12 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         void (async () => {
           markLocalOpenRouterJobRunning(job);
           try {
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${openRouterApiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': (req.headers.origin as string | undefined) ?? 'http://localhost:5173',
-                'X-Title': 'Dicta MVP (local)',
-              },
-              body: JSON.stringify({
-                model,
-                messages: [{ role: 'user', content: prompt }],
-                max_tokens: maxTokens,
-              }),
+            const response = await fetchLocalDevOpenRouterChatCompletion({
+              apiKey: openRouterApiKey,
+              origin: req.headers.origin as string | undefined,
+              model,
+              prompt,
+              maxTokens,
             });
             const responseBody = await response.text();
             if (!response.ok) throw new Error(responseBody || `OpenRouter request failed (${response.status}).`);
