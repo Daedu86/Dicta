@@ -278,3 +278,27 @@ Validation requirement remains unchanged: `npm run lint`, `npm run test -- --rep
 
 After the next extraction, update this checkpoint with actual `App.tsx` LOC, new hook LOC, validation results, and whether the extraction produced net App-shell reduction.
 
+## Follow-up — 2026-06-11 Focused training live metrics
+
+Latest committed baseline: `637e479 Extract focused training live metrics`.
+
+This checkpoint records the first ROI-based code extraction after the broad props-composition phase.
+
+`src/app/useFocusedTrainingLiveMetrics.ts` now owns focused-training live metric derivation: transcript building, deferred practice text evaluation, typed-word accuracy, listening-first score calculation, points/max-points labels, and metric help text.
+
+Current App shell metrics after this extraction:
+
+| Item                                           |      Value |
+| ---------------------------------------------- | ---------: |
+| `src/App.tsx` LOC                              |  2649 |
+| `src/app/useFocusedTrainingLiveMetrics.ts` LOC | 88 |
+
+ROI result:
+
+* Positive App-shell reduction: the extraction removed more lines from `src/App.tsx` than it added back as hook wiring.
+* Better ownership: focused live metric derivation is no longer interleaved with runtime effects and workspace prop composition.
+* Better test seam: metric derivation now has a dedicated hook boundary.
+* Runtime safety: Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should not automatically continue extracting hooks. Inspect the next candidate first and proceed only if it passes the ROI gate from the modularization map.
+

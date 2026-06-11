@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after App shell modularization ROI reassessment
+Updated: 2026-06-11 after focused training live metrics extraction
 
 ## Current working-tree status
 
@@ -9,8 +9,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | f0c2d4f Extract app shell sync status text |
-| Current working-tree App shell LOC | 2675 |
+| Latest committed baseline | 637e479 Extract focused training live metrics |
+| Current working-tree App shell LOC | 2649 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
@@ -29,6 +29,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useAdaptiveBenchmarkSectionProps.ts` LOC | 170 |
 | Current `src/app/useLiveMetricsDockProps.ts` LOC | 111 |
 | Current `src/app/useFocusedTrainingViewProps.ts` LOC | 177 |
+| Current `src/app/useFocusedTrainingLiveMetrics.ts` LOC | 88 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -67,6 +68,7 @@ Completed since the original map:
 - `useAdaptiveBenchmarkSectionProps` owns Adaptive benchmark section prop composition, benchmark selection message reset, and benchmark/session-feedback copy/export callback wiring.
 - `useLiveMetricsDockProps` owns live metrics dock prop composition, metrics view setters, insights diagnostics callback wiring, collapsed-state toggling, and TTS-current-chunk presence mapping.
 - `useFocusedTrainingViewProps` owns focused `TrainingView` prop composition, visible metric labels, training controls wiring, replay availability mapping, pending-session callbacks, sync summary props, and generation button props.
+- `useFocusedTrainingLiveMetrics` owns focused-training live metric derivation, transcript evaluation, visible accuracy/score, points labels, and metric help text.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useAppShellSyncStatusText` owns App shell sync/offline status label composition, pending-sync suffixes, and last-sync timestamp formatting glue.
@@ -82,10 +84,10 @@ Completed since the original map:
 
 Current recommendation:
 
-- Start the next pass from the clean `f0c2d4f` baseline before selecting another extraction.
-- Treat the broad props-hook phase as mostly complete; do not extract more one-line callbacks, short strings, or ceremonial wrappers just to reduce visual density.
-- Continue modularizing only when the candidate has positive ROI: meaningful App-shell LOC reduction, lower coupling, clearer ownership, better test seam, or lower future-change risk.
-- Avoid Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves unless a later dedicated runtime refactor defines a precise boundary.
+- Start the next pass from the clean `637e479` baseline before selecting another extraction.
+- Treat `useFocusedTrainingLiveMetrics` as the first successful ROI-based extraction after the props-hook phase: it removed derived metric coordination from `src/App.tsx` and reduced App shell LOC.
+- Do not continue with small strings or one-line callbacks. Next candidates should be inspected for net App reduction, ownership clarity, and testability before implementation.
+- Recommended next investigation: non-TTS setup/session-creation UI state and dashboard/setup prop boundaries. Defer active-session hydration, Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves.
 
 ## ROI-based modularization policy
 
@@ -123,6 +125,33 @@ Candidates to defer:
 - Active-session hydration/persistence effects: high ROI but high risk because they reset TTS state, telemetry refs, metrics, finished-session guards, and session persistence fields.
 - Browser TTS playback/runtime extraction: defer until a dedicated runtime-boundary design exists.
 - More tiny string/callback hooks: low ROI unless they are part of a larger coherent boundary.
+
+
+## Next ROI investigation
+
+The next pass should inspect candidates before writing code. Do not assume another hook is worthwhile.
+
+Preferred investigation order:
+
+1. Setup/session-creation UI state boundary — likely medium ROI if it can reduce App coordination without touching runtime playback.
+2. BrowserTtsSetupCard prop boundary — possible ROI if the prop block is large enough, but avoid moving playback/runtime decisions.
+3. SessionDashboard prop/adaptor boundary — possible ROI if it collapses formatting/adaptor glue.
+4. Active-session hydration/persistence — high theoretical ROI, but defer because it touches many state resets and can affect TTS/session semantics.
+5. Browser TTS runtime/playback — explicitly deferred until a dedicated design exists.
+
+Use this pre-check before extracting:
+
+~~~bash
+git status --short
+git log --oneline --decorate -8
+grep -n "BrowserTtsSetupCard" -A80 -B20 src/App.tsx
+grep -n "SessionDashboard" -A80 -B20 src/App.tsx
+grep -n "SessionCreateCard" -A40 -B40 src/App.tsx
+grep -n "useState" src/App.tsx
+wc -l src/App.tsx
+~~~
+
+Proceed only if a candidate removes at least ~15-25 net lines from `src/App.tsx` or creates a clearly testable state/derived-data boundary.
 
 
 ## Baseline
