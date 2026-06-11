@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after Leaderboard workspace props extraction
+Updated: 2026-06-11 after Adaptive advanced diagnostics props extraction
 
 ## Current working-tree status
 
@@ -9,8 +9,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | d697e11 Extract Admin workspace props |
-| Current working-tree App shell LOC | 2699 |
+| Latest committed baseline | 3a201a2 Extract Leaderboard workspace props |
+| Current working-tree App shell LOC | 2682 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
@@ -24,6 +24,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useSessionCreateCardProps.ts` LOC | 57 |
 | Current `src/app/useAdminWorkspaceProps.ts` LOC | 89 |
 | Current `src/app/useLeaderboardWorkspaceProps.ts` LOC | 114 |
+| Current `src/app/useAdaptiveAdvancedDiagnosticsProps.ts` LOC | 84 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -58,6 +59,7 @@ Completed since the original map:
 - `useSessionCreateCardProps` owns session creation card prop composition for source/name state, quota state, script-import validation state, creation/import callbacks, and Metric wiring.
 - `useAdminWorkspaceProps` owns Admin workspace prop composition for session/admin summaries, localStorage/session snapshot actions, profile access callbacks, auth headers, and OpenRouter model refresh wiring.
 - `useLeaderboardWorkspaceProps` owns leaderboard workspace prop composition, leaderboard expand/collapse callbacks, session snapshot actions, session navigation callbacks, and display formatter wiring.
+- `useAdaptiveAdvancedDiagnosticsProps` owns Adaptive advanced diagnostics prop composition for expand/collapse callbacks, benchmark adapter selection, message reset, and benchmark-section scrolling.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useOllamaWorkspaceProps` owns Ollama workspace prop composition and Ollama default model persistence wiring.
@@ -72,8 +74,8 @@ Completed since the original map:
 
 Current recommendation:
 
-- Start the next pass from this App shell props checkpoint before selecting another extraction.
-- Prefer small browser/App shell hooks with explicit inputs/outputs.
+- Start the next pass from this Adaptive diagnostics props checkpoint before selecting another extraction.
+- Prefer small browser/App shell hooks with explicit inputs/outputs; the next reasonable candidate is `AdaptiveBenchmarkSection` prop composition.
 - Avoid the Browser TTS playback loop, TTS refs, and regex/block-marker moves around `playTtsFromWord`.
 
 ## Baseline

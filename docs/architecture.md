@@ -45,6 +45,7 @@ Browser app:
 - `src/app/useOpenRouterGenerationActions.ts`: browser-side direct-training OpenRouter generation actions, prompt/job orchestration, and generation failure handling.
 - `src/app/useAdminWorkspaceProps.ts`: browser-side Admin workspace prop composition for local storage/session exports, profile access callbacks, auth headers, and model refresh wiring.
 - `src/app/useLeaderboardWorkspaceProps.ts`: browser-side Leaderboard workspace prop composition for expand/collapse state, session snapshot actions, navigation callbacks, and display formatter wiring.
+- `src/app/useAdaptiveAdvancedDiagnosticsProps.ts`: browser-side Adaptive advanced diagnostics prop composition for section toggles, adapter selection, diagnostic message reset, and benchmark-section scrolling.
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `src/app/useBrowserTtsRuntime.ts`: Browser TTS SpeechSynthesis voice discovery and command boundary.
 - `src/app/useAdaptiveExportActions.ts`: browser-side adaptive benchmark/session-feedback export, copy, and insights diagnostic actions.
@@ -235,6 +236,7 @@ App runtime and adaptive core:
 - `src/app/useOpenRouterGenerationActions.ts`
 - `src/app/useAdminWorkspaceProps.ts`
 - `src/app/useLeaderboardWorkspaceProps.ts`
+- `src/app/useAdaptiveAdvancedDiagnosticsProps.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/app/useAdaptiveExportActions.ts`

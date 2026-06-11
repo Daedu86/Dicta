@@ -28,6 +28,7 @@ import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
 import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
 import { useLeaderboardWorkspaceProps } from './app/useLeaderboardWorkspaceProps';
+import { useAdaptiveAdvancedDiagnosticsProps } from './app/useAdaptiveAdvancedDiagnosticsProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -2387,6 +2388,21 @@ function App() {
     SessionDeviceIconComponent: SessionDeviceIcon,
   });
 
+  const adaptiveAdvancedDiagnosticsProps = useAdaptiveAdvancedDiagnosticsProps({
+    adaptiveSectionExpanded,
+    adaptiveAdapters,
+    latestSession,
+    latestInputAdapter,
+    latestAdaptiveMode,
+    selectedBenchmarkInputMode,
+    adaptiveSemanticDebug,
+    mapSessionInputMode,
+    setAdaptiveSectionExpanded,
+    setSelectedBenchmarkInputMode,
+    setBenchmarkExportMessage,
+    setSessionFeedbackMessage,
+  });
+
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
   }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` Â· ${pendingSyncSummary.count} pending` : ''}`;
@@ -2567,40 +2583,7 @@ function App() {
                   </div>
                 </div>
                 <div className="adaptive-workspace-grid">
-                  <AdaptiveAdvancedDiagnostics
-                    adaptiveSectionExpanded={adaptiveSectionExpanded}
-                    adaptiveAdapters={adaptiveAdapters}
-                    latestSession={latestSession}
-                    latestInputAdapter={latestInputAdapter}
-                    latestAdaptiveMode={latestAdaptiveMode}
-                    selectedBenchmarkInputMode={selectedBenchmarkInputMode}
-                    adaptiveSemanticDebug={adaptiveSemanticDebug}
-                    mapSessionInputMode={mapSessionInputMode}
-                    onToggleDecisionArchitectureSections={() =>
-                      setAdaptiveSectionExpanded((prev) => ({
-                        ...prev,
-                        decision: !(prev.decision && prev.architecture),
-                        architecture: !(prev.decision && prev.architecture),
-                      }))
-                    }
-                    onToggleAdaptersSection={() => setAdaptiveSectionExpanded((prev) => ({ ...prev, adapters: !prev.adapters }))}
-                    onToggleLatestSections={() =>
-                      setAdaptiveSectionExpanded((prev) => ({
-                        ...prev,
-                        latest: !(prev.latest && prev.live),
-                        live: !(prev.latest && prev.live),
-                      }))
-                    }
-                    onToggleTelemetrySection={() => setAdaptiveSectionExpanded((prev) => ({ ...prev, telemetry: !prev.telemetry }))}
-                    onOpenAdapter={(inputMode) => {
-                      setSelectedBenchmarkInputMode(mapSessionInputMode(inputMode));
-                      setBenchmarkExportMessage('');
-                      setSessionFeedbackMessage('');
-                      window.setTimeout(() => {
-                        document.getElementById('adaptive-benchmarks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }, 0);
-                    }}
-                  />
+                  <AdaptiveAdvancedDiagnostics {...adaptiveAdvancedDiagnosticsProps} />
                   <AdaptiveBenchmarkSection
                     id="adaptive-benchmarks"
                     adapters={adaptiveAdapters}

@@ -124,7 +124,7 @@ This document used to track remaining extraction work. It is now a status and gu
 <!-- app-shell-modularization-checkpoint:start -->
 ## App shell modularization checkpoint â€” 2026-06-10
 
-A focused App shell reduction pass continued after the original checkpoint. Current `src/App.tsx` size after the Leaderboard workspace props extraction is **2699 lines**.
+A focused App shell reduction pass continued after the original checkpoint. Current `src/App.tsx` size after the Adaptive advanced diagnostics props extraction is **2682 lines**.
 
 Top-level function inventory:
 
@@ -153,12 +153,12 @@ Completed extraction groups:
 - Session creation/import action handlers hook
 - Workspace/session state hooks
 - Direct OpenRouter generation action handlers hook
-- App/workspace prop composition hooks, including Admin and Leaderboard workspace props
+- App/workspace prop composition hooks, including Admin, Leaderboard, and Adaptive advanced diagnostics props
 
 Next recommended pass:
 
 1. Inspect remaining declarations and closures inside `function App()`.
-2. Pick only hook-level runtime clusters with explicit inputs/outputs.
+2. Pick only hook-level runtime clusters with explicit inputs/outputs; the next reasonable candidate is `AdaptiveBenchmarkSection` prop composition.
 3. Keep JSX extraction small and build-verified.
 4. Avoid the Browser TTS playback loop until a fresh AST-level movement plan exists.
 
