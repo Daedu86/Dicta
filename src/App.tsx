@@ -25,6 +25,7 @@ import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
+import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -2386,6 +2387,31 @@ function App() {
     onAuthNewPasswordConfirmChange: setAuthNewPasswordConfirm,
   });
 
+  const sessionCreateCardProps = useSessionCreateCardProps({
+    sessionCreationSource,
+    sessionCreationName,
+    sessionQuotaStatus,
+    canCreateSessionFromDialog,
+    localDevFeaturesAvailable: LOCAL_DEV_FEATURES_AVAILABLE,
+    dictationScriptJson,
+    dictationScriptValidation,
+    validatedDictationScript,
+    onSessionCreationSourceChange: (value) => {
+      setSessionCreationSource(value);
+      setDictationScriptValidation(null);
+    },
+    onSessionCreationNameChange: setSessionCreationName,
+    onCreateSessionWithMode: createSessionWithMode,
+    onDictationScriptJsonChange: (value) => {
+      setDictationScriptJson(value);
+      setDictationScriptValidation(null);
+    },
+    onValidateScriptImport: validateScriptImport,
+    onCreateSessionFromDictationScript: createSessionFromDictationScript,
+    onCancel: () => setSessionCreationMode(null),
+    MetricComponent: Metric,
+  });
+
   if (
     syncConfig.authRequired &&
     (
@@ -2422,30 +2448,7 @@ function App() {
       <section className="layout">
         <AppShellHeader {...appShellHeaderProps}>
           {sessionCreationMode ? (
-            <SessionCreateCard
-              sessionCreationSource={sessionCreationSource}
-              sessionCreationName={sessionCreationName}
-              sessionQuotaStatus={sessionQuotaStatus}
-              canCreateSessionFromDialog={canCreateSessionFromDialog}
-              localDevFeaturesAvailable={LOCAL_DEV_FEATURES_AVAILABLE}
-              dictationScriptJson={dictationScriptJson}
-              dictationScriptValidation={dictationScriptValidation}
-              validatedDictationScript={validatedDictationScript}
-              onSessionCreationSourceChange={(value) => {
-                setSessionCreationSource(value);
-                setDictationScriptValidation(null);
-              }}
-              onSessionCreationNameChange={setSessionCreationName}
-              onCreateSessionWithMode={createSessionWithMode}
-              onDictationScriptJsonChange={(value) => {
-                setDictationScriptJson(value);
-                setDictationScriptValidation(null);
-              }}
-              onValidateScriptImport={validateScriptImport}
-              onCreateSessionFromDictationScript={createSessionFromDictationScript}
-              onCancel={() => setSessionCreationMode(null)}
-              MetricComponent={Metric}
-            />
+            <SessionCreateCard {...sessionCreateCardProps} />
           ) : null}
         </AppShellHeader>
         {!setupLocked ? (

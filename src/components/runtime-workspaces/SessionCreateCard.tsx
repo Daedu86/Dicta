@@ -39,7 +39,7 @@ type DictationScriptValidation =
 
 type MetricComponentType = (props: { label: string; value: string; title?: string }) => ReactElement;
 
-type SessionCreateCardProps = {
+export type SessionCreateCardProps = {
   sessionCreationSource: SessionSource;
   sessionCreationName: string;
   sessionQuotaStatus: SessionQuotaStatus;
