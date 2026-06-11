@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after local dev HTTP helpers extraction
+Updated: 2026-06-11 after local OpenRouter client helper extraction
 
 ## Current working-tree status
 
@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | e0b2782 Extract local dev HTTP helpers |
+| Latest committed baseline | d9b918e Extract local OpenRouter client helper |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
@@ -32,7 +32,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useFocusedTrainingLiveMetrics.ts` LOC | 88 |
 | Current `src/app/AppWorkspaceContent.tsx` LOC | 128 |
 | Current `vite.config.ts` LOC | 88 |
-| Current `dev/dictaLocalDevApiPlugin.ts` LOC | 462 |
+| Current `dev/dictaLocalDevApiPlugin.ts` LOC | 449 |
+| Current `dev/localDevOpenRouterClient.ts` LOC | 30 |
 | Current `dev/localDevHttpHelpers.ts` LOC | 65 |
 | Current `dev/localDevOllamaHelpers.ts` LOC | 77 |
 | Current `dev/localDevOpenRouterJobs.ts` LOC | 94 |
@@ -86,6 +87,7 @@ Completed since the original map:
 - `localDevOpenRouterJobs` owns the local OpenRouter job store, active job counting, and queued/running/succeeded/failed transitions.
 - `localDevOllamaHelpers` owns local Ollama upstream error formatting and model payload normalization.
 - `localDevHttpHelpers` owns local dev HTTP errors, JSON/body parsing, local error responses, and API key suffix masking.
+- `localDevOpenRouterClient` owns local OpenRouter chat-completion request construction and upstream fetch wiring.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useAppShellSyncStatusText` owns App shell sync/offline status label composition, pending-sync suffixes, and last-sync timestamp formatting glue.

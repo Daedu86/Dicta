@@ -510,3 +510,33 @@ ROI result:
 
 Next work should inspect before extracting full route handlers; the remaining plugin is now mostly route orchestration and upstream fetch wiring.
 
+## Follow-up — 2026-06-11 Local OpenRouter client helper
+
+Latest committed baseline: `d9b918e Extract local OpenRouter client helper`.
+
+This checkpoint records extraction of the shared local OpenRouter chat-completion request helper from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevOpenRouterClient.ts` now owns the local OpenRouter chat-completion `fetch` call, request headers, referer fallback, title header, message payload shape, and `max_tokens` request body mapping. `dev/dictaLocalDevApiPlugin.ts` keeps OpenRouter route orchestration, API key lookup, request validation, direct chat response passthrough, and job-result parsing.
+
+Current metrics after this extraction:
+
+| Item                                  | Value |
+| ------------------------------------- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC   | 449 |
+| `dev/localDevOpenRouterClient.ts` LOC | 30 |
+| `dev/localDevHttpHelpers.ts` LOC      | 65 |
+| `dev/localDevOllamaHelpers.ts` LOC    | 77 |
+| `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
+| `dev/localDevAdminFiles.ts` LOC       | 86 |
+| `dev/localDevApiValidation.ts` LOC    | 105 |
+| `dev/localDevEnvStore.ts` LOC         | 83 |
+
+ROI result:
+
+* Better ownership: duplicated local OpenRouter upstream request construction is separated from route orchestration.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 449 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting full route handlers; the remaining plugin is mostly local dev route orchestration and response handling.
+
