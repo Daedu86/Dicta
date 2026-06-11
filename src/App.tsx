@@ -21,6 +21,7 @@ import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationB
 import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
+import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -159,7 +160,6 @@ import {
 import {
   OLLAMA_RECOMMENDED_DEFAULT_MODEL,
   persistOllamaDefaultModel,
-  persistOpenRouterDefaultModel,
   } from './app/modelPreferenceStorage';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
@@ -2283,6 +2283,45 @@ function App() {
 
   void openAdaptiveExportsForActiveInput;
 
+  const openRouterWorkspaceProps = useOpenRouterWorkspaceProps({
+    defaultModel: effectiveOpenRouterDefaultModel,
+    assignedModel: assignedOpenRouterModel,
+    getAuthHeaders,
+    setOpenRouterDefaultModel,
+    models: openRouterModels,
+    status: openRouterStatus,
+    error: openRouterError,
+    onRefreshModels: refreshOpenRouterModels,
+    onBackToTraining: showLeaderboardWorkspace,
+    exportProfile: selectedBenchmarkProfile,
+    exportSessionFeedback: selectedSessionFeedback,
+    getBenchmarkActiveSessionStatus,
+    benchmarks: adaptiveBenchmarksByInputLanguage,
+    sessionFeedbackByInputLanguage: adaptiveSessionFeedbackByInputLanguage,
+    setSelectedBenchmarkInputMode,
+    setSelectedBenchmarkLanguage,
+    setBenchmarkExportMessage,
+    setSessionFeedbackMessage,
+    defaultGenerateInputMode: selectedBenchmarkInputMode,
+    defaultGenerateLanguage: selectedBenchmarkLanguage,
+    focusGenerateRequest: openRouterGenerateFocusRequest,
+    activeJobs: activeOpenRouterJobs,
+    jobNotifications: openRouterJobNotifications,
+    generationNowMs: trainingGenerationNowMs,
+    onTrackJob: trackOpenRouterJob,
+    onCreateGenerationErrorSession: createOpenRouterErrorSession,
+    onCopyBenchmark: (profile) => void copySelectedBenchmarkJson(profile),
+    onExportBenchmark: (profile) => downloadSelectedBenchmarkJson(profile),
+    onCopyBenchmarkWithScriptPrompt: (profile) => void copyBenchmarkWithDictationScriptPrompt(profile),
+    onCopyBenchmarkFeedbackPrompt: (profile, feedback) => void copyBenchmarkFeedbackPrompt(profile, feedback),
+    onCopyBenchmarkFeedback: (profile, feedback) => void copyBenchmarkFeedbackJson(profile, feedback),
+    onCopySessionFeedback: (profile, feedback) => void copySessionFeedbackJson(profile, feedback),
+    onCopyScriptPrompt: (profile) => void copyDictationScriptPrompt(profile),
+    onCopyScriptTemplate: (profile) => void copyDictationScriptTemplate(profile),
+    onCopyBenchmarkFeedbackPromptWithHumanFeedback: (profile, feedback, humanFeedback) =>
+      void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback),
+  });
+
   const appShellOpenRouterModel = effectiveOpenRouterDefaultModel.trim();
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
@@ -2537,50 +2576,7 @@ function App() {
                   </p>
                 </section>
               ) : (
-              <OpenRouterWorkspace
-                defaultModel={effectiveOpenRouterDefaultModel}
-                assignedModel={assignedOpenRouterModel || null}
-                authHeaders={getAuthHeaders()}
-                onSetDefaultModel={(value) => {
-                  setOpenRouterDefaultModel(value);
-                  persistOpenRouterDefaultModel(value);
-                }}
-                models={openRouterModels}
-                status={openRouterStatus}
-                error={openRouterError}
-                onRefreshModels={refreshOpenRouterModels}
-                onBackToTraining={showLeaderboardWorkspace}
-                exportProfile={selectedBenchmarkProfile}
-                exportSessionFeedback={selectedSessionFeedback}
-                exportActiveSessionStatus={getBenchmarkActiveSessionStatus(selectedBenchmarkProfile)}
-                benchmarks={adaptiveBenchmarksByInputLanguage}
-                sessionFeedbackByInputLanguage={adaptiveSessionFeedbackByInputLanguage}
-                onSelectExportProfile={(inputMode, language) => {
-                  setSelectedBenchmarkInputMode(inputMode);
-                  setSelectedBenchmarkLanguage(language);
-                  setBenchmarkExportMessage('');
-                  setSessionFeedbackMessage('');
-                }}
-                defaultGenerateInputMode={selectedBenchmarkInputMode}
-                defaultGenerateLanguage={selectedBenchmarkLanguage}
-                focusGenerateRequest={openRouterGenerateFocusRequest}
-                activeJobs={activeOpenRouterJobs}
-                jobNotifications={openRouterJobNotifications}
-                generationNowMs={trainingGenerationNowMs}
-                onTrackJob={trackOpenRouterJob}
-                onCreateGenerationErrorSession={createOpenRouterErrorSession}
-                onCopyBenchmark={(profile) => void copySelectedBenchmarkJson(profile)}
-                onExportBenchmark={(profile) => downloadSelectedBenchmarkJson(profile)}
-                onCopyBenchmarkWithScriptPrompt={(profile) => void copyBenchmarkWithDictationScriptPrompt(profile)}
-                onCopyBenchmarkFeedbackPrompt={(profile, feedback) => void copyBenchmarkFeedbackPrompt(profile, feedback)}
-                onCopyBenchmarkFeedback={(profile, feedback) => void copyBenchmarkFeedbackJson(profile, feedback)}
-                onCopySessionFeedback={(profile, feedback) => void copySessionFeedbackJson(profile, feedback)}
-                onCopyScriptPrompt={(profile) => void copyDictationScriptPrompt(profile)}
-                onCopyScriptTemplate={(profile) => void copyDictationScriptTemplate(profile)}
-                onCopyBenchmarkFeedbackPromptWithHumanFeedback={(profile, feedback, humanFeedback) =>
-                  void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback)
-                }
-              />
+              <OpenRouterWorkspace {...openRouterWorkspaceProps} />
               )
             ) : workspaceMode === 'ollama' ? (
               <OllamaWorkspace
