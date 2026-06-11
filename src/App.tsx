@@ -5,10 +5,7 @@ import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
 import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
 import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
-import {
-  loadOllamaDefaultModel,
-  loadOpenRouterDefaultModel,
-} from './app/modelPreferenceStorage';
+import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import type { FormEvent, KeyboardEvent } from 'react';
 import './App.css';
 import type {
@@ -87,8 +84,7 @@ import { createGeneratedErrorSession, createStoredSession, getNextSessionIndex }
 import { createSessionFromScript } from './app/sessionFromDictationScript';
 import {
   mapDictationScriptInputModeToSession, scriptLanguageToTtsLanguage, } from './app/sessionRestoreGuards';
-import {
-  copyDictaLocalStorage, downloadDictaLocalStorage, getDictaLocalStorageSnapshot, } from './app/dictaLocalStorageSnapshot';
+import { copyDictaLocalStorage, downloadDictaLocalStorage } from './app/dictaLocalStorageSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
   createDictaSupabaseClient, getDictaSyncConfig, } from './core/supabaseSync';
@@ -104,12 +100,10 @@ import {
   useWorkspaceRouting, type WorkspaceMode, } from './app/useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './app/useDictaUiPreferences';
-import { loadPersistedDictaLanguageView } from './app/uiPreferenceStorage';
 import { isMobileViewport } from './app/viewport';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
-import {
-  SESSION_STORAGE_KEY, useSessionPersistenceSync, } from './app/useSessionPersistenceSync';
+import { useSessionPersistenceSync } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import {
   loadAdaptiveBenchmarks, loadAdaptiveSessionFeedback, persistAdaptiveBenchmarks, persistAdaptiveSessionFeedback, } from './app/adaptiveStorage';
@@ -509,11 +503,6 @@ function App() {
     trend: 'stable',
   });
 
-
-
-
-
-
   const config = useMemo(() => configForDifficulty(difficulty), [difficulty]);
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
@@ -749,7 +738,6 @@ function App() {
     setOpenRouterError(openRouterAccessMessage);
   }, [openRouterAccessState, showLeaderboardWorkspace, workspaceMode]);
 
-
   useEffect(() => {
     if (!localStorageReadyForEffectiveProfile) return;
     persistAdaptiveBenchmarks(adaptiveBenchmarksByInputLanguage);
@@ -830,7 +818,6 @@ function App() {
       cancelled = true;
     };
   }, [workspaceMode]);
-
 
   const lastSessionForLanguage = useMemo(
     () => findLastSessionForLanguage(sessionsWithVoiceDuration, metricsLanguageView),
@@ -2612,57 +2599,18 @@ function App() {
     speakNext();
   }
 
-  function importDictaLocalStorageSnapshot(rawJson: string): void {
-    try {
-      const parsed = JSON.parse(rawJson) as unknown;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('Import file must be a JSON object exported from Dicta Admin.');
-      }
-
-      const incoming = Object.entries(parsed).filter(
-        (entry): entry is [string, string] => entry[0].startsWith('dicta.') && typeof entry[1] === 'string',
-      );
-      if (incoming.length === 0) {
-        throw new Error('No Dicta localStorage keys found in this file.');
-      }
-
-      const sessionEntry = incoming.find(([key]) => key === SESSION_STORAGE_KEY);
-      if (sessionEntry) {
-        const parsedSessions = JSON.parse(sessionEntry[1]) as unknown;
-        if (!Array.isArray(parsedSessions)) {
-          throw new Error('Imported sessions are not in the expected format.');
-        }
-      }
-
-      const confirmed = window.confirm(
-        'Import this Dicta storage snapshot into this browser? This replaces the current Vercel browser sessions, leaderboard, benchmarks, and feedback.',
-      );
-      if (!confirmed) return;
-
-      for (const key of Object.keys(getDictaLocalStorageSnapshot())) {
-        window.localStorage.removeItem(key);
-      }
-      for (const [key, value] of incoming) {
-        window.localStorage.setItem(key, value);
-      }
-
-      const importedSessions = loadSessions();
-      setSessions(importedSessions);
-      setActiveSessionId(importedSessions[0]?.id ?? '');
-      clearDashboardSession();
-      setAdaptiveBenchmarksByInputLanguage(loadAdaptiveBenchmarks());
-      setAdaptiveSessionFeedbackByInputLanguage(loadAdaptiveSessionFeedback());
-      setDictaLanguageView(loadPersistedDictaLanguageView());
-
-      setOpenRouterDefaultModel(loadOpenRouterDefaultModel());
-      setOllamaDefaultModel(loadOllamaDefaultModel());
-
-      showLeaderboardWorkspace();
-      setExportMessage(`Imported ${incoming.length} Dicta storage key(s). Leaderboard and adaptive profiles restored in this browser.`);
-    } catch (error) {
-      setExportMessage(error instanceof Error ? `Import failed: ${error.message}` : 'Import failed.');
-    }
-  }
+  const { importDictaLocalStorageSnapshot } = useDictaLocalStorageImportRuntime({
+    setSessions,
+    setActiveSessionId,
+    clearDashboardSession,
+    setAdaptiveBenchmarksByInputLanguage,
+    setAdaptiveSessionFeedbackByInputLanguage,
+    setDictaLanguageView,
+    setOpenRouterDefaultModel,
+    setOllamaDefaultModel,
+    showLeaderboardWorkspace,
+    setExportMessage,
+  });
 
   function pauseTts(): void {
     if (isBrowserTtsSupported()) {
