@@ -16,6 +16,7 @@ import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
 import { useAdminFileInventory } from './app/useAdminFileInventory';
 import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries';
+import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -747,6 +748,21 @@ function App() {
     () => buildTtsPlaybackProfile(sessions, activeSession),
     [sessions, activeSession],
   );
+  useWorkspaceNavigationEffects({
+    sessions,
+    activeSession,
+    activeSessionId,
+    activeInputWorkspaceMode,
+    workspaceMode,
+    openRouterAccessState,
+    openRouterAccessMessage,
+    suppressSidebarAutoSelectRef,
+    setActiveSessionId,
+    setOpenRouterError,
+    showLeaderboardWorkspace,
+    showWorkspaceMode,
+  });
+
   useEffect(() => {
     perfDiagnostics.recordRender('App', appRenderCountRef.current);
   });
@@ -850,12 +866,6 @@ function App() {
   ]);
 
   useEffect(() => {
-    if (workspaceMode !== 'openrouter' || openRouterAccessState !== 'denied') return;
-    showLeaderboardWorkspace();
-    setOpenRouterError(openRouterAccessMessage);
-  }, [openRouterAccessState, showLeaderboardWorkspace, workspaceMode]);
-
-  useEffect(() => {
     if (!localStorageReadyForEffectiveProfile) return;
     persistAdaptiveBenchmarks(adaptiveBenchmarksByInputLanguage);
   }, [adaptiveBenchmarksByInputLanguage, localStorageReadyForEffectiveProfile]);
@@ -873,34 +883,6 @@ function App() {
   useEffect(() => {
     ensureLatestBrowserTtsDeDictationScriptFeedback(sessions);
   }, [ensureLatestBrowserTtsDeDictationScriptFeedback, sessions]);
-
-  useEffect(() => {
-    if (sessions.length === 0) {
-      if (activeSessionId) {
-        setActiveSessionId('');
-      }
-      return;
-    }
-
-    if (!sessions.some((session) => session.id === activeSessionId)) {
-      setActiveSessionId(sessions[0].id);
-    }
-  }, [sessions, activeSessionId]);
-
-  useEffect(() => {
-    if (suppressSidebarAutoSelectRef.current) return;
-    if (
-      activeSession &&
-      workspaceMode !== 'leaderboard' &&
-      workspaceMode !== 'dashboard' &&
-      workspaceMode !== 'adaptive' &&
-      workspaceMode !== 'admin' &&
-      workspaceMode !== 'openrouter' &&
-      workspaceMode !== 'ollama'
-    ) {
-      showWorkspaceMode(activeInputWorkspaceMode);
-    }
-  }, [activeInputWorkspaceMode, activeSession, showWorkspaceMode, workspaceMode]);
 
   const ttsHasText = ttsText.trim().length > 0;
   const ttsTranscript = useMemo(() => buildTextTranscript(ttsText), [ttsText]);
