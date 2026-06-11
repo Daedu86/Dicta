@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after OpenRouter generation actions extraction
+Updated: 2026-06-11 after focused training generation buttons extraction
 
 ## Current working-tree status
 
@@ -9,12 +9,14 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | d5678ea Update App shell P0 modularization checkpoint |
-| Current working-tree App shell LOC | 2859 |
+| Latest committed baseline | 079e249 Extract focused training generation buttons |
+| Current working-tree App shell LOC | 2711 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
 | Current `src/app/useOpenRouterGenerationActions.ts` LOC | 440 |
+| Current `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
+| Current `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 208 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -26,11 +28,11 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
 | Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
 | Current `src/app/useSessionCreationActions.ts` LOC | 211 |
-| App.tsx inline `useState` count | 25 |
-| App.tsx inline `useRef` count | 27 |
+| App.tsx inline `useState` count | 9 |
+| App.tsx inline `useRef` count | 13 |
 | App.tsx inline `useMemo` count | 8 |
 | App.tsx inline `useEffect` count | 8 |
-| App.tsx inline function declarations | 27 |
+| App.tsx inline function declarations | 25 |
 
 Completed since the original map:
 
@@ -44,6 +46,8 @@ Completed since the original map:
 - `useWorkspaceNavigationEffects` owns non-TTS workspace navigation side effects.
 - `useOpenRouterGenerationBusyState` owns OpenRouter generation busy flags.
 - `useOpenRouterGenerationActions` owns direct-training OpenRouter generation actions, prompt/job orchestration, generation failure notices, and OpenRouter generate-workspace focusing.
+- `useOpenRouterErrorSessionActions` owns persistent OpenRouter generation-error session creation and custom-workspace job error persistence.
+- `useFocusedTrainingGenerationButtons` owns focused-training OpenRouter generation button composition, notices, running state labels, disabled/title wiring, and click handlers.
 - `useAdaptiveDiagnosticsUiState` owns adaptive diagnostics UI state.
 - `useAppPerfDiagnosticsRuntime` owns App render-count and perf diagnostics configuration; `App.tsx` still imports `perfDiagnostics` for active OpenRouter and TTS spans.
 - `useAdaptiveStoragePersistenceEffects` owns adaptive benchmark/feedback local persistence and ref sync effects.
@@ -54,7 +58,7 @@ Completed since the original map:
 
 Current recommendation:
 
-- Start the next pass from a fresh measurement before selecting another extraction.
+- Start the next pass from this focused-training button checkpoint before selecting another extraction.
 - Prefer small browser/App shell hooks with explicit inputs/outputs.
 - Avoid the Browser TTS playback loop, TTS refs, and regex/block-marker moves around `playTtsFromWord`.
 

@@ -18,7 +18,7 @@ The current architecture keeps `App.tsx` as the orchestration shell while stable
 
 ## Follow-up — 2026-06-11
 
-The next App shell pass continued with hook-level runtime clusters and kept the same browser/App shell boundary. After extracting keyboard remapping, adaptive export/copy actions, Supabase auth action handlers, session creation/import actions, workspace/session state hooks, and direct OpenRouter generation actions, `src/App.tsx` is **2859 lines** in the working tree.
+The next App shell pass continued with hook-level runtime clusters and kept the same browser/App shell boundary. After extracting keyboard remapping, adaptive export/copy actions, Supabase auth action handlers, session creation/import actions, workspace/session state hooks, direct OpenRouter generation actions, OpenRouter error-session actions, and focused-training generation button composition, `src/App.tsx` is **2711 lines** in the working tree.
 
 New modules added after this checkpoint:
 
@@ -39,6 +39,8 @@ New modules added after this checkpoint:
 - `src/app/useAdaptiveWorkspaceState.ts`
 - `src/app/useDictaSupabaseRuntime.ts`
 - `src/app/useSessionCreationWorkspaceState.ts`
+- `src/app/useFocusedTrainingGenerationButtons.ts`
+- `src/app/useOpenRouterErrorSessionActions.ts`
 
 The remaining high-risk area is still the Browser TTS playback loop. Do not extract `playTtsFromWord` or the TTS refs as a casual line move; start from a fresh boundary map and build after each cut.
 
@@ -142,3 +144,23 @@ a0f9f3c Remove dead App helpers
 - Current `src/App.tsx` line count after this cut: 3301.
 - New hook line counts: `useAuthHeaders.ts` = 22; `useModelRefreshActions.ts` = 69.
 - Verified with `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+## Follow-up — 2026-06-11 focused-training generation buttons
+
+Latest committed baseline: `079e249 Extract focused training generation buttons`.
+
+Current App shell metrics after this checkpoint:
+
+| Item | Value |
+| --- | ---: |
+| `src/App.tsx` LOC | 2711 |
+| `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
+| `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 208 |
+| App.tsx inline `useState` count | 9 |
+| App.tsx inline `useRef` count | 13 |
+| App.tsx inline `useMemo` count | 8 |
+| App.tsx inline `useEffect` count | 8 |
+| App.tsx inline function declarations | 25 |
+
+This checkpoint extracted persistent OpenRouter error-session handling and focused-training generation button composition without touching Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, or `playTtsFromWord`.
+
