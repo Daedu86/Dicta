@@ -26,6 +26,7 @@ import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
+import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
@@ -131,8 +132,6 @@ import {
   formatSessionGenerationOrigin,
   formatSessionInputMode,
   } from './app/sessionDisplayFormatters';
-import { copyDictaLocalStorage,
-  downloadDictaLocalStorage } from './app/dictaLocalStorageSnapshot';
 import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
   getDictaSessionQuotaStatus,
@@ -2333,6 +2332,31 @@ function App() {
     onBackToTraining: showLeaderboardWorkspace,
   });
 
+  const adminWorkspaceProps = useAdminWorkspaceProps({
+    sessions: adminSessions,
+    summary: adminStorageSummary,
+    fileInventory: adminFileInventory,
+    fileInventoryError: adminFileInventoryError,
+    exportMessage,
+    syncStatus: supabaseSyncStatus,
+    languageView: adminLanguageView,
+    onChangeLanguage: setAdminLanguageView,
+    onBackToTraining: showLeaderboardWorkspace,
+    onImportLocalStorage: importDictaLocalStorageSnapshot,
+    appProfile,
+    visibleProfiles,
+    selectedProfileFilter: adminProfileFilter,
+    onChangeProfileFilter: setAdminProfileFilter,
+    onUpdateProfileAccess: updateAdminProfileAccess,
+    getAuthHeaders,
+    remoteAdminStatus: adminRemoteStatus,
+    openRouterModels,
+    openRouterModelStatus: openRouterStatus,
+    openRouterModelError: openRouterError,
+    onRefreshOpenRouterModels: refreshOpenRouterModels,
+    setExportMessage,
+  });
+
   const appShellSyncStatusText = `${isOnline ? 'Sync' : 'Offline'}: ${isOnline ? formatSupabaseSyncState(supabaseSyncStatus) : 'Saved locally'}${
     supabaseSyncStatus.lastSyncedAt ? ` Â· ${formatSessionDate(supabaseSyncStatus.lastSyncedAt)}` : ''
   }${supabaseSyncStatus.enabled && pendingSyncSummary.hasPending ? ` Â· ${pendingSyncSummary.count} pending` : ''}`;
@@ -2595,33 +2619,7 @@ function App() {
             ) : workspaceMode === 'ollama' ? (
               <OllamaWorkspace {...ollamaWorkspaceProps} />
             ) : workspaceMode === 'admin' ? (
-              isCurrentProfileAdmin || !syncConfig.authRequired ? <AdminWorkspace
-                sessions={adminSessions}
-                summary={adminStorageSummary}
-                fileInventory={adminFileInventory}
-                fileInventoryError={adminFileInventoryError}
-                exportMessage={exportMessage}
-                syncStatus={supabaseSyncStatus}
-                languageView={adminLanguageView}
-                onChangeLanguage={setAdminLanguageView}
-                onBackToTraining={showLeaderboardWorkspace}
-                onCopyLocalStorage={() => void copyDictaLocalStorage(setExportMessage)}
-                onExportLocalStorage={downloadDictaLocalStorage}
-                onImportLocalStorage={importDictaLocalStorageSnapshot}
-                onExportSession={downloadSessionSnapshot}
-                onCopySession={(session) => void copySessionSnapshot(session, setExportMessage)}
-                appProfile={appProfile}
-                visibleProfiles={visibleProfiles}
-                selectedProfileFilter={adminProfileFilter}
-                onChangeProfileFilter={setAdminProfileFilter}
-                onUpdateProfileAccess={updateAdminProfileAccess}
-                authHeaders={getAuthHeaders()}
-                remoteAdminStatus={adminRemoteStatus}
-                openRouterModels={openRouterModels}
-                openRouterModelStatus={openRouterStatus}
-                openRouterModelError={openRouterError}
-                onRefreshOpenRouterModels={refreshOpenRouterModels}
-              /> : (
+              isCurrentProfileAdmin || !syncConfig.authRequired ? <AdminWorkspace {...adminWorkspaceProps} /> : (
                 <section className="panel workspace-panel">
                   <p className="error">Admin access required.</p>
                 </section>

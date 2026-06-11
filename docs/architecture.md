@@ -43,6 +43,7 @@ Browser app:
 - `src/app/useSupabaseAuthActions.ts`: browser-side Supabase sign-in, password reset/update, and sign-out action handlers.
 - `src/app/useSessionCreationActions.ts`: browser-side plain-text session creation, DictationScript import validation/creation, and OpenRouter script session creation actions.
 - `src/app/useOpenRouterGenerationActions.ts`: browser-side direct-training OpenRouter generation actions, prompt/job orchestration, and generation failure handling.
+- `src/app/useAdminWorkspaceProps.ts`: browser-side Admin workspace prop composition for local storage/session exports, profile access callbacks, auth headers, and model refresh wiring.
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `src/app/useBrowserTtsRuntime.ts`: Browser TTS SpeechSynthesis voice discovery and command boundary.
 - `src/app/useAdaptiveExportActions.ts`: browser-side adaptive benchmark/session-feedback export, copy, and insights diagnostic actions.
@@ -231,6 +232,7 @@ App runtime and adaptive core:
 - `src/app/useSupabaseAuthActions.ts`
 - `src/app/useSessionCreationActions.ts`
 - `src/app/useOpenRouterGenerationActions.ts`
+- `src/app/useAdminWorkspaceProps.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/app/useAdaptiveExportActions.ts`

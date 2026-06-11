@@ -18,7 +18,7 @@ The current architecture keeps `App.tsx` as the orchestration shell while stable
 
 ## Follow-up — 2026-06-11
 
-The next App shell pass continued with hook-level runtime clusters and kept the same browser/App shell boundary. After extracting keyboard remapping, adaptive export/copy actions, Supabase auth action handlers, session creation/import actions, workspace/session state hooks, direct OpenRouter generation actions, OpenRouter error-session actions, focused-training generation button composition, workspace prop composition, App shell header props, auth workspace props, and session create card props, `src/App.tsx` is **2708 lines** in the working tree.
+The next App shell pass continued with hook-level runtime clusters and kept the same browser/App shell boundary. After extracting keyboard remapping, adaptive export/copy actions, Supabase auth action handlers, session creation/import actions, workspace/session state hooks, direct OpenRouter generation actions, OpenRouter error-session actions, focused-training generation button composition, workspace prop composition, App shell header props, auth workspace props, session create card props, and Admin workspace props, `src/App.tsx` is **2706 lines** in the working tree.
 
 New modules added after this checkpoint:
 
@@ -46,6 +46,7 @@ New modules added after this checkpoint:
 - `src/app/useOllamaWorkspaceProps.ts`
 - `src/app/useOpenRouterWorkspaceProps.ts`
 - `src/app/useOpenRouterErrorSessionActions.ts`
+- `src/app/useAdminWorkspaceProps.ts`
 
 The remaining high-risk area is still the Browser TTS playback loop. Do not extract `playTtsFromWord` or the TTS refs as a casual line move; start from a fresh boundary map and build after each cut.
 
@@ -173,13 +174,13 @@ This checkpoint extracted persistent OpenRouter error-session handling and focus
 
 Latest committed baseline: `5f98d33 Extract session create card props`.
 
-This checkpoint covers these App shell extractions since the previous docs checkpoint: OpenRouter workspace props, Ollama workspace props, App shell header props, Auth workspace props, Session create card props.
+This checkpoint covers these App shell extractions since the previous docs checkpoint: OpenRouter workspace props, Ollama workspace props, App shell header props, Auth workspace props, Session create card props, and Admin workspace props.
 
 Current App shell metrics:
 
 | Item | Value |
 | --- | ---: |
-| `src/App.tsx` LOC | 2708 |
+| `src/App.tsx` LOC | 2706 |
 | `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
 | `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 208 |
 | `src/app/useOpenRouterWorkspaceProps.ts` LOC | 164 |
@@ -187,11 +188,11 @@ Current App shell metrics:
 | `src/app/useAppShellHeaderProps.ts` LOC | 86 |
 | `src/app/useAuthWorkspaceProps.ts` LOC | 90 |
 | `src/app/useSessionCreateCardProps.ts` LOC | 57 |
-| App.tsx inline `useState` count | 9 |
-| App.tsx inline `useRef` count | 13 |
+| `src/app/useAdminWorkspaceProps.ts` LOC | 89 |
+| App.tsx inline `useState` count | 25 |
+| App.tsx inline `useRef` count | 27 |
 | App.tsx inline `useMemo` count | 8 |
 | App.tsx inline `useEffect` count | 8 |
 | App.tsx inline function declarations | 25 |
 
 Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, and `playTtsFromWord` remained untouched in this sequence.
-

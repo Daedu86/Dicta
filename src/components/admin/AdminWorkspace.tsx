@@ -16,7 +16,7 @@ import { AdminBrowserStorageCard } from './AdminBrowserStorageCard';
 import { AdminProjectFilesCard } from './AdminProjectFilesCard';
 import { AdminSessionInventoryCard } from './AdminSessionInventoryCard';
 
-type AdminWorkspaceSession = {
+export type AdminWorkspaceSession = {
   id: string;
   name: string;
   inputMode: string;
@@ -27,7 +27,7 @@ type AdminWorkspaceSession = {
   [key: string]: unknown;
 };
 
-type AdminFileInventory = {
+export type AdminFileInventory = {
   projectRoot: string;
   folders: Array<{
     label: string;
@@ -48,13 +48,13 @@ type AccessDraft = {
   sessionLimit: string;
 };
 
-type ProfileAccessPatch = {
+export type ProfileAccessPatch = {
   canAccessOpenRouter: boolean;
   assignedOpenRouterModel: string;
   sessionLimit: number;
 };
 
-type AdminWorkspaceProps<TSession extends AdminWorkspaceSession> = {
+export type AdminWorkspaceProps<TSession extends AdminWorkspaceSession> = {
   sessions: TSession[];
   summary: AdminStorageSummary;
   fileInventory: AdminFileInventory | null;

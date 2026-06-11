@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after App shell props extraction checkpoint
+Updated: 2026-06-11 after Admin workspace props extraction
 
 ## Current working-tree status
 
@@ -9,8 +9,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 5f98d33 Extract session create card props |
-| Current working-tree App shell LOC | 2708 |
+| Latest committed baseline | 5eea4cf Update App shell props checkpoint |
+| Current working-tree App shell LOC | 2706 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
@@ -22,6 +22,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useAppShellHeaderProps.ts` LOC | 86 |
 | Current `src/app/useAuthWorkspaceProps.ts` LOC | 90 |
 | Current `src/app/useSessionCreateCardProps.ts` LOC | 57 |
+| Current `src/app/useAdminWorkspaceProps.ts` LOC | 89 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -33,8 +34,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
 | Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
 | Current `src/app/useSessionCreationActions.ts` LOC | 211 |
-| App.tsx inline `useState` count | 9 |
-| App.tsx inline `useRef` count | 13 |
+| App.tsx inline `useState` count | 25 |
+| App.tsx inline `useRef` count | 27 |
 | App.tsx inline `useMemo` count | 8 |
 | App.tsx inline `useEffect` count | 8 |
 | App.tsx inline function declarations | 25 |
@@ -54,6 +55,7 @@ Completed since the original map:
 - `useOpenRouterErrorSessionActions` owns persistent OpenRouter generation-error session creation and custom-workspace job error persistence.
 - `useFocusedTrainingGenerationButtons` owns focused-training OpenRouter generation button composition, notices, running state labels, disabled/title wiring, and click handlers.
 - `useSessionCreateCardProps` owns session creation card prop composition for source/name state, quota state, script-import validation state, creation/import callbacks, and Metric wiring.
+- `useAdminWorkspaceProps` owns Admin workspace prop composition for session/admin summaries, localStorage/session snapshot actions, profile access callbacks, auth headers, and OpenRouter model refresh wiring.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useOllamaWorkspaceProps` owns Ollama workspace prop composition and Ollama default model persistence wiring.
