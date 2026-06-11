@@ -509,91 +509,8 @@ function App() {
     };
   }, [supabaseClient, syncConfig.authRequired]);
 
-  useEffect(() => {
-    if (!supabaseClient || !syncConfig.authRequired || !authSession?.user) return;
-    let cancelled = false;
 
-    setAppProfileError('');
-    loadDictaAppProfile(supabaseClient, authSession.user)
-      .then((profile) => {
-        if (cancelled) return;
-        setAppProfile(profile);
-        if (!profile) {
-          setAppProfileError('Your Dicta account exists, but no app profile is mapped yet. Create a dicta_app_profiles row for this user.');
-        } else if (!profile.active) {
-          setAppProfileError('This Dicta profile is inactive.');
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setAppProfile(null);
-          setAppProfileError(error instanceof Error ? error.message : 'Failed to load Dicta profile.');
-        }
-      });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [authSession?.user, supabaseClient, syncConfig.authRequired]);
-
-  useEffect(() => {
-    if (!supabaseClient || !isDictaAdmin(appProfile)) {
-      setVisibleProfiles(appProfile ? [appProfile] : []);
-      return;
-    }
-    let cancelled = false;
-    loadVisibleDictaAppProfiles(supabaseClient)
-      .then((profiles) => {
-        if (!cancelled) setVisibleProfiles(profiles);
-      })
-      .catch(() => {
-        if (!cancelled) setVisibleProfiles(appProfile ? [appProfile] : []);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [appProfile, supabaseClient]);
-
-  useEffect(() => {
-    if (adminProfileFilter === 'self') {
-      setAdminRemoteSessions([]);
-      setAdminRemoteStatus('');
-      return;
-    }
-    if (!supabaseClient || !isDictaAdmin(appProfile)) return;
-    let cancelled = false;
-
-    setAdminRemoteStatus('Loading remote admin sessions...');
-    let query = supabaseClient
-      .from(DICTA_SYNC_TABLE)
-      .select('profile_id,item_key,payload,updated_at')
-      .eq('item_type', 'session')
-      .order('updated_at', { ascending: false });
-    if (adminProfileFilter !== 'all') {
-      query = query.eq('profile_id', adminProfileFilter);
-    }
-    void (async () => {
-      try {
-        const { data, error } = await query;
-        if (cancelled) return;
-        if (error) throw error;
-        const nextSessions = (data ?? [])
-          .map((row) => asAdminRemoteStoredSession(row.payload))
-          .filter((session): session is StoredSession => Boolean(session));
-        setAdminRemoteSessions(nextSessions);
-        setAdminRemoteStatus(`Loaded ${nextSessions.length} remote session${nextSessions.length === 1 ? '' : 's'} for admin view.`);
-      } catch (error) {
-        if (!cancelled) {
-          setAdminRemoteSessions([]);
-          setAdminRemoteStatus(error instanceof Error ? error.message : 'Failed to load remote admin sessions.');
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [adminProfileFilter, appProfile, supabaseClient]);
 
   const config = useMemo(() => configForDifficulty(difficulty), [difficulty]);
   const activeSession = useMemo(
@@ -3499,7 +3416,7 @@ function App() {
           openRouterModelLabel={appShellOpenRouterModel ? `Model set: ${appShellOpenRouterModel}` : 'No model set'}
           buildInfoTitle={DICTA_BUILD_INFO_TITLE}
           buildInfoLabel={DICTA_BUILD_INFO_LABEL}
-          showAdminButton={isDictaAdmin(appProfile) || !syncConfig.authRequired}
+          showAdminButton={isCurrentProfileAdmin || !syncConfig.authRequired}
           showOpenRouterButton={openRouterAccessAllowed}
           syncStatusState={supabaseSyncStatus.state}
           syncStatusText={appShellSyncStatusText}
@@ -3739,7 +3656,7 @@ function App() {
                 onBackToTraining={showLeaderboardWorkspace}
               />
             ) : workspaceMode === 'admin' ? (
-              isDictaAdmin(appProfile) || !syncConfig.authRequired ? <AdminWorkspace
+              isCurrentProfileAdmin || !syncConfig.authRequired ? <AdminWorkspace
                 sessions={adminSessions}
                 summary={adminStorageSummary}
                 fileInventory={adminFileInventory}
