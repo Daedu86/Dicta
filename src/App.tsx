@@ -4,6 +4,10 @@ import { useDictaAppProfileRuntime } from './app/useDictaAppProfileRuntime';
 import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
 import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
+import {
+  loadOllamaDefaultModel,
+  loadOpenRouterDefaultModel,
+} from './app/modelPreferenceStorage';
 import type { FormEvent, KeyboardEvent } from 'react';
 import './App.css';
 import type {
