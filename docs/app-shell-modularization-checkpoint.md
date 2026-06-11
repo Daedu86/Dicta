@@ -2,7 +2,7 @@
 
 Date: 2026-06-10  
 Branch: `product/input-2`  
-Latest local commit at checkpoint time: `43633ac (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract repeat word stats helpers`
+Latest local commit at checkpoint time: `386749f (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Document App shell modularization checkpoint`
 
 ## Status
 
@@ -87,7 +87,8 @@ Then continue in this order:
 ## Recent commits
 
 ```text
-43633ac (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract repeat word stats helpers
+386749f (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Document App shell modularization checkpoint
+43633ac Extract repeat word stats helpers
 6a1ff4c Extract dictation script semantic phrases
 1134055 Extract TTS playback profile helpers
 f897c39 Extract shared inline components
@@ -98,5 +99,4 @@ c98c52f Extract App session types
 571b4c0 Remove dead locked input summary
 a0f9f3c Remove dead App helpers
 1827c3f Extract AdminWorkspace shell
-cae1f38 Document completed CSS modularization architecture
 ```
