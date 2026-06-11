@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after focused training live metrics extraction
+Updated: 2026-06-11 after app workspace content extraction
 
 ## Current working-tree status
 
@@ -9,8 +9,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 637e479 Extract focused training live metrics |
-| Current working-tree App shell LOC | 2649 |
+| Latest committed baseline | 3ef3b91 Extract app workspace content |
+| Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
@@ -30,6 +30,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useLiveMetricsDockProps.ts` LOC | 111 |
 | Current `src/app/useFocusedTrainingViewProps.ts` LOC | 177 |
 | Current `src/app/useFocusedTrainingLiveMetrics.ts` LOC | 88 |
+| Current `src/app/AppWorkspaceContent.tsx` LOC | 128 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -69,6 +70,7 @@ Completed since the original map:
 - `useLiveMetricsDockProps` owns live metrics dock prop composition, metrics view setters, insights diagnostics callback wiring, collapsed-state toggling, and TTS-current-chunk presence mapping.
 - `useFocusedTrainingViewProps` owns focused `TrainingView` prop composition, visible metric labels, training controls wiring, replay availability mapping, pending-session callbacks, sync summary props, and generation button props.
 - `useFocusedTrainingLiveMetrics` owns focused-training live metric derivation, transcript evaluation, visible accuracy/score, points labels, and metric help text.
+- `AppWorkspaceContent` owns the App workspace switch, pending-session lane placement, dashboard/adaptive/OpenRouter/Ollama/Admin/Leaderboard branch rendering, and workspace access fallbacks.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useAppShellSyncStatusText` owns App shell sync/offline status label composition, pending-sync suffixes, and last-sync timestamp formatting glue.
@@ -84,10 +86,10 @@ Completed since the original map:
 
 Current recommendation:
 
-- Start the next pass from the clean `637e479` baseline before selecting another extraction.
-- Treat `useFocusedTrainingLiveMetrics` as the first successful ROI-based extraction after the props-hook phase: it removed derived metric coordination from `src/App.tsx` and reduced App shell LOC.
-- Do not continue with small strings or one-line callbacks. Next candidates should be inspected for net App reduction, ownership clarity, and testability before implementation.
-- Recommended next investigation: non-TTS setup/session-creation UI state and dashboard/setup prop boundaries. Defer active-session hydration, Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves.
+- Start the next pass from the clean `3ef3b91` baseline before selecting another extraction.
+- Treat `AppWorkspaceContent` as the successful presentational extraction after the focused live metrics hook: it removed the largest remaining workspace render switch from `src/App.tsx` without moving runtime state.
+- Do not extract `BrowserTtsSetupCard` props by themselves unless inspection shows meaningful net App reduction; the visible prop block alone is probably low ROI.
+- Continue to defer active-session hydration, Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves.
 
 ## ROI-based modularization policy
 

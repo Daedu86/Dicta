@@ -302,3 +302,27 @@ ROI result:
 
 Next work should not automatically continue extracting hooks. Inspect the next candidate first and proceed only if it passes the ROI gate from the modularization map.
 
+## Follow-up — 2026-06-11 App workspace content
+
+Latest committed baseline: `3ef3b91 Extract app workspace content`.
+
+This checkpoint records a presentational App-shell extraction after the focused live metrics hook.
+
+`src/app/AppWorkspaceContent.tsx` now owns the App workspace switch: pending-session lane placement, dashboard rendering, Adaptive cockpit shell, OpenRouter access fallback, Ollama workspace, Admin access fallback, Leaderboard workspace, and the default Browser TTS prompt.
+
+Current App shell metrics after this extraction:
+
+| Item                                  |      Value |
+| ------------------------------------- | ---------: |
+| `src/App.tsx` LOC                     |  2597 |
+| `src/app/AppWorkspaceContent.tsx` LOC | 128 |
+
+ROI result:
+
+* Positive App-shell reduction: the extraction removed the largest remaining workspace render branch from `src/App.tsx`.
+* Better ownership: `App.tsx` keeps runtime state and hook orchestration, while `AppWorkspaceContent` owns workspace presentation branching.
+* Better type boundary: generic workspace props remain concretely typed to `StoredSession` at the App shell boundary.
+* Runtime safety: Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting. The BrowserTtsSetupCard prop block remains visible but may be too small for standalone ROI unless combined with a clearer setup-state boundary.
+
