@@ -15,6 +15,7 @@ import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
 import { useAdminFileInventory } from './app/useAdminFileInventory';
+import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries';
 import { buildAdaptiveEventCounts, useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -135,7 +136,6 @@ import { perfDiagnostics } from './core/perfDiagnostics';
 import {
   normalizeLiveSessionStatusForPersistence,
   } from './core/sessionStatusNormalization';
-import { estimateSessionVoiceDurationSec } from './core/sessionDuration';
 import { copySessionSnapshot,
   downloadSessionSnapshot } from './app/sessionSnapshotActions';
 import {
@@ -160,10 +160,6 @@ import {
 import {
   getDictaSessionQuotaStatus,
   } from './core/appProfiles';
-import {
-  buildRangeSummaryForLanguage,
-  findLastSessionForLanguage,
-  resolveSessionLanguage } from './core/liveMetrics';
 import {
   buildGeneratedTrainingSessionNotification,
   requestTrainingNotificationPermission,
@@ -196,8 +192,6 @@ import {
   persistOllamaDefaultModel,
   persistOpenRouterDefaultModel,
   } from './app/modelPreferenceStorage';
-import { buildLeaderboardSections,
-  sortLeaderboardSessions } from './app/leaderboardSectionsBuilder';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import type { SessionInputMode } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
@@ -206,11 +200,8 @@ import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
 import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatters';
 import { formatDuration,
   formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
-import { buildTrainingSessionSubmissionMeta } from './app/trainingSessionSubmissionMeta';
-import { countLocalChangesPendingSync,
-  formatSupabaseSyncState } from './app/supabaseSyncPresentation';
-import { buildAdminStorageSummary,
-  buildCurrentSyncState } from './app/adminStorageSummary';
+import { formatSupabaseSyncState } from './app/supabaseSyncPresentation';
+import { buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 import {
   averageNumbers,
@@ -697,14 +688,32 @@ function App() {
     refreshOllamaModelCatalog,
   });
 
-  const latestSession = useMemo<StoredSession | null>(() => {
-    if (sessions.length === 0) return null;
-    return [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-  }, [sessions]);
-  const activeTrainingSubmissionMeta = useMemo(
-    () => buildTrainingSessionSubmissionMeta(sessions, activeSession),
-    [activeSession, sessions],
-  );
+  const {
+    latestSession,
+    activeTrainingSubmissionMeta,
+    pendingSessions,
+    pendingSyncSummary,
+    recentDictationSessionHints,
+    leaderboard,
+    leaderboardSections,
+    adminSessions,
+    adminStorageSummary,
+    lastSessionForLanguage,
+    lastSessionScoreHelpText,
+    languageTodaySummary,
+  } = useWorkspaceSessionSummaries({
+    sessions,
+    activeSession,
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
+    supabaseLastSyncedAt: supabaseSyncStatus.lastSyncedAt,
+    leaderboardLanguageView,
+    adminLanguageView,
+    adminProfileFilter,
+    adminRemoteSessions,
+    metricsLanguageView,
+    metricsRangeView,
+  });
   const {
     adaptiveControllerRef,
     phrasePlaybackEventsRef,
@@ -733,73 +742,11 @@ function App() {
     selectedBenchmarkLanguage: dictaLanguageView,
     setSelectedBenchmarkLanguage: setDictaLanguageView,
   });
-  const pendingSessions = useMemo(
-    () =>
-      [...sessions]
-        .filter((session) => session.status !== 'error' && !isSessionReadyForTraining(session))
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-    [sessions],
-  );
-  const pendingSyncSummary = useMemo(
-    () =>
-      countLocalChangesPendingSync({
-        sessions,
-        benchmarks: adaptiveBenchmarksByInputLanguage,
-        feedback: adaptiveSessionFeedbackByInputLanguage,
-        lastSyncedAt: supabaseSyncStatus.lastSyncedAt,
-      }),
-    [sessions, adaptiveBenchmarksByInputLanguage, adaptiveSessionFeedbackByInputLanguage, supabaseSyncStatus.lastSyncedAt],
-  );
   const openRouterOfflineTitle = isOnline ? '' : 'Needs internet. Local practice still works offline and results stay on this device.';
-  const recentDictationSessionHints = useMemo(() => {
-    return sessions
-      .filter((session) => session.sessionSource === 'dictationScript' && Boolean(session.dictationScript))
-      .slice(0, 5)
-      .map((session) => {
-        const script = session.dictationScript;
-        const opener = script?.phrases?.[0]?.text?.trim() ?? '';
-        return {
-          title: script?.title?.trim() || session.name.trim(),
-          opener,
-        };
-      });
-  }, [sessions]);
-  const sessionsWithVoiceDuration = useMemo(
-    () => sessions.map((session) => ({ ...session, voiceDurationSec: estimateSessionVoiceDurationSec(session) })),
-    [sessions],
-  );
   const ttsPlaybackProfile = useMemo(
     () => buildTtsPlaybackProfile(sessions, activeSession),
     [sessions, activeSession],
   );
-  const leaderboard = useMemo(
-    () =>
-      sortLeaderboardSessions(
-        sessionsWithVoiceDuration
-        .filter((session) => resolveSessionLanguage(session) === leaderboardLanguageView)
-      )
-        .map((session, index) => ({ rank: index + 1, session })),
-    [sessionsWithVoiceDuration, leaderboardLanguageView],
-  );
-  const leaderboardSections = useMemo(
-    () =>
-      buildLeaderboardSections(sessionsWithVoiceDuration, leaderboardLanguageView, {
-        resolveSessionLanguage,
-        getSessionVoiceDurationSec: estimateSessionVoiceDurationSec,
-        buildRangeSummaryForLanguage,
-        formatDuration,
-      }),
-    [sessionsWithVoiceDuration, leaderboardLanguageView],
-  );
-  const adminSessions = useMemo(
-    () => {
-      const source = adminProfileFilter === 'self' ? sessions : adminRemoteSessions;
-      return [...source].filter((session) => resolveSessionLanguage(session) === adminLanguageView);
-    },
-    [adminProfileFilter, adminRemoteSessions, sessions, adminLanguageView],
-  );
-  const adminStorageSummary = useMemo(() => buildAdminStorageSummary(adminSessions), [adminSessions]);
-
   useEffect(() => {
     perfDiagnostics.recordRender('App', appRenderCountRef.current);
   });
@@ -955,19 +902,6 @@ function App() {
     }
   }, [activeInputWorkspaceMode, activeSession, showWorkspaceMode, workspaceMode]);
 
-  const lastSessionForLanguage = useMemo(
-    () => findLastSessionForLanguage(sessionsWithVoiceDuration, metricsLanguageView),
-    [sessionsWithVoiceDuration, metricsLanguageView],
-  );
-  const lastSessionScoreHelpText = useMemo(() => {
-    if (!lastSessionForLanguage?.id) return undefined;
-    const fullSession = sessions.find((session) => session.id === lastSessionForLanguage.id);
-    return fullSession ? buildSessionScoreHelpText(fullSession.metrics) : undefined;
-  }, [lastSessionForLanguage?.id, sessions]);
-  const languageTodaySummary = useMemo(
-    () => buildRangeSummaryForLanguage(sessionsWithVoiceDuration, metricsLanguageView, metricsRangeView),
-    [sessionsWithVoiceDuration, metricsLanguageView, metricsRangeView],
-  );
   const ttsHasText = ttsText.trim().length > 0;
   const ttsTranscript = useMemo(() => buildTextTranscript(ttsText), [ttsText]);
   const deferredTtsPracticeText = useDeferredValue(ttsPracticeText);

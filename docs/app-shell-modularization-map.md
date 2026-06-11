@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after admin file inventory runtime extraction
+Updated: 2026-06-11 after workspace session summaries extraction
 
 ## Current working-tree status
 
@@ -10,14 +10,15 @@ This document began as a generated map. The detailed inventories below the curre
 | --- | ---: |
 | Branch | product/input-2 |
 | Latest committed baseline | 8876ed9 Extract Supabase auth actions (#61) |
-| Current working-tree App shell LOC | 3273 |
+| Current working-tree App shell LOC | 3207 |
+| Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useAdaptiveExportActions.ts` LOC | 303 |
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
 | Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
 | Current `src/app/useSessionCreationActions.ts` LOC | 211 |
 | App.tsx inline `useState` count | 47 |
 | App.tsx inline `useRef` count | 30 |
-| App.tsx inline `useMemo` count | 22 |
+| App.tsx inline `useMemo` count | 10 |
 | App.tsx inline `useEffect` count | 17 |
 | App.tsx inline function declarations | 28 |
 
@@ -29,6 +30,7 @@ Completed since the original map:
 - `useAdaptiveExportActions` owns adaptive benchmark/session-feedback copy, export, and insights diagnostic actions.
 - `useSupabaseAuthActions` owns Supabase sign-in, password reset/update, auth view switching, and sign-out handlers.
 - `useSessionCreationActions` owns plain-text session creation, DictationScript import validation/creation, and OpenRouter script session creation actions.
+- `useWorkspaceSessionSummaries` owns derived session collections and workspace summaries.
 
 Current recommendation:
 
