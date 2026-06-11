@@ -481,3 +481,32 @@ ROI result:
 
 Next work should inspect before extracting more shared request/response helpers; the remaining plugin still owns route orchestration.
 
+## Follow-up — 2026-06-11 Local dev HTTP helpers
+
+Latest committed baseline: `e0b2782 Extract local dev HTTP helpers`.
+
+This checkpoint records extraction of shared local development HTTP helper logic from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevHttpHelpers.ts` now owns local HTTP error construction, local error response formatting, request body size enforcement, JSON request parsing, and API key suffix masking. `dev/dictaLocalDevApiPlugin.ts` keeps middleware route orchestration, local dev store wiring, OpenRouter/Ollama/admin route handling, upstream fetch calls, and response payload ownership.
+
+Current metrics after this extraction:
+
+| Item                                  | Value |
+| ------------------------------------- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC   | 462 |
+| `dev/localDevHttpHelpers.ts` LOC      | 65 |
+| `dev/localDevOllamaHelpers.ts` LOC    | 77 |
+| `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
+| `dev/localDevAdminFiles.ts` LOC       | 86 |
+| `dev/localDevApiValidation.ts` LOC    | 105 |
+| `dev/localDevEnvStore.ts` LOC         | 83 |
+
+ROI result:
+
+* Better ownership: shared HTTP utility behavior is separated from local API route orchestration.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 462 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting full route handlers; the remaining plugin is now mostly route orchestration and upstream fetch wiring.
+
