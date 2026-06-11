@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after app workspace content extraction
+Updated: 2026-06-11 after local dev API plugin extraction
 
 ## Current working-tree status
 
@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 3ef3b91 Extract app workspace content |
+| Latest committed baseline | ab0c5a4 Extract local dev API plugin |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
@@ -31,6 +31,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useFocusedTrainingViewProps.ts` LOC | 177 |
 | Current `src/app/useFocusedTrainingLiveMetrics.ts` LOC | 88 |
 | Current `src/app/AppWorkspaceContent.tsx` LOC | 128 |
+| Current `vite.config.ts` LOC | 88 |
+| Current `dev/dictaLocalDevApiPlugin.ts` LOC | 827 |
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
@@ -71,6 +73,7 @@ Completed since the original map:
 - `useFocusedTrainingViewProps` owns focused `TrainingView` prop composition, visible metric labels, training controls wiring, replay availability mapping, pending-session callbacks, sync summary props, and generation button props.
 - `useFocusedTrainingLiveMetrics` owns focused-training live metric derivation, transcript evaluation, visible accuracy/score, points labels, and metric help text.
 - `AppWorkspaceContent` owns the App workspace switch, pending-session lane placement, dashboard/adaptive/OpenRouter/Ollama/Admin/Leaderboard branch rendering, and workspace access fallbacks.
+- `dictaLocalDevApiPlugin` owns the local Vite dev API routes, local `.env.local` key management, OpenRouter/Ollama proxy routes, OpenRouter local job queue, and admin file inventory route.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useAppShellSyncStatusText` owns App shell sync/offline status label composition, pending-sync suffixes, and last-sync timestamp formatting glue.

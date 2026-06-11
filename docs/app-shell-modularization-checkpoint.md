@@ -326,3 +326,28 @@ ROI result:
 
 Next work should inspect before extracting. The BrowserTtsSetupCard prop block remains visible but may be too small for standalone ROI unless combined with a clearer setup-state boundary.
 
+## Follow-up — 2026-06-11 Local dev API plugin
+
+Latest committed baseline: `ab0c5a4 Extract local dev API plugin`.
+
+This checkpoint records extraction of the local Vite development API from `vite.config.ts`.
+
+`dev/dictaLocalDevApiPlugin.ts` now owns local middleware for OpenRouter models/key/chat/jobs, Ollama models/key/chat, `.env.local` key management, request body parsing/validation, local OpenRouter job storage, upstream error formatting, and admin file inventory.
+
+Current metrics after this extraction:
+
+| Item                                |      Value |
+| ----------------------------------- | ---------: |
+| `src/App.tsx` LOC                   |  2597 |
+| `vite.config.ts` LOC                |  88 |
+| `dev/dictaLocalDevApiPlugin.ts` LOC | 827 |
+
+ROI result:
+
+* Better ownership: Vite config now keeps build/plugin wiring, while the local development API has a dedicated plugin module.
+* Better maintainability: local API route helpers, request parsing, key persistence, OpenRouter/Ollama proxy behavior, and admin file inventory are no longer nested inside `defineConfig`.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting. The remaining App render tail is small; further App-shell work should require a stronger boundary than a prop-only wrapper.
+
