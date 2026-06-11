@@ -19,6 +19,7 @@ import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
+import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
 import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
@@ -119,8 +120,6 @@ import { SessionCreateCard } from './components/runtime-workspaces/SessionCreate
 import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsSetupCard';
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { SessionDashboard } from './components/session-dashboard/SessionDashboard';
-import type {
-  AdaptiveWorkspaceFocusAnchor } from './components/adaptive-workspace/types';
 import { AdaptiveBenchmarkSection } from './components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
 import { AdaptiveAdvancedDiagnostics } from './components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
 import { AdminWorkspace } from './components/admin/AdminWorkspace';
@@ -133,8 +132,6 @@ import {
   shouldCreatePersistentGenerationErrorSession,
   } from './components/openrouter/openRouterViewHelpers';
 import type {
-  AdaptiveBenchmarksByInputLanguage,
-  AdaptiveSessionFeedbackByInputLanguage,
   BenchmarkLanguageButton,
   } from './components/openrouter/types';
 import {
@@ -233,7 +230,6 @@ import {
   } from './app/ttsPacingHelpers';
 import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
-  AdaptiveSemanticDebug,
   PerformanceTrend,
   SessionSource,
   SessionStatus,
@@ -417,34 +413,22 @@ function App() {
     insightsDiagnosticFallbackReport,
     setInsightsDiagnosticFallbackReport,
   } = useAdaptiveDiagnosticsUiState();
-  const [adaptiveSemanticDebug, setAdaptiveSemanticDebug] = useState<AdaptiveSemanticDebug>({
-    semanticCutPenalty: 0,
-    unsafePauseCount: 0,
-    safePauseCount: 0,
-    deferredPauseCount: 0,
-    replayDeniedByBoundaryCount: 0,
-    averageSemanticCompleteness: 1,
-    averagePhraseDifficulty: 0,
-    inputExecutionFidelityScore: 1,
-    currentPhraseIndex: 0,
-    currentPhraseId: 'n/a',
-    currentPhraseTextPreview: '',
-    totalSemanticPhrases: 0,
-    phraseAdvanceCount: 0,
-    phraseReplayCount: 0,
-    lastPhraseAdvanceReason: 'idle',
-  });
-  const [adaptiveBenchmarksByInputLanguage, setAdaptiveBenchmarksByInputLanguage] = useState<AdaptiveBenchmarksByInputLanguage>(() =>
-    loadAdaptiveBenchmarks(),
-  );
-  const adaptiveBenchmarksRef = useRef(adaptiveBenchmarksByInputLanguage);
-  const [adaptiveSessionFeedbackByInputLanguage, setAdaptiveSessionFeedbackByInputLanguage] = useState<AdaptiveSessionFeedbackByInputLanguage>(() =>
-    loadAdaptiveSessionFeedback(),
-  );
-  const adaptiveSessionFeedbackRef = useRef<AdaptiveSessionFeedbackByInputLanguage>(adaptiveSessionFeedbackByInputLanguage);
-  const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] = useState<AdaptiveWorkspaceFocusAnchor>(null);
-  const [benchmarkExportMessage, setBenchmarkExportMessage] = useState('');
-  const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
+  const {
+    adaptiveSemanticDebug,
+    setAdaptiveSemanticDebug,
+    adaptiveBenchmarksByInputLanguage,
+    setAdaptiveBenchmarksByInputLanguage,
+    adaptiveBenchmarksRef,
+    adaptiveSessionFeedbackByInputLanguage,
+    setAdaptiveSessionFeedbackByInputLanguage,
+    adaptiveSessionFeedbackRef,
+    adaptiveBenchmarksFocusAnchor,
+    setAdaptiveBenchmarksFocusAnchor,
+    benchmarkExportMessage,
+    setBenchmarkExportMessage,
+    sessionFeedbackMessage,
+    setSessionFeedbackMessage,
+  } = useAdaptiveWorkspaceState();
   const syncConfig = useMemo(() => getDictaSyncConfig(import.meta.env), []);
   const supabaseClient = useMemo(() => createDictaSupabaseClient(syncConfig), [syncConfig]);
   const {
