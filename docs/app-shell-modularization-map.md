@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after TTS playback progress estimator extraction.
+Updated: 2026-06-12 after Browser TTS playback plan extraction.
 
 ## Current baseline
 
@@ -11,12 +11,14 @@ This document began as a generated map. The historical deep inventory was intent
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest clean code baseline | 71855e7 |
-| Current `src/App.tsx` LOC | 2264 |
+| Latest clean code baseline | f09c969 |
+| Current `src/App.tsx` LOC | 2121 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 76 |
 | Current `src/app/useBrowserTtsSetupCardProps.ts` LOC | 88 |
+| Current `src/app/browserTtsPlaybackPlan.ts` LOC | 367 |
 | Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 94 |
-| App.tsx inline `useState` count | 25 |
+| Current `tests/browserTtsPlaybackPlan.test.ts` LOC | 324 |
+| App.tsx inline `useState` count | 16 |
 | App.tsx inline `useRef` count | 27 |
 | App.tsx inline `useMemo` count | 5 |
 | App.tsx inline `useEffect` count | 7 |
@@ -78,32 +80,33 @@ This document began as a generated map. The historical deep inventory was intent
 - `useTtsTelemetryRecorder` owns Browser TTS attempt telemetry initialization, elapsed-time calculation, control-action recording, and chunk telemetry recording without moving the full `playTtsFromWord` playback loop.
 - `useTtsUiPublisher` owns Browser TTS live metric UI publication thresholds, 500 ms throttling, forced publication, published UI ref updates, and visible metric setter routing.
 - `useTtsPlaybackProgressEstimator` owns Browser TTS spoken-word progress estimation for active chunks, completed-word fallback, finished playback, and source-word clamping.
+- `browserTtsPlaybackPlan` owns pure Browser TTS next-chunk playback planning: candidate chunk selection, adaptive controller decision mapping, pacing mode derivation, runtime rate floor, unsafe-boundary policy, Android mobile fallback, DE recovery policy, executable telemetry frames, rolling accuracy windows, and next phrase-size/boundary state. The full `playTtsFromWord` / `speakNext` loop, `SpeechSynthesisUtterance` creation, event handlers, adaptive benchmark writes, telemetry persistence, UI setters, refs, submit, and reset behavior remain in `src/App.tsx`.
 
 ## Current recommendation
 
-- Start the next implementation pass from the post-progress-estimator working tree and re-run the ROI scorecard before selecting another extraction.
+- Start the next implementation pass from the post-playback-plan working tree and re-run the ROI scorecard before selecting another extraction.
 - Treat `docs/modularization-roi.md` as the decision framework: choose the highest-ROI candidate that can be bounded and validated.
 - Do not treat Browser TTS, refs, timers, telemetry, `resetSession`, or `playTtsFromWord` risk as an automatic veto. Treat that risk as validation cost, slice size, required characterization coverage, manual smoke scope, and rollback planning.
 - Reject only candidates that are unbounded, untestable, too ambiguous to verify, or mostly create no-op wrapper indirection.
-- The previously selected Browser TTS progress estimator has been extracted. Do not immediately jump to the full playback loop without a fresh ROI scorecard.
+- The previously selected Browser TTS playback plan builder has been extracted. Do not immediately jump to the full playback loop without a fresh ROI scorecard.
 
 ## Current high-risk anchors
 
-These line numbers were observed in the post-progress-estimator working tree. Recheck with `rg` before editing; they are anchors for risk inspection, not stable APIs.
+These line numbers were observed in the post-playback-plan working tree. Recheck with `rg` before editing; they are anchors for risk inspection, not stable APIs.
 
 | Area | Current location |
 | --- | --- |
-| `resetSession` | `src/App.tsx:926` |
-| `buildSemanticPhrasesForCurrentSession` | `src/App.tsx:978` |
-| `useTtsTelemetryRecorder` hook call | `src/App.tsx:1103-1110` |
-| `useTtsPlaybackProgressEstimator` hook call | `src/App.tsx:1116-1125` |
-| `useTtsUiPublisher` hook call | `src/App.tsx:1127-1144` |
-| `useTtsPerformanceSampler` hook call | `src/App.tsx:1146-1163` |
-| `playTts` | `src/App.tsx:1219` |
-| `playTtsFromWord` | `src/App.tsx:1224-1697` |
-| `useTtsPlaybackControls` hook call | `src/App.tsx:1705-1739` |
-| `BrowserTtsSetupCard` prop hook call | `src/App.tsx:2141` |
-| `BrowserTtsSetupCard` render branch | `src/App.tsx:2232` |
+| `resetSession` | `src/App.tsx:920` |
+| `buildSemanticPhrasesForCurrentSession` | `src/App.tsx:972` |
+| `useTtsTelemetryRecorder` hook call | `src/App.tsx:1104-1109` |
+| `useTtsPlaybackProgressEstimator` hook call | `src/App.tsx:1110-1119` |
+| `useTtsUiPublisher` hook call | `src/App.tsx:1121-1138` |
+| `useTtsPerformanceSampler` hook call | `src/App.tsx:1140-1157` |
+| `playTts` | `src/App.tsx:1213` |
+| `playTtsFromWord` | `src/App.tsx:1218-1554` |
+| `useTtsPlaybackControls` hook call | `src/App.tsx:1562-1596` |
+| `BrowserTtsSetupCard` prop hook call | `src/App.tsx:1998` |
+| `BrowserTtsSetupCard` render branch | `src/App.tsx:2089` |
 
 ## ROI-based modularization policy
 
@@ -310,6 +313,47 @@ Stop conditions:
 - Stop if estimator semantics need behavior changes to make the extraction compile.
 - Stop if progress calculation starts depending on broad App state instead of explicit progress inputs.
 
+## Browser TTS playback plan extraction checkpoint
+
+Implemented candidate: bounded Browser TTS playback planning seam inside `playTtsFromWord` / `speakNext`.
+
+Former source line range: approximately `src/App.tsx:1302-1478` in the post-progress-estimator working tree.
+
+Extraction target: `src/app/browserTtsPlaybackPlan.ts`. The patch did not move `playTtsFromWord`, `speakNext`, `SpeechSynthesisUtterance` creation, utterance event handlers, `submitTtsSession`, `resetSession`, adaptive benchmark writes, telemetry persistence, UI setters, or ref ownership.
+
+Expected behavior-preservation contract:
+
+- preserve candidate chunk selection from current macro phrase words and fallback to short phrase candidates when the primary candidate is unavailable;
+- preserve adaptive controller input construction, DE benchmark recommendation clamping before runtime policy and again after mobile fallback, and pacing-mode derivation from the controller mode;
+- preserve runtime rate-floor application, unsafe-boundary conservative handling, Android SpeechSynthesis pacing fallback, and Browser TTS DE recovery policy;
+- preserve German recovery-safe chunk behavior for strong/severe DE recovery while leaving EN/ES/FR/PT recovery-safe scanning disabled;
+- preserve executable `chunkTelemetry` fields used by `recordAdaptiveBenchmark`, including current unsafe chunk count, rolling accuracy last 3/5, phrase difficulty/length, boundary type, semantic completeness, and current playback rate;
+- preserve next `lastPhraseSize`, `lastBoundaryStrictness`, and rolling accuracy window updates without moving the playback loop;
+- keep all browser globals, refs, setters, benchmark recording, phrase events, and SpeechSynthesis event handling owned by `src/App.tsx`.
+
+Tests added/run:
+
+- Added `tests/browserTtsPlaybackPlan.test.ts`.
+- Covered normal word-0 planning, short-candidate fallback, German recovery-safe chunks, runtime rate floor, unsafe-boundary conservative policy, Android mobile fallback, DE recommendation clamping, and no-candidate behavior.
+- Re-ran `tests/useTtsPlaybackProgressEstimator.test.ts`, `tests/useTtsPerformanceSampler.test.ts`, `tests/useTtsPlaybackControls.test.ts`, `tests/useTtsTelemetryRecorder.test.ts`, `tests/useTtsUiPublisher.test.ts`, `tests/useBrowserTtsRuntime.test.ts`, and `tests/useTrainingSessionLifecycle.test.ts`.
+- Because the implementation touches runtime code, also run `npm test` and `npm run build` before finishing.
+
+Required manual QA checklist:
+
+- Browser TTS starts normally.
+- Progress bar advances.
+- Pause/resume works.
+- Seek to middle and resume works.
+- German Browser TTS still uses recovery-safe chunks where applicable.
+- Session can finish and submit.
+
+Stop conditions:
+
+- Stop if a follow-up requires moving SpeechSynthesis event handlers or the full `speakNext` loop.
+- Stop if App behavior has to change to keep the helper compiling.
+- Stop if the helper starts depending on React setters, refs, broad App state objects, persistence, Supabase, localStorage, or browser globals.
+- Stop if future tests require brittle whole-App mocks instead of direct helper or narrow runtime tests.
+
 Next selected candidate: none yet. Re-run the ROI scorecard before moving another Browser TTS runtime seam.
 
 Recently added characterization coverage:
@@ -379,6 +423,7 @@ Proceed only if a candidate removes at least ~15-25 net lines from `src/App.tsx`
 - `tests/useTtsTelemetryRecorder.test.ts` covers Browser TTS attempt telemetry initialization, elapsed-time calculation, control-action recording, repeat counting, and chunk telemetry recording.
 - `tests/useTtsUiPublisher.test.ts` covers Browser TTS live metric UI publication thresholds, 500 ms throttling, ref updates, targeted setter updates, and force-publish behavior.
 - `tests/useTtsPlaybackProgressEstimator.test.ts` covers Browser TTS spoken-word progress estimation for active chunks, elapsed-time clamping, speech-rate flooring, finished playback, and completed-word fallback.
+- `tests/browserTtsPlaybackPlan.test.ts` covers Browser TTS playback planning for candidate chunks, adaptive decision mapping, runtime policy clamps, DE recovery-safe chunks, Android mobile fallback, DE benchmark clamping, rolling accuracy, and no-candidate behavior.
 - `tests/useTtsPerformanceSampler.test.ts` covers Browser TTS performance sampling, no-start timestamp initialization, practice text override, German lag outlier fallback, explicit submit action telemetry, finalize timestamps, and returned metrics.
 - `tests/useTtsPlaybackControls.test.ts` covers Browser TTS pause/resume/stop/seek controls, runtime ref cleanup, action telemetry, status transitions, seek clamping, and seek no-op guards.
 - `tests/sessionCreationWorkspaceState.test.ts` covers session-creation source/json/cancel transition actions and dictation-script validation reset behavior.

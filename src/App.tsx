@@ -30,6 +30,10 @@ import { useTtsUiPublisher } from './app/useTtsUiPublisher';
 import { useTtsPlaybackProgressEstimator } from './app/useTtsPlaybackProgressEstimator';
 import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
 import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
+import {
+  buildBrowserTtsPlaybackPlan,
+  type BrowserTtsBoundaryStrictness,
+} from './app/browserTtsPlaybackPlan';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -77,17 +81,9 @@ import {
 } from './core/evaluation';
 import { buildSessionScoreHelpText } from './core/sessionScore';
 import {
-  clampBrowserTtsDeDecisionToRecommendation,
   normalizeBenchmarkLanguage,
   } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import { buildBrowserTtsTelemetryFrame,
-  buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
-import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
-import { applyBrowserTtsMobilePacingFallback,
-  applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
-import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
-import { applyBrowserTtsDeRecoveryPolicy,
-  summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
+import { summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
 import { cloneTelemetry,
   normalizeSessionForPersistence } from './core/sessionNormalization';
@@ -157,7 +153,6 @@ import { formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 import {
-  averageNumbers,
   clamp,
   clamp01,
   getTtsVoiceLang,
@@ -173,7 +168,6 @@ import { loadSessions,
 import {
   buildOrderedSemanticPhrases,
   formatTtsPacingMode,
-  mapAdaptivePacingMode,
   semanticPhraseIndexForWordIndex,
   } from './app/ttsPacingHelpers';
 import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
@@ -1264,7 +1258,7 @@ function App() {
     macroPhraseIndex = semanticPhraseIndexForWordIndex(semanticPhrases, clampedStartWordIndex);
     macroWordOffset = Math.max(0, clampedStartWordIndex - (semanticPhraseStartWordIndices[macroPhraseIndex] ?? 0));
     let lastPhraseSize: PhraseSize = 'medium';
-    let lastBoundaryStrictness: 'sentence' | 'clause' | 'phrase' = 'sentence';
+    let lastBoundaryStrictness: BrowserTtsBoundaryStrictness = 'sentence';
     if (clampedStartWordIndex === 0) {
       beginAdaptiveSessionFeedback('browser-tts', ttsLanguage, semanticPhrases.length);
     }
@@ -1310,17 +1304,6 @@ function App() {
         platform: window.navigator.platform,
         maxTouchPoints: window.navigator.maxTouchPoints,
       });
-      const useBrowserTtsDeRecoverySafeChunks =
-        ttsLanguage === 'de' && (browserTtsRecovery.level === 'strong' || browserTtsRecovery.level === 'severe');
-      const typedWordsNow = livePracticeEvaluation.typedWords.length;
-      const matchedWordsNow = livePracticeEvaluation.matchedWords;
-      const typedDelta = Math.max(0, typedWordsNow - ttsLastAccuracySnapshotRef.current.typedWords);
-      const matchedDelta = Math.max(0, matchedWordsNow - ttsLastAccuracySnapshotRef.current.matchedWords);
-      const sessionAccuracy = clamp01(liveSignal.accuracy / 100);
-      const chunkAccuracy = typedDelta > 0 ? clamp01(matchedDelta / typedDelta) : sessionAccuracy;
-      const rollingWindow = [...ttsChunkAccuracyWindowRef.current, chunkAccuracy];
-      const rollingAccuracyLast3 = averageNumbers(rollingWindow.slice(-3), chunkAccuracy);
-      const rollingAccuracyLast5 = averageNumbers(rollingWindow.slice(-5), chunkAccuracy);
       const semanticPhrase = semanticPhrases[macroPhraseIndex];
       const macroWords = semanticPhraseWords[macroPhraseIndex] ?? [];
       const macroStartWordIndex = semanticPhraseStartWordIndices[macroPhraseIndex] ?? 0;
@@ -1339,34 +1322,36 @@ function App() {
         recordPhrasePlaybackEvent('phrase_started', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
       }
 
-      const germanShortBias = browserTtsProfile.germanShortBias.enabled &&
-        (liveSignal.lagSec > browserTtsProfile.germanShortBias.lagSecTrigger ||
-          liveSignal.accuracy < browserTtsProfile.germanShortBias.accuracyPercentTrigger);
-      const candidateChunk =
-        planBrowserTtsAdaptiveChunk({
-          macroWords,
-          macroWordOffset,
-          globalStartWordIndex: macroStartWordIndex,
-          language: ttsLanguage,
-          nextPhraseSize: lastPhraseSize,
-          boundaryStrictness: lastBoundaryStrictness,
-          germanShortBias,
-          maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
-          recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
-        }) ??
-        planBrowserTtsAdaptiveChunk({
-          macroWords,
-          macroWordOffset,
-          globalStartWordIndex: macroStartWordIndex,
-          language: ttsLanguage,
-          nextPhraseSize: 'short',
-          boundaryStrictness: 'phrase',
-          germanShortBias,
-          maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
-          recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
-        });
+      const playbackPlan = buildBrowserTtsPlaybackPlan({
+        macroWords,
+        macroWordOffset,
+        macroStartWordIndex,
+        language: ttsLanguage,
+        lastPhraseSize,
+        lastBoundaryStrictness,
+        liveSignal,
+        livePracticeEvaluation,
+        browserTtsProfile,
+        browserTtsBenchmark,
+        browserTtsRecovery,
+        ttsSpeechRate,
+        ttsPlaybackPauseMs: ttsPlaybackProfile.pauseMs,
+        adaptiveController: adaptiveControllerRef.current,
+        historyProfile,
+        sourceWordCount: sourceWords.length,
+        estimatedSpokenWordIndex: estimateTtsSpokenWordIndex(),
+        chunkIndex,
+        unsafeChunkCount: ttsUnsafeChunkCountRef.current,
+        accuracyWindow: ttsChunkAccuracyWindowRef.current,
+        lastAccuracySnapshot: ttsLastAccuracySnapshotRef.current,
+        navigatorInfo: {
+          userAgent: window.navigator.userAgent,
+          platform: window.navigator.platform,
+          maxTouchPoints: window.navigator.maxTouchPoints,
+        },
+      });
 
-      if (!candidateChunk) {
+      if (!playbackPlan) {
         macroPhraseIndex += 1;
         macroWordOffset = 0;
         if (!cancelled) {
@@ -1375,112 +1360,23 @@ function App() {
         return;
       }
 
-      const browserTelemetry = buildBrowserTtsTelemetryFrame({
-        inputMode: 'browser-tts',
-        phraseId: `tts-${chunkIndex}`,
-        estimatedSpokenRatio: sourceWords.length > 0 ? estimateTtsSpokenWordIndex() / sourceWords.length : 0,
-        typedProgressRatio: sourceWords.length > 0 ? Math.max(0, livePracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
-        lagSec: liveSignal.lagSec,
-        lagWords: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND)),
-        lagChars: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND * 5)),
-        rawLagSec: liveSignal.rawLagSec,
-        stableLagSec: liveSignal.stableLagSec,
-        lagOutlierCount: liveSignal.lagOutlierCount,
-        accuracy: sessionAccuracy,
-        chunkAccuracy,
-        rollingAccuracyLast3,
-        rollingAccuracyLast5,
-        sessionAccuracy,
-        errorRate: clamp01(1 - liveSignal.accuracy / 100),
-        wpm: liveSignal.wpm,
-        charsPerMinute: 0,
-        pauseMs: ttsPlaybackProfile.pauseMs,
-        longestPauseMs: 0,
-        backspaceRate: 0,
-        correctionRate: 0,
-        phraseDifficulty: candidateChunk.phraseDifficulty,
-        phraseLengthWords: candidateChunk.wordCount,
-        phraseLengthChars: candidateChunk.text.length,
-        currentPlaybackRate: ttsSpeechRate,
-        currentPauseAfterPhraseMs: ttsPlaybackProfile.pauseMs,
-        language: ttsLanguage,
-        trend: liveSignal.trend,
-        phraseBoundaryType: candidateChunk.phraseBoundaryType,
-        canPauseAfter: candidateChunk.canPauseAfter,
-        canReplayIndependently: false,
-        semanticCompleteness: candidateChunk.semanticCompleteness,
-        punctuationLoad: candidateChunk.punctuationLoad,
-        rareWordLoad: candidateChunk.rareWordLoad,
-        syntaxComplexity: candidateChunk.syntaxComplexity,
-      });
-      const rawDecision = adaptiveControllerRef.current.decide(buildAdaptiveBrowserTtsInput(browserTelemetry, historyProfile));
-      const decision = clampBrowserTtsDeDecisionToRecommendation(rawDecision, browserTtsBenchmark);
-      const pacingMode = mapAdaptivePacingMode(decision.mode);
-      const chunk =
-        planBrowserTtsAdaptiveChunk({
-          macroWords,
-          macroWordOffset,
-          globalStartWordIndex: macroStartWordIndex,
-          language: ttsLanguage,
-          nextPhraseSize: decision.nextPhraseSize,
-          boundaryStrictness: decision.boundaryStrictness,
-          germanShortBias,
-          maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
-          recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
-        }) ?? candidateChunk;
-
-      const pauseAtBoundary = chunk.canPauseAfter ?? true;
-      const semanticCompleteness = chunk.semanticCompleteness ?? 1;
-      const rateAfterFloor = applyBrowserTtsRuntimeRateFloor({
-        mode: decision.mode,
-        requestedRate: decision.playbackRate,
-        lagSec: liveSignal.lagSec,
-        accuracy: rollingAccuracyLast3,
-        supportNeeded: decision.reason.includes('support-needed'),
-        profile: browserTtsProfile,
-      });
-      const unsafeRuntime = applyBrowserTtsUnsafeBoundaryPolicy({
-        boundaryType: chunk.phraseBoundaryType,
-        requestedRate: rateAfterFloor,
-        previousRate: ttsSpeechRate,
-        pauseAfterPhraseMs: decision.pauseAfterPhraseMs,
-        profile: browserTtsProfile,
-      });
-      const postPolicyDecision =
-        unsafeRuntime.playbackRate === decision.playbackRate && unsafeRuntime.pauseAfterPhraseMs === decision.pauseAfterPhraseMs
-          ? decision
-          : {
-              ...decision,
-              playbackRate: unsafeRuntime.playbackRate,
-              pauseAfterPhraseMs: unsafeRuntime.pauseAfterPhraseMs,
-              reason: unsafeRuntime.unsafeBoundaryApplied
-                ? `${decision.reason}, unsafe-boundary-conservative`
-                : decision.reason,
-            };
-      const mobileFallback = applyBrowserTtsMobilePacingFallback({
-        decision: postPolicyDecision,
-        lagSec: liveSignal.lagSec,
-        accuracy: rollingAccuracyLast3,
-        userAgent: window.navigator.userAgent,
-        platform: window.navigator.platform,
-        maxTouchPoints: window.navigator.maxTouchPoints,
-        profile: browserTtsProfile,
-      });
-      const recommendedDecision = clampBrowserTtsDeDecisionToRecommendation(mobileFallback.decision, browserTtsBenchmark);
-      const runtimeDecision = applyBrowserTtsDeRecoveryPolicy({
-        decision: recommendedDecision,
-        recovery: browserTtsRecovery,
-        profile: browserTtsProfile,
-      });
+      const {
+        chunk,
+        runtimeDecision,
+        pacingMode,
+        pauseAtBoundary,
+        semanticCompleteness,
+        rate,
+        effectivePauseNow,
+        effectiveReplay,
+        chunkTelemetry,
+      } = playbackPlan;
       // Persist the final executable decision so the next chunk reflects runtime constraints.
-      lastPhraseSize = runtimeDecision.nextPhraseSize;
-      lastBoundaryStrictness = runtimeDecision.boundaryStrictness;
-      const rate = runtimeDecision.playbackRate;
-      if (unsafeRuntime.unsafeBoundaryApplied) {
+      lastPhraseSize = playbackPlan.nextLastPhraseSize;
+      lastBoundaryStrictness = playbackPlan.nextLastBoundaryStrictness;
+      if (playbackPlan.unsafeBoundaryApplied) {
         ttsUnsafeChunkCountRef.current += 1;
       }
-      const effectivePauseNow = runtimeDecision.shouldPauseNow && pauseAtBoundary;
-      const effectiveReplay = false;
       const utterance = new SpeechSynthesisUtterance(chunk.text);
       const perfUtteranceId = perfDiagnostics.beginTtsUtterance({
         playId: perfPlayId,
@@ -1517,45 +1413,6 @@ function App() {
         rate,
         pacingMode,
       });
-      const chunkTelemetry = buildBrowserTtsTelemetryFrame({
-        inputMode: 'browser-tts',
-        phraseId: `tts-${chunkIndex}-chunk`,
-        estimatedSpokenRatio: sourceWords.length > 0 ? estimateTtsSpokenWordIndex() / sourceWords.length : 0,
-        typedProgressRatio: sourceWords.length > 0 ? Math.max(0, livePracticeEvaluation.lastMatchedTargetIndex + 1) / sourceWords.length : 0,
-        lagSec: liveSignal.lagSec,
-        lagWords: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND)),
-        lagChars: Math.max(0, Math.round(liveSignal.lagSec * TTS_BASE_WORDS_PER_SECOND * 5)),
-        rawLagSec: liveSignal.rawLagSec,
-        stableLagSec: liveSignal.stableLagSec,
-        lagOutlierCount: liveSignal.lagOutlierCount,
-        unsafeChunkCount: ttsUnsafeChunkCountRef.current,
-        accuracy: sessionAccuracy,
-        chunkAccuracy,
-        rollingAccuracyLast3,
-        rollingAccuracyLast5,
-        sessionAccuracy,
-        errorRate: clamp01(1 - liveSignal.accuracy / 100),
-        wpm: liveSignal.wpm,
-        charsPerMinute: 0,
-        pauseMs: ttsPlaybackProfile.pauseMs,
-        longestPauseMs: 0,
-        backspaceRate: 0,
-        correctionRate: 0,
-        phraseDifficulty: chunk.phraseDifficulty ?? 0.5,
-        phraseLengthWords: chunk.wordCount,
-        phraseLengthChars: chunk.text.length,
-        currentPlaybackRate: rate,
-        currentPauseAfterPhraseMs: ttsPlaybackProfile.pauseMs,
-        language: ttsLanguage,
-        trend: liveSignal.trend,
-        phraseBoundaryType: chunk.phraseBoundaryType,
-        canPauseAfter: chunk.canPauseAfter,
-        canReplayIndependently: false,
-        semanticCompleteness: chunk.semanticCompleteness,
-        punctuationLoad: chunk.punctuationLoad,
-        rareWordLoad: chunk.rareWordLoad,
-        syntaxComplexity: chunk.syntaxComplexity,
-      });
       recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
         actualPlaybackRate: rate,
         actualPauseMs: effectivePauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
@@ -1566,10 +1423,10 @@ function App() {
         phraseIndex: macroPhraseIndex,
         totalSemanticPhrases: semanticPhrases.length,
       });
-      ttsChunkAccuracyWindowRef.current = rollingWindow.slice(-5);
+      ttsChunkAccuracyWindowRef.current = playbackPlan.nextAccuracyWindow;
       ttsLastAccuracySnapshotRef.current = {
-        typedWords: typedWordsNow,
-        matchedWords: matchedWordsNow,
+        typedWords: playbackPlan.typedWordsNow,
+        matchedWords: playbackPlan.matchedWordsNow,
       };
       setAdaptiveSemanticDebug((current) => {
         const phraseCount = current.safePauseCount + current.unsafePauseCount + current.deferredPauseCount + 1;

@@ -25,6 +25,7 @@ High-risk areas:
 - `src/app/useTtsTelemetryRecorder.ts`
 - `src/app/useTtsUiPublisher.ts`
 - `src/app/useTtsPlaybackProgressEstimator.ts`
+- `src/app/browserTtsPlaybackPlan.ts`
 - `src/inputs/browserTts/`
 - Browser speech synthesis behavior.
 - Voice discovery and normalization.
@@ -34,17 +35,17 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
-Current App shell anchors in the post-progress-estimator working tree:
+Current App shell anchors in the post-playback-plan working tree:
 
-- `resetSession`: `src/App.tsx:926`
-- `useTtsTelemetryRecorder` hook call: `src/App.tsx:1103`
-- `useTtsPlaybackProgressEstimator` hook call: `src/App.tsx:1116`
-- `useTtsUiPublisher` hook call: `src/App.tsx:1127`
-- `useTtsPerformanceSampler` hook call: `src/App.tsx:1146`
-- `playTts`: `src/App.tsx:1219`
-- `playTtsFromWord`: `src/App.tsx:1224`
-- `useTtsPlaybackControls` hook call: `src/App.tsx:1705`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2232`
+- `resetSession`: `src/App.tsx:920`
+- `useTtsTelemetryRecorder` hook call: `src/App.tsx:1104`
+- `useTtsPlaybackProgressEstimator` hook call: `src/App.tsx:1110`
+- `useTtsUiPublisher` hook call: `src/App.tsx:1121`
+- `useTtsPerformanceSampler` hook call: `src/App.tsx:1140`
+- `playTts`: `src/App.tsx:1213`
+- `playTtsFromWord`: `src/App.tsx:1218`
+- `useTtsPlaybackControls` hook call: `src/App.tsx:1562`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2089`
 
 Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
 
@@ -54,6 +55,7 @@ Primary tests:
 - `tests/useTtsTelemetryRecorder.test.ts`
 - `tests/useTtsUiPublisher.test.ts`
 - `tests/useTtsPlaybackProgressEstimator.test.ts`
+- `tests/browserTtsPlaybackPlan.test.ts`
 - `tests/browserTtsAdaptiveProfiles.test.ts`
 - `tests/browserTtsRatePolicy.test.ts`
 - `tests/browserTtsRecoveryPolicy.test.ts`
