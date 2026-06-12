@@ -9,6 +9,10 @@ import type {
 } from '../components/openrouter/types';
 import type { TrainingGenerationButton } from '../components/training/TrainingGenerationCard';
 import type { StoredSession } from './sessionTypes';
+import {
+  OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
+  type OpenRouterDirectGenerationPreset,
+} from './openRouterDirectGenerationPresets';
 
 type GenerateSessionAction = () => void | Promise<void>;
 
@@ -41,6 +45,17 @@ type UseFocusedTrainingGenerationButtonsArgs = {
   generateExpressIntermediateNextSessionFromOpenRouter: GenerateSessionAction;
   generateExpressAdvancedNextSessionFromOpenRouter: GenerateSessionAction;
   openOpenRouterGenerateForActiveInput: () => void;
+};
+
+type FocusedTrainingDirectGenerationButtonConfig = {
+  preset: OpenRouterDirectGenerationPreset;
+  busy: boolean;
+  requestingLabel: string;
+  runningLabel: string;
+  readyLabel: string;
+  action: GenerateSessionAction;
+  title: string;
+  helpText: string;
 };
 
 export function useFocusedTrainingGenerationButtons({
@@ -94,81 +109,96 @@ export function useFocusedTrainingGenerationButtons({
     const isModelGenerationDisabled = (busy: boolean, running: boolean) =>
       !isOnline || busy || running || !activeSession || !openRouterModelIsSet || sessionQuotaStatus.blocked;
 
-    const easyGenerationNotice = buildNotice('Easy direct session', 'Easy session');
-    const mediumGenerationNotice = buildNotice('Intermediate direct session', 'Medium session');
-    const hardGenerationNotice = buildNotice('Advanced direct session', 'Hard session');
-    const expressEasyGenerationNotice = buildNotice('Express easy direct session', 'Express easy session');
-    const expressMediumGenerationNotice = buildNotice('Express intermediate direct session', 'Express medium session');
-    const expressHardGenerationNotice = buildNotice('Express advanced direct session', 'Express hard session');
+    const buildDirectGenerationButton = ({
+      preset,
+      busy,
+      requestingLabel,
+      runningLabel,
+      readyLabel,
+      action,
+      title,
+      helpText,
+    }: FocusedTrainingDirectGenerationButtonConfig): TrainingGenerationButton => {
+      const running = isGenerationRunning(preset.slotLabel);
+      const notice = buildNotice(preset.slotLabel, preset.displayLabel);
 
-    const easyDirectGenerationRunning = isGenerationRunning('Easy direct session');
-    const mediumDirectGenerationRunning = isGenerationRunning('Intermediate direct session');
-    const hardDirectGenerationRunning = isGenerationRunning('Advanced direct session');
-    const expressEasyGenerationRunning = isGenerationRunning('Express easy direct session');
-    const expressMediumGenerationRunning = isGenerationRunning('Express intermediate direct session');
-    const expressHardGenerationRunning = isGenerationRunning('Express advanced direct session');
+      return {
+        id: preset.id,
+        label: busy ? requestingLabel : running ? runningLabel : readyLabel,
+        onClick: () => void action(),
+        disabled: isModelGenerationDisabled(busy, running),
+        title: buildModelRequiredTitle(title),
+        helpText,
+        statusMessage: notice?.message,
+        statusTone: notice?.tone,
+      };
+    };
+
+    const directGenerationButtonConfigs: FocusedTrainingDirectGenerationButtonConfig[] = [
+      {
+        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.easy,
+        busy: directOpenRouterBusy,
+        requestingLabel: 'Requesting easy...',
+        runningLabel: 'Generating easy...',
+        readyLabel: 'New Easy Session',
+        action: generateEasyNextSessionFromOpenRouter,
+        title: 'Generate an easy two-minute session with OpenRouter.',
+        helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
+      },
+      {
+        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressEasy,
+        busy: expressEasyOpenRouterBusy,
+        requestingLabel: 'Requesting express easy...',
+        runningLabel: 'Generating express easy...',
+        readyLabel: 'Express Easy Session',
+        action: generateExpressEasyNextSessionFromOpenRouter,
+        title: 'Generate an easy one-minute express session with OpenRouter.',
+        helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
+      },
+      {
+        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.medium,
+        busy: directIntermediateOpenRouterBusy,
+        requestingLabel: 'Requesting medium...',
+        runningLabel: 'Generating medium...',
+        readyLabel: 'New Medium Session',
+        action: generateIntermediateNextSessionFromOpenRouter,
+        title: 'Generate a medium two-minute session with OpenRouter.',
+        helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
+      },
+      {
+        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressMedium,
+        busy: expressIntermediateOpenRouterBusy,
+        requestingLabel: 'Requesting express medium...',
+        runningLabel: 'Generating express medium...',
+        readyLabel: 'Express Medium Session',
+        action: generateExpressIntermediateNextSessionFromOpenRouter,
+        title: 'Generate a medium one-minute express session with OpenRouter.',
+        helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
+      },
+      {
+        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.hard,
+        busy: directAdvancedOpenRouterBusy,
+        requestingLabel: 'Requesting hard...',
+        runningLabel: 'Generating hard...',
+        readyLabel: 'New Hard Session',
+        action: generateAdvancedNextSessionFromOpenRouter,
+        title: 'Generate a hard two-minute session with OpenRouter.',
+        helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
+      },
+      {
+        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressHard,
+        busy: expressAdvancedOpenRouterBusy,
+        requestingLabel: 'Requesting express hard...',
+        runningLabel: 'Generating express hard...',
+        readyLabel: 'Express Hard Session',
+        action: generateExpressAdvancedNextSessionFromOpenRouter,
+        title: 'Generate a hard one-minute express session with OpenRouter.',
+        helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
+      },
+    ];
 
     return [
-      {
-        id: 'easy',
-        label: directOpenRouterBusy ? 'Requesting easy...' : easyDirectGenerationRunning ? 'Generating easy...' : 'New Easy Session',
-        onClick: () => void generateEasyNextSessionFromOpenRouter(),
-        disabled: isModelGenerationDisabled(directOpenRouterBusy, easyDirectGenerationRunning),
-        title: buildModelRequiredTitle('Generate an easy two-minute session with OpenRouter.'),
-        helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
-        statusMessage: easyGenerationNotice?.message,
-        statusTone: easyGenerationNotice?.tone,
-      },
-      {
-        id: 'express-easy',
-        label: expressEasyOpenRouterBusy ? 'Requesting express easy...' : expressEasyGenerationRunning ? 'Generating express easy...' : 'Express Easy Session',
-        onClick: () => void generateExpressEasyNextSessionFromOpenRouter(),
-        disabled: isModelGenerationDisabled(expressEasyOpenRouterBusy, expressEasyGenerationRunning),
-        title: buildModelRequiredTitle('Generate an easy one-minute express session with OpenRouter.'),
-        helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
-        statusMessage: expressEasyGenerationNotice?.message,
-        statusTone: expressEasyGenerationNotice?.tone,
-      },
-      {
-        id: 'medium',
-        label: directIntermediateOpenRouterBusy ? 'Requesting medium...' : mediumDirectGenerationRunning ? 'Generating medium...' : 'New Medium Session',
-        onClick: () => void generateIntermediateNextSessionFromOpenRouter(),
-        disabled: isModelGenerationDisabled(directIntermediateOpenRouterBusy, mediumDirectGenerationRunning),
-        title: buildModelRequiredTitle('Generate a medium two-minute session with OpenRouter.'),
-        helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
-        statusMessage: mediumGenerationNotice?.message,
-        statusTone: mediumGenerationNotice?.tone,
-      },
-      {
-        id: 'express-medium',
-        label: expressIntermediateOpenRouterBusy ? 'Requesting express medium...' : expressMediumGenerationRunning ? 'Generating express medium...' : 'Express Medium Session',
-        onClick: () => void generateExpressIntermediateNextSessionFromOpenRouter(),
-        disabled: isModelGenerationDisabled(expressIntermediateOpenRouterBusy, expressMediumGenerationRunning),
-        title: buildModelRequiredTitle('Generate a medium one-minute express session with OpenRouter.'),
-        helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
-        statusMessage: expressMediumGenerationNotice?.message,
-        statusTone: expressMediumGenerationNotice?.tone,
-      },
-      {
-        id: 'hard',
-        label: directAdvancedOpenRouterBusy ? 'Requesting hard...' : hardDirectGenerationRunning ? 'Generating hard...' : 'New Hard Session',
-        onClick: () => void generateAdvancedNextSessionFromOpenRouter(),
-        disabled: isModelGenerationDisabled(directAdvancedOpenRouterBusy, hardDirectGenerationRunning),
-        title: buildModelRequiredTitle('Generate a hard two-minute session with OpenRouter.'),
-        helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
-        statusMessage: hardGenerationNotice?.message,
-        statusTone: hardGenerationNotice?.tone,
-      },
-      {
-        id: 'express-hard',
-        label: expressAdvancedOpenRouterBusy ? 'Requesting express hard...' : expressHardGenerationRunning ? 'Generating express hard...' : 'Express Hard Session',
-        onClick: () => void generateExpressAdvancedNextSessionFromOpenRouter(),
-        disabled: isModelGenerationDisabled(expressAdvancedOpenRouterBusy, expressHardGenerationRunning),
-        title: buildModelRequiredTitle('Generate a hard one-minute express session with OpenRouter.'),
-        helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
-        statusMessage: expressHardGenerationNotice?.message,
-        statusTone: expressHardGenerationNotice?.tone,
-      },
+      ...directGenerationButtonConfigs.map(buildDirectGenerationButton),
       {
         id: 'custom',
         label: 'New Custom Session',
