@@ -63,7 +63,17 @@ type TranscriptReview = {
   missed: number;
 };
 
-export function SessionDashboard({
+type SessionDashboardProps<TSession extends SessionDashboardSession = SessionDashboardSession> = {
+  session: TSession;
+  sessions: TSession[];
+  onBackToLeaderboard: () => void;
+  onBackToTraining: () => void;
+  formatSessionStatus: (status: SessionDashboardStatus) => string;
+  formatSessionDate: (value: string) => string;
+  formatSessionPlaybackDuration: (session: TSession) => string;
+};
+
+export function SessionDashboard<TSession extends SessionDashboardSession = SessionDashboardSession>({
   session,
   sessions,
   onBackToLeaderboard,
@@ -71,15 +81,7 @@ export function SessionDashboard({
   formatSessionStatus,
   formatSessionDate,
   formatSessionPlaybackDuration,
-}: {
-  session: SessionDashboardSession;
-  sessions: SessionDashboardSession[];
-  onBackToLeaderboard: () => void;
-  onBackToTraining: () => void;
-  formatSessionStatus: (status: SessionDashboardStatus) => string;
-  formatSessionDate: (value: string) => string;
-  formatSessionPlaybackDuration: (session: SessionDashboardSession) => string;
-}) {
+}: SessionDashboardProps<TSession>) {
   const telemetry = cloneTelemetry(session.telemetry);
   const goals = buildAdaptiveGoals(sessions, session);
   const insights = buildCoachingInsights(session, goals);

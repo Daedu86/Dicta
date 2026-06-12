@@ -71,7 +71,7 @@ export function AppWorkspaceContent({
             sessions={sessions}
             formatSessionStatus={formatSessionStatus}
             formatSessionDate={formatSessionDate}
-            formatSessionPlaybackDuration={(session) => formatSessionPlaybackDuration(session as StoredSession)}
+            formatSessionPlaybackDuration={formatSessionPlaybackDuration}
             onBackToLeaderboard={onBackToTraining}
             onBackToTraining={onBackToTraining}
           />
