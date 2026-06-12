@@ -26,6 +26,11 @@ Current baseline observed: `aa7f0ee Document final recommendation cleanup`
 | `ARCHITECTURE.md` | ACTIVE | Root architecture pointer. | Should remain short; it currently redirects to `docs/architecture.md`. |
 | `docs/architecture.md` | ACTIVE | Current architecture map and system boundaries. | Should feed future `docs/repo-map.md`. |
 | `docs/listening-first-architecture.md` | ACTIVE | Product/learning architecture around listening-first training. | Keep as product architecture context. |
+| `docs/README.md` | ACTIVE | Canonical documentation index. | Added in Stage 8B. |
+| `docs/agent-onboarding.md` | ACTIVE | Official technical onboarding flow for agents. | Added in Stage 8C. |
+| `docs/repo-map.md` | ACTIVE | Repository responsibilities and boundaries. | Added in Stage 8D. |
+| `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Added in Stage 8E. |
+| `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Added in Stage 8F. |
 | `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
 | `docs/android-pwa-performance-debugging.md` | REFERENCE | Android/PWA performance debugging notes. | Keep as runtime/performance context. |
@@ -46,9 +51,9 @@ Current baseline observed: `aa7f0ee Document final recommendation cleanup`
 
 ## Known documentation issues
 
-### Missing canonical docs
+### Canonical onboarding docs
 
-These files do not exist yet and should be created in later stages:
+The Stage 8 canonical onboarding docs now exist:
 
 - `docs/README.md`
 - `docs/agent-onboarding.md`
@@ -94,12 +99,12 @@ Current observed baseline for this inventory pass:
 
 | Stage | Scope | Write policy |
 | --- | --- | --- |
-| 8B | Create `docs/README.md`. | Add only; do not rewrite historical docs. |
-| 8C | Create `docs/agent-onboarding.md`. | Add official agent entry flow and scan exclusions. |
-| 8D | Create `docs/repo-map.md`. | Derive from real repo structure and `docs/architecture.md`. |
-| 8E | Create `docs/module-test-map.md`. | Map important modules to protective tests. |
-| 8F | Create `docs/high-risk-runtime-boundaries.md`. | Centralize no-touch/runtime-risk guidance. |
-| 8G | Connect `AGENTS.md`, `README.md`, and `ARCHITECTURE.md`. | Keep root docs short; point to canonical docs. |
+| 8B | Create `docs/README.md`. | Done. |
+| 8C | Create `docs/agent-onboarding.md`. | Done. |
+| 8D | Create `docs/repo-map.md`. | Done. |
+| 8E | Create `docs/module-test-map.md`. | Done. |
+| 8F | Create `docs/high-risk-runtime-boundaries.md`. | Done. |
+| 8G | Connect root docs and documentation indexes. | In progress. |
 | 8H | Repair broken references. | Fix links after canonical docs exist. |
 | 8I | Archive historical docs. | Move only after review; do not delete by default. |
 | 8J | Update `.gitignore` for local Python virtualenv noise. | Separate non-docs commit. |
