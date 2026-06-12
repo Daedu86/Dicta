@@ -29,6 +29,7 @@ import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
 import { useAppShellSyncStatusText } from './app/useAppShellSyncStatusText';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
+import { useBrowserTtsSetupCardProps } from './app/useBrowserTtsSetupCardProps';
 import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
 import { useLeaderboardWorkspaceProps } from './app/useLeaderboardWorkspaceProps';
 import { useAdaptiveAdvancedDiagnosticsProps } from './app/useAdaptiveAdvancedDiagnosticsProps';
@@ -2472,6 +2473,27 @@ function App() {
     MetricComponent: Metric,
   });
 
+  const browserTtsSetupCardProps = useBrowserTtsSetupCardProps({
+    activeInputLabel,
+    activeInputFeatureLabel,
+    ttsExpanded,
+    ttsHasText,
+    ttsText,
+    ttsLanguage,
+    ttsStatus,
+    ttsSpeechRate,
+    ttsPacingMode,
+    ttsCurrentChunk,
+    supportedLanguages: SUPPORTED_LANGUAGES,
+    setupLocked,
+    inputSettingsReady,
+    onToggleExpanded: () => setTtsExpanded((value) => !value),
+    onTtsTextChange,
+    onTtsLanguageChange: setTtsLanguage,
+    onLockInputSettings: lockInputSettings,
+    formatTtsPacingMode,
+  });
+
   const liveMetricsDockProps = useLiveMetricsDockProps({
     insightsCollapsed,
     metricsLanguageView,
@@ -2542,26 +2564,7 @@ function App() {
         </AppShellHeader>
         {!setupLocked ? (
               activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE ? (
-                <BrowserTtsSetupCard
-                  activeInputLabel={activeInputLabel}
-                  activeInputFeatureLabel={activeInputFeatureLabel}
-                  ttsExpanded={ttsExpanded}
-                  ttsHasText={ttsHasText}
-                  ttsText={ttsText}
-                  ttsLanguage={ttsLanguage}
-                  ttsStatus={ttsStatus}
-                  ttsSpeechRate={ttsSpeechRate}
-                  ttsPacingMode={ttsPacingMode}
-                  ttsCurrentChunk={ttsCurrentChunk}
-                  supportedLanguages={SUPPORTED_LANGUAGES}
-                  setupLocked={setupLocked}
-                  inputSettingsReady={inputSettingsReady}
-                  onToggleExpanded={() => setTtsExpanded((value) => !value)}
-                  onTtsTextChange={onTtsTextChange}
-                  onTtsLanguageChange={setTtsLanguage}
-                  onLockInputSettings={lockInputSettings}
-                  formatTtsPacingMode={formatTtsPacingMode}
-                />
+                <BrowserTtsSetupCard {...browserTtsSetupCardProps} />
               ) : (
                 null
               )) : null}
