@@ -925,3 +925,41 @@ ROI result:
 
 Next work should document this extraction before selecting any further candidate. Further OpenRouter changes should keep server access/rate-limit enforcement in server routes and keep browser hooks as side-effect orchestration boundaries.
 
+## Follow-up — 2026-06-12 Workspace model refresh runtime
+
+Latest committed baseline: `723d15f Extract workspace model refresh runtime`.
+
+This checkpoint records extraction of workspace model-refresh default-model resolution from `src/App.tsx` into `src/app/useWorkspaceModelRefreshRuntime.ts`.
+
+Recent commit context:
+
+* `723d15f (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract workspace model refresh runtime`
+* `abe497a Extract OpenRouter direct generation job plan`
+* `50757a5 Document OpenRouter direct generation preset tests`
+* `1d225dc Test OpenRouter direct generation presets`
+
+Ownership after this extraction:
+
+* `src/app/useWorkspaceModelRefreshRuntime.ts` owns effective OpenRouter default-model resolution for auth-required member profiles, including assigned-model trimming and fallback to the local OpenRouter default model.
+* `src/app/useModelRefreshActions.ts` continues to own OpenRouter/Ollama model refresh side effects.
+* `src/App.tsx` keeps workspace runtime orchestration and passes the resolved model state into existing workspace props.
+
+Current metrics after this extraction:
+
+| Item | Value |
+| ---- | ----: |
+| `src/App.tsx` LOC | 2597 |
+| `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 91 |
+| `tests/workspaceModelRefreshRuntime.test.ts` LOC | 70 |
+| `src/app/useOpenRouterGenerationActions.ts` LOC | 356 |
+| `src/app/openRouterDirectGenerationJobPlan.ts` LOC | 147 |
+
+ROI result:
+
+* Better ownership: assigned OpenRouter model resolution is no longer embedded directly in the App shell.
+* Better test seam: `resolveEffectiveOpenRouterDefaultModel` has focused unit coverage for assigned member models, fallback behavior, auth-disabled behavior, and non-member profiles.
+* Runtime safety: no Browser TTS playback/runtime, hydration, `resetSession`, phrase progression, TTS refs/timers/telemetry, `playTtsFromWord`, server route, Supabase/RLS, auth, rate-limit, localStorage, or PWA performance changes.
+* Follow-up improvement: add explicit null/undefined profile coverage to the resolver test before considering any further App-shell extraction.
+
+Next work should be test-only: extend `tests/workspaceModelRefreshRuntime.test.ts` with null/undefined `appProfile` fallback cases.
+
