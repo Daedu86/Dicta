@@ -998,3 +998,39 @@ Runtime safety preserved:
 * No `playTtsFromWord`, `resetSession`, phrase progression, refs/timers/telemetry, hydration, localStorage, PWA, auth, Supabase/RLS, server route, rate-limit, or OpenRouter fetch behavior changes.
 * No functional changes in this checkpoint; this is documentation of the completed cleanup and the explicit decision to defer the busy-action wrapper refactor.
 
+## Follow-up — 2026-06-12 Final recommendation cleanup
+
+Latest committed baseline before this note: `eeea68d Remove dashboard session cast`.
+
+Additional cleanup commits completed after the post-workspace checkpoint:
+
+* `2846179 Reuse app profile type in workspace model runtime`
+* `eeea68d Remove dashboard session cast`
+
+Recommendation cleanup results:
+
+* `src/app/useWorkspaceModelRefreshRuntime.ts` now derives its minimal workspace profile shape from `DictaAppProfile` using `Pick<DictaAppProfile, 'role' | 'assignedOpenRouterModel'>` instead of duplicating a local interface.
+* `src/components/session-dashboard/SessionDashboard.tsx` now uses a generic `SessionDashboardProps<TSession extends SessionDashboardSession>` boundary.
+* `src/app/AppWorkspaceContent.tsx` no longer needs `session as StoredSession` when passing `formatSessionPlaybackDuration`.
+* The dashboard session formatter now preserves the concrete session type supplied by the caller.
+
+Validation performed:
+
+* `tests/workspaceModelRefreshRuntime.test.ts` passes.
+* `tests/adaptiveExportPackages.test.ts` passes.
+* `npm run build` passes after the type-boundary cleanup.
+
+Final recommendation status:
+
+* Workspace runtime documentation: complete.
+* Workspace model fallback coverage: complete.
+* Adaptive duplicate event-key cleanup: complete.
+* Workspace profile type reuse: complete.
+* Dashboard session cast removal: complete.
+* OpenRouter action wrapper refactor: intentionally deferred because the current explicit wrappers are low-risk and a table/`useMemo` rewrite could alter callback identity semantics without enough benefit.
+
+Runtime safety preserved:
+
+* No Browser TTS playback/runtime changes.
+* No `playTtsFromWord`, `resetSession`, phrase progression, refs/timers/telemetry, hydration, localStorage, PWA, auth, Supabase/RLS, server route, rate-limit, or OpenRouter fetch behavior changes.
+
