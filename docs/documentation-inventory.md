@@ -99,7 +99,7 @@ Current observed baseline for this inventory pass:
 | 8G | Connect root docs and documentation indexes. | Done. |
 | 8H | Repair broken references. | Done. |
 | 8I | Archive selected historical docs. | Done. |
-| 8J | Update `.gitignore` for local Python virtualenv noise. | Separate non-docs commit. |
+| 8J | Update `.gitignore` for local Python virtualenv noise. | Done. |
 
 ## Agent rule
 
