@@ -156,7 +156,7 @@ Agents should stop and ask for direction before writing changes when:
 
 This document is part of the canonical documentation onboarding set.
 
-Planned companion docs:
+Companion docs:
 
 - `docs/repo-map.md`
 - `docs/module-test-map.md`
