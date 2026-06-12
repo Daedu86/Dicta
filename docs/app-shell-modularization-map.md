@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after navigation and session-storage characterization tests.
+Updated: 2026-06-12 after active-session hydration extraction.
 
 ## Current baseline
 
@@ -116,8 +116,8 @@ The next pass should inspect candidates before writing code. Do not assume anoth
 
 Preferred investigation order:
 
-1. Characterization tests for `resetSession` and active-session hydration — next recommended work before moving high-risk state or playback-adjacent behavior.
-2. Active-session hydration/persistence extraction — high theoretical ROI, but test-first only because it touches many state resets and can affect TTS/session semantics.
+1. Characterization tests for `resetSession` reset-default calculation — next recommended work before moving high-risk state or playback-adjacent behavior.
+2. Active-session hydration/persistence side-effect extraction — defer unless the remaining setter/ref boundary can be made explicit and test-first.
 3. Remaining setup/session-creation UI glue — only if the candidate creates another testable seam beyond the completed transition/reset/setup-card actions.
 4. Browser TTS runtime/playback — explicitly deferred until a dedicated design exists.
 5. BrowserTtsSetupCard render cleanup — low ROI by itself after `useBrowserTtsSetupCardProps`; do not reopen unless it is part of a clearer setup-state boundary.
@@ -128,6 +128,14 @@ Recently added characterization coverage:
 - `src/app/useWorkspaceNavigationEffects.ts` -> `tests/useWorkspaceNavigationEffects.test.ts`
 - `src/app/useSessionWorkspaceActions.ts` -> `tests/useSessionWorkspaceActions.test.ts`
 - `src/app/sessionStorage.ts` -> `tests/sessionStorage.test.ts`
+
+Active-session hydration extraction checkpoint:
+
+- `a9e6e16` extracted pure active-session hydration state into `src/app/activeSessionHydration.ts`.
+- `f637b29` fixed the `src/App.tsx` import for that helper.
+- `tests/activeSessionHydration.test.ts` characterizes unfinished Browser TTS hydration, finished metric hydration, and default language/status fallback.
+- `src/App.tsx` still owns the side effects: setters, refs, telemetry clone, training submit message, and feedback reset.
+- Do not treat this as permission to extract `resetSession` wholesale; `resetSession` still mixes playback stop, visible-state reset, TTS refs, telemetry reset, input lock behavior, and adaptive feedback tracking.
 
 Deferred after inspection:
 
