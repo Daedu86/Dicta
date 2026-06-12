@@ -3,7 +3,7 @@ import type { TtsPacingMode } from '../../types/dictation';
 
 type TtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 
-type BrowserTtsSetupCardProps = {
+export type BrowserTtsSetupCardProps = {
   activeInputLabel: string;
   activeInputFeatureLabel: string;
   ttsExpanded: boolean;
