@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-12 after OpenRouter direct generation preset reuse in buttons
+Updated: 2026-06-12 after adaptive export package builders extraction
 
 ## Current working-tree status
 
@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 4ca95c0 Reuse OpenRouter direct generation presets in buttons |
+| Latest committed baseline | 222e676 Extract adaptive export package builders |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
@@ -50,11 +50,11 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useAdaptiveDiagnosticsUiState.ts` LOC | 18 |
 | Current `src/app/useAppPerfDiagnosticsRuntime.ts` LOC | 26 |
 | Current `src/app/useAdaptiveStoragePersistenceEffects.ts` LOC | 45 |
-| Current `src/app/useDictaDebugExportEffect.ts` LOC | 119 |
+| Current `src/app/useDictaDebugExportEffect.ts` LOC | 118 |
 | Current `src/app/useAdaptiveWorkspaceState.ts` LOC | 64 |
 | Current `src/app/useDictaSupabaseRuntime.ts` LOC | 16 |
 | Current `src/app/useSessionCreationWorkspaceState.ts` LOC | 30 |
-| Current `src/app/useAdaptiveExportActions.ts` LOC | 303 |
+| Current `src/app/useAdaptiveExportActions.ts` LOC | 254 |
 | Current `src/app/useKeyboardRemapRuntime.ts` LOC | 80 |
 | Current `src/app/useSupabaseAuthActions.ts` LOC | 192 |
 | Current `src/app/useSessionCreationActions.ts` LOC | 211 |
@@ -464,3 +464,6 @@ git push origin product/input-2
 - `localDevOpenRouterJobRoutes` owns local OpenRouter async job route registration, status lookup, active-job limiting, and queued/running/succeeded/failed lifecycle orchestration.
 - `openRouterDirectGenerationPresets` owns the direct OpenRouter generation preset catalog for easy, medium, hard, and express session variants.
 - `useFocusedTrainingGenerationButtons` now reuses `openRouterDirectGenerationPresets` for direct generation button identity and slot ownership while keeping button copy and UI state local.
+| Current `src/app/adaptiveExportPackages.ts` LOC | 166 |
+- `adaptiveExportPackages` owns pure adaptive export/package builders for session feedback, benchmark feedback, diagnostic reports, prompt packages, human-feedback payloads, and adaptive event counts.
+- `useAdaptiveExportActions` now keeps browser side effects such as clipboard writes, JSON downloads, DOM selection, and user-facing export messages.

@@ -772,3 +772,43 @@ ROI result:
 
 Next work should re-evaluate ROI before extracting more. Good next candidates are pure export/package builders or OpenRouter prompt planning helpers, not TTS runtime or hydration.
 
+## Follow-up — 2026-06-12 Adaptive export package builders
+
+Latest committed baseline: `222e676 Extract adaptive export package builders`.
+
+This checkpoint records extraction of pure adaptive export/package builders from `src/app/useAdaptiveExportActions.ts` into `src/app/adaptiveExportPackages.ts`.
+
+Recent commit context:
+
+* `222e676 (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract adaptive export package builders`
+* `3b986f9 Document OpenRouter preset reuse in buttons`
+* `4ca95c0 Reuse OpenRouter direct generation presets in buttons`
+* `76a5582 Document OpenRouter direct generation presets extraction`
+* `ce8b0dc Extract OpenRouter direct generation presets`
+
+Ownership after this extraction:
+
+* `src/app/adaptiveExportPackages.ts` owns pure builders for adaptive event counts, session feedback export payloads, benchmark feedback export payloads, benchmark feedback prompt text, human-feedback prompt payloads, and insights diagnostic report exports.
+* `src/app/useAdaptiveExportActions.ts` keeps browser/UI side effects: clipboard writes, JSON downloads, textarea selection fallback, try/catch handling, and user-facing export status messages.
+* `src/app/useDictaDebugExportEffect.ts` now imports `buildAdaptiveEventCounts` from the pure builder module instead of importing a pure helper from a hook file.
+
+Current metrics after this extraction:
+
+| Item | Value |
+| ---- | ----: |
+| `src/App.tsx` LOC | 2597 |
+| `src/app/useAdaptiveExportActions.ts` LOC | 254 |
+| `src/app/adaptiveExportPackages.ts` LOC | 166 |
+| `src/app/useDictaDebugExportEffect.ts` LOC | 118 |
+
+ROI result:
+
+* Better ownership: package construction is separated from browser side effects.
+* Better test seam: adaptive export payload/report builders are now plain functions and can be tested independently.
+* Cleaner dependency direction: debug export no longer imports a helper from `useAdaptiveExportActions.ts`.
+* Controlled abstraction: the hook remains responsible for UI side effects instead of being split into several small callback hooks.
+* No runtime-sensitive areas touched: Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+Next work should inspect ROI before another extraction. Good candidates remain pure planning/package helpers; avoid TTS runtime, hydration, reset, and phrase progression unless handled as a dedicated design pass.
+
