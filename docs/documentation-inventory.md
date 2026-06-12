@@ -4,7 +4,7 @@ This document is the current inventory of Markdown documentation in the Dicta re
 
 Status as of: 2026-06-12  
 Current branch: `product/input-2`  
-Current baseline observed: `17dbec7 Extract adaptive workspace presentation state`
+Current baseline observed: `22b3e65 Extract focused training presentation state`
 
 ## Status legend
 

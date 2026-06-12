@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after `useFocusedTrainingPresentationState` extraction.
+Updated: 2026-06-12 after `useFocusedTrainingInputTelemetryRuntime` extraction.
 
 ## Current baseline
 
@@ -11,8 +11,8 @@ This document began as a generated map. The historical deep inventory was intent
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest clean code baseline | 17dbec7 Extract adaptive workspace presentation state |
-| Current `src/App.tsx` LOC | 2518 |
+| Latest clean code baseline | 22b3e65 Extract focused training presentation state |
+| Current `src/App.tsx` LOC | 2514 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 89 |
 | Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 68 |
 | App.tsx inline `useState` count | 25 |
@@ -140,3 +140,8 @@ git show --stat --oneline HEAD
 - `focusedTrainingPresentation` and `useFocusedTrainingPresentationState` own focused training presentation derivations for TTS player progress, source labels, text placeholder/value, and training message tone.
 
 - `tests/focusedTrainingPresentation.test.ts` covers focused training presentation derivations for progress values, phrase/word labels, source labels, placeholders, and message tone.
+
+
+- `focusedTrainingInputTelemetry` and `useFocusedTrainingInputTelemetryRuntime` own focused training immediate-input telemetry initialization and live-text ref updates.
+
+- `tests/focusedTrainingInputTelemetry.test.ts` covers focused immediate-input telemetry initialization, startedAt preservation, startedAtMs preservation, legacy telemetry cloning, and live-text updates.

@@ -158,3 +158,5 @@ When renaming or moving tests:
 Use `docs/modularization-roi.md` to decide whether a modularization candidate has enough payoff. This map supplies the validation side of that score: existing tests, required test additions, and risk-specific commands.
 
 | `src/app/focusedTrainingPresentation.ts` | Focused training presentation derivations for TTS player progress, source labels, placeholders, and message tone. | `tests/focusedTrainingPresentation.test.ts` |
+
+| `src/app/focusedTrainingInputTelemetry.ts` | Focused training immediate-input telemetry initialization and live-text ref updates. | `tests/focusedTrainingInputTelemetry.test.ts` |

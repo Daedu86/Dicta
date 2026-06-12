@@ -22,6 +22,7 @@ import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationAct
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
 import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPresentationState';
+import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainingInputTelemetryRuntime';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -2075,15 +2076,11 @@ function App() {
   );
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedInputHandler = onTtsPracticeChange;
-  const focusedImmediateInputHandler = (value: string): void => {
-    if (!telemetryRef.current || !telemetryRef.current.startedAt) {
-      telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
-    }
-    if (ttsStartedAtMsRef.current === null) {
-      ttsStartedAtMsRef.current = performance.now();
-    }
-    ttsPracticeLiveTextRef.current = value;
-  };
+  const focusedImmediateInputHandler = useFocusedTrainingInputTelemetryRuntime({
+    telemetryRef,
+    ttsStartedAtMsRef,
+    ttsPracticeLiveTextRef,
+  });
   const focusedKeyDownHandler = onTtsPracticeKeyDown;
   const focusedTrainingGenerationButtons = useFocusedTrainingGenerationButtons({
     openRouterAccessAllowed,
