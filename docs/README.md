@@ -31,11 +31,11 @@ Agents should use this index to decide which documents are current sources of tr
 | --- | --- | --- |
 | `documentation-inventory.md` | Active | Markdown inventory, status labels, known broken references, stale baselines, and planned documentation stages. |
 
-## Planned canonical docs
+## Agent onboarding and repository navigation
 
-The following canonical onboarding documents are planned but do not exist yet:
+The following canonical onboarding documents are active:
 
-| Planned document | Purpose |
+| Document | Purpose |
 | --- | --- |
 | `agent-onboarding.md` | Official entry flow for agents before they inspect or change code. |
 | `repo-map.md` | Repository tree, folder responsibilities, and boundary notes. |
