@@ -23,6 +23,7 @@ High-risk areas:
 
 - `src/app/useBrowserTtsRuntime.ts`
 - `src/app/useTtsTelemetryRecorder.ts`
+- `src/app/useTtsUiPublisher.ts`
 - `src/inputs/browserTts/`
 - Browser speech synthesis behavior.
 - Voice discovery and normalization.
@@ -34,13 +35,14 @@ High-risk areas:
 
 Current App shell anchors in the post-telemetry-recorder working tree:
 
-- `resetSession`: `src/App.tsx:924`
-- `useTtsTelemetryRecorder` hook call: `src/App.tsx:1101`
-- `useTtsPerformanceSampler` hook call: `src/App.tsx:1161`
-- `playTts`: `src/App.tsx:1234`
-- `playTtsFromWord`: `src/App.tsx:1239`
-- `useTtsPlaybackControls` hook call: `src/App.tsx:1720`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2247`
+- `resetSession`: `src/App.tsx:925`
+- `useTtsTelemetryRecorder` hook call: `src/App.tsx:1102`
+- `useTtsUiPublisher` hook call: `src/App.tsx:1135`
+- `useTtsPerformanceSampler` hook call: `src/App.tsx:1154`
+- `playTts`: `src/App.tsx:1227`
+- `playTtsFromWord`: `src/App.tsx:1232`
+- `useTtsPlaybackControls` hook call: `src/App.tsx:1713`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2240`
 
 Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
 
@@ -48,6 +50,7 @@ Primary tests:
 
 - `tests/useBrowserTtsRuntime.test.ts`
 - `tests/useTtsTelemetryRecorder.test.ts`
+- `tests/useTtsUiPublisher.test.ts`
 - `tests/browserTtsAdaptiveProfiles.test.ts`
 - `tests/browserTtsRatePolicy.test.ts`
 - `tests/browserTtsRecoveryPolicy.test.ts`

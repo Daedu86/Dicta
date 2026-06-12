@@ -26,6 +26,7 @@ import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGen
 import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPresentationState';
 import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainingInputTelemetryRuntime';
 import { useTtsTelemetryRecorder } from './app/useTtsTelemetryRecorder';
+import { useTtsUiPublisher } from './app/useTtsUiPublisher';
 import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
 import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
@@ -1131,32 +1132,24 @@ function App() {
     return clamp(ttsCompletedSourceWordsRef.current, 0, sourceWordCount);
   }
 
-  function publishTtsUiState(next: TtsPublishedUiState, now: number, force = false): void {
-    const previous = ttsPublishedUiRef.current;
-    const changed =
-      previous.controllerState !== next.controllerState ||
-      Math.abs(previous.rate - next.rate) > 0.005 ||
-      Math.abs(previous.lagSec - next.lagSec) > 0.05 ||
-      previous.lagWords !== next.lagWords ||
-      Math.abs(previous.wpm - next.wpm) > 0.5 ||
-      Math.abs(previous.accuracy - next.accuracy) > 0.1 ||
-      previous.trend !== next.trend;
-
-    if (!force && (!changed || now - ttsUiLastPublishedAtRef.current < 500)) {
-      return;
-    }
-
-    ttsPublishedUiRef.current = next;
-    ttsUiLastPublishedAtRef.current = now;
-
-    if (force || controllerState !== next.controllerState) setControllerState(next.controllerState);
-    if (force || Math.abs(rate - next.rate) > 0.005) setRate(next.rate);
-    if (force || Math.abs(lagSec - next.lagSec) > 0.05) setLagSec(next.lagSec);
-    if (force || lagWords !== next.lagWords) setLagWords(next.lagWords);
-    if (force || Math.abs(wpm - next.wpm) > 0.5) setWpm(next.wpm);
-    if (force || Math.abs(accuracy - next.accuracy) > 0.1) setAccuracy(next.accuracy);
-    if (force || trend !== next.trend) setTrend(next.trend);
-  }
+  const publishTtsUiState = useTtsUiPublisher({
+    ttsPublishedUiRef,
+    ttsUiLastPublishedAtRef,
+    controllerState,
+    rate,
+    lagSec,
+    lagWords,
+    wpm,
+    accuracy,
+    trend,
+    setControllerState,
+    setRate,
+    setLagSec,
+    setLagWords,
+    setWpm,
+    setAccuracy,
+    setTrend,
+  });
 
   const applyTtsPerformanceSample = useTtsPerformanceSampler({
     ttsStartedAtMsRef,
