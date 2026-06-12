@@ -1,11 +1,9 @@
+import type { DictaAppProfile } from '../core/appProfiles';
 import { useModelRefreshActions } from './useModelRefreshActions';
 
 type ModelRefreshActionsArgs = Parameters<typeof useModelRefreshActions>[0];
 
-interface WorkspaceModelProfile {
-  role?: string | null;
-  assignedOpenRouterModel?: string | null;
-}
+type WorkspaceModelProfile = Pick<DictaAppProfile, 'role' | 'assignedOpenRouterModel'>;
 
 interface WorkspaceModelSyncConfig {
   authRequired: boolean;
