@@ -1,8 +1,5 @@
 import { useCallback } from 'react';
-import type {
-  InputMode,
-  ListeningTrainingIntent,
-} from '../core/adaptive/types';
+import type { InputMode } from '../core/adaptive/types';
 import {
   createEmptyInputLanguageBenchmark,
 } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
@@ -10,9 +7,7 @@ import {
   buildOpenRouterGenerationPrompt,
   estimateOpenRouterPromptSize,
   getOpenRouterGenerationMaxTokens,
-  type OpenRouterDurationMinutes,
 } from '../core/adaptive/openRouterGenerationPrompt';
-import type { DictationScriptDifficulty } from '../core/adaptive/dictationScriptValidation';
 import {
   selectLatestAdaptiveSessionFeedback,
 } from '../core/adaptive/sessionFeedback';
@@ -40,6 +35,10 @@ import type {
 import { buildOpenRouterActivityHints } from './adaptiveFeedbackContext';
 import { mapSessionInputMode } from './appRuntimeHelpers';
 import { buildOpenRouterDiversificationHints } from './openRouterPromptHints';
+import {
+  OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
+  type OpenRouterDirectGenerationPreset,
+} from './openRouterDirectGenerationPresets';
 import type { StoredSession } from './sessionTypes';
 
 type OpenRouterGenerationBusyControls = {
@@ -104,15 +103,9 @@ type UseOpenRouterGenerationActionsOptions = OpenRouterGenerationBusyControls & 
   ) => void;
 };
 
-type GenerateDirectSessionOptions = {
-  slotLabel: string;
-  displayLabel: string;
-  durationMinutes: OpenRouterDurationMinutes;
+type GenerateDirectSessionOptions = OpenRouterDirectGenerationPreset & {
   isBusy: boolean;
   setBusy: (value: boolean) => void;
-  userIntent?: ListeningTrainingIntent;
-  targetDifficulty?: DictationScriptDifficulty;
-  difficultyInstruction?: string;
 };
 
 export function useOpenRouterGenerationActions({
@@ -352,79 +345,49 @@ export function useOpenRouterGenerationActions({
 
   const generateEasyNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
     await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Easy direct session',
-      displayLabel: 'Easy session',
-      durationMinutes: 2,
+      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.easy,
       isBusy: directOpenRouterBusy,
       setBusy: setDirectOpenRouterBusy,
-      userIntent: 'recover',
-      targetDifficulty: 'easy',
-      difficultyInstruction: 'Recovery intent: keep material accessible and obey the trainer prescription if it narrows the range.',
     });
   }, [directOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectOpenRouterBusy]);
 
   const generateIntermediateNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
     await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Intermediate direct session',
-      displayLabel: 'Medium session',
-      durationMinutes: 2,
+      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.medium,
       isBusy: directIntermediateOpenRouterBusy,
       setBusy: setDirectIntermediateOpenRouterBusy,
-      userIntent: 'progress',
-      targetDifficulty: 'normal',
-      difficultyInstruction: 'Progress intent: use moderate phrase difficulty only when the trainer prescription allows it.',
     });
   }, [directIntermediateOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectIntermediateOpenRouterBusy]);
 
   const generateAdvancedNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
     await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Advanced direct session',
-      displayLabel: 'Hard session',
-      durationMinutes: 2,
+      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.hard,
       isBusy: directAdvancedOpenRouterBusy,
       setBusy: setDirectAdvancedOpenRouterBusy,
-      userIntent: 'challenge',
-      targetDifficulty: 'hard',
-      difficultyInstruction: 'Challenge intent: use harder content only if the trainer prescription keeps the session in challenge mode.',
     });
   }, [directAdvancedOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectAdvancedOpenRouterBusy]);
 
   const generateExpressEasyNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
     await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Express easy direct session',
-      displayLabel: 'Express easy session',
-      durationMinutes: 1,
+      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressEasy,
       isBusy: expressEasyOpenRouterBusy,
       setBusy: setExpressEasyOpenRouterBusy,
-      userIntent: 'recover',
-      targetDifficulty: 'easy',
-      difficultyInstruction: 'Express recovery intent: keep material accessible and obey the trainer prescription if it narrows the range.',
     });
   }, [expressEasyOpenRouterBusy, generateDirectSessionFromOpenRouter, setExpressEasyOpenRouterBusy]);
 
   const generateExpressIntermediateNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
     await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Express intermediate direct session',
-      displayLabel: 'Express medium session',
-      durationMinutes: 1,
+      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressMedium,
       isBusy: expressIntermediateOpenRouterBusy,
       setBusy: setExpressIntermediateOpenRouterBusy,
-      userIntent: 'progress',
-      targetDifficulty: 'normal',
-      difficultyInstruction: 'Express progress intent: use moderate phrase difficulty only when the trainer prescription allows it.',
     });
   }, [expressIntermediateOpenRouterBusy, generateDirectSessionFromOpenRouter, setExpressIntermediateOpenRouterBusy]);
 
   const generateExpressAdvancedNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
     await generateDirectSessionFromOpenRouter({
-      slotLabel: 'Express advanced direct session',
-      displayLabel: 'Express hard session',
-      durationMinutes: 1,
+      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressHard,
       isBusy: expressAdvancedOpenRouterBusy,
       setBusy: setExpressAdvancedOpenRouterBusy,
-      userIntent: 'challenge',
-      targetDifficulty: 'hard',
-      difficultyInstruction: 'Express challenge intent: use harder content only if the trainer prescription keeps the session in challenge mode.',
     });
   }, [expressAdvancedOpenRouterBusy, generateDirectSessionFromOpenRouter, setExpressAdvancedOpenRouterBusy]);
 
