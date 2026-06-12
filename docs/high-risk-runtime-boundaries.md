@@ -31,6 +31,15 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
+Current App shell anchors as of `b0cbc40`:
+
+- `resetSession`: `src/App.tsx:934`
+- `playTts`: `src/App.tsx:1376`
+- `playTtsFromWord`: `src/App.tsx:1381`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2450`
+
+Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
+
 Primary tests:
 
 - `tests/useBrowserTtsRuntime.test.ts`

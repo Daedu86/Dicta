@@ -27,6 +27,7 @@ Use this before changing code so that validation starts with the narrowest relev
 | `src/app/adaptiveWorkspacePresentation.ts` | Adaptive workspace presentation derivations for benchmark/profile selection, feedback selection, diagnostic options, latest mode, and adapter mapping. | `tests/adaptiveWorkspacePresentation.test.ts` |
 | `src/app/openRouterDirectGenerationJobPlan.ts` | OpenRouter direct generation job planning. | `tests/openRouterDirectGenerationJobPlan.test.ts` |
 | `src/app/openRouterDirectGenerationPresets.ts` | OpenRouter direct generation presets. | `tests/openRouterDirectGenerationPresets.test.ts` |
+| `src/app/useBrowserTtsSetupCardProps.ts` | Browser TTS setup card prop composition. | `tests/browserTtsSetupCardProps.test.ts` |
 
 ## Input and Browser TTS runtime
 

@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after the session-creation transition and form-reset action extractions.
+Updated: 2026-06-12 after `b0cbc40`.
 
 ## Current baseline
 
@@ -11,15 +11,16 @@ This document began as a generated map. The historical deep inventory was intent
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest clean code baseline | 89827f6 Test session creation form reset action |
-| Current `src/App.tsx` LOC | 2508 |
-| Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 89 |
-| Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 68 |
-| App.tsx inline `useState` count | 25 |
+| Latest clean code baseline | b0cbc40 |
+| Current `src/App.tsx` LOC | 2482 |
+| Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 76 |
+| Current `src/app/useBrowserTtsSetupCardProps.ts` LOC | 88 |
+| Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 94 |
+| App.tsx inline `useState` count | 16 |
 | App.tsx inline `useRef` count | 27 |
 | App.tsx inline `useMemo` count | 5 |
 | App.tsx inline `useEffect` count | 7 |
-| App.tsx inline function declarations | 22 |
+| App.tsx inline function declarations inside `App()` | 20 |
 
 ## Completed since the original map
 
@@ -29,6 +30,7 @@ This document began as a generated map. The historical deep inventory was intent
 - `useAdaptiveExportActions` owns adaptive benchmark/session-feedback copy, export, and insights diagnostic actions.
 - `useSupabaseAuthActions` owns Supabase sign-in, password reset/update, auth view switching, and sign-out handlers.
 - `useSessionCreationActions` owns plain-text session creation, DictationScript import validation/creation, OpenRouter script session creation actions, and the reusable session-creation form reset action.
+- `b0cbc40` removed the former secondary provider UI, app state, server routes, local-dev proxy routes, env docs, and route tests; OpenRouter remains the active model/provider flow.
 - `useWorkspaceSessionSummaries` owns derived session collections and workspace summaries.
 - `useWorkspaceNavigationEffects` owns non-TTS workspace navigation side effects.
 - `useOpenRouterGenerationBusyState` owns OpenRouter generation busy flags.
@@ -59,6 +61,7 @@ This document began as a generated map. The historical deep inventory was intent
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useAppShellSyncStatusText` owns App shell sync/offline status label composition, pending-sync suffixes, and last-sync timestamp formatting glue.
 - `useOpenRouterWorkspaceProps` owns OpenRouter workspace prop composition, model persistence wiring, export profile selection wiring, job notifications, and benchmark/session-feedback copy callbacks.
+- `useBrowserTtsSetupCardProps` owns Browser TTS setup card prop composition and is covered by `tests/browserTtsSetupCardProps.test.ts`.
 - `useAdaptiveDiagnosticsUiState` owns adaptive diagnostics UI state.
 - `useAppPerfDiagnosticsRuntime` owns App render-count and perf diagnostics configuration; `App.tsx` still imports `perfDiagnostics` for active OpenRouter and TTS spans.
 - `useAdaptiveStoragePersistenceEffects` owns adaptive benchmark/feedback local persistence and ref sync effects.
@@ -73,11 +76,24 @@ This document began as a generated map. The historical deep inventory was intent
 
 ## Current recommendation
 
-- Start the next pass from the clean `89827f6` code baseline before selecting another extraction.
-- Treat the session-creation transition actions and session-creation form reset action as the latest successful low-risk state/action extractions: they created testable seams without moving runtime playback behavior.
+- Start the next pass from the clean `b0cbc40` baseline before selecting another extraction.
+- Treat the secondary-provider removal as the current provider cleanup baseline: the app should expose OpenRouter generation and Browser TTS training only.
+- Treat the session-creation transition actions, session-creation form reset action, and Browser TTS setup-card props as completed low-risk extractions with focused tests.
 - Continue conservative modularization only when the candidate removes at least ~15-25 net lines from `src/App.tsx` or creates a clearly testable state/derived-data/action boundary.
 - Continue to defer active-session hydration, Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves.
 - Prefer a fresh inventory before the next code extraction; do not continue extracting from `App.tsx` solely because the file is still large.
+
+## Current high-risk anchors
+
+These line numbers were observed at `b0cbc40`. Recheck with `rg` before editing; they are anchors for risk inspection, not stable APIs.
+
+| Area | Current location |
+| --- | --- |
+| `resetSession` | `src/App.tsx:934` |
+| `playTts` | `src/App.tsx:1376` |
+| `playTtsFromWord` | `src/App.tsx:1381` |
+| `BrowserTtsSetupCard` prop hook call | `src/App.tsx:2359` |
+| `BrowserTtsSetupCard` render branch | `src/App.tsx:2450` |
 
 ## ROI-based modularization policy
 
@@ -99,21 +115,20 @@ The next pass should inspect candidates before writing code. Do not assume anoth
 
 Preferred investigation order:
 
-1. BrowserTtsSetupCard prop boundary — possible ROI if the prop block is large enough, but avoid moving playback/runtime decisions.
-2. SessionDashboard prop/adaptor boundary — possible ROI if it collapses formatting/adaptor glue.
-3. Remaining setup/session-creation UI glue — only if the candidate creates another testable seam beyond the completed transition/reset actions.
-4. Active-session hydration/persistence — high theoretical ROI, but defer because it touches many state resets and can affect TTS/session semantics.
-5. Browser TTS runtime/playback — explicitly deferred until a dedicated design exists.
+1. SessionDashboard prop/adaptor boundary — possible ROI if it collapses formatting/adaptor glue without changing dashboard behavior.
+2. Remaining setup/session-creation UI glue — only if the candidate creates another testable seam beyond the completed transition/reset/setup-card actions.
+3. Active-session hydration/persistence — high theoretical ROI, but defer because it touches many state resets and can affect TTS/session semantics.
+4. Browser TTS runtime/playback — explicitly deferred until a dedicated design exists.
+5. BrowserTtsSetupCard render cleanup — low ROI by itself after `useBrowserTtsSetupCardProps`; do not reopen unless it is part of a clearer setup-state boundary.
 
 Use this pre-check before extracting:
 
 ~~~bash
 git status --short
 git log --oneline --decorate -8
-grep -n "BrowserTtsSetupCard" -A80 -B20 src/App.tsx
-grep -n "SessionDashboard" -A80 -B20 src/App.tsx
-grep -n "SessionCreateCard" -A40 -B40 src/App.tsx
-grep -n "useState" src/App.tsx
+rg -n -C 20 "function resetSession|function playTts|playTtsFromWord" src/App.tsx
+rg -n -C 20 "BrowserTtsSetupCard|SessionDashboard|SessionCreateCard" src/App.tsx
+rg -n "useState\(|useRef<|useRef\(|useMemo\(|useEffect\(" src/App.tsx
 wc -l src/App.tsx
 ~~~
 
@@ -130,6 +145,7 @@ Proceed only if a candidate removes at least ~15-25 net lines from `src/App.tsx`
 - `tests/focusedTrainingInputTelemetry.test.ts` covers focused immediate-input telemetry initialization, startedAt preservation, startedAtMs preservation, legacy telemetry cloning, and live-text updates.
 - `tests/sessionCreationWorkspaceState.test.ts` covers session-creation source/json/cancel transition actions and dictation-script validation reset behavior.
 - `tests/sessionCreationActions.test.ts` covers the reusable session-creation form reset action for both expanded and collapsed Browser TTS setup states.
+- `tests/browserTtsSetupCardProps.test.ts` covers Browser TTS setup-card prop object composition and memoization expectations.
 
 ## Suggested checkpoint command
 
