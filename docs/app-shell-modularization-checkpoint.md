@@ -540,3 +540,34 @@ ROI result:
 
 Next work should inspect before extracting full route handlers; the remaining plugin is mostly local dev route orchestration and response handling.
 
+## Follow-up — 2026-06-11 Local Ollama client helper
+
+Latest committed baseline: `9c5cf1b Extract local Ollama client helper`.
+
+This checkpoint records extraction of local Ollama upstream request helpers from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevOllamaClient.ts` now owns the local Ollama models `fetch`, Ollama chat `fetch`, authorization/accept headers, non-streaming chat payload shape, and `num_predict` request mapping. `dev/dictaLocalDevApiPlugin.ts` keeps Ollama route orchestration, API key lookup, validation, upstream response passthrough, and user-facing error formatting.
+
+Current metrics after this extraction:
+
+| Item                                  | Value |
+| ------------------------------------- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC   | 435 |
+| `dev/localDevOllamaClient.ts` LOC     | 39 |
+| `dev/localDevOpenRouterClient.ts` LOC | 30 |
+| `dev/localDevHttpHelpers.ts` LOC      | 65 |
+| `dev/localDevOllamaHelpers.ts` LOC    | 77 |
+| `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
+| `dev/localDevAdminFiles.ts` LOC       | 86 |
+| `dev/localDevApiValidation.ts` LOC    | 105 |
+| `dev/localDevEnvStore.ts` LOC         | 83 |
+
+ROI result:
+
+* Better ownership: duplicated local Ollama upstream request construction is separated from route orchestration.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 435 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting full route handlers; the remaining plugin is now mostly local dev route orchestration, API-key branching, and response handling.
+
