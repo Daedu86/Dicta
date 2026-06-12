@@ -27,6 +27,7 @@ import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPre
 import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainingInputTelemetryRuntime';
 import { useTtsTelemetryRecorder } from './app/useTtsTelemetryRecorder';
 import { useTtsUiPublisher } from './app/useTtsUiPublisher';
+import { useTtsPlaybackProgressEstimator } from './app/useTtsPlaybackProgressEstimator';
 import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
 import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
@@ -1112,25 +1113,16 @@ function App() {
     ttsSpeechRate,
   });
 
-  function estimateTtsSpokenWordIndex(now = performance.now()): number {
-    const sourceWordCount = ttsTranscript?.words.length ?? 0;
-    if (sourceWordCount === 0) {
-      return 0;
-    }
-
-    if (ttsStatus === 'playing' && ttsChunkStartMsRef.current !== null) {
-      const elapsedSec = Math.max(0, (now - ttsChunkStartMsRef.current) / 1000);
-      const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
-      const spokenInChunk = Math.min(ttsChunkWordCountRef.current, Math.floor(elapsedSec * wordsPerSecond));
-      return clamp(ttsChunkStartWordIndexRef.current + spokenInChunk, 0, sourceWordCount);
-    }
-
-    if (ttsStatus === 'finished') {
-      return sourceWordCount;
-    }
-
-    return clamp(ttsCompletedSourceWordsRef.current, 0, sourceWordCount);
-  }
+  const estimateTtsSpokenWordIndex = useTtsPlaybackProgressEstimator({
+    sourceWordCount: ttsTranscript?.words.length ?? 0,
+    ttsStatus,
+    ttsSpeechRate,
+    ttsChunkStartMsRef,
+    ttsChunkWordCountRef,
+    ttsChunkStartWordIndexRef,
+    ttsCompletedSourceWordsRef,
+    baseWordsPerSecond: TTS_BASE_WORDS_PER_SECOND,
+  });
 
   const publishTtsUiState = useTtsUiPublisher({
     ttsPublishedUiRef,
