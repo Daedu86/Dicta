@@ -1,3 +1,4 @@
+import { buildResetSessionState } from './app/resetSessionState';
 import { buildActiveSessionHydrationState } from './app/activeSessionHydration';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
@@ -925,47 +926,43 @@ function App() {
   }, [ttsStatus]);
 
   function resetSession(options: { preserveInputSettingsLock?: boolean } = {}): void {
-    const nextInputSettingsLocked = options.preserveInputSettingsLock ? inputSettingsLocked : false;
+    const resetState = buildResetSessionState({
+      preserveInputSettingsLock: options.preserveInputSettingsLock,
+      inputSettingsLocked,
+      ttsText,
+      activeInputMode,
+    });
+
     if (activeSession?.status === 'finished') {
       allowFinishedSessionResetRef.current = activeSession.id;
     }
     stopTtsPlayback();
-    setTtsPracticeText('');
-    ttsPracticeLiveTextRef.current = '';
-    setTtsStatus(ttsText.trim() ? 'ready' : 'idle');
-    setTtsCurrentChunk('');
-    setTtsPacingMode('balanced');
-    setTtsSpeechRate(1);
+    setTtsPracticeText(resetState.ttsPracticeText);
+    ttsPracticeLiveTextRef.current = resetState.ttsPracticeText;
+    setTtsStatus(resetState.ttsStatus);
+    setTtsCurrentChunk(resetState.ttsCurrentChunk);
+    setTtsPacingMode(resetState.ttsPacingMode);
+    setTtsSpeechRate(resetState.ttsSpeechRate);
     ttsStartedAtMsRef.current = null;
     ttsChunkStartMsRef.current = null;
     ttsChunkStartWordIndexRef.current = 0;
     ttsChunkWordCountRef.current = 0;
     ttsCompletedSourceWordsRef.current = 0;
     ttsLastControllerActionRef.current = 'hold';
-    setRunning(false);
-    setRate(1);
-    setLagSec(0);
-    setLagWords(0);
-    setWpm(0);
-    setAccuracy(100);
-    setControllerState('hold');
+    setRunning(resetState.running);
+    setRate(resetState.rate);
+    setLagSec(resetState.lagSec);
+    setLagWords(resetState.lagWords);
+    setWpm(resetState.wpm);
+    setAccuracy(resetState.accuracy);
+    setControllerState(resetState.controllerState);
     ttsUiLastPublishedAtRef.current = 0;
-    ttsPublishedUiRef.current = {
-      controllerState: 'hold',
-      rate: 1,
-      lagSec: 0,
-      lagWords: 0,
-      wpm: 0,
-      accuracy: 100,
-      trend: 'stable',
-    };
-    setSessionStatus('ready');
-    setTrainingSubmitMessage('');
-    setInputSettingsLocked(nextInputSettingsLocked);
-    if (!nextInputSettingsLocked) {
-      if (activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE) {
-        setTtsExpanded(true);
-      }
+    ttsPublishedUiRef.current = resetState.publishedUi;
+    setSessionStatus(resetState.sessionStatus);
+    setTrainingSubmitMessage(resetState.trainingSubmitMessage);
+    setInputSettingsLocked(resetState.nextInputSettingsLocked);
+    if (resetState.shouldExpandTtsSetup) {
+      setTtsExpanded(true);
     }
     telemetryRef.current = null;
     resetAdaptiveSessionFeedbackTracking(activeSession?.id);
