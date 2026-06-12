@@ -12,7 +12,7 @@ This document began as a generated map. The historical deep inventory was intent
 | --- | ---: |
 | Branch | product/input-2 |
 | Latest clean code baseline | 723d15f Extract workspace model refresh runtime |
-| Current `src/App.tsx` LOC | 2597 |
+| Current `src/App.tsx` LOC | ~2522 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 89 |
 | Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 68 |
 | App.tsx inline `useState` count | 25 |
@@ -45,6 +45,7 @@ This document began as a generated map. The historical deep inventory was intent
 - `useFocusedTrainingLiveMetrics` owns focused-training live metric derivation, transcript evaluation, visible accuracy/score, points labels, and metric help text.
 - `AppWorkspaceContent` owns the App workspace switch, pending-session lane placement, dashboard/adaptive/OpenRouter/Ollama/Admin/Leaderboard branch rendering, and workspace access fallbacks.
 - `useWorkspaceModelRefreshRuntime` owns workspace model assignment/default resolution and delegates OpenRouter/Ollama refresh actions to `useModelRefreshActions`.
+- `browserTtsSessionEnvironment` and `useBrowserTtsSessionEnvironmentRuntime` own Browser TTS session voice assignment, voice/environment fingerprint attachment, and active voice resolution outside `App.tsx` without moving playback behavior.
 - `dictaLocalDevApiPlugin` owns the local Vite dev API routes, OpenRouter/Ollama proxy routes, OpenRouter local job queue, and admin file inventory route.
 - `localDevEnvStore` owns local `.env.local` API key read, parse, upsert, and removal behavior for OpenRouter and Ollama.
 - `localDevApiValidation` owns local OpenRouter/Ollama API key validation, model id normalization, prompt bounds, and max-token bounds.

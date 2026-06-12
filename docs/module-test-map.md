@@ -32,6 +32,7 @@ Use this before changing code so that validation starts with the narrowest relev
 | Area / module | Responsibility | Relevant tests |
 | --- | --- | --- |
 | `src/app/useBrowserTtsRuntime.ts` | Browser TTS app runtime integration. | `tests/useBrowserTtsRuntime.test.ts` |
+| `src/app/browserTtsSessionEnvironment.ts` | Browser TTS session voice/environment metadata helpers. | `tests/browserTtsSessionEnvironment.test.ts` |
 | `src/inputs/browserTts/browserTtsAdaptiveProfiles.ts` | Browser TTS adaptive profile behavior. | `tests/browserTtsAdaptiveProfiles.test.ts` |
 | `src/inputs/browserTts/browserTtsRatePolicy.ts` | Browser TTS rate policy. | `tests/browserTtsRatePolicy.test.ts` |
 | `src/inputs/browserTts/browserTtsRecoveryPolicy.ts` | Browser TTS recovery policy. | `tests/browserTtsRecoveryPolicy.test.ts` |

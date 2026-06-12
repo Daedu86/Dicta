@@ -51,7 +51,6 @@ import type {
   KeyboardEvent } from 'react';
 import './App.css';
 import type {
-  BrowserTtsEnvironmentFingerprint,
   ControlAction,
   SessionTelemetry,
   TtsChunkTelemetry,
@@ -88,14 +87,6 @@ import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browser
 import { applyBrowserTtsDeRecoveryPolicy,
   summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
-import {
-  chooseDiverseBrowserTtsVoiceURIForSession,
-  resolveBrowserTtsSessionVoice,
-  } from './inputs/browserTts/browserTtsVoices';
-import {
-  collectBrowserTtsEnvironmentFingerprint,
-  } from './inputs/browserTts/browserTtsEnvironment';
-import { sameBrowserTtsEnvironment } from './inputs/browserTts/browserTtsEnvironmentComparison';
 import { trackAction,
   trackSample } from './core/telemetry';
 import { cloneTelemetry,
@@ -150,6 +141,7 @@ import { useDictaUiPreferences } from './app/useDictaUiPreferences';
 import { isMobileViewport } from './app/viewport';
 import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
+import { useBrowserTtsSessionEnvironmentRuntime } from './app/useBrowserTtsSessionEnvironmentRuntime';
 import { useSessionPersistenceSync } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import {
@@ -276,39 +268,6 @@ function App() {
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (browserTtsVoices.length === 0) return;
-    setSessions((prev) => {
-      let changed = false;
-      const usedVoiceURIs = prev
-        .filter((session) => session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE && session.ttsLanguage)
-        .map((session) => session.ttsVoiceURI);
-      const next = prev.map((session) => {
-        if (
-          session.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE ||
-          !session.inputSettingsLocked ||
-          !session.ttsLanguage ||
-          session.ttsVoiceURI ||
-          !session.ttsText.trim()
-        ) {
-          return session;
-        }
-        const ttsVoiceURI = chooseDiverseBrowserTtsVoiceURIForSession(
-          session.inputMode,
-          browserTtsVoices,
-          session.ttsLanguage,
-          usedVoiceURIs,
-        );
-        if (!ttsVoiceURI) return session;
-        usedVoiceURIs.push(ttsVoiceURI);
-        const selectedVoice = browserTtsVoices.find((voice) => voice.voiceURI === ttsVoiceURI) ?? null;
-        const nextSession = attachBrowserTtsEnvironment({ ...session, ttsVoiceURI }, selectedVoice, ttsVoiceURI);
-        changed = true;
-        return nextSession;
-      });
-      return changed ? next : prev;
-    });
-  }, [browserTtsVoices]);
   const {
     openRouterDefaultModel,
     setOpenRouterDefaultModel,
@@ -650,6 +609,17 @@ function App() {
       : 'Local Python sidecar';
   const activeInputWorkspaceMode: WorkspaceMode = 'tts';
   const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
+  const {
+    collectBrowserTtsEnvironmentForSession,
+    resolveBrowserTtsVoiceForSession,
+    resolveActiveBrowserTtsVoice,
+  } = useBrowserTtsSessionEnvironmentRuntime({
+    activeSession,
+    browserTtsVoices,
+    setSessions,
+    ttsLanguage,
+  });
+
   const {
     assignedOpenRouterModel,
     effectiveOpenRouterDefaultModel,
@@ -1141,51 +1111,6 @@ function App() {
     setTtsStatus(value.trim().length > 0 ? 'ready' : 'idle');
   }
 
-  function collectBrowserTtsEnvironmentForSession(
-    session: StoredSession | null | undefined,
-    selectedVoice: SpeechSynthesisVoice | null = null,
-    selectedVoiceURI: string | null | undefined = session?.ttsVoiceURI,
-  ): BrowserTtsEnvironmentFingerprint | null {
-    if (!session || session.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return null;
-    return collectBrowserTtsEnvironmentFingerprint({
-      inputMode: 'browser-tts',
-      language: session.ttsLanguage,
-      selectedVoice,
-      selectedVoiceURI: selectedVoice?.voiceURI ?? selectedVoiceURI ?? null,
-      voices: browserTtsVoices,
-      navigatorRef: window.navigator,
-      matchMedia: window.matchMedia.bind(window),
-    });
-  }
-
-  function attachBrowserTtsEnvironment(
-    session: StoredSession,
-    selectedVoice: SpeechSynthesisVoice | null = null,
-    selectedVoiceURI: string | null | undefined = session.ttsVoiceURI,
-  ): StoredSession {
-    if (session.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return session;
-    const ttsEnvironment = collectBrowserTtsEnvironmentForSession(session, selectedVoice, selectedVoiceURI);
-    if (sameBrowserTtsEnvironment(session.ttsEnvironment, ttsEnvironment)) return session;
-    return { ...session, ttsEnvironment };
-  }
-
-  function resolveActiveBrowserTtsVoice(): SpeechSynthesisVoice | null {
-    if (!activeSession || activeSession.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE) return null;
-    const resolution = resolveBrowserTtsSessionVoice(browserTtsVoices, ttsLanguage, activeSession.ttsVoiceURI);
-    const nextVoiceURI = resolution.voiceURI ?? activeSession.ttsVoiceURI ?? null;
-    const nextEnvironment = collectBrowserTtsEnvironmentForSession(activeSession, resolution.voice, nextVoiceURI);
-    if (nextVoiceURI !== activeSession.ttsVoiceURI || !sameBrowserTtsEnvironment(activeSession.ttsEnvironment, nextEnvironment)) {
-      setSessions((prev) =>
-        prev.map((session) =>
-          session.id === activeSession.id
-            ? { ...session, ttsVoiceURI: nextVoiceURI, ttsEnvironment: nextEnvironment, updatedAt: new Date().toISOString() }
-            : session,
-        ),
-      );
-    }
-    return resolution.voice;
-  }
-
   function onTtsPracticeChange(value: string): void {
     if (activeSessionFinished) return;
     if (!telemetryRef.current || !telemetryRef.current.startedAt) {
@@ -1426,7 +1351,7 @@ function App() {
       const finishedAt = new Date().toISOString();
       const finalVoiceResolution =
         activeSession?.inputMode === BROWSER_TTS_SESSION_INPUT_MODE
-          ? resolveBrowserTtsSessionVoice(browserTtsVoices, ttsLanguage, activeSession.ttsVoiceURI)
+          ? resolveBrowserTtsVoiceForSession(activeSession, ttsLanguage)
           : null;
       const finalVoiceURI = finalVoiceResolution?.voiceURI ?? activeSession?.ttsVoiceURI ?? null;
       const finalTtsEnvironment = collectBrowserTtsEnvironmentForSession(activeSession, finalVoiceResolution?.voice ?? null, finalVoiceURI);
