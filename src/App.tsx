@@ -8,7 +8,7 @@ import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
 import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
 import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
-import { useModelRefreshActions } from './app/useModelRefreshActions';
+import { useWorkspaceModelRefreshRuntime } from './app/useWorkspaceModelRefreshRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
@@ -649,15 +649,15 @@ function App() {
       : 'Local Python sidecar';
   const activeInputWorkspaceMode: WorkspaceMode = 'tts';
   const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
-  const assignedOpenRouterModel =
-    syncConfig.authRequired && appProfile?.role === 'member' ? appProfile.assignedOpenRouterModel?.trim() ?? '' : '';
-  const effectiveOpenRouterDefaultModel = assignedOpenRouterModel || openRouterDefaultModel;
   const {
+    assignedOpenRouterModel,
+    effectiveOpenRouterDefaultModel,
     refreshOpenRouterModels,
     refreshOllamaModels,
-  } = useModelRefreshActions({
+  } = useWorkspaceModelRefreshRuntime({
+    syncConfig,
+    appProfile,
     getAuthHeaders,
-    assignedOpenRouterModel,
     openRouterDefaultModel,
     setOpenRouterDefaultModel,
     ollamaDefaultModel,
