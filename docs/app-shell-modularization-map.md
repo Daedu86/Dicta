@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after `b0cbc40`.
+Updated: 2026-06-12 after `3b11f67` SessionDashboard ROI inspection.
 
 ## Current baseline
 
@@ -82,6 +82,7 @@ This document began as a generated map. The historical deep inventory was intent
 - Continue conservative modularization only when the candidate removes at least ~15-25 net lines from `src/App.tsx` or creates a clearly testable state/derived-data/action boundary.
 - Continue to defer active-session hydration, Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves.
 - Prefer a fresh inventory before the next code extraction; do not continue extracting from `App.tsx` solely because the file is still large.
+- Defer a `SessionDashboard` prop/adaptor extraction after inspection: `SessionDashboard` already renders inside `AppWorkspaceContent`, while `App.tsx` only derives `dashboardSession` and forwards a small prop set.
 
 ## Current high-risk anchors
 
@@ -115,20 +116,24 @@ The next pass should inspect candidates before writing code. Do not assume anoth
 
 Preferred investigation order:
 
-1. SessionDashboard prop/adaptor boundary — possible ROI if it collapses formatting/adaptor glue without changing dashboard behavior.
+1. Characterization tests for `resetSession`, active-session hydration, and session persistence — next recommended work before moving high-risk state or playback-adjacent behavior.
 2. Remaining setup/session-creation UI glue — only if the candidate creates another testable seam beyond the completed transition/reset/setup-card actions.
-3. Active-session hydration/persistence — high theoretical ROI, but defer because it touches many state resets and can affect TTS/session semantics.
+3. Active-session hydration/persistence extraction — high theoretical ROI, but test-first only because it touches many state resets and can affect TTS/session semantics.
 4. Browser TTS runtime/playback — explicitly deferred until a dedicated design exists.
 5. BrowserTtsSetupCard render cleanup — low ROI by itself after `useBrowserTtsSetupCardProps`; do not reopen unless it is part of a clearer setup-state boundary.
+
+Deferred after inspection:
+
+- `SessionDashboard` prop/adaptor boundary — low ROI after local `git grep` inspection. `SessionDashboard` is not rendered directly by `src/App.tsx`; it is already owned by `src/app/AppWorkspaceContent.tsx`. `App.tsx` only derives `dashboardSession`, forwards `sessions`, formatter callbacks, and `onBackToTraining`, while dashboard routing/actions already live in `useWorkspaceRouting` and `useSessionWorkspaceActions`. A new `useSessionDashboardProps`-style wrapper would mostly package existing props, add indirection, and is unlikely to remove the required ~15-25 net `App.tsx` lines or create a meaningful test seam.
 
 Use this pre-check before extracting:
 
 ~~~bash
 git status --short
 git log --oneline --decorate -8
-rg -n -C 20 "function resetSession|function playTts|playTtsFromWord" src/App.tsx
-rg -n -C 20 "BrowserTtsSetupCard|SessionDashboard|SessionCreateCard" src/App.tsx
-rg -n "useState\(|useRef<|useRef\(|useMemo\(|useEffect\(" src/App.tsx
+git grep -n -E "function resetSession|function playTts|playTtsFromWord" -- src/App.tsx || true
+git grep -n -C 20 -E "BrowserTtsSetupCard|SessionDashboard|SessionCreateCard" -- src/App.tsx src/app tests || true
+git grep -n -E "useState\(|useRef<|useRef\(|useMemo\(|useEffect\(" -- src/App.tsx || true
 wc -l src/App.tsx
 ~~~
 
