@@ -695,3 +695,41 @@ ROI result:
 
 Next work should inspect remaining plugin LOC before another extraction. The likely remaining candidate is admin/file route wiring, but ROI may be lower now that the plugin is only about 120 LOC.
 
+## Follow-up — 2026-06-12 OpenRouter direct generation presets
+
+Latest committed baseline: `ce8b0dc Extract OpenRouter direct generation presets`.
+
+This checkpoint records extraction of direct OpenRouter generation preset policy from `src/app/useOpenRouterGenerationActions.ts`.
+
+Recent commit context:
+
+* `ce8b0dc (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract OpenRouter direct generation presets`
+* `23cb0a6 Document local dev OpenRouter job routes extraction`
+* `74caa63 Extract local dev OpenRouter job routes`
+* `9bb48ee Document local dev model and chat routes extraction`
+* `4e99044 Extract local dev chat routes`
+
+Ownership after this extraction:
+
+* `src/app/openRouterDirectGenerationPresets.ts` owns the easy, medium, hard, express easy, express medium, and express hard direct generation presets.
+* `src/app/useOpenRouterGenerationActions.ts` keeps the OpenRouter generation side effects, access checks, job request flow, and state updates.
+* `src/app/useFocusedTrainingGenerationButtons.ts` can now be inspected for a follow-up reuse pass against the shared preset catalog.
+
+Current metrics after this extraction:
+
+| Item | Value |
+| ---- | ----: |
+| `src/App.tsx` LOC | 2597 |
+| `src/app/useOpenRouterGenerationActions.ts` LOC | 403 |
+| `src/app/openRouterDirectGenerationPresets.ts` LOC | 78 |
+| `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 208 |
+
+ROI result:
+
+* Better ownership: generation policy/presets are separated from OpenRouter request side effects.
+* Lower duplication risk: future changes to direct generation labels, target difficulty, duration, intent, or difficulty instructions have one source of truth.
+* No runtime-sensitive areas touched: Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+Next work should inspect whether `useFocusedTrainingGenerationButtons.ts` can reuse `openRouterDirectGenerationPresets` without introducing an over-abstract button builder.
+

@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-12 after local dev OpenRouter job routes extraction
+Updated: 2026-06-12 after OpenRouter direct generation presets extraction
 
 ## Current working-tree status
 
@@ -9,12 +9,14 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 74caa63 Extract local dev OpenRouter job routes |
+| Latest committed baseline | ce8b0dc Extract OpenRouter direct generation presets |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
-| Current `src/app/useOpenRouterGenerationActions.ts` LOC | 440 |
+| Current `src/app/useOpenRouterGenerationActions.ts` LOC | 403 |
+| Current `src/App.tsx` LOC | 2597 |
+| Current `src/app/openRouterDirectGenerationPresets.ts` LOC | 78 |
 | Current `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
 | Current `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 208 |
 | Current `src/app/useOpenRouterWorkspaceProps.ts` LOC | 164 |
@@ -460,3 +462,4 @@ git push origin product/input-2
 - `localDevModelRoutes` owns local OpenRouter/Ollama model route registration and model payload proxy response handling.
 - `localDevChatRoutes` owns local OpenRouter/Ollama chat route registration, chat request validation wiring, and provider chat proxy response handling.
 - `localDevOpenRouterJobRoutes` owns local OpenRouter async job route registration, status lookup, active-job limiting, and queued/running/succeeded/failed lifecycle orchestration.
+- `openRouterDirectGenerationPresets` owns the direct OpenRouter generation preset catalog for easy, medium, hard, and express session variants.
