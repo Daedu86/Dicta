@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-12 after OpenRouter direct generation presets extraction
+Updated: 2026-06-12 after OpenRouter direct generation preset reuse in buttons
 
 ## Current working-tree status
 
@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | ce8b0dc Extract OpenRouter direct generation presets |
+| Latest committed baseline | 4ca95c0 Reuse OpenRouter direct generation presets in buttons |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
@@ -18,7 +18,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/App.tsx` LOC | 2597 |
 | Current `src/app/openRouterDirectGenerationPresets.ts` LOC | 78 |
 | Current `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
-| Current `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 208 |
+| Current `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 238 |
 | Current `src/app/useOpenRouterWorkspaceProps.ts` LOC | 164 |
 | Current `src/app/useOllamaWorkspaceProps.ts` LOC | 52 |
 | Current `src/app/useAppShellHeaderProps.ts` LOC | 86 |
@@ -463,3 +463,4 @@ git push origin product/input-2
 - `localDevChatRoutes` owns local OpenRouter/Ollama chat route registration, chat request validation wiring, and provider chat proxy response handling.
 - `localDevOpenRouterJobRoutes` owns local OpenRouter async job route registration, status lookup, active-job limiting, and queued/running/succeeded/failed lifecycle orchestration.
 - `openRouterDirectGenerationPresets` owns the direct OpenRouter generation preset catalog for easy, medium, hard, and express session variants.
+- `useFocusedTrainingGenerationButtons` now reuses `openRouterDirectGenerationPresets` for direct generation button identity and slot ownership while keeping button copy and UI state local.

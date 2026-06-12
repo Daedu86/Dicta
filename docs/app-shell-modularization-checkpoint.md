@@ -733,3 +733,42 @@ ROI result:
 
 Next work should inspect whether `useFocusedTrainingGenerationButtons.ts` can reuse `openRouterDirectGenerationPresets` without introducing an over-abstract button builder.
 
+## Follow-up — 2026-06-12 OpenRouter preset reuse in generation buttons
+
+Latest committed baseline: `4ca95c0 Reuse OpenRouter direct generation presets in buttons`.
+
+This checkpoint records reuse of `src/app/openRouterDirectGenerationPresets.ts` inside `src/app/useFocusedTrainingGenerationButtons.ts`.
+
+Recent commit context:
+
+* `4ca95c0 (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Reuse OpenRouter direct generation presets in buttons`
+* `76a5582 Document OpenRouter direct generation presets extraction`
+* `ce8b0dc Extract OpenRouter direct generation presets`
+* `23cb0a6 Document local dev OpenRouter job routes extraction`
+* `74caa63 Extract local dev OpenRouter job routes`
+
+Ownership after this extraction:
+
+* `src/app/openRouterDirectGenerationPresets.ts` remains the source of truth for direct OpenRouter generation ids, slot labels, display labels, durations, intents, target difficulties, and difficulty instructions.
+* `src/app/useOpenRouterGenerationActions.ts` keeps OpenRouter request side effects and generation job flow.
+* `src/app/useFocusedTrainingGenerationButtons.ts` now reuses the shared preset catalog for button ids and OpenRouter job slot matching, while keeping button labels, titles, help text, disabled state, and notices local to the focused training UI.
+
+Current metrics after this extraction:
+
+| Item | Value |
+| ---- | ----: |
+| `src/App.tsx` LOC | 2597 |
+| `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 238 |
+| `src/app/openRouterDirectGenerationPresets.ts` LOC | 78 |
+| `src/app/useOpenRouterGenerationActions.ts` LOC | 403 |
+
+ROI result:
+
+* Better consistency: direct generation actions and focused training buttons now share one preset catalog for ids and slot labels.
+* Lower duplication risk: future changes to generation slot ownership no longer require duplicate edits across action and button hooks.
+* Controlled abstraction: the hook keeps UI copy and UI-specific disabled/status behavior local instead of moving everything into an over-general button factory module.
+* No runtime-sensitive areas touched: Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+Next work should re-evaluate ROI before extracting more. Good next candidates are pure export/package builders or OpenRouter prompt planning helpers, not TTS runtime or hydration.
+
