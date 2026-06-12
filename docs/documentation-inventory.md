@@ -13,7 +13,6 @@ Current baseline observed: `aa7f0ee Document final recommendation cleanup`
 | ACTIVE | Canonical entry point or current source of truth. Agents should read it when relevant. |
 | REFERENCE | Useful supporting context, but not the primary entry point. |
 | HISTORICAL | Checkpoint, migration note, or completed plan. Useful for context, not current truth. |
-| BROKEN-LINK-SOURCE | Contains a known reference to a missing document. Needs repair in a later pass. |
 | ARCHIVE-CANDIDATE | Likely should move under `docs/archive/`, but only after review. |
 | OBSOLETE-CANDIDATE | May conflict with current repo state. Do not delete until verified. |
 
@@ -63,7 +62,7 @@ The Stage 8 canonical onboarding docs now exist:
 
 ### Repaired modularization references
 
-The former missing reference `docs/app-modularization.md` has been replaced with `docs/app-shell-modularization-map.md` in the historical modularization docs.
+The former missing modularization-map reference now points to `docs/app-shell-modularization-map.md` in the historical modularization docs.
 
 Repaired sources:
 
