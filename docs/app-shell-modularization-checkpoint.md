@@ -571,3 +571,35 @@ ROI result:
 
 Next work should inspect before extracting full route handlers; the remaining plugin is now mostly local dev route orchestration, API-key branching, and response handling.
 
+## Follow-up — 2026-06-11 Local dev API key routes
+
+Latest committed baseline: `36e3312 Extract local dev API key routes`.
+
+This checkpoint records extraction of duplicated local API-key route handling from `dev/dictaLocalDevApiPlugin.ts`.
+
+`dev/localDevApiKeyRoutes.ts` now owns registration for local API-key status, save, and delete routes for OpenRouter and Ollama. `dev/dictaLocalDevApiPlugin.ts` keeps provider-specific store wiring, validation wiring, model/chat/job/admin route orchestration, and upstream response handling.
+
+Current metrics after this extraction:
+
+| Item | Value |
+| ---- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC | 347 |
+| `dev/localDevApiKeyRoutes.ts` LOC | 86 |
+| `dev/localDevOllamaClient.ts` LOC | 39 |
+| `dev/localDevOpenRouterClient.ts` LOC | 30 |
+| `dev/localDevHttpHelpers.ts` LOC | 65 |
+| `dev/localDevOllamaHelpers.ts` LOC | 77 |
+| `dev/localDevOpenRouterJobs.ts` LOC | 94 |
+| `dev/localDevAdminFiles.ts` LOC | 86 |
+| `dev/localDevApiValidation.ts` LOC | 105 |
+| `dev/localDevEnvStore.ts` LOC | 83 |
+
+ROI result:
+
+* Better ownership: `localDevApiKeyRoutes.ts` is separated from local API route orchestration.
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 347 LOC.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting larger route handlers; the remaining plugin is now mostly provider model/chat/job/admin route orchestration.
+

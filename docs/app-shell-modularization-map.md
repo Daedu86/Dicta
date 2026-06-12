@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-11 after local Ollama client helper extraction
+Updated: 2026-06-11 after local dev API key routes extraction
 
 ## Current working-tree status
 
@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | e79c8dc Document local Ollama client helper extraction |
+| Latest committed baseline | 36e3312 Extract local dev API key routes |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
@@ -32,7 +32,8 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useFocusedTrainingLiveMetrics.ts` LOC | 88 |
 | Current `src/app/AppWorkspaceContent.tsx` LOC | 128 |
 | Current `vite.config.ts` LOC | 88 |
-| Current `dev/dictaLocalDevApiPlugin.ts` LOC | 435 |
+| Current `dev/dictaLocalDevApiPlugin.ts` LOC | 347 |
+| Current `dev/localDevApiKeyRoutes.ts` LOC | 86 |
 | Current `dev/localDevOllamaClient.ts` LOC | 39 |
 | Current `dev/localDevOpenRouterClient.ts` LOC | 30 |
 | Current `dev/localDevHttpHelpers.ts` LOC | 65 |
@@ -449,3 +450,7 @@ git add docs/app-shell-modularization-map.md
 git commit -m "Document App shell modularization map"
 git push origin product/input-2
 ```
+
+## Current ownership
+
+- `localDevApiKeyRoutes` owns local OpenRouter/Ollama API key status, save, delete route registration and key response formatting.
