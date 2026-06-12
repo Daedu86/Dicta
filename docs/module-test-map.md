@@ -35,6 +35,7 @@ Use this before changing code so that validation starts with the narrowest relev
 | `src/app/openRouterDirectGenerationPresets.ts` | OpenRouter direct generation presets. | `tests/openRouterDirectGenerationPresets.test.ts` |
 | `src/app/useBrowserTtsSetupCardProps.ts` | Browser TTS setup card prop composition. | `tests/browserTtsSetupCardProps.test.ts` |
 | `src/app/useTtsPerformanceSampler.ts` | Browser TTS performance sampling, live metric publication, lag stabilization, telemetry samples/actions, and final metric packaging. | `tests/useTtsPerformanceSampler.test.ts` |
+| `src/app/useTtsPlaybackControls.ts` | Browser TTS pause/resume/stop/seek controls, runtime ref cleanup, action telemetry, and status transitions. | `tests/useTtsPlaybackControls.test.ts` |
 
 ## Input and Browser TTS runtime
 

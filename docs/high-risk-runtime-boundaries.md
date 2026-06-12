@@ -33,11 +33,12 @@ High-risk areas:
 
 Current App shell anchors in the post-sampler working tree based on `b1fc1d8`:
 
-- `resetSession`: `src/App.tsx:924`
-- `useTtsPerformanceSampler` hook call: `src/App.tsx:1197`
-- `playTts`: `src/App.tsx:1270`
-- `playTtsFromWord`: `src/App.tsx:1275`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2325`
+- `resetSession`: `src/App.tsx:925`
+- `useTtsPerformanceSampler` hook call: `src/App.tsx:1198`
+- `playTts`: `src/App.tsx:1271`
+- `playTtsFromWord`: `src/App.tsx:1276`
+- `useTtsPlaybackControls` hook call: `src/App.tsx:1757`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2284`
 
 Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
 

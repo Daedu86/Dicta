@@ -26,6 +26,7 @@ import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGen
 import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPresentationState';
 import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainingInputTelemetryRuntime';
 import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
+import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -1748,80 +1749,38 @@ function App() {
     setExportMessage,
   });
 
-  function pauseTts(): void {
-    if (isBrowserTtsSupported()) {
-      ttsPausedAtWordIndexRef.current = estimateTtsSpokenWordIndex();
-      cancelBrowserTts();
-      ttsUtteranceRef.current = null;
-      ttsChunkStartMsRef.current = null;
-    }
-
-    recordTtsTelemetryAction('pause');
-    setRunning(false);
-    setSessionStatus((current) => (current === 'finished' ? current : 'paused'));
-    setTtsStatus((current) => (current === 'playing' ? 'paused' : current));
-  }
-
-  function resumeTts(): void {
-    if (!isBrowserTtsSupported()) return;
-    if (ttsPausedAtWordIndexRef.current !== null) {
-      playTtsFromWord(ttsPausedAtWordIndexRef.current);
-      return;
-    }
-    resumeBrowserTts();
-    recordTtsTelemetryAction('resume');
-    if (ttsStartedAtMsRef.current === null) {
-      ttsStartedAtMsRef.current = performance.now();
-    }
-    setRunning(true);
-    setSessionStatus((current) => (current === 'finished' ? current : 'running'));
-    setTtsStatus('playing');
-  }
-
-  function stopTtsPlayback(action?: ControlAction): void {
-    if (action) {
-      recordTtsTelemetryAction(action);
-    }
-    if (isBrowserTtsSupported()) {
-      cancelBrowserTts();
-    }
-    ttsUtteranceRef.current = null;
-    ttsChunkStartMsRef.current = null;
-    ttsPausedAtWordIndexRef.current = null;
-    ttsCompletedSourceWordsRef.current = 0;
-    setTtsCurrentChunk('');
-    setTtsPacingMode('balanced');
-    setTtsSpeechRate(1);
-    setRunning(false);
-    setSessionStatus((current) => {
-      if (current === 'finished') return current;
-      return ttsPracticeText.trim() ? 'paused' : 'ready';
-    });
-    setTtsStatus(ttsText.trim() ? 'ready' : 'idle');
-  }
-
-  function seekTtsPlayback(percent: number): void {
-    if (activeInputMode !== BROWSER_TTS_SESSION_INPUT_MODE || !ttsHasText || activeSessionFinished) return;
-    const wordCount = ttsTranscript?.words.length ?? 0;
-    if (wordCount === 0) return;
-    const targetWordIndex = Math.floor(clamp(percent, 0, 1) * Math.max(0, wordCount - 1));
-    if (isBrowserTtsSupported()) {
-      cancelBrowserTts();
-    }
-    ttsPausedAtWordIndexRef.current = null;
-    ttsCompletedSourceWordsRef.current = targetWordIndex;
-    ttsChunkStartMsRef.current = null;
-    recordTtsTelemetryAction('seek');
-    if (ttsStatus === 'playing' || ttsStatus === 'paused') {
-      playTtsFromWord(targetWordIndex);
-    } else {
-      setTtsStatus('ready');
-      setRunning(false);
-      setSessionStatus((current) => (current === 'finished' ? current : 'paused'));
-      setTtsPlayerProgressTick((value) => value + 1);
-    }
-  }
-
+  const {
+    pauseTts,
+    resumeTts,
+    stopTtsPlayback,
+    seekTtsPlayback,
+  } = useTtsPlaybackControls({
+    activeInputMode,
+    activeSessionFinished,
+    ttsHasText,
+    ttsStatus,
+    ttsText,
+    ttsPracticeText,
+    ttsTranscriptWordCount: ttsTranscript?.words.length ?? 0,
+    isBrowserTtsSupported,
+    cancelBrowserTts,
+    resumeBrowserTts,
+    estimateTtsSpokenWordIndex,
+    playTtsFromWord,
+    recordTtsTelemetryAction,
+    ttsStartedAtMsRef,
+    ttsUtteranceRef,
+    ttsChunkStartMsRef,
+    ttsCompletedSourceWordsRef,
+    ttsPausedAtWordIndexRef,
+    setTtsCurrentChunk,
+    setTtsPacingMode,
+    setTtsSpeechRate,
+    setRunning,
+    setSessionStatus,
+    setTtsStatus,
+    setTtsPlayerProgressTick,
+  });
 
   const {
     inputSettingsReady,
