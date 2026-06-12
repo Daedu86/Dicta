@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after active-session hydration extraction.
+Updated: 2026-06-12 after reset-session defaults extraction.
 
 ## Current baseline
 
@@ -116,7 +116,7 @@ The next pass should inspect candidates before writing code. Do not assume anoth
 
 Preferred investigation order:
 
-1. Characterization tests for `resetSession` reset-default calculation — next recommended work before moving high-risk state or playback-adjacent behavior.
+1. Characterization tests for remaining `resetSession` side-effect sequencing — next recommended work before moving playback/ref/telemetry-adjacent behavior.
 2. Active-session hydration/persistence side-effect extraction — defer unless the remaining setter/ref boundary can be made explicit and test-first.
 3. Remaining setup/session-creation UI glue — only if the candidate creates another testable seam beyond the completed transition/reset/setup-card actions.
 4. Browser TTS runtime/playback — explicitly deferred until a dedicated design exists.
@@ -128,6 +128,13 @@ Recently added characterization coverage:
 - `src/app/useWorkspaceNavigationEffects.ts` -> `tests/useWorkspaceNavigationEffects.test.ts`
 - `src/app/useSessionWorkspaceActions.ts` -> `tests/useSessionWorkspaceActions.test.ts`
 - `src/app/sessionStorage.ts` -> `tests/sessionStorage.test.ts`
+
+Reset-session defaults extraction checkpoint:
+
+- `51d0b7f` extracted pure reset default calculation into `src/app/resetSessionState.ts`.
+- `tests/resetSessionState.test.ts` characterizes lock preservation, TTS ready/idle status, Browser TTS setup expansion, and non-Browser TTS behavior.
+- `src/App.tsx` still owns reset side effects: `stopTtsPlayback`, TTS refs, published UI ref assignment, telemetry reset, finished-session reset allowance, and adaptive feedback reset.
+- Do not extract `resetSession` wholesale yet. The remaining body is still playback/ref/telemetry-adjacent and needs a smaller test-first plan.
 
 Active-session hydration extraction checkpoint:
 
