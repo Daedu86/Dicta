@@ -4,6 +4,7 @@ import { createLocalDevEnvStore } from './localDevEnvStore';
 import { createLocalDevApiValidation } from './localDevApiValidation';
 import { buildLocalDevAdminFileInventory } from './localDevAdminFiles';
 import { createLocalDevOllamaHelpers } from './localDevOllamaHelpers';
+import { fetchLocalDevOllamaChat, fetchLocalDevOllamaModels } from './localDevOllamaClient';
 import {
   createLocalDevHttpError,
   maskLocalDevApiKeySuffix,
@@ -152,12 +153,7 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
 
       try {
-        const response = await fetch('https://ollama.com/api/tags', {
-          headers: {
-            Authorization: `Bearer ${ollamaApiKey}`,
-            Accept: 'application/json',
-          },
-        });
+        const response = await fetchLocalDevOllamaModels(ollamaApiKey);
 
         const responseBody = await response.text();
         if (!response.ok) {
@@ -257,21 +253,11 @@ export function createDictaLocalDevApiPlugin(): Plugin {
           return;
         }
 
-        const response = await fetch('https://ollama.com/api/chat', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${ollamaApiKey}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            stream: false,
-            options: {
-              num_predict: maxTokens,
-            },
-          }),
+        const response = await fetchLocalDevOllamaChat({
+          apiKey: ollamaApiKey,
+          model,
+          prompt,
+          maxTokens,
         });
 
         const responseBody = await response.text();
