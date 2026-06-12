@@ -5,7 +5,6 @@ import {
   type TtsPlaybackControlsOptions,
 } from '../src/app/useTtsPlaybackControls';
 import type {
-  ControlAction,
   TtsPacingMode,
 } from '../src/types/dictation';
 import type {
