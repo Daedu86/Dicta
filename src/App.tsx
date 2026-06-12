@@ -34,6 +34,7 @@ import {
   buildBrowserTtsPlaybackPlan,
   type BrowserTtsBoundaryStrictness,
 } from './app/browserTtsPlaybackPlan';
+import { completeBrowserTtsChunk } from './app/browserTtsChunkCompletion';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -1466,8 +1467,17 @@ function App() {
       utterance.onend = () => {
         perfDiagnostics.recordTtsEnd(perfUtteranceId);
         if (cancelled) return;
-        const completesMacroPhrase = macroWordOffset + chunk.wordCount >= macroWords.length;
-        ttsCompletedSourceWordsRef.current = chunk.startWordIndex + chunk.wordCount;
+        const chunkCompletion = completeBrowserTtsChunk({
+          macroPhraseIndex,
+          macroWordOffset,
+          macroWordsLength: macroWords.length,
+          chunkStartWordIndex: chunk.startWordIndex,
+          chunkWordCount: chunk.wordCount,
+          effectivePauseNow,
+          pauseAfterPhraseMs: runtimeDecision.pauseAfterPhraseMs,
+        });
+        const { completesMacroPhrase } = chunkCompletion;
+        ttsCompletedSourceWordsRef.current = chunkCompletion.completedSourceWords;
         if (completesMacroPhrase) {
           recordPhrasePlaybackEvent('phrase_completed', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
           if (normalizeBenchmarkLanguage(ttsLanguage) === 'de') {
@@ -1500,10 +1510,9 @@ function App() {
           }
         }
         chunkIndex += 1;
-        macroWordOffset += chunk.wordCount;
-        if (macroWordOffset >= macroWords.length) {
-          macroPhraseIndex += 1;
-          macroWordOffset = 0;
+        macroPhraseIndex = chunkCompletion.nextMacroPhraseIndex;
+        macroWordOffset = chunkCompletion.nextMacroWordOffset;
+        if (chunkCompletion.phraseAdvanced) {
           ttsSemanticPhraseAdvanceCountRef.current += 1;
           recordPhrasePlaybackEvent('phrase_advanced', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
         }
@@ -1517,10 +1526,10 @@ function App() {
           phraseReplayCount: ttsSemanticPhraseReplayCountRef.current,
           lastPhraseAdvanceReason: 'chunk_complete',
         }));
-        if (effectivePauseNow) {
+        if (chunkCompletion.shouldPauseBeforeNextChunk) {
           window.setTimeout(() => {
             speakNext();
-          }, runtimeDecision.pauseAfterPhraseMs);
+          }, chunkCompletion.pauseBeforeNextChunkMs);
         } else {
           speakNext();
         }
