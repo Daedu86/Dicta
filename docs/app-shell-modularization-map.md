@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after training lifecycle control characterization.
+Updated: 2026-06-12 after reset-session ref-default extraction.
 
 ## Current baseline
 
@@ -116,7 +116,7 @@ The next pass should inspect candidates before writing code. Do not assume anoth
 
 Preferred investigation order:
 
-1. Test-first extraction of a tiny remaining `resetSession` side-effect boundary — only if playback/ref/telemetry ownership stays explicit.
+1. Prefer a different lower-risk App seam next. Remaining `resetSession` work is side-effect sequencing, not cheap modularization.
 2. Active-session hydration/persistence side-effect extraction — defer unless the remaining setter/ref boundary can be made explicit and test-first.
 3. Remaining setup/session-creation UI glue — only if the candidate creates another testable seam beyond the completed transition/reset/setup-card actions.
 4. Browser TTS runtime/playback — explicitly deferred until a dedicated design exists.
@@ -128,6 +128,14 @@ Recently added characterization coverage:
 - `src/app/useWorkspaceNavigationEffects.ts` -> `tests/useWorkspaceNavigationEffects.test.ts`
 - `src/app/useSessionWorkspaceActions.ts` -> `tests/useSessionWorkspaceActions.test.ts`
 - `src/app/sessionStorage.ts` -> `tests/sessionStorage.test.ts`
+
+Reset-session ref-default extraction checkpoint:
+
+- `fbec1d3` extended `src/app/resetSessionState.ts` with pure reset ref defaults.
+- `tests/resetSessionState.test.ts` now characterizes playback-ref, UI-publish, and telemetry reset defaults.
+- `src/App.tsx` still executes all ref assignments and owns side-effect ordering.
+- `stopTtsPlayback`, `telemetryRef`, `allowFinishedSessionResetRef`, and `resetAdaptiveSessionFeedbackTracking` remain in `App.tsx`.
+- Stop extracting `resetSession` here unless a future test-first plan specifically covers side-effect ordering.
 
 Training lifecycle control characterization checkpoint:
 
