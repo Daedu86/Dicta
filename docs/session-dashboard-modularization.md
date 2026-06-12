@@ -63,7 +63,7 @@ Also review the diff to confirm only these paths changed:
 src/App.tsx
 src/components/session-dashboard/**
 docs/session-dashboard-modularization.md
-docs/app-modularization.md
+docs/app-shell-modularization-map.md
 ```
 
 ## Stop Conditions
@@ -83,7 +83,7 @@ docs/app-modularization.md
 - [x] No behavior, text, class, or order changes were introduced.
 - [x] `npm run test -- --reporter=verbose` passed.
 - [x] `npm run build` passed.
-- [x] `docs/app-modularization.md` updated.
+- [x] `docs/app-shell-modularization-map.md` updated.
 
 ## Closeout
 

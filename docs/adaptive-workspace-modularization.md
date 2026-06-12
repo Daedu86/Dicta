@@ -260,7 +260,7 @@ Expected files for the next code patch:
 ```text
 src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace.tsx
 docs/adaptive-workspace-modularization.md
-docs/app-modularization.md
+docs/app-shell-modularization-map.md
 ```
 
 Patch 2 created:

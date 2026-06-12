@@ -7,7 +7,7 @@ Read first:
 1. `AGENTS.md`
 2. `README.md`
 3. `docs/architecture.md`
-4. `docs/app-modularization.md`
+4. `docs/app-shell-modularization-map.md`
 5. this file
 
 ## Rules

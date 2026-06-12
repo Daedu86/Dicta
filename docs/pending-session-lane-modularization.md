@@ -16,7 +16,7 @@ Changed files:
 
 ```text
 src/App.tsx
-docs/app-modularization.md
+docs/app-shell-modularization-map.md
 docs/pending-session-lane-modularization.md
 ```
 
