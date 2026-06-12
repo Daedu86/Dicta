@@ -24,6 +24,7 @@ Use this before changing code so that validation starts with the narrowest relev
 | `src/app/useOpenRouterJobsRuntime.ts` | OpenRouter job polling/runtime behavior. | `tests/useOpenRouterJobsRuntime.test.ts` |
 | `src/app/useSessionPersistenceSync.ts` | Session persistence/sync lifecycle. | `tests/useSessionPersistenceSync.test.ts` |
 - `src/app/activeSessionHydration.ts` -> `tests/activeSessionHydration.test.ts`
+- `src/app/useTrainingSessionLifecycle.ts` -> `tests/useTrainingSessionLifecycle.test.ts`
 - `src/app/resetSessionState.ts` -> `tests/resetSessionState.test.ts`
 - `src/app/sessionStorage.ts` -> `tests/sessionStorage.test.ts`
 - `src/app/useWorkspaceRouting.ts` -> `tests/useWorkspaceRouting.test.ts`
