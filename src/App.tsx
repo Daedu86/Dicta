@@ -25,6 +25,7 @@ import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessio
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
 import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPresentationState';
 import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainingInputTelemetryRuntime';
+import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -71,7 +72,7 @@ import {
   computeSessionMaxPoints,
   formatSessionPointsForSession,
 } from './core/evaluation';
-import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
+import { buildSessionScoreHelpText } from './core/sessionScore';
 import {
   clampBrowserTtsDeDecisionToRecommendation,
   normalizeBenchmarkLanguage,
@@ -80,14 +81,12 @@ import { buildBrowserTtsTelemetryFrame,
   buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
 import { applyBrowserTtsMobilePacingFallback,
-  applyBrowserTtsRuntimeRateFloor,
-  buildBrowserTtsControlLagSample } from './inputs/browserTts/browserTtsRatePolicy';
+  applyBrowserTtsRuntimeRateFloor } from './inputs/browserTts/browserTtsRatePolicy';
 import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browserTtsUnsafePolicy';
 import { applyBrowserTtsDeRecoveryPolicy,
   summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
-import { trackAction,
-  trackSample } from './core/telemetry';
+import { trackAction } from './core/telemetry';
 import { cloneTelemetry,
   normalizeSessionForPersistence } from './core/sessionNormalization';
 import { telemetryEquals } from './core/sessionTelemetryEquality';
@@ -159,8 +158,6 @@ import {
   averageNumbers,
   clamp,
   clamp01,
-  derivePerformanceTrend,
-  deriveTtsControlAction,
   getTtsVoiceLang,
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
@@ -183,7 +180,6 @@ import type {
   SessionStatus,
   StoredSession,
   TtsLanguage,
-  TtsPerformanceSampleResult,
   TtsPublishedUiState,
   TtsStatus,
 } from './app/sessionTypes';
@@ -1198,116 +1194,24 @@ function App() {
     if (force || trend !== next.trend) setTrend(next.trend);
   }
 
-  function applyTtsPerformanceSample(
-    options: { action?: ControlAction; finalize?: boolean; forcePublishUi?: boolean; practiceTextOverride?: string } = {},
-  ): TtsPerformanceSampleResult {
-    const now = performance.now();
-    if (ttsStartedAtMsRef.current === null) {
-      ttsStartedAtMsRef.current = now;
-    }
-
-    const practiceTextForEvaluation = options.practiceTextOverride ?? ttsPracticeLiveTextRef.current;
-    const evaluation = evaluateTranscriptAttempt(practiceTextForEvaluation, ttsTranscript);
-    const practiceWords = evaluation.typedWords;
-    const visibleAccuracy = practiceWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0 ? evaluation.accuracy : 0;
-    const sourceWordCount = ttsTranscript?.words.length ?? 0;
-    const typedProgress = Math.max(0, evaluation.lastMatchedTargetIndex + 1);
-    const spokenPosition = estimateTtsSpokenWordIndex(now);
-    const nextLagWords = sourceWordCount > 0 ? spokenPosition - typedProgress : 0;
-    const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
-    const nextRawLagSec = nextLagWords / wordsPerSecond;
-    const lagSample = buildBrowserTtsControlLagSample({
-      rawLagSec: nextRawLagSec,
-      language: ttsLanguage,
-      previousValidControlLagSec: ttsLastValidControlLagSecRef.current,
-    });
-    if (lagSample.isOutlier) {
-      ttsLagOutlierCountRef.current += 1;
-    }
-    const nextLagSec = lagSample.stableLagSec;
-    if (!lagSample.usedFallbackControlLag && Number.isFinite(nextLagSec)) {
-      ttsLastValidControlLagSecRef.current = nextLagSec;
-    }
-    const elapsedMinutes = Math.max(getTtsElapsedSeconds(now) / 60, 1 / 60);
-    const nextWpm = practiceWords.length > 0 ? practiceWords.length / elapsedMinutes : 0;
-    const nextAccuracy = practiceWords.length > 0 ? visibleAccuracy : 100;
-    const nextControllerAction = deriveTtsControlAction({
-      accuracy: nextAccuracy,
-      lagSec: nextLagSec,
-      wpm: nextWpm,
-      typedWords: practiceWords.length,
-    });
-    const nextTrend = derivePerformanceTrend(nextLagSec, nextAccuracy, previousLagRef.current, previousAccuracyRef.current);
-    const nextRate = ttsSpeechRate;
-    const nextScore =
-      practiceWords.length > 0 && (ttsTranscript?.words.length ?? 0) > 0
-        ? computeSessionScore({
-            accuracy: nextAccuracy,
-            lagSec: nextLagSec,
-            wpm: nextWpm,
-            rate: nextRate,
-            points: evaluation.points,
-          })
-        : 0;
-
-    ttsLiveSignalRef.current = {
-      accuracy: nextAccuracy,
-      lagSec: nextLagSec,
-      rawLagSec: lagSample.rawLagSec,
-      stableLagSec: lagSample.stableLagSec,
-      lagOutlierCount: ttsLagOutlierCountRef.current,
-      wpm: nextWpm,
-      trend: nextTrend,
-      controllerState: nextControllerAction,
-    };
-
-    publishTtsUiState(
-      {
-        controllerState: nextControllerAction,
-        rate: nextRate,
-        lagSec: nextLagSec,
-        lagWords: nextLagWords,
-        wpm: nextWpm,
-        accuracy: nextAccuracy,
-        trend: nextTrend,
-      },
-      now,
-      Boolean(options.forcePublishUi || options.finalize || options.action),
-    );
-    previousLagRef.current = nextLagSec;
-    previousAccuracyRef.current = nextAccuracy;
-
-    const telemetry = ensureAttemptTelemetry();
-    const nextTelemetry = cloneTelemetry(telemetry);
-    trackSample(nextTelemetry, nextLagSec, nextWpm, nextAccuracy, nextRate);
-
-    if (options.action) {
-      trackAction(nextTelemetry, getTtsElapsedSeconds(now), options.action, nextRate);
-    } else if (nextControllerAction !== ttsLastControllerActionRef.current) {
-      trackAction(nextTelemetry, getTtsElapsedSeconds(now), nextControllerAction, nextRate);
-      ttsLastControllerActionRef.current = nextControllerAction;
-    }
-
-    if (options.finalize) {
-      nextTelemetry.finishedAt = new Date().toISOString();
-    }
-
-    telemetryRef.current = nextTelemetry;
-    return {
-      metrics: {
-        controllerState: nextControllerAction,
-        rate: nextRate,
-        lagSec: nextLagSec,
-        lagWords: nextLagWords,
-        wpm: nextWpm,
-        accuracy: nextAccuracy,
-        trend: nextTrend,
-        score: nextScore,
-        points: evaluation.points,
-      },
-      telemetry: nextTelemetry,
-    };
-  }
+  const applyTtsPerformanceSample = useTtsPerformanceSampler({
+    ttsStartedAtMsRef,
+    ttsPracticeLiveTextRef,
+    ttsTranscript,
+    ttsSpeechRate,
+    ttsLanguage,
+    ttsLastValidControlLagSecRef,
+    ttsLagOutlierCountRef,
+    ttsLiveSignalRef,
+    previousLagRef,
+    previousAccuracyRef,
+    telemetryRef,
+    ttsLastControllerActionRef,
+    estimateTtsSpokenWordIndex,
+    getTtsElapsedSeconds,
+    ensureAttemptTelemetry,
+    publishTtsUiState,
+  });
 
   applyTtsPerformanceSampleRef.current = applyTtsPerformanceSample;
 

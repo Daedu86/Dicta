@@ -31,13 +31,13 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
-Current App shell anchors as of `b1fc1d8`:
+Current App shell anchors in the post-sampler working tree based on `b1fc1d8`:
 
-- `resetSession`: `src/App.tsx:928`
-- `applyTtsPerformanceSample`: `src/App.tsx:1201`
-- `playTts`: `src/App.tsx:1366`
-- `playTtsFromWord`: `src/App.tsx:1371`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2421`
+- `resetSession`: `src/App.tsx:924`
+- `useTtsPerformanceSampler` hook call: `src/App.tsx:1197`
+- `playTts`: `src/App.tsx:1270`
+- `playTtsFromWord`: `src/App.tsx:1275`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2325`
 
 Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
 
