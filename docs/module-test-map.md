@@ -24,6 +24,7 @@ Use this before changing code so that validation starts with the narrowest relev
 | `src/app/useOpenRouterJobsRuntime.ts` | OpenRouter job polling/runtime behavior. | `tests/useOpenRouterJobsRuntime.test.ts` |
 | `src/app/useSessionPersistenceSync.ts` | Session persistence/sync lifecycle. | `tests/useSessionPersistenceSync.test.ts` |
 - `src/app/sessionStorage.ts` -> `tests/sessionStorage.test.ts`
+- `src/app/useWorkspaceRouting.ts` -> `tests/useWorkspaceRouting.test.ts`
 - `src/app/useSessionWorkspaceActions.ts` -> `tests/useSessionWorkspaceActions.test.ts`
 | `src/app/adaptiveExportPackages.ts` | Adaptive export package builders. | `tests/adaptiveExportPackages.test.ts` |
 | `src/app/adaptiveWorkspacePresentation.ts` | Adaptive workspace presentation derivations for benchmark/profile selection, feedback selection, diagnostic options, latest mode, and adapter mapping. | `tests/adaptiveWorkspacePresentation.test.ts` |
