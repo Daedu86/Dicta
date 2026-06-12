@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after Browser TTS playback plan extraction.
+Updated: 2026-06-12 after Browser TTS adaptive semantic debug extraction.
 
 ## Current baseline
 
@@ -11,8 +11,8 @@ This document began as a generated map. The historical deep inventory was intent
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest clean code baseline | f09c969 |
-| Current `src/App.tsx` LOC | 2121 |
+| Latest clean code baseline | 6c536b9 |
+| Current `src/App.tsx` LOC | 2119 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 76 |
 | Current `src/app/useBrowserTtsSetupCardProps.ts` LOC | 88 |
 | Current `src/app/browserTtsPlaybackPlan.ts` LOC | 367 |
@@ -81,6 +81,9 @@ This document began as a generated map. The historical deep inventory was intent
 - `useTtsUiPublisher` owns Browser TTS live metric UI publication thresholds, 500 ms throttling, forced publication, published UI ref updates, and visible metric setter routing.
 - `useTtsPlaybackProgressEstimator` owns Browser TTS spoken-word progress estimation for active chunks, completed-word fallback, finished playback, and source-word clamping.
 - `browserTtsPlaybackPlan` owns pure Browser TTS next-chunk playback planning: candidate chunk selection, adaptive controller decision mapping, pacing mode derivation, runtime rate floor, unsafe-boundary policy, Android mobile fallback, DE recovery policy, executable telemetry frames, rolling accuracy windows, and next phrase-size/boundary state. The full `playTtsFromWord` / `speakNext` loop, `SpeechSynthesisUtterance` creation, event handlers, adaptive benchmark writes, telemetry persistence, UI setters, refs, submit, and reset behavior remain in `src/App.tsx`.
+- `browserTtsChunkCompletion` owns pure Browser TTS chunk-completion state transitions: completed source-word calculation, macro phrase advancement, next macro word offset, phrase-advance detection, and pause-before-next-chunk scheduling metadata.
+- `browserTtsAdaptiveSemanticDebug` owns Browser TTS phrase-start adaptive semantic debug aggregation: pause safety counts, deferred pause/replay penalties, rolling semantic completeness/difficulty averages, execution fidelity, phrase preview, and phrase counter publication.
+
 
 ## Current recommendation
 
@@ -88,7 +91,7 @@ This document began as a generated map. The historical deep inventory was intent
 - Treat `docs/modularization-roi.md` as the decision framework: choose the highest-ROI candidate that can be bounded and validated.
 - Do not treat Browser TTS, refs, timers, telemetry, `resetSession`, or `playTtsFromWord` risk as an automatic veto. Treat that risk as validation cost, slice size, required characterization coverage, manual smoke scope, and rollback planning.
 - Reject only candidates that are unbounded, untestable, too ambiguous to verify, or mostly create no-op wrapper indirection.
-- The previously selected Browser TTS playback plan builder has been extracted. Do not immediately jump to the full playback loop without a fresh ROI scorecard.
+- The previously selected Browser TTS adaptive semantic debug update has been extracted. Do not immediately jump to the full playback loop without a fresh ROI scorecard.
 
 ## Current high-risk anchors
 
