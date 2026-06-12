@@ -31,12 +31,13 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
-Current App shell anchors as of `b0cbc40`:
+Current App shell anchors as of `b1fc1d8`:
 
-- `resetSession`: `src/App.tsx:934`
-- `playTts`: `src/App.tsx:1376`
-- `playTtsFromWord`: `src/App.tsx:1381`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2450`
+- `resetSession`: `src/App.tsx:928`
+- `applyTtsPerformanceSample`: `src/App.tsx:1201`
+- `playTts`: `src/App.tsx:1366`
+- `playTtsFromWord`: `src/App.tsx:1371`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2421`
 
 Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
 
@@ -332,4 +333,4 @@ Prefer multiple small commits over a broad mixed change.
 
 ## Modularization ROI override
 
-A high modularization score in `docs/modularization-roi.md` does not override these boundaries. If a candidate touches Browser TTS playback/runtime, phrase progression, `playTtsFromWord`, `resetSession`, refs, timers, telemetry, Supabase, OpenRouter jobs, PWA/mobile performance, or CSS cascade behavior, require focused tests and a smaller plan before moving code.
+A high modularization score in `docs/modularization-roi.md` does not remove the need for validation. It also does not mean the candidate should be avoided by default. If a candidate touches Browser TTS playback/runtime, phrase progression, `playTtsFromWord`, `resetSession`, refs, timers, telemetry, Supabase, OpenRouter jobs, PWA/mobile performance, or CSS cascade behavior, convert that risk into focused tests, a bounded slice, manual smoke checks where needed, and a clear rollback plan before moving code.

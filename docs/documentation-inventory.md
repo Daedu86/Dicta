@@ -4,7 +4,7 @@ This document is the current inventory of Markdown documentation in the Dicta re
 
 Status as of: 2026-06-12  
 Current branch: `product/input-2`  
-Current baseline observed: `b0cbc40`
+Current baseline observed: `b1fc1d8`
 
 ## Status legend
 
@@ -34,7 +34,7 @@ Current baseline observed: `b0cbc40`
 | `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
 | `docs/android-pwa-performance-debugging.md` | REFERENCE | Android/PWA performance debugging notes. | Keep as runtime/performance context. |
-| `docs/app-shell-modularization-map.md` | REFERENCE | App shell modularization map and remaining extraction guidance. | Refreshed after `b0cbc40`; verify recent commits and LOC before using. |
+| `docs/app-shell-modularization-map.md` | REFERENCE | App shell modularization map and remaining extraction guidance. | Refreshed after `b1fc1d8`; verify recent commits and LOC before using. |
 | `docs/archive/app-shell-modularization-checkpoint.md` | HISTORICAL, ARCHIVED | Historical checkpoint log for app shell modularization. | Contains several old baselines: `ad42cef`, `522a983`, `637e479`, `3ef3b91`, `abe497a`. Do not use as current baseline. |
 | `docs/next-modularization-plan.md` | REFERENCE | Current/near-term modularization planning context. | Verify against current branch before using as source of truth. |
 | `docs/adaptive-advanced-diagnostics-modularization.md` | HISTORICAL | Plan/checkpoint for adaptive diagnostics modularization. | Review whether completed before archiving. |
@@ -86,7 +86,7 @@ These commit baselines appear in historical modularization docs and should not b
 
 Current observed baseline for this inventory pass:
 
-- `b0cbc40`
+- `b1fc1d8`
 
 ## Proposed next documentation stages
 
