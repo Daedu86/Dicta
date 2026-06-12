@@ -53,11 +53,11 @@ These documents may contain useful context, but they are not current sources of 
 | `admin-workspace-modularization.md` | Historical modularization note. |
 | `app-post-leaderboard-measurement.md` | Historical measurement/modularization note. |
 | `app-shell-header-modularization.md` | Historical modularization note. |
-| `app-shell-modularization-checkpoint.md` | Historical checkpoint log with stale baseline hashes. |
+| `archive/app-shell-modularization-checkpoint.md` | Historical checkpoint log with stale baseline hashes. |
 | `app-shell-modularization-map.md` | Reference document, but contains stale baseline guidance that must be verified before use. |
 | `auth-workspace-modularization.md` | Historical modularization note. |
 | `leaderboard-workspace-modularization.md` | Historical modularization note. |
-| `legacy-multi-input-2026-06-05.md` | Historical legacy snapshot. |
+| `archive/legacy-multi-input-2026-06-05.md` | Historical legacy snapshot. |
 | `next-modularization-plan.md` | Planning reference; verify against current branch before using. |
 | `openrouter-workspace-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |
 | `pending-session-lane-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |

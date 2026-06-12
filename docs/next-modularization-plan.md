@@ -132,7 +132,7 @@ Top-level function inventory:
 178:function App() {
 ```
 
-Detailed checkpoint: `docs/app-shell-modularization-checkpoint.md`.
+Detailed checkpoint: `docs/archive/app-shell-modularization-checkpoint.md`.
 
 Completed extraction groups:
 

@@ -13,7 +13,7 @@ Current baseline observed: `aa7f0ee Document final recommendation cleanup`
 | ACTIVE | Canonical entry point or current source of truth. Agents should read it when relevant. |
 | REFERENCE | Useful supporting context, but not the primary entry point. |
 | HISTORICAL | Checkpoint, migration note, or completed plan. Useful for context, not current truth. |
-| ARCHIVE-CANDIDATE | Likely should move under `docs/archive/`, but only after review. |
+| ARCHIVED | Historical document moved under `docs/archive/`. Keep for context, not current truth. |
 | OBSOLETE-CANDIDATE | May conflict with current repo state. Do not delete until verified. |
 
 ## Current Markdown files
@@ -34,7 +34,7 @@ Current baseline observed: `aa7f0ee Document final recommendation cleanup`
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
 | `docs/android-pwa-performance-debugging.md` | REFERENCE | Android/PWA performance debugging notes. | Keep as runtime/performance context. |
 | `docs/app-shell-modularization-map.md` | REFERENCE, OBSOLETE-CANDIDATE | App shell modularization map and remaining extraction guidance. | Contains stale baseline references such as `abe497a` and `3ef3b91`; update or mark historical later. |
-| `docs/app-shell-modularization-checkpoint.md` | HISTORICAL, ARCHIVE-CANDIDATE | Historical checkpoint log for app shell modularization. | Contains several old baselines: `ad42cef`, `522a983`, `637e479`, `3ef3b91`, `abe497a`. Do not use as current baseline. |
+| `docs/archive/app-shell-modularization-checkpoint.md` | HISTORICAL, ARCHIVED | Historical checkpoint log for app shell modularization. | Contains several old baselines: `ad42cef`, `522a983`, `637e479`, `3ef3b91`, `abe497a`. Do not use as current baseline. |
 | `docs/next-modularization-plan.md` | REFERENCE | Current/near-term modularization planning context. | Verify against current branch before using as source of truth. |
 | `docs/adaptive-advanced-diagnostics-modularization.md` | HISTORICAL | Plan/checkpoint for adaptive diagnostics modularization. | Review whether completed before archiving. |
 | `docs/adaptive-workspace-modularization.md` | HISTORICAL | Adaptive workspace modularization plan/checkpoint. | Reference repaired to `docs/app-shell-modularization-map.md`. |
@@ -43,7 +43,7 @@ Current baseline observed: `aa7f0ee Document final recommendation cleanup`
 | `docs/app-shell-header-modularization.md` | HISTORICAL | App shell header extraction/modularization notes. | Review whether completed before archiving. |
 | `docs/auth-workspace-modularization.md` | HISTORICAL | Auth workspace modularization plan/checkpoint. | Review whether completed before archiving. |
 | `docs/leaderboard-workspace-modularization.md` | HISTORICAL | Leaderboard workspace modularization plan/checkpoint. | Review whether completed before archiving. |
-| `docs/legacy-multi-input-2026-06-05.md` | HISTORICAL, ARCHIVE-CANDIDATE | Legacy multi-input snapshot from 2026-06-05. | Keep for historical context; not current source of truth. |
+| `docs/archive/legacy-multi-input-2026-06-05.md` | HISTORICAL, ARCHIVED | Legacy multi-input snapshot from 2026-06-05. | Keep for historical context; not current source of truth. |
 | `docs/openrouter-workspace-modularization.md` | HISTORICAL | OpenRouter workspace modularization plan/checkpoint. | Reference repaired to `docs/app-shell-modularization-map.md`. |
 | `docs/pending-session-lane-modularization.md` | HISTORICAL | Pending session lane modularization plan/checkpoint. | Reference repaired to `docs/app-shell-modularization-map.md`. |
 | `docs/session-dashboard-modularization.md` | HISTORICAL | Session dashboard modularization plan/checkpoint. | Reference repaired to `docs/app-shell-modularization-map.md`. |
@@ -98,7 +98,7 @@ Current observed baseline for this inventory pass:
 | 8F | Create `docs/high-risk-runtime-boundaries.md`. | Done. |
 | 8G | Connect root docs and documentation indexes. | Done. |
 | 8H | Repair broken references. | Done. |
-| 8I | Archive historical docs. | Move only after review; do not delete by default. |
+| 8I | Archive selected historical docs. | In progress. |
 | 8J | Update `.gitignore` for local Python virtualenv noise. | Separate non-docs commit. |
 
 ## Agent rule
