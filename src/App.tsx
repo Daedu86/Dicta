@@ -235,12 +235,15 @@ function App() {
     setSessionCreationMode,
     sessionCreationSource,
     setSessionCreationSource,
+    changeSessionCreationSource,
     sessionCreationName,
     setSessionCreationName,
     dictationScriptJson,
     setDictationScriptJson,
+    changeDictationScriptJson,
     dictationScriptValidation,
     setDictationScriptValidation,
+    cancelSessionCreation,
   } = useSessionCreationWorkspaceState();
   const { themeMode, setThemeMode } = useThemeModeRuntime();
   const [ttsExpanded, setTtsExpanded] = useState(true);
@@ -2368,19 +2371,13 @@ function App() {
     dictationScriptJson,
     dictationScriptValidation,
     validatedDictationScript,
-    onSessionCreationSourceChange: (value) => {
-      setSessionCreationSource(value);
-      setDictationScriptValidation(null);
-    },
+    onSessionCreationSourceChange: changeSessionCreationSource,
     onSessionCreationNameChange: setSessionCreationName,
     onCreateSessionWithMode: createSessionWithMode,
-    onDictationScriptJsonChange: (value) => {
-      setDictationScriptJson(value);
-      setDictationScriptValidation(null);
-    },
+    onDictationScriptJsonChange: changeDictationScriptJson,
     onValidateScriptImport: validateScriptImport,
     onCreateSessionFromDictationScript: createSessionFromDictationScript,
-    onCancel: () => setSessionCreationMode(null),
+    onCancel: cancelSessionCreation,
     MetricComponent: Metric,
   });
 
