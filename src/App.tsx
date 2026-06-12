@@ -35,6 +35,7 @@ import {
   type BrowserTtsBoundaryStrictness,
 } from './app/browserTtsPlaybackPlan';
 import { completeBrowserTtsChunk } from './app/browserTtsChunkCompletion';
+import { buildBrowserTtsPhraseStartDebugUpdate } from './app/browserTtsAdaptiveSemanticDebug';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -1429,36 +1430,24 @@ function App() {
         typedWords: playbackPlan.typedWordsNow,
         matchedWords: playbackPlan.matchedWordsNow,
       };
-      setAdaptiveSemanticDebug((current) => {
-        const phraseCount = current.safePauseCount + current.unsafePauseCount + current.deferredPauseCount + 1;
-        const avgCompleteness = ((current.averageSemanticCompleteness * (phraseCount - 1)) + semanticCompleteness) / phraseCount;
-        const difficulty = chunk.phraseDifficulty ?? 0.5;
-        const avgDifficulty = ((current.averagePhraseDifficulty * (phraseCount - 1)) + difficulty) / phraseCount;
-        const unsafePauseCount = current.unsafePauseCount + (runtimeDecision.shouldPauseNow && !pauseAtBoundary ? 1 : 0);
-        const safePauseCount = current.safePauseCount + (effectivePauseNow ? 1 : 0);
-        const deferredPauseCount = current.deferredPauseCount + (runtimeDecision.deferPauseUntilSafeBoundary ? 1 : 0);
-        const replayDeniedByBoundaryCount = current.replayDeniedByBoundaryCount + (runtimeDecision.shouldReplayPhrase && !effectiveReplay ? 1 : 0);
-        const semanticCutPenalty = unsafePauseCount + replayDeniedByBoundaryCount * 0.5 + deferredPauseCount * 0.35;
-        const fidelityRaw = 1 - semanticCutPenalty / Math.max(1, phraseCount * 1.5);
-        return {
-          ...current,
-          semanticCutPenalty: Number(semanticCutPenalty.toFixed(2)),
-          unsafePauseCount,
-          safePauseCount,
-          deferredPauseCount,
-          replayDeniedByBoundaryCount,
-          averageSemanticCompleteness: Number(avgCompleteness.toFixed(3)),
-          averagePhraseDifficulty: Number(avgDifficulty.toFixed(3)),
-          inputExecutionFidelityScore: Number(clamp(fidelityRaw, 0, 1).toFixed(3)),
-          currentPhraseIndex: macroPhraseIndex,
-          currentPhraseId: semanticPhrase?.id ?? `phrase-${macroPhraseIndex}`,
-          currentPhraseTextPreview: chunk.text.slice(0, 80),
+      setAdaptiveSemanticDebug((current) =>
+        buildBrowserTtsPhraseStartDebugUpdate({
+          current,
+          semanticCompleteness,
+          chunk,
+          shouldPauseNow: runtimeDecision.shouldPauseNow,
+          pauseAtBoundary,
+          effectivePauseNow,
+          deferPauseUntilSafeBoundary: runtimeDecision.deferPauseUntilSafeBoundary,
+          shouldReplayPhrase: runtimeDecision.shouldReplayPhrase,
+          effectiveReplay,
+          macroPhraseIndex,
+          semanticPhrase,
           totalSemanticPhrases: semanticPhrases.length,
           phraseAdvanceCount: ttsSemanticPhraseAdvanceCountRef.current,
           phraseReplayCount: ttsSemanticPhraseReplayCountRef.current,
-          lastPhraseAdvanceReason: 'phrase_start',
-        };
-      });
+        }),
+      );
 
       utterance.onstart = () => {
         perfDiagnostics.recordTtsStart(perfUtteranceId);
