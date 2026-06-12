@@ -1918,25 +1918,6 @@ function App() {
     }
   }
 
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
 
   const {
     inputSettingsReady,
