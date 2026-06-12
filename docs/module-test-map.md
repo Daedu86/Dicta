@@ -159,3 +159,5 @@ Use `docs/modularization-roi.md` to decide whether a modularization candidate ha
 | `src/app/focusedTrainingPresentation.ts` | Focused training presentation derivations for TTS player progress, source labels, placeholders, and message tone. | `tests/focusedTrainingPresentation.test.ts` |
 
 | `src/app/focusedTrainingInputTelemetry.ts` | Focused training immediate-input telemetry initialization and live-text ref updates. | `tests/focusedTrainingInputTelemetry.test.ts` |
+
+- `src/app/useWorkspaceNavigationEffects.ts` -> `tests/useWorkspaceNavigationEffects.test.ts`
