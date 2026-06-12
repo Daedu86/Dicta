@@ -4,23 +4,11 @@ import { createLocalDevEnvStore } from './localDevEnvStore';
 import { createLocalDevApiValidation } from './localDevApiValidation';
 import { buildLocalDevAdminFileInventory } from './localDevAdminFiles';
 import { createLocalDevOllamaHelpers } from './localDevOllamaHelpers';
-import {
-  createLocalDevHttpError,
-  readLocalDevJsonRequestBody,
-  sendLocalDevError,
-} from './localDevHttpHelpers';
-import {
-  countActiveLocalOpenRouterJobs,
-  createQueuedLocalOpenRouterJob,
-  getLocalOpenRouterJob,
-  markLocalOpenRouterJobFailed,
-  markLocalOpenRouterJobRunning,
-  markLocalOpenRouterJobSucceeded,
-} from './localDevOpenRouterJobs';
-import { fetchLocalDevOpenRouterChatCompletion } from './localDevOpenRouterClient';
+import { createLocalDevHttpError } from './localDevHttpHelpers';
 import { registerLocalDevApiKeyRoutes } from './localDevApiKeyRoutes';
 import { registerLocalDevModelRoutes } from './localDevModelRoutes';
 import { registerLocalDevChatRoutes } from './localDevChatRoutes';
+import { registerLocalDevOpenRouterJobRoutes } from './localDevOpenRouterJobRoutes';
 
 export function createDictaLocalDevApiPlugin(): Plugin {
   return {
@@ -99,100 +87,15 @@ export function createDictaLocalDevApiPlugin(): Plugin {
         localDevOllamaHelpers.formatOllamaUpstreamError(status, body, fallback),
     });
 
-    server.middlewares.use('/api/openrouter/jobs', async (req, res) => {
-      if (req.method === 'GET') {
-        const url = new URL(req.url ?? '', 'http://localhost');
-        const jobId = url.searchParams.get('id') ?? '';
-        const job = getLocalOpenRouterJob(jobId);
-        if (!job) {
-          res.statusCode = 404;
-          res.end('OpenRouter job not found.');
-          return;
-        }
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(job));
-        return;
-      }
-
-      if (req.method !== 'POST') {
-        res.statusCode = 405;
-        res.end('Method not allowed');
-        return;
-      }
-
-      const openRouterApiKey = await localDevEnvStore.getOpenRouterApiKey();
-      if (!openRouterApiKey) {
-        res.statusCode = 400;
-        res.end('Missing OPENROUTER_API_KEY. Set it in .env.local and try again.');
-        return;
-      }
-
-      try {
-        const parsed = await readLocalDevJsonRequestBody<{
-          model?: string;
-          prompt?: string;
-          maxTokens?: number;
-          inputMode?: string;
-          language?: string;
-          slotLabel?: string;
-          durationMinutes?: number;
-          targetDifficulty?: string;
-        }>(req, maxJsonBodyBytes);
-        const model = localDevApiValidation.normalizeOpenRouterModel(parsed.model);
-        const prompt = localDevApiValidation.normalizeOpenRouterPrompt(parsed.prompt);
-        if (!model || !prompt) {
-          res.statusCode = 400;
-          res.end('Missing model or prompt.');
-          return;
-        }
-        const activeJobCount = countActiveLocalOpenRouterJobs();
-        if (activeJobCount >= openRouterActiveJobLimit) {
-          res.statusCode = 429;
-          res.end(`Too many active OpenRouter jobs. Wait for one of the ${openRouterActiveJobLimit} active jobs to finish.`);
-          return;
-        }
-
-        const durationMinutes = Number(parsed.durationMinutes);
-        const fallbackMaxTokens = durationMinutes === 2 ? 1000 : durationMinutes === 3 ? 1300 : durationMinutes === 4 ? 1600 : 600;
-        const maxTokens = localDevApiValidation.normalizeOpenRouterMaxTokens(parsed.maxTokens, fallbackMaxTokens);
-        const job = createQueuedLocalOpenRouterJob({
-          model,
-          prompt,
-          maxTokens,
-          inputMode: parsed.inputMode,
-          language: parsed.language,
-          slotLabel: parsed.slotLabel,
-          durationMinutes: parsed.durationMinutes,
-          targetDifficulty: parsed.targetDifficulty,
-        });
-
-        void (async () => {
-          markLocalOpenRouterJobRunning(job);
-          try {
-            const response = await fetchLocalDevOpenRouterChatCompletion({
-              apiKey: openRouterApiKey,
-              origin: req.headers.origin as string | undefined,
-              model,
-              prompt,
-              maxTokens,
-            });
-            const responseBody = await response.text();
-            if (!response.ok) throw new Error(responseBody || `OpenRouter request failed (${response.status}).`);
-            const payload = JSON.parse(responseBody) as { choices?: Array<{ message?: { content?: string } }> };
-            const text = typeof payload.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
-            if (!text.trim()) throw new Error('OpenRouter returned an empty response.');
-            markLocalOpenRouterJobSucceeded(job, { text, payload, model });
-          } catch (error) {
-            markLocalOpenRouterJobFailed(job, error);
-          }
-        })();
-
-        res.statusCode = 202;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(job));
-      } catch (error) {
-        sendLocalDevError(res, error, 'OpenRouter job request failed.');
-      }
+    registerLocalDevOpenRouterJobRoutes({
+      server,
+      maxJsonBodyBytes,
+      activeJobLimit: openRouterActiveJobLimit,
+      getOpenRouterApiKey: () => localDevEnvStore.getOpenRouterApiKey(),
+      normalizeOpenRouterModel: (value) => localDevApiValidation.normalizeOpenRouterModel(value),
+      normalizeOpenRouterPrompt: (value) => localDevApiValidation.normalizeOpenRouterPrompt(value),
+      normalizeOpenRouterMaxTokens: (value, fallback) =>
+        localDevApiValidation.normalizeOpenRouterMaxTokens(value, fallback),
     });
 
     server.middlewares.use('/api/admin/files', async (req, res) => {
