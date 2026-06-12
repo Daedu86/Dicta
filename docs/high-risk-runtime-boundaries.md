@@ -22,6 +22,7 @@ If the change requires modifying timing, lifecycle, persistence, playback, auth,
 High-risk areas:
 
 - `src/app/useBrowserTtsRuntime.ts`
+- `src/app/useTtsTelemetryRecorder.ts`
 - `src/inputs/browserTts/`
 - Browser speech synthesis behavior.
 - Voice discovery and normalization.
@@ -31,20 +32,22 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
-Current App shell anchors in the post-sampler working tree based on `b1fc1d8`:
+Current App shell anchors in the post-telemetry-recorder working tree:
 
-- `resetSession`: `src/App.tsx:925`
-- `useTtsPerformanceSampler` hook call: `src/App.tsx:1198`
-- `playTts`: `src/App.tsx:1271`
-- `playTtsFromWord`: `src/App.tsx:1276`
-- `useTtsPlaybackControls` hook call: `src/App.tsx:1757`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2284`
+- `resetSession`: `src/App.tsx:924`
+- `useTtsTelemetryRecorder` hook call: `src/App.tsx:1101`
+- `useTtsPerformanceSampler` hook call: `src/App.tsx:1161`
+- `playTts`: `src/App.tsx:1234`
+- `playTtsFromWord`: `src/App.tsx:1239`
+- `useTtsPlaybackControls` hook call: `src/App.tsx:1720`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2247`
 
 Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
 
 Primary tests:
 
 - `tests/useBrowserTtsRuntime.test.ts`
+- `tests/useTtsTelemetryRecorder.test.ts`
 - `tests/browserTtsAdaptiveProfiles.test.ts`
 - `tests/browserTtsRatePolicy.test.ts`
 - `tests/browserTtsRecoveryPolicy.test.ts`

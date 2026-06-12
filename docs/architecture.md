@@ -48,6 +48,7 @@ Browser app:
 - `src/app/useAdaptiveAdvancedDiagnosticsProps.ts`: browser-side Adaptive advanced diagnostics prop composition for section toggles, adapter selection, diagnostic message reset, and benchmark-section scrolling.
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `src/app/useBrowserTtsRuntime.ts`: Browser TTS SpeechSynthesis voice discovery and command boundary.
+- `src/app/useTtsTelemetryRecorder.ts`: Browser TTS attempt telemetry initialization, elapsed-time calculation, control-action recording, and chunk telemetry recording.
 - `src/app/useAdaptiveExportActions.ts`: browser-side adaptive benchmark/session-feedback export, copy, and insights diagnostic actions.
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
@@ -212,6 +213,7 @@ App runtime and adaptive core:
 - `src/app/useLeaderboardWorkspaceProps.ts`
 - `src/app/useAdaptiveAdvancedDiagnosticsProps.ts`
 - `src/app/useTrainingSessionLifecycle.ts`
+- `src/app/useTtsTelemetryRecorder.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/app/useAdaptiveExportActions.ts`
 - `src/core/buildInfo.ts`

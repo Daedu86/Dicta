@@ -25,6 +25,7 @@ import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessio
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
 import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPresentationState';
 import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainingInputTelemetryRuntime';
+import { useTtsTelemetryRecorder } from './app/useTtsTelemetryRecorder';
 import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
 import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
@@ -59,7 +60,6 @@ import './App.css';
 import type {
   ControlAction,
   SessionTelemetry,
-  TtsChunkTelemetry,
   TtsPacingMode } from './types/dictation';
 import type {
   LiveTelemetryFrame,
@@ -87,7 +87,6 @@ import { applyBrowserTtsUnsafeBoundaryPolicy } from './inputs/browserTts/browser
 import { applyBrowserTtsDeRecoveryPolicy,
   summarizeBrowserTtsDeRecoveryState } from './inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from './inputs/browserTts/browserTtsAdaptiveProfiles';
-import { trackAction } from './core/telemetry';
 import { cloneTelemetry,
   normalizeSessionForPersistence } from './core/sessionNormalization';
 import { telemetryEquals } from './core/sessionTelemetryEquality';
@@ -1101,35 +1100,16 @@ function App() {
     handleEsKeyboardRemapKeyDown(event, onTtsPracticeChange);
   }
 
-  
-
-  
-
-  
-
-  function ensureAttemptTelemetry(): SessionTelemetry {
-    const next = cloneTelemetry(telemetryRef.current);
-    if (!next.startedAt) {
-      next.startedAt = new Date().toISOString();
-    }
-    telemetryRef.current = next;
-    return next;
-  }
-
-  function getTtsElapsedSeconds(now = performance.now()): number {
-    if (ttsStartedAtMsRef.current === null) {
-      return 0;
-    }
-    return Math.max(0, (now - ttsStartedAtMsRef.current) / 1000);
-  }
-
-  
-
-  
-
-  
-
-  
+  const {
+    ensureAttemptTelemetry,
+    getTtsElapsedSeconds,
+    recordTtsTelemetryAction,
+    recordTtsChunkTelemetry,
+  } = useTtsTelemetryRecorder({
+    telemetryRef,
+    ttsStartedAtMsRef,
+    ttsSpeechRate,
+  });
 
   function estimateTtsSpokenWordIndex(now = performance.now()): number {
     const sourceWordCount = ttsTranscript?.words.length ?? 0;
@@ -1149,23 +1129,6 @@ function App() {
     }
 
     return clamp(ttsCompletedSourceWordsRef.current, 0, sourceWordCount);
-  }
-
-  function recordTtsTelemetryAction(action: ControlAction, actionRate = ttsSpeechRate): void {
-    const telemetry = ensureAttemptTelemetry();
-    const next = cloneTelemetry(telemetry);
-    trackAction(next, getTtsElapsedSeconds(), action, actionRate);
-    telemetryRef.current = next;
-  }
-
-  function recordTtsChunkTelemetry(chunk: Omit<TtsChunkTelemetry, 't'>): void {
-    const telemetry = ensureAttemptTelemetry();
-    const next = cloneTelemetry(telemetry);
-    next.ttsChunks.push({
-      t: getTtsElapsedSeconds(),
-      ...chunk,
-    });
-    telemetryRef.current = next;
   }
 
   function publishTtsUiState(next: TtsPublishedUiState, now: number, force = false): void {

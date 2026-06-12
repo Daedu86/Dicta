@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after TTS playback controls extraction.
+Updated: 2026-06-12 after TTS telemetry recorder extraction.
 
 ## Current baseline
 
@@ -11,8 +11,8 @@ This document began as a generated map. The historical deep inventory was intent
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest clean code baseline | b1fc1d8 |
-| Current `src/App.tsx` LOC | 2316 |
+| Latest clean code baseline | 0bf2242 |
+| Current `src/App.tsx` LOC | 2278 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 76 |
 | Current `src/app/useBrowserTtsSetupCardProps.ts` LOC | 88 |
 | Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 94 |
@@ -20,7 +20,7 @@ This document began as a generated map. The historical deep inventory was intent
 | App.tsx inline `useRef` count | 27 |
 | App.tsx inline `useMemo` count | 5 |
 | App.tsx inline `useEffect` count | 7 |
-| App.tsx inline function declarations inside `App()` | 17 |
+| App.tsx inline function declarations inside `App()` | 13 |
 
 ## Completed since the original map
 
@@ -75,31 +75,33 @@ This document began as a generated map. The historical deep inventory was intent
 - `openRouterDirectGenerationJobPlan` owns pure OpenRouter direct-generation planning: profile/feedback lookup, prompt construction, max-token sizing, request payload construction, and the `ActiveOpenRouterJob` draft without `jobId`.
 - `useTtsPerformanceSampler` owns Browser TTS performance sampling, transcript evaluation, lag stabilization, live signal updates, UI metric publication, telemetry samples/actions, finalize timestamps, and returned metric packaging.
 - `useTtsPlaybackControls` owns Browser TTS pause/resume/stop/seek control actions, runtime ref cleanup, action telemetry, and control-driven status transitions without moving the full `playTtsFromWord` playback loop.
+- `useTtsTelemetryRecorder` owns Browser TTS attempt telemetry initialization, elapsed-time calculation, control-action recording, and chunk telemetry recording without moving the full `playTtsFromWord` playback loop.
 
 ## Current recommendation
 
-- Start the next implementation pass from the post-sampler working tree and re-run the ROI scorecard before selecting another extraction.
+- Start the next implementation pass from the post-telemetry-recorder working tree and re-run the ROI scorecard before selecting another extraction.
 - Treat `docs/modularization-roi.md` as the decision framework: choose the highest-ROI candidate that can be bounded and validated.
 - Do not treat Browser TTS, refs, timers, telemetry, `resetSession`, or `playTtsFromWord` risk as an automatic veto. Treat that risk as validation cost, slice size, required characterization coverage, manual smoke scope, and rollback planning.
 - Reject only candidates that are unbounded, untestable, too ambiguous to verify, or mostly create no-op wrapper indirection.
-- The previously selected Browser TTS control cluster has been extracted. Do not immediately jump to the full playback loop without a fresh ROI scorecard.
+- The previously selected Browser TTS telemetry recorder cluster has been extracted. Do not immediately jump to the full playback loop without a fresh ROI scorecard.
 
 ## Current high-risk anchors
 
-These line numbers were observed in the post-sampler working tree based on `b1fc1d8`. Recheck with `rg` before editing; they are anchors for risk inspection, not stable APIs.
+These line numbers were observed in the post-telemetry-recorder working tree. Recheck with `rg` before editing; they are anchors for risk inspection, not stable APIs.
 
 | Area | Current location |
 | --- | --- |
-| `resetSession` | `src/App.tsx:925` |
-| `buildSemanticPhrasesForCurrentSession` | `src/App.tsx:977` |
-| `getTtsElapsedSeconds` / `estimateTtsSpokenWordIndex` | `src/App.tsx:1119-1152` |
-| `publishTtsUiState` | `src/App.tsx:1171-1196` |
-| `useTtsPerformanceSampler` hook call | `src/App.tsx:1198-1215` |
-| `playTts` | `src/App.tsx:1271` |
-| `playTtsFromWord` | `src/App.tsx:1276-1750` |
-| `useTtsPlaybackControls` hook call | `src/App.tsx:1757-1791` |
-| `BrowserTtsSetupCard` prop hook call | `src/App.tsx:2193` |
-| `BrowserTtsSetupCard` render branch | `src/App.tsx:2284` |
+| `resetSession` | `src/App.tsx:924` |
+| `buildSemanticPhrasesForCurrentSession` | `src/App.tsx:976` |
+| `useTtsTelemetryRecorder` hook call | `src/App.tsx:1101-1108` |
+| `estimateTtsSpokenWordIndex` | `src/App.tsx:1113-1131` |
+| `publishTtsUiState` | `src/App.tsx:1134-1159` |
+| `useTtsPerformanceSampler` hook call | `src/App.tsx:1161-1178` |
+| `playTts` | `src/App.tsx:1234` |
+| `playTtsFromWord` | `src/App.tsx:1239-1712` |
+| `useTtsPlaybackControls` hook call | `src/App.tsx:1720-1754` |
+| `BrowserTtsSetupCard` prop hook call | `src/App.tsx:2156` |
+| `BrowserTtsSetupCard` render branch | `src/App.tsx:2247` |
 
 ## ROI-based modularization policy
 
@@ -124,7 +126,7 @@ Scores use `docs/modularization-roi.md`: ROI is 0-100 where higher is better; ri
 | Browser TTS control cluster: `pauseTts` / `resumeTts` / `stopTtsPlayback` / `seekTtsPlayback` | Formerly `src/App.tsx:1751-1822`; now `src/app/useTtsPlaybackControls.ts` with hook call at `src/App.tsx:1757-1791` | `src/app/useTtsPlaybackControls.ts` | About 41 fewer `App.tsx` lines before docs/test additions | Preserve pause word capture, browser cancel/resume routing, action telemetry, status transitions, stopped playback defaults, seek target clamping, paused/playing seek replay behavior, and finished-session guards | 82 | 78 | `tests/useTtsPlaybackControls.test.ts`; keep `tests/useTrainingSessionLifecycle.test.ts` and `tests/useBrowserTtsRuntime.test.ts`; run `tests/useTtsPerformanceSampler.test.ts` because controls record telemetry consumed by the sampler | Start, pause, resume, stop, seek while idle, seek while playing/paused, submit after stop, and reset after stop in Browser TTS | Revert `src/app/useTtsPlaybackControls.ts`, remove its test, and restore the four inline functions | select | Implemented as the next bounded Browser TTS runtime seam. The full `playTtsFromWord` event loop remains in `App.tsx`. |
 | `playTtsFromWord` playback loop | `src/App.tsx:1276-1750` | Future `src/app/useBrowserTtsPlaybackLoop.ts` or playback state-machine module | 350-430 fewer `App.tsx` lines if eventually moved | Preserve validation errors, voice/environment capture, semantic phrase indexing, German recovery-safe chunks, adaptive decisions, rate/floor/unsafe policies, benchmark events, utterance handlers, phrase advancement, and completion behavior | 90 | 98 | New mocked SpeechSynthesis loop tests, adaptive chunk characterization, `tests/ttsDynamicChunkPlanner.test.ts`, Browser TTS policy tests, and mobile smoke | Full playback through multiple chunks; replay from word; German recovery; unexpected utterance error; complete session transition | Revert playback-loop module and restore inline function | defer | It is high ROI but currently too coupled to refs, nested callbacks, browser events, adaptive benchmark writes, and phrase progression. Defer until `applyTtsPerformanceSample`, playback controls, and progress helpers reduce coupling and tests exist. |
 | TTS UI publication helper | `src/App.tsx:1170-1195` | `src/app/useTtsUiPublisher.ts` | 15-25 fewer `App.tsx` lines | Preserve changed-value thresholds, 500 ms throttling, forced publication, published UI ref updates, and visible metric setters | 70 | 48 | Add `tests/useTtsUiPublisher.test.ts`; keep `tests/useTtsPerformanceSampler.test.ts` | Start TTS and type during playback; confirm metric dock updates without per-keystroke churn | Revert helper import and restore inline function | defer | Good bounded seam, but lower `App.tsx` responsibility payoff than the control cluster. It remains a useful fallback if control extraction proves too dependency-heavy. |
-| TTS telemetry recorder helper | `src/App.tsx:1109-1168` | `src/app/useTtsTelemetryRecorder.ts` | 25-40 fewer `App.tsx` lines | Preserve startedAt initialization, cloned telemetry updates, action timestamps/rates, chunk telemetry timestamps, and `pause_repeat` repeat counting through `trackAction` | 73 | 54 | Add `tests/useTtsTelemetryRecorder.test.ts`; keep `tests/useTtsPerformanceSampler.test.ts` | Play, pause, seek, and submit once to confirm telemetry actions and chunks still populate | Revert helper import and restore inline telemetry helpers | defer | Useful preparation for playback extraction, but less direct product responsibility reduction than the selected controls slice. |
+| TTS telemetry recorder helper | Formerly `src/App.tsx:1109-1168`; now `src/app/useTtsTelemetryRecorder.ts` with hook call at `src/App.tsx:1101-1108` | `src/app/useTtsTelemetryRecorder.ts` | About 38 fewer `App.tsx` lines before docs/test additions | Preserve startedAt initialization, cloned telemetry updates, action timestamps/rates, chunk telemetry timestamps, and `pause_repeat` repeat counting through `trackAction` | 73 | 54 | `tests/useTtsTelemetryRecorder.test.ts`; keep `tests/useTtsPerformanceSampler.test.ts`, `tests/useTtsPlaybackControls.test.ts`, `tests/useTrainingSessionLifecycle.test.ts`, and `tests/useBrowserTtsRuntime.test.ts` | Play, pause, seek, and submit once to confirm telemetry actions and chunks still populate | Revert `src/app/useTtsTelemetryRecorder.ts`, remove its test, and restore inline telemetry helpers | select | Implemented as a bounded Browser TTS telemetry seam after playback controls. The full SpeechSynthesis event loop remains in `App.tsx`. |
 | TTS progress helper seam | `src/App.tsx:1118-1151` | `src/app/ttsPlaybackProgress.ts` | 15-25 fewer `App.tsx` lines | Preserve elapsed-time calculation, chunk progress estimate, completed-source fallback, and source-word clamping | 58 | 42 | Add `tests/ttsPlaybackProgress.test.ts`; keep seek/playback smoke for any caller movement | Verify progress bar advances; seek to middle of text; pause/resume from estimated word | Revert helper import and inline both functions | defer | This is a clean smaller seam but lower payoff than the sampler. It can be bundled as preparation if the sampler extraction needs a pure progress utility. |
 
 ## TTS performance sampler extraction checkpoint
@@ -203,6 +205,39 @@ Stop conditions:
 - Stop if dependencies collapse into one broad object instead of named refs/setters/callbacks.
 - Stop if seek or stop semantics need behavior changes to make the extraction compile.
 
+## TTS telemetry recorder extraction checkpoint
+
+Implemented candidate: TTS telemetry recorder helper, specifically `ensureAttemptTelemetry`, `getTtsElapsedSeconds`, `recordTtsTelemetryAction`, and `recordTtsChunkTelemetry`.
+
+Former source line range: `src/App.tsx:1109-1168` in the post-playback-controls working tree.
+
+Extraction target: `src/app/useTtsTelemetryRecorder.ts`. The patch did not move `playTtsFromWord`, `playTts`, `submitTtsSession`, `resetSession`, adaptive benchmark writes, utterance event handlers, UI publication, or semantic phrase progression.
+
+Expected behavior-preservation contract:
+
+- `ensureAttemptTelemetry` clones the current telemetry, initializes `startedAt` only when missing, writes the cloned object back to `telemetryRef`, and returns it.
+- `getTtsElapsedSeconds` returns zero before playback start and otherwise clamps elapsed milliseconds to non-negative seconds.
+- `recordTtsTelemetryAction` records actions at the current elapsed timestamp, defaults to the current TTS speech rate, preserves explicit action rates, and keeps `pause_repeat` counting through `trackAction`.
+- `recordTtsChunkTelemetry` records chunk timestamps from the same elapsed-time source and appends start word, word count, rate, and pacing mode.
+- The extracted hook uses explicit refs and rate dependencies and does not accept a broad opaque `App` state object.
+
+Tests added/run:
+
+- Added `tests/useTtsTelemetryRecorder.test.ts`.
+- Covered started-at initialization/preservation, zero/non-negative elapsed time, default and explicit action rates, `pause_repeat` repeat counting, and chunk timestamps.
+- Re-run `tests/useTtsPerformanceSampler.test.ts`, `tests/useTtsPlaybackControls.test.ts`, `tests/useTrainingSessionLifecycle.test.ts`, and `tests/useBrowserTtsRuntime.test.ts`.
+
+Required manual QA checklist:
+
+- Browser TTS start, pause, seek, stop, and submit once to confirm telemetry actions and chunks still populate.
+- Check German Browser TTS plus one neighboring language such as English if a later patch changes telemetry interpretation.
+
+Stop conditions:
+
+- Stop if a follow-up telemetry extraction requires moving the nested `playTtsFromWord` playback loop.
+- Stop if dependencies collapse into one broad object instead of named refs/rate callbacks.
+- Stop if action/chunk telemetry semantics need behavior changes to make the extraction compile.
+
 Next selected candidate: none yet. Re-run the ROI scorecard before moving another Browser TTS runtime seam.
 
 Recently added characterization coverage:
@@ -269,6 +304,7 @@ Proceed only if a candidate removes at least ~15-25 net lines from `src/App.tsx`
 - `tests/adaptiveWorkspacePresentation.test.ts` covers Adaptive workspace presentation derivations for benchmark/profile fallbacks, latest feedback selection, insights diagnostics, adapter cards, and latest session mode mapping.
 - `tests/focusedTrainingPresentation.test.ts` covers focused training presentation derivations for progress values, phrase/word labels, source labels, placeholders, and message tone.
 - `tests/focusedTrainingInputTelemetry.test.ts` covers focused immediate-input telemetry initialization, startedAt preservation, startedAtMs preservation, legacy telemetry cloning, and live-text updates.
+- `tests/useTtsTelemetryRecorder.test.ts` covers Browser TTS attempt telemetry initialization, elapsed-time calculation, control-action recording, repeat counting, and chunk telemetry recording.
 - `tests/useTtsPerformanceSampler.test.ts` covers Browser TTS performance sampling, no-start timestamp initialization, practice text override, German lag outlier fallback, explicit submit action telemetry, finalize timestamps, and returned metrics.
 - `tests/useTtsPlaybackControls.test.ts` covers Browser TTS pause/resume/stop/seek controls, runtime ref cleanup, action telemetry, status transitions, seek clamping, and seek no-op guards.
 - `tests/sessionCreationWorkspaceState.test.ts` covers session-creation source/json/cancel transition actions and dictation-script validation reset behavior.
