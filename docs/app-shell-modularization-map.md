@@ -23,7 +23,7 @@ This document began as a generated map. The historical deep inventory was intent
 
 ## Completed since the original map
 
-- `useModelCatalogRuntime` owns OpenRouter/Ollama model catalog state and refresh actions.
+- `useModelCatalogRuntime` owns OpenRouter model catalog state and refresh actions.
 - `useDictaLocalStorageImportRuntime` owns Dicta localStorage snapshot import restore actions.
 - `useKeyboardRemapRuntime` owns active typing-language resolution and Spanish physical-key remapping.
 - `useAdaptiveExportActions` owns adaptive benchmark/session-feedback copy, export, and insights diagnostic actions.
@@ -45,22 +45,19 @@ This document began as a generated map. The historical deep inventory was intent
 - `useFocusedTrainingLiveMetrics` owns focused-training live metric derivation, transcript evaluation, visible accuracy/score, points labels, and metric help text.
 - `focusedTrainingPresentation` and `useFocusedTrainingPresentationState` own focused training presentation derivations for TTS player progress, source labels, text placeholder/value, and training message tone.
 - `focusedTrainingInputTelemetry` and `useFocusedTrainingInputTelemetryRuntime` own focused training immediate-input telemetry initialization and live-text ref updates.
-- `AppWorkspaceContent` owns the App workspace switch, pending-session lane placement, dashboard/adaptive/OpenRouter/Ollama/Admin/Leaderboard branch rendering, and workspace access fallbacks.
-- `useWorkspaceModelRefreshRuntime` owns workspace model assignment/default resolution and delegates OpenRouter/Ollama refresh actions to `useModelRefreshActions`.
+- `AppWorkspaceContent` owns the App workspace switch, pending-session lane placement, dashboard/adaptive/OpenRouter/Admin/Leaderboard branch rendering, and workspace access fallbacks.
+- `useWorkspaceModelRefreshRuntime` owns workspace model assignment/default resolution and delegates OpenRouter refresh actions to `useModelRefreshActions`.
 - `browserTtsSessionEnvironment` and `useBrowserTtsSessionEnvironmentRuntime` own Browser TTS session voice assignment, voice/environment fingerprint attachment, and active voice resolution outside `App.tsx` without moving playback behavior.
-- `dictaLocalDevApiPlugin` owns the local Vite dev API routes, OpenRouter/Ollama proxy routes, OpenRouter local job queue, and admin file inventory route.
-- `localDevEnvStore` owns local `.env.local` API key read, parse, upsert, and removal behavior for OpenRouter and Ollama.
-- `localDevApiValidation` owns local OpenRouter/Ollama API key validation, model id normalization, prompt bounds, and max-token bounds.
+- `dictaLocalDevApiPlugin` owns the local Vite dev API routes, OpenRouter proxy routes, OpenRouter local job queue, and admin file inventory route.
+- `localDevEnvStore` owns local `.env.local` API key read, parse, upsert, and removal behavior for OpenRouter.
+- `localDevApiValidation` owns local OpenRouter API key validation, model id normalization, prompt bounds, and max-token bounds.
 - `localDevAdminFiles` owns local admin file inventory for fixtures and public assets.
 - `localDevOpenRouterJobs` owns the local OpenRouter job store, active job counting, and queued/running/succeeded/failed transitions.
-- `localDevOllamaHelpers` owns local Ollama upstream error formatting and model payload normalization.
 - `localDevHttpHelpers` owns local dev HTTP errors, JSON/body parsing, local error responses, and API key suffix masking.
 - `localDevOpenRouterClient` owns local OpenRouter chat-completion request construction and upstream fetch wiring.
-- `localDevOllamaClient` owns local Ollama model/chat upstream fetch wiring and request payload construction.
 - `useAuthWorkspaceProps` owns auth workspace prop composition for Supabase auth/profile/loading state, auth form state, messages, and auth callbacks.
 - `useAppShellHeaderProps` owns App shell header prop composition, OpenRouter model labels, build labels, sync status labels, and header navigation/theme/sign-out callbacks.
 - `useAppShellSyncStatusText` owns App shell sync/offline status label composition, pending-sync suffixes, and last-sync timestamp formatting glue.
-- `useOllamaWorkspaceProps` owns Ollama workspace prop composition and Ollama default model persistence wiring.
 - `useOpenRouterWorkspaceProps` owns OpenRouter workspace prop composition, model persistence wiring, export profile selection wiring, job notifications, and benchmark/session-feedback copy callbacks.
 - `useAdaptiveDiagnosticsUiState` owns adaptive diagnostics UI state.
 - `useAppPerfDiagnosticsRuntime` owns App render-count and perf diagnostics configuration; `App.tsx` still imports `perfDiagnostics` for active OpenRouter and TTS spans.

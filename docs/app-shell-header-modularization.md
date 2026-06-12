@@ -140,7 +140,6 @@ Callbacks:
 - `onOpenAdaptive`
 - `onOpenAdmin`
 - `onOpenOpenRouter`
-- `onOpenOllama`
 - `onToggleTheme`
 - `onSignOut`
 

@@ -53,9 +53,8 @@ Browser app:
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
 - Adaptive Pace Layer cockpit: benchmark and feedback diagnostics.
 - OpenRouter workspace: structured dictation script generation slots.
-- Ollama workspace: Ollama Cloud model listing and chat-test prompt surface.
 - Admin workspace: members, remote sessions, and local diagnostics.
-- `localStorage`: sessions, tombstones, benchmarks, feedback, OpenRouter drafts/jobs, and default provider models.
+- `localStorage`: sessions, tombstones, benchmarks, feedback, OpenRouter drafts/jobs, and default OpenRouter model.
 - Finalized session rows are buffered for critical Supabase sync and sent with a best-effort `keepalive` flush during page exit, which reduces mobile/PWA cases where a submitted session remains a remote `ready` row.
 - PWA shell: manifest and service worker.
 
@@ -84,8 +83,7 @@ Server routes and local dev middleware:
 - `api/_securityEvents.js`: shared server-side security event logging and `dicta_security_events` persistence.
 - `api/admin/users.js`: admin-created users and access controls.
 - `api/openrouter/*`: models, chat, durable jobs, access gating, active-job limits, and persistent rate limits.
-- `api/ollama/*`: Ollama Cloud models, chat test, and server-side key status.
-- `vite.config.ts`: local-only middleware for transcription, local OpenRouter/Ollama key UI, sidecar start/bootstrap, and local file inventory.
+- `vite.config.ts`: local-only middleware for transcription, local OpenRouter key UI, sidecar start/bootstrap, and local file inventory.
 
 Supabase multiuser path:
 
@@ -96,8 +94,6 @@ Supabase multiuser path:
 - `dicta_rate_limits`: server-side OpenRouter job throttling.
 - `dicta_security_events`: server-side security audit events written through service-role routes only.
 - RLS/helper functions: members see their own rows, admins can manage all rows.
-
-Ollama Cloud uses `OLLAMA_API_KEY` through server routes only. It currently has no durable job table, no Supabase/RLS schema changes, and no Adaptive Pace Layer profile behavior.
 
 Local-only services:
 
@@ -159,7 +155,6 @@ Primary browser storage keys:
 - `dicta.adaptiveSessionFeedback.v1`
 - `dicta.perfDiagnostics.v1`
 - `dicta.openrouterDefaultModel.v1`
-- `dicta.ollamaDefaultModel.v1`
 - `dicta.openrouterGeneratedVariants.v1`
 - `dicta.openrouterActiveJobs.v1`
 
@@ -198,33 +193,12 @@ Server-side rules:
 
 Local Vite dev mirrors most OpenRouter behavior and exposes dev-only key management endpoints for `.env.local`. Do not bring those endpoints into production client code.
 
-## Ollama Cloud Architecture
-
-Ollama Cloud is a separate model gateway workspace for chat testing. It does not replace OpenRouter, does not create DictationScript sessions, and does not participate in the Adaptive Pace Layer.
-
-Routes:
-
-- `GET /api/ollama/models`: lists Ollama Cloud models through the server key.
-- `POST /api/ollama/chat`: sends a non-streaming chat request to `https://ollama.com/api/chat`.
-- `GET /api/ollama/key/status`: reports whether `OLLAMA_API_KEY` is configured without exposing it.
-
-Server-side rules:
-
-- `OLLAMA_API_KEY` stays server-only and must never be referenced from browser code as a `VITE_*` value.
-- Accepted model ids must match `/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/`.
-- The initial recommended model is `gemma3:27b-cloud`.
-- Ollama Cloud models do not use `:free`; access and quota depend on the configured Ollama account tier.
-- Upstream `429` responses are surfaced as likely rate/quota limits. Upstream `401` and `403` responses are surfaced as auth/plan/access issues.
-
-Local Vite dev mirrors the Ollama models/chat/status routes and exposes dev-only key management endpoints for `.env.local`.
-
 ## Local-Only Development Services
 
 These paths are not production Vercel backend features:
 
 - `/api/admin/files`.
 - `/api/openrouter/key*`.
-- `/api/ollama/key*`.
 
 ## Files To Know
 
@@ -265,7 +239,6 @@ Auth/sync/server:
 - `api/_securityEvents.js`
 - `api/admin/users.js`
 - `api/openrouter/*`
-- `api/ollama/*`
 - `middleware.js`
 - `docs/supabase-openrouter-jobs.sql`
 - `docs/supabase-events.sql`

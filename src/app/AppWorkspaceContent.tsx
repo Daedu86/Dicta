@@ -2,7 +2,6 @@ import type { ComponentProps } from 'react';
 import type { OpenRouterAccessState } from '../core/appProfiles';
 import { PendingSessionLane } from '../components/training/PendingSessionLane';
 import { OpenRouterWorkspace } from '../components/openrouter/OpenRouterWorkspace';
-import { OllamaWorkspace } from '../components/ollama/OllamaWorkspace';
 import { LeaderboardWorkspace, type LeaderboardWorkspaceProps } from '../components/leaderboard/LeaderboardWorkspace';
 import { SessionDashboard } from '../components/session-dashboard/SessionDashboard';
 import { AdaptiveBenchmarkSection } from '../components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
@@ -28,7 +27,6 @@ type AppWorkspaceContentProps = {
   openRouterAccessState: OpenRouterAccessState;
   openRouterAccessMessage: string;
   openRouterWorkspaceProps: ComponentProps<typeof OpenRouterWorkspace>;
-  ollamaWorkspaceProps: ComponentProps<typeof OllamaWorkspace>;
   canAccessAdminWorkspace: boolean;
   adminWorkspaceProps: AdminWorkspaceProps<StoredSession>;
   leaderboardWorkspaceProps: LeaderboardWorkspaceProps<StoredSession>;
@@ -51,7 +49,6 @@ export function AppWorkspaceContent({
   openRouterAccessState,
   openRouterAccessMessage,
   openRouterWorkspaceProps,
-  ollamaWorkspaceProps,
   canAccessAdminWorkspace,
   adminWorkspaceProps,
   leaderboardWorkspaceProps,
@@ -107,8 +104,6 @@ export function AppWorkspaceContent({
           ) : (
             <OpenRouterWorkspace {...openRouterWorkspaceProps} />
           )
-        ) : workspaceMode === 'ollama' ? (
-          <OllamaWorkspace {...ollamaWorkspaceProps} />
         ) : workspaceMode === 'admin' ? (
           canAccessAdminWorkspace ? <AdminWorkspace {...adminWorkspaceProps} /> : (
             <section className="panel workspace-panel">

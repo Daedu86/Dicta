@@ -43,7 +43,6 @@ New modules added after this checkpoint:
 - `src/app/useSessionCreateCardProps.ts`
 - `src/app/useAuthWorkspaceProps.ts`
 - `src/app/useAppShellHeaderProps.ts`
-- `src/app/useOllamaWorkspaceProps.ts`
 - `src/app/useOpenRouterWorkspaceProps.ts`
 - `src/app/useOpenRouterErrorSessionActions.ts`
 - `src/app/useAdminWorkspaceProps.ts`
@@ -147,7 +146,7 @@ a0f9f3c Remove dead App helpers
 ## 2026-06-11 � Auth headers and model refresh extraction
 
 - Extracted reusable auth-header creation into `src/app/useAuthHeaders.ts`.
-- Extracted `refreshOpenRouterModels` and `refreshOllamaModels` into `src/app/useModelRefreshActions.ts`.
+- Extracted `refreshOpenRouterModels` into `src/app/useModelRefreshActions.ts`.
 - Kept Browser TTS playback/runtime, `resetSession`, telemetry refs, and OpenRouter generation paths untouched.
 - Current `src/App.tsx` line count after this cut: 3301.
 - New hook line counts: `useAuthHeaders.ts` = 22; `useModelRefreshActions.ts` = 69.
@@ -176,7 +175,7 @@ This checkpoint extracted persistent OpenRouter error-session handling and focus
 
 Latest committed baseline: `3a201a2 Extract Leaderboard workspace props`.
 
-This checkpoint covers these App shell extractions since the previous docs checkpoint: OpenRouter workspace props, Ollama workspace props, App shell header props, Auth workspace props, Session create card props, Admin workspace props, Leaderboard workspace props, and Adaptive advanced diagnostics props.
+This checkpoint covers these App shell extractions since the previous docs checkpoint: OpenRouter workspace props, App shell header props, Auth workspace props, Session create card props, Admin workspace props, Leaderboard workspace props, and Adaptive advanced diagnostics props.
 
 Current App shell metrics:
 
@@ -186,7 +185,6 @@ Current App shell metrics:
 | `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
 | `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 208 |
 | `src/app/useOpenRouterWorkspaceProps.ts` LOC | 164 |
-| `src/app/useOllamaWorkspaceProps.ts` LOC | 52 |
 | `src/app/useAppShellHeaderProps.ts` LOC | 86 |
 | `src/app/useAuthWorkspaceProps.ts` LOC | 90 |
 | `src/app/useSessionCreateCardProps.ts` LOC | 57 |
@@ -308,7 +306,7 @@ Latest committed baseline: `3ef3b91 Extract app workspace content`.
 
 This checkpoint records a presentational App-shell extraction after the focused live metrics hook.
 
-`src/app/AppWorkspaceContent.tsx` now owns the App workspace switch: pending-session lane placement, dashboard rendering, Adaptive cockpit shell, OpenRouter access fallback, Ollama workspace, Admin access fallback, Leaderboard workspace, and the default Browser TTS prompt.
+`src/app/AppWorkspaceContent.tsx` now owns the App workspace switch: pending-session lane placement, dashboard rendering, Adaptive cockpit shell, OpenRouter access fallback, Admin access fallback, Leaderboard workspace, and the default Browser TTS prompt.
 
 Current App shell metrics after this extraction:
 
@@ -332,7 +330,7 @@ Latest committed baseline: `ab0c5a4 Extract local dev API plugin`.
 
 This checkpoint records extraction of the local Vite development API from `vite.config.ts`.
 
-`dev/dictaLocalDevApiPlugin.ts` now owns local middleware for OpenRouter models/key/chat/jobs, Ollama models/key/chat, `.env.local` key management, request body parsing/validation, local OpenRouter job storage, upstream error formatting, and admin file inventory.
+`dev/dictaLocalDevApiPlugin.ts` now owns local middleware for OpenRouter models/key/chat/jobs, `.env.local` key management, request body parsing/validation, local OpenRouter job storage, upstream error formatting, and admin file inventory.
 
 Current metrics after this extraction:
 
@@ -345,7 +343,7 @@ Current metrics after this extraction:
 ROI result:
 
 * Better ownership: Vite config now keeps build/plugin wiring, while the local development API has a dedicated plugin module.
-* Better maintainability: local API route helpers, request parsing, key persistence, OpenRouter/Ollama proxy behavior, and admin file inventory are no longer nested inside `defineConfig`.
+* Better maintainability: local API route helpers, request parsing, key persistence, OpenRouter proxy behavior, and admin file inventory are no longer nested inside `defineConfig`.
 * Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
 * Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
 
@@ -357,7 +355,7 @@ Latest committed baseline: `d9143ee Extract local dev env store`.
 
 This checkpoint records extraction of `.env.local` API key persistence from `dev/dictaLocalDevApiPlugin.ts`.
 
-`dev/localDevEnvStore.ts` now owns local OpenRouter/Ollama API key lookup, `.env.local` parsing, JSON/string quote handling, key upsert, and key removal. `dev/dictaLocalDevApiPlugin.ts` keeps route validation, request handling, upstream proxy behavior, job handling, and admin file inventory.
+`dev/localDevEnvStore.ts` now owns local OpenRouter API key lookup, `.env.local` parsing, JSON/string quote handling, key upsert, and key removal. `dev/dictaLocalDevApiPlugin.ts` keeps route validation, request handling, upstream proxy behavior, job handling, and admin file inventory.
 
 Current metrics after this extraction:
 
@@ -379,9 +377,9 @@ Next work should inspect the remaining local dev API plugin before extracting mo
 
 Latest committed baseline: `513affe Extract local dev API validation`.
 
-This checkpoint records extraction of local OpenRouter/Ollama input validation from `dev/dictaLocalDevApiPlugin.ts`.
+This checkpoint records extraction of local OpenRouter input validation from `dev/dictaLocalDevApiPlugin.ts`.
 
-`dev/localDevApiValidation.ts` now owns API key validation, OpenRouter free-model normalization, Ollama model normalization, prompt length bounds, and `max_tokens` bounds. `dev/dictaLocalDevApiPlugin.ts` keeps route handling, request parsing, upstream proxy behavior, local job handling, and admin file inventory.
+`dev/localDevApiValidation.ts` now owns API key validation, OpenRouter free-model normalization, prompt length bounds, and `max_tokens` bounds. `dev/dictaLocalDevApiPlugin.ts` keeps route handling, request parsing, upstream proxy behavior, local job handling, and admin file inventory.
 
 Current metrics after this extraction:
 
@@ -453,41 +451,13 @@ ROI result:
 
 Next work should inspect before extracting more from `/api/openrouter/jobs`; the remaining route still owns request parsing and the upstream OpenRouter call.
 
-## Follow-up — 2026-06-11 Local dev Ollama helpers
-
-Latest committed baseline: `5acd4de Extract local dev Ollama helpers`.
-
-This checkpoint records extraction of local Ollama helper logic from `dev/dictaLocalDevApiPlugin.ts`.
-
-`dev/localDevOllamaHelpers.ts` now owns Ollama upstream error text extraction, user-facing Ollama auth/quota/error formatting, and Ollama model payload normalization with the recommended model fallback. `dev/dictaLocalDevApiPlugin.ts` keeps the Ollama middleware routes, key lookup, request parsing, upstream fetch calls, and response handling.
-
-Current metrics after this extraction:
-
-| Item                                  | Value |
-| ------------------------------------- | ----: |
-| `dev/dictaLocalDevApiPlugin.ts` LOC   | 505 |
-| `dev/localDevOllamaHelpers.ts` LOC    | 77 |
-| `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
-| `dev/localDevAdminFiles.ts` LOC       | 86 |
-| `dev/localDevApiValidation.ts` LOC    | 105 |
-| `dev/localDevEnvStore.ts` LOC         | 83 |
-
-ROI result:
-
-* Better ownership: Ollama-specific model/error helper behavior is separated from local API middleware routing.
-* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 505 LOC.
-* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
-* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
-
-Next work should inspect before extracting more shared request/response helpers; the remaining plugin still owns route orchestration.
-
 ## Follow-up — 2026-06-11 Local dev HTTP helpers
 
 Latest committed baseline: `e0b2782 Extract local dev HTTP helpers`.
 
 This checkpoint records extraction of shared local development HTTP helper logic from `dev/dictaLocalDevApiPlugin.ts`.
 
-`dev/localDevHttpHelpers.ts` now owns local HTTP error construction, local error response formatting, request body size enforcement, JSON request parsing, and API key suffix masking. `dev/dictaLocalDevApiPlugin.ts` keeps middleware route orchestration, local dev store wiring, OpenRouter/Ollama/admin route handling, upstream fetch calls, and response payload ownership.
+`dev/localDevHttpHelpers.ts` now owns local HTTP error construction, local error response formatting, request body size enforcement, JSON request parsing, and API key suffix masking. `dev/dictaLocalDevApiPlugin.ts` keeps middleware route orchestration, local dev store wiring, OpenRouter/admin route handling, upstream fetch calls, and response payload ownership.
 
 Current metrics after this extraction:
 
@@ -495,7 +465,6 @@ Current metrics after this extraction:
 | ------------------------------------- | ----: |
 | `dev/dictaLocalDevApiPlugin.ts` LOC   | 462 |
 | `dev/localDevHttpHelpers.ts` LOC      | 65 |
-| `dev/localDevOllamaHelpers.ts` LOC    | 77 |
 | `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
 | `dev/localDevAdminFiles.ts` LOC       | 86 |
 | `dev/localDevApiValidation.ts` LOC    | 105 |
@@ -525,7 +494,6 @@ Current metrics after this extraction:
 | `dev/dictaLocalDevApiPlugin.ts` LOC   | 449 |
 | `dev/localDevOpenRouterClient.ts` LOC | 30 |
 | `dev/localDevHttpHelpers.ts` LOC      | 65 |
-| `dev/localDevOllamaHelpers.ts` LOC    | 77 |
 | `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
 | `dev/localDevAdminFiles.ts` LOC       | 86 |
 | `dev/localDevApiValidation.ts` LOC    | 105 |
@@ -540,44 +508,13 @@ ROI result:
 
 Next work should inspect before extracting full route handlers; the remaining plugin is mostly local dev route orchestration and response handling.
 
-## Follow-up — 2026-06-11 Local Ollama client helper
-
-Latest committed baseline: `9c5cf1b Extract local Ollama client helper`.
-
-This checkpoint records extraction of local Ollama upstream request helpers from `dev/dictaLocalDevApiPlugin.ts`.
-
-`dev/localDevOllamaClient.ts` now owns the local Ollama models `fetch`, Ollama chat `fetch`, authorization/accept headers, non-streaming chat payload shape, and `num_predict` request mapping. `dev/dictaLocalDevApiPlugin.ts` keeps Ollama route orchestration, API key lookup, validation, upstream response passthrough, and user-facing error formatting.
-
-Current metrics after this extraction:
-
-| Item                                  | Value |
-| ------------------------------------- | ----: |
-| `dev/dictaLocalDevApiPlugin.ts` LOC   | 435 |
-| `dev/localDevOllamaClient.ts` LOC     | 39 |
-| `dev/localDevOpenRouterClient.ts` LOC | 30 |
-| `dev/localDevHttpHelpers.ts` LOC      | 65 |
-| `dev/localDevOllamaHelpers.ts` LOC    | 77 |
-| `dev/localDevOpenRouterJobs.ts` LOC   | 94 |
-| `dev/localDevAdminFiles.ts` LOC       | 86 |
-| `dev/localDevApiValidation.ts` LOC    | 105 |
-| `dev/localDevEnvStore.ts` LOC         | 83 |
-
-ROI result:
-
-* Better ownership: duplicated local Ollama upstream request construction is separated from route orchestration.
-* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 435 LOC.
-* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
-* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
-
-Next work should inspect before extracting full route handlers; the remaining plugin is now mostly local dev route orchestration, API-key branching, and response handling.
-
 ## Follow-up — 2026-06-11 Local dev API key routes
 
 Latest committed baseline: `36e3312 Extract local dev API key routes`.
 
 This checkpoint records extraction of duplicated local API-key route handling from `dev/dictaLocalDevApiPlugin.ts`.
 
-`dev/localDevApiKeyRoutes.ts` now owns registration for local API-key status, save, and delete routes for OpenRouter and Ollama. `dev/dictaLocalDevApiPlugin.ts` keeps provider-specific store wiring, validation wiring, model/chat/job/admin route orchestration, and upstream response handling.
+`dev/localDevApiKeyRoutes.ts` now owns registration for local API-key status, save, and delete routes for OpenRouter. `dev/dictaLocalDevApiPlugin.ts` keeps provider-specific store wiring, validation wiring, model/chat/job/admin route orchestration, and upstream response handling.
 
 Current metrics after this extraction:
 
@@ -585,10 +522,8 @@ Current metrics after this extraction:
 | ---- | ----: |
 | `dev/dictaLocalDevApiPlugin.ts` LOC | 347 |
 | `dev/localDevApiKeyRoutes.ts` LOC | 86 |
-| `dev/localDevOllamaClient.ts` LOC | 39 |
 | `dev/localDevOpenRouterClient.ts` LOC | 30 |
 | `dev/localDevHttpHelpers.ts` LOC | 65 |
-| `dev/localDevOllamaHelpers.ts` LOC | 77 |
 | `dev/localDevOpenRouterJobs.ts` LOC | 94 |
 | `dev/localDevAdminFiles.ts` LOC | 86 |
 | `dev/localDevApiValidation.ts` LOC | 105 |
@@ -618,8 +553,8 @@ Recent commit context:
 
 Route ownership after this extraction:
 
-* `dev/localDevModelRoutes.ts` owns local OpenRouter/Ollama model route registration and provider model proxy response handling.
-* `dev/localDevChatRoutes.ts` owns local OpenRouter/Ollama chat route registration, request parsing, validation wiring, and provider chat proxy response handling.
+* `dev/localDevModelRoutes.ts` owns local OpenRouter model route registration and provider model proxy response handling.
+* `dev/localDevChatRoutes.ts` owns local OpenRouter chat route registration, request parsing, validation wiring, and provider chat proxy response handling.
 * `dev/dictaLocalDevApiPlugin.ts` remains the local-dev route composition root and keeps API-key, job, admin, and provider wiring orchestration.
 
 Current metrics after these extractions:
@@ -630,10 +565,8 @@ Current metrics after these extractions:
 | `dev/localDevChatRoutes.ts` LOC | 134 |
 | `dev/localDevModelRoutes.ts` LOC | 90 |
 | `dev/localDevApiKeyRoutes.ts` LOC | 86 |
-| `dev/localDevOllamaClient.ts` LOC | 39 |
 | `dev/localDevOpenRouterClient.ts` LOC | 30 |
 | `dev/localDevHttpHelpers.ts` LOC | 65 |
-| `dev/localDevOllamaHelpers.ts` LOC | 77 |
 | `dev/localDevOpenRouterJobs.ts` LOC | 94 |
 | `dev/localDevAdminFiles.ts` LOC | 86 |
 | `dev/localDevApiValidation.ts` LOC | 105 |
@@ -677,10 +610,8 @@ Current metrics after this extraction:
 | `dev/localDevChatRoutes.ts` LOC | 134 |
 | `dev/localDevModelRoutes.ts` LOC | 90 |
 | `dev/localDevApiKeyRoutes.ts` LOC | 86 |
-| `dev/localDevOllamaClient.ts` LOC | 39 |
 | `dev/localDevOpenRouterClient.ts` LOC | 30 |
 | `dev/localDevHttpHelpers.ts` LOC | 65 |
-| `dev/localDevOllamaHelpers.ts` LOC | 77 |
 | `dev/localDevOpenRouterJobs.ts` LOC | 94 |
 | `dev/localDevAdminFiles.ts` LOC | 86 |
 | `dev/localDevApiValidation.ts` LOC | 105 |
@@ -941,7 +872,7 @@ Recent commit context:
 Ownership after this extraction:
 
 * `src/app/useWorkspaceModelRefreshRuntime.ts` owns effective OpenRouter default-model resolution for auth-required member profiles, including assigned-model trimming and fallback to the local OpenRouter default model.
-* `src/app/useModelRefreshActions.ts` continues to own OpenRouter/Ollama model refresh side effects.
+* `src/app/useModelRefreshActions.ts` continues to own OpenRouter model refresh side effects.
 * `src/App.tsx` keeps workspace runtime orchestration and passes the resolved model state into existing workspace props.
 
 Current metrics after this extraction:

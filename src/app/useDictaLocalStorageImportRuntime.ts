@@ -1,10 +1,7 @@
 import { useCallback } from 'react';
 import { loadAdaptiveBenchmarks, loadAdaptiveSessionFeedback } from './adaptiveStorage';
 import { getDictaLocalStorageSnapshot } from './dictaLocalStorageSnapshot';
-import {
-  loadOllamaDefaultModel,
-  loadOpenRouterDefaultModel,
-} from './modelPreferenceStorage';
+import { loadOpenRouterDefaultModel } from './modelPreferenceStorage';
 import { loadSessions } from './sessionStorage';
 import { loadPersistedDictaLanguageView } from './uiPreferenceStorage';
 import { SESSION_STORAGE_KEY } from './useSessionPersistenceSync';
@@ -17,7 +14,6 @@ type DictaLocalStorageImportRuntimeOptions = {
   setAdaptiveSessionFeedbackByInputLanguage: (feedback: ReturnType<typeof loadAdaptiveSessionFeedback>) => void;
   setDictaLanguageView: (languageView: ReturnType<typeof loadPersistedDictaLanguageView>) => void;
   setOpenRouterDefaultModel: (model: string) => void;
-  setOllamaDefaultModel: (model: string) => void;
   showLeaderboardWorkspace: () => void;
   setExportMessage: (message: string) => void;
 };
@@ -30,7 +26,6 @@ export function useDictaLocalStorageImportRuntime({
   setAdaptiveSessionFeedbackByInputLanguage,
   setDictaLanguageView,
   setOpenRouterDefaultModel,
-  setOllamaDefaultModel,
   showLeaderboardWorkspace,
   setExportMessage,
 }: DictaLocalStorageImportRuntimeOptions) {
@@ -77,7 +72,6 @@ export function useDictaLocalStorageImportRuntime({
       setDictaLanguageView(loadPersistedDictaLanguageView());
 
       setOpenRouterDefaultModel(loadOpenRouterDefaultModel());
-      setOllamaDefaultModel(loadOllamaDefaultModel());
 
       showLeaderboardWorkspace();
       setExportMessage(`Imported ${incoming.length} Dicta storage key(s). Leaderboard and adaptive profiles restored in this browser.`);
@@ -91,7 +85,6 @@ export function useDictaLocalStorageImportRuntime({
     setAdaptiveSessionFeedbackByInputLanguage,
     setDictaLanguageView,
     setExportMessage,
-    setOllamaDefaultModel,
     setOpenRouterDefaultModel,
     setSessions,
     showLeaderboardWorkspace,

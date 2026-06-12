@@ -26,7 +26,6 @@ import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainin
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
-import { useOllamaWorkspaceProps } from './app/useOllamaWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
 import { useAppShellSyncStatusText } from './app/useAppShellSyncStatusText';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
@@ -223,7 +222,6 @@ function App() {
     showLeaderboardWorkspace,
     showAdminWorkspace,
     showOpenRouterWorkspace,
-    showOllamaWorkspace,
     showAdaptiveWorkspace,
     showDashboardWorkspace,
     showSessionInputWorkspace,
@@ -270,8 +268,6 @@ function App() {
   const {
     openRouterDefaultModel,
     setOpenRouterDefaultModel,
-    ollamaDefaultModel,
-    setOllamaDefaultModel,
   } = useModelPreferenceRuntime();
 
   useEffect(() => {
@@ -297,11 +293,7 @@ function App() {
     openRouterStatus,
     openRouterError,
     setOpenRouterError,
-    ollamaModels,
-    ollamaStatus,
-    ollamaError,
     refreshOpenRouterModels: refreshOpenRouterModelCatalog,
-    refreshOllamaModels: refreshOllamaModelCatalog,
   } = useModelCatalogRuntime();
   const {
     adminFileInventory,
@@ -623,17 +615,13 @@ function App() {
     assignedOpenRouterModel,
     effectiveOpenRouterDefaultModel,
     refreshOpenRouterModels,
-    refreshOllamaModels,
   } = useWorkspaceModelRefreshRuntime({
     syncConfig,
     appProfile,
     getAuthHeaders,
     openRouterDefaultModel,
     setOpenRouterDefaultModel,
-    ollamaDefaultModel,
-    setOllamaDefaultModel,
     refreshOpenRouterModelCatalog,
-    refreshOllamaModelCatalog,
   });
 
   const {
@@ -1862,7 +1850,6 @@ function App() {
     setAdaptiveSessionFeedbackByInputLanguage,
     setDictaLanguageView,
     setOpenRouterDefaultModel,
-    setOllamaDefaultModel,
     showLeaderboardWorkspace,
     setExportMessage,
   });
@@ -2193,17 +2180,6 @@ function App() {
       void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback),
   });
 
-  const ollamaWorkspaceProps = useOllamaWorkspaceProps({
-    defaultModel: ollamaDefaultModel,
-    getAuthHeaders,
-    setOllamaDefaultModel,
-    models: ollamaModels,
-    status: ollamaStatus,
-    error: ollamaError,
-    onRefreshModels: refreshOllamaModels,
-    onBackToTraining: showLeaderboardWorkspace,
-  });
-
   const adminWorkspaceProps = useAdminWorkspaceProps({
     sessions: adminSessions,
     summary: adminStorageSummary,
@@ -2327,7 +2303,6 @@ function App() {
     onOpenAdaptive: openAdaptiveWorkspaceFromHeader,
     onOpenAdmin: showAdminWorkspace,
     onOpenOpenRouter: showOpenRouterWorkspace,
-    onOpenOllama: showOllamaWorkspace,
     onToggleTheme: () => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark')),
     onSignOut: signOut,
   });
@@ -2494,7 +2469,6 @@ function App() {
           openRouterAccessState={openRouterAccessState}
           openRouterAccessMessage={openRouterAccessMessage}
           openRouterWorkspaceProps={openRouterWorkspaceProps}
-          ollamaWorkspaceProps={ollamaWorkspaceProps}
           canAccessAdminWorkspace={isCurrentProfileAdmin || !syncConfig.authRequired}
           adminWorkspaceProps={adminWorkspaceProps}
           leaderboardWorkspaceProps={leaderboardWorkspaceProps}

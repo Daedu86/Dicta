@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 
-type LocalDevApiKeyName = 'OPENROUTER_API_KEY' | 'OLLAMA_API_KEY';
+type LocalDevApiKeyName = 'OPENROUTER_API_KEY';
 
 const readEnvLocal = async (envLocalPath: string): Promise<string> => {
   try {
@@ -74,10 +74,7 @@ const removeApiKey = async (envLocalPath: string, keyName: LocalDevApiKeyName): 
 export function createLocalDevEnvStore(envLocalPath: string) {
   return {
     getOpenRouterApiKey: () => readApiKey(envLocalPath, 'OPENROUTER_API_KEY'),
-    getOllamaApiKey: () => readApiKey(envLocalPath, 'OLLAMA_API_KEY'),
     upsertOpenRouterApiKey: (apiKey: string) => upsertApiKey(envLocalPath, 'OPENROUTER_API_KEY', apiKey),
-    upsertOllamaApiKey: (apiKey: string) => upsertApiKey(envLocalPath, 'OLLAMA_API_KEY', apiKey),
     removeOpenRouterApiKey: () => removeApiKey(envLocalPath, 'OPENROUTER_API_KEY'),
-    removeOllamaApiKey: () => removeApiKey(envLocalPath, 'OLLAMA_API_KEY'),
   };
 }

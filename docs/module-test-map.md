@@ -74,7 +74,7 @@ Use this before changing code so that validation starts with the narrowest relev
 | Session persistence sync | Local/Supabase persistence sync. | `tests/useSessionPersistenceSync.test.ts` |
 | Profile-scoped storage | Storage scoped by profile/user. | `tests/profileScopedStorage.test.ts` |
 
-## OpenRouter and Ollama routes/jobs
+## OpenRouter routes/jobs
 
 | Area / module | Responsibility | Relevant tests |
 | --- | --- | --- |
@@ -85,8 +85,6 @@ Use this before changing code so that validation starts with the narrowest relev
 | OpenRouter direct generation plan | Direct generation job planning. | `tests/openRouterDirectGenerationJobPlan.test.ts` |
 | OpenRouter direct generation presets | Direct generation preset behavior. | `tests/openRouterDirectGenerationPresets.test.ts` |
 | OpenRouter language contract | Training generation language contract. | `tests/trainingOpenRouterLanguageContract.test.ts` |
-| Ollama chat route | Ollama chat route behavior. | `tests/ollamaChatRoute.test.ts` |
-| Ollama models route | Ollama model listing route behavior. | `tests/ollamaModelsRoute.test.ts` |
 
 ## Supabase, auth, profiles, and leaderboard
 

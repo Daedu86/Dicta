@@ -45,15 +45,11 @@ export function useWorkspaceModelRefreshRuntime({
   getAuthHeaders,
   openRouterDefaultModel,
   setOpenRouterDefaultModel,
-  ollamaDefaultModel,
-  setOllamaDefaultModel,
   refreshOpenRouterModelCatalog,
-  refreshOllamaModelCatalog,
 }: UseWorkspaceModelRefreshRuntimeArgs): {
   assignedOpenRouterModel: string;
   effectiveOpenRouterDefaultModel: string;
   refreshOpenRouterModels: ReturnType<typeof useModelRefreshActions>['refreshOpenRouterModels'];
-  refreshOllamaModels: ReturnType<typeof useModelRefreshActions>['refreshOllamaModels'];
 } {
   const {
     assignedOpenRouterModel,
@@ -64,24 +60,17 @@ export function useWorkspaceModelRefreshRuntime({
     openRouterDefaultModel,
   });
 
-  const {
-    refreshOpenRouterModels,
-    refreshOllamaModels,
-  } = useModelRefreshActions({
+  const { refreshOpenRouterModels } = useModelRefreshActions({
     getAuthHeaders,
     assignedOpenRouterModel,
     openRouterDefaultModel,
     setOpenRouterDefaultModel,
-    ollamaDefaultModel,
-    setOllamaDefaultModel,
     refreshOpenRouterModelCatalog,
-    refreshOllamaModelCatalog,
   });
 
   return {
     assignedOpenRouterModel,
     effectiveOpenRouterDefaultModel,
     refreshOpenRouterModels,
-    refreshOllamaModels,
   };
 }

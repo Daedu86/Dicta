@@ -225,7 +225,7 @@ Rules:
 4. Verify member/admin role assumptions.
 5. Treat RLS-related SQL/docs as security-sensitive.
 
-## OpenRouter and Ollama routes/jobs
+## OpenRouter routes/jobs
 
 High-risk areas:
 
@@ -235,7 +235,6 @@ High-risk areas:
 - OpenRouter model refresh.
 - OpenRouter jobs runtime.
 - Rate limits and quota behavior.
-- Ollama chat/models routes.
 
 Primary tests:
 
@@ -246,8 +245,6 @@ Primary tests:
 - `tests/openRouterDirectGenerationJobPlan.test.ts`
 - `tests/openRouterDirectGenerationPresets.test.ts`
 - `tests/trainingOpenRouterLanguageContract.test.ts`
-- `tests/ollamaChatRoute.test.ts`
-- `tests/ollamaModelsRoute.test.ts`
 - `tests/workspaceModelRefreshRuntime.test.ts`
 
 Rules:

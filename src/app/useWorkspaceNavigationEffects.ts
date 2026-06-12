@@ -58,8 +58,7 @@ export function useWorkspaceNavigationEffects({
       workspaceMode !== 'dashboard' &&
       workspaceMode !== 'adaptive' &&
       workspaceMode !== 'admin' &&
-      workspaceMode !== 'openrouter' &&
-      workspaceMode !== 'ollama'
+      workspaceMode !== 'openrouter'
     ) {
       showWorkspaceMode(activeInputWorkspaceMode);
     }

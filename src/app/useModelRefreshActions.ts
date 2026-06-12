@@ -7,21 +7,12 @@ type RefreshOpenRouterModelCatalog = (options: {
   setOpenRouterDefaultModel: (model: string) => void;
 }) => Promise<void>;
 
-type RefreshOllamaModelCatalog = (options: {
-  headers: Record<string, string>;
-  ollamaDefaultModel: string;
-  setOllamaDefaultModel: (model: string) => void;
-}) => Promise<void>;
-
 type UseModelRefreshActionsArgs = {
   getAuthHeaders: () => Record<string, string>;
   assignedOpenRouterModel: string;
   openRouterDefaultModel: string;
   setOpenRouterDefaultModel: (model: string) => void;
-  ollamaDefaultModel: string;
-  setOllamaDefaultModel: (model: string) => void;
   refreshOpenRouterModelCatalog: RefreshOpenRouterModelCatalog;
-  refreshOllamaModelCatalog: RefreshOllamaModelCatalog;
 };
 
 export function useModelRefreshActions({
@@ -29,10 +20,7 @@ export function useModelRefreshActions({
   assignedOpenRouterModel,
   openRouterDefaultModel,
   setOpenRouterDefaultModel,
-  ollamaDefaultModel,
-  setOllamaDefaultModel,
   refreshOpenRouterModelCatalog,
-  refreshOllamaModelCatalog,
 }: UseModelRefreshActionsArgs) {
   const refreshOpenRouterModels = useCallback(async (): Promise<void> => {
     await refreshOpenRouterModelCatalog({
@@ -49,21 +37,7 @@ export function useModelRefreshActions({
     setOpenRouterDefaultModel,
   ]);
 
-  const refreshOllamaModels = useCallback(async (): Promise<void> => {
-    await refreshOllamaModelCatalog({
-      headers: getAuthHeaders(),
-      ollamaDefaultModel,
-      setOllamaDefaultModel,
-    });
-  }, [
-    getAuthHeaders,
-    ollamaDefaultModel,
-    refreshOllamaModelCatalog,
-    setOllamaDefaultModel,
-  ]);
-
   return {
     refreshOpenRouterModels,
-    refreshOllamaModels,
   };
 }

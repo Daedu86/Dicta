@@ -20,7 +20,6 @@ export type AppShellHeaderProps = {
   onOpenAdaptive: () => void;
   onOpenAdmin: () => void;
   onOpenOpenRouter: () => void;
-  onOpenOllama: () => void;
   onToggleTheme: () => void;
   onSignOut: () => void | Promise<void>;
 };
@@ -43,7 +42,6 @@ export function AppShellHeader({
   onOpenAdaptive,
   onOpenAdmin,
   onOpenOpenRouter,
-  onOpenOllama,
   onToggleTheme,
   onSignOut,
 }: AppShellHeaderProps) {
@@ -115,14 +113,6 @@ export function AppShellHeader({
             OpenRouter
           </button>
         ) : null}
-        <button
-          type="button"
-          className="secondary-button brand-openrouter-button"
-          onClick={onOpenOllama}
-          title="Configure Ollama Cloud and test a server-side model"
-        >
-          Ollama
-        </button>
         <button
           type="button"
           className="secondary-button theme-toggle-button"

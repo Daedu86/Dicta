@@ -16,7 +16,6 @@ type UseAppShellHeaderPropsArgs = {
   onOpenAdaptive: () => void;
   onOpenAdmin: () => void;
   onOpenOpenRouter: () => void;
-  onOpenOllama: () => void;
   onToggleTheme: () => void;
   onSignOut: () => void | Promise<void>;
 };
@@ -36,7 +35,6 @@ export function useAppShellHeaderProps({
   onOpenAdaptive,
   onOpenAdmin,
   onOpenOpenRouter,
-  onOpenOllama,
   onToggleTheme,
   onSignOut,
 }: UseAppShellHeaderPropsArgs): AppShellHeaderProps {
@@ -60,7 +58,6 @@ export function useAppShellHeaderProps({
       onOpenAdaptive,
       onOpenAdmin,
       onOpenOpenRouter,
-      onOpenOllama,
       onToggleTheme,
       onSignOut,
     };
@@ -79,7 +76,6 @@ export function useAppShellHeaderProps({
     onOpenAdaptive,
     onOpenAdmin,
     onOpenOpenRouter,
-    onOpenOllama,
     onToggleTheme,
     onSignOut,
   ]);

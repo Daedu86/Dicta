@@ -150,7 +150,6 @@ Browser storage keys:
 - `dicta.adaptiveSessionFeedback.v1`
 - `dicta.perfDiagnostics.v1`
 - `dicta.openrouterDefaultModel.v1`
-- `dicta.ollamaDefaultModel.v1`
 - `dicta.openrouterGeneratedVariants.v1`
 - `dicta.openrouterActiveJobs.v1`
 
@@ -178,11 +177,7 @@ After changing Vite env vars in Vercel, redeploy because they are baked into the
 
 OpenRouter calls must go through the server routes in `api/openrouter/*`. Do not store OpenRouter API keys in `localStorage` or expose them through `VITE_*` variables.
 
-Ollama Cloud calls must go through the server routes in `api/ollama/*`. Do not store `OLLAMA_API_KEY` in `localStorage` or expose it through `VITE_*` variables. Ollama models do not use `:free`; access and quota depend on the configured Ollama account tier.
-
 Hosted Vercel builds use `OPENROUTER_API_KEY` from Vercel environment variables. Keep free-model behavior and long timeout handling intentional; accepted model ids are `openrouter/free` or `*:free`.
-
-Hosted Vercel builds use `OLLAMA_API_KEY` from Vercel environment variables for the Ollama workspace. The initial recommended model is `gemma3:27b-cloud`.
 
 OpenRouter access is profile-gated:
 

@@ -10,8 +10,7 @@ export type WorkspaceMode =
   | 'tts'
   | 'adaptive'
   | 'admin'
-  | 'openrouter'
-  | 'ollama';
+  | 'openrouter';
 
 type AppRoutePath = '/' | '/training';
 
@@ -25,7 +24,6 @@ type WorkspaceRouting = {
   showLeaderboardWorkspace: () => void;
   showAdminWorkspace: () => void;
   showOpenRouterWorkspace: () => void;
-  showOllamaWorkspace: () => void;
   showAdaptiveWorkspace: () => void;
   showDashboardWorkspace: (sessionId: string) => void;
   showSessionInputWorkspace: (inputMode: SessionInputMode) => void;
@@ -74,7 +72,6 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   const showLeaderboardWorkspace = useCallback(() => showWorkspace('leaderboard'), [showWorkspace]);
   const showAdminWorkspace = useCallback(() => showWorkspace('admin'), [showWorkspace]);
   const showOpenRouterWorkspace = useCallback(() => showWorkspace('openrouter'), [showWorkspace]);
-  const showOllamaWorkspace = useCallback(() => showWorkspace('ollama'), [showWorkspace]);
   const showAdaptiveWorkspace = useCallback(() => showWorkspace('adaptive'), [showWorkspace]);
 
   const showDashboardWorkspace = useCallback((sessionId: string) => {
@@ -101,7 +98,6 @@ export function useWorkspaceRouting(): WorkspaceRouting {
     showLeaderboardWorkspace,
     showAdminWorkspace,
     showOpenRouterWorkspace,
-    showOllamaWorkspace,
     showAdaptiveWorkspace,
     showDashboardWorkspace,
     showSessionInputWorkspace,
