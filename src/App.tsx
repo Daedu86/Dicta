@@ -763,36 +763,28 @@ function App() {
     if (!activeSession) return;
 
     hydratingSessionIdRef.current = activeSession.id;
-    setDifficulty(activeSession.difficulty);
-    setInputSettingsLocked(Boolean(activeSession.inputSettingsLocked));
-    setTtsLanguage(activeSession.ttsLanguage ?? 'de');
-    setTtsPracticeText(activeSession.ttsPracticeText ?? '');
-    ttsPracticeLiveTextRef.current = activeSession.ttsPracticeText ?? '';
-    setSessionStatus(activeSession.status);
-    setTtsText(activeSession.ttsText ?? '');
-    setTtsStatus(activeSession.inputMode === BROWSER_TTS_SESSION_INPUT_MODE && activeSession.status === 'finished' ? 'finished' : activeSession.ttsText ? 'ready' : 'idle');
-    setTtsCurrentChunk('');
-    setTtsPacingMode('balanced');
-    setTtsSpeechRate(1);
-    setRunning(false);
-    const hydratedMetrics = activeSession.status === 'finished' ? activeSession.metrics : null;
-    setRate(hydratedMetrics?.rate ?? 1);
-    setLagSec(hydratedMetrics?.lagSec ?? 0);
-    setLagWords(hydratedMetrics?.lagWords ?? 0);
-    setWpm(hydratedMetrics?.wpm ?? 0);
-    setAccuracy(hydratedMetrics?.accuracy ?? 100);
-    setTrend(hydratedMetrics?.trend ?? 'stable');
-    setControllerState(hydratedMetrics?.controllerState ?? 'hold');
+    const hydrationState = buildActiveSessionHydrationState(activeSession);
+    setDifficulty(hydrationState.difficulty);
+    setInputSettingsLocked(hydrationState.inputSettingsLocked);
+    setTtsLanguage(hydrationState.ttsLanguage);
+    setTtsPracticeText(hydrationState.ttsPracticeText);
+    ttsPracticeLiveTextRef.current = hydrationState.ttsPracticeText;
+    setSessionStatus(hydrationState.sessionStatus);
+    setTtsText(hydrationState.ttsText);
+    setTtsStatus(hydrationState.ttsStatus);
+    setTtsCurrentChunk(hydrationState.ttsCurrentChunk);
+    setTtsPacingMode(hydrationState.ttsPacingMode);
+    setTtsSpeechRate(hydrationState.ttsSpeechRate);
+    setRunning(hydrationState.running);
+    setRate(hydrationState.rate);
+    setLagSec(hydrationState.lagSec);
+    setLagWords(hydrationState.lagWords);
+    setWpm(hydrationState.wpm);
+    setAccuracy(hydrationState.accuracy);
+    setTrend(hydrationState.trend);
+    setControllerState(hydrationState.controllerState);
     ttsUiLastPublishedAtRef.current = 0;
-    ttsPublishedUiRef.current = {
-      controllerState: 'hold',
-      rate: 1,
-      lagSec: 0,
-      lagWords: 0,
-      wpm: 0,
-      accuracy: 100,
-      trend: 'stable',
-    };
+    ttsPublishedUiRef.current = hydrationState.publishedUi;
     telemetryRef.current = cloneTelemetry(activeSession.telemetry);
     setExportMessage('');
     setError('');
