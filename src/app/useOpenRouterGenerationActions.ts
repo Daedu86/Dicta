@@ -1,17 +1,6 @@
 import { useCallback } from 'react';
 import type { InputMode } from '../core/adaptive/types';
 import {
-  createEmptyInputLanguageBenchmark,
-} from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import {
-  buildOpenRouterGenerationPrompt,
-  estimateOpenRouterPromptSize,
-  getOpenRouterGenerationMaxTokens,
-} from '../core/adaptive/openRouterGenerationPrompt';
-import {
-  selectLatestAdaptiveSessionFeedback,
-} from '../core/adaptive/sessionFeedback';
-import {
   isTransientOpenRouterGenerationError,
 } from '../core/adaptive/openRouterFallbackScript';
 import type {
@@ -32,9 +21,8 @@ import type {
   AdaptiveSessionFeedbackByInputLanguage,
   BenchmarkLanguageButton,
 } from '../components/openrouter/types';
-import { buildOpenRouterActivityHints } from './adaptiveFeedbackContext';
 import { mapSessionInputMode } from './appRuntimeHelpers';
-import { buildOpenRouterDiversificationHints } from './openRouterPromptHints';
+import { buildOpenRouterDirectGenerationJobPlan } from './openRouterDirectGenerationJobPlan';
 import {
   OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
   type OpenRouterDirectGenerationPreset,
@@ -180,6 +168,7 @@ export function useOpenRouterGenerationActions({
   ]);
 
   const generateDirectSessionFromOpenRouter = useCallback(async ({
+    id,
     slotLabel,
     displayLabel,
     durationMinutes,
@@ -216,56 +205,30 @@ export function useOpenRouterGenerationActions({
     setOpenRouterError('');
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
-    const targetMaxTokens = getOpenRouterGenerationMaxTokens(durationMinutes);
     try {
-      const profile = adaptiveBenchmarksByInputLanguage[inputMode]?.[language] ?? createEmptyInputLanguageBenchmark(inputMode, language);
-      const sessionFeedback = selectLatestAdaptiveSessionFeedback(
-        adaptiveSessionFeedbackByInputLanguage[inputMode]?.[language],
-        inputMode,
-        language,
-      );
-      const directPromptArgs = {
-        profile,
-        sessionFeedback,
-        promptSource: 'compact-adaptive-v2' as const,
-        durationMinutes,
-        userIntent,
-        targetDifficulty,
-        difficultyInstruction,
-        diversificationHints: buildOpenRouterDiversificationHints({
+      const jobPlan = buildOpenRouterDirectGenerationJobPlan({
+        model,
+        preset: {
+          id,
+          slotLabel,
+          displayLabel,
           durationMinutes,
+          userIntent,
           targetDifficulty,
-          recentSessions: recentDictationSessionHints,
-          activityHints: buildOpenRouterActivityHints({
-            sessions,
-            inputMode,
-            language,
-            benchmarkSessionCount: profile.sessionCount,
-          }),
-        }),
-      };
-      const { prompt, trainingPrescription } = buildOpenRouterGenerationPrompt(directPromptArgs);
-      const resolvedTargetDifficulty = trainingPrescription.difficulty;
-      const promptSize = estimateOpenRouterPromptSize(prompt, {
-        promptMode: 'compact-adaptive-v2',
-        durationMinutes,
-        targetDifficulty: resolvedTargetDifficulty,
+          difficultyInstruction,
+        },
         inputMode,
         language,
+        sessions,
+        adaptiveBenchmarksByInputLanguage,
+        adaptiveSessionFeedbackByInputLanguage,
+        recentDictationSessionHints,
+        generationStartedAt,
       });
       const response = await fetch('/api/openrouter/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({
-          model,
-          prompt,
-          maxTokens: targetMaxTokens,
-          slotLabel,
-          inputMode,
-          language,
-          durationMinutes,
-          targetDifficulty: resolvedTargetDifficulty,
-        }),
+        body: JSON.stringify(jobPlan.jobRequestBody),
       });
       if (!response.ok) {
         const text = await response.text();
@@ -276,17 +239,7 @@ export function useOpenRouterGenerationActions({
       if (!jobId) throw new Error('OpenRouter job did not return an id.');
       const activeJob: ActiveOpenRouterJob = {
         jobId,
-        model,
-        slotLabel,
-        inputMode,
-        language,
-        durationMinutes,
-        targetDifficulty: resolvedTargetDifficulty,
-        promptMode: promptSize.promptMode,
-        promptCharacterCount: promptSize.characterCount,
-        promptApproximateTokenCount: promptSize.approximateTokenCount,
-        origin: 'direct-training',
-        startedAt: generationStartedAt,
+        ...jobPlan.activeJobDraft,
       };
       trackOpenRouterJob(activeJob);
     } catch (err) {
