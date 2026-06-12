@@ -649,3 +649,49 @@ ROI result:
 
 Next work should inspect before extracting the OpenRouter job routes because they include async job lifecycle handling.
 
+## Follow-up — 2026-06-12 Local dev OpenRouter job routes
+
+Latest committed baseline: `74caa63 Extract local dev OpenRouter job routes`.
+
+This checkpoint records extraction of local OpenRouter async job route handling from `dev/dictaLocalDevApiPlugin.ts`.
+
+Recent commit context:
+
+* `74caa63 (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract local dev OpenRouter job routes`
+* `9bb48ee Document local dev model and chat routes extraction`
+* `4e99044 Extract local dev chat routes`
+* `73b67dd Extract local dev model routes`
+
+Route ownership after this extraction:
+
+* `dev/localDevOpenRouterJobRoutes.ts` owns `/api/openrouter/jobs`, including job status lookup, active-job limit enforcement, request parsing, queued job creation, and async job lifecycle transitions.
+* `dev/localDevOpenRouterJobs.ts` continues to own the in-memory job store, job types, and job state mutation helpers.
+* `dev/dictaLocalDevApiPlugin.ts` remains the local-dev route composition root and now primarily wires route modules plus remaining admin/file behavior.
+
+Current metrics after this extraction:
+
+| Item | Value |
+| ---- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC | 120 |
+| `dev/localDevOpenRouterJobRoutes.ts` LOC | 149 |
+| `dev/localDevChatRoutes.ts` LOC | 134 |
+| `dev/localDevModelRoutes.ts` LOC | 90 |
+| `dev/localDevApiKeyRoutes.ts` LOC | 86 |
+| `dev/localDevOllamaClient.ts` LOC | 39 |
+| `dev/localDevOpenRouterClient.ts` LOC | 30 |
+| `dev/localDevHttpHelpers.ts` LOC | 65 |
+| `dev/localDevOllamaHelpers.ts` LOC | 77 |
+| `dev/localDevOpenRouterJobs.ts` LOC | 94 |
+| `dev/localDevAdminFiles.ts` LOC | 86 |
+| `dev/localDevApiValidation.ts` LOC | 105 |
+| `dev/localDevEnvStore.ts` LOC | 83 |
+
+ROI result:
+
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 120 LOC.
+* Better ownership: async OpenRouter job orchestration is now separated from the plugin composition root.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect remaining plugin LOC before another extraction. The likely remaining candidate is admin/file route wiring, but ROI may be lower now that the plugin is only about 120 LOC.
+
