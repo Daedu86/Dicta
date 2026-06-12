@@ -150,3 +150,7 @@ When renaming or moving tests:
 2. Check `docs/README.md`.
 3. Check `docs/agent-onboarding.md`.
 4. Check `docs/documentation-inventory.md` if the documentation status changes.
+
+## ROI scoring and validation
+
+Use `docs/modularization-roi.md` to decide whether a modularization candidate has enough payoff. This map supplies the validation side of that score: existing tests, required test additions, and risk-specific commands.

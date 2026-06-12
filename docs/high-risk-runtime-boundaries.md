@@ -323,3 +323,7 @@ Rules:
 If a requested change touches more than one high-risk boundary, split the work.
 
 Prefer multiple small commits over a broad mixed change.
+
+## Modularization ROI override
+
+A high modularization score in `docs/modularization-roi.md` does not override these boundaries. If a candidate touches Browser TTS playback/runtime, phrase progression, `playTtsFromWord`, `resetSession`, refs, timers, telemetry, Supabase, OpenRouter jobs, PWA/mobile performance, or CSS cascade behavior, require focused tests and a smaller plan before moving code.

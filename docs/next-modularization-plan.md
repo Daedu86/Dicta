@@ -134,6 +134,8 @@ Top-level function inventory:
 
 Detailed checkpoint: `docs/archive/app-shell-modularization-checkpoint.md`.
 
+Before starting a new extraction, score the candidate with `docs/modularization-roi.md`.
+
 Completed extraction groups:
 
 - Admin workspace shell

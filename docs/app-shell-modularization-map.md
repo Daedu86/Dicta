@@ -1,3 +1,5 @@
+Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`. Use that document as the canonical scoring framework before applying any App Shell or non-App-Shell extraction.
+
 # App shell modularization map
 
 Updated: 2026-06-12 after OpenRouter direct generation job plan extraction

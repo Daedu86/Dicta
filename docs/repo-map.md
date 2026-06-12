@@ -108,3 +108,7 @@ For documentation changes:
 2. Keep root docs short and link to `docs/`.
 3. Preserve historical context unless it is clearly harmful.
 4. Repair broken references in dedicated cleanup commits.
+
+## Modularization decision layer
+
+Use `docs/modularization-roi.md` before extracting, moving, or splitting repo areas. The repo map explains ownership; the ROI framework decides whether a proposed boundary is worth creating now.
