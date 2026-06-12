@@ -603,3 +603,49 @@ ROI result:
 
 Next work should inspect before extracting larger route handlers; the remaining plugin is now mostly provider model/chat/job/admin route orchestration.
 
+## Follow-up — 2026-06-12 Local dev model and chat routes
+
+Latest committed baseline: `4e99044 Extract local dev chat routes`.
+
+This checkpoint records two local-dev route extractions.
+
+Recent commit context:
+
+* `4e99044 (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract local dev chat routes`
+* `73b67dd Extract local dev model routes`
+* `b9158f5 Document local dev API key routes extraction`
+* `36e3312 Extract local dev API key routes`
+
+Route ownership after this extraction:
+
+* `dev/localDevModelRoutes.ts` owns local OpenRouter/Ollama model route registration and provider model proxy response handling.
+* `dev/localDevChatRoutes.ts` owns local OpenRouter/Ollama chat route registration, request parsing, validation wiring, and provider chat proxy response handling.
+* `dev/dictaLocalDevApiPlugin.ts` remains the local-dev route composition root and keeps API-key, job, admin, and provider wiring orchestration.
+
+Current metrics after these extractions:
+
+| Item | Value |
+| ---- | ----: |
+| `dev/dictaLocalDevApiPlugin.ts` LOC | 217 |
+| `dev/localDevChatRoutes.ts` LOC | 134 |
+| `dev/localDevModelRoutes.ts` LOC | 90 |
+| `dev/localDevApiKeyRoutes.ts` LOC | 86 |
+| `dev/localDevOllamaClient.ts` LOC | 39 |
+| `dev/localDevOpenRouterClient.ts` LOC | 30 |
+| `dev/localDevHttpHelpers.ts` LOC | 65 |
+| `dev/localDevOllamaHelpers.ts` LOC | 77 |
+| `dev/localDevOpenRouterJobs.ts` LOC | 94 |
+| `dev/localDevAdminFiles.ts` LOC | 86 |
+| `dev/localDevApiValidation.ts` LOC | 105 |
+| `dev/localDevEnvStore.ts` LOC | 83 |
+
+ROI result:
+
+* Lower plugin size: `dictaLocalDevApiPlugin.ts` dropped to 217 LOC.
+* Better ownership: model and chat route handlers are now separated from the plugin composition root.
+* Safer follow-up path: the remaining larger candidates are OpenRouter job route orchestration and smaller admin/file route wiring.
+* Validation passed before the code commits: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+* Runtime safety: App runtime, Browser TTS playback/runtime, phrase progression, TTS refs/timers/telemetry, `resetSession`, and `playTtsFromWord` remained untouched.
+
+Next work should inspect before extracting the OpenRouter job routes because they include async job lifecycle handling.
+
