@@ -49,7 +49,7 @@ These documents may contain useful context, but they are not current sources of 
 | Document | Current handling |
 | --- | --- |
 | `adaptive-advanced-diagnostics-modularization.md` | Historical modularization note. |
-| `adaptive-workspace-modularization.md` | Historical note; contains a broken reference to `docs/app-modularization.md`. |
+| `adaptive-workspace-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |
 | `admin-workspace-modularization.md` | Historical modularization note. |
 | `app-post-leaderboard-measurement.md` | Historical measurement/modularization note. |
 | `app-shell-header-modularization.md` | Historical modularization note. |
@@ -59,9 +59,9 @@ These documents may contain useful context, but they are not current sources of 
 | `leaderboard-workspace-modularization.md` | Historical modularization note. |
 | `legacy-multi-input-2026-06-05.md` | Historical legacy snapshot. |
 | `next-modularization-plan.md` | Planning reference; verify against current branch before using. |
-| `openrouter-workspace-modularization.md` | Historical note; contains a broken reference to `docs/app-modularization.md`. |
-| `pending-session-lane-modularization.md` | Historical note; contains a broken reference to `docs/app-modularization.md`. |
-| `session-dashboard-modularization.md` | Historical note; contains a broken reference to `docs/app-modularization.md`. |
+| `openrouter-workspace-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |
+| `pending-session-lane-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |
+| `session-dashboard-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |
 
 ## Rules for agents
 
