@@ -233,3 +233,14 @@ Important rules:
 - OpenRouter/LLMs generate only structured training material. Dicta runtime still controls playback, rate, pauses, chunking, recovery, and Browser TTS execution.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior such as shorter chunks, slower rate, and longer pauses.
 - Browser TTS benchmark samples and completed session feedback carry a structured `ttsEnvironment` fingerprint with a hashed user agent, platform/PWA mode, selected voice metadata, and voice counts so reports can distinguish learner progress from browser, OS, voice, or speechSynthesis changes.
+
+<!-- agent-kb-entry -->
+## Documentation for agents
+
+Technical onboarding for future agents starts here:
+
+- `docs/README.md` - documentation index
+- `docs/agent-onboarding.md` - required agent entry flow
+- `docs/repo-map.md` - repository responsibilities and boundaries
+- `docs/module-test-map.md` - module-to-test validation map
+- `docs/high-risk-runtime-boundaries.md` - fragile runtime areas and safety rules

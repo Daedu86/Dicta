@@ -212,3 +212,16 @@ Do not add untrusted Hugging Face or PyTorch checkpoint loading paths without an
 ## Git and Scope
 
 Keep commits focused. Do not revert unrelated user changes. If a task touches adaptive behavior, include tests for the exact input/language pair and regressions for neighboring pairs where risk is high.
+
+<!-- agent-kb-entry -->
+## Agent knowledge base
+
+Before planning or changing code, read the canonical onboarding flow:
+
+1. `docs/README.md`
+2. `docs/agent-onboarding.md`
+3. `docs/repo-map.md`
+4. `docs/module-test-map.md`
+5. `docs/high-risk-runtime-boundaries.md`
+
+Treat historical modularization docs as context only until they are checked against current source files and tests.
