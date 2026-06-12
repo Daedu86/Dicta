@@ -65,4 +65,30 @@ describe('resolveEffectiveOpenRouterDefaultModel', () => {
       effectiveOpenRouterDefaultModel: 'anthropic/claude-3.5-haiku',
     });
   });
+
+  it('falls back to the user default model when the profile is null', () => {
+    expect(
+      resolveEffectiveOpenRouterDefaultModel({
+        syncConfig: { authRequired: true },
+        appProfile: null,
+        openRouterDefaultModel: 'anthropic/claude-3.5-haiku',
+      }),
+    ).toEqual({
+      assignedOpenRouterModel: '',
+      effectiveOpenRouterDefaultModel: 'anthropic/claude-3.5-haiku',
+    });
+  });
+
+  it('falls back to the user default model when the profile is undefined', () => {
+    expect(
+      resolveEffectiveOpenRouterDefaultModel({
+        syncConfig: { authRequired: true },
+        appProfile: undefined,
+        openRouterDefaultModel: 'anthropic/claude-3.5-haiku',
+      }),
+    ).toEqual({
+      assignedOpenRouterModel: '',
+      effectiveOpenRouterDefaultModel: 'anthropic/claude-3.5-haiku',
+    });
+  });
 });
