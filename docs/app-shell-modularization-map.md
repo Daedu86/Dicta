@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after `useFocusedTrainingInputTelemetryRuntime` extraction.
+Updated: 2026-06-12 after the session-creation transition and form-reset action extractions.
 
 ## Current baseline
 
@@ -11,8 +11,8 @@ This document began as a generated map. The historical deep inventory was intent
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest clean code baseline | 22b3e65 Extract focused training presentation state |
-| Current `src/App.tsx` LOC | 2514 |
+| Latest clean code baseline | 89827f6 Test session creation form reset action |
+| Current `src/App.tsx` LOC | 2508 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 89 |
 | Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 68 |
 | App.tsx inline `useState` count | 25 |
@@ -28,7 +28,7 @@ This document began as a generated map. The historical deep inventory was intent
 - `useKeyboardRemapRuntime` owns active typing-language resolution and Spanish physical-key remapping.
 - `useAdaptiveExportActions` owns adaptive benchmark/session-feedback copy, export, and insights diagnostic actions.
 - `useSupabaseAuthActions` owns Supabase sign-in, password reset/update, auth view switching, and sign-out handlers.
-- `useSessionCreationActions` owns plain-text session creation, DictationScript import validation/creation, and OpenRouter script session creation actions.
+- `useSessionCreationActions` owns plain-text session creation, DictationScript import validation/creation, OpenRouter script session creation actions, and the reusable session-creation form reset action.
 - `useWorkspaceSessionSummaries` owns derived session collections and workspace summaries.
 - `useWorkspaceNavigationEffects` owns non-TTS workspace navigation side effects.
 - `useOpenRouterGenerationBusyState` owns OpenRouter generation busy flags.
@@ -43,6 +43,8 @@ This document began as a generated map. The historical deep inventory was intent
 - `useLiveMetricsDockProps` owns live metrics dock prop composition, metrics view setters, insights diagnostics callback wiring, collapsed-state toggling, and TTS-current-chunk presence mapping.
 - `useFocusedTrainingViewProps` owns focused `TrainingView` prop composition, visible metric labels, training controls wiring, replay availability mapping, pending-session callbacks, sync summary props, and generation button props.
 - `useFocusedTrainingLiveMetrics` owns focused-training live metric derivation, transcript evaluation, visible accuracy/score, points labels, and metric help text.
+- `focusedTrainingPresentation` and `useFocusedTrainingPresentationState` own focused training presentation derivations for TTS player progress, source labels, text placeholder/value, and training message tone.
+- `focusedTrainingInputTelemetry` and `useFocusedTrainingInputTelemetryRuntime` own focused training immediate-input telemetry initialization and live-text ref updates.
 - `AppWorkspaceContent` owns the App workspace switch, pending-session lane placement, dashboard/adaptive/OpenRouter/Ollama/Admin/Leaderboard branch rendering, and workspace access fallbacks.
 - `useWorkspaceModelRefreshRuntime` owns workspace model assignment/default resolution and delegates OpenRouter/Ollama refresh actions to `useModelRefreshActions`.
 - `browserTtsSessionEnvironment` and `useBrowserTtsSessionEnvironmentRuntime` own Browser TTS session voice assignment, voice/environment fingerprint attachment, and active voice resolution outside `App.tsx` without moving playback behavior.
@@ -67,17 +69,18 @@ This document began as a generated map. The historical deep inventory was intent
 - `useAdaptiveWorkspaceState` owns adaptive workspace debug, benchmark, feedback, focus, and message state.
 - `adaptiveWorkspacePresentation` and `useAdaptiveWorkspacePresentationState` own Adaptive workspace presentation derivations for adapter cards, selected benchmark profiles, selected feedback, insights diagnostic profile/feedback, latest adaptive mode, latest input adapter, and diagnostic input options.
 - `useDictaSupabaseRuntime` owns Dicta sync config and Supabase client memoization.
-- `useSessionCreationWorkspaceState` owns session creation/import form state and OpenRouter generation focus request state.
+- `useSessionCreationWorkspaceState` owns session creation/import form state, session-creation source/json/cancel transition actions, and OpenRouter generation focus request state.
 - `adaptiveExportPackages` owns pure adaptive export/package builders for session feedback, benchmark feedback, diagnostic reports, prompt packages, human-feedback payloads, and adaptive event counts.
 - `openRouterDirectGenerationPresets` owns the direct OpenRouter generation preset catalog for easy, medium, hard, and express session variants.
 - `openRouterDirectGenerationJobPlan` owns pure OpenRouter direct-generation planning: profile/feedback lookup, prompt construction, max-token sizing, request payload construction, and the `ActiveOpenRouterJob` draft without `jobId`.
 
 ## Current recommendation
 
-- Start the next pass from the clean `723d15f` baseline before selecting another extraction.
-- Treat `useAdaptiveWorkspacePresentationState` as the latest successful low-risk derived-state extraction: it moved Adaptive workspace presentation derivations out of `src/App.tsx` while preserving runtime behavior.
-- Continue conservative modularization only when the candidate removes at least ~15-25 net lines from `src/App.tsx` or creates a clearly testable state/derived-data boundary.
+- Start the next pass from the clean `89827f6` code baseline before selecting another extraction.
+- Treat the session-creation transition actions and session-creation form reset action as the latest successful low-risk state/action extractions: they created testable seams without moving runtime playback behavior.
+- Continue conservative modularization only when the candidate removes at least ~15-25 net lines from `src/App.tsx` or creates a clearly testable state/derived-data/action boundary.
 - Continue to defer active-session hydration, Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves.
+- Prefer a fresh inventory before the next code extraction; do not continue extracting from `App.tsx` solely because the file is still large.
 
 ## ROI-based modularization policy
 
@@ -87,8 +90,8 @@ The first modularization phase successfully removed large workspace/action/prop-
 | --- | --- | --- |
 | App-shell reduction | Removes at least ~15-25 net lines from `src/App.tsx` or collapses a dense state/effect cluster | Adds an import and wrapper for a short expression, string, or one-line callback |
 | Ownership | Gives one module a coherent responsibility with explicit inputs/outputs | Splits a concept across App and a hook without reducing cognitive load |
-| Testability | Makes a derived-state or policy boundary easier to test outside App | Moves JSX/props only and does not expose a useful seam |
-| Runtime risk | Pure derivation, non-TTS UI state, or isolated effect with clear dependencies | Touches playback loop, TTS refs/timers/telemetry, phrase progression, or `resetSession` |
+| Testability | Makes a derived-state, state-transition, or policy boundary easier to test outside App | Moves JSX/props only and does not expose a useful seam |
+| Runtime risk | Pure derivation, non-TTS UI state, isolated effect with clear dependencies, or action factory over existing setters | Touches playback loop, TTS refs/timers/telemetry, phrase progression, or `resetSession` |
 | Change likelihood | Encapsulates logic likely to evolve independently | Extracts stable glue that rarely changes |
 
 Do not evaluate ROI purely by new hook LOC. Some hooks increase total LOC but still improve ownership. However, a hook that neither reduces App complexity nor creates a useful seam should be rejected.
@@ -99,9 +102,9 @@ The next pass should inspect candidates before writing code. Do not assume anoth
 
 Preferred investigation order:
 
-1. Setup/session-creation UI state boundary — likely medium ROI if it can reduce App coordination without touching runtime playback.
-2. BrowserTtsSetupCard prop boundary — possible ROI if the prop block is large enough, but avoid moving playback/runtime decisions.
-3. SessionDashboard prop/adaptor boundary — possible ROI if it collapses formatting/adaptor glue.
+1. BrowserTtsSetupCard prop boundary — possible ROI if the prop block is large enough, but avoid moving playback/runtime decisions.
+2. SessionDashboard prop/adaptor boundary — possible ROI if it collapses formatting/adaptor glue.
+3. Remaining setup/session-creation UI glue — only if the candidate creates another testable seam beyond the completed transition/reset actions.
 4. Active-session hydration/persistence — high theoretical ROI, but defer because it touches many state resets and can affect TTS/session semantics.
 5. Browser TTS runtime/playback — explicitly deferred until a dedicated design exists.
 
@@ -117,7 +120,7 @@ grep -n "useState" src/App.tsx
 wc -l src/App.tsx
 ~~~
 
-Proceed only if a candidate removes at least ~15-25 net lines from `src/App.tsx` or creates a clearly testable state/derived-data boundary.
+Proceed only if a candidate removes at least ~15-25 net lines from `src/App.tsx` or creates a clearly testable state/derived-data/action boundary.
 
 ## Current validation coverage
 
@@ -126,6 +129,10 @@ Proceed only if a candidate removes at least ~15-25 net lines from `src/App.tsx`
 - `tests/openRouterDirectGenerationPresets.test.ts` covers the direct generation preset catalog ids, durations, intent/difficulty mappings, unique slot labels, non-empty display labels, and difficulty instructions.
 - `tests/adaptiveExportPackages.test.ts` covers adaptive export package invariants for event counts, fallback session feedback payloads, and human-feedback prompt payloads.
 - `tests/adaptiveWorkspacePresentation.test.ts` covers Adaptive workspace presentation derivations for benchmark/profile fallbacks, latest feedback selection, insights diagnostics, adapter cards, and latest session mode mapping.
+- `tests/focusedTrainingPresentation.test.ts` covers focused training presentation derivations for progress values, phrase/word labels, source labels, placeholders, and message tone.
+- `tests/focusedTrainingInputTelemetry.test.ts` covers focused immediate-input telemetry initialization, startedAt preservation, startedAtMs preservation, legacy telemetry cloning, and live-text updates.
+- `tests/sessionCreationWorkspaceState.test.ts` covers session-creation source/json/cancel transition actions and dictation-script validation reset behavior.
+- `tests/sessionCreationActions.test.ts` covers the reusable session-creation form reset action for both expanded and collapsed Browser TTS setup states.
 
 ## Suggested checkpoint command
 
@@ -135,13 +142,3 @@ This document-only checkpoint does not require runtime tests. For a local mirror
 git log --oneline --decorate -4
 git show --stat --oneline HEAD
 ~~~
-
-
-- `focusedTrainingPresentation` and `useFocusedTrainingPresentationState` own focused training presentation derivations for TTS player progress, source labels, text placeholder/value, and training message tone.
-
-- `tests/focusedTrainingPresentation.test.ts` covers focused training presentation derivations for progress values, phrase/word labels, source labels, placeholders, and message tone.
-
-
-- `focusedTrainingInputTelemetry` and `useFocusedTrainingInputTelemetryRuntime` own focused training immediate-input telemetry initialization and live-text ref updates.
-
-- `tests/focusedTrainingInputTelemetry.test.ts` covers focused immediate-input telemetry initialization, startedAt preservation, startedAtMs preservation, legacy telemetry cloning, and live-text updates.
