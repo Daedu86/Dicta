@@ -1,0 +1,152 @@
+# Module Test Map
+
+This document maps important Dicta modules and runtime areas to the tests that protect them.
+
+Use this before changing code so that validation starts with the narrowest relevant tests.
+
+## Validation scripts
+
+| Scope | Command |
+| --- | --- |
+| All Vitest tests | `npm test` |
+| Watch mode | `npm run test:watch` |
+| Build | `npm run build` |
+| Lint | `npm run lint` |
+| Mobile E2E | `npm run test:e2e:mobile` |
+
+## App shell and workspace runtime
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| `src/App.tsx` | Main app shell and composition root. | Use area-specific tests below based on the touched boundary. |
+| `src/app/useWorkspaceModelRefreshRuntime.ts` | Resolves assigned/effective OpenRouter workspace model and delegates refresh actions. | `tests/workspaceModelRefreshRuntime.test.ts` |
+| `src/app/useKeyboardRemapRuntime.ts` | Keyboard remap runtime and input remapping behavior. | `tests/useKeyboardRemapRuntime.test.ts` |
+| `src/app/useOpenRouterJobsRuntime.ts` | OpenRouter job polling/runtime behavior. | `tests/useOpenRouterJobsRuntime.test.ts` |
+| `src/app/useSessionPersistenceSync.ts` | Session persistence/sync lifecycle. | `tests/useSessionPersistenceSync.test.ts` |
+| `src/app/adaptiveExportPackages.ts` | Adaptive export package builders. | `tests/adaptiveExportPackages.test.ts` |
+| `src/app/openRouterDirectGenerationJobPlan.ts` | OpenRouter direct generation job planning. | `tests/openRouterDirectGenerationJobPlan.test.ts` |
+| `src/app/openRouterDirectGenerationPresets.ts` | OpenRouter direct generation presets. | `tests/openRouterDirectGenerationPresets.test.ts` |
+
+## Input and Browser TTS runtime
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| `src/app/useBrowserTtsRuntime.ts` | Browser TTS app runtime integration. | `tests/useBrowserTtsRuntime.test.ts` |
+| `src/inputs/browserTts/browserTtsAdaptiveProfiles.ts` | Browser TTS adaptive profile behavior. | `tests/browserTtsAdaptiveProfiles.test.ts` |
+| `src/inputs/browserTts/browserTtsRatePolicy.ts` | Browser TTS rate policy. | `tests/browserTtsRatePolicy.test.ts` |
+| `src/inputs/browserTts/browserTtsRecoveryPolicy.ts` | Browser TTS recovery policy. | `tests/browserTtsRecoveryPolicy.test.ts` |
+| `src/inputs/browserTts/browserTtsUnsafePolicy.ts` | Browser TTS unsafe voice/policy handling. | `tests/browserTtsUnsafePolicy.test.ts` |
+| `src/inputs/browserTts/browserTtsVoices.ts` | Browser TTS voice selection/normalization. | `tests/browserTtsVoices.test.ts` |
+| `src/inputs/browserTts/ttsDynamicChunkPlanner.ts` | Dynamic TTS chunk planning. | `tests/ttsDynamicChunkPlanner.test.ts` |
+
+## Low-latency typing and performance
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| `LowLatencyTextarea` | Low-latency textarea behavior and contract. | `tests/LowLatencyTextareaContract.test.ts`, `tests/lowLatencyTextarea.test.ts` |
+| Typing performance gate | Guards against typing latency regressions. | `tests/lowLatencyPerformanceGate.test.ts` |
+| Lag stability | Runtime lag stability expectations. | `tests/lagStability.test.ts` |
+| Performance diagnostics | App performance diagnostics helpers. | `tests/perfDiagnostics.test.ts` |
+
+## Adaptive training and semantic planning
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| Adaptive controller | Adaptive training control behavior. | `tests/adaptiveController.test.ts` |
+| Adaptive benchmark service | Benchmark service behavior. | `tests/adaptiveBenchmarkService.test.ts` |
+| Adaptive semantic behavior | Semantic adaptive logic. | `tests/adaptiveSemantic.test.ts` |
+| Adaptive user/system report | Adaptive report generation. | `tests/adaptiveUserSystemReport.test.ts` |
+| Semantic phrase planner | Phrase planning and semantic phrase behavior. | `tests/semanticPhrasePlanner.test.ts` |
+| Listening trainer policy | Listening trainer policy decisions. | `tests/listeningTrainerPolicy.test.ts` |
+| Listening precision metrics | Listening metric calculations. | `tests/listeningPrecisionMetrics.test.ts` |
+
+## Session lifecycle, scoring, and persistence
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| Session device metadata | Session device handling. | `tests/sessionDevice.test.ts` |
+| Session feedback adaptive behavior | Adaptive session feedback. | `tests/sessionFeedbackAdaptive.test.ts` |
+| Session feedback debug lag | Debug lag feedback behavior. | `tests/sessionFeedbackDebugLag.test.ts` |
+| Session scoring | Scoring calculations. | `tests/sessionScore.test.ts` |
+| Session status normalization | Session status normalization. | `tests/sessionStatusNormalization.test.ts` |
+| Session persistence sync | Local/Supabase persistence sync. | `tests/useSessionPersistenceSync.test.ts` |
+| Profile-scoped storage | Storage scoped by profile/user. | `tests/profileScopedStorage.test.ts` |
+
+## OpenRouter and Ollama routes/jobs
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| OpenRouter chat route | OpenRouter chat API route behavior. | `tests/openRouterChatRoute.test.ts` |
+| OpenRouter job route | OpenRouter job API route behavior. | `tests/openRouterJobRoute.test.ts` |
+| OpenRouter jobs | OpenRouter job helpers/state. | `tests/openRouterJobs.test.ts` |
+| OpenRouter jobs runtime | App runtime for OpenRouter jobs. | `tests/useOpenRouterJobsRuntime.test.ts` |
+| OpenRouter direct generation plan | Direct generation job planning. | `tests/openRouterDirectGenerationJobPlan.test.ts` |
+| OpenRouter direct generation presets | Direct generation preset behavior. | `tests/openRouterDirectGenerationPresets.test.ts` |
+| OpenRouter language contract | Training generation language contract. | `tests/trainingOpenRouterLanguageContract.test.ts` |
+| Ollama chat route | Ollama chat route behavior. | `tests/ollamaChatRoute.test.ts` |
+| Ollama models route | Ollama model listing route behavior. | `tests/ollamaModelsRoute.test.ts` |
+
+## Supabase, auth, profiles, and leaderboard
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| App profiles | App profile behavior and role/profile assumptions. | `tests/appProfiles.test.ts` |
+| Supabase profile route | Supabase profile API route behavior. | `tests/supabaseProfileRoute.test.ts` |
+| Supabase sync | Supabase sync behavior. | `tests/supabaseSync.test.ts` |
+| Session persistence sync | Session persistence and sync integration. | `tests/useSessionPersistenceSync.test.ts` |
+| Leaderboard workspace | Leaderboard workspace behavior. | `tests/leaderboardWorkspace.test.ts` |
+
+## Training UI and generation UI
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| Training generation card | Generation card UI behavior. | `tests/trainingGenerationCard.test.ts` |
+| Training header | Training header behavior. | `tests/trainingHeader.test.ts` |
+| Training notifications | Training notification behavior. | `tests/trainingNotifications.test.ts` |
+| Dictation script validation | Generated/imported script validation. | `tests/dictationScriptValidation.test.ts` |
+
+## Configuration, languages, and build info
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| Config | App configuration behavior. | `tests/config.test.ts` |
+| Languages | Language metadata/behavior. | `tests/languages.test.ts` |
+| Build info | Build info behavior. | `tests/buildInfo.test.ts` |
+
+## Mobile and PWA validation
+
+| Area / module | Responsibility | Relevant tests |
+| --- | --- | --- |
+| Mobile training flow | Mobile training behavior and regressions. | `e2e/training-mobile.spec.ts` |
+| PWA/mobile performance | Device-specific performance and install behavior. | Start with focused unit/perf tests, then run `npm run test:e2e:mobile` when flow-level behavior is affected. |
+
+## Choosing validation
+
+Use the smallest relevant validation first.
+
+Examples:
+
+1. If changing `src/app/useWorkspaceModelRefreshRuntime.ts`, run `npx vitest run tests/workspaceModelRefreshRuntime.test.ts`.
+2. If changing OpenRouter direct generation planning, run `npx vitest run tests/openRouterDirectGenerationJobPlan.test.ts tests/openRouterDirectGenerationPresets.test.ts`.
+3. If changing Browser TTS policy modules, run the matching `browserTts*.test.ts` file first.
+4. If changing `LowLatencyTextarea`, run `npx vitest run tests/LowLatencyTextareaContract.test.ts tests/lowLatencyTextarea.test.ts tests/lowLatencyPerformanceGate.test.ts`.
+5. If changing Supabase sync or session persistence, run `npx vitest run tests/supabaseSync.test.ts tests/useSessionPersistenceSync.test.ts`.
+6. If changing mobile/PWA flow behavior, run focused unit tests first, then `npm run test:e2e:mobile`.
+
+## Gaps and maintenance
+
+This map is intentionally conservative.
+
+When adding a new module:
+
+1. Add or identify its focused test.
+2. Add the module/test relationship here.
+3. Prefer direct tests for pure helpers.
+4. Avoid relying only on broad app-level tests for fragile runtime behavior.
+
+When renaming or moving tests:
+
+1. Update this document in the same commit.
+2. Check `docs/README.md`.
+3. Check `docs/agent-onboarding.md`.
+4. Check `docs/documentation-inventory.md` if the documentation status changes.
