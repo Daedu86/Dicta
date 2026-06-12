@@ -1,4 +1,4 @@
-import { useCallback, type MutableRefObject } from 'react';
+import { useCallback, useMemo, type MutableRefObject } from 'react';
 import {
   parseDictationScriptJson,
   type DictationScript,
@@ -48,6 +48,34 @@ type UseSessionCreationActionsOptions = {
   setExportMessage: (message: string) => void;
 };
 
+type SessionCreationFormResetActionOptions = Pick<
+  UseSessionCreationActionsOptions,
+  | 'setSessionCreationMode'
+  | 'setSessionCreationSource'
+  | 'setSessionCreationName'
+  | 'setDictationScriptJson'
+  | 'setDictationScriptValidation'
+  | 'setTtsExpanded'
+>;
+
+export function createSessionCreationFormResetAction({
+  setSessionCreationMode,
+  setSessionCreationSource,
+  setSessionCreationName,
+  setDictationScriptJson,
+  setDictationScriptValidation,
+  setTtsExpanded,
+}: SessionCreationFormResetActionOptions) {
+  return (ttsExpanded: boolean): void => {
+    setSessionCreationMode(null);
+    setSessionCreationSource('plainText');
+    setSessionCreationName('');
+    setDictationScriptJson('');
+    setDictationScriptValidation(null);
+    setTtsExpanded(ttsExpanded);
+  };
+}
+
 export function useSessionCreationActions({
   sessionCreationName,
   dictationScriptJson,
@@ -70,14 +98,14 @@ export function useSessionCreationActions({
   setOpenRouterError,
   setExportMessage,
 }: UseSessionCreationActionsOptions) {
-  const resetSessionCreationForm = useCallback((ttsExpanded: boolean): void => {
-    setSessionCreationMode(null);
-    setSessionCreationSource('plainText');
-    setSessionCreationName('');
-    setDictationScriptJson('');
-    setDictationScriptValidation(null);
-    setTtsExpanded(ttsExpanded);
-  }, [
+  const resetSessionCreationForm = useMemo(() => createSessionCreationFormResetAction({
+    setDictationScriptJson,
+    setDictationScriptValidation,
+    setSessionCreationMode,
+    setSessionCreationName,
+    setSessionCreationSource,
+    setTtsExpanded,
+  }), [
     setDictationScriptJson,
     setDictationScriptValidation,
     setSessionCreationMode,
