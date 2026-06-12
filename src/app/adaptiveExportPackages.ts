@@ -53,7 +53,6 @@ export function buildAdaptiveEventCounts(
     'support_entered',
     'flow_entered',
     'phrase_started',
-    'phrase_completed',
   ];
   const counts = Object.fromEntries(trackedEvents.map((event) => [event, 0])) as Record<string, number>;
   for (const point of timelinePoints) {
