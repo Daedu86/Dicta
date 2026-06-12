@@ -1,0 +1,115 @@
+# Documentation Inventory
+
+This document is the current inventory of Markdown documentation in the Dicta repo.
+
+Status as of: 2026-06-12  
+Current branch: `product/input-2`  
+Current baseline observed: `aa7f0ee Document final recommendation cleanup`
+
+## Status legend
+
+| Status | Meaning |
+| --- | --- |
+| ACTIVE | Canonical entry point or current source of truth. Agents should read it when relevant. |
+| REFERENCE | Useful supporting context, but not the primary entry point. |
+| HISTORICAL | Checkpoint, migration note, or completed plan. Useful for context, not current truth. |
+| BROKEN-LINK-SOURCE | Contains a known reference to a missing document. Needs repair in a later pass. |
+| ARCHIVE-CANDIDATE | Likely should move under `docs/archive/`, but only after review. |
+| OBSOLETE-CANDIDATE | May conflict with current repo state. Do not delete until verified. |
+
+## Current Markdown files
+
+| File | Status | Purpose | Notes / follow-up |
+| --- | --- | --- | --- |
+| `AGENTS.md` | ACTIVE | Primary agent instructions and repo safety rules. | Should later point to `docs/agent-onboarding.md` once that exists. |
+| `README.md` | ACTIVE | Product overview, setup, and high-level documentation entry. | Should later point to `docs/README.md` and avoid becoming a detailed internal map. |
+| `ARCHITECTURE.md` | ACTIVE | Root architecture pointer. | Should remain short; it currently redirects to `docs/architecture.md`. |
+| `docs/architecture.md` | ACTIVE | Current architecture map and system boundaries. | Should feed future `docs/repo-map.md`. |
+| `docs/listening-first-architecture.md` | ACTIVE | Product/learning architecture around listening-first training. | Keep as product architecture context. |
+| `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
+| `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
+| `docs/android-pwa-performance-debugging.md` | REFERENCE | Android/PWA performance debugging notes. | Keep as runtime/performance context. |
+| `docs/app-shell-modularization-map.md` | REFERENCE, OBSOLETE-CANDIDATE | App shell modularization map and remaining extraction guidance. | Contains stale baseline references such as `abe497a` and `3ef3b91`; update or mark historical later. |
+| `docs/app-shell-modularization-checkpoint.md` | HISTORICAL, ARCHIVE-CANDIDATE | Historical checkpoint log for app shell modularization. | Contains several old baselines: `ad42cef`, `522a983`, `637e479`, `3ef3b91`, `abe497a`. Do not use as current baseline. |
+| `docs/next-modularization-plan.md` | REFERENCE | Current/near-term modularization planning context. | Verify against current branch before using as source of truth. |
+| `docs/adaptive-advanced-diagnostics-modularization.md` | HISTORICAL | Plan/checkpoint for adaptive diagnostics modularization. | Review whether completed before archiving. |
+| `docs/adaptive-workspace-modularization.md` | HISTORICAL, BROKEN-LINK-SOURCE | Adaptive workspace modularization plan/checkpoint. | References missing `docs/app-modularization.md`. |
+| `docs/admin-workspace-modularization.md` | HISTORICAL | Admin workspace modularization plan/checkpoint. | Review whether completed before archiving. |
+| `docs/app-post-leaderboard-measurement.md` | HISTORICAL | Post-leaderboard measurement notes. | Likely checkpoint/reference rather than current entry point. |
+| `docs/app-shell-header-modularization.md` | HISTORICAL | App shell header extraction/modularization notes. | Review whether completed before archiving. |
+| `docs/auth-workspace-modularization.md` | HISTORICAL | Auth workspace modularization plan/checkpoint. | Review whether completed before archiving. |
+| `docs/leaderboard-workspace-modularization.md` | HISTORICAL | Leaderboard workspace modularization plan/checkpoint. | Review whether completed before archiving. |
+| `docs/legacy-multi-input-2026-06-05.md` | HISTORICAL, ARCHIVE-CANDIDATE | Legacy multi-input snapshot from 2026-06-05. | Keep for historical context; not current source of truth. |
+| `docs/openrouter-workspace-modularization.md` | HISTORICAL, BROKEN-LINK-SOURCE | OpenRouter workspace modularization plan/checkpoint. | References missing `docs/app-modularization.md`. |
+| `docs/pending-session-lane-modularization.md` | HISTORICAL, BROKEN-LINK-SOURCE | Pending session lane modularization plan/checkpoint. | References missing `docs/app-modularization.md`. |
+| `docs/session-dashboard-modularization.md` | HISTORICAL, BROKEN-LINK-SOURCE | Session dashboard modularization plan/checkpoint. | References missing `docs/app-modularization.md` and claims it was updated. |
+
+## Known documentation issues
+
+### Missing canonical docs
+
+These files do not exist yet and should be created in later stages:
+
+- `docs/README.md`
+- `docs/agent-onboarding.md`
+- `docs/repo-map.md`
+- `docs/module-test-map.md`
+- `docs/high-risk-runtime-boundaries.md`
+
+### Broken references
+
+The following docs reference a missing file:
+
+- `docs/app-modularization.md`
+
+Observed sources:
+
+- `docs/adaptive-workspace-modularization.md`
+- `docs/openrouter-workspace-modularization.md`
+- `docs/pending-session-lane-modularization.md`
+- `docs/session-dashboard-modularization.md`
+
+Repair strategy for a later stage:
+
+1. Decide whether `docs/app-shell-modularization-map.md` replaces the missing file.
+2. Replace stale references with the correct current document.
+3. If needed, create a short redirect-style compatibility document.
+4. Do not silently remove historical context.
+
+### Stale baseline references
+
+These commit baselines appear in historical modularization docs and should not be treated as the current baseline:
+
+- `ad42cef`
+- `522a983`
+- `637e479`
+- `3ef3b91`
+- `abe497a`
+
+Current observed baseline for this inventory pass:
+
+- `aa7f0ee Document final recommendation cleanup`
+
+## Proposed next documentation stages
+
+| Stage | Scope | Write policy |
+| --- | --- | --- |
+| 8B | Create `docs/README.md`. | Add only; do not rewrite historical docs. |
+| 8C | Create `docs/agent-onboarding.md`. | Add official agent entry flow and scan exclusions. |
+| 8D | Create `docs/repo-map.md`. | Derive from real repo structure and `docs/architecture.md`. |
+| 8E | Create `docs/module-test-map.md`. | Map important modules to protective tests. |
+| 8F | Create `docs/high-risk-runtime-boundaries.md`. | Centralize no-touch/runtime-risk guidance. |
+| 8G | Connect `AGENTS.md`, `README.md`, and `ARCHITECTURE.md`. | Keep root docs short; point to canonical docs. |
+| 8H | Repair broken references. | Fix links after canonical docs exist. |
+| 8I | Archive historical docs. | Move only after review; do not delete by default. |
+| 8J | Update `.gitignore` for local Python virtualenv noise. | Separate non-docs commit. |
+
+## Agent rule
+
+Before using any historical modularization document as a source of truth, agents must:
+
+1. Check `git status --short`.
+2. Check recent commits.
+3. Compare the document against current files.
+4. Prefer current source files and tests over old checkpoint notes.
+5. Treat old baseline hashes as historical unless they match current `HEAD`.
