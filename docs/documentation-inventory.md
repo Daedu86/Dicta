@@ -104,7 +104,7 @@ Current observed baseline for this inventory pass:
 | 8D | Create `docs/repo-map.md`. | Done. |
 | 8E | Create `docs/module-test-map.md`. | Done. |
 | 8F | Create `docs/high-risk-runtime-boundaries.md`. | Done. |
-| 8G | Connect root docs and documentation indexes. | In progress. |
+| 8G | Connect root docs and documentation indexes. | Done. |
 | 8H | Repair broken references. | Fix links after canonical docs exist. |
 | 8I | Archive historical docs. | Move only after review; do not delete by default. |
 | 8J | Update `.gitignore` for local Python virtualenv noise. | Separate non-docs commit. |
