@@ -37,6 +37,7 @@ import { useAdaptiveBenchmarkSectionProps } from './app/useAdaptiveBenchmarkSect
 import { useLiveMetricsDockProps } from './app/useLiveMetricsDockProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
+import { useAdaptiveWorkspacePresentationState } from './app/useAdaptiveWorkspacePresentationState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
 import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
@@ -56,7 +57,6 @@ import type {
   TtsChunkTelemetry,
   TtsPacingMode } from './types/dictation';
 import type {
-  InputMode,
   LiveTelemetryFrame,
   PhraseSize,
   } from './core/adaptive/types';
@@ -71,12 +71,8 @@ import {
 import { buildSessionScoreHelpText, computeSessionScore } from './core/sessionScore';
 import {
   clampBrowserTtsDeDecisionToRecommendation,
-  createEmptyInputLanguageBenchmark,
   normalizeBenchmarkLanguage,
   } from './core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import {
-  selectLatestAdaptiveSessionFeedback,
-  } from './core/adaptive/sessionFeedback';
 import { buildBrowserTtsTelemetryFrame,
   buildAdaptiveBrowserTtsInput } from './inputs/browserTts/browserTtsTelemetryAdapter';
 import { planBrowserTtsAdaptiveChunk } from './inputs/browserTts/ttsDynamicChunkPlanner';
@@ -113,8 +109,6 @@ import {
   normalizeLiveSessionStatusForPersistence,
   } from './core/sessionStatusNormalization';
 import {
-  buildAdaptiveAdapterCards,
-  formatAdaptiveModeFromSession,
   formatInputModeLabel,
   formatSessionGenerationOrigin,
   formatSessionInputMode,
@@ -2008,23 +2002,24 @@ function App() {
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
-  const adaptiveAdapters = buildAdaptiveAdapterCards();
-  const selectedBenchmarkProfile =
-    adaptiveBenchmarksByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage] ??
-    createEmptyInputLanguageBenchmark(selectedBenchmarkInputMode, selectedBenchmarkLanguage);
-  const selectedSessionFeedback = selectLatestAdaptiveSessionFeedback(
-    adaptiveSessionFeedbackByInputLanguage[selectedBenchmarkInputMode]?.[selectedBenchmarkLanguage],
+  const {
+    adaptiveAdapters,
+    selectedBenchmarkProfile,
+    selectedSessionFeedback,
+    insightsDiagnosticProfile,
+    insightsDiagnosticFeedback,
+    insightsDiagnosticInputOptions,
+    latestAdaptiveMode,
+    latestInputAdapter,
+  } = useAdaptiveWorkspacePresentationState({
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
     selectedBenchmarkInputMode,
     selectedBenchmarkLanguage,
-  );
-  const insightsDiagnosticProfile =
-    adaptiveBenchmarksByInputLanguage[insightsDiagnosticInputMode]?.[metricsLanguageView] ??
-    createEmptyInputLanguageBenchmark(insightsDiagnosticInputMode, metricsLanguageView);
-  const insightsDiagnosticFeedback = selectLatestAdaptiveSessionFeedback(
-    adaptiveSessionFeedbackByInputLanguage[insightsDiagnosticInputMode]?.[metricsLanguageView],
     insightsDiagnosticInputMode,
     metricsLanguageView,
-  );
+    latestSession,
+  });
   const {
     getBenchmarkActiveSessionStatus,
     copySelectedBenchmarkJson,
@@ -2058,11 +2053,6 @@ function App() {
     () => buildRepeatWordStats({ sessions, inputMode: selectedBenchmarkInputMode, language: selectedBenchmarkLanguage, now: new Date() }),
     [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],
   );
-  const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
-  const latestInputAdapter = latestSession ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) ?? null : null;
-  const insightsDiagnosticInputOptions: Array<{ inputMode: InputMode; label: string }> = [
-    { inputMode: 'browser-tts', label: 'Browser TTS' },
-  ];
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
   const focusedProgressLabel =
     adaptiveSemanticDebug.totalSemanticPhrases > 0

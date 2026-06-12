@@ -62,9 +62,17 @@ Score every candidate from 0 to 100.
 
 ## High-risk override
 
-A high score does not authorize risky runtime rewrites.
+High-risk does not mean "never refactor." It means the candidate must explicitly explain why the area is risky, which behavior must not change, and how validation will catch regressions.
 
-If the candidate touches any area listed in docs/high-risk-runtime-boundaries.md, first identify the exact behavior that must not change, find or add focused tests, and keep the patch small.
+A high score alone does not authorize risky runtime rewrites. A high-risk candidate may proceed only when all of these are true:
+
+1. The score remains high after penalties.
+2. The exact risk mechanism is named, such as playback timing, lifecycle persistence, phrase progression, refs/timers, telemetry sampling, or reset semantics.
+3. The patch isolates refactor from behavior change.
+4. The test plan is dedicated to the touched behavior, not just a broad build.
+5. Stop conditions are written before editing.
+
+If the candidate touches any area listed in docs/high-risk-runtime-boundaries.md and lacks that plan, apply the high-risk penalty and postpone. If the ROI is high and the risk is understood, proceed with the smallest safe slice plus focused validation.
 
 ## Required scorecard
 
@@ -77,6 +85,9 @@ Before each modularization patch, record:
 - Expected payoff
 - Behavior changed: yes/no
 - High-risk boundary touched: yes/no
+- Why the boundary is risky, if high-risk
+- Why ROI justifies touching it, if high-risk
+- Behavior-preservation target, if high-risk
 - Existing tests
 - Tests to add or update
 - Validation command

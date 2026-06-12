@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after `useWorkspaceModelRefreshRuntime` extraction.
+Updated: 2026-06-12 after `useAdaptiveWorkspacePresentationState` extraction.
 
 ## Current baseline
 
@@ -11,15 +11,15 @@ This document began as a generated map. The historical deep inventory was intent
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest clean code baseline | 723d15f Extract workspace model refresh runtime |
-| Current `src/App.tsx` LOC | ~2522 |
+| Latest clean code baseline | f343991 Extract Browser TTS session environment runtime |
+| Current `src/App.tsx` LOC | 2515 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 89 |
 | Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 68 |
 | App.tsx inline `useState` count | 25 |
 | App.tsx inline `useRef` count | 27 |
-| App.tsx inline `useMemo` count | 8 |
-| App.tsx inline `useEffect` count | 8 |
-| App.tsx inline function declarations | 25 |
+| App.tsx inline `useMemo` count | 5 |
+| App.tsx inline `useEffect` count | 7 |
+| App.tsx inline function declarations | 22 |
 
 ## Completed since the original map
 
@@ -65,6 +65,7 @@ This document began as a generated map. The historical deep inventory was intent
 - `useAdaptiveStoragePersistenceEffects` owns adaptive benchmark/feedback local persistence and ref sync effects.
 - `useDictaDebugExportEffect` owns the diagnostic `window.__DICTA_DEBUG_EXPORT__` registration and snapshot assembly.
 - `useAdaptiveWorkspaceState` owns adaptive workspace debug, benchmark, feedback, focus, and message state.
+- `adaptiveWorkspacePresentation` and `useAdaptiveWorkspacePresentationState` own Adaptive workspace presentation derivations for adapter cards, selected benchmark profiles, selected feedback, insights diagnostic profile/feedback, latest adaptive mode, latest input adapter, and diagnostic input options.
 - `useDictaSupabaseRuntime` owns Dicta sync config and Supabase client memoization.
 - `useSessionCreationWorkspaceState` owns session creation/import form state and OpenRouter generation focus request state.
 - `adaptiveExportPackages` owns pure adaptive export/package builders for session feedback, benchmark feedback, diagnostic reports, prompt packages, human-feedback payloads, and adaptive event counts.
@@ -74,7 +75,7 @@ This document began as a generated map. The historical deep inventory was intent
 ## Current recommendation
 
 - Start the next pass from the clean `723d15f` baseline before selecting another extraction.
-- Treat `useWorkspaceModelRefreshRuntime` as the latest successful extraction: it moved assigned-model/default-model resolution and model refresh composition out of `src/App.tsx` while preserving OpenRouter/Ollama behavior.
+- Treat `useAdaptiveWorkspacePresentationState` as the latest successful low-risk derived-state extraction: it moved Adaptive workspace presentation derivations out of `src/App.tsx` while preserving runtime behavior.
 - Continue conservative modularization only when the candidate removes at least ~15-25 net lines from `src/App.tsx` or creates a clearly testable state/derived-data boundary.
 - Continue to defer active-session hydration, Browser TTS playback/runtime, `playTtsFromWord`, `resetSession`, phrase progression, TTS refs/timers/telemetry, and block-marker/regex moves.
 
@@ -124,6 +125,7 @@ Proceed only if a candidate removes at least ~15-25 net lines from `src/App.tsx`
 - `tests/openRouterDirectGenerationJobPlan.test.ts` covers standard direct job request bodies for easy/medium/hard, express duration/max-token sizing, prompt/draft metadata, preserved labels, and no network side effects.
 - `tests/openRouterDirectGenerationPresets.test.ts` covers the direct generation preset catalog ids, durations, intent/difficulty mappings, unique slot labels, non-empty display labels, and difficulty instructions.
 - `tests/adaptiveExportPackages.test.ts` covers adaptive export package invariants for event counts, fallback session feedback payloads, and human-feedback prompt payloads.
+- `tests/adaptiveWorkspacePresentation.test.ts` covers Adaptive workspace presentation derivations for benchmark/profile fallbacks, latest feedback selection, insights diagnostics, adapter cards, and latest session mode mapping.
 
 ## Suggested checkpoint command
 
