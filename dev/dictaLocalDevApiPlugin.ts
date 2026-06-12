@@ -4,7 +4,6 @@ import { createLocalDevEnvStore } from './localDevEnvStore';
 import { createLocalDevApiValidation } from './localDevApiValidation';
 import { buildLocalDevAdminFileInventory } from './localDevAdminFiles';
 import { createLocalDevOllamaHelpers } from './localDevOllamaHelpers';
-import { fetchLocalDevOllamaChat } from './localDevOllamaClient';
 import {
   createLocalDevHttpError,
   readLocalDevJsonRequestBody,
@@ -21,6 +20,7 @@ import {
 import { fetchLocalDevOpenRouterChatCompletion } from './localDevOpenRouterClient';
 import { registerLocalDevApiKeyRoutes } from './localDevApiKeyRoutes';
 import { registerLocalDevModelRoutes } from './localDevModelRoutes';
+import { registerLocalDevChatRoutes } from './localDevChatRoutes';
 
 export function createDictaLocalDevApiPlugin(): Plugin {
   return {
@@ -82,93 +82,21 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       validateApiKey: (apiKey) => localDevApiValidation.validateOllamaApiKey(apiKey),
     });
 
-    server.middlewares.use('/api/ollama/chat', async (req, res) => {
-      if (req.method !== 'POST') {
-        res.statusCode = 405;
-        res.end('Method not allowed');
-        return;
-      }
-
-      const ollamaApiKey = await localDevEnvStore.getOllamaApiKey();
-      if (!ollamaApiKey) {
-        res.statusCode = 400;
-        res.end('Missing OLLAMA_API_KEY. Set it in .env.local and try again.');
-        return;
-      }
-
-      try {
-        const parsed = await readLocalDevJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
-        const model = localDevApiValidation.normalizeOllamaModel(parsed.model);
-        const prompt = localDevApiValidation.normalizeOllamaPrompt(parsed.prompt);
-        const maxTokens = localDevApiValidation.normalizeOllamaMaxTokens(parsed.maxTokens, 600);
-        if (!model || !prompt) {
-          res.statusCode = 400;
-          res.end('Missing model or prompt.');
-          return;
-        }
-
-        const response = await fetchLocalDevOllamaChat({
-          apiKey: ollamaApiKey,
-          model,
-          prompt,
-          maxTokens,
-        });
-
-        const responseBody = await response.text();
-        res.statusCode = response.status;
-        res.setHeader('X-Dicta-Ollama-Model', model);
-        if (!response.ok) {
-          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-          res.end(localDevOllamaHelpers.formatOllamaUpstreamError(response.status, responseBody));
-          return;
-        }
-        res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
-        res.end(responseBody);
-      } catch (error) {
-        sendLocalDevError(res, error, 'Ollama test request failed.');
-      }
-    });
-
-    server.middlewares.use('/api/openrouter/chat', async (req, res) => {
-      if (req.method !== 'POST') {
-        res.statusCode = 405;
-        res.end('Method not allowed');
-        return;
-      }
-
-      const openRouterApiKey = await localDevEnvStore.getOpenRouterApiKey();
-      if (!openRouterApiKey) {
-        res.statusCode = 400;
-        res.end('Missing OPENROUTER_API_KEY. Set it in .env.local and try again.');
-        return;
-      }
-
-      try {
-        const parsed = await readLocalDevJsonRequestBody<{ model?: string; prompt?: string; maxTokens?: number }>(req, maxJsonBodyBytes);
-        const model = localDevApiValidation.normalizeOpenRouterModel(parsed.model);
-        const prompt = localDevApiValidation.normalizeOpenRouterPrompt(parsed.prompt);
-        const maxTokens = localDevApiValidation.normalizeOpenRouterMaxTokens(parsed.maxTokens, 600);
-        if (!model || !prompt) {
-          res.statusCode = 400;
-          res.end('Missing model or prompt.');
-          return;
-        }
-
-        const response = await fetchLocalDevOpenRouterChatCompletion({
-          apiKey: openRouterApiKey,
-          origin: req.headers.origin as string | undefined,
-          model,
-          prompt,
-          maxTokens,
-        });
-
-        const responseBody = await response.text();
-        res.statusCode = response.status;
-        res.setHeader('Content-Type', response.headers.get('content-type') ?? 'application/json');
-        res.end(responseBody);
-      } catch (error) {
-        sendLocalDevError(res, error, 'OpenRouter test request failed.');
-      }
+    registerLocalDevChatRoutes({
+      server,
+      maxJsonBodyBytes,
+      getOllamaApiKey: () => localDevEnvStore.getOllamaApiKey(),
+      getOpenRouterApiKey: () => localDevEnvStore.getOpenRouterApiKey(),
+      normalizeOllamaModel: (value) => localDevApiValidation.normalizeOllamaModel(value),
+      normalizeOllamaPrompt: (value) => localDevApiValidation.normalizeOllamaPrompt(value),
+      normalizeOllamaMaxTokens: (value, fallback) =>
+        localDevApiValidation.normalizeOllamaMaxTokens(value, fallback),
+      normalizeOpenRouterModel: (value) => localDevApiValidation.normalizeOpenRouterModel(value),
+      normalizeOpenRouterPrompt: (value) => localDevApiValidation.normalizeOpenRouterPrompt(value),
+      normalizeOpenRouterMaxTokens: (value, fallback) =>
+        localDevApiValidation.normalizeOpenRouterMaxTokens(value, fallback),
+      formatOllamaUpstreamError: (status, body, fallback) =>
+        localDevOllamaHelpers.formatOllamaUpstreamError(status, body, fallback),
     });
 
     server.middlewares.use('/api/openrouter/jobs', async (req, res) => {
