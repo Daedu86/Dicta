@@ -963,3 +963,38 @@ ROI result:
 
 Next work should be test-only: extend `tests/workspaceModelRefreshRuntime.test.ts` with null/undefined `appProfile` fallback cases.
 
+## Follow-up — 2026-06-12 Post-workspace cleanup checkpoint
+
+Latest committed baseline before this note: `b0d6439 Remove duplicate adaptive event key`.
+
+Completed follow-up commits after the workspace model refresh extraction:
+
+* `d2ebd89 Document workspace model refresh runtime`
+* `73d45a4 Test workspace model fallback without profile`
+* `b0d6439 Remove duplicate adaptive event key`
+
+Validation performed:
+
+* `tests/workspaceModelRefreshRuntime.test.ts` now covers member assigned models, fallback without an assigned member model, auth-disabled behavior, non-member profiles, null profiles, and undefined profiles.
+* `tests/adaptiveExportPackages.test.ts` still passes after removing the duplicate `phrase_completed` tracked-event entry.
+* The adaptive event-count helper now has one canonical `phrase_completed` tracked key.
+
+OpenRouter generation action review:
+
+`src/app/useOpenRouterGenerationActions.ts` still has six thin callback wrappers around `generateDirectSessionFromOpenRouter` for easy/intermediate/advanced and express easy/intermediate/advanced presets.
+
+Decision: defer refactoring those wrappers for now.
+
+Rationale:
+
+* The wrappers are repetitive but explicit and low-risk.
+* A table/`useMemo` refactor could reduce visible repetition but would couple callback identity changes across presets unless handled very carefully.
+* The current duplication is not blocking App-shell modularization and is already behind the extracted preset catalog and pure job-plan builder.
+* The next OpenRouter-focused improvement should only proceed if it preserves callback identity semantics, keeps server access/rate-limit enforcement in server routes, and includes focused tests.
+
+Runtime safety preserved:
+
+* No Browser TTS playback/runtime changes.
+* No `playTtsFromWord`, `resetSession`, phrase progression, refs/timers/telemetry, hydration, localStorage, PWA, auth, Supabase/RLS, server route, rate-limit, or OpenRouter fetch behavior changes.
+* No functional changes in this checkpoint; this is documentation of the completed cleanup and the explicit decision to defer the busy-action wrapper refactor.
+
