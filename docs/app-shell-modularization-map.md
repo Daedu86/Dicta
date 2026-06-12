@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-12 after adaptive export package builder tests
+Updated: 2026-06-12 after OpenRouter direct generation preset tests
 
 ## Current working-tree status
 
@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 84f3042 Test adaptive export package builders |
+| Latest committed baseline | 1d225dc Test OpenRouter direct generation presets |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
@@ -17,6 +17,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Current `src/app/useOpenRouterGenerationActions.ts` LOC | 403 |
 | Current `src/App.tsx` LOC | 2597 |
 | Current `src/app/openRouterDirectGenerationPresets.ts` LOC | 78 |
+| Current `tests/openRouterDirectGenerationPresets.test.ts` LOC | 76 |
 | Current `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
 | Current `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 238 |
 | Current `src/app/useOpenRouterWorkspaceProps.ts` LOC | 164 |
@@ -471,4 +472,5 @@ git push origin product/input-2
 
 ## Current validation coverage
 
+- `tests/openRouterDirectGenerationPresets.test.ts` covers the direct generation preset catalog ids, durations, intent/difficulty mappings, unique slot labels, non-empty display labels, and difficulty instructions.
 - `tests/adaptiveExportPackages.test.ts` covers adaptive export package invariants for event counts, fallback session feedback payloads, and human-feedback prompt payloads.

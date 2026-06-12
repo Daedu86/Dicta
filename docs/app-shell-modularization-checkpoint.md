@@ -849,3 +849,42 @@ ROI result:
 
 Next work should re-run the ROI gate before further modularization. Prefer pure seams with tests; avoid TTS runtime and active-session persistence unless planned as a dedicated risk-managed pass.
 
+## Follow-up — 2026-06-12 OpenRouter direct generation preset tests
+
+Latest committed baseline: `1d225dc Test OpenRouter direct generation presets`.
+
+This checkpoint records regression coverage for `src/app/openRouterDirectGenerationPresets.ts`.
+
+Recent commit context:
+
+* `1d225dc (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Test OpenRouter direct generation presets`
+* `4c5b1de Document adaptive export package builder tests`
+* `84f3042 Test adaptive export package builders`
+* `9ed5818 Document adaptive export package builders extraction`
+* `222e676 Extract adaptive export package builders`
+
+Coverage added:
+
+* `tests/openRouterDirectGenerationPresets.test.ts` verifies the six supported standard and express preset keys and public ids.
+* Standard presets stay at two minutes and express presets stay at one minute.
+* Easy/express easy map to `recover` and `easy`; medium/express medium map to `progress` and `normal`; hard/express hard map to `challenge` and `hard`.
+* Slot labels, display labels, and difficulty instructions are non-empty, and slot labels remain unique.
+
+Current metrics after this test commit:
+
+| Item | Value |
+| ---- | ----: |
+| `src/App.tsx` LOC | 2597 |
+| `src/app/openRouterDirectGenerationPresets.ts` LOC | 78 |
+| `tests/openRouterDirectGenerationPresets.test.ts` LOC | 76 |
+| `src/app/useOpenRouterGenerationActions.ts` LOC | 403 |
+| `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 238 |
+
+ROI result:
+
+* The shared direct-generation preset catalog now has direct regression coverage for ids, durations, listening intent, stored difficulty, labels, and instructions.
+* The test seam validates catalog contracts without touching OpenRouter fetch side effects, Browser TTS runtime, hydration, phrase progression, `resetSession`, or `playTtsFromWord`.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+Next work should inspect `src/app/useOpenRouterGenerationActions.ts` for a pure OpenRouter direct-generation job-plan boundary before extracting anything.
+
