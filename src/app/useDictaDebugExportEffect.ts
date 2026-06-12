@@ -6,7 +6,7 @@ import type {
   AdaptiveBenchmarksByInputLanguage,
   AdaptiveSessionFeedbackByInputLanguage,
 } from '../components/openrouter/types';
-import { buildAdaptiveEventCounts } from './useAdaptiveExportActions';
+import { buildAdaptiveEventCounts } from './adaptiveExportPackages';
 import type { AdaptiveRuntime } from './useAdaptiveRuntime';
 import type { DictaDebugSampleAudit } from './sessionTypes';
 
