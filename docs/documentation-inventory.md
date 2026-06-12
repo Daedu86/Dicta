@@ -4,7 +4,7 @@ This document is the current inventory of Markdown documentation in the Dicta re
 
 Status as of: 2026-06-12  
 Current branch: `product/input-2`  
-Current baseline observed: `f343991 Extract Browser TTS session environment runtime`
+Current baseline observed: `17dbec7 Extract adaptive workspace presentation state`
 
 ## Status legend
 

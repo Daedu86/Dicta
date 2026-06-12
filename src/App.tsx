@@ -21,6 +21,7 @@ import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationB
 import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
+import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPresentationState';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -1991,14 +1992,33 @@ function App() {
       },
     },
   });
-  const ttsPlayerWordCount = ttsTranscript?.words.length ?? 0;
-  const ttsPlayerCurrentWord = ttsHasText ? estimateTtsSpokenWordIndex() : 0;
-  const ttsPlayerWordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
-  const ttsPlayerDurationSec = ttsPlayerWordCount > 0 ? ttsPlayerWordCount / ttsPlayerWordsPerSecond : 0;
-  const ttsPlayerCurrentSec =
-    ttsPlayerWordCount > 0 ? Math.min(ttsPlayerDurationSec, (ttsPlayerCurrentWord / ttsPlayerWordCount) * ttsPlayerDurationSec) : 0;
-  const ttsPlayerProgressPercent = ttsPlayerDurationSec > 0 ? clamp((ttsPlayerCurrentSec / ttsPlayerDurationSec) * 100, 0, 100) : 0;
   void ttsPlayerProgressTick;
+  const {
+    ttsPlayerDurationSec,
+    ttsPlayerProgressPercent,
+    focusedProgressLabel,
+    focusedSourceLabel,
+    focusedTextValue,
+    focusedTextPlaceholder,
+    focusedTrainingMessage,
+    focusedTrainingMessageTone,
+  } = useFocusedTrainingPresentationState({
+    ttsTranscriptWordCount: ttsTranscript?.words.length ?? 0,
+    ttsHasText,
+    ttsSpokenWordIndex: ttsHasText ? estimateTtsSpokenWordIndex() : 0,
+    ttsSpeechRate,
+    ttsLanguage,
+    ttsBaseWordsPerSecond: TTS_BASE_WORDS_PER_SECOND,
+    adaptiveSemanticCurrentPhraseIndex: adaptiveSemanticDebug.currentPhraseIndex,
+    adaptiveSemanticTotalPhrases: adaptiveSemanticDebug.totalSemanticPhrases,
+    activeSessionFinished,
+    ttsPracticeText,
+    error,
+    trainingSubmitMessage,
+    exportMessage,
+    openRouterJobStatus,
+    openRouterError,
+  });
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
@@ -2054,21 +2074,6 @@ function App() {
     [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],
   );
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
-  const focusedProgressLabel =
-    adaptiveSemanticDebug.totalSemanticPhrases > 0
-      ? `Phrase ${Math.min(adaptiveSemanticDebug.currentPhraseIndex + 1, adaptiveSemanticDebug.totalSemanticPhrases)}/${adaptiveSemanticDebug.totalSemanticPhrases}`
-      : ttsPlayerWordCount > 0
-        ? `Word ${Math.min(ttsPlayerCurrentWord, ttsPlayerWordCount)}/${ttsPlayerWordCount}`
-        : 'No source loaded';
-  const focusedSourceLabel =
-    ttsHasText
-      ? `${ttsTranscript?.words.length ?? 0} words Â· ${ttsLanguage?.toUpperCase()}`
-      : 'TTS source not loaded';
-  const focusedTextValue = ttsPracticeText;
-  const focusedTextPlaceholder =
-    activeSessionFinished
-      ? 'Session submitted.'
-      : 'Type the dictation here...';
   const focusedInputHandler = onTtsPracticeChange;
   const focusedImmediateInputHandler = (value: string): void => {
     if (!telemetryRef.current || !telemetryRef.current.startedAt) {
@@ -2080,12 +2085,6 @@ function App() {
     ttsPracticeLiveTextRef.current = value;
   };
   const focusedKeyDownHandler = onTtsPracticeKeyDown;
-  const focusedTrainingMessage = error || trainingSubmitMessage || [exportMessage, openRouterJobStatus, openRouterError].filter(Boolean).join(' ');
-  const focusedTrainingMessageTone: 'error' | 'success' | 'hint' = error
-    ? 'error'
-    : trainingSubmitMessage
-      ? 'success'
-      : 'hint';
   const focusedTrainingGenerationButtons = useFocusedTrainingGenerationButtons({
     openRouterAccessAllowed,
     isOnline,

@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-12 after `useAdaptiveWorkspacePresentationState` extraction.
+Updated: 2026-06-12 after `useFocusedTrainingPresentationState` extraction.
 
 ## Current baseline
 
@@ -11,8 +11,8 @@ This document began as a generated map. The historical deep inventory was intent
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest clean code baseline | f343991 Extract Browser TTS session environment runtime |
-| Current `src/App.tsx` LOC | 2515 |
+| Latest clean code baseline | 17dbec7 Extract adaptive workspace presentation state |
+| Current `src/App.tsx` LOC | 2518 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC | 89 |
 | Current `tests/workspaceModelRefreshRuntime.test.ts` LOC | 68 |
 | App.tsx inline `useState` count | 25 |
@@ -135,3 +135,8 @@ This document-only checkpoint does not require runtime tests. For a local mirror
 git log --oneline --decorate -4
 git show --stat --oneline HEAD
 ~~~
+
+
+- `focusedTrainingPresentation` and `useFocusedTrainingPresentationState` own focused training presentation derivations for TTS player progress, source labels, text placeholder/value, and training message tone.
+
+- `tests/focusedTrainingPresentation.test.ts` covers focused training presentation derivations for progress values, phrase/word labels, source labels, placeholders, and message tone.
