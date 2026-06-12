@@ -7,7 +7,6 @@ import { createLocalDevOllamaHelpers } from './localDevOllamaHelpers';
 import { fetchLocalDevOllamaChat, fetchLocalDevOllamaModels } from './localDevOllamaClient';
 import {
   createLocalDevHttpError,
-  maskLocalDevApiKeySuffix,
   readLocalDevJsonRequestBody,
   sendLocalDevError,
 } from './localDevHttpHelpers';
@@ -20,6 +19,7 @@ import {
   markLocalOpenRouterJobSucceeded,
 } from './localDevOpenRouterJobs';
 import { fetchLocalDevOpenRouterChatCompletion } from './localDevOpenRouterClient';
+import { registerLocalDevApiKeyRoutes } from './localDevApiKeyRoutes';
 
 export function createDictaLocalDevApiPlugin(): Plugin {
   return {
@@ -83,59 +83,15 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
     });
 
-    server.middlewares.use('/api/openrouter/key/status', async (req, res) => {
-      if (req.method !== 'GET') {
-        res.statusCode = 405;
-        res.end('Method not allowed');
-        return;
-      }
-
-      try {
-        const openRouterApiKey = await localDevEnvStore.getOpenRouterApiKey();
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ configured: Boolean(openRouterApiKey), suffix: maskLocalDevApiKeySuffix(openRouterApiKey) }));
-      } catch (error) {
-        res.statusCode = 500;
-        res.end(error instanceof Error ? error.message : 'OpenRouter key status failed.');
-      }
-    });
-
-    server.middlewares.use('/api/openrouter/key', async (req, res) => {
-      if (req.method === 'POST') {
-        try {
-          const parsed = await readLocalDevJsonRequestBody<{ apiKey?: string }>(req, maxOpenRouterKeyBytes);
-          const nextKey = parsed.apiKey?.trim() ?? '';
-          if (!nextKey) {
-            res.statusCode = 400;
-            res.end('Missing apiKey.');
-            return;
-          }
-
-          await localDevEnvStore.upsertOpenRouterApiKey(localDevApiValidation.validateOpenRouterApiKey(nextKey));
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ ok: true, suffix: maskLocalDevApiKeySuffix(nextKey) }));
-          return;
-        } catch (error) {
-          sendLocalDevError(res, error, 'Failed to save OpenRouter key.');
-          return;
-        }
-      }
-
-      if (req.method === 'DELETE') {
-        try {
-          const removed = await localDevEnvStore.removeOpenRouterApiKey();
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ ok: true, removed }));
-          return;
-        } catch (error) {
-          res.statusCode = 500;
-          res.end(error instanceof Error ? error.message : 'Failed to remove OpenRouter key.');
-          return;
-        }
-      }
-
-      res.statusCode = 405;
-      res.end('Method not allowed');
+    registerLocalDevApiKeyRoutes({
+      server,
+      basePath: '/api/openrouter/key',
+      providerLabel: 'OpenRouter',
+      maxKeyBytes: maxOpenRouterKeyBytes,
+      getApiKey: () => localDevEnvStore.getOpenRouterApiKey(),
+      upsertApiKey: (apiKey) => localDevEnvStore.upsertOpenRouterApiKey(apiKey),
+      removeApiKey: () => localDevEnvStore.removeOpenRouterApiKey(),
+      validateApiKey: (apiKey) => localDevApiValidation.validateOpenRouterApiKey(apiKey),
     });
 
     server.middlewares.use('/api/ollama/models', async (req, res) => {
@@ -173,59 +129,15 @@ export function createDictaLocalDevApiPlugin(): Plugin {
       }
     });
 
-    server.middlewares.use('/api/ollama/key/status', async (req, res) => {
-      if (req.method !== 'GET') {
-        res.statusCode = 405;
-        res.end('Method not allowed');
-        return;
-      }
-
-      try {
-        const ollamaApiKey = await localDevEnvStore.getOllamaApiKey();
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ configured: Boolean(ollamaApiKey), suffix: maskLocalDevApiKeySuffix(ollamaApiKey) }));
-      } catch (error) {
-        res.statusCode = 500;
-        res.end(error instanceof Error ? error.message : 'Ollama key status failed.');
-      }
-    });
-
-    server.middlewares.use('/api/ollama/key', async (req, res) => {
-      if (req.method === 'POST') {
-        try {
-          const parsed = await readLocalDevJsonRequestBody<{ apiKey?: string }>(req, maxOllamaKeyBytes);
-          const nextKey = parsed.apiKey?.trim() ?? '';
-          if (!nextKey) {
-            res.statusCode = 400;
-            res.end('Missing apiKey.');
-            return;
-          }
-
-          await localDevEnvStore.upsertOllamaApiKey(localDevApiValidation.validateOllamaApiKey(nextKey));
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ ok: true, suffix: maskLocalDevApiKeySuffix(nextKey) }));
-          return;
-        } catch (error) {
-          sendLocalDevError(res, error, 'Failed to save Ollama key.');
-          return;
-        }
-      }
-
-      if (req.method === 'DELETE') {
-        try {
-          const removed = await localDevEnvStore.removeOllamaApiKey();
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ ok: true, removed }));
-          return;
-        } catch (error) {
-          res.statusCode = 500;
-          res.end(error instanceof Error ? error.message : 'Failed to remove Ollama key.');
-          return;
-        }
-      }
-
-      res.statusCode = 405;
-      res.end('Method not allowed');
+    registerLocalDevApiKeyRoutes({
+      server,
+      basePath: '/api/ollama/key',
+      providerLabel: 'Ollama',
+      maxKeyBytes: maxOllamaKeyBytes,
+      getApiKey: () => localDevEnvStore.getOllamaApiKey(),
+      upsertApiKey: (apiKey) => localDevEnvStore.upsertOllamaApiKey(apiKey),
+      removeApiKey: () => localDevEnvStore.removeOllamaApiKey(),
+      validateApiKey: (apiKey) => localDevApiValidation.validateOllamaApiKey(apiKey),
     });
 
     server.middlewares.use('/api/ollama/chat', async (req, res) => {
