@@ -943,12 +943,12 @@ function App() {
     setTtsCurrentChunk(resetState.ttsCurrentChunk);
     setTtsPacingMode(resetState.ttsPacingMode);
     setTtsSpeechRate(resetState.ttsSpeechRate);
-    ttsStartedAtMsRef.current = null;
-    ttsChunkStartMsRef.current = null;
-    ttsChunkStartWordIndexRef.current = 0;
-    ttsChunkWordCountRef.current = 0;
-    ttsCompletedSourceWordsRef.current = 0;
-    ttsLastControllerActionRef.current = 'hold';
+    ttsStartedAtMsRef.current = resetState.refs.ttsStartedAtMs;
+    ttsChunkStartMsRef.current = resetState.refs.ttsChunkStartMs;
+    ttsChunkStartWordIndexRef.current = resetState.refs.ttsChunkStartWordIndex;
+    ttsChunkWordCountRef.current = resetState.refs.ttsChunkWordCount;
+    ttsCompletedSourceWordsRef.current = resetState.refs.ttsCompletedSourceWords;
+    ttsLastControllerActionRef.current = resetState.refs.ttsLastControllerAction;
     setRunning(resetState.running);
     setRate(resetState.rate);
     setLagSec(resetState.lagSec);
@@ -956,7 +956,7 @@ function App() {
     setWpm(resetState.wpm);
     setAccuracy(resetState.accuracy);
     setControllerState(resetState.controllerState);
-    ttsUiLastPublishedAtRef.current = 0;
+    ttsUiLastPublishedAtRef.current = resetState.refs.ttsUiLastPublishedAt;
     ttsPublishedUiRef.current = resetState.publishedUi;
     setSessionStatus(resetState.sessionStatus);
     setTrainingSubmitMessage(resetState.trainingSubmitMessage);
@@ -964,7 +964,7 @@ function App() {
     if (resetState.shouldExpandTtsSetup) {
       setTtsExpanded(true);
     }
-    telemetryRef.current = null;
+    telemetryRef.current = resetState.refs.telemetry;
     resetAdaptiveSessionFeedbackTracking(activeSession?.id);
   }
 

@@ -12,6 +12,17 @@ export type ResetSessionStateInput = {
   activeInputMode: string;
 };
 
+export type ResetSessionRefState = {
+  ttsStartedAtMs: null;
+  ttsChunkStartMs: null;
+  ttsChunkStartWordIndex: 0;
+  ttsChunkWordCount: 0;
+  ttsCompletedSourceWords: 0;
+  ttsLastControllerAction: TtsPublishedUiState['controllerState'];
+  ttsUiLastPublishedAt: 0;
+  telemetry: null;
+};
+
 export type ResetSessionState = {
   nextInputSettingsLocked: boolean;
   ttsPracticeText: string;
@@ -30,6 +41,7 @@ export type ResetSessionState = {
   sessionStatus: 'ready';
   trainingSubmitMessage: string;
   shouldExpandTtsSetup: boolean;
+  refs: ResetSessionRefState;
 };
 
 export function buildResetSessionState({
@@ -59,5 +71,15 @@ export function buildResetSessionState({
     trainingSubmitMessage: '',
     shouldExpandTtsSetup:
       !nextInputSettingsLocked && activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE,
+    refs: {
+      ttsStartedAtMs: null,
+      ttsChunkStartMs: null,
+      ttsChunkStartWordIndex: 0,
+      ttsChunkWordCount: 0,
+      ttsCompletedSourceWords: 0,
+      ttsLastControllerAction: 'hold',
+      ttsUiLastPublishedAt: 0,
+      telemetry: null,
+    },
   };
 }

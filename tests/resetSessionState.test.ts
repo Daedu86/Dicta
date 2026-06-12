@@ -30,6 +30,16 @@ describe('reset session state', () => {
       sessionStatus: 'ready',
       trainingSubmitMessage: '',
       shouldExpandTtsSetup: true,
+      refs: {
+        ttsStartedAtMs: null,
+        ttsChunkStartMs: null,
+        ttsChunkStartWordIndex: 0,
+        ttsChunkWordCount: 0,
+        ttsCompletedSourceWords: 0,
+        ttsLastControllerAction: 'hold',
+        ttsUiLastPublishedAt: 0,
+        telemetry: null,
+      },
     });
   });
 
@@ -69,4 +79,24 @@ describe('reset session state', () => {
     expect(state.nextInputSettingsLocked).toBe(false);
     expect(state.shouldExpandTtsSetup).toBe(false);
   });
+  it('builds reset defaults for playback refs without mutating refs directly', () => {
+    const state = buildResetSessionState({
+      preserveInputSettingsLock: false,
+      inputSettingsLocked: false,
+      ttsText: 'Hallo',
+      activeInputMode: BROWSER_TTS_SESSION_INPUT_MODE,
+    });
+
+    expect(state.refs).toEqual({
+      ttsStartedAtMs: null,
+      ttsChunkStartMs: null,
+      ttsChunkStartWordIndex: 0,
+      ttsChunkWordCount: 0,
+      ttsCompletedSourceWords: 0,
+      ttsLastControllerAction: 'hold',
+      ttsUiLastPublishedAt: 0,
+      telemetry: null,
+    });
+  });
+
 });
