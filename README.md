@@ -243,4 +243,5 @@ Technical onboarding for future agents starts here:
 - `docs/agent-onboarding.md` - required agent entry flow
 - `docs/repo-map.md` - repository responsibilities and boundaries
 - `docs/module-test-map.md` - module-to-test validation map
+- `docs/modularization-roi.md` - repo-wide modularization ROI scoring framework
 - `docs/high-risk-runtime-boundaries.md` - fragile runtime areas and safety rules

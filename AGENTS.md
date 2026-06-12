@@ -222,6 +222,7 @@ Before planning or changing code, read the canonical onboarding flow:
 2. `docs/agent-onboarding.md`
 3. `docs/repo-map.md`
 4. `docs/module-test-map.md`
-5. `docs/high-risk-runtime-boundaries.md`
+5. `docs/modularization-roi.md`
+6. `docs/high-risk-runtime-boundaries.md`
 
 Treat historical modularization docs as context only until they are checked against current source files and tests.

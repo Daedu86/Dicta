@@ -160,4 +160,9 @@ Companion docs:
 
 - `docs/repo-map.md`
 - `docs/module-test-map.md`
+- `docs/modularization-roi.md`
 - `docs/high-risk-runtime-boundaries.md`
+
+## Modularization decisions
+
+Before proposing or implementing modularization, score the candidate with `docs/modularization-roi.md`. Do not modularize historical or high-risk areas only because they are large; require clear ownership, testability, and risk-reduction payoff.

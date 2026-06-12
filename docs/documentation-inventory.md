@@ -30,6 +30,7 @@ Current baseline observed: `aa7f0ee Document final recommendation cleanup`
 | `docs/repo-map.md` | ACTIVE | Repository responsibilities and boundaries. | Added in Stage 8D. |
 | `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Added in Stage 8E. |
 | `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Added in Stage 8F. |
+| `docs/modularization-roi.md` | ACTIVE | Repo-wide modularization ROI scoring framework. | Use before future modularization iterations. |
 | `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
 | `docs/android-pwa-performance-debugging.md` | REFERENCE | Android/PWA performance debugging notes. | Keep as runtime/performance context. |
@@ -100,6 +101,7 @@ Current observed baseline for this inventory pass:
 | 8H | Repair broken references. | Done. |
 | 8I | Archive selected historical docs. | Done. |
 | 8J | Update `.gitignore` for local Python virtualenv noise. | Done. |
+| 8K | Add repo-wide modularization ROI framework. | Done. |
 
 ## Agent rule
 
