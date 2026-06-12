@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-12 after adaptive export package builders extraction
+Updated: 2026-06-12 after adaptive export package builder tests
 
 ## Current working-tree status
 
@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 222e676 Extract adaptive export package builders |
+| Latest committed baseline | 84f3042 Test adaptive export package builders |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
@@ -467,3 +467,8 @@ git push origin product/input-2
 | Current `src/app/adaptiveExportPackages.ts` LOC | 166 |
 - `adaptiveExportPackages` owns pure adaptive export/package builders for session feedback, benchmark feedback, diagnostic reports, prompt packages, human-feedback payloads, and adaptive event counts.
 - `useAdaptiveExportActions` now keeps browser side effects such as clipboard writes, JSON downloads, DOM selection, and user-facing export messages.
+| Current `tests/adaptiveExportPackages.test.ts` LOC | 165 |
+
+## Current validation coverage
+
+- `tests/adaptiveExportPackages.test.ts` covers adaptive export package invariants for event counts, fallback session feedback payloads, and human-feedback prompt payloads.

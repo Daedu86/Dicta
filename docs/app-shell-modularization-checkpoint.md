@@ -812,3 +812,40 @@ ROI result:
 
 Next work should inspect ROI before another extraction. Good candidates remain pure planning/package helpers; avoid TTS runtime, hydration, reset, and phrase progression unless handled as a dedicated design pass.
 
+## Follow-up — 2026-06-12 Adaptive export package builder tests
+
+Latest committed baseline: `84f3042 Test adaptive export package builders`.
+
+This checkpoint records tests for `src/app/adaptiveExportPackages.ts`.
+
+Recent commit context:
+
+* `84f3042 (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Test adaptive export package builders`
+* `9ed5818 Document adaptive export package builders extraction`
+* `222e676 Extract adaptive export package builders`
+* `3b986f9 Document OpenRouter preset reuse in buttons`
+* `4ca95c0 Reuse OpenRouter direct generation presets in buttons`
+
+Coverage added:
+
+* `buildAdaptiveEventCounts` now has coverage for timeline events and phrase playback events.
+* `buildAdaptiveSessionFeedbackExportPayload` now has coverage for fallback diagnostics when formal session feedback is not available.
+* `buildAdaptiveBenchmarkFeedbackPromptWithHumanFeedbackPayload` now has coverage for trimmed human feedback and stable generated prompt payload shape.
+
+Current metrics after this test commit:
+
+| Item | Value |
+| ---- | ----: |
+| `src/App.tsx` LOC | 2597 |
+| `src/app/adaptiveExportPackages.ts` LOC | 166 |
+| `src/app/useAdaptiveExportActions.ts` LOC | 254 |
+| `tests/adaptiveExportPackages.test.ts` LOC | 165 |
+
+ROI result:
+
+* The pure builder module introduced by the previous extraction now has direct regression coverage.
+* The test seam validates behavior without exercising browser clipboard, DOM selection, download links, Browser TTS runtime, hydration, phrase progression, or `resetSession`.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+Next work should re-run the ROI gate before further modularization. Prefer pure seams with tests; avoid TTS runtime and active-session persistence unless planned as a dedicated risk-managed pass.
+
