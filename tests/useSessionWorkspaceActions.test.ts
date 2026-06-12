@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { act, createElement } from 'react';
+import { act, createElement, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { StoredSession } from '../src/app/sessionTypes';
@@ -28,12 +28,20 @@ type HookProps = {
 
 type SessionWorkspaceActions = ReturnType<typeof useSessionWorkspaceActions>;
 
+type TestHarnessProps = HookProps & {
+  onActions: (actions: SessionWorkspaceActions) => void;
+};
+
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
-let latestActions: SessionWorkspaceActions | null = null;
 
-function TestHarness(props: HookProps) {
-  latestActions = useSessionWorkspaceActions(props);
+function TestHarness({ onActions, ...props }: TestHarnessProps) {
+  const actions = useSessionWorkspaceActions(props);
+
+  useEffect(() => {
+    onActions(actions);
+  }, [actions, onActions]);
+
   return null;
 }
 
@@ -52,22 +60,30 @@ function createDefaultProps(overrides: Partial<HookProps> = {}): HookProps {
 }
 
 async function renderSessionWorkspaceActions(props: HookProps): Promise<SessionWorkspaceActions> {
+  let renderedActions: SessionWorkspaceActions | null = null;
+  const onActions = (actions: SessionWorkspaceActions) => {
+    renderedActions = actions;
+  };
+
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
 
   await act(async () => {
-    root?.render(createElement(TestHarness, props));
+    root?.render(createElement(TestHarness, { ...props, onActions }));
   });
 
-  if (!latestActions) {
+  if (!renderedActions) {
     throw new Error('useSessionWorkspaceActions did not render actions.');
   }
 
-  return latestActions;
+  return renderedActions;
 }
 
-function createSession(id: string, inputMode: StoredSession['inputMode'] = BROWSER_TTS_SESSION_INPUT_MODE): StoredSession {
+function createSession(
+  id: string,
+  inputMode: StoredSession['inputMode'] = BROWSER_TTS_SESSION_INPUT_MODE,
+): StoredSession {
   return {
     id,
     inputMode,
@@ -84,7 +100,6 @@ afterEach(async () => {
   root = null;
   container?.remove();
   container = null;
-  latestActions = null;
   vi.clearAllMocks();
 });
 
