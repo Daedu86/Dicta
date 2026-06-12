@@ -9,7 +9,7 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 9c5cf1b Extract local Ollama client helper |
+| Latest committed baseline | e79c8dc Document local Ollama client helper extraction |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
