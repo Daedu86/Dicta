@@ -1,6 +1,6 @@
 # App shell modularization map
 
-Updated: 2026-06-12 after OpenRouter direct generation preset tests
+Updated: 2026-06-12 after OpenRouter direct generation job plan extraction
 
 ## Current working-tree status
 
@@ -9,15 +9,17 @@ This document began as a generated map. The detailed inventories below the curre
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Latest committed baseline | 1d225dc Test OpenRouter direct generation presets |
+| Latest committed baseline | abe497a Extract OpenRouter direct generation job plan |
 | Current working-tree App shell LOC | 2597 |
 | Current `src/app/useWorkspaceSessionSummaries.ts` LOC | 160 |
 | Current `src/app/useWorkspaceNavigationEffects.ts` LOC | 68 |
 | Current `src/app/useOpenRouterGenerationBusyState.ts` LOC | 26 |
-| Current `src/app/useOpenRouterGenerationActions.ts` LOC | 403 |
+| Current `src/app/useOpenRouterGenerationActions.ts` LOC | 356 |
 | Current `src/App.tsx` LOC | 2597 |
 | Current `src/app/openRouterDirectGenerationPresets.ts` LOC | 78 |
 | Current `tests/openRouterDirectGenerationPresets.test.ts` LOC | 76 |
+| Current `src/app/openRouterDirectGenerationJobPlan.ts` LOC | 147 |
+| Current `tests/openRouterDirectGenerationJobPlan.test.ts` LOC | 148 |
 | Current `src/app/useOpenRouterErrorSessionActions.ts` LOC | 117 |
 | Current `src/app/useFocusedTrainingGenerationButtons.ts` LOC | 238 |
 | Current `src/app/useOpenRouterWorkspaceProps.ts` LOC | 164 |
@@ -76,7 +78,7 @@ Completed since the original map:
 - `useWorkspaceSessionSummaries` owns derived session collections and workspace summaries.
 - `useWorkspaceNavigationEffects` owns non-TTS workspace navigation side effects.
 - `useOpenRouterGenerationBusyState` owns OpenRouter generation busy flags.
-- `useOpenRouterGenerationActions` owns direct-training OpenRouter generation actions, prompt/job orchestration, generation failure notices, and OpenRouter generate-workspace focusing.
+- `useOpenRouterGenerationActions` owns direct-training OpenRouter generation side effects, job request flow, generation failure notices, and OpenRouter generate-workspace focusing.
 - `useOpenRouterErrorSessionActions` owns persistent OpenRouter generation-error session creation and custom-workspace job error persistence.
 - `useFocusedTrainingGenerationButtons` owns focused-training OpenRouter generation button composition, notices, running state labels, disabled/title wiring, and click handlers.
 - `useSessionCreateCardProps` owns session creation card prop composition for source/name state, quota state, script-import validation state, creation/import callbacks, and Metric wiring.
@@ -464,6 +466,8 @@ git push origin product/input-2
 - `localDevChatRoutes` owns local OpenRouter/Ollama chat route registration, chat request validation wiring, and provider chat proxy response handling.
 - `localDevOpenRouterJobRoutes` owns local OpenRouter async job route registration, status lookup, active-job limiting, and queued/running/succeeded/failed lifecycle orchestration.
 - `openRouterDirectGenerationPresets` owns the direct OpenRouter generation preset catalog for easy, medium, hard, and express session variants.
+- `openRouterDirectGenerationJobPlan` owns pure OpenRouter direct-generation planning: profile/feedback lookup, prompt construction, max-token sizing, request payload construction, and the `ActiveOpenRouterJob` draft without `jobId`.
+- `useOpenRouterGenerationActions` keeps OpenRouter side effects and UI orchestration: access/online/quota checks, busy state, `fetch('/api/openrouter/jobs')`, job tracking, notifications, fallback error sessions, and error handling.
 - `useFocusedTrainingGenerationButtons` now reuses `openRouterDirectGenerationPresets` for direct generation button identity and slot ownership while keeping button copy and UI state local.
 | Current `src/app/adaptiveExportPackages.ts` LOC | 166 |
 - `adaptiveExportPackages` owns pure adaptive export/package builders for session feedback, benchmark feedback, diagnostic reports, prompt packages, human-feedback payloads, and adaptive event counts.
@@ -472,5 +476,6 @@ git push origin product/input-2
 
 ## Current validation coverage
 
+- `tests/openRouterDirectGenerationJobPlan.test.ts` covers standard direct job request bodies for easy/medium/hard, express duration/max-token sizing, prompt/draft metadata, preserved labels, and no network side effects.
 - `tests/openRouterDirectGenerationPresets.test.ts` covers the direct generation preset catalog ids, durations, intent/difficulty mappings, unique slot labels, non-empty display labels, and difficulty instructions.
 - `tests/adaptiveExportPackages.test.ts` covers adaptive export package invariants for event counts, fallback session feedback payloads, and human-feedback prompt payloads.

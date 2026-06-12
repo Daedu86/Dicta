@@ -888,3 +888,40 @@ ROI result:
 
 Next work should inspect `src/app/useOpenRouterGenerationActions.ts` for a pure OpenRouter direct-generation job-plan boundary before extracting anything.
 
+## Follow-up — 2026-06-12 OpenRouter direct generation job plan
+
+Latest committed baseline: `abe497a Extract OpenRouter direct generation job plan`.
+
+This checkpoint records extraction of pure direct-training OpenRouter job planning from `src/app/useOpenRouterGenerationActions.ts` into `src/app/openRouterDirectGenerationJobPlan.ts`.
+
+Recent commit context:
+
+* `abe497a (HEAD -> product/input-2, origin/product/input-2, origin/HEAD) Extract OpenRouter direct generation job plan`
+* `50757a5 Document OpenRouter direct generation preset tests`
+* `1d225dc Test OpenRouter direct generation presets`
+* `4c5b1de Document adaptive export package builder tests`
+* `84f3042 Test adaptive export package builders`
+
+Ownership after this extraction:
+
+* `src/app/openRouterDirectGenerationJobPlan.ts` owns pure OpenRouter direct-generation planning: selected profile lookup, latest feedback lookup, prompt construction, trainer-prescription target difficulty resolution, prompt-size metadata, max-token sizing, `/api/openrouter/jobs` request payload construction, and `ActiveOpenRouterJob` draft fields without `jobId`.
+* `src/app/useOpenRouterGenerationActions.ts` keeps side effects and UI state: access checks, online/quota checks, busy state, training notification permission request, `fetch('/api/openrouter/jobs')`, `trackOpenRouterJob`, generation failure notices, persistent error-session fallback, and error handling.
+
+Current metrics after this extraction:
+
+| Item | Value |
+| ---- | ----: |
+| `src/App.tsx` LOC | 2597 |
+| `src/app/useOpenRouterGenerationActions.ts` LOC | 356 |
+| `src/app/openRouterDirectGenerationJobPlan.ts` LOC | 147 |
+| `tests/openRouterDirectGenerationJobPlan.test.ts` LOC | 148 |
+
+ROI result:
+
+* Better ownership: request/prompt planning is now a plain app-level function, while the hook remains the side-effect orchestrator.
+* Better test seam: `tests/openRouterDirectGenerationJobPlan.test.ts` validates request body construction, express max-token sizing, prompt/draft metadata, preserved slot/display labels, and absence of network side effects.
+* Risk avoided: no Browser TTS runtime, hydration, `resetSession`, phrase progression, TTS refs/timers/telemetry, `playTtsFromWord`, server route, Supabase/RLS, auth, rate-limit, localStorage, or PWA performance changes.
+* Validation passed before commit: `npm run lint`, `npm run test -- --reporter=verbose`, `npm run build`, and `npm run test:e2e:mobile`.
+
+Next work should document this extraction before selecting any further candidate. Further OpenRouter changes should keep server access/rate-limit enforcement in server routes and keep browser hooks as side-effect orchestration boundaries.
+
