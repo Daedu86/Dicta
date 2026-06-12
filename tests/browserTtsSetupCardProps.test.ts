@@ -1,6 +1,5 @@
-import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { useBrowserTtsSetupCardProps } from '../src/app/useBrowserTtsSetupCardProps';
+import { createBrowserTtsSetupCardProps } from '../src/app/useBrowserTtsSetupCardProps';
 import type { BrowserTtsSetupCardProps } from '../src/components/runtime-workspaces/BrowserTtsSetupCard';
 
 function createProps(overrides: Partial<BrowserTtsSetupCardProps> = {}): BrowserTtsSetupCardProps {
@@ -27,39 +26,22 @@ function createProps(overrides: Partial<BrowserTtsSetupCardProps> = {}): Browser
   };
 }
 
-describe('useBrowserTtsSetupCardProps', () => {
+describe('createBrowserTtsSetupCardProps', () => {
   it('returns the setup card props unchanged', () => {
     const props = createProps();
 
-    const { result } = renderHook(() => useBrowserTtsSetupCardProps(props));
-
-    expect(result.current).toEqual(props);
+    expect(createBrowserTtsSetupCardProps(props)).toEqual(props);
   });
 
-  it('keeps the same object while all inputs are stable', () => {
+  it('returns a distinct props object', () => {
     const props = createProps();
 
-    const { result, rerender } = renderHook(() => useBrowserTtsSetupCardProps(props));
-    const initialProps = result.current;
-
-    rerender();
-
-    expect(result.current).toBe(initialProps);
+    expect(createBrowserTtsSetupCardProps(props)).not.toBe(props);
   });
 
-  it('returns a new object when a setup prop changes', () => {
-    const initialProps = createProps();
-    const updatedProps = createProps({ ttsExpanded: false });
+  it('reflects changed setup props', () => {
+    const props = createProps({ ttsExpanded: false });
 
-    const { result, rerender } = renderHook(
-      ({ props }) => useBrowserTtsSetupCardProps(props),
-      { initialProps: { props: initialProps } },
-    );
-    const firstResult = result.current;
-
-    rerender({ props: updatedProps });
-
-    expect(result.current).not.toBe(firstResult);
-    expect(result.current.ttsExpanded).toBe(false);
+    expect(createBrowserTtsSetupCardProps(props).ttsExpanded).toBe(false);
   });
 });

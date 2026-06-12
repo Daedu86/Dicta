@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { BrowserTtsSetupCardProps } from '../components/runtime-workspaces/BrowserTtsSetupCard';
 
-export function useBrowserTtsSetupCardProps({
+export function createBrowserTtsSetupCardProps({
   activeInputLabel,
   activeInputFeatureLabel,
   ttsExpanded,
@@ -21,7 +21,7 @@ export function useBrowserTtsSetupCardProps({
   onLockInputSettings,
   formatTtsPacingMode,
 }: BrowserTtsSetupCardProps): BrowserTtsSetupCardProps {
-  return useMemo(() => ({
+  return {
     activeInputLabel,
     activeInputFeatureLabel,
     ttsExpanded,
@@ -40,7 +40,32 @@ export function useBrowserTtsSetupCardProps({
     onTtsLanguageChange,
     onLockInputSettings,
     formatTtsPacingMode,
-  }), [
+  };
+}
+
+export function useBrowserTtsSetupCardProps(props: BrowserTtsSetupCardProps): BrowserTtsSetupCardProps {
+  const {
+    activeInputLabel,
+    activeInputFeatureLabel,
+    ttsExpanded,
+    ttsHasText,
+    ttsText,
+    ttsLanguage,
+    ttsStatus,
+    ttsSpeechRate,
+    ttsPacingMode,
+    ttsCurrentChunk,
+    supportedLanguages,
+    setupLocked,
+    inputSettingsReady,
+    onToggleExpanded,
+    onTtsTextChange,
+    onTtsLanguageChange,
+    onLockInputSettings,
+    formatTtsPacingMode,
+  } = props;
+
+  return useMemo(() => createBrowserTtsSetupCardProps(props), [
     activeInputLabel,
     activeInputFeatureLabel,
     ttsExpanded,
