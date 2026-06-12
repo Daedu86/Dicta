@@ -43,3 +43,8 @@ test-results/
 playwright-report/
 blob-report/
 .env*.local
+
+# Local Python virtual environments
+.venv/
+venv/
+services/kokoro_tts/.venv/
