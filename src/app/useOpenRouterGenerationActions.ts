@@ -64,6 +64,7 @@ type UseOpenRouterGenerationActionsOptions = OpenRouterGenerationBusyControls & 
   openRouterAccessMessage: string;
   isOnline: boolean;
   effectiveOpenRouterDefaultModel: string;
+  fallbackInputMode: InputMode;
   dictaLanguageView: BenchmarkLanguageButton;
   adaptiveBenchmarksByInputLanguage: AdaptiveBenchmarksByInputLanguage;
   adaptiveSessionFeedbackByInputLanguage: AdaptiveSessionFeedbackByInputLanguage;
@@ -104,6 +105,7 @@ export function useOpenRouterGenerationActions({
   openRouterAccessMessage,
   isOnline,
   effectiveOpenRouterDefaultModel,
+  fallbackInputMode,
   dictaLanguageView,
   adaptiveBenchmarksByInputLanguage,
   adaptiveSessionFeedbackByInputLanguage,
@@ -149,7 +151,7 @@ export function useOpenRouterGenerationActions({
       setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
       return;
     }
-    const inputMode = mapSessionInputMode(activeSession.inputMode);
+    const inputMode = activeSession ? mapSessionInputMode(activeSession.inputMode) : fallbackInputMode;
     const language: BenchmarkLanguageButton = dictaLanguageView;
     setSelectedBenchmarkInputMode(inputMode);
     setSelectedBenchmarkLanguage(language);
@@ -162,6 +164,7 @@ export function useOpenRouterGenerationActions({
     allowCustomSessionGeneration,
     dictaLanguageView,
     ensureCanCreateDictationSession,
+    fallbackInputMode,
     isOnline,
     openRouterAccessAllowed,
     openRouterAccessMessage,
@@ -185,7 +188,7 @@ export function useOpenRouterGenerationActions({
     targetDifficulty,
     difficultyInstruction,
   }: GenerateDirectSessionOptions): Promise<void> => {
-    if (!activeSession || isBusy) return;
+    if (isBusy) return;
     if (!openRouterAccessAllowed) {
       setOpenRouterError(openRouterAccessMessage);
       return;
@@ -196,7 +199,7 @@ export function useOpenRouterGenerationActions({
       return;
     }
     const model = effectiveOpenRouterDefaultModel.trim();
-    const inputMode = mapSessionInputMode(activeSession.inputMode);
+    const inputMode = activeSession ? mapSessionInputMode(activeSession.inputMode) : fallbackInputMode;
     const language: BenchmarkLanguageButton = dictaLanguageView;
 
     if (!model) {
@@ -290,6 +293,7 @@ export function useOpenRouterGenerationActions({
     dictaLanguageView,
     effectiveOpenRouterDefaultModel,
     ensureCanCreateDictationSession,
+    fallbackInputMode,
     getAuthHeaders,
     isOnline,
     openRouterAccessAllowed,

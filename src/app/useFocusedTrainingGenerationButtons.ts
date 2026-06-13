@@ -109,7 +109,7 @@ export function useFocusedTrainingGenerationButtons({
         : openRouterOfflineTitle || (openRouterModelIsSet ? fallbackTitle : 'Set a default OpenRouter model first.');
 
     const isModelGenerationDisabled = (busy: boolean, running: boolean) =>
-      !isOnline || busy || running || !activeSession || !openRouterModelIsSet || sessionQuotaStatus.blocked;
+      !isOnline || busy || running || !openRouterModelIsSet || sessionQuotaStatus.blocked;
 
     const buildDirectGenerationButton = ({
       preset,

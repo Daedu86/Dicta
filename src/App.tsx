@@ -1009,6 +1009,7 @@ function App() {
     openRouterAccessMessage,
     isOnline,
     effectiveOpenRouterDefaultModel,
+    fallbackInputMode: mapSessionInputMode(activeInputMode),
     dictaLanguageView,
     adaptiveBenchmarksByInputLanguage,
     adaptiveSessionFeedbackByInputLanguage,
