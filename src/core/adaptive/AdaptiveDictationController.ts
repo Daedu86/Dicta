@@ -352,7 +352,7 @@ export class AdaptiveDictationController {
         ? (extremeSupport ? extremeSupportRateFloor : supportRateFloor)
         : balancedFlowFloor;
     playbackRate = Number(Math.max(modeFloor, playbackRate).toFixed(2));
-    if (mode === 'support' && reason.includes('support-needed')) {
+    if (mode === 'support' && reasonCodes.includes('support-needed')) {
       playbackRate = Number(Math.min(supportRateCeiling, playbackRate).toFixed(2));
     }
 

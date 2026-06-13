@@ -1,4 +1,5 @@
 import type { PacingMode } from '../../core/adaptive/types';
+import { hasPacingReason } from '../../core/adaptive/pacingReasonCodes';
 import type { PacingDecision } from '../../core/adaptive/types';
 import { buildLagStabilitySample } from '../../core/adaptive/lagStability';
 import type { BrowserTtsAdaptiveProfile } from './browserTtsAdaptiveProfiles';
@@ -105,7 +106,7 @@ export function applyBrowserTtsMobilePacingFallback(params: {
 
   const supportPressure =
     params.decision.mode === 'support' ||
-    params.decision.reason.includes('support-needed') ||
+    hasPacingReason(params.decision, 'support-needed') ||
     params.lagSec > 1.5 ||
     params.accuracy < 0.9;
 

@@ -8,6 +8,7 @@ import type {
   PhraseSize,
 } from '../core/adaptive/types';
 import { computeListeningPrecisionMetrics } from '../core/adaptive/listeningPrecisionMetrics';
+import { hasPacingReason } from '../core/adaptive/pacingReasonCodes';
 import type { AttemptEvaluation } from '../core/evaluation';
 import {
   buildAdaptiveBrowserTtsInput,
@@ -297,7 +298,7 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     requestedRate: decision.playbackRate,
     lagSec: liveSignal.lagSec,
     accuracy: rollingAccuracyLast3,
-    supportNeeded: decision.reason.includes('support-needed'),
+    supportNeeded: hasPacingReason(decision, 'support-needed'),
     profile: browserTtsProfile,
   });
   const unsafeRuntime = applyBrowserTtsUnsafeBoundaryPolicy({
