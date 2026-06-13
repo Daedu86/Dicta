@@ -38,6 +38,7 @@ Use this before changing code so that validation starts with the narrowest relev
 | `src/app/useTtsUiPublisher.ts` | Browser TTS live metric UI publication thresholds, throttling, ref updates, and visible metric setter routing. | `tests/useTtsUiPublisher.test.ts` |
 | `src/app/useTtsPlaybackProgressEstimator.ts` | Browser TTS spoken-word progress estimation for active chunks, completed-word fallback, and finished playback. | `tests/useTtsPlaybackProgressEstimator.test.ts` |
 | `src/app/browserTtsPlaybackPlan.ts` | Pure Browser TTS next-chunk playback planning: candidate chunk selection, adaptive decision mapping, runtime rate/unsafe/mobile/DE-recovery policies, telemetry frames, and rolling accuracy state updates. | `tests/browserTtsPlaybackPlan.test.ts` |
+| `src/app/browserTtsPlaybackStartPlan.ts` | Browser TTS playback start-plan preparation: source words, semantic phrase indexing, start clamping, macro phrase offset, and initial playback loop defaults. | `tests/browserTtsPlaybackStartPlan.test.ts` |
 | `src/app/useTtsPerformanceSampler.ts` | Browser TTS performance sampling, live metric publication, lag stabilization, telemetry samples/actions, and final metric packaging. | `tests/useTtsPerformanceSampler.test.ts` |
 | `src/app/useTtsPlaybackControls.ts` | Browser TTS pause/resume/stop/seek controls, runtime ref cleanup, action telemetry, and status transitions. | `tests/useTtsPlaybackControls.test.ts` |
 

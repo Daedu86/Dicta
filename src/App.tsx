@@ -36,6 +36,7 @@ import {
 } from './app/browserTtsPlaybackPlan';
 import { completeBrowserTtsChunk } from './app/browserTtsChunkCompletion';
 import { buildBrowserTtsPhraseStartDebugUpdate } from './app/browserTtsAdaptiveSemanticDebug';
+import { buildBrowserTtsPlaybackStartPlan } from './app/browserTtsPlaybackStartPlan';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -155,14 +156,12 @@ import { formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 import {
-  clamp,
   clamp01,
   getTtsVoiceLang,
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
 import { buildRepeatWordStats } from './app/repeatWordStats';
-import { buildSemanticPhrasesFromDictationScript,
-  buildTtsSourceWords } from './app/dictationScriptSemanticPhrases';
+import { buildSemanticPhrasesFromDictationScript } from './app/dictationScriptSemanticPhrases';
 import { buildTtsPlaybackProfile,
   type TtsLiveSignal } from './app/ttsPlaybackProfile';
 import { loadSessions,
@@ -170,7 +169,6 @@ import { loadSessions,
 import {
   buildOrderedSemanticPhrases,
   formatTtsPacingMode,
-  semanticPhraseIndexForWordIndex,
   } from './app/ttsPacingHelpers';
 import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
@@ -1233,8 +1231,14 @@ function App() {
     }
 
     stopTtsPlayback();
-    const sourceWords = buildTtsSourceWords(ttsText);
-    if (sourceWords.length === 0) {
+    const playbackStartPlan = buildBrowserTtsPlaybackStartPlan({
+      ttsText,
+      ttsLanguage,
+      ttsPacingMode,
+      startWordIndex,
+      buildSemanticPhrasesForCurrentSession,
+    });
+    if (!playbackStartPlan.ok) {
       setError('Paste TTS text before playing.');
       return;
     }
@@ -1245,22 +1249,19 @@ function App() {
       browserTtsVoice,
       browserTtsVoice?.voiceURI ?? activeSession?.ttsVoiceURI ?? null,
     );
-    const clampedStartWordIndex = Math.floor(clamp(startWordIndex, 0, Math.max(0, sourceWords.length - 1)));
-    let chunkIndex = clampedStartWordIndex > 0 ? clampedStartWordIndex : 0;
-    let macroPhraseIndex = 0;
-    let macroWordOffset = 0;
+    const {
+      sourceWords,
+      clampedStartWordIndex,
+      semanticPhrases,
+      semanticPhraseWords,
+      semanticPhraseStartWordIndices,
+    } = playbackStartPlan;
+    let chunkIndex = playbackStartPlan.chunkIndex;
+    let macroPhraseIndex = playbackStartPlan.macroPhraseIndex;
+    let macroWordOffset = playbackStartPlan.macroWordOffset;
     let cancelled = false;
-    const semanticPhrases = buildSemanticPhrasesForCurrentSession(ttsText, ttsLanguage, ttsPacingMode);
-    const semanticPhraseWords = semanticPhrases.map((phrase) => buildTtsSourceWords(phrase.text));
-    const semanticPhraseStartWordIndices = semanticPhraseWords.reduce<number[]>((acc, _words, index) => {
-      const prev = index === 0 ? 0 : acc[index - 1] + (semanticPhraseWords[index - 1]?.length ?? 0);
-      acc.push(prev);
-      return acc;
-    }, []);
-    macroPhraseIndex = semanticPhraseIndexForWordIndex(semanticPhrases, clampedStartWordIndex);
-    macroWordOffset = Math.max(0, clampedStartWordIndex - (semanticPhraseStartWordIndices[macroPhraseIndex] ?? 0));
-    let lastPhraseSize: PhraseSize = 'medium';
-    let lastBoundaryStrictness: BrowserTtsBoundaryStrictness = 'sentence';
+    let lastPhraseSize: PhraseSize = playbackStartPlan.lastPhraseSize;
+    let lastBoundaryStrictness: BrowserTtsBoundaryStrictness = playbackStartPlan.lastBoundaryStrictness;
     if (clampedStartWordIndex === 0) {
       beginAdaptiveSessionFeedback('browser-tts', ttsLanguage, semanticPhrases.length);
     }
