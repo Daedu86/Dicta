@@ -1,3 +1,5 @@
+import { isSupportedLanguage, type SupportedLanguage } from '../../core/languages';
+
 export type BrowserTtsCalibrationGate = {
   minAccuracy: number;
   maxStableLagSecAbs: number;
@@ -162,10 +164,25 @@ export const BROWSER_TTS_DE_PROFILE: BrowserTtsAdaptiveProfile = {
   },
 };
 
+export const BROWSER_TTS_FR_PROFILE: BrowserTtsAdaptiveProfile = {
+  ...BROWSER_TTS_BASE_PROFILE,
+};
+
+export const BROWSER_TTS_PT_PROFILE: BrowserTtsAdaptiveProfile = {
+  ...BROWSER_TTS_BASE_PROFILE,
+};
+
+export const BROWSER_TTS_LANGUAGE_PROFILES: Record<SupportedLanguage, BrowserTtsAdaptiveProfile> = {
+  en: BROWSER_TTS_EN_PROFILE,
+  es: BROWSER_TTS_ES_PROFILE,
+  de: BROWSER_TTS_DE_PROFILE,
+  fr: BROWSER_TTS_FR_PROFILE,
+  pt: BROWSER_TTS_PT_PROFILE,
+};
+
 export function resolveBrowserTtsAdaptiveProfile(language?: string): BrowserTtsAdaptiveProfile {
   const normalized = (language ?? '').trim().toLowerCase();
-  if (normalized === 'es') return BROWSER_TTS_ES_PROFILE;
-  if (normalized === 'en') return BROWSER_TTS_EN_PROFILE;
-  if (normalized === 'de') return BROWSER_TTS_DE_PROFILE;
-  return BROWSER_TTS_BASE_PROFILE;
+  return isSupportedLanguage(normalized)
+    ? BROWSER_TTS_LANGUAGE_PROFILES[normalized]
+    : BROWSER_TTS_BASE_PROFILE;
 }

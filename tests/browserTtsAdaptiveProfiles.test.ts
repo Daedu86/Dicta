@@ -1,13 +1,26 @@
 import { describe, expect, it } from 'vitest';
+import { SUPPORTED_LANGUAGES } from '../src/core/languages';
 import {
   BROWSER_TTS_BASE_PROFILE,
+  BROWSER_TTS_FR_PROFILE,
+  BROWSER_TTS_LANGUAGE_PROFILES,
+  BROWSER_TTS_PT_PROFILE,
   resolveBrowserTtsAdaptiveProfile,
 } from '../src/inputs/browserTts/browserTtsAdaptiveProfiles';
 
 describe('resolveBrowserTtsAdaptiveProfile', () => {
-  it('returns base profile for French, Portuguese, and unknown languages', () => {
-    expect(resolveBrowserTtsAdaptiveProfile('fr')).toEqual(BROWSER_TTS_BASE_PROFILE);
-    expect(resolveBrowserTtsAdaptiveProfile('pt')).toEqual(BROWSER_TTS_BASE_PROFILE);
+  it('defines an explicit profile for every supported language', () => {
+    expect(Object.keys(BROWSER_TTS_LANGUAGE_PROFILES).sort()).toEqual([...SUPPORTED_LANGUAGES].sort());
+  });
+
+  it('returns explicit base-equivalent profiles for French and Portuguese', () => {
+    expect(resolveBrowserTtsAdaptiveProfile('fr')).toBe(BROWSER_TTS_FR_PROFILE);
+    expect(resolveBrowserTtsAdaptiveProfile('pt')).toBe(BROWSER_TTS_PT_PROFILE);
+    expect(BROWSER_TTS_FR_PROFILE).toEqual(BROWSER_TTS_BASE_PROFILE);
+    expect(BROWSER_TTS_PT_PROFILE).toEqual(BROWSER_TTS_BASE_PROFILE);
+  });
+
+  it('returns base profile for unknown languages', () => {
     expect(resolveBrowserTtsAdaptiveProfile('it')).toEqual(BROWSER_TTS_BASE_PROFILE);
   });
 
