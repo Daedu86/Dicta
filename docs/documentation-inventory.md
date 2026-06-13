@@ -4,7 +4,7 @@ This document is the current inventory of Markdown documentation in the Dicta re
 
 Status as of: 2026-06-13  
 Current branch: `product/input-2`  
-Current baseline observed before this inventory refresh: `d6ea307`
+Current baseline observed before this inventory refresh: `10ad99d`
 
 ## Status legend
 
@@ -29,7 +29,7 @@ Current baseline observed before this inventory refresh: `d6ea307`
 | `docs/agent-onboarding.md` | ACTIVE | Official technical onboarding flow for agents. | Added in Stage 8C. |
 | `docs/repo-map.md` | ACTIVE | Repository responsibilities and boundaries. | Added in Stage 8D. |
 | `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Added in Stage 8E. |
-| `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Added in Stage 8F. |
+| `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Refreshed on 2026-06-13 with AI-assisted refactor risk, documentation-only safety, and ROI override language. |
 | `docs/modularization-roi.md` | ACTIVE | Repo-wide modularization ROI scoring framework. | Refreshed on 2026-06-13 with benchmark-alignment, freshness, score calibration, and AI-assisted refactor risk guidance. Use before future modularization iterations. |
 | `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
@@ -83,6 +83,8 @@ Changed areas:
 - `docs/modularization-roi.md` now includes 2026 benchmark-alignment guidance, documentation freshness rules, AI-assisted implementation risk, evidence calibration, and expanded scorecard fields.
 - `docs/app-shell-modularization-map.md` now separates the active candidate queue from completed extraction history.
 - `docs/next-modularization-plan.md` is explicitly marked as a historical checkpoint, not the active next-target source.
+- `docs/high-risk-runtime-boundaries.md` now calls out AI-assisted refactor risk and documentation-only safety risk explicitly.
+- `docs/README.md` now has a dedicated modularization decision docs section.
 
 ### Stale baseline references
 
@@ -97,7 +99,7 @@ These commit baselines appear in historical modularization docs and should not b
 
 Current observed baseline for this inventory pass before updating this file:
 
-- `d6ea307`
+- `10ad99d`
 
 ## Proposed next documentation stages
 
