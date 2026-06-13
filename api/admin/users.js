@@ -58,7 +58,6 @@ async function auditAdminUserEvent(supabase, eventType, requester, details = {})
     eventType,
     profileId: requester?.profileId,
     role: requester?.role,
-    legacy: requester?.legacy,
     severity: details.severity ?? 'warn',
     statusCode: details.statusCode,
     route: ADMIN_USERS_ROUTE,
