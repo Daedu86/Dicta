@@ -4,6 +4,7 @@ import {
   type BrowserTtsChunkPlanner,
   type BrowserTtsPlaybackPlanInput,
 } from '../src/app/browserTtsPlaybackPlan';
+import { AdaptiveDictationController } from '../src/core/adaptive/AdaptiveDictationController';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import type {
   HistoricalPerformanceProfile,
@@ -311,6 +312,78 @@ describe('buildBrowserTtsPlaybackPlan', () => {
     expect(plan?.runtimeDecision.playbackRate).toBe(0.85);
     expect(plan?.runtimeDecision.replayRate).toBe(0.85);
     expect(plan?.runtimeDecision.reason).toContain('de-target-rate-clamp');
+  });
+
+  it('computes listening precision for Browser TTS chunk telemetry', () => {
+    const targetChunk = chunk({
+      text: 'We listen carefully.',
+      wordCount: 3,
+    });
+    const planner: BrowserTtsChunkPlanner = () => targetChunk;
+
+    const plan = buildBrowserTtsPlaybackPlan(input({
+      chunkPlanner: planner,
+      livePracticeEvaluation: attempt({
+        typedWords: ['we', 'carefully'],
+        targetWords: ['we', 'listen', 'carefully'],
+        alignedPairs: [
+          { typedIndex: 0, targetIndex: 0, exact: true },
+          { typedIndex: 1, targetIndex: 2, exact: true },
+        ],
+        matchedWords: 2,
+        missedWords: 1,
+        extraWords: 0,
+        accuracy: 100,
+        points: 2,
+        lastMatchedTargetIndex: 2,
+      }),
+    }));
+
+    expect(plan?.browserTelemetry.listeningPrecision?.omissionRate).toBeCloseTo(0.3333, 4);
+    expect(plan?.browserTelemetry.listeningPrecision?.contentWordRecall).toBeLessThan(1);
+    expect(plan?.chunkTelemetry.listeningPrecision?.omissionRate).toBeCloseTo(0.3333, 4);
+  });
+
+  it('feeds Browser TTS listening precision into the adaptive controller', () => {
+    const targetChunk = chunk({
+      text: 'We listen carefully.',
+      wordCount: 3,
+    });
+    const planner: BrowserTtsChunkPlanner = () => targetChunk;
+    const controller = new AdaptiveDictationController();
+
+    const plan = buildBrowserTtsPlaybackPlan(input({
+      chunkIndex: 8,
+      chunkPlanner: planner,
+      browserTtsBenchmark: undefined,
+      liveSignal: liveSignal({ accuracy: 99, lagSec: 0.2, rawLagSec: 0.2, stableLagSec: 0.2, wpm: 64 }),
+      livePracticeEvaluation: attempt({
+        typedWords: ['we', 'carefully'],
+        targetWords: ['we', 'listen', 'carefully'],
+        alignedPairs: [
+          { typedIndex: 0, targetIndex: 0, exact: true },
+          { typedIndex: 1, targetIndex: 2, exact: true },
+        ],
+        matchedWords: 2,
+        missedWords: 1,
+        extraWords: 0,
+        accuracy: 100,
+        points: 2,
+        lastMatchedTargetIndex: 2,
+      }),
+      adaptiveController: controller,
+      historyProfile: historyProfile({
+        comfortablePlaybackRate: 1.1,
+        averageAccuracy: 0.9,
+        averageLagSec: 0.2,
+        averageWpm: 50,
+        sessionsCount: 8,
+        profileConfidence: 0.9,
+      }),
+    }));
+
+    expect(plan?.runtimeDecision.reason).toContain('listening-precision-rate-ceiling');
+    expect(plan?.runtimeDecision.playbackRate).toBeLessThanOrEqual(0.92);
   });
 
   it('returns null when no candidate chunk can be planned', () => {

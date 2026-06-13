@@ -2,6 +2,7 @@ import type {
   AdaptivePacingInput,
   HistoricalPerformanceProfile,
   InputCapabilities,
+  ListeningPrecisionMetrics,
   LiveTelemetryFrame,
   PhraseBoundaryType,
 } from '../../core/adaptive/types';
@@ -34,6 +35,7 @@ export interface BrowserTtsTelemetryParams {
   rollingAccuracyLast5?: number;
   sessionAccuracy?: number;
   errorRate: number;
+  listeningPrecision?: ListeningPrecisionMetrics;
   wpm: number;
   charsPerMinute: number;
   pauseMs: number;
@@ -76,6 +78,7 @@ export function buildBrowserTtsTelemetryFrame(params: BrowserTtsTelemetryParams)
     rollingAccuracyLast5: params.rollingAccuracyLast5,
     sessionAccuracy: params.sessionAccuracy,
     errorRate: clamp(params.errorRate, 0, 1),
+    listeningPrecision: params.listeningPrecision,
     wpm: params.wpm,
     charsPerMinute: params.charsPerMinute,
     pauseMs: params.pauseMs,

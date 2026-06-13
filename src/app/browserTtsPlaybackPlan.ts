@@ -2,10 +2,12 @@ import type {
   AdaptivePacingInput,
   HistoricalPerformanceProfile,
   InputLanguageBenchmarkMetrics,
+  ListeningPrecisionMetrics,
   LiveTelemetryFrame,
   PacingDecision,
   PhraseSize,
 } from '../core/adaptive/types';
+import { computeListeningPrecisionMetrics } from '../core/adaptive/listeningPrecisionMetrics';
 import type { AttemptEvaluation } from '../core/evaluation';
 import {
   buildAdaptiveBrowserTtsInput,
@@ -102,6 +104,46 @@ export type BrowserTtsPlaybackPlan = {
 
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 
+function computeBrowserTtsChunkListeningPrecision(params: {
+  livePracticeEvaluation: AttemptEvaluation;
+  language: SupportedLanguage;
+  chunk: PlannedBrowserTtsChunk;
+}): ListeningPrecisionMetrics {
+  const typedText = extractTypedTextForChunk(params.livePracticeEvaluation, params.chunk);
+
+  return computeListeningPrecisionMetrics({
+    targetText: params.chunk.text,
+    typedText,
+    typedTextAtPlaybackEnd: typedText,
+    language: params.language,
+  });
+}
+
+function extractTypedTextForChunk(
+  evaluation: AttemptEvaluation,
+  chunk: PlannedBrowserTtsChunk,
+): string {
+  const chunkStart = chunk.startWordIndex;
+  const chunkEnd = chunkStart + chunk.wordCount;
+  const matchedTypedIndices = evaluation.alignedPairs
+    .filter((pair) => pair.targetIndex >= chunkStart && pair.targetIndex < chunkEnd)
+    .map((pair) => pair.typedIndex)
+    .filter((index) => Number.isInteger(index) && index >= 0 && index < evaluation.typedWords.length);
+
+  if (matchedTypedIndices.length === 0) {
+    const fallbackStart = Math.max(0, Math.min(evaluation.typedWords.length, chunkStart));
+    const fallbackEnd = Math.max(
+      fallbackStart,
+      Math.min(evaluation.typedWords.length, fallbackStart + chunk.wordCount),
+    );
+    return evaluation.typedWords.slice(fallbackStart, fallbackEnd).join(' ');
+  }
+
+  const typedStart = Math.max(0, Math.min(...matchedTypedIndices));
+  const typedEnd = Math.min(evaluation.typedWords.length, Math.max(...matchedTypedIndices) + 1);
+  return evaluation.typedWords.slice(typedStart, typedEnd).join(' ');
+}
+
 export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput): BrowserTtsPlaybackPlan | null {
   const {
     macroWords,
@@ -183,6 +225,11 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     chunkAccuracy,
     rollingAccuracyLast3,
     rollingAccuracyLast5,
+    listeningPrecision: computeBrowserTtsChunkListeningPrecision({
+      livePracticeEvaluation,
+      language,
+      chunk: candidateChunk,
+    }),
     pauseMs: ttsPlaybackPauseMs,
     phraseDifficulty: candidateChunk.phraseDifficulty,
     phraseLengthWords: candidateChunk.wordCount,
@@ -264,6 +311,11 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     chunkAccuracy,
     rollingAccuracyLast3,
     rollingAccuracyLast5,
+    listeningPrecision: computeBrowserTtsChunkListeningPrecision({
+      livePracticeEvaluation,
+      language,
+      chunk,
+    }),
     pauseMs: ttsPlaybackPauseMs,
     phraseDifficulty: chunk.phraseDifficulty ?? 0.5,
     phraseLengthWords: chunk.wordCount,
@@ -313,6 +365,7 @@ function buildBrowserTelemetry(params: {
   chunkAccuracy: number;
   rollingAccuracyLast3: number;
   rollingAccuracyLast5: number;
+  listeningPrecision: ListeningPrecisionMetrics;
   pauseMs: number;
   phraseDifficulty: number;
   phraseLengthWords: number;
@@ -343,6 +396,7 @@ function buildBrowserTelemetry(params: {
     rollingAccuracyLast5: params.rollingAccuracyLast5,
     sessionAccuracy: params.sessionAccuracy,
     errorRate: clamp01(1 - params.liveSignal.accuracy / 100),
+    listeningPrecision: params.listeningPrecision,
     wpm: params.liveSignal.wpm,
     charsPerMinute: 0,
     pauseMs: params.pauseMs,
