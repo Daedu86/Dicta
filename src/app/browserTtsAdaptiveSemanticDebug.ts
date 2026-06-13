@@ -37,6 +37,14 @@ export type BuildBrowserTtsPhraseStartDebugUpdateInput = {
   phraseReplayCount: number;
 };
 
+export type BuildBrowserTtsChunkCompletionDebugUpdateInput = {
+  current: BrowserTtsAdaptiveSemanticDebugState;
+  macroPhraseIndex: number;
+  semanticPhrases: SemanticPhrase[];
+  phraseAdvanceCount: number;
+  phraseReplayCount: number;
+};
+
 export function buildBrowserTtsPhraseStartDebugUpdate({
   current,
   semanticCompleteness,
@@ -81,5 +89,24 @@ export function buildBrowserTtsPhraseStartDebugUpdate({
     phraseAdvanceCount,
     phraseReplayCount,
     lastPhraseAdvanceReason: 'phrase_start',
+  };
+}
+
+export function buildBrowserTtsChunkCompletionDebugUpdate({
+  current,
+  macroPhraseIndex,
+  semanticPhrases,
+  phraseAdvanceCount,
+  phraseReplayCount,
+}: BuildBrowserTtsChunkCompletionDebugUpdateInput): BrowserTtsAdaptiveSemanticDebugState {
+  return {
+    ...current,
+    currentPhraseIndex: macroPhraseIndex,
+    currentPhraseId: semanticPhrases[macroPhraseIndex]?.id ?? 'complete',
+    currentPhraseTextPreview: semanticPhrases[macroPhraseIndex]?.text.slice(0, 80) ?? '',
+    totalSemanticPhrases: semanticPhrases.length,
+    phraseAdvanceCount,
+    phraseReplayCount,
+    lastPhraseAdvanceReason: 'chunk_complete',
   };
 }

@@ -49,6 +49,7 @@ describe('Browser TTS playback loop contract', () => {
     expect(playbackLoop).toContain('utterance.onerror = (event) => {');
     expect(playbackLoop).toContain('completeBrowserTtsChunk({');
     expect(playbackLoop).toContain('buildBrowserTtsPhraseCompletionTelemetry({');
+    expect(playbackLoop).toContain('buildBrowserTtsChunkCompletionDebugUpdate({');
     expect(playbackLoop).toContain('speakBrowserTts(utterance)');
   });
 
@@ -91,7 +92,8 @@ describe('Browser TTS playback loop contract', () => {
       'macroWordOffset = chunkCompletion.nextMacroWordOffset;',
       'ttsSemanticPhraseAdvanceCountRef.current += 1;',
       "recordPhrasePlaybackEvent('phrase_advanced'",
-      'setAdaptiveSemanticDebug((current) => ({',
+      'setAdaptiveSemanticDebug((current) =>',
+      'buildBrowserTtsChunkCompletionDebugUpdate({',
       'window.setTimeout(() => {',
       'speakNext();',
     ]);

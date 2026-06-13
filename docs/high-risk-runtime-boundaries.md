@@ -26,6 +26,7 @@ High-risk areas:
 - `src/app/useTtsUiPublisher.ts`
 - `src/app/useTtsPlaybackProgressEstimator.ts`
 - `src/app/browserTtsPlaybackPlan.ts`
+- `src/app/browserTtsAdaptiveSemanticDebug.ts`
 - `src/app/browserTtsPhraseCompletionTelemetry.ts`
 - `src/app/ttsSessionFinalization.ts`
 - `src/inputs/browserTts/`
@@ -37,18 +38,18 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
-Current App shell anchors in the post-phrase-completion-telemetry working tree:
+Current App shell anchors in the post-chunk-completion-debug working tree:
 
-- `resetSession`: `src/App.tsx:920`
-- `useTtsTelemetryRecorder` hook call: `src/App.tsx:1104`
-- `useTtsPlaybackProgressEstimator` hook call: `src/App.tsx:1110`
-- `useTtsUiPublisher` hook call: `src/App.tsx:1121`
-- `useTtsPerformanceSampler` hook call: `src/App.tsx:1140`
-- `submitTtsSession`: `src/App.tsx:1161`
-- `playTts`: `src/App.tsx:1208`
-- `playTtsFromWord`: `src/App.tsx:1213`
-- `useTtsPlaybackControls` hook call: `src/App.tsx:1549`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2076`
+- `resetSession`: `src/App.tsx:923`
+- `useTtsTelemetryRecorder` hook call: `src/App.tsx:1107`
+- `useTtsPlaybackProgressEstimator` hook call: `src/App.tsx:1113`
+- `useTtsUiPublisher` hook call: `src/App.tsx:1124`
+- `useTtsPerformanceSampler` hook call: `src/App.tsx:1143`
+- `submitTtsSession`: `src/App.tsx:1164`
+- `playTts`: `src/App.tsx:1211`
+- `playTtsFromWord`: `src/App.tsx:1216`
+- `useTtsPlaybackControls` hook call: `src/App.tsx:1551`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2078`
 
 Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
 
@@ -60,6 +61,7 @@ Primary tests:
 - `tests/useTtsPlaybackProgressEstimator.test.ts`
 - `tests/browserTtsPlaybackLoopContract.test.ts`
 - `tests/browserTtsPlaybackPlan.test.ts`
+- `tests/browserTtsAdaptiveSemanticDebug.test.ts`
 - `tests/browserTtsPhraseCompletionTelemetry.test.ts`
 - `tests/ttsSessionFinalization.test.ts`
 - `tests/browserTtsAdaptiveProfiles.test.ts`

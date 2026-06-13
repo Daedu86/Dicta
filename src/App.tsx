@@ -35,7 +35,10 @@ import {
   type BrowserTtsBoundaryStrictness,
 } from './app/browserTtsPlaybackPlan';
 import { completeBrowserTtsChunk } from './app/browserTtsChunkCompletion';
-import { buildBrowserTtsPhraseStartDebugUpdate } from './app/browserTtsAdaptiveSemanticDebug';
+import {
+  buildBrowserTtsChunkCompletionDebugUpdate,
+  buildBrowserTtsPhraseStartDebugUpdate,
+} from './app/browserTtsAdaptiveSemanticDebug';
 import { buildBrowserTtsPhraseCompletionTelemetry } from './app/browserTtsPhraseCompletionTelemetry';
 import { buildBrowserTtsPlaybackStartPlan } from './app/browserTtsPlaybackStartPlan';
 import { buildFinalizedTtsSessionState } from './app/ttsSessionFinalization';
@@ -1494,16 +1497,15 @@ function App() {
           ttsSemanticPhraseAdvanceCountRef.current += 1;
           recordPhrasePlaybackEvent('phrase_advanced', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
         }
-        setAdaptiveSemanticDebug((current) => ({
-          ...current,
-          currentPhraseIndex: macroPhraseIndex,
-          currentPhraseId: semanticPhrases[macroPhraseIndex]?.id ?? 'complete',
-          currentPhraseTextPreview: semanticPhrases[macroPhraseIndex]?.text.slice(0, 80) ?? '',
-          totalSemanticPhrases: semanticPhrases.length,
-          phraseAdvanceCount: ttsSemanticPhraseAdvanceCountRef.current,
-          phraseReplayCount: ttsSemanticPhraseReplayCountRef.current,
-          lastPhraseAdvanceReason: 'chunk_complete',
-        }));
+        setAdaptiveSemanticDebug((current) =>
+          buildBrowserTtsChunkCompletionDebugUpdate({
+            current,
+            macroPhraseIndex,
+            semanticPhrases,
+            phraseAdvanceCount: ttsSemanticPhraseAdvanceCountRef.current,
+            phraseReplayCount: ttsSemanticPhraseReplayCountRef.current,
+          }),
+        );
         if (chunkCompletion.shouldPauseBeforeNextChunk) {
           window.setTimeout(() => {
             speakNext();

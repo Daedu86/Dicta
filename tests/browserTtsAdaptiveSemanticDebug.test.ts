@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildBrowserTtsPhraseStartDebugUpdate } from '../src/app/browserTtsAdaptiveSemanticDebug';
+import {
+  buildBrowserTtsChunkCompletionDebugUpdate,
+  buildBrowserTtsPhraseStartDebugUpdate,
+} from '../src/app/browserTtsAdaptiveSemanticDebug';
 
 const baseState = {
   semanticCutPenalty: 0,
@@ -110,6 +113,68 @@ describe('buildBrowserTtsPhraseStartDebugUpdate', () => {
       macroPhraseIndex: 0,
       semanticPhrase: { id: 'p0', text: 'ignored' },
       totalSemanticPhrases: 1,
+      phraseAdvanceCount: 0,
+      phraseReplayCount: 0,
+    });
+
+    expect(result.currentPhraseTextPreview).toHaveLength(80);
+  });
+});
+
+describe('buildBrowserTtsChunkCompletionDebugUpdate', () => {
+  it('publishes the next phrase identity and completion counters after a chunk completes', () => {
+    const result = buildBrowserTtsChunkCompletionDebugUpdate({
+      current: {
+        ...baseState,
+        semanticCutPenalty: 1.25,
+        safePauseCount: 2,
+      },
+      macroPhraseIndex: 1,
+      semanticPhrases: [
+        { id: 'phrase-0', text: 'Already played.' },
+        { id: 'phrase-1', text: 'Next phrase text that should be visible.' },
+      ],
+      phraseAdvanceCount: 4,
+      phraseReplayCount: 2,
+    });
+
+    expect(result).toMatchObject({
+      semanticCutPenalty: 1.25,
+      safePauseCount: 2,
+      currentPhraseIndex: 1,
+      currentPhraseId: 'phrase-1',
+      currentPhraseTextPreview: 'Next phrase text that should be visible.',
+      totalSemanticPhrases: 2,
+      phraseAdvanceCount: 4,
+      phraseReplayCount: 2,
+      lastPhraseAdvanceReason: 'chunk_complete',
+    });
+  });
+
+  it('marks the debug state complete when playback advances beyond the final phrase', () => {
+    const result = buildBrowserTtsChunkCompletionDebugUpdate({
+      current: baseState,
+      macroPhraseIndex: 2,
+      semanticPhrases: [
+        { id: 'phrase-0', text: 'First.' },
+        { id: 'phrase-1', text: 'Second.' },
+      ],
+      phraseAdvanceCount: 2,
+      phraseReplayCount: 0,
+    });
+
+    expect(result.currentPhraseIndex).toBe(2);
+    expect(result.currentPhraseId).toBe('complete');
+    expect(result.currentPhraseTextPreview).toBe('');
+    expect(result.totalSemanticPhrases).toBe(2);
+    expect(result.lastPhraseAdvanceReason).toBe('chunk_complete');
+  });
+
+  it('limits the next phrase preview to 80 characters', () => {
+    const result = buildBrowserTtsChunkCompletionDebugUpdate({
+      current: baseState,
+      macroPhraseIndex: 0,
+      semanticPhrases: [{ id: 'long', text: 'x'.repeat(120) }],
       phraseAdvanceCount: 0,
       phraseReplayCount: 0,
     });
