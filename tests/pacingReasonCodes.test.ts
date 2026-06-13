@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { hasPacingReason } from '../src/core/adaptive/pacingReasonCodes';
+import {
+  appendLegacyReasonToken,
+  hasLegacyReasonToken,
+  hasPacingReason,
+} from '../src/core/adaptive/pacingReasonCodes';
 import type { PacingDecision } from '../src/core/adaptive/types';
 
 const baseDecision: PacingDecision = {
@@ -34,4 +38,18 @@ describe('hasPacingReason', () => {
 
     expect(hasPacingReason(legacyDecision, 'support-needed')).toBe(true);
   });
+  it('matches legacy reason tokens exactly instead of by substring', () => {
+    expect(hasLegacyReasonToken('mode=support, de-target-rate-clamp', 'de-target-rate-clamp')).toBe(true);
+    expect(hasLegacyReasonToken('mode=support, not-de-target-rate-clamp', 'de-target-rate-clamp')).toBe(false);
+  });
+
+  it('appends legacy reason tokens only once', () => {
+    expect(appendLegacyReasonToken('mode=support', 'de-target-rate-clamp')).toBe(
+      'mode=support, de-target-rate-clamp',
+    );
+    expect(appendLegacyReasonToken('mode=support, de-target-rate-clamp', 'de-target-rate-clamp')).toBe(
+      'mode=support, de-target-rate-clamp',
+    );
+  });
+
 });

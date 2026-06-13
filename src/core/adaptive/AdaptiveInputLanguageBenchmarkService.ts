@@ -1,3 +1,4 @@
+import { appendLegacyReasonToken } from './pacingReasonCodes';
 import type {
   AdaptiveTimelinePoint,
   AdaptiveWeakArea,
@@ -460,9 +461,7 @@ export function clampBrowserTtsDeDecisionToRecommendation(
     ...decision,
     playbackRate,
     replayRate,
-    reason: decision.reason.includes('de-target-rate-clamp')
-      ? decision.reason
-      : `${decision.reason}, de-target-rate-clamp`,
+    reason: appendLegacyReasonToken(decision.reason, 'de-target-rate-clamp'),
   };
 }
 
@@ -917,7 +916,7 @@ function buildTimelineDecisionReason(
   });
   if (diagnosticTokens.length === 0) return decision.reason;
   const suffix = diagnosticTokens.join(', ');
-  return decision.reason.includes(suffix) ? decision.reason : `${decision.reason}, ${suffix}`;
+  return appendLegacyReasonToken(decision.reason, suffix);
 }
 
 function getBrowserTtsDeBenchmarkRejectionTokens(point: AdaptiveTimelinePoint): string[] {
