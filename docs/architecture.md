@@ -79,14 +79,9 @@ Core TypeScript domain:
 - `supabaseSync` and `profileScopedStorage`: profile-aware persistence.
 - `liveMetrics`: today, week, two-week, three-week, and 30-day month views.
 
-Input adapters:
+Server routes:
 
-- `browser-tts`: SpeechSynthesis plus dynamic chunk planner.
-
-Server routes and local dev middleware:
-
-- `api/auth/*` and `middleware.js`: legacy private password fallback.
-- `api/_supabaseProfile.js`: signed-in profile resolution.
+- `api/_supabaseProfile.js`: signed-in Supabase profile resolution.
 - `api/_securityEvents.js`: shared server-side security event logging and `dicta_security_events` persistence.
 - `api/admin/users.js`: admin-created users and access controls.
 - `api/openrouter/*`: models, chat, durable jobs, access gating, active-job limits, and persistent rate limits.
@@ -109,7 +104,7 @@ Local-only services:
 1. A session source provides typed text or an OpenRouter script.
 2. `SemanticPhrasePlanner` produces phrase boundaries and difficulty.
 3. The active input engine plays TTS or generated local audio.
-4. `LowLatencyTextarea` captures learner typing without per-keystroke React state for visible text.
+4. `LowLatencyTextarea` captures learner typing without per-keystroke React state.
 5. Input telemetry adapters produce `LiveTelemetryFrame`.
 6. `HistoricalPerformanceService` and the 30-day benchmark provide profile context.
 7. `AdaptiveDictationController` emits a `PacingDecision`.
@@ -131,7 +126,7 @@ Important implementation details:
 
 ## Account And Access Model
 
-Supabase Auth is the current multiuser path. Accounts are invite/admin-created from the Admin workspace; there is no public self-signup flow in the repo.
+Supabase Auth is the only hosted multiuser path. Accounts are invite/admin-created from the Admin workspace; there is no public self-signup flow in the repo.
 
 Profile rules:
 
@@ -140,11 +135,11 @@ Profile rules:
 - Members can sync only their own rows.
 - Members default to `session_limit = 15`, `can_access_openrouter = false`, and optional `assigned_openrouter_model = null`.
 
-Legacy password fallback:
+Removed legacy app gate:
 
-- If Supabase Auth is not configured and `DICTA_APP_PASSWORD` is set, `middleware.js` redirects browser users to `public/login.html`.
-- The password cookie is only a private/local fallback gate; it is not the multiuser profile model.
-- `/api/auth/login` rate-limits legacy password attempts in memory. This fallback is not the public beta access path.
+- Hosted and PWA access must use Supabase Auth + RLS.
+- The single-password app gate, password cookie, `public/login.html`, `/api/auth/login`, `/api/auth/logout`, and password middleware are removed.
+- Server routes require a signed Supabase bearer session resolved through `api/_supabaseProfile.js`.
 
 Verification test account:
 
@@ -177,100 +172,3 @@ Completed feedback rows are also completion evidence for their session id. Durin
 OpenRouter is for structured dictation script generation. It is not a playback engine and it must not expose secrets to the browser.
 
 Routes:
-
-- `GET /api/openrouter/models`: lists OpenRouter models through the server key.
-- `POST /api/openrouter/chat`: immediate chat completion path.
-- `POST /api/openrouter/jobs`: durable job creation for mobile or long requests.
-- `GET /api/openrouter/jobs?id=...`: durable job polling.
-
-Server-side rules:
-
-- OpenRouter and Supabase service credentials are server-only.
-- Server-only Supabase role keys must never be referenced from `src/` or `public/`.
-- Accepted model ids are `openrouter/free` or ids ending in `:free`.
-- Prompt length is capped at 32,000 characters.
-- Immediate chat `maxTokens` is bounded between 128 and 1,800.
-- Durable job `maxTokens` is bounded between 128 and 4,800, with defaults sized by requested session duration.
-- Durable jobs use `dicta_openrouter_jobs`, `waitUntil`, a 3 active-job limit, and cleanup of completed jobs older than 14 days.
-- Durable job creation is persistently rate-limited per profile through `dicta_rate_limits` and `dicta_check_rate_limit`.
-- OpenRouter and admin routes write security events through `api/_securityEvents.js`; OpenRouter rate-limit helpers re-export it for compatibility.
-- Default durable-job rate limits are 20 jobs per hour for members and 120 jobs per hour for admins.
-- If the rate-limit RPC is missing or fails, `/api/openrouter/jobs` fails closed instead of accepting jobs without throttling.
-- Profile resolution and model authorization stay server-side.
-
-Local Vite dev mirrors most OpenRouter behavior and exposes dev-only key management endpoints for `.env.local`. Do not bring those endpoints into production client code.
-
-## Local-Only Development Services
-
-These paths are not production Vercel backend features:
-
-- `/api/admin/files`.
-- `/api/openrouter/key*`.
-
-## Files To Know
-
-App runtime and adaptive core:
-
-- `src/app/useBrowserTtsRuntime.ts`
-- `src/app/useSupabaseAuthActions.ts`
-- `src/app/useSessionCreationActions.ts`
-- `src/app/useOpenRouterGenerationActions.ts`
-- `src/app/useAdminWorkspaceProps.ts`
-- `src/app/useLeaderboardWorkspaceProps.ts`
-- `src/app/useAdaptiveAdvancedDiagnosticsProps.ts`
-- `src/app/useTrainingSessionLifecycle.ts`
-- `src/app/useTtsTelemetryRecorder.ts`
-- `src/app/useTtsUiPublisher.ts`
-- `src/app/useTtsPlaybackProgressEstimator.ts`
-- `src/app/browserTtsPlaybackPlan.ts`
-- `src/app/browserTtsAdaptiveSemanticDebug.ts`
-- `src/app/browserTtsPhraseCompletionTelemetry.ts`
-- `src/app/ttsSessionFinalization.ts`
-- `src/app/useAdaptiveRuntime.ts`
-- `src/app/useAdaptiveExportActions.ts`
-- `src/core/buildInfo.ts`
-- `src/core/adaptive/types.ts`
-- `src/core/adaptive/AdaptiveDictationController.ts`
-- `src/core/adaptive/ListeningTrainerPolicy.ts`
-- `src/core/adaptive/SemanticPhrasePlanner.ts`
-- `src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts`
-- `src/core/adaptive/sessionFeedback.ts`
-- `src/core/adaptive/dictationScriptPrompt.ts`
-- `src/core/adaptive/dictationScriptValidation.ts`
-- `src/core/adaptive/openRouterGenerationPrompt.ts`
-- `src/core/adaptive/benchmarkJson.ts`
-
-Input adapters:
-
-- `src/inputs/browserTts/browserTtsTelemetryAdapter.ts`
-- `src/inputs/browserTts/ttsDynamicChunkPlanner.ts`
-
-Auth/sync/server:
-
-- `src/core/supabaseSync.ts`
-- `src/core/appProfiles.ts`
-- `api/_supabaseProfile.js`
-- `api/_securityEvents.js`
-- `api/admin/users.js`
-- `api/openrouter/*`
-- `middleware.js`
-- `docs/supabase-openrouter-jobs.sql`
-- `docs/supabase-events.sql`
-- `supabase/migrations/*`
-
-Local services:
-
-## Known Gaps
-
-- Production transcription still needs a deployed backend, object storage, and long-running job handling.
-- Full-tree render volume during long Browser TTS runs can still be reduced.
-
-## Adaptive Listening Brain
-
-Dicta's adaptive listening brain is documented as a single KB block in `docs/adaptive-listening-brain.md`.
-
-Architecturally, it sits between live Browser TTS telemetry and long-term benchmark/history feedback:
-
-    live telemetry -> scoped controller -> Browser TTS policies -> benchmark/history feedback -> debug/reporting
-
-The current hardened path includes listening precision telemetry, inferred chunk correction pressure, controller scoping by input mode and language, controller reset on session start, explicit en/es/de/fr/pt Browser TTS profiles, structured pacing reason codes, and exact-token benchmark suffix handling.
