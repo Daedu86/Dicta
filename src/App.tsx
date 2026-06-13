@@ -1002,7 +1002,7 @@ function App() {
     generateExpressIntermediateNextSessionFromOpenRouter,
     generateExpressAdvancedNextSessionFromOpenRouter,
   } = useOpenRouterGenerationActions({
-    allowCustomSessionGeneration: isCurrentProfileAdmin || Boolean(appProfile?.assignedOpenRouterModel) || !syncConfig.authRequired,
+    allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
     sessions,
     activeSession,
     openRouterAccessAllowed,
@@ -1679,7 +1679,7 @@ function App() {
   });
   const focusedKeyDownHandler = onTtsPracticeKeyDown;
   const focusedTrainingGenerationButtons = useFocusedTrainingGenerationButtons({
-    allowCustomSessionGeneration: isCurrentProfileAdmin || Boolean(appProfile?.assignedOpenRouterModel) || !syncConfig.authRequired,
+    allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
     openRouterAccessAllowed,
     isOnline,
     activeSession,
