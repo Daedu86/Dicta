@@ -42,7 +42,6 @@ type UseSessionCreationActionsOptions = {
   setSessionCreationName: (name: string) => void;
   setDictationScriptJson: (json: string) => void;
   setDictationScriptValidation: (validation: DictationScriptValidationResult | null) => void;
-  setTtsExpanded: (expanded: boolean) => void;
   setError: (message: string) => void;
   setOpenRouterError: (message: string) => void;
   setExportMessage: (message: string) => void;
@@ -55,7 +54,6 @@ type SessionCreationFormResetActionOptions = Pick<
   | 'setSessionCreationName'
   | 'setDictationScriptJson'
   | 'setDictationScriptValidation'
-  | 'setTtsExpanded'
 >;
 
 export function createSessionCreationFormResetAction({
@@ -64,15 +62,13 @@ export function createSessionCreationFormResetAction({
   setSessionCreationName,
   setDictationScriptJson,
   setDictationScriptValidation,
-  setTtsExpanded,
 }: SessionCreationFormResetActionOptions) {
-  return (ttsExpanded: boolean): void => {
+  return (): void => {
     setSessionCreationMode(null);
     setSessionCreationSource('plainText');
     setSessionCreationName('');
     setDictationScriptJson('');
     setDictationScriptValidation(null);
-    setTtsExpanded(ttsExpanded);
   };
 }
 
@@ -93,7 +89,6 @@ export function useSessionCreationActions({
   setSessionCreationName,
   setDictationScriptJson,
   setDictationScriptValidation,
-  setTtsExpanded,
   setError,
   setOpenRouterError,
   setExportMessage,
@@ -104,14 +99,12 @@ export function useSessionCreationActions({
     setSessionCreationMode,
     setSessionCreationName,
     setSessionCreationSource,
-    setTtsExpanded,
   }), [
     setDictationScriptJson,
     setDictationScriptValidation,
     setSessionCreationMode,
     setSessionCreationName,
     setSessionCreationSource,
-    setTtsExpanded,
   ]);
 
   const createSessionWithMode = useCallback((inputMode: SessionInputMode): void => {
@@ -131,7 +124,7 @@ export function useSessionCreationActions({
     );
     setActiveSessionId(nextSession.id);
     showSessionInputWorkspace(inputMode);
-    resetSessionCreationForm(true);
+    resetSessionCreationForm();
   }, [
     ensureCanCreateDictationSession,
     prependSessionAndPersistNow,
@@ -171,7 +164,7 @@ export function useSessionCreationActions({
     );
     setActiveSessionId(nextSession.id);
     showSessionInputWorkspace(inputMode);
-    resetSessionCreationForm(false);
+    resetSessionCreationForm();
     setError('');
     setExportMessage('DictationScript session created and locked.');
   }, [
@@ -212,7 +205,7 @@ export function useSessionCreationActions({
       setActiveSessionId(nextSession.id);
       showLeaderboardWorkspace();
     }
-    resetSessionCreationForm(false);
+    resetSessionCreationForm();
     setError('');
     setOpenRouterError('');
     setExportMessage('OpenRouter DictationScript session created and locked.');

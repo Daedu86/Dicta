@@ -49,7 +49,6 @@ import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
 import { useAppShellSyncStatusText } from './app/useAppShellSyncStatusText';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
-import { useBrowserTtsSetupCardProps } from './app/useBrowserTtsSetupCardProps';
 import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
 import { useLeaderboardWorkspaceProps } from './app/useLeaderboardWorkspaceProps';
 import { useAdaptiveAdvancedDiagnosticsProps } from './app/useAdaptiveAdvancedDiagnosticsProps';
@@ -105,7 +104,6 @@ import { AppShellHeader } from './components/app-shell/AppShellHeader';
 import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { TrainingHeader } from './components/training/TrainingHeader';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
-import { BrowserTtsSetupCard } from './components/runtime-workspaces/BrowserTtsSetupCard';
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { Metric } from './components/shared/Metric';
 import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
@@ -241,7 +239,6 @@ function App() {
     cancelSessionCreation,
   } = useSessionCreationWorkspaceState();
   const { themeMode, setThemeMode } = useThemeModeRuntime();
-  const [ttsExpanded, setTtsExpanded] = useState(true);
   const [ttsText, setTtsText] = useState('');
 
   const [ttsLanguage, setTtsLanguage] = useState<TtsLanguage>('de');
@@ -494,7 +491,6 @@ function App() {
     setSessionCreationName,
     setDictationScriptJson,
     setDictationScriptValidation,
-    setTtsExpanded,
     setError,
     setOpenRouterError,
     setExportMessage,
@@ -591,10 +587,6 @@ function App() {
     activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE
       ? 'Input # 2 - Text to Speech (TTS)'
       : 'Browser TTS';
-  const activeInputFeatureLabel =
-    activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE
-      ? 'Built-in browser feature'
-      : 'Local Python sidecar';
   const activeInputWorkspaceMode: WorkspaceMode = 'tts';
   const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
   const {
@@ -956,9 +948,6 @@ function App() {
     setSessionStatus(resetState.sessionStatus);
     setTrainingSubmitMessage(resetState.trainingSubmitMessage);
     setInputSettingsLocked(resetState.nextInputSettingsLocked);
-    if (resetState.shouldExpandTtsSetup) {
-      setTtsExpanded(true);
-    }
     telemetryRef.current = resetState.refs.telemetry;
     resetAdaptiveSessionFeedbackTracking(activeSession?.id);
   }
@@ -1075,12 +1064,6 @@ function App() {
       }));
     }
     showAdaptiveWorkspace();
-  }
-
-  function onTtsTextChange(value: string): void {
-    if (inputSettingsLocked || activeSessionFinished) return;
-    setTtsText(value);
-    setTtsStatus(value.trim().length > 0 ? 'ready' : 'idle');
   }
 
   function onTtsPracticeChange(value: string): void {
@@ -1576,12 +1559,7 @@ function App() {
     setTtsPlayerProgressTick,
   });
 
-  const {
-    inputSettingsReady,
-    setupLocked,
-    lockInputSettings,
-    focusedTrainingControls,
-  } = useTrainingSessionLifecycle({
+  const { focusedTrainingControls } = useTrainingSessionLifecycle({
     state: {
       activeInputMode,
       activeSessionPresent: Boolean(activeSession),
@@ -1606,9 +1584,7 @@ function App() {
       setInputSettingsLocked,
       setError,
       setExportMessage,
-      collapseSetupPanels: () => {
-        setTtsExpanded(false);
-      },
+      collapseSetupPanels: () => undefined,
     },
   });
   void ttsPlayerProgressTick;
@@ -1984,27 +1960,6 @@ function App() {
     MetricComponent: Metric,
   });
 
-  const browserTtsSetupCardProps = useBrowserTtsSetupCardProps({
-    activeInputLabel,
-    activeInputFeatureLabel,
-    ttsExpanded,
-    ttsHasText,
-    ttsText,
-    ttsLanguage,
-    ttsStatus,
-    ttsSpeechRate,
-    ttsPacingMode,
-    ttsCurrentChunk,
-    supportedLanguages: SUPPORTED_LANGUAGES,
-    setupLocked,
-    inputSettingsReady,
-    onToggleExpanded: () => setTtsExpanded((value) => !value),
-    onTtsTextChange,
-    onTtsLanguageChange: setTtsLanguage,
-    onLockInputSettings: lockInputSettings,
-    formatTtsPacingMode,
-  });
-
   const liveMetricsDockProps = useLiveMetricsDockProps({
     insightsCollapsed,
     metricsLanguageView,
@@ -2073,10 +2028,6 @@ function App() {
             <SessionCreateCard {...sessionCreateCardProps} />
           ) : null}
         </AppShellHeader>
-        {!setupLocked && workspaceMode !== 'dashboard' && activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE ? (
-          <BrowserTtsSetupCard {...browserTtsSetupCardProps} />
-        ) : null}
-
         <AppWorkspaceContent
           pendingSessions={pendingSessions}
           activeSessionId={activeSessionId}

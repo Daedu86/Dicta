@@ -13,36 +13,33 @@ function createResetActionSetters() {
     setSessionCreationName: vi.fn<StateSetter<string>>(),
     setDictationScriptJson: vi.fn<StateSetter<string>>(),
     setDictationScriptValidation: vi.fn<StateSetter<DictationScriptValidationResult | null>>(),
-    setTtsExpanded: vi.fn<StateSetter<boolean>>(),
   };
 }
 
 describe('createSessionCreationFormResetAction', () => {
-  it('resets the session creation form and expands TTS setup for plain text sessions', () => {
+  it('resets the session creation form for plain text sessions', () => {
     const setters = createResetActionSetters();
     const resetSessionCreationForm = createSessionCreationFormResetAction(setters);
 
-    resetSessionCreationForm(true);
+    resetSessionCreationForm();
 
     expect(setters.setSessionCreationMode).toHaveBeenCalledWith(null);
     expect(setters.setSessionCreationSource).toHaveBeenCalledWith('plainText');
     expect(setters.setSessionCreationName).toHaveBeenCalledWith('');
     expect(setters.setDictationScriptJson).toHaveBeenCalledWith('');
     expect(setters.setDictationScriptValidation).toHaveBeenCalledWith(null);
-    expect(setters.setTtsExpanded).toHaveBeenCalledWith(true);
   });
 
-  it('resets the session creation form and collapses TTS setup for script-created sessions', () => {
+  it('resets the session creation form for script-created sessions', () => {
     const setters = createResetActionSetters();
     const resetSessionCreationForm = createSessionCreationFormResetAction(setters);
 
-    resetSessionCreationForm(false);
+    resetSessionCreationForm();
 
     expect(setters.setSessionCreationMode).toHaveBeenCalledWith(null);
     expect(setters.setSessionCreationSource).toHaveBeenCalledWith('plainText');
     expect(setters.setSessionCreationName).toHaveBeenCalledWith('');
     expect(setters.setDictationScriptJson).toHaveBeenCalledWith('');
     expect(setters.setDictationScriptValidation).toHaveBeenCalledWith(null);
-    expect(setters.setTtsExpanded).toHaveBeenCalledWith(false);
   });
 });
