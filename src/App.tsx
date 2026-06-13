@@ -641,7 +641,7 @@ function App() {
     metricsRangeView,
   });
   const {
-    adaptiveControllerRef,
+    getAdaptiveController,
     phrasePlaybackEventsRef,
     selectedBenchmarkInputMode,
     setSelectedBenchmarkInputMode,
@@ -1323,7 +1323,7 @@ function App() {
         browserTtsRecovery,
         ttsSpeechRate,
         ttsPlaybackPauseMs: ttsPlaybackProfile.pauseMs,
-        adaptiveController: adaptiveControllerRef.current,
+        adaptiveController: getAdaptiveController('browser-tts', ttsLanguage),
         historyProfile,
         sourceWordCount: sourceWords.length,
         estimatedSpokenWordIndex: estimateTtsSpokenWordIndex(),

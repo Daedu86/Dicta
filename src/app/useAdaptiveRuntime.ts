@@ -31,6 +31,10 @@ import type {
 } from '../core/adaptive/types';
 import { HistoricalPerformanceService } from '../core/history/HistoricalPerformanceService';
 import { estimateSessionVoiceDurationSec } from '../core/sessionDuration';
+import {
+  getAdaptiveControllerForScope,
+  type ScopedAdaptiveControllerRegistry,
+} from './adaptiveControllerRegistry';
 import { perfDiagnostics } from '../core/perfDiagnostics';
 import type {
   AdaptiveBenchmarksByInputLanguage,
@@ -95,6 +99,7 @@ type AdaptiveRuntimeOptions = {
 
 export type AdaptiveRuntime = {
   adaptiveControllerRef: MutableRefObject<AdaptiveDictationController>;
+  getAdaptiveController: (inputMode: InputMode, language: LanguageCode) => AdaptiveDictationController;
   historyServiceRef: MutableRefObject<HistoricalPerformanceService>;
   phrasePlaybackEventsRef: MutableRefObject<PhrasePlaybackEvent[]>;
   phrasePlaybackTotalPhrasesRef: MutableRefObject<number>;
@@ -139,6 +144,7 @@ export function useAdaptiveRuntime({
   setSelectedBenchmarkLanguage,
 }: AdaptiveRuntimeOptions): AdaptiveRuntime {
   const adaptiveControllerRef = useRef(new AdaptiveDictationController());
+  const adaptiveControllersByInputLanguageRef = useRef<ScopedAdaptiveControllerRegistry>({});
   const historyServiceRef = useRef(new HistoricalPerformanceService());
   const adaptiveBenchmarkLastUpdateRef = useRef<Record<string, number>>({});
   const sessionBenchmarkBeforeRef = useRef<Record<string, InputLanguageBenchmarkMetrics>>({});
@@ -146,6 +152,12 @@ export function useAdaptiveRuntime({
   const phrasePlaybackEventsRef = useRef<PhrasePlaybackEvent[]>([]);
   const phrasePlaybackTotalPhrasesRef = useRef(0);
   const [selectedBenchmarkInputMode, setSelectedBenchmarkInputMode] = useState<InputMode>('browser-tts');
+
+  const getAdaptiveController = useCallback(
+    (inputMode: InputMode, language: LanguageCode): AdaptiveDictationController =>
+      getAdaptiveControllerForScope(adaptiveControllersByInputLanguageRef.current, inputMode, language),
+    [],
+  );
 
   const getHistoricalPerformanceProfile = useCallback(
     (inputMode: InputMode, language?: string): HistoricalPerformanceProfile =>
@@ -365,6 +377,7 @@ export function useAdaptiveRuntime({
 
   return {
     adaptiveControllerRef,
+    getAdaptiveController,
     historyServiceRef,
     phrasePlaybackEventsRef,
     phrasePlaybackTotalPhrasesRef,
