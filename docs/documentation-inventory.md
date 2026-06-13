@@ -2,9 +2,9 @@
 
 This document is the current inventory of Markdown documentation in the Dicta repo.
 
-Status as of: 2026-06-12  
+Status as of: 2026-06-13  
 Current branch: `product/input-2`  
-Current baseline observed: `b1fc1d8`
+Current baseline observed before this inventory refresh: `d6ea307`
 
 ## Status legend
 
@@ -30,13 +30,13 @@ Current baseline observed: `b1fc1d8`
 | `docs/repo-map.md` | ACTIVE | Repository responsibilities and boundaries. | Added in Stage 8D. |
 | `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Added in Stage 8E. |
 | `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Added in Stage 8F. |
-| `docs/modularization-roi.md` | ACTIVE | Repo-wide modularization ROI scoring framework. | Use before future modularization iterations. |
+| `docs/modularization-roi.md` | ACTIVE | Repo-wide modularization ROI scoring framework. | Refreshed on 2026-06-13 with benchmark-alignment, freshness, score calibration, and AI-assisted refactor risk guidance. Use before future modularization iterations. |
 | `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
 | `docs/android-pwa-performance-debugging.md` | REFERENCE | Android/PWA performance debugging notes. | Keep as runtime/performance context. |
-| `docs/app-shell-modularization-map.md` | REFERENCE | App shell modularization map and remaining extraction guidance. | Refreshed after `b1fc1d8`; verify recent commits and LOC before using. |
+| `docs/app-shell-modularization-map.md` | REFERENCE | App shell modularization map and remaining extraction guidance. | Refreshed on 2026-06-13; active candidate queue is separated from completed extraction log. Verify recent commits and LOC before using. |
 | `docs/archive/app-shell-modularization-checkpoint.md` | HISTORICAL, ARCHIVED | Historical checkpoint log for app shell modularization. | Contains several old baselines: `ad42cef`, `522a983`, `637e479`, `3ef3b91`, `abe497a`. Do not use as current baseline. |
-| `docs/next-modularization-plan.md` | REFERENCE | Current/near-term modularization planning context. | Verify against current branch before using as source of truth. |
+| `docs/next-modularization-plan.md` | REFERENCE, HISTORICAL | Former near-term modularization planning context. | Refreshed on 2026-06-13 to mark old candidate recommendations as historical. Do not use as the active queue. |
 | `docs/adaptive-advanced-diagnostics-modularization.md` | HISTORICAL | Plan/checkpoint for adaptive diagnostics modularization. | Review whether completed before archiving. |
 | `docs/adaptive-workspace-modularization.md` | HISTORICAL | Adaptive workspace modularization plan/checkpoint. | Reference repaired to `docs/app-shell-modularization-map.md`. |
 | `docs/admin-workspace-modularization.md` | HISTORICAL | Admin workspace modularization plan/checkpoint. | Review whether completed before archiving. |
@@ -74,6 +74,16 @@ Repaired sources:
 
 Historical context was preserved; only the broken target was repaired.
 
+### 2026-06-13 modularization documentation refresh
+
+The modularization docs were refreshed to reduce stale-plan risk and align candidate selection with safe-flow evidence instead of local LOC reduction alone.
+
+Changed areas:
+
+- `docs/modularization-roi.md` now includes 2026 benchmark-alignment guidance, documentation freshness rules, AI-assisted implementation risk, evidence calibration, and expanded scorecard fields.
+- `docs/app-shell-modularization-map.md` now separates the active candidate queue from completed extraction history.
+- `docs/next-modularization-plan.md` is explicitly marked as a historical checkpoint, not the active next-target source.
+
 ### Stale baseline references
 
 These commit baselines appear in historical modularization docs and should not be treated as the current baseline:
@@ -83,10 +93,11 @@ These commit baselines appear in historical modularization docs and should not b
 - `637e479`
 - `3ef3b91`
 - `abe497a`
-
-Current observed baseline for this inventory pass:
-
 - `b1fc1d8`
+
+Current observed baseline for this inventory pass before updating this file:
+
+- `d6ea307`
 
 ## Proposed next documentation stages
 
@@ -102,6 +113,7 @@ Current observed baseline for this inventory pass:
 | 8I | Archive selected historical docs. | Done. |
 | 8J | Update `.gitignore` for local Python virtualenv noise. | Done. |
 | 8K | Add repo-wide modularization ROI framework. | Done. |
+| 8L | Refresh modularization ROI docs for 2026 evidence, freshness, and AI-assisted refactor risk. | Done. |
 
 ## Agent rule
 
@@ -109,6 +121,8 @@ Before using any historical modularization document as a source of truth, agents
 
 1. Check `git status --short`.
 2. Check recent commits.
-3. Compare the document against current files.
-4. Prefer current source files and tests over old checkpoint notes.
-5. Treat old baseline hashes as historical unless they match current `HEAD`.
+3. Compare the document's verified commit against current `HEAD`.
+4. Compare the document against current files.
+5. Inspect the current tests for the touched area.
+6. Prefer current source files and tests over old checkpoint notes.
+7. Treat old baseline hashes as historical unless they match current `HEAD`.
