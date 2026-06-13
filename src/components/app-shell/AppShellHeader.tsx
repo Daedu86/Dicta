@@ -17,6 +17,9 @@ export type AppShellHeaderProps = {
   syncStatusState: string;
   syncStatusText: string;
   appProfile: DictaAppProfile | null;
+  sessionQuotaLimit: number | null;
+  sessionQuotaUsed: number;
+  sessionQuotaBlocked: boolean;
   children?: ReactNode;
   onOpenLeaderboard: () => void;
   onOpenMobileTraining: () => void;
@@ -41,6 +44,9 @@ export function AppShellHeader({
   syncStatusState,
   syncStatusText,
   appProfile,
+  sessionQuotaLimit,
+  sessionQuotaUsed,
+  sessionQuotaBlocked,
   children,
   onOpenLeaderboard,
   onOpenMobileTraining,
@@ -62,6 +68,12 @@ export function AppShellHeader({
           {appProfile ? (
             <p className="brand-profile-meta">
               Signed in as {appProfile.displayName} · {appProfile.role}
+            </p>
+          ) : null}
+          {sessionQuotaLimit !== null ? (
+            <p className={`brand-profile-meta ${sessionQuotaBlocked ? 'brand-profile-meta-blocked' : ''}`}>
+              Sessions used {sessionQuotaUsed}/{sessionQuotaLimit}
+              {sessionQuotaBlocked ? ' · contact admin' : ''}
             </p>
           ) : null}
           <div className="brand-status-row">

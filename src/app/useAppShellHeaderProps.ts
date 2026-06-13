@@ -1,4 +1,5 @@
 import type { DictaAppProfile } from '../core/appProfiles';
+import type { DictaSessionQuotaStatus } from '../core/appProfiles';
 import { useMemo } from 'react';
 import type { AppShellHeaderProps } from '../components/app-shell/AppShellHeader';
 
@@ -14,6 +15,7 @@ type UseAppShellHeaderPropsArgs = {
   syncStatusState: string;
   syncStatusText: string;
   appProfile: DictaAppProfile | null;
+  sessionQuotaStatus: DictaSessionQuotaStatus;
   onOpenLeaderboard: () => void;
   onOpenMobileTraining: () => void;
   onOpenAdaptive: () => void;
@@ -35,6 +37,7 @@ export function useAppShellHeaderProps({
   syncStatusState,
   syncStatusText,
   appProfile,
+  sessionQuotaStatus,
   onOpenLeaderboard,
   onOpenMobileTraining,
   onOpenAdaptive,
@@ -60,6 +63,9 @@ export function useAppShellHeaderProps({
       syncStatusState,
       syncStatusText,
       appProfile,
+      sessionQuotaLimit: sessionQuotaStatus.limit,
+      sessionQuotaUsed: sessionQuotaStatus.used,
+      sessionQuotaBlocked: sessionQuotaStatus.blocked,
       onOpenLeaderboard,
       onOpenMobileTraining,
       onOpenAdaptive,
@@ -80,6 +86,9 @@ export function useAppShellHeaderProps({
     syncStatusState,
     syncStatusText,
     appProfile,
+    sessionQuotaStatus.limit,
+    sessionQuotaStatus.used,
+    sessionQuotaStatus.blocked,
     onOpenLeaderboard,
     onOpenMobileTraining,
     onOpenAdaptive,

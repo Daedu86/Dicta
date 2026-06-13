@@ -1905,6 +1905,7 @@ function App() {
     syncStatusState: supabaseSyncStatus.state,
     syncStatusText: appShellSyncStatusText,
     appProfile,
+    sessionQuotaStatus,
     onOpenLeaderboard: showLeaderboardWorkspace,
     onOpenMobileTraining: () => navigateAppRoute('/training'),
     onOpenAdaptive: openAdaptiveWorkspaceFromHeader,
