@@ -3,6 +3,7 @@ import type {
   ListeningPrecisionMetrics,
   PacingDecision,
   PacingMode,
+  PacingReasonCode,
   PhraseSize,
 } from './types';
 import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browserTtsAdaptiveProfiles';
@@ -175,6 +176,7 @@ export class AdaptiveDictationController {
         replayRate: Number(clamp(warmupRate - 0.08, extremeSupportRateFloor, supportRateCeiling).toFixed(2)),
         nextPhraseSize: sessionWarmup.phraseSize,
         reason: 'mode=support, session-warmup-calibration, support-needed',
+        reasonCodes: ['mode-support', 'session-warmup-calibration', 'support-needed'],
         lagScore,
         accuracyScore,
         hesitationScore,
@@ -261,32 +263,43 @@ export class AdaptiveDictationController {
     let replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, MAX_PLAYBACK_RATE);
 
     const reason = [`mode=${mode}`];
+    const reasonCodes: PacingReasonCode[] = [`mode-${mode}`];
     if (phraseOverload) {
       reason.push('phrase-overload');
+      reasonCodes.push('phrase-overload');
     }
     if (longPhraseSensitive) {
       reason.push('long-phrase-sensitive');
+      reasonCodes.push('long-phrase-sensitive');
     }
     if (shouldReplayPhrase) {
       reason.push('replay-due-to-lag-or-error');
+      reasonCodes.push('replay-due-to-lag-or-error');
     } else if (!supportsPhraseReplay && replayWanted) {
       reason.push('replay-disabled-recovery');
+      reasonCodes.push('replay-disabled-recovery');
     } else if (live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && !canReplayIndependently) {
       reason.push('replay-blocked-boundary');
+      reasonCodes.push('replay-blocked-boundary');
     } else if (live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && semanticCompleteness < 0.65) {
       reason.push('replay-blocked-incomplete-phrase');
+      reasonCodes.push('replay-blocked-incomplete-phrase');
     }
     if (deferPauseUntilSafeBoundary) {
       reason.push('defer-pause-until-safe-boundary');
+      reasonCodes.push('defer-pause-until-safe-boundary');
     }
     if (mode === 'flow') {
       reason.push('high-accuracy-low-lag');
+      reasonCodes.push('high-accuracy-low-lag');
     }
     if (mode === 'support') {
       reason.push('support-needed');
+      reasonCodes.push('support-needed');
     }
     if (history.sessionsCount < 3) {
       reason.push('low-history-confidence');
+      reasonCodes.push('low-history-confidence');
     }
 
     const adaptivePause = browserTtsProfile?.adaptivePause;
@@ -298,28 +311,35 @@ export class AdaptiveDictationController {
       if (rollingAccuracyLast3 < adaptivePause.veryLowAccuracyThreshold) {
         catchUpTargets.push(adaptivePause.veryLowAccuracyPauseMs);
         reason.push('adaptive-pause-very-low-accuracy');
+        reasonCodes.push('adaptive-pause-very-low-accuracy');
       } else if (rollingAccuracyLast3 < adaptivePause.lowAccuracyThreshold) {
         catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
         reason.push('adaptive-pause-low-accuracy');
+        reasonCodes.push('adaptive-pause-low-accuracy');
       }
       if (live.lagSec > adaptivePause.severeLagBehindSec) {
         catchUpTargets.push(adaptivePause.severeLagBehindPauseMs);
         reason.push('adaptive-pause-severe-lag');
+        reasonCodes.push('adaptive-pause-severe-lag');
       } else if (live.lagSec > adaptivePause.lagBehindSec) {
         catchUpTargets.push(adaptivePause.lagBehindPauseMs);
         reason.push('adaptive-pause-lag');
+        reasonCodes.push('adaptive-pause-lag');
       }
       if (progressGap > adaptivePause.progressBehindRatio) {
         catchUpTargets.push(adaptivePause.progressBehindPauseMs);
         reason.push('adaptive-pause-progress-gap');
+        reasonCodes.push('adaptive-pause-progress-gap');
       }
       if (historicalPressure && mode !== 'flow') {
         catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
         reason.push('adaptive-pause-history-pressure');
+        reasonCodes.push('adaptive-pause-history-pressure');
       }
       if (this.struggleFrames >= 2) {
         catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
         reason.push('adaptive-pause-session-pressure');
+        reasonCodes.push('adaptive-pause-session-pressure');
       }
 
       const adaptivePauseMs = Math.max(...catchUpTargets);
@@ -342,6 +362,7 @@ export class AdaptiveDictationController {
       if (cappedRate < playbackRate) {
         playbackRate = cappedRate;
         reason.push('listening-precision-rate-ceiling');
+        reasonCodes.push('listening-precision-rate-ceiling');
       }
     }
 
@@ -364,6 +385,7 @@ export class AdaptiveDictationController {
       replayRate,
       nextPhraseSize,
       reason: reason.join(', '),
+      reasonCodes,
       lagScore,
       accuracyScore,
       hesitationScore,

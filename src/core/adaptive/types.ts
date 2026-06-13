@@ -6,6 +6,29 @@ export type { ListeningPrecisionMetrics } from './listeningPrecisionMetrics';
 
 export type PhraseSize = 'short' | 'medium' | 'long';
 export type PacingMode = 'support' | 'balanced' | 'flow';
+export type PacingReasonCode =
+  | 'mode-support'
+  | 'mode-balanced'
+  | 'mode-flow'
+  | 'session-warmup-calibration'
+  | 'phrase-overload'
+  | 'long-phrase-sensitive'
+  | 'replay-due-to-lag-or-error'
+  | 'replay-disabled-recovery'
+  | 'replay-blocked-boundary'
+  | 'replay-blocked-incomplete-phrase'
+  | 'defer-pause-until-safe-boundary'
+  | 'high-accuracy-low-lag'
+  | 'support-needed'
+  | 'low-history-confidence'
+  | 'adaptive-pause-very-low-accuracy'
+  | 'adaptive-pause-low-accuracy'
+  | 'adaptive-pause-severe-lag'
+  | 'adaptive-pause-lag'
+  | 'adaptive-pause-progress-gap'
+  | 'adaptive-pause-history-pressure'
+  | 'adaptive-pause-session-pressure'
+  | 'listening-precision-rate-ceiling';
 export type ImprovementTrend = 'improving' | 'stable' | 'declining';
 export type PhraseBoundaryType = 'sentence' | 'clause' | 'minor' | 'unsafe';
 export type LanguageCode = 'en' | 'es' | 'de' | 'fr' | 'pt' | 'unknown' | string;
@@ -122,6 +145,7 @@ export interface PacingDecision {
   nextPhraseSize: PhraseSize;
 
   reason: string;
+  reasonCodes: PacingReasonCode[];
 
   lagScore: number;
   accuracyScore: number;
