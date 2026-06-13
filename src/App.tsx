@@ -1900,7 +1900,7 @@ function App() {
     buildInfoLabel: DICTA_BUILD_INFO_LABEL,
     showAdminButton: isCurrentProfileAdmin || !syncConfig.authRequired,
     showAdaptiveButton: isCurrentProfileAdmin || !syncConfig.authRequired,
-    showOpenRouterButton: openRouterAccessAllowed,
+    showOpenRouterButton: isCurrentProfileAdmin || !syncConfig.authRequired,
     syncStatusState: supabaseSyncStatus.state,
     syncStatusText: appShellSyncStatusText,
     appProfile,
