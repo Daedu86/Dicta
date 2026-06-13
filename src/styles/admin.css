@@ -59,7 +59,7 @@
 
 .admin-table-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(90px, 0.45fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(80px, 0.4fr) minmax(0, 1.35fr) minmax(100px, 0.45fr);
   gap: 0.65rem;
   align-items: start;
   min-width: 0;
@@ -98,7 +98,7 @@
 
 .admin-access-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(130px, 0.7fr) minmax(180px, 1fr) minmax(110px, 0.55fr) minmax(90px, 0.45fr);
+  grid-template-columns: minmax(0, 1fr) minmax(115px, 0.55fr) minmax(170px, 1fr) minmax(100px, 0.45fr) minmax(105px, 0.45fr) minmax(150px, 0.7fr);
   gap: 0.65rem;
   align-items: center;
   min-width: 0;
@@ -145,4 +145,20 @@
 
 .admin-language-tabs {
   margin-top: 0.55rem;
+}
+
+
+@media (max-width: 900px) {
+  .admin-table-row,
+  .admin-access-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-table-header {
+    display: none;
+  }
+
+  .admin-access-row .admin-actions {
+    justify-content: flex-start;
+  }
 }

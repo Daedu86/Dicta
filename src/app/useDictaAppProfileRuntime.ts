@@ -168,8 +168,15 @@ export function useDictaAppProfileRuntime({
           nextCounts[profileId] = (nextCounts[profileId] ?? 0) + 1;
         }
         setAdminProfileSessionCounts(nextCounts);
-      } catch {
-        if (!cancelled) setAdminProfileSessionCounts(appProfile ? { [appProfile.profileId]: 0 } : {});
+      } catch (error) {
+        if (!cancelled) {
+          setAdminProfileSessionCounts(appProfile ? { [appProfile.profileId]: 0 } : {});
+          setAdminRemoteStatus(
+            error instanceof Error
+              ? `Failed to load admin session counts: ${error.message}`
+              : 'Failed to load admin session counts.',
+          );
+        }
       }
     })();
     return () => {
