@@ -84,6 +84,35 @@ Benchmark/recommendation suffixes such as de-target-rate-clamp are now appended 
 
 This keeps custom benchmark suffixes separate from core PacingReasonCode values while making matching safer.
 
+### 8. Recovery pacing mode separates catch-up from generic support
+
+The adaptive controller now has an explicit `recovery` pacing mode in addition to `support`, `balanced`, and `flow`.
+
+`recovery` is reserved for catch-up pressure: the listener is clearly falling behind the spoken audio, but listening precision is still stable enough that the best intervention is a larger catch-up window rather than treating the chunk as a generic error state.
+
+Recovery mode behavior:
+
+- uses short phrases
+- uses a longer ideal pause window
+- maps to slow Browser TTS pacing, like support
+- keeps support-like boundary strictness
+- can emit replay pressure only when phrase replay is actually supported
+- blocks immediate jump-back-to-flow after recovery
+- exposes structured reason codes:
+  - `mode-recovery`
+  - `recovery-needed`
+  - `extended-catch-up-window`
+  - `flow-blocked-after-recovery`
+  - `stable-recovery-confirmed`
+
+Important separation rule:
+
+- `support` remains the mode for low accuracy, high correction pressure, phrase overload, unsafe boundaries, and replay/error pressure.
+- `recovery` is for lag/catch-up pressure with stable enough precision.
+- `progressGap` can extend adaptive pause behavior, but it should not force `support` or `recovery` by itself without real lag pressure.
+
+This prevents semantic-controller defaults or typed/spoken progress noise from downgrading otherwise healthy `balanced`/`flow` decisions.
+
 ## Current code map
 
 The adaptive brain currently spans these main areas:
@@ -102,6 +131,9 @@ The adaptive brain currently spans these main areas:
 
 - src/app/useAdaptiveRuntime.ts
   Runtime lifecycle: controller registry, session feedback begin/end, history profile integration.
+
+- src/app/ttsPacingHelpers.ts
+  Adaptive-to-TTS mode mapping: recovery and support map to slow pacing, flow maps to flow, and balanced remains balanced.
 
 - src/app/browserTtsPlaybackPlan.ts
   Browser TTS planning: chunk selection, listening precision, correction pressure, runtime decision integration.
@@ -125,10 +157,10 @@ The milestone was validated with focused tests and full project validation:
 - npm run test
 - npm run build
 
-Final known baseline after the adaptive brain hardening work:
+Final known baseline after the adaptive brain hardening and recovery pacing work:
 
 - 76 test files passed
-- 438 tests passed
+- 440 tests passed
 - production build passed
 
 ## Current known boundaries and future improvements
