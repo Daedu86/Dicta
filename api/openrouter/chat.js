@@ -6,16 +6,12 @@ function getOpenRouterApiKey() {
   return process.env.OPENROUTER_API_KEY?.trim() ?? '';
 }
 
-function createSecurityClient(requester) {
-  return requester?.legacy ? null : createSupabaseServiceClient();
-}
-
 function auditChatEvent(eventType, requester, details = {}) {
   console.warn('[dicta-security-event]', JSON.stringify({
     eventType,
     route: '/api/openrouter/chat',
     profileId: requester?.profileId ?? null,
-    role: requester?.legacy ? 'legacy' : requester?.role ?? null,
+    role: requester?.role ?? null,
     severity: details.severity ?? 'warn',
     statusCode: details.statusCode ?? null,
     model: details.model ?? null,
@@ -62,10 +58,9 @@ export default async function handler(req, res) {
   }
 
   let requester;
-  let securityClient = null;
+  const securityClient = createSupabaseServiceClient();
   try {
-    requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
-    securityClient = createSecurityClient(requester);
+    requester = await resolveRequestProfile(req);
     assertOpenRouterAccess(requester);
   } catch (error) {
     auditChatEvent('openrouter_chat_access_rejected', requester, { statusCode: error?.statusCode, reason: error instanceof Error ? error.message : 'access rejected' });
@@ -90,7 +85,6 @@ export default async function handler(req, res) {
       res,
       scope: OPENROUTER_RATE_LIMIT_SCOPES.chat,
       limit: getOpenRouterLimit('chat', requester),
-      allowInMemoryFallback: requester.legacy === true,
     });
   } catch (error) {
     auditChatEvent(error?.statusCode === 429 ? 'openrouter_chat_rate_limited' : 'openrouter_chat_rejected', requester, {
