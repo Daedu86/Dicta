@@ -2,7 +2,12 @@
 
 Status: ACTIVE
 Scope: whole repository
-Last updated: 2026-06-12
+Last updated: 2026-06-13
+Verified against branch: `product/input-2`
+Verified against commit: update before use with current `git rev-parse --short HEAD`
+Source inspection command: `git status --short && git log --oneline --decorate -5`
+Test map checked: `docs/module-test-map.md`
+Last candidate decision updated: see active candidate queue in `docs/app-shell-modularization-map.md`
 
 This is the canonical ROI framework for deciding whether a repo area should be modularized, left as-is, documented first, or postponed.
 
@@ -31,6 +36,49 @@ For Dicta, high ROI comes from:
 - preserved product behavior, including Browser TTS playback, adaptive profile isolation, persistence, sync, auth, rate limits, and mobile/PWA performance.
 
 Line reduction is useful evidence, but it is not the definition of ROI. A change can add total repo LOC and still have good ROI if it creates a durable test seam or separates a real ownership boundary.
+
+## 2026 benchmark alignment
+
+There is no repo-wide LOC threshold or universal module-size benchmark that defines successful modularization in Dicta. Modularization ROI should be evaluated by whether the change improves the safe flow of future work.
+
+Use the ROI score together with evidence from:
+
+- delivery flow: smaller review surface, clearer rollback path, and fewer unrelated files touched;
+- validation flow: narrower tests, stronger characterization coverage, and explicit manual smoke checks for browser-only behavior;
+- cognitive load: fewer unrelated concerns required to understand or modify the touched behavior;
+- runtime safety: smaller blast radius for Browser TTS, persistence, auth, sync, Supabase, OpenRouter, PWA/mobile, and CSS cascade changes;
+- agent-readiness: future human or AI contributors can inspect and modify the module through explicit inputs and outputs without scanning unrelated App shell state.
+
+Do not use generated code volume, `src/App.tsx` LOC reduction, or number of extracted files as standalone success metrics. These are supporting signals only.
+
+A candidate should be considered high ROI only when the scorecard can point to concrete evidence: the current owner, the proposed owner, the test seam created or strengthened, the runtime boundaries touched, the expected review size, and the rollback path.
+
+## Documentation freshness rule
+
+Every active modularization document must state the branch and commit it was verified against. If the document baseline does not match current `HEAD`, treat candidate rankings, line numbers, LOC counts, and "next recommended pass" text as historical guidance only.
+
+Before using any modularization document to drive implementation:
+
+1. check current branch and `HEAD`;
+2. inspect the current source around the candidate;
+3. inspect the module-to-test map;
+4. update stale line numbers or mark them as observational anchors;
+5. prefer current source and tests over historical checkpoint text.
+
+## AI-assisted implementation risk
+
+AI-assisted modularization can increase output speed without improving maintainability. For AI-generated or AI-assisted refactors, require stricter evidence that the patch is small, reversible, and behavior-preserving.
+
+Reject or split the candidate when:
+
+- the hook or helper accepts one broad opaque App state object;
+- the patch mixes behavior change with mechanical movement;
+- the review surface grows without a clear ownership or testability payoff;
+- the change touches more than one high-risk runtime boundary;
+- the validation plan cannot be run before commit;
+- the candidate mostly moves code to satisfy local LOC reduction.
+
+AI assistance should be used to make small, explicit, test-backed seams easier to implement, not to justify broad runtime rewrites.
 
 ## Risk definition
 
@@ -75,6 +123,20 @@ Score ROI from 0 to 100.
 | Future change frequency | 10 | The area is likely to change again, so the boundary will pay back soon. |
 | Agent-readiness | 10 | Future agents can inspect, modify, and validate the unit without scanning unrelated code. |
 | Net codebase effect | 10 | The change reduces meaningful complexity, not just local LOC. |
+
+### Evidence calibration
+
+Use the scale below to make scores comparable across iterations.
+
+| Category | Low evidence | Medium evidence | High evidence |
+| --- | --- | --- | --- |
+| Ownership boundary | New name mostly wraps existing flow. | Responsibility is named but still depends on several unrelated concerns. | Module has a narrow responsibility, explicit inputs/outputs, and no broad opaque App state object. |
+| Testability | Existing tests only run the broad app path. | One focused test can cover part of the moved behavior. | New or existing focused tests characterize the behavior without unrelated UI/runtime setup. |
+| Cognitive-load reduction | Caller loses lines but still requires reading the old owner to understand behavior. | Caller becomes shorter and the extracted module has a readable contract. | Future change can be understood by reading the extracted module plus its focused tests. |
+| Coupling reduction | Coupling moves to a new file unchanged. | Some refs/setters/effects are grouped with named dependencies. | Fragile dependencies become explicit, narrow, and independently reviewable. |
+| Future change frequency | Area is unlikely to change or is already stable. | Area has occasional feature or bug-fix pressure. | Area is an active product/runtime seam where future changes are likely. |
+| Agent-readiness | Future agents still need to scan unrelated code. | The module narrows the search area but needs surrounding context. | The module, tests, and map entry are enough to guide safe future edits. |
+| Net codebase effect | More files and indirection without proportional clarity. | Local complexity drops without increasing global complexity much. | Meaningful complexity drops, review surface narrows, and validation becomes more targeted. |
 
 ## Validation-cost scoring
 
@@ -124,11 +186,15 @@ Before each modularization patch, record:
 - Current location / line range
 - Proposed extraction target
 - Expected net LOC movement
+- Review size / changed files estimate
+- Runtime boundaries touched
 - Main behavior preserved
 - ROI score
 - Risk / validation cost score
-- Required tests
+- Required narrow tests
+- Required full validation command, when needed
 - Required manual smoke checks
+- Observed failure / recovery notes, when applicable
 - Rollback plan
 - Decision: select / defer / reject
 - Reason
