@@ -2,6 +2,7 @@ import type { DictaAppProfile } from '../../core/appProfiles';
 
 type AdminUsersCardProps = {
   visibleProfiles: DictaAppProfile[];
+  profileSessionCounts: Record<string, number>;
   selectedProfileFilter: string;
   onChangeProfileFilter: (value: string) => void;
   remoteAdminStatus: string;
@@ -9,6 +10,7 @@ type AdminUsersCardProps = {
 
 export function AdminUsersCard({
   visibleProfiles,
+  profileSessionCounts,
   selectedProfileFilter,
   onChangeProfileFilter,
   remoteAdminStatus,
@@ -45,6 +47,7 @@ export function AdminUsersCard({
           <span>Name</span>
           <span>Role</span>
           <span>Profile</span>
+          <span>Sessions done</span>
         </div>
         {visibleProfiles.map((profile) => (
           <div key={profile.profileId} className="admin-table-row">
@@ -58,6 +61,7 @@ export function AdminUsersCard({
                 {profile.role === 'member' && profile.assignedOpenRouterModel ? ` · model ${profile.assignedOpenRouterModel}` : ''}
               </small>
             </span>
+            <span>{profileSessionCounts[profile.profileId] ?? 0}</span>
           </div>
         ))}
       </div>

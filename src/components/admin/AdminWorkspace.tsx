@@ -48,10 +48,12 @@ type AccessDraft = {
   sessionLimit: string;
 };
 
+type ProfileSessionCounts = Record<string, number>;
+
 export type ProfileAccessPatch = {
   canAccessOpenRouter: boolean;
   assignedOpenRouterModel: string;
-  sessionLimit: number;
+  sessionLimit: number | null;
 };
 
 export type AdminWorkspaceProps<TSession extends AdminWorkspaceSession> = {
@@ -71,6 +73,7 @@ export type AdminWorkspaceProps<TSession extends AdminWorkspaceSession> = {
   onCopySession: (session: TSession) => void;
   appProfile: DictaAppProfile | null;
   visibleProfiles: DictaAppProfile[];
+  profileSessionCounts: ProfileSessionCounts;
   selectedProfileFilter: string;
   onChangeProfileFilter: (value: string) => void;
   onUpdateProfileAccess: (
@@ -102,6 +105,7 @@ export function AdminWorkspace<TSession extends AdminWorkspaceSession>({
   onCopySession,
   appProfile,
   visibleProfiles,
+  profileSessionCounts,
   selectedProfileFilter,
   onChangeProfileFilter,
   onUpdateProfileAccess,
@@ -225,6 +229,32 @@ export function AdminWorkspace<TSession extends AdminWorkspaceSession>({
     }));
   }
 
+  function resetProfileSessionLimit(profile: DictaAppProfile): void {
+    const nextLimit = profile.role === 'admin' ? null : 15;
+    const draft = accessDrafts[profile.profileId] ?? {
+      canAccessOpenRouter: profile.canAccessOpenRouter,
+      assignedOpenRouterModel: profile.assignedOpenRouterModel ?? '',
+      sessionLimit: String(profile.sessionLimit ?? 15),
+    };
+    void onUpdateProfileAccess(profile, {
+      canAccessOpenRouter: draft.canAccessOpenRouter,
+      assignedOpenRouterModel: draft.assignedOpenRouterModel.trim(),
+      sessionLimit: nextLimit,
+    }).then((updated) => {
+      setAccessDrafts((current) => ({
+        ...current,
+        [updated.profileId]: {
+          canAccessOpenRouter: updated.canAccessOpenRouter,
+          assignedOpenRouterModel: updated.assignedOpenRouterModel ?? '',
+          sessionLimit: String(updated.sessionLimit ?? 15),
+        },
+      }));
+      setAccessMessage(`Reset session limit for ${updated.displayName}.`);
+    }).catch((error) => {
+      setAccessMessage(error instanceof Error ? error.message : 'Session limit reset failed.');
+    });
+  }
+
   return (
     <section className="panel workspace-panel admin-workspace">
       <AdminHeader
@@ -241,6 +271,7 @@ export function AdminWorkspace<TSession extends AdminWorkspaceSession>({
       <div className="admin-grid">
         <AdminUsersCard
           visibleProfiles={visibleProfiles}
+          profileSessionCounts={profileSessionCounts}
           selectedProfileFilter={selectedProfileFilter}
           onChangeProfileFilter={onChangeProfileFilter}
           remoteAdminStatus={remoteAdminStatus}
@@ -248,6 +279,7 @@ export function AdminWorkspace<TSession extends AdminWorkspaceSession>({
 
         <AdminMemberAccessCard
           memberProfiles={memberProfiles}
+          profileSessionCounts={profileSessionCounts}
           accessDrafts={accessDrafts}
           accessBusyProfileId={accessBusyProfileId}
           accessMessage={accessMessage}
@@ -258,6 +290,7 @@ export function AdminWorkspace<TSession extends AdminWorkspaceSession>({
           onRefreshOpenRouterModels={onRefreshOpenRouterModels}
           onChangeAccessDraft={updateAccessDraft}
           onSaveProfileAccess={saveProfileAccess}
+          onResetSessionLimit={resetProfileSessionLimit}
         />
 
         <AdminCreateUserCard

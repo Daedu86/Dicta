@@ -30,6 +30,7 @@ export function useDictaAppProfileRuntime({
   const [visibleProfiles, setVisibleProfiles] = useState<DictaAppProfile[]>([]);
   const [adminProfileFilter, setAdminProfileFilter] = useState<string>('self');
   const [adminRemoteSessions, setAdminRemoteSessions] = useState<StoredSession[]>([]);
+  const [adminProfileSessionCounts, setAdminProfileSessionCounts] = useState<Record<string, number>>({});
   const [adminRemoteStatus, setAdminRemoteStatus] = useState('');
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export function useDictaAppProfileRuntime({
     setVisibleProfiles([]);
     setAdminProfileFilter('self');
     setAdminRemoteSessions([]);
+    setAdminProfileSessionCounts({});
     setAdminRemoteStatus('');
   }, [authSession]);
 
@@ -144,6 +146,37 @@ export function useDictaAppProfileRuntime({
     };
   }, [adminProfileFilter, appProfile, isCurrentProfileAdmin, supabaseClient]);
 
+  useEffect(() => {
+    if (!supabaseClient || !isCurrentProfileAdmin) {
+      setAdminProfileSessionCounts(appProfile ? { [appProfile.profileId]: 0 } : {});
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from(DICTA_SYNC_TABLE)
+          .select('profile_id')
+          .eq('item_type', 'session');
+        if (cancelled) return;
+        if (error) throw error;
+        const nextCounts: Record<string, number> = {};
+        for (const row of data ?? []) {
+          const profileId = typeof row.profile_id === 'string' ? row.profile_id.trim() : '';
+          if (!profileId) continue;
+          nextCounts[profileId] = (nextCounts[profileId] ?? 0) + 1;
+        }
+        setAdminProfileSessionCounts(nextCounts);
+      } catch {
+        if (!cancelled) setAdminProfileSessionCounts(appProfile ? { [appProfile.profileId]: 0 } : {});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [appProfile, isCurrentProfileAdmin, supabaseClient]);
+
   return {
     appProfile,
     setAppProfile,
@@ -156,6 +189,7 @@ export function useDictaAppProfileRuntime({
     adminProfileFilter,
     setAdminProfileFilter,
     adminRemoteSessions,
+    adminProfileSessionCounts,
     adminRemoteStatus,
     effectiveProfileId,
     isCurrentProfileAdmin,

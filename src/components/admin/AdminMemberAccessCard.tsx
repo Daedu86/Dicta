@@ -9,6 +9,7 @@ type AccessDraft = {
 
 type AdminMemberAccessCardProps = {
   memberProfiles: DictaAppProfile[];
+  profileSessionCounts: Record<string, number>;
   accessDrafts: Record<string, AccessDraft>;
   accessBusyProfileId: string;
   accessMessage: string;
@@ -19,10 +20,12 @@ type AdminMemberAccessCardProps = {
   onRefreshOpenRouterModels: () => Promise<void>;
   onChangeAccessDraft: (profileId: string, draft: AccessDraft) => void;
   onSaveProfileAccess: (profile: DictaAppProfile) => void;
+  onResetSessionLimit: (profile: DictaAppProfile) => void;
 };
 
 export function AdminMemberAccessCard({
   memberProfiles,
+  profileSessionCounts,
   accessDrafts,
   accessBusyProfileId,
   accessMessage,
@@ -33,6 +36,7 @@ export function AdminMemberAccessCard({
   onRefreshOpenRouterModels,
   onChangeAccessDraft,
   onSaveProfileAccess,
+  onResetSessionLimit,
 }: AdminMemberAccessCardProps) {
   return (
     <section className="dashboard-card admin-card">
@@ -62,6 +66,7 @@ export function AdminMemberAccessCard({
             <span>Member</span>
             <span>OpenRouter</span>
             <span>Assigned LLM</span>
+            <span>Sessions done</span>
             <span>Session limit</span>
             <span>Action</span>
           </div>
@@ -108,6 +113,9 @@ export function AdminMemberAccessCard({
                     </option>
                   ))}
                 </select>
+                <span className="admin-access-session-count">
+                  {profileSessionCounts[profile.profileId] ?? 0}
+                </span>
                 <input
                   type="number"
                   min="0"
@@ -120,14 +128,25 @@ export function AdminMemberAccessCard({
                     })
                   }
                 />
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={busy}
-                  onClick={() => void onSaveProfileAccess(profile)}
-                >
-                  {busy ? 'Saving...' : 'Save'}
-                </button>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={() => void onSaveProfileAccess(profile)}
+                  >
+                    {busy ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={() => void onResetSessionLimit(profile)}
+                    title={profile.role === 'admin' ? 'Reset admin session limit to unlimited' : 'Reset member session limit to default (15)'}
+                  >
+                    Reset limit
+                  </button>
+                </div>
               </div>
             );
           })}

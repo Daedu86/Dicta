@@ -7,7 +7,7 @@ import {
 type AdminProfileAccessPatch = {
   canAccessOpenRouter: boolean;
   assignedOpenRouterModel: string;
-  sessionLimit: number;
+  sessionLimit: number | null;
 };
 
 type UseAdminProfileAccessActionsArgs = {
