@@ -53,11 +53,10 @@ The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, 
 
 Current access model:
 
-- Supabase deployments use invite/admin-created email/password users. There is no public self-signup flow in this repo.
+- Dicta uses invite/admin-created Supabase email/password users. There is no public self-signup flow in this repo.
 - Admin profiles can manage members, OpenRouter access, assigned free OpenRouter models, and member session limits.
 - Member profiles default to a 15-session limit, no OpenRouter access, and only their own synced rows.
-- Local/dev or non-Supabase deployments can use `DICTA_APP_PASSWORD` and `public/login.html` as a private fallback only.
-- For public beta deployment, use Supabase Auth + RLS. Do not rely on `DICTA_APP_PASSWORD` as the primary public access model.
+- Hosted and PWA access must go through Supabase Auth + RLS; the old single-password app gate has been removed.
 - Local and remote verification can use the Supabase E2E test account defined by `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, and `E2E_TEST_PROFILE_ID` in `.env.local` or the secure execution environment. Keep the password out of committed docs, source, screenshots, and logs.
 
 Server-only secrets:
@@ -95,7 +94,7 @@ Dicta can be deployed to Vercel as a static Vite app with lightweight API routes
 
 - Browser TTS works in the hosted app and keeps using browser `localStorage`.
 - OpenRouter generation works through `/api/openrouter/models`, `/api/openrouter/chat`, and `/api/openrouter/jobs` when `OPENROUTER_API_KEY` is configured server-side.
-- Hosted public beta access should use Supabase Auth (`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`) plus RLS.
+- Hosted public beta access uses Supabase Auth (`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`) plus RLS.
 
 Set OpenRouter in Vercel before using hosted generation:
 
@@ -122,99 +121,3 @@ Optional local-only verification vars:
 - `E2E_TEST_EMAIL`
 - `E2E_TEST_PASSWORD`
 - `E2E_TEST_PROFILE_ID`
-
-Use these only to sign into the invite/admin-created Supabase test account during local or hosted app checks. They are not Vite vars and must not be exposed to browser code.
-
-Vercel note: `VITE_*` env vars are baked in at build time. After changing them, redeploy before mobile/PWA clients see the new configuration.
-
-## Supabase Setup
-
-Multiuser auth and sync use:
-
-- `dicta_app_profiles`
-- `dicta_sync_items`
-- RLS helper functions from `supabase/migrations/20260519000000_dicta_multiuser_auth.sql`
-
-OpenRouter server-side security uses:
-
-- `dicta_openrouter_jobs`
-- `dicta_rate_limits`
-- `dicta_check_rate_limit(...)`
-- `dicta_security_events`
-
-Apply `docs/supabase-openrouter-jobs.sql` before enabling hosted OpenRouter generation. The production Supabase project `Dicta` has had the rate-limit migration `add_openrouter_rate_limits` and the security-event migration `add_security_events_for_openrouter` applied.
-
-## OpenRouter
-
-OpenRouter is used only for generating structured dictation scripts. It is not a playback engine, and the browser must never receive an OpenRouter API key.
-
-Routes:
-
-- `GET /api/openrouter/models`: lists OpenRouter models through the server key.
-- `POST /api/openrouter/chat`: immediate chat completion path, 290-second timeout.
-- `POST /api/openrouter/jobs`: durable job creation for mobile/long requests.
-- `GET /api/openrouter/jobs?id=...`: durable job polling.
-
-Server-side rules:
-
-- Accepted model ids are `openrouter/free` or ids ending in `:free`.
-- Prompt length is capped at 32,000 characters.
-- Immediate chat `maxTokens` is bounded between 128 and 1,800.
-- Durable job `maxTokens` is bounded between 128 and 4,800, with defaults sized by requested session duration.
-- `resolveRequestProfile`, `assertOpenRouterAccess`, and `assertOpenRouterModelAllowed` gate access per signed-in profile.
-- `/api/openrouter/chat` and `/api/openrouter/jobs` are rate-limited per profile through `dicta_check_rate_limit`.
-- Durable jobs use `dicta_openrouter_jobs`, `waitUntil`, a 3 active-job limit, and cleanup of completed jobs older than 14 days.
-- Rate-limit exceedance writes a security event to logs and, when a Supabase service client is available, `dicta_security_events`.
-
-Default OpenRouter rate limits:
-
-- Members chat: `DICTA_OPENROUTER_MEMBER_CHAT_PER_HOUR=30`
-- Admins chat: `DICTA_OPENROUTER_ADMIN_CHAT_PER_HOUR=180`
-- Members jobs: `DICTA_OPENROUTER_MEMBER_JOBS_PER_HOUR=20`
-- Admins jobs: `DICTA_OPENROUTER_ADMIN_JOBS_PER_HOUR=120`
-
-If the rate-limit RPC is missing or broken, hosted OpenRouter routes must fail closed instead of accepting public beta requests without rate limiting.
-
-## Typical Training Flow
-
-2. Provide content:
-   - Browser TTS: provide text; Dicta chunks it into semantic phrases.
-   - OpenRouter mode: generate structured scripts for the selected `(inputMode, language)` using current benchmark context and the trainer prescription.
-3. Start a session and type what you hear.
-4. The input adapter publishes live telemetry.
-5. The Adaptive Pace Layer decides rate, pause, chunking, recovery, and phrase-size actions.
-6. The active input engine applies what it can.
-7. Dicta stores local session state and optionally syncs profile-scoped rows to Supabase.
-
-## Adaptive Pace Layer
-
-The Adaptive Pace Layer is the central control loop. It takes live signals from the current session, combines them with historical profile/benchmarks, respects semantic phrase boundaries, and outputs executable pacing decisions.
-
-At a high level:
-
-1. Normalize live session telemetry into a `LiveTelemetryFrame`.
-2. Load/update the 30-day rolling benchmark for `(inputMode, language)`.
-3. Use the historical profile and current input capabilities to decide pacing.
-4. Apply rate/pause/replay/chunk controls where supported.
-5. Persist timeline/metrics and session feedback.
-
-Important rules:
-
-- Treat each `(inputMode, language)` as its own profile.
-- Do not share fixes across profiles unless the task explicitly requires it.
-- Direct mobile generation buttons express listening intent (`Precision`, `Stabilize`, `Challenge`) rather than absolute difficulty; `ListeningTrainerPolicy` may downgrade an unsafe challenge to stabilize or recover.
-- OpenRouter/LLMs generate only structured training material. Dicta runtime still controls playback, rate, pauses, chunking, recovery, and Browser TTS execution.
-- Browser TTS does not execute phrase replay; replay intent becomes recovery behavior such as shorter chunks, slower rate, and longer pauses.
-- Browser TTS benchmark samples and completed session feedback carry a structured `ttsEnvironment` fingerprint with a hashed user agent, platform/PWA mode, selected voice metadata, and voice counts so reports can distinguish learner progress from browser, OS, voice, or speechSynthesis changes.
-
-<!-- agent-kb-entry -->
-## Documentation for agents
-
-Technical onboarding for future agents starts here:
-
-- `docs/README.md` - documentation index
-- `docs/agent-onboarding.md` - required agent entry flow
-- `docs/repo-map.md` - repository responsibilities and boundaries
-- `docs/module-test-map.md` - module-to-test validation map
-- `docs/modularization-roi.md` - repo-wide modularization ROI scoring framework
-- `docs/high-risk-runtime-boundaries.md` - fragile runtime areas and safety rules
