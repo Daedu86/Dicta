@@ -57,6 +57,7 @@ type CreateGenerationErrorSessionArgs = {
 };
 
 type UseOpenRouterGenerationActionsOptions = OpenRouterGenerationBusyControls & {
+  allowCustomSessionGeneration: boolean;
   sessions: StoredSession[];
   activeSession: StoredSession | null;
   openRouterAccessAllowed: boolean;
@@ -131,9 +132,14 @@ export function useOpenRouterGenerationActions({
   setExpressIntermediateOpenRouterBusy,
   expressAdvancedOpenRouterBusy,
   setExpressAdvancedOpenRouterBusy,
+  allowCustomSessionGeneration,
 }: UseOpenRouterGenerationActionsOptions) {
   const openOpenRouterGenerateForActiveInput = useCallback((): void => {
     if (!activeSession) return;
+    if (!allowCustomSessionGeneration) {
+      setOpenRouterError('Custom session generation is available to admins only.');
+      return;
+    }
     if (!openRouterAccessAllowed) {
       setOpenRouterError(openRouterAccessMessage);
       return;
@@ -153,6 +159,7 @@ export function useOpenRouterGenerationActions({
     setOpenRouterGenerateFocusRequest((value) => value + 1);
   }, [
     activeSession,
+    allowCustomSessionGeneration,
     dictaLanguageView,
     ensureCanCreateDictationSession,
     isOnline,

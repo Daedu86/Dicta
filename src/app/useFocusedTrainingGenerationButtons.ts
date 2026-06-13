@@ -22,6 +22,7 @@ type SessionQuotaStatusForGenerationButtons = {
 };
 
 type UseFocusedTrainingGenerationButtonsArgs = {
+  allowCustomSessionGeneration: boolean;
   openRouterAccessAllowed: boolean;
   isOnline: boolean;
   activeSession: StoredSession | null;
@@ -59,6 +60,7 @@ type FocusedTrainingDirectGenerationButtonConfig = {
 };
 
 export function useFocusedTrainingGenerationButtons({
+  allowCustomSessionGeneration,
   openRouterAccessAllowed,
   isOnline,
   activeSession,
@@ -197,9 +199,11 @@ export function useFocusedTrainingGenerationButtons({
       },
     ];
 
-    return [
+    const buttons: TrainingGenerationButton[] = [
       ...directGenerationButtonConfigs.map(buildDirectGenerationButton),
-      {
+    ];
+    if (allowCustomSessionGeneration) {
+      buttons.push({
         id: 'custom',
         label: 'New Custom Session',
         onClick: openOpenRouterGenerateForActiveInput,
@@ -207,9 +211,11 @@ export function useFocusedTrainingGenerationButtons({
         title: sessionQuotaStatus.blocked
           ? sessionQuotaStatus.message
           : openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.',
-      },
-    ];
+      });
+    }
+    return buttons;
   }, [
+    allowCustomSessionGeneration,
     openRouterAccessAllowed,
     effectiveOpenRouterDefaultModel,
     trainingGenerationNotices,
