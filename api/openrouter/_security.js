@@ -50,8 +50,7 @@ export async function enforceOpenRouterRateLimit({
     await auditSecurityEvent(supabase, {
       eventType: `${scope}_rate_limited`,
       profileId: requester?.profileId,
-      role: requester?.legacy ? 'legacy' : requester?.role,
-      legacy: requester?.legacy,
+      role: requester?.role,
       severity: 'warn',
       statusCode: 429,
       route: scope === OPENROUTER_RATE_LIMIT_SCOPES.chat ? '/api/openrouter/chat' : '/api/openrouter/jobs',
