@@ -45,6 +45,7 @@ export type SessionCreateCardProps = {
   sessionQuotaStatus: SessionQuotaStatus;
   canCreateSessionFromDialog: boolean;
   localDevFeaturesAvailable: boolean;
+  allowDictationScriptCreation: boolean;
   dictationScriptJson: string;
   dictationScriptValidation: DictationScriptValidation | null;
   validatedDictationScript: DictationScriptPreview | null;
@@ -64,6 +65,7 @@ export function SessionCreateCard({
   sessionQuotaStatus,
   canCreateSessionFromDialog,
   localDevFeaturesAvailable,
+  allowDictationScriptCreation,
   dictationScriptJson,
   dictationScriptValidation,
   validatedDictationScript,
@@ -97,10 +99,10 @@ export function SessionCreateCard({
           }}
         >
           <option value="plainText">Plain Text</option>
-          <option value="dictationScript">DictationScript JSON</option>
+          {allowDictationScriptCreation ? <option value="dictationScript">DictationScript JSON</option> : null}
         </select>
       </label>
-      {sessionCreationSource === 'plainText' ? (
+      {sessionCreationSource === 'plainText' || !allowDictationScriptCreation ? (
         <>
           <label>
             Session name

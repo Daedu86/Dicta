@@ -1949,6 +1949,7 @@ function App() {
     sessionQuotaStatus,
     canCreateSessionFromDialog,
     localDevFeaturesAvailable: LOCAL_DEV_FEATURES_AVAILABLE,
+    allowDictationScriptCreation: isCurrentProfileAdmin || !syncConfig.authRequired,
     dictationScriptJson,
     dictationScriptValidation,
     validatedDictationScript,
