@@ -46,7 +46,7 @@ export function isDictaAdmin(profile: DictaAppProfile | null): boolean {
 }
 
 export function canDictaProfileAccessOpenRouter(profile: DictaAppProfile | null): boolean {
-  return Boolean(profile?.active && (profile.role === 'admin' || profile.canAccessOpenRouter));
+  return Boolean(profile?.active && (profile.role === 'admin' || profile.canAccessOpenRouter || profile.assignedOpenRouterModel));
 }
 
 export function resolveOpenRouterAccessState({
@@ -101,7 +101,7 @@ export function normalizeDictaAppProfile(row: DictaAppProfileRow): DictaAppProfi
     displayName: row.display_name?.trim() || row.profile_id,
     role,
     active: row.active !== false,
-    canAccessOpenRouter: role === 'admin' || row.can_access_openrouter === true,
+    canAccessOpenRouter: role === 'admin' || row.can_access_openrouter === true || Boolean(normalizeAssignedOpenRouterModel(row.assigned_openrouter_model)),
     assignedOpenRouterModel: normalizeAssignedOpenRouterModel(row.assigned_openrouter_model),
     sessionLimit: normalizeSessionLimit(row.session_limit, role),
     createdAt: row.created_at,

@@ -69,6 +69,20 @@ describe('appProfiles', () => {
     });
   });
 
+  it('allows a member with an assigned OpenRouter model to access OpenRouter', () => {
+    const profile = normalizeDictaAppProfile({
+      user_id: 'user-2',
+      profile_id: 'mama',
+      display_name: 'Mama',
+      role: 'member',
+      active: true,
+      assigned_openrouter_model: 'openrouter/free',
+    });
+
+    expect(canDictaProfileAccessOpenRouter(profile)).toBe(true);
+    expect(profile.assignedOpenRouterModel).toBe('openrouter/free');
+  });
+
   it('allows admins to use OpenRouter without a session quota', () => {
     const profile = normalizeDictaAppProfile({
       user_id: 'user-1',
@@ -166,6 +180,21 @@ describe('appProfiles', () => {
         profile: member,
       }),
     ).toBe('denied');
+    expect(
+      resolveOpenRouterAccessState({
+        authRequired: true,
+        authLoading: false,
+        hasAuthSession: true,
+        profile: normalizeDictaAppProfile({
+          user_id: 'user-3',
+          profile_id: 'assigned-member',
+          display_name: 'Assigned',
+          role: 'member',
+          active: true,
+          assigned_openrouter_model: 'openrouter/free',
+        }),
+      }),
+    ).toBe('allowed');
     expect(
       resolveOpenRouterAccessState({
         authRequired: true,
