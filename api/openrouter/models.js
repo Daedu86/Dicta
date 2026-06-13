@@ -23,10 +23,6 @@ function getOpenRouterApiKey() {
   return process.env.OPENROUTER_API_KEY?.trim() ?? '';
 }
 
-function createSecurityClient(requester) {
-  return requester?.legacy ? null : createSupabaseServiceClient();
-}
-
 function normalizeModelId(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -107,8 +103,7 @@ async function auditModelsEvent(supabase, eventType, requester, details = {}) {
   await auditSecurityEvent(supabase, {
     eventType,
     profileId: requester?.profileId,
-    role: requester?.legacy ? 'legacy' : requester?.role,
-    legacy: requester?.legacy,
+    role: requester?.role,
     severity: details.severity ?? 'warn',
     statusCode: details.statusCode,
     route: MODELS_ROUTE,
@@ -126,8 +121,8 @@ export default async function handler(req, res) {
   let requester;
   let securityClient = null;
   try {
-    requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
-    securityClient = createSecurityClient(requester);
+    requester = await resolveRequestProfile(req);
+    securityClient = createSupabaseServiceClient();
     assertOpenRouterAccess(requester);
   } catch (error) {
     await auditModelsEvent(securityClient, 'openrouter_models_access_rejected', requester, {

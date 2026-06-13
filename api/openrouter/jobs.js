@@ -306,7 +306,7 @@ export function extractOpenRouterJobSessionJson(raw) {
 }
 
 async function auditOpenRouterJobEvent(supabase, eventType, requester, details = {}) {
-  await auditSecurityEvent(supabase, { eventType, profileId: requester?.profileId, role: requester?.legacy ? 'legacy' : requester?.role, legacy: requester?.legacy, severity: details.severity ?? 'warn', statusCode: details.statusCode, route: JOB_ROUTE, model: details.model, reason: details.reason, metadata: details.metadata });
+  await auditSecurityEvent(supabase, { eventType, profileId: requester?.profileId, role: requester?.role, severity: details.severity ?? 'warn', statusCode: details.statusCode, route: JOB_ROUTE, model: details.model, reason: details.reason, metadata: details.metadata });
 }
 
 async function cleanupOldOpenRouterJobs(supabase, profileId) {
@@ -347,13 +347,13 @@ async function createJob(req, res) {
   let requester;
   let requestPayload;
   try {
-    requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+    requester = await resolveRequestProfile(req);
     assertOpenRouterAccess(requester);
     const { profileId } = requester;
     requestPayload = resolveCreateJobPayloadForRequester(requester, req.body);
     assertOpenRouterModelAllowed(requester, requestPayload.model);
     await cleanupOldOpenRouterJobs(supabase, profileId);
-    await enforceOpenRouterRateLimit({ supabase, requester, res, scope: OPENROUTER_RATE_LIMIT_SCOPES.jobs, limit: getOpenRouterLimit('jobs', requester), allowInMemoryFallback: requester.legacy === true });
+    await enforceOpenRouterRateLimit({ supabase, requester, res, scope: OPENROUTER_RATE_LIMIT_SCOPES.jobs, limit: getOpenRouterLimit('jobs', requester) });
     await enforceActiveOpenRouterJobLimit(supabase, profileId);
     const jobId = randomUUID();
     const now = new Date().toISOString();
@@ -370,7 +370,7 @@ async function createJob(req, res) {
 
 async function getJob(req, res) {
   const supabase = createSupabaseServiceClient();
-  const requester = await resolveRequestProfile(req, { allowLegacyEnvProfile: true });
+  const requester = await resolveRequestProfile(req);
   assertOpenRouterAccess(requester);
   const { profileId } = requester;
   const url = new URL(req.url, `https://${req.headers.host ?? 'dicta.local'}`);

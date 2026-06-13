@@ -16,7 +16,7 @@ describe('server Supabase profile resolution', () => {
   it('does not accept legacy profile bypass options', async () => {
     vi.stubEnv('VITE_SUPABASE_SYNC_PROFILE_ID', 'old-admin-profile');
 
-    await expect(resolveRequestProfile({ headers: { host: 'localhost:5173' } }, { allowLegacyEnvProfile: true })).rejects.toMatchObject({
+    await expect(resolveRequestProfile({ headers: { host: 'localhost:5173' } })).rejects.toMatchObject({
       statusCode: 401,
       message: 'Sign in to Dicta before using this endpoint.',
     });

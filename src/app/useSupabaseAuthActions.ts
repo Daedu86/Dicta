@@ -2,14 +2,12 @@ import { useCallback } from 'react';
 import type { FormEvent } from 'react';
 import type { Session as SupabaseAuthSession, SupabaseClient } from '@supabase/supabase-js';
 import type { DictaAppProfile } from '../core/appProfiles';
-import type { DictaSyncConfig } from '../core/supabaseSync';
 import type { AuthView } from './sessionTypes';
 
 type AuthMessageTone = 'hint' | 'success' | 'error';
 
 type UseSupabaseAuthActionsOptions = {
-  supabaseClient: SupabaseClient | null;
-  syncConfig: DictaSyncConfig;
+  supabaseClient: SupabaseClient | null;
   authSession: SupabaseAuthSession | null;
   authEmail: string;
   authPassword: string;
@@ -29,8 +27,7 @@ type UseSupabaseAuthActionsOptions = {
 };
 
 export function useSupabaseAuthActions({
-  supabaseClient,
-  syncConfig,
+  supabaseClient,
   authSession,
   authEmail,
   authPassword,
@@ -157,19 +154,14 @@ export function useSupabaseAuthActions({
 
   const signOut = useCallback(async (): Promise<void> => {
     try {
-      await supabaseClient?.auth.signOut();
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await supabaseClient?.auth.signOut();
     } finally {
-      if (syncConfig.authRequired) {
-        setAuthSession(null);
-        setAppProfile(null);
-        setAuthView('signIn');
-        setAuthPassword('');
-        setAuthNewPassword('');
-        setAuthNewPasswordConfirm('');
-      } else {
-        window.location.href = '/login.html';
-      }
+      setAuthSession(null);
+      setAppProfile(null);
+      setAuthView('signIn');
+      setAuthPassword('');
+      setAuthNewPassword('');
+      setAuthNewPasswordConfirm('');
     }
   }, [
     setAppProfile,
@@ -178,8 +170,7 @@ export function useSupabaseAuthActions({
     setAuthPassword,
     setAuthSession,
     setAuthView,
-    supabaseClient,
-    syncConfig.authRequired,
+    supabaseClient,
   ]);
 
   return {
