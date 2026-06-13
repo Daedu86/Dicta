@@ -19,6 +19,7 @@ Use this before changing code so that validation starts with the narrowest relev
 | Area / module | Responsibility | Relevant tests |
 | --- | --- | --- |
 | `src/App.tsx` | Main app shell and composition root. | Use area-specific tests below based on the touched boundary. |
+| `src/App.tsx::playTtsFromWord` | In-App Browser TTS playback loop ownership and source-order contract for start planning, SpeechSynthesis utterance handlers, chunk completion, DE completion telemetry, and next-chunk scheduling. | `tests/browserTtsPlaybackLoopContract.test.ts` |
 | `src/app/useWorkspaceModelRefreshRuntime.ts` | Resolves assigned/effective OpenRouter workspace model and delegates refresh actions. | `tests/workspaceModelRefreshRuntime.test.ts` |
 | `src/app/useKeyboardRemapRuntime.ts` | Keyboard remap runtime and input remapping behavior. | `tests/useKeyboardRemapRuntime.test.ts` |
 | `src/app/useOpenRouterJobsRuntime.ts` | OpenRouter job polling/runtime behavior. | `tests/useOpenRouterJobsRuntime.test.ts` |

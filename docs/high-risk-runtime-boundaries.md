@@ -58,6 +58,7 @@ Primary tests:
 - `tests/useTtsTelemetryRecorder.test.ts`
 - `tests/useTtsUiPublisher.test.ts`
 - `tests/useTtsPlaybackProgressEstimator.test.ts`
+- `tests/browserTtsPlaybackLoopContract.test.ts`
 - `tests/browserTtsPlaybackPlan.test.ts`
 - `tests/browserTtsPhraseCompletionTelemetry.test.ts`
 - `tests/ttsSessionFinalization.test.ts`
