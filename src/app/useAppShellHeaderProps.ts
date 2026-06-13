@@ -1,3 +1,4 @@
+import type { DictaAppProfile } from '../core/appProfiles';
 import { useMemo } from 'react';
 import type { AppShellHeaderProps } from '../components/app-shell/AppShellHeader';
 
@@ -11,6 +12,7 @@ type UseAppShellHeaderPropsArgs = {
   showOpenRouterButton: boolean;
   syncStatusState: string;
   syncStatusText: string;
+  appProfile: DictaAppProfile | null;
   onOpenLeaderboard: () => void;
   onOpenMobileTraining: () => void;
   onOpenAdaptive: () => void;
@@ -30,6 +32,7 @@ export function useAppShellHeaderProps({
   showOpenRouterButton,
   syncStatusState,
   syncStatusText,
+  appProfile,
   onOpenLeaderboard,
   onOpenMobileTraining,
   onOpenAdaptive,
@@ -53,6 +56,7 @@ export function useAppShellHeaderProps({
       showOpenRouterButton,
       syncStatusState,
       syncStatusText,
+      appProfile,
       onOpenLeaderboard,
       onOpenMobileTraining,
       onOpenAdaptive,
@@ -71,6 +75,7 @@ export function useAppShellHeaderProps({
     showOpenRouterButton,
     syncStatusState,
     syncStatusText,
+    appProfile,
     onOpenLeaderboard,
     onOpenMobileTraining,
     onOpenAdaptive,

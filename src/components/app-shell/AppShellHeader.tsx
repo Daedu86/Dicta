@@ -1,3 +1,4 @@
+import type { DictaAppProfile } from '../../core/appProfiles';
 import type { ReactNode } from 'react';
 
 type ThemeMode = 'light' | 'dark';
@@ -14,6 +15,7 @@ export type AppShellHeaderProps = {
   showOpenRouterButton: boolean;
   syncStatusState: string;
   syncStatusText: string;
+  appProfile: DictaAppProfile | null;
   children?: ReactNode;
   onOpenLeaderboard: () => void;
   onOpenMobileTraining: () => void;
@@ -36,6 +38,7 @@ export function AppShellHeader({
   showOpenRouterButton,
   syncStatusState,
   syncStatusText,
+  appProfile,
   children,
   onOpenLeaderboard,
   onOpenMobileTraining,
@@ -54,6 +57,11 @@ export function AppShellHeader({
         <div className="brand-copy">
           <h1>Dicta MVP</h1>
           <p>Adaptive real-time dictation training</p>
+          {appProfile ? (
+            <p className="brand-profile-meta">
+              Signed in as {appProfile.displayName} · {appProfile.role}
+            </p>
+          ) : null}
           <div className="brand-status-row">
             {showOpenRouterStatus ? (
               <span

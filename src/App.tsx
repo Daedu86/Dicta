@@ -1902,6 +1902,7 @@ function App() {
     showOpenRouterButton: openRouterAccessAllowed,
     syncStatusState: supabaseSyncStatus.state,
     syncStatusText: appShellSyncStatusText,
+    appProfile,
     onOpenLeaderboard: showLeaderboardWorkspace,
     onOpenMobileTraining: () => navigateAppRoute('/training'),
     onOpenAdaptive: openAdaptiveWorkspaceFromHeader,
