@@ -26,6 +26,7 @@ High-risk areas:
 - `src/app/useTtsUiPublisher.ts`
 - `src/app/useTtsPlaybackProgressEstimator.ts`
 - `src/app/browserTtsPlaybackPlan.ts`
+- `src/app/ttsSessionFinalization.ts`
 - `src/inputs/browserTts/`
 - Browser speech synthesis behavior.
 - Voice discovery and normalization.
@@ -35,17 +36,18 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
-Current App shell anchors in the post-playback-plan working tree:
+Current App shell anchors in the post-TTS-finalization working tree:
 
-- `resetSession`: `src/App.tsx:920`
+- `resetSession`: `src/App.tsx:921`
 - `useTtsTelemetryRecorder` hook call: `src/App.tsx:1104`
 - `useTtsPlaybackProgressEstimator` hook call: `src/App.tsx:1110`
 - `useTtsUiPublisher` hook call: `src/App.tsx:1121`
 - `useTtsPerformanceSampler` hook call: `src/App.tsx:1140`
-- `playTts`: `src/App.tsx:1213`
-- `playTtsFromWord`: `src/App.tsx:1218`
-- `useTtsPlaybackControls` hook call: `src/App.tsx:1562`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2089`
+- `submitTtsSession`: `src/App.tsx:1162`
+- `playTts`: `src/App.tsx:1209`
+- `playTtsFromWord`: `src/App.tsx:1214`
+- `useTtsPlaybackControls` hook call: `src/App.tsx:1557`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx:2084`
 
 Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
 
@@ -56,6 +58,7 @@ Primary tests:
 - `tests/useTtsUiPublisher.test.ts`
 - `tests/useTtsPlaybackProgressEstimator.test.ts`
 - `tests/browserTtsPlaybackPlan.test.ts`
+- `tests/ttsSessionFinalization.test.ts`
 - `tests/browserTtsAdaptiveProfiles.test.ts`
 - `tests/browserTtsRatePolicy.test.ts`
 - `tests/browserTtsRecoveryPolicy.test.ts`
@@ -102,6 +105,7 @@ High-risk areas:
 
 - `resetSession` side-effect body.
 - `src/app/resetSessionState.ts`.
+- `src/app/ttsSessionFinalization.ts`.
 - Session completion and submit transitions.
 - Session storage and active-session hydration.
 - Playback stop ordering during reset.
@@ -116,6 +120,7 @@ Rules:
 Primary tests:
 
 - `tests/resetSessionState.test.ts`
+- `tests/ttsSessionFinalization.test.ts`
 - `tests/useTrainingSessionLifecycle.test.ts`
 - `tests/sessionStorage.test.ts`
 - `tests/activeSessionHydration.test.ts`

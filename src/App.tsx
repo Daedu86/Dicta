@@ -37,6 +37,7 @@ import {
 import { completeBrowserTtsChunk } from './app/browserTtsChunkCompletion';
 import { buildBrowserTtsPhraseStartDebugUpdate } from './app/browserTtsAdaptiveSemanticDebug';
 import { buildBrowserTtsPlaybackStartPlan } from './app/browserTtsPlaybackStartPlan';
+import { buildFinalizedTtsSessionState } from './app/ttsSessionFinalization';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -1179,21 +1180,16 @@ function App() {
           : null;
       const finalVoiceURI = finalVoiceResolution?.voiceURI ?? activeSession?.ttsVoiceURI ?? null;
       const finalTtsEnvironment = collectBrowserTtsEnvironmentForSession(activeSession, finalVoiceResolution?.voice ?? null, finalVoiceURI);
-      const nextSessions = sessions.map((session) =>
-        session.id === activeSessionId
-          ? {
-              ...session,
-              ttsVoiceURI: session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? finalVoiceURI : session.ttsVoiceURI,
-              ttsEnvironment: session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE ? finalTtsEnvironment : session.ttsEnvironment,
-              ttsPracticeText: latestPracticeText,
-              status: 'finished' as const,
-              metrics: finalSample.metrics,
-              telemetry: finalSample.telemetry,
-              updatedAt: finishedAt,
-            }
-          : session,
-      );
-      const finalizedSession = nextSessions.find((session) => session.id === activeSessionId) ?? activeSession;
+      const { nextSessions, finalizedSession } = buildFinalizedTtsSessionState({
+        sessions,
+        activeSessionId,
+        activeSession,
+        latestPracticeText,
+        finalSample,
+        finishedAt,
+        finalVoiceURI,
+        finalTtsEnvironment,
+      });
       setSessions(nextSessions);
       persistAndPushSessionsNow(nextSessions, { criticalSessionIds: activeSessionId ? [activeSessionId] : [] });
       stopTtsPlayback();

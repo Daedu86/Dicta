@@ -222,3 +222,9 @@ Historical modularization documents may explain why a boundary exists, but this 
 Use ROI-first selection. Prefer the highest-payoff candidate that can be bounded, tested, manually smoked where needed, and rolled back cleanly.
 
 For high-risk runtime areas, do not default to avoidance. Start with characterization tests and a small reversible slice. Defer only when the candidate remains unbounded, untestable, or too ambiguous after inspection.
+
+## Latest App-shell checkpoint
+
+On 2026-06-13, `src/app/ttsSessionFinalization.ts` was selected as the next App-shell extraction because it is a deterministic state transition with explicit inputs and outputs, creates a focused unit-test seam, has low browser/runtime risk, and avoids wrapper-only indirection. `src/App.tsx` now delegates finalized-session state construction from `submitTtsSession`, while keeping validation, performance sampling, voice/environment collection, persistence, playback stop, UI setters, telemetry side effects, and feedback side effects in the App shell.
+
+After this extraction, do not recommend extracting `playTtsFromWord` wholesale yet. The next ROI candidate should be characterization tests around `playTtsFromWord` / the Browser TTS playback loop, or a smaller pure helper inside the playback loop only if inspection finds one with a clear contract and direct tests. Keep wholesale `resetSession` extraction deferred unless inspection reveals a smaller deterministic helper with a strong test seam.
