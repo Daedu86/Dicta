@@ -9,7 +9,6 @@ export async function auditSecurityEvent(supabase, event) {
       event_type: sanitized.eventType,
       profile_id: sanitized.profileId,
       role: sanitized.role,
-      legacy: sanitized.legacy,
       severity: sanitized.severity,
       status_code: sanitized.statusCode,
       route: sanitized.route,
@@ -27,8 +26,7 @@ function sanitizeAuditEvent(event) {
   return {
     eventType: String(event?.eventType || 'unknown').slice(0, 80),
     profileId: event?.profileId ? String(event.profileId).slice(0, 120) : null,
-    role: event?.role === 'admin' ? 'admin' : event?.role === 'member' ? 'member' : event?.role === 'legacy' ? 'legacy' : null,
-    legacy: event?.legacy === true,
+    role: event?.role === 'admin' ? 'admin' : event?.role === 'member' ? 'member' : null,
     severity: event?.severity === 'error' ? 'error' : event?.severity === 'info' ? 'info' : 'warn',
     statusCode: Number.isFinite(Number(event?.statusCode)) ? Number(event.statusCode) : null,
     route: event?.route ? String(event.route).slice(0, 160) : null,
