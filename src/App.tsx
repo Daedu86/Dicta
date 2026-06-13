@@ -36,6 +36,7 @@ import {
 } from './app/browserTtsPlaybackPlan';
 import { completeBrowserTtsChunk } from './app/browserTtsChunkCompletion';
 import { buildBrowserTtsPhraseStartDebugUpdate } from './app/browserTtsAdaptiveSemanticDebug';
+import { buildBrowserTtsPhraseCompletionTelemetry } from './app/browserTtsPhraseCompletionTelemetry';
 import { buildBrowserTtsPlaybackStartPlan } from './app/browserTtsPlaybackStartPlan';
 import { buildFinalizedTtsSessionState } from './app/ttsSessionFinalization';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
@@ -72,7 +73,6 @@ import type {
   SessionTelemetry,
   TtsPacingMode } from './types/dictation';
 import type {
-  LiveTelemetryFrame,
   PhraseSize,
   } from './core/adaptive/types';
 import { configForDifficulty,
@@ -157,7 +157,6 @@ import { formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 import {
-  clamp01,
   getTtsVoiceLang,
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
@@ -1469,20 +1468,13 @@ function App() {
           if (normalizeBenchmarkLanguage(ttsLanguage) === 'de') {
             applyTtsPerformanceSample();
             const completionLiveSignal = ttsLiveSignalRef.current;
-            const completionAccuracy = clamp01(completionLiveSignal.accuracy / 100);
-            const completionTelemetry: LiveTelemetryFrame = {
-              ...chunkTelemetry,
-              phraseId: semanticPhrase?.id ?? `phrase-${macroPhraseIndex}`,
-              accuracy: completionAccuracy,
-              errorRate: clamp01(1 - completionAccuracy),
-              wpm: completionLiveSignal.wpm,
-              lagSec: completionLiveSignal.lagSec,
-              rawLagSec: completionLiveSignal.rawLagSec,
-              stableLagSec: completionLiveSignal.stableLagSec,
-              lagOutlierCount: completionLiveSignal.lagOutlierCount,
+            const completionTelemetry = buildBrowserTtsPhraseCompletionTelemetry({
+              chunkTelemetry,
+              semanticPhraseId: semanticPhrase?.id,
+              macroPhraseIndex,
+              liveSignal: completionLiveSignal,
               unsafeChunkCount: ttsUnsafeChunkCountRef.current,
-              trend: completionLiveSignal.trend,
-            };
+            });
             recordAdaptiveBenchmark(completionTelemetry, runtimeDecision, {
               actualPlaybackRate: rate,
               actualPauseMs: 0,

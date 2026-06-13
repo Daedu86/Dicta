@@ -52,6 +52,7 @@ Browser app:
 - `src/app/useTtsUiPublisher.ts`: Browser TTS live metric UI publication thresholds, throttling, ref updates, and visible metric setter routing.
 - `src/app/useTtsPlaybackProgressEstimator.ts`: Browser TTS spoken-word progress estimation for active chunks, completed-word fallback, and finished playback.
 - `src/app/browserTtsPlaybackPlan.ts`: pure Browser TTS next-chunk playback planning for candidate chunk selection, adaptive decision mapping, runtime rate floor, unsafe-boundary policy, mobile fallback, DE recovery, telemetry frames, and rolling accuracy state updates.
+- `src/app/browserTtsPhraseCompletionTelemetry.ts`: pure Browser TTS phrase-completion benchmark telemetry payload construction for DE completion samples; `App.tsx` still owns `SpeechSynthesisUtterance` event handlers, performance sampling, adaptive benchmark writes, refs, timers, and playback orchestration.
 - `src/app/ttsSessionFinalization.ts`: pure TTS session finalization state construction used by `submitTtsSession`; `App.tsx` still owns validation, performance sampling, voice/environment collection, persistence, playback stop, UI setters, telemetry side effects, and feedback side effects.
 - `src/app/useAdaptiveExportActions.ts`: browser-side adaptive benchmark/session-feedback export, copy, and insights diagnostic actions.
 - `/training`: low-latency typing surface and session controls.
@@ -221,6 +222,7 @@ App runtime and adaptive core:
 - `src/app/useTtsUiPublisher.ts`
 - `src/app/useTtsPlaybackProgressEstimator.ts`
 - `src/app/browserTtsPlaybackPlan.ts`
+- `src/app/browserTtsPhraseCompletionTelemetry.ts`
 - `src/app/ttsSessionFinalization.ts`
 - `src/app/useAdaptiveRuntime.ts`
 - `src/app/useAdaptiveExportActions.ts`

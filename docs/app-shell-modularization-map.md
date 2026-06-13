@@ -2,7 +2,7 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-13 after TTS session finalization extraction.
+Updated: 2026-06-13 after Browser TTS phrase-completion telemetry extraction.
 Status: REFERENCE
 Verified against branch: `product/input-2`
 Verified against commit: update before use with current `git rev-parse --short HEAD`
@@ -19,15 +19,17 @@ The values below are observational anchors, not stable APIs. Recheck them before
 | Item | Value |
 | --- | ---: |
 | Branch | product/input-2 |
-| Last measured source baseline before this extraction | 29fe3d2 |
-| Current `src/App.tsx` LOC after this extraction | 2116 |
+| Last measured source baseline before this extraction | a0bce0f |
+| Current `src/App.tsx` LOC after this extraction | 2109 |
 | Current `src/app/useWorkspaceModelRefreshRuntime.ts` LOC at that baseline | 76 |
 | Current `src/app/useBrowserTtsSetupCardProps.ts` LOC at that baseline | 88 |
 | Current `src/app/browserTtsPlaybackPlan.ts` LOC at that baseline | 367 |
 | Current `src/app/ttsSessionFinalization.ts` LOC after this extraction | 54 |
+| Current `src/app/browserTtsPhraseCompletionTelemetry.ts` LOC after this extraction | 36 |
 | Current `tests/workspaceModelRefreshRuntime.test.ts` LOC at that baseline | 94 |
 | Current `tests/browserTtsPlaybackPlan.test.ts` LOC at that baseline | 324 |
 | Current `tests/ttsSessionFinalization.test.ts` LOC after this extraction | 120 |
+| Current `tests/browserTtsPhraseCompletionTelemetry.test.ts` LOC after this extraction | 108 |
 | App.tsx inline `useState` count at that baseline | 16 |
 | App.tsx inline `useRef` count at that baseline | 27 |
 | App.tsx inline `useMemo` count at that baseline | 5 |
@@ -91,6 +93,7 @@ The values below are observational anchors, not stable APIs. Recheck them before
 - `useTtsUiPublisher` owns Browser TTS live metric UI publication thresholds, 500 ms throttling, forced publication, published UI ref updates, and visible metric setter routing.
 - `useTtsPlaybackProgressEstimator` owns Browser TTS spoken-word progress estimation for active chunks, completed-word fallback, finished playback, and source-word clamping.
 - `browserTtsPlaybackPlan` owns pure Browser TTS next-chunk playback planning: candidate chunk selection, adaptive controller decision mapping, pacing mode derivation, runtime rate floor, unsafe-boundary policy, Android mobile fallback, DE recovery policy, executable telemetry frames, rolling accuracy windows, and next phrase-size/boundary state. The full `playTtsFromWord` / `speakNext` loop, `SpeechSynthesisUtterance` creation, event handlers, adaptive benchmark writes, telemetry persistence, UI setters, refs, submit, and reset behavior remain in `src/App.tsx`.
+- `browserTtsPhraseCompletionTelemetry` owns pure Browser TTS phrase-completion telemetry payload construction for DE completion benchmark samples. The `SpeechSynthesisUtterance` event handler, performance sampling call, adaptive benchmark write, refs, and playback loop remain in `src/App.tsx`.
 - `ttsSessionFinalization` owns pure TTS session finalization state construction for `submitTtsSession`: target session replacement, finished status, updated timestamp, final metrics/telemetry, practice text, Browser TTS voice/environment metadata, and finalized-session lookup. `App.tsx` still owns validation, performance sampling, voice/environment collection, persistence, playback stop, UI setters, telemetry side effects, feedback side effects, and submit orchestration.
 - `browserTtsChunkCompletion` owns pure Browser TTS chunk-completion state transitions: completed source-word calculation, macro phrase advancement, next macro word offset, phrase-advance detection, and pause-before-next-chunk scheduling metadata.
 - `browserTtsAdaptiveSemanticDebug` owns Browser TTS phrase-start adaptive semantic debug aggregation: pause safety counts, deferred pause/replay penalties, rolling semantic completeness/difficulty averages, execution fidelity, phrase preview, and phrase counter publication.
@@ -102,26 +105,26 @@ The values below are observational anchors, not stable APIs. Recheck them before
 - Do not treat Browser TTS, refs, timers, telemetry, `resetSession`, or `playTtsFromWord` risk as an automatic veto. Treat that risk as validation cost, slice size, required characterization coverage, manual smoke scope, and rollback planning.
 - Reject only candidates that are unbounded, untestable, too ambiguous to verify, or mostly create no-op wrapper indirection.
 - Do not immediately jump to the full playback loop without a fresh scorecard, focused characterization coverage, and explicit stop conditions.
-- After the TTS session finalization seam, the next highest-confidence work is characterization around `playTtsFromWord` / the Browser TTS playback loop, or a smaller pure helper inside that loop only if inspection finds one with explicit inputs and focused tests. Do not recommend extracting `playTtsFromWord` wholesale yet. Keep wholesale `resetSession` extraction deferred unless a smaller deterministic helper with a strong test seam appears.
+- After the phrase-completion telemetry seam, the next highest-confidence work is characterization around `playTtsFromWord` / the Browser TTS playback loop before moving more runtime code. Do not recommend extracting `playTtsFromWord` wholesale yet. Only select another helper inside the loop if inspection finds a deterministic block with explicit inputs and focused tests. Keep wholesale `resetSession` extraction deferred unless a smaller deterministic helper with a strong test seam appears.
 
 ## Current high-risk anchors
 
-These line numbers were observed in the post-TTS-finalization working tree. Recheck with `rg` before editing; they are anchors for risk inspection, not stable APIs.
+These line numbers were observed in the post-phrase-completion-telemetry working tree. Recheck with `rg` before editing; they are anchors for risk inspection, not stable APIs.
 
 | Area | Current location |
 | --- | --- |
-| `resetSession` | `src/App.tsx:921` |
+| `resetSession` | `src/App.tsx:920` |
 | `buildSemanticPhrasesForCurrentSession` | `src/App.tsx:972` |
 | `useTtsTelemetryRecorder` hook call | `src/App.tsx:1104-1109` |
 | `useTtsPlaybackProgressEstimator` hook call | `src/App.tsx:1110-1119` |
 | `useTtsUiPublisher` hook call | `src/App.tsx:1121-1138` |
 | `useTtsPerformanceSampler` hook call | `src/App.tsx:1140-1157` |
-| `submitTtsSession` | `src/App.tsx:1162-1206` |
-| `playTts` | `src/App.tsx:1209` |
-| `playTtsFromWord` | `src/App.tsx:1214-1549` |
-| `useTtsPlaybackControls` hook call | `src/App.tsx:1557-1591` |
-| `BrowserTtsSetupCard` prop hook call | `src/App.tsx:1993` |
-| `BrowserTtsSetupCard` render branch | `src/App.tsx:2084` |
+| `submitTtsSession` | `src/App.tsx:1161-1205` |
+| `playTts` | `src/App.tsx:1208` |
+| `playTtsFromWord` | `src/App.tsx:1213-1544` |
+| `useTtsPlaybackControls` hook call | `src/App.tsx:1549-1583` |
+| `BrowserTtsSetupCard` prop hook call | `src/App.tsx:1985` |
+| `BrowserTtsSetupCard` render branch | `src/App.tsx:2076` |
 
 ## ROI-based modularization policy
 
@@ -143,9 +146,9 @@ Only non-implemented candidates belong in this table. Implemented candidates bel
 
 | Candidate name | Current location / line range | Proposed extraction target | Expected net LOC movement | Runtime boundaries touched | Main behavior preserved | ROI score | Risk / validation cost score | Required tests | Required manual smoke checks | Rollback plan | Decision | Reason |
 | --- | --- | --- | ---: | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |
-| `resetSession` side-effect body | `src/App.tsx:921-965` | Possible future `src/app/useResetSessionRuntime.ts` or smaller reset side-effect helper | 20-35 fewer `App.tsx` lines | reset lifecycle, Browser TTS stop ordering, refs, telemetry, UI metrics, adaptive feedback | Keep `buildResetSessionState` defaults, `preserveInputSettingsLock`, finished-session reset allowance, `stopTtsPlayback` ordering, TTS refs, UI metrics, telemetry reset, and adaptive feedback reset | 64 | 78 | Existing `tests/resetSessionState.test.ts` and `tests/useTrainingSessionLifecycle.test.ts`; add hook characterization before moving side effects | Reset ready and finished sessions; confirm setup lock preservation; confirm Browser TTS setup expands only when expected; verify submit message clears | Revert hook/helper import and restore inline body from `App.tsx` | defer | The remaining body is mostly sequencing across playback, refs, telemetry, state setters, and feedback tracking. Risk is not a veto, but payoff is lower after reset defaults were already extracted and the side-effect slice needs more characterization first. Wholesale extraction remains deferred unless inspection finds a smaller deterministic helper with a strong test seam. |
+| `resetSession` side-effect body | `src/App.tsx:920-964` | Possible future `src/app/useResetSessionRuntime.ts` or smaller reset side-effect helper | 20-35 fewer `App.tsx` lines | reset lifecycle, Browser TTS stop ordering, refs, telemetry, UI metrics, adaptive feedback | Keep `buildResetSessionState` defaults, `preserveInputSettingsLock`, finished-session reset allowance, `stopTtsPlayback` ordering, TTS refs, UI metrics, telemetry reset, and adaptive feedback reset | 64 | 78 | Existing `tests/resetSessionState.test.ts` and `tests/useTrainingSessionLifecycle.test.ts`; add hook characterization before moving side effects | Reset ready and finished sessions; confirm setup lock preservation; confirm Browser TTS setup expands only when expected; verify submit message clears | Revert hook/helper import and restore inline body from `App.tsx` | defer | The remaining body is mostly sequencing across playback, refs, telemetry, state setters, and feedback tracking. Risk is not a veto, but payoff is lower after reset defaults were already extracted and the side-effect slice needs more characterization first. Wholesale extraction remains deferred unless inspection finds a smaller deterministic helper with a strong test seam. |
 | `buildSemanticPhrasesForCurrentSession` | `src/App.tsx:976-981` | Possible `src/app/semanticPhraseSelection.ts` | 0-5 fewer `App.tsx` lines | phrase selection | Keep DictationScript sessions using script phrases and plain text sessions using ordered semantic phrases | 34 | 24 | Existing `tests/semanticPhrasePlanner.test.ts` and `tests/dictationScriptValidation.test.ts` would remain enough unless behavior changes | Create/import one script session and one plain-text Browser TTS session if touched | Revert helper import and inline the conditional | reject | The function is too small to justify a new module by itself. It is low risk, but the ROI is also low and would mostly add indirection. |
-| `playTtsFromWord` playback loop | `src/App.tsx:1214-1549` | Future characterization tests first, then possible smaller pure helper inside the loop if inspection finds one | 0 fewer `App.tsx` lines for characterization; unknown for a later bounded helper | SpeechSynthesis events, Browser TTS refs/timers, adaptive benchmark writes, phrase progression, telemetry, submit/completion behavior | Preserve validation errors, voice/environment capture, semantic phrase indexing, German recovery-safe chunks, adaptive decisions, rate/floor/unsafe policies, benchmark events, utterance handlers, phrase advancement, and completion behavior | 90 | 98 | Add characterization around playback-loop behavior before moving more code; later add mocked SpeechSynthesis loop tests only for a bounded helper seam | Full playback through multiple chunks; replay from word; German recovery; unexpected utterance error; complete session transition | Revert characterization/helper import and restore inline function | defer | It is high ROI but still too coupled to nested browser callbacks, adaptive benchmark writes, refs, and phrase progression. Do not extract it wholesale yet; the next safe pass should be characterization or a smaller pure helper after inspection. |
+| `playTtsFromWord` playback loop | `src/App.tsx:1213-1544` | Future characterization tests first, then possible smaller pure helper inside the loop if inspection finds one | 0 fewer `App.tsx` lines for characterization; unknown for a later bounded helper | SpeechSynthesis events, Browser TTS refs/timers, adaptive benchmark writes, phrase progression, telemetry, submit/completion behavior | Preserve validation errors, voice/environment capture, semantic phrase indexing, German recovery-safe chunks, adaptive decisions, rate/floor/unsafe policies, benchmark events, utterance handlers, phrase advancement, and completion behavior | 90 | 98 | Add characterization around playback-loop behavior before moving more code; later add mocked SpeechSynthesis loop tests only for a bounded helper seam | Full playback through multiple chunks; replay from word; German recovery; unexpected utterance error; complete session transition | Revert characterization/helper import and restore inline function | defer | It remains high ROI but still too coupled to nested browser callbacks, adaptive benchmark writes, refs, and phrase progression. One deterministic helper has now been extracted; do not extract the loop wholesale yet. The next safe pass should be characterization of the broader loop behavior. |
 
 ## Completed extraction log
 
@@ -159,6 +162,7 @@ Implemented candidates stay here as historical evidence. Do not select them agai
 | TTS telemetry recorder helper | `src/app/useTtsTelemetryRecorder.ts` | About 38 fewer `App.tsx` lines before docs/test additions | `tests/useTtsTelemetryRecorder.test.ts`; keep sampler/control/lifecycle/runtime tests relevant | Attempt telemetry initialization, elapsed-time calculation, action/chunk telemetry recording | Implemented as a bounded Browser TTS telemetry seam after playback controls. |
 | TTS progress helper seam | `src/app/useTtsPlaybackProgressEstimator.ts` | About 8 fewer `App.tsx` lines before docs/test additions | `tests/useTtsPlaybackProgressEstimator.test.ts`; keep sampler/control/runtime tests relevant | Spoken-word progress estimation, active chunk fallback, completed-source fallback | Modest App reduction but useful timing/ref seam for pause, seek, and sampler lag calculations. |
 | TTS session finalization state | `src/app/ttsSessionFinalization.ts` | About 3 fewer `App.tsx` lines before docs/test additions, with lower decision complexity in `submitTtsSession` | `tests/ttsSessionFinalization.test.ts`; nearby validation used `tests/useTtsPerformanceSampler.test.ts` and `tests/useTrainingSessionLifecycle.test.ts` | Final session replacement, finished status, updated timestamp, final metrics/telemetry, practice text, Browser TTS voice/environment metadata, finalized-session lookup | Selected because it is a deterministic state transition with explicit inputs, a focused test seam, low browser/runtime risk, and no wrapper-only indirection. `App.tsx` keeps orchestration and side effects. |
+| Browser TTS phrase-completion telemetry | `src/app/browserTtsPhraseCompletionTelemetry.ts` | About 7 fewer `App.tsx` lines before docs/test additions, with lower decision complexity in the `playTtsFromWord` completion branch | `tests/browserTtsPhraseCompletionTelemetry.test.ts`; keep `tests/browserTtsPlaybackPlan.test.ts`, `tests/browserTtsChunkCompletion.test.ts`, sampler, controls, and runtime tests relevant | DE phrase-completed benchmark telemetry payload construction: phrase id fallback, latest live lag/accuracy/wpm fields, unsafe chunk count, and preserved chunk context | Selected as the smaller pure helper inside the playback loop after ROI inspection. `App.tsx` keeps the `SpeechSynthesisUtterance` event handler, sampling call, adaptive benchmark write, refs, timers, and playback orchestration. |
 
 ## Freshness and update rules
 
