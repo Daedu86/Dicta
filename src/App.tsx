@@ -1823,7 +1823,6 @@ function App() {
     setLeaderboardSectionExpanded,
     onOpenWorkspaceForSession: openWorkspaceForSession,
     onOpenDashboardForSession: openDashboardForSession,
-    setExportMessage,
     onDeleteSession: deleteSession,
     onBackToTraining: showLeaderboardWorkspace,
     formatLeaderboardSessionStatus,

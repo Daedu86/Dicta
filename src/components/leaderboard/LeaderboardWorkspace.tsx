@@ -64,8 +64,6 @@ export type LeaderboardWorkspaceProps<TSession extends LeaderboardSession = Lead
   onToggleLeaderboardSectionExpanded: (sectionId: LeaderboardSectionId) => void;
   onOpenWorkspaceForSession: (session: TSession) => void;
   onOpenDashboardForSession: (sessionId: string) => void;
-  onDownloadSessionSnapshot: (session: TSession) => void;
-  onCopySessionSnapshot: (session: TSession) => void;
   onDeleteSession: (sessionId: string) => void;
   onBackToTraining: () => void;
   formatLeaderboardSessionStatus: (session: TSession) => string;
@@ -96,8 +94,6 @@ export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
   onToggleLeaderboardSectionExpanded,
   onOpenWorkspaceForSession,
   onOpenDashboardForSession,
-  onDownloadSessionSnapshot,
-  onCopySessionSnapshot,
   onDeleteSession,
   onBackToTraining,
   formatLeaderboardSessionStatus,
@@ -276,24 +272,6 @@ export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
                                   title="Dashboard"
                                 >
                                   <span aria-hidden="true">◫</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="secondary-button leaderboard-action-button"
-                                  onClick={() => onDownloadSessionSnapshot(session)}
-                                  aria-label={`Export JSON for ${getSessionDisplayTitle(session)}`}
-                                  title="Export JSON"
-                                >
-                                  <span aria-hidden="true">⇩</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="secondary-button leaderboard-action-button"
-                                  onClick={() => onCopySessionSnapshot(session)}
-                                  aria-label={`Copy JSON for ${getSessionDisplayTitle(session)}`}
-                                  title="Copy JSON"
-                                >
-                                  <span aria-hidden="true">⧉</span>
                                 </button>
                                 <button
                                   type="button"

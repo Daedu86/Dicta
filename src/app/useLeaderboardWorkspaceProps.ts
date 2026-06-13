@@ -1,6 +1,5 @@
 import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import type { LeaderboardWorkspaceProps } from '../components/leaderboard/LeaderboardWorkspace';
-import { copySessionSnapshot, downloadSessionSnapshot } from './sessionSnapshotActions';
 import type { StoredSession } from './sessionTypes';
 
 type LeaderboardSectionExpanded = LeaderboardWorkspaceProps<StoredSession>['leaderboardSectionExpanded'];
@@ -8,11 +7,10 @@ type LeaderboardSectionId = Parameters<LeaderboardWorkspaceProps<StoredSession>[
 
 type UseLeaderboardWorkspacePropsArgs = Omit<
   LeaderboardWorkspaceProps<StoredSession>,
-  'onToggleLeaderboardExpanded' | 'onToggleLeaderboardSectionExpanded' | 'onDownloadSessionSnapshot' | 'onCopySessionSnapshot'
+  'onToggleLeaderboardExpanded' | 'onToggleLeaderboardSectionExpanded'
 > & {
   setLeaderboardExpanded: Dispatch<SetStateAction<boolean>>;
   setLeaderboardSectionExpanded: Dispatch<SetStateAction<LeaderboardSectionExpanded>>;
-  setExportMessage: Dispatch<SetStateAction<string>>;
 };
 
 export function useLeaderboardWorkspaceProps({
@@ -29,7 +27,6 @@ export function useLeaderboardWorkspaceProps({
   setLeaderboardSectionExpanded,
   onOpenWorkspaceForSession,
   onOpenDashboardForSession,
-  setExportMessage,
   onDeleteSession,
   onBackToTraining,
   formatLeaderboardSessionStatus,
@@ -63,10 +60,6 @@ export function useLeaderboardWorkspaceProps({
       })),
     onOpenWorkspaceForSession,
     onOpenDashboardForSession,
-    onDownloadSessionSnapshot: downloadSessionSnapshot,
-    onCopySessionSnapshot: (session) => {
-      void copySessionSnapshot(session, setExportMessage);
-    },
     onDeleteSession,
     onBackToTraining,
     formatLeaderboardSessionStatus,
@@ -95,7 +88,6 @@ export function useLeaderboardWorkspaceProps({
     setLeaderboardSectionExpanded,
     onOpenWorkspaceForSession,
     onOpenDashboardForSession,
-    setExportMessage,
     onDeleteSession,
     onBackToTraining,
     formatLeaderboardSessionStatus,
