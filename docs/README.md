@@ -42,6 +42,18 @@ The following canonical onboarding documents are active:
 | `module-test-map.md` | Map of important modules to the tests that protect them. |
 | `high-risk-runtime-boundaries.md` | Centralized runtime safety rules for fragile or high-risk areas. |
 
+## Modularization decision docs
+
+Use these documents in this order before proposing or applying modularization:
+
+| Document | Status | Purpose |
+| --- | --- | --- |
+| `modularization-roi.md` | Active | Repo-wide ROI scoring framework, evidence calibration, freshness rules, and AI-assisted refactor risk guidance. |
+| `app-shell-modularization-map.md` | Reference | Current App shell candidate queue and completed extraction log. Verify branch, commit, source anchors, and LOC before use. |
+| `module-test-map.md` | Active | Module-to-test validation map for narrow test selection. |
+| `high-risk-runtime-boundaries.md` | Active | Runtime risk rules for Browser TTS, persistence, auth, mobile/PWA, CSS cascade, and related fragile boundaries. |
+| `next-modularization-plan.md` | Reference / Historical | Former near-term plan. Preserved for checkpoint context only; do not use as the active candidate queue. |
+
 ## Historical modularization docs
 
 These documents may contain useful context, but they are not current sources of truth unless verified against the current branch and source files.
@@ -54,11 +66,9 @@ These documents may contain useful context, but they are not current sources of 
 | `app-post-leaderboard-measurement.md` | Historical measurement/modularization note. |
 | `app-shell-header-modularization.md` | Historical modularization note. |
 | `archive/app-shell-modularization-checkpoint.md` | Historical checkpoint log with stale baseline hashes. |
-| `app-shell-modularization-map.md` | Reference document refreshed at `b1fc1d8`; verify recent commits and LOC before use. |
 | `auth-workspace-modularization.md` | Historical modularization note. |
 | `leaderboard-workspace-modularization.md` | Historical modularization note. |
 | `archive/legacy-multi-input-2026-06-05.md` | Historical legacy snapshot. |
-| `next-modularization-plan.md` | Planning reference; verify against current branch before using. |
 | `openrouter-workspace-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |
 | `pending-session-lane-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |
 | `session-dashboard-modularization.md` | Historical note; reference repaired to `docs/app-shell-modularization-map.md`. |
@@ -71,8 +81,9 @@ Before using any historical modularization document as implementation guidance:
 2. Check recent commits.
 3. Inspect the current source files.
 4. Inspect the current tests for the area being changed.
-5. Prefer current source and tests over old checkpoint notes.
-6. Treat old commit hashes as historical unless they match current `HEAD`.
+5. Compare the document's verified commit against current `HEAD`.
+6. Prefer current source and tests over old checkpoint notes.
+7. Treat old commit hashes as historical unless they match current `HEAD`.
 
 ## Known documentation issues
 
