@@ -12,6 +12,7 @@ export type AppShellHeaderProps = {
   buildInfoTitle: string;
   buildInfoLabel: string;
   showAdminButton: boolean;
+  showAdaptiveButton: boolean;
   showOpenRouterButton: boolean;
   syncStatusState: string;
   syncStatusText: string;
@@ -35,6 +36,7 @@ export function AppShellHeader({
   buildInfoTitle,
   buildInfoLabel,
   showAdminButton,
+  showAdaptiveButton,
   showOpenRouterButton,
   syncStatusState,
   syncStatusText,
@@ -95,13 +97,15 @@ export function AppShellHeader({
         >
           Training Mode (Mobile ver)
         </button>
-        <button
-          type="button"
-          className="secondary-button brand-adaptive-button"
-          onClick={onOpenAdaptive}
-        >
-          🧠 Adaptive Pace Layer
-        </button>
+        {showAdaptiveButton ? (
+          <button
+            type="button"
+            className="secondary-button brand-adaptive-button"
+            onClick={onOpenAdaptive}
+          >
+            🧠 Adaptive Pace Layer
+          </button>
+        ) : null}
         {showAdminButton ? (
           <button
             type="button"

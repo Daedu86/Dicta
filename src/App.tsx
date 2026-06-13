@@ -1899,6 +1899,7 @@ function App() {
     buildInfoTitle: DICTA_BUILD_INFO_TITLE,
     buildInfoLabel: DICTA_BUILD_INFO_LABEL,
     showAdminButton: isCurrentProfileAdmin || !syncConfig.authRequired,
+    showAdaptiveButton: isCurrentProfileAdmin || !syncConfig.authRequired,
     showOpenRouterButton: openRouterAccessAllowed,
     syncStatusState: supabaseSyncStatus.state,
     syncStatusText: appShellSyncStatusText,

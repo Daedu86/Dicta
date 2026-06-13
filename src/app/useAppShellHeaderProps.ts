@@ -9,6 +9,7 @@ type UseAppShellHeaderPropsArgs = {
   buildInfoTitle: string;
   buildInfoLabel: string;
   showAdminButton: boolean;
+  showAdaptiveButton: boolean;
   showOpenRouterButton: boolean;
   syncStatusState: string;
   syncStatusText: string;
@@ -29,6 +30,7 @@ export function useAppShellHeaderProps({
   buildInfoTitle,
   buildInfoLabel,
   showAdminButton,
+  showAdaptiveButton,
   showOpenRouterButton,
   syncStatusState,
   syncStatusText,
@@ -53,6 +55,7 @@ export function useAppShellHeaderProps({
       buildInfoTitle,
       buildInfoLabel,
       showAdminButton,
+      showAdaptiveButton,
       showOpenRouterButton,
       syncStatusState,
       syncStatusText,
@@ -72,6 +75,7 @@ export function useAppShellHeaderProps({
     buildInfoTitle,
     buildInfoLabel,
     showAdminButton,
+    showAdaptiveButton,
     showOpenRouterButton,
     syncStatusState,
     syncStatusText,
