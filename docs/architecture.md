@@ -264,3 +264,13 @@ Local services:
 
 - Production transcription still needs a deployed backend, object storage, and long-running job handling.
 - Full-tree render volume during long Browser TTS runs can still be reduced.
+
+## Adaptive Listening Brain
+
+Dicta's adaptive listening brain is documented as a single KB block in `docs/adaptive-listening-brain.md`.
+
+Architecturally, it sits between live Browser TTS telemetry and long-term benchmark/history feedback:
+
+    live telemetry -> scoped controller -> Browser TTS policies -> benchmark/history feedback -> debug/reporting
+
+The current hardened path includes listening precision telemetry, inferred chunk correction pressure, controller scoping by input mode and language, controller reset on session start, explicit en/es/de/fr/pt Browser TTS profiles, structured pacing reason codes, and exact-token benchmark suffix handling.

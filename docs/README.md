@@ -88,3 +88,11 @@ Before using any historical modularization document as implementation guidance:
 ## Known documentation issues
 
 See `documentation-inventory.md` for the current list of missing canonical docs, broken references, stale baseline hashes, and future cleanup stages.
+
+## Adaptive Listening Brain KB
+
+The canonical KB entry for the adaptive listening/pacing brain is:
+
+- [Adaptive Listening Brain](./adaptive-listening-brain.md)
+
+Use that document as the single source of truth for Browser TTS adaptive pacing, listening precision, correction pressure, language-scoped controller state, structured reason codes, benchmark suffix handling, and pending adaptive improvements.

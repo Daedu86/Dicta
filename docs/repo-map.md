@@ -112,3 +112,20 @@ For documentation changes:
 ## Modularization decision layer
 
 Use `docs/modularization-roi.md` before extracting, moving, or splitting repo areas. The repo map explains ownership; the ROI framework decides whether a proposed boundary is worth creating now.
+
+## Adaptive Listening Brain
+
+The adaptive listening brain is documented in `docs/adaptive-listening-brain.md`.
+
+Primary runtime/code areas:
+
+- `src/core/adaptive/AdaptiveDictationController.ts`
+- `src/core/adaptive/types.ts`
+- `src/core/adaptive/pacingReasonCodes.ts`
+- `src/app/adaptiveControllerRegistry.ts`
+- `src/app/useAdaptiveRuntime.ts`
+- `src/app/browserTtsPlaybackPlan.ts`
+- `src/inputs/browserTts/browserTtsTelemetryAdapter.ts`
+- `src/inputs/browserTts/browserTtsAdaptiveProfiles.ts`
+- `src/inputs/browserTts/browserTtsRatePolicy.ts`
+- `src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts`

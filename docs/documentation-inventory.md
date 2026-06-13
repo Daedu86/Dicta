@@ -128,3 +128,7 @@ Before using any historical modularization document as a source of truth, agents
 5. Inspect the current tests for the touched area.
 6. Prefer current source files and tests over old checkpoint notes.
 7. Treat old baseline hashes as historical unless they match current `HEAD`.
+
+## Adaptive Listening Brain
+
+- `docs/adaptive-listening-brain.md` — canonical KB entry for the adaptive listening brain. Covers Browser TTS pacing telemetry, controller state scoping, language profiles, reason codes, benchmark suffix normalization, validation baseline, and future improvement backlog.
