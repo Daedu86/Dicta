@@ -3,7 +3,7 @@
   "short_name": "Dicta",
   "description": "Focused adaptive dictation training.",
   "id": "/training",
-  "start_url": "/login.html?next=%2Ftraining",
+  "start_url": "/training",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
