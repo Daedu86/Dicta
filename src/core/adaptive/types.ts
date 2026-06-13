@@ -5,8 +5,9 @@ export type { InputMode, StoredInputMode } from './inputModes';
 export type { ListeningPrecisionMetrics } from './listeningPrecisionMetrics';
 
 export type PhraseSize = 'short' | 'medium' | 'long';
-export type PacingMode = 'support' | 'balanced' | 'flow';
+export type PacingMode = 'recovery' | 'support' | 'balanced' | 'flow';
 export type PacingReasonCode =
+  | 'mode-recovery'
   | 'mode-support'
   | 'mode-balanced'
   | 'mode-flow'
@@ -20,6 +21,10 @@ export type PacingReasonCode =
   | 'defer-pause-until-safe-boundary'
   | 'high-accuracy-low-lag'
   | 'support-needed'
+  | 'recovery-needed'
+  | 'extended-catch-up-window'
+  | 'flow-blocked-after-recovery'
+  | 'stable-recovery-confirmed'
   | 'low-history-confidence'
   | 'adaptive-pause-very-low-accuracy'
   | 'adaptive-pause-low-accuracy'

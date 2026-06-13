@@ -13,12 +13,14 @@ const MAX_PLAYBACK_RATE = 1.15;
 const MAX_RATE_DELTA = 0.05;
 
 const phraseSizeForMode: Record<PacingMode, PhraseSize> = {
+  recovery: 'short',
   support: 'short',
   balanced: 'medium',
   flow: 'long',
 };
 
 const idealPauseByMode: Record<PacingMode, number> = {
+  recovery: 2200,
   support: 1200,
   balanced: 750,
   flow: 350,
@@ -37,6 +39,23 @@ function computeScore(value: number, min: number, max: number): number {
   return clamp((value - min) / Math.max(0.01, max - min), 0, 1);
 }
 
+function computeProgressGap(live: AdaptivePacingInput['live']): number {
+  const spokenProgress = live.spokenProgressRatio;
+  const typedProgress = live.typedProgressRatio;
+
+  // Treat incomplete/default progress telemetry as absent. Several semantic controller
+  // paths do not model Browser TTS progress, and a zero typed ratio should not by itself
+  // force support/recovery or defer-pause behavior.
+  if (!Number.isFinite(spokenProgress) || !Number.isFinite(typedProgress)) {
+    return 0;
+  }
+  if (spokenProgress <= 0 || typedProgress <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, spokenProgress - typedProgress);
+}
+
 function chooseMode(input: AdaptivePacingInput): PacingMode {
   const { live, history } = input;
   const sessionAccuracy = live.sessionAccuracy ?? live.accuracy;
@@ -45,6 +64,7 @@ function chooseMode(input: AdaptivePacingInput): PacingMode {
   const lag = live.lagSec;
   const correction = live.correctionRate;
   const wpm = live.wpm;
+  const progressGap = computeProgressGap(live);
 
   const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
   const phraseOverload = longPhrase && (rollingAccuracy < 0.88 || lag > 1.5 || correction > 0.08);
@@ -56,7 +76,20 @@ function chooseMode(input: AdaptivePacingInput): PacingMode {
     wpm >= Math.max(history.averageWpm * 0.95, 0) &&
     !phraseOverload &&
     !longPhraseSensitive;
-  const struggling = lag > 2.0 || rollingAccuracy < 0.8 || correction > 0.10 || phraseOverload || longPhraseSensitive;
+  const catchUpPressure = lag > 3.0 || (lag > 2.4 && progressGap > 0.1);
+  const recoveryPrecisionStable = rollingAccuracy >= 0.86 && correction < 0.12;
+  const recoveryNeeded = catchUpPressure && recoveryPrecisionStable;
+  const struggling =
+    lag > 2.0 ||
+    rollingAccuracy < 0.8 ||
+    correction > 0.10 ||
+    (lag > 1.8 && progressGap > 0.18) ||
+    phraseOverload ||
+    longPhraseSensitive;
+
+  if (recoveryNeeded) {
+    return 'recovery';
+  }
 
   if (struggling) {
     return 'support';
@@ -94,7 +127,7 @@ function resolveListeningPrecisionRateCeiling(
     metrics.contentWordRecall < 0.75 ||
     metrics.omissionRate > 0.18 ||
     metrics.completionWindowScore < 0.65;
-  if (severePrecisionRisk) return mode === 'support' ? supportRateCeiling : 0.92;
+  if (severePrecisionRisk) return mode === 'support' || mode === 'recovery' ? supportRateCeiling : 0.92;
 
   const unstablePrecisionRisk =
     precisionScore < 0.86 ||
@@ -119,6 +152,8 @@ export class AdaptiveDictationController {
   private recoveryFrames = 0;
   private supportFrames = 0;
   private balancedFrames = 0;
+  private catchUpFrames = 0;
+  private flowLockFrames = 0;
 
   decide(input: AdaptivePacingInput): PacingDecision {
     const { live, history } = input;
@@ -191,7 +226,14 @@ export class AdaptiveDictationController {
     const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
     const phraseOverload = longPhrase && (rollingAccuracyLast3 < 0.88 || live.lagSec > 1.5 || live.correctionRate > 0.08);
     const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
-    const userIsStruggling = live.lagSec > 2.0 || rollingAccuracyLast3 < 0.82 || live.correctionRate > 0.12 || phraseOverload || longPhraseSensitive;
+    const progressGap = computeProgressGap(live);
+    const userIsStruggling =
+      live.lagSec > 2.0 ||
+      rollingAccuracyLast3 < 0.82 ||
+      live.correctionRate > 0.12 ||
+      (live.lagSec > 1.8 && progressGap > 0.18) ||
+      phraseOverload ||
+      longPhraseSensitive;
     if (userIsStruggling) {
       this.struggleFrames += 1;
       this.recoveryFrames = 0;
@@ -199,32 +241,78 @@ export class AdaptiveDictationController {
       this.recoveryFrames += 1;
       this.struggleFrames = 0;
     }
-    if (chosenMode === 'support') {
+    const catchUpPressure =
+      live.lagSec > 3.0 ||
+      (live.lagSec > 2.4 && progressGap > 0.1);
+    const recoveryPrecisionStable = rollingAccuracyLast3 >= 0.86 && live.correctionRate < 0.12;
+    const immediateRecoveryNeeded = catchUpPressure && recoveryPrecisionStable;
+    const sustainedRecoveryNeeded =
+      this.struggleFrames >= 2 &&
+      recoveryPrecisionStable &&
+      (live.lagSec > 2.6 || progressGap > 0.14) &&
+      (live.lagSec > 1.8 && progressGap > 0.08);
+
+    let mode: PacingMode = immediateRecoveryNeeded || sustainedRecoveryNeeded ? 'recovery' : chosenMode;
+    let flowBlockedAfterRecovery = false;
+    let stableRecoveryConfirmed = false;
+
+    if (this.flowLockFrames > 0 && mode === 'flow') {
+      mode = 'balanced';
+      flowBlockedAfterRecovery = true;
+    }
+
+    if (mode === 'recovery') {
+      this.catchUpFrames += 1;
+      this.flowLockFrames = Math.max(this.flowLockFrames, 6);
+      this.supportFrames = 0;
+      this.balancedFrames = 0;
+    } else if (mode === 'support') {
       this.supportFrames += 1;
       this.balancedFrames = 0;
+      if (this.flowLockFrames > 0) this.flowLockFrames -= 1;
     } else {
       this.balancedFrames += 1;
       this.supportFrames = 0;
+      if (this.flowLockFrames > 0) this.flowLockFrames -= 1;
     }
 
-    let mode: PacingMode = chosenMode;
+    if (
+      mode === 'recovery' &&
+      this.recoveryFrames >= 6 &&
+      rollingAccuracyLast5 > 0.9 &&
+      Math.abs(live.lagSec) < 1.0 &&
+      live.correctionRate < 0.08 &&
+      progressGap < 0.06
+    ) {
+      mode = 'support';
+      stableRecoveryConfirmed = true;
+    }
+
     if (
       mode === 'support' &&
       this.supportFrames >= 2 &&
-      this.recoveryFrames >= 3 &&
-      rollingAccuracyLast5 > 0.92 &&
-      Math.abs(live.lagSec) < 1.5
+      this.recoveryFrames >= 5 &&
+      rollingAccuracyLast5 > 0.93 &&
+      Math.abs(live.lagSec) < 1.0 &&
+      progressGap < 0.08
     ) {
       mode = 'balanced';
     }
 
-    const boundaryStrictness: 'sentence' | 'clause' | 'phrase' = mode === 'support' ? 'clause' : mode === 'flow' ? 'phrase' : 'sentence';
-    const allowMidPhrasePause = mode === 'support' && boundaryType === 'minor';
+    if (mode !== 'recovery' && this.recoveryFrames >= 6 && this.catchUpFrames > 0) {
+      this.catchUpFrames = 0;
+    }
 
-    const hysteresisStruggling = userIsStruggling || this.struggleFrames >= 2;
+    const isSupportLikeMode = mode === 'support' || mode === 'recovery';
+    const boundaryStrictness: 'sentence' | 'clause' | 'phrase' = isSupportLikeMode ? 'clause' : mode === 'flow' ? 'phrase' : 'sentence';
+    const allowMidPhrasePause = isSupportLikeMode && boundaryType === 'minor';
+
+    const hysteresisStruggling = userIsStruggling || this.struggleFrames >= 2 || mode === 'recovery';
     const shouldPauseNow = hysteresisStruggling && canPauseAfter;
     const deferPauseUntilSafeBoundary = userIsStruggling && !canPauseAfter;
-    const replayWanted = live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && canReplayIndependently && semanticCompleteness >= 0.65;
+    const lagReplayWanted = live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && canReplayIndependently && semanticCompleteness >= 0.65;
+    const catchUpReplayWanted = mode === 'recovery' && rollingAccuracyLast3 < 0.86 && canReplayIndependently && semanticCompleteness >= 0.65;
+    const replayWanted = lagReplayWanted || catchUpReplayWanted;
     const shouldReplayPhrase = supportsPhraseReplay && replayWanted;
     let pauseAfterPhraseMs = shouldReplayPhrase ? Math.max(1200, idealPauseByMode[mode]) : idealPauseByMode[mode];
 
@@ -252,11 +340,13 @@ export class AdaptiveDictationController {
       nextPhraseSize = 'short';
       const provisional = Number((playbackRate - 0.06).toFixed(2));
       playbackRate = Math.max(supportRateFloor, provisional);
-      pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, idealPauseByMode.support);
+      pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, idealPauseByMode.recovery);
     }
 
-    // Gradual recovery: require multiple good frames before allowing aggressive growth.
-    if (this.recoveryFrames < 3 && nextPhraseSize === 'long') {
+    // Gradual recovery: require a wider stable window before allowing aggressive growth.
+    if (mode === 'recovery') {
+      nextPhraseSize = 'short';
+    } else if ((this.recoveryFrames < 5 || this.flowLockFrames > 0) && nextPhraseSize === 'long') {
       nextPhraseSize = 'medium';
     }
 
@@ -289,11 +379,26 @@ export class AdaptiveDictationController {
       reason.push('defer-pause-until-safe-boundary');
       reasonCodes.push('defer-pause-until-safe-boundary');
     }
+    if (flowBlockedAfterRecovery) {
+      reason.push('flow-blocked-after-recovery');
+      reasonCodes.push('flow-blocked-after-recovery');
+    }
+    if (stableRecoveryConfirmed) {
+      reason.push('stable-recovery-confirmed');
+      reasonCodes.push('stable-recovery-confirmed');
+    }
     if (mode === 'flow') {
       reason.push('high-accuracy-low-lag');
       reasonCodes.push('high-accuracy-low-lag');
     }
-    if (mode === 'support') {
+    if (mode === 'recovery') {
+      reason.push('recovery-needed');
+      reason.push('extended-catch-up-window');
+      reason.push('support-needed');
+      reasonCodes.push('recovery-needed');
+      reasonCodes.push('extended-catch-up-window');
+      reasonCodes.push('support-needed');
+    } else if (mode === 'support') {
       reason.push('support-needed');
       reasonCodes.push('support-needed');
     }
@@ -304,10 +409,12 @@ export class AdaptiveDictationController {
 
     const adaptivePause = browserTtsProfile?.adaptivePause;
     if (adaptivePause?.enabled) {
-      const progressGap = Math.max(0, live.spokenProgressRatio - live.typedProgressRatio);
       const historicalPressure = history.averageAccuracy < adaptivePause.historyLowAccuracyThreshold || Math.abs(history.averageLagSec) > adaptivePause.historyHighLagSec;
       const catchUpTargets: number[] = [pauseAfterPhraseMs];
 
+      if (mode === 'recovery') {
+        catchUpTargets.push(Math.max(adaptivePause.severeLagBehindPauseMs, adaptivePause.progressBehindPauseMs));
+      }
       if (rollingAccuracyLast3 < adaptivePause.veryLowAccuracyThreshold) {
         catchUpTargets.push(adaptivePause.veryLowAccuracyPauseMs);
         reason.push('adaptive-pause-very-low-accuracy');
@@ -346,13 +453,15 @@ export class AdaptiveDictationController {
       pauseAfterPhraseMs = Math.round(clamp(adaptivePauseMs, adaptivePause.minPauseMs, adaptivePause.maxPauseMs));
     }
 
-    const extremeSupport = mode === 'support' && live.lagSec > 4 && rollingAccuracyLast3 < 0.76;
+    const extremeSupport = isSupportLikeMode && live.lagSec > 4 && rollingAccuracyLast3 < 0.76;
     const modeFloor =
-      mode === 'support'
-        ? (extremeSupport ? extremeSupportRateFloor : supportRateFloor)
-        : balancedFlowFloor;
+      mode === 'recovery'
+        ? extremeSupportRateFloor
+        : mode === 'support'
+          ? (extremeSupport ? extremeSupportRateFloor : supportRateFloor)
+          : balancedFlowFloor;
     playbackRate = Number(Math.max(modeFloor, playbackRate).toFixed(2));
-    if (mode === 'support' && reasonCodes.includes('support-needed')) {
+    if (isSupportLikeMode && reasonCodes.includes('support-needed')) {
       playbackRate = Number(Math.min(supportRateCeiling, playbackRate).toFixed(2));
     }
 

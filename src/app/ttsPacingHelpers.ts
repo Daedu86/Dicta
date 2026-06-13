@@ -3,7 +3,7 @@ import type { PacingMode, PhraseSize } from '../core/adaptive/types';
 import { planSemanticPhrases, type SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 
 export function mapAdaptivePacingMode(mode: PacingMode): TtsPacingMode {
-  if (mode === 'support') return 'slow';
+  if (mode === 'support' || mode === 'recovery') return 'slow';
   if (mode === 'flow') return 'flow';
   return 'balanced';
 }
