@@ -344,6 +344,82 @@ describe('buildBrowserTtsPlaybackPlan', () => {
     expect(plan?.chunkTelemetry.listeningPrecision?.omissionRate).toBeCloseTo(0.3333, 4);
   });
 
+  it('derives Browser TTS chunk correction pressure from fuzzy matches', () => {
+    const targetChunk = chunk({
+      text: 'We listen carefully.',
+      wordCount: 3,
+    });
+    const planner: BrowserTtsChunkPlanner = () => targetChunk;
+
+    const plan = buildBrowserTtsPlaybackPlan(input({
+      chunkPlanner: planner,
+      livePracticeEvaluation: attempt({
+        typedWords: ['we', 'lisyen', 'carefully'],
+        targetWords: ['we', 'listen', 'carefully'],
+        alignedPairs: [
+          { typedIndex: 0, targetIndex: 0, exact: true },
+          { typedIndex: 1, targetIndex: 1, exact: false },
+          { typedIndex: 2, targetIndex: 2, exact: true },
+        ],
+        matchedWords: 3,
+        missedWords: 0,
+        extraWords: 0,
+        accuracy: 100,
+        points: 3,
+        lastMatchedTargetIndex: 2,
+      }),
+    }));
+
+    expect(plan?.browserTelemetry.correctionRate).toBeCloseTo(1 / 3, 4);
+    expect(plan?.browserTelemetry.backspaceRate).toBe(0);
+    expect(plan?.chunkTelemetry.correctionRate).toBeCloseTo(1 / 3, 4);
+  });
+
+  it('feeds Browser TTS correction pressure into adaptive phrase overload handling', () => {
+    const words = ['we', 'listen', 'carefully', 'to', 'longer', 'phrases', 'every', 'single', 'morning', 'now'];
+    const targetChunk = chunk({
+      text: 'We listen carefully to longer phrases every single morning now.',
+      wordCount: words.length,
+      phraseDifficulty: 0.4,
+    });
+    const planner: BrowserTtsChunkPlanner = () => targetChunk;
+
+    const plan = buildBrowserTtsPlaybackPlan(input({
+      chunkIndex: 8,
+      chunkPlanner: planner,
+      browserTtsBenchmark: undefined,
+      liveSignal: liveSignal({ accuracy: 99, lagSec: 0.2, rawLagSec: 0.2, stableLagSec: 0.2, wpm: 64 }),
+      livePracticeEvaluation: attempt({
+        typedWords: ['we', 'listen', 'carefully', 'to', 'longger', 'phrases', 'every', 'single', 'morning', 'now'],
+        targetWords: words,
+        alignedPairs: words.map((_, index) => ({
+          typedIndex: index,
+          targetIndex: index,
+          exact: index !== 4,
+        })),
+        matchedWords: words.length,
+        missedWords: 0,
+        extraWords: 0,
+        accuracy: 100,
+        points: words.length,
+        lastMatchedTargetIndex: words.length - 1,
+      }),
+      adaptiveController: new AdaptiveDictationController(),
+      historyProfile: historyProfile({
+        comfortablePlaybackRate: 1.1,
+        averageAccuracy: 0.9,
+        averageLagSec: 0.2,
+        averageWpm: 50,
+        sessionsCount: 8,
+        profileConfidence: 0.9,
+      }),
+    }));
+
+    expect(plan?.browserTelemetry.correctionRate).toBeCloseTo(0.1, 4);
+    expect(plan?.runtimeDecision.mode).toBe('support');
+    expect(plan?.runtimeDecision.nextPhraseSize).toBe('short');
+  });
+
   it('feeds Browser TTS listening precision into the adaptive controller', () => {
     const targetChunk = chunk({
       text: 'We listen carefully.',
@@ -382,8 +458,9 @@ describe('buildBrowserTtsPlaybackPlan', () => {
       }),
     }));
 
-    expect(plan?.runtimeDecision.reason).toContain('listening-precision-rate-ceiling');
-    expect(plan?.runtimeDecision.playbackRate).toBeLessThanOrEqual(0.92);
+    expect(plan?.browserTelemetry.listeningPrecision?.contentWordRecall).toBeLessThan(1);
+    expect(plan?.runtimeDecision.reason).toContain('support-needed');
+    expect(plan?.runtimeDecision.mode).toBe('support');
   });
 
   it('returns null when no candidate chunk can be planned', () => {

@@ -104,6 +104,11 @@ export type BrowserTtsPlaybackPlan = {
 
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 
+type BrowserTtsChunkCorrectionPressure = {
+  backspaceRate: number;
+  correctionRate: number;
+};
+
 function computeBrowserTtsChunkListeningPrecision(params: {
   livePracticeEvaluation: AttemptEvaluation;
   language: SupportedLanguage;
@@ -119,10 +124,40 @@ function computeBrowserTtsChunkListeningPrecision(params: {
   });
 }
 
+function computeBrowserTtsChunkCorrectionPressure(
+  evaluation: AttemptEvaluation,
+  chunk: PlannedBrowserTtsChunk,
+): BrowserTtsChunkCorrectionPressure {
+  const typedWords = extractTypedWordsForChunk(evaluation, chunk);
+  const chunkStart = chunk.startWordIndex;
+  const chunkEnd = chunkStart + chunk.wordCount;
+  const matchedPairs = evaluation.alignedPairs.filter(
+    (pair) => pair.targetIndex >= chunkStart && pair.targetIndex < chunkEnd,
+  );
+  const matchedCount = matchedPairs.length;
+  const fuzzyMatchCount = matchedPairs.filter((pair) => !pair.exact).length;
+  const missedCount = Math.max(0, chunk.wordCount - matchedCount);
+  const extraCount = Math.max(0, typedWords.length - matchedCount);
+  const denominator = Math.max(1, chunk.wordCount);
+
+  return {
+    // Browser TTS does not yet receive key-level deletion events in this planning path.
+    backspaceRate: 0,
+    correctionRate: clamp01((missedCount + extraCount + fuzzyMatchCount) / denominator),
+  };
+}
+
 function extractTypedTextForChunk(
   evaluation: AttemptEvaluation,
   chunk: PlannedBrowserTtsChunk,
 ): string {
+  return extractTypedWordsForChunk(evaluation, chunk).join(' ');
+}
+
+function extractTypedWordsForChunk(
+  evaluation: AttemptEvaluation,
+  chunk: PlannedBrowserTtsChunk,
+): string[] {
   const chunkStart = chunk.startWordIndex;
   const chunkEnd = chunkStart + chunk.wordCount;
   const matchedTypedIndices = evaluation.alignedPairs
@@ -136,12 +171,12 @@ function extractTypedTextForChunk(
       fallbackStart,
       Math.min(evaluation.typedWords.length, fallbackStart + chunk.wordCount),
     );
-    return evaluation.typedWords.slice(fallbackStart, fallbackEnd).join(' ');
+    return evaluation.typedWords.slice(fallbackStart, fallbackEnd);
   }
 
   const typedStart = Math.max(0, Math.min(...matchedTypedIndices));
   const typedEnd = Math.min(evaluation.typedWords.length, Math.max(...matchedTypedIndices) + 1);
-  return evaluation.typedWords.slice(typedStart, typedEnd).join(' ');
+  return evaluation.typedWords.slice(typedStart, typedEnd);
 }
 
 export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput): BrowserTtsPlaybackPlan | null {
@@ -230,6 +265,7 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
       language,
       chunk: candidateChunk,
     }),
+    correctionPressure: computeBrowserTtsChunkCorrectionPressure(livePracticeEvaluation, candidateChunk),
     pauseMs: ttsPlaybackPauseMs,
     phraseDifficulty: candidateChunk.phraseDifficulty,
     phraseLengthWords: candidateChunk.wordCount,
@@ -316,6 +352,7 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
       language,
       chunk,
     }),
+    correctionPressure: computeBrowserTtsChunkCorrectionPressure(livePracticeEvaluation, chunk),
     pauseMs: ttsPlaybackPauseMs,
     phraseDifficulty: chunk.phraseDifficulty ?? 0.5,
     phraseLengthWords: chunk.wordCount,
@@ -366,6 +403,7 @@ function buildBrowserTelemetry(params: {
   rollingAccuracyLast3: number;
   rollingAccuracyLast5: number;
   listeningPrecision: ListeningPrecisionMetrics;
+  correctionPressure: BrowserTtsChunkCorrectionPressure;
   pauseMs: number;
   phraseDifficulty: number;
   phraseLengthWords: number;
@@ -401,8 +439,8 @@ function buildBrowserTelemetry(params: {
     charsPerMinute: 0,
     pauseMs: params.pauseMs,
     longestPauseMs: 0,
-    backspaceRate: 0,
-    correctionRate: 0,
+    backspaceRate: params.correctionPressure.backspaceRate,
+    correctionRate: params.correctionPressure.correctionRate,
     phraseDifficulty: params.phraseDifficulty,
     phraseLengthWords: params.phraseLengthWords,
     phraseLengthChars: params.phraseLengthChars,
