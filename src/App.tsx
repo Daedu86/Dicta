@@ -2073,12 +2073,9 @@ function App() {
             <SessionCreateCard {...sessionCreateCardProps} />
           ) : null}
         </AppShellHeader>
-        {!setupLocked ? (
-              activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE ? (
-                <BrowserTtsSetupCard {...browserTtsSetupCardProps} />
-              ) : (
-                null
-              )) : null}
+        {!setupLocked && workspaceMode !== 'dashboard' && activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE ? (
+          <BrowserTtsSetupCard {...browserTtsSetupCardProps} />
+        ) : null}
 
         <AppWorkspaceContent
           pendingSessions={pendingSessions}
