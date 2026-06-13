@@ -33,6 +33,7 @@ import { HistoricalPerformanceService } from '../core/history/HistoricalPerforma
 import { estimateSessionVoiceDurationSec } from '../core/sessionDuration';
 import {
   getAdaptiveControllerForScope,
+  resetAdaptiveControllerForScope,
   type ScopedAdaptiveControllerRegistry,
 } from './adaptiveControllerRegistry';
 import { perfDiagnostics } from '../core/perfDiagnostics';
@@ -238,6 +239,7 @@ export function useAdaptiveRuntime({
     (inputMode: InputMode, language: LanguageCode, totalPhrases = 0): void => {
       if (!activeSession) return;
       const normalizedLanguage = normalizeBenchmarkLanguage(language);
+      resetAdaptiveControllerForScope(adaptiveControllersByInputLanguageRef.current, inputMode, normalizedLanguage);
       sessionFeedbackContextRef.current[activeSession.id] = {
         inputMode,
         language: normalizedLanguage,

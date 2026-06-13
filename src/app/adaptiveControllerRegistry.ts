@@ -17,3 +17,13 @@ export function getAdaptiveControllerForScope(
   registry[key] ??= new AdaptiveDictationController();
   return registry[key];
 }
+
+export function resetAdaptiveControllerForScope(
+  registry: ScopedAdaptiveControllerRegistry,
+  inputMode: InputMode,
+  language: LanguageCode,
+): AdaptiveDictationController {
+  const key = buildAdaptiveControllerScopeKey(inputMode, language);
+  registry[key] = new AdaptiveDictationController();
+  return registry[key];
+}

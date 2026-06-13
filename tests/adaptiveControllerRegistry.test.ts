@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAdaptiveControllerScopeKey,
   getAdaptiveControllerForScope,
+  resetAdaptiveControllerForScope,
   type ScopedAdaptiveControllerRegistry,
 } from '../src/app/adaptiveControllerRegistry';
 
@@ -24,6 +25,18 @@ describe('adaptiveControllerRegistry', () => {
 
     expect(english).not.toBe(german);
     expect(Object.keys(registry).sort()).toEqual(['browser-tts:de', 'browser-tts:en']);
+  });
+
+  it('resets a scoped controller without affecting other languages', () => {
+    const registry: ScopedAdaptiveControllerRegistry = {};
+
+    const germanBeforeReset = getAdaptiveControllerForScope(registry, 'browser-tts', 'de');
+    const english = getAdaptiveControllerForScope(registry, 'browser-tts', 'en');
+    const germanAfterReset = resetAdaptiveControllerForScope(registry, 'browser-tts', 'de');
+
+    expect(germanAfterReset).not.toBe(germanBeforeReset);
+    expect(getAdaptiveControllerForScope(registry, 'browser-tts', 'de')).toBe(germanAfterReset);
+    expect(getAdaptiveControllerForScope(registry, 'browser-tts', 'en')).toBe(english);
   });
 
   it('normalizes unknown or missing language labels into the scope key', () => {
