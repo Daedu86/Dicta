@@ -34,17 +34,17 @@ export function useActiveSessionDerivedRuntime({
   );
 
   const dashboardSession = useMemo(
-    () => sessions.find((session) => session.id === dashboardSessionId) ?? null,
-    [sessions, dashboardSessionId],
+    () => sessions.find((session) => session.id === dashboardSessionId) ?? activeSession,
+    [activeSession, dashboardSessionId, sessions],
   );
 
   const activeInputMode = activeSession?.inputMode ?? BROWSER_TTS_SESSION_INPUT_MODE;
   const activeInputLabel =
     activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE
-      ? 'Browser TTS'
-      : 'OpenRouter';
+      ? 'Input # 2 - Text to Speech (TTS)'
+      : 'Browser TTS';
   const activeInputWorkspaceMode: WorkspaceMode = 'tts';
-  const activeSessionFinished = Boolean(activeSession && sessionStatus === 'finished');
+  const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
 
   const ttsPlaybackProfile = useMemo(
     () => buildTtsPlaybackProfile(sessions, activeSession),

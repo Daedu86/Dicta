@@ -1,5 +1,5 @@
 import { useActiveSessionStateSync } from './app/useActiveSessionStateSync';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
 import { useAuthHeaders } from './app/useAuthHeaders';
 import {
@@ -45,6 +45,7 @@ import { useSessionCreateCardRuntime } from './app/useSessionCreateCardRuntime';
 import { useLiveMetricsDockRuntime } from './app/useLiveMetricsDockRuntime';
 import { useAuthWorkspaceRuntime } from './app/useAuthWorkspaceRuntime';
 import { useTtsRuntimeRefs } from './app/useTtsRuntimeRefs';
+import { useActiveSessionDerivedRuntime } from './app/useActiveSessionDerivedRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -53,8 +54,7 @@ import './App.css';
 import type {
   ControlAction,
   TtsPacingMode } from './types/dictation';
-import { configForDifficulty,
-  type Difficulty } from './core/config';
+import type { Difficulty } from './core/config';
 import { normalizeSessionForPersistence } from './core/sessionNormalization';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView } from './components/TrainingView';
@@ -70,10 +70,7 @@ import {
   buildGeneratedTrainingSessionNotification,
   showGeneratedTrainingSessionNotification,
   } from './core/trainingNotifications';
-import {
-  useWorkspaceRouting,
-  type WorkspaceMode,
-  } from './app/useWorkspaceRouting';
+import { useWorkspaceRouting } from './app/useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './app/useDictaUiPreferences';
 import { isMobileViewport } from './app/viewport';
@@ -85,7 +82,6 @@ import {
   loadAdaptiveBenchmarks,
   loadAdaptiveSessionFeedback,
   } from './app/adaptiveStorage';
-import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
@@ -94,7 +90,6 @@ import {
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
 import { buildSemanticPhrasesFromDictationScript } from './app/dictationScriptSemanticPhrases';
-import { buildTtsPlaybackProfile } from './app/ttsPlaybackProfile';
 import { loadSessions,
   normalizeRestoredStoredSession } from './app/sessionStorage';
 import { buildOrderedSemanticPhrases } from './app/ttsPacingHelpers';
@@ -477,22 +472,22 @@ function App() {
     ttsPracticeText,
   });
 
-  const config = useMemo(() => configForDifficulty(difficulty), [difficulty]);
-  const activeSession = useMemo(
-    () => sessions.find((session) => session.id === activeSessionId) ?? null,
-    [sessions, activeSessionId],
-  );
-  const dashboardSession = useMemo(
-    () => sessions.find((session) => session.id === dashboardSessionId) ?? activeSession,
-    [activeSession, dashboardSessionId, sessions],
-  );
-  const activeInputMode = activeSession?.inputMode ?? BROWSER_TTS_SESSION_INPUT_MODE;
-  const activeInputLabel =
-    activeInputMode === BROWSER_TTS_SESSION_INPUT_MODE
-      ? 'Input # 2 - Text to Speech (TTS)'
-      : 'Browser TTS';
-  const activeInputWorkspaceMode: WorkspaceMode = 'tts';
-  const activeSessionFinished = sessionStatus === 'finished' || activeSession?.status === 'finished';
+  const {
+    config,
+    activeSession,
+    dashboardSession,
+    activeInputMode,
+    activeInputLabel,
+    activeInputWorkspaceMode,
+    activeSessionFinished,
+    ttsPlaybackProfile,
+  } = useActiveSessionDerivedRuntime({
+    sessions,
+    activeSessionId,
+    dashboardSessionId,
+    difficulty,
+    sessionStatus,
+  });
   const {
     collectBrowserTtsEnvironmentForSession,
     resolveBrowserTtsVoiceForSession,
@@ -572,10 +567,6 @@ function App() {
     setSelectedBenchmarkLanguage: setDictaLanguageView,
   });
   const openRouterOfflineTitle = isOnline ? '' : 'Needs internet. Local practice still works offline and results stay on this device.';
-  const ttsPlaybackProfile = useMemo(
-    () => buildTtsPlaybackProfile(sessions, activeSession),
-    [sessions, activeSession],
-  );
   useWorkspaceNavigationEffects({
     sessions,
     activeSession,
