@@ -44,6 +44,7 @@ import { useAppShellHeaderRuntime } from './app/useAppShellHeaderRuntime';
 import { useSessionCreateCardRuntime } from './app/useSessionCreateCardRuntime';
 import { useLiveMetricsDockRuntime } from './app/useLiveMetricsDockRuntime';
 import { useAuthWorkspaceRuntime } from './app/useAuthWorkspaceRuntime';
+import { useTtsRuntimeRefs } from './app/useTtsRuntimeRefs';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -51,7 +52,6 @@ import { AppWorkspaceContent } from './app/AppWorkspaceContent';
 import './App.css';
 import type {
   ControlAction,
-  SessionTelemetry,
   TtsPacingMode } from './types/dictation';
 import { configForDifficulty,
   type Difficulty } from './core/config';
@@ -94,8 +94,7 @@ import {
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
 import { buildSemanticPhrasesFromDictationScript } from './app/dictationScriptSemanticPhrases';
-import { buildTtsPlaybackProfile,
-  type TtsLiveSignal } from './app/ttsPlaybackProfile';
+import { buildTtsPlaybackProfile } from './app/ttsPlaybackProfile';
 import { loadSessions,
   normalizeRestoredStoredSession } from './app/sessionStorage';
 import { buildOrderedSemanticPhrases } from './app/ttsPacingHelpers';
@@ -105,7 +104,6 @@ import type {
   SessionStatus,
   StoredSession,
   TtsLanguage,
-  TtsPublishedUiState,
   TtsStatus,
 } from './app/sessionTypes';
 
@@ -186,10 +184,6 @@ function App() {
     openRouterDefaultModel,
     setOpenRouterDefaultModel,
   } = useModelPreferenceRuntime();
-
-  useEffect(() => {
-    ttsPracticeLiveTextRef.current = ttsPracticeText;
-  }, [ttsPracticeText]);
 
   const {
     directOpenRouterBusy,
@@ -454,47 +448,33 @@ function App() {
   });
   resetOpenRouterJobsRuntimeRef.current = resetOpenRouterJobsRuntime;
   const isOnline = useOnlineStatus();
-  const previousLagRef = useRef(0);
-  const previousAccuracyRef = useRef(100);
-  const ttsPracticeLiveTextRef = useRef('');
-
-  const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const telemetryRef = useRef<SessionTelemetry | null>(null);
-  const ttsStartedAtMsRef = useRef<number | null>(null);
-  const ttsChunkStartMsRef = useRef<number | null>(null);
-  const ttsChunkStartWordIndexRef = useRef(0);
-  const ttsChunkWordCountRef = useRef(0);
-  const ttsCompletedSourceWordsRef = useRef(0);
-  const ttsPausedAtWordIndexRef = useRef<number | null>(null);
-  const ttsLagOutlierCountRef = useRef(0);
-  const ttsLastValidControlLagSecRef = useRef(0);
-  const ttsUnsafeChunkCountRef = useRef(0);
-  const ttsChunkAccuracyWindowRef = useRef<number[]>([]);
-  const ttsLastAccuracySnapshotRef = useRef({ typedWords: 0, matchedWords: 0 });
-  const ttsLastControllerActionRef = useRef<ControlAction>('hold');
-  const applyTtsPerformanceSampleRef = useRef<() => void>(() => undefined);
-  const stopTtsPlaybackRef = useRef<() => void>(() => undefined);
-  const ttsSemanticPhraseAdvanceCountRef = useRef(0);
-  const ttsSemanticPhraseReplayCountRef = useRef(0);
-  const ttsLiveSignalRef = useRef<TtsLiveSignal>({
-    accuracy: 100,
-    lagSec: 0,
-    rawLagSec: 0,
-    stableLagSec: 0,
-    lagOutlierCount: 0,
-    wpm: 0,
-    trend: 'stable',
-    controllerState: 'hold',
-  });
-  const ttsUiLastPublishedAtRef = useRef(0);
-  const ttsPublishedUiRef = useRef<TtsPublishedUiState>({
-    controllerState: 'hold',
-    rate: 1,
-    lagSec: 0,
-    lagWords: 0,
-    wpm: 0,
-    accuracy: 100,
-    trend: 'stable',
+  const {
+    previousLagRef,
+    previousAccuracyRef,
+    ttsPracticeLiveTextRef,
+    ttsUtteranceRef,
+    telemetryRef,
+    ttsStartedAtMsRef,
+    ttsChunkStartMsRef,
+    ttsChunkStartWordIndexRef,
+    ttsChunkWordCountRef,
+    ttsCompletedSourceWordsRef,
+    ttsPausedAtWordIndexRef,
+    ttsLagOutlierCountRef,
+    ttsLastValidControlLagSecRef,
+    ttsUnsafeChunkCountRef,
+    ttsChunkAccuracyWindowRef,
+    ttsLastAccuracySnapshotRef,
+    ttsLastControllerActionRef,
+    applyTtsPerformanceSampleRef,
+    stopTtsPlaybackRef,
+    ttsSemanticPhraseAdvanceCountRef,
+    ttsSemanticPhraseReplayCountRef,
+    ttsLiveSignalRef,
+    ttsUiLastPublishedAtRef,
+    ttsPublishedUiRef,
+  } = useTtsRuntimeRefs({
+    ttsPracticeText,
   });
 
   const config = useMemo(() => configForDifficulty(difficulty), [difficulty]);
