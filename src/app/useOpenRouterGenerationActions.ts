@@ -3,10 +3,7 @@ import type { InputMode } from '../core/adaptive/types';
 import {
   isTransientOpenRouterGenerationError,
 } from '../core/adaptive/openRouterFallbackScript';
-import type {
-  ActiveOpenRouterJob,
-  OpenRouterJobResponse,
-} from '../core/openRouterJobs';
+import type { ActiveOpenRouterJob } from '../core/openRouterJobs';
 import {
   requestTrainingNotificationPermission,
 } from '../core/trainingNotifications';
@@ -27,6 +24,7 @@ import {
   OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
   type OpenRouterDirectGenerationPreset,
 } from './openRouterDirectGenerationPresets';
+import { requestOpenRouterGenerationJob } from './openRouterGenerationJobRequest';
 import type { StoredSession } from './sessionTypes';
 
 type OpenRouterGenerationBusyControls = {
@@ -235,22 +233,10 @@ export function useOpenRouterGenerationActions({
         recentDictationSessionHints,
         generationStartedAt,
       });
-      const response = await fetch('/api/openrouter/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(jobPlan.jobRequestBody),
+      const activeJob = await requestOpenRouterGenerationJob({
+        jobPlan,
+        requestHeaders: getAuthHeaders(),
       });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Generation request failed (${response.status}).`);
-      }
-      const payload = (await response.json()) as OpenRouterJobResponse;
-      const jobId = payload.jobId;
-      if (!jobId) throw new Error('OpenRouter job did not return an id.');
-      const activeJob: ActiveOpenRouterJob = {
-        jobId,
-        ...jobPlan.activeJobDraft,
-      };
       trackOpenRouterJob(activeJob);
     } catch (err) {
       const message =
