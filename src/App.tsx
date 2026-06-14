@@ -6,7 +6,7 @@ import { useOpenRouterModelRuntime } from './app/useOpenRouterModelRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useAdaptiveWorkspaceRouteRuntime } from './app/useAdaptiveWorkspaceRouteRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
-import { useSessionQuotaActions } from './app/useSessionQuotaActions';
+import { useSessionPersistenceRuntime } from './app/useSessionPersistenceRuntime';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
 import { useAdminFileInventory } from './app/useAdminFileInventory';
 import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries';
@@ -29,10 +29,6 @@ import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
 import { AppRouteRenderer } from './app/AppRouteRenderer';
 import './App.css';
-import { normalizeSessionForPersistence } from './core/sessionNormalization';
-import {
-  getDictaSessionQuotaStatus,
-  } from './core/appProfiles';
 import {
   buildGeneratedTrainingSessionNotification,
   showGeneratedTrainingSessionNotification,
@@ -42,21 +38,14 @@ import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './app/useDictaUiPreferences';
 import { isMobileViewport } from './app/viewport';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
-import { useSessionPersistenceSync } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
-import {
-  loadAdaptiveBenchmarks,
-  loadAdaptiveSessionFeedback,
-  } from './app/adaptiveStorage';
 import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
-import { buildCurrentSyncState } from './app/adminStorageSummary';
 import {
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
-import { loadSessions,
-  normalizeRestoredStoredSession } from './app/sessionStorage';
+import { loadSessions } from './app/sessionStorage';
 import type { StoredSession } from './app/sessionTypes';
 
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
@@ -273,7 +262,9 @@ function App() {
     prependSessionAndPersistNow,
     persistAndPushAdaptiveSessionFeedbackNow,
     deleteSessionAndSync,
-  } = useSessionPersistenceSync({
+    sessionQuotaStatus,
+    ensureCanCreateDictationSession,
+  } = useSessionPersistenceRuntime({
     sessions,
     setSessions,
     activeSessionId,
@@ -281,33 +272,18 @@ function App() {
     syncConfig,
     supabaseClient,
     effectiveProfileId,
-    profileDisplayName: appProfile?.displayName,
+    appProfile,
     adaptiveBenchmarks: adaptiveBenchmarksByInputLanguage,
     setAdaptiveBenchmarks: setAdaptiveBenchmarksByInputLanguage,
     adaptiveBenchmarksRef,
     adaptiveSessionFeedback: adaptiveSessionFeedbackByInputLanguage,
     setAdaptiveSessionFeedback: setAdaptiveSessionFeedbackByInputLanguage,
     adaptiveSessionFeedbackRef,
-    loadSessions,
-    loadAdaptiveBenchmarks,
-    loadAdaptiveSessionFeedback,
-    normalizeSessionForPersistence,
-    normalizeRestoredSession: normalizeRestoredStoredSession,
-    buildSyncState: buildCurrentSyncState,
-    onQuotaRecovered: setError,
-    onProfileStorageSwitched: () => {
-      clearDashboardSession();
-      resetOpenRouterJobsRuntimeRef.current();
-    },
-  });
-  const sessionQuotaStatus = getDictaSessionQuotaStatus(syncConfig.authRequired ? appProfile : null, sessions.length);
-  const {
-    ensureCanCreateDictationSession,
-  } = useSessionQuotaActions({
-    sessionQuotaStatus,
     setError,
     setOpenRouterError,
     setExportMessage,
+    clearDashboardSession,
+    resetOpenRouterJobsRuntime: () => resetOpenRouterJobsRuntimeRef.current(),
   });
 
   const {
