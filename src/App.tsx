@@ -31,13 +31,10 @@ import { useTtsSessionSubmitAction } from './app/useTtsSessionSubmitAction';
 import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
 import { useResetSessionRuntime } from './app/useResetSessionRuntime';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
-import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
 import { useAppShellSyncStatusText } from './app/useAppShellSyncStatusText';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
-import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
-import { useLeaderboardWorkspaceProps } from './app/useLeaderboardWorkspaceProps';
 import { useLiveMetricsDockProps } from './app/useLiveMetricsDockProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
@@ -47,6 +44,7 @@ import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePe
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
 import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
 import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorkspaceState';
+import { useWorkspacePanelPropsRuntime } from './app/useWorkspacePanelPropsRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -58,17 +56,7 @@ import type {
   TtsPacingMode } from './types/dictation';
 import { configForDifficulty,
   type Difficulty } from './core/config';
-import {
-  buildSessionPointsHelpText,
-  computeSessionMaxPoints,
-  formatSessionPointsForSession,
-} from './core/evaluation';
-import { buildSessionScoreHelpText } from './core/sessionScore';
 import { normalizeSessionForPersistence } from './core/sessionNormalization';
-import {
-  LANGUAGE_LABELS,
-  SUPPORTED_LANGUAGES,
-  } from './core/languages';
 import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
 import { TrainingView } from './components/TrainingView';
 import { AppShellHeader } from './components/app-shell/AppShellHeader';
@@ -77,10 +65,8 @@ import { TrainingHeader } from './components/training/TrainingHeader';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { Metric } from './components/shared/Metric';
-import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
 import {
   formatInputModeLabel,
-  formatSessionGenerationOrigin,
   formatSessionInputMode,
   } from './app/sessionDisplayFormatters';
 import {
@@ -113,13 +99,10 @@ import {
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
-import { getSessionDisplayTitle } from './app/sessionDisplayTitle';
-import { formatLeaderboardSessionStatus } from './app/sessionLeaderboardFormatters';
 import { formatDuration,
   formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
 import { formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildCurrentSyncState } from './app/adminStorageSummary';
-import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 import {
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
@@ -1214,101 +1197,79 @@ function App() {
 
   void openAdaptiveExportsForActiveInput;
 
-  const openRouterWorkspaceProps = useOpenRouterWorkspaceProps({
-    defaultModel: effectiveOpenRouterDefaultModel,
-    assignedModel: assignedOpenRouterModel,
+  const {
+    openRouterWorkspaceProps,
+    adminWorkspaceProps,
+    leaderboardWorkspaceProps,
+  } = useWorkspacePanelPropsRuntime({
+    effectiveOpenRouterDefaultModel,
+    assignedOpenRouterModel,
     getAuthHeaders,
     setOpenRouterDefaultModel,
-    models: openRouterModels,
-    status: openRouterStatus,
-    error: openRouterError,
-    onRefreshModels: refreshOpenRouterModels,
-    onBackToTraining: showLeaderboardWorkspace,
-    exportProfile: selectedBenchmarkProfile,
-    exportSessionFeedback: selectedSessionFeedback,
+    openRouterModels,
+    openRouterStatus,
+    openRouterError,
+    refreshOpenRouterModels,
+    showLeaderboardWorkspace,
+
+    selectedBenchmarkProfile,
+    selectedSessionFeedback,
     getBenchmarkActiveSessionStatus,
-    benchmarks: adaptiveBenchmarksByInputLanguage,
-    sessionFeedbackByInputLanguage: adaptiveSessionFeedbackByInputLanguage,
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
     setSelectedBenchmarkInputMode,
     setSelectedBenchmarkLanguage,
     setBenchmarkExportMessage,
     setSessionFeedbackMessage,
-    defaultGenerateInputMode: selectedBenchmarkInputMode,
-    defaultGenerateLanguage: selectedBenchmarkLanguage,
-    focusGenerateRequest: openRouterGenerateFocusRequest,
-    activeJobs: activeOpenRouterJobs,
-    jobNotifications: openRouterJobNotifications,
-    generationNowMs: trainingGenerationNowMs,
-    onTrackJob: trackOpenRouterJob,
-    onCreateGenerationErrorSession: createOpenRouterErrorSession,
-    onCopyBenchmark: (profile) => void copySelectedBenchmarkJson(profile),
-    onExportBenchmark: (profile) => downloadSelectedBenchmarkJson(profile),
-    onCopyBenchmarkWithScriptPrompt: (profile) => void copyBenchmarkWithDictationScriptPrompt(profile),
-    onCopyBenchmarkFeedbackPrompt: (profile, feedback) => void copyBenchmarkFeedbackPrompt(profile, feedback),
-    onCopyBenchmarkFeedback: (profile, feedback) => void copyBenchmarkFeedbackJson(profile, feedback),
-    onCopySessionFeedback: (profile, feedback) => void copySessionFeedbackJson(profile, feedback),
-    onCopyScriptPrompt: (profile) => void copyDictationScriptPrompt(profile),
-    onCopyScriptTemplate: (profile) => void copyDictationScriptTemplate(profile),
-    onCopyBenchmarkFeedbackPromptWithHumanFeedback: (profile, feedback, humanFeedback) =>
-      void copyBenchmarkFeedbackPromptWithHumanFeedback(profile, feedback, humanFeedback),
-  });
+    selectedBenchmarkInputMode,
+    selectedBenchmarkLanguage,
+    openRouterGenerateFocusRequest,
+    activeOpenRouterJobs,
+    openRouterJobNotifications,
+    trainingGenerationNowMs,
+    trackOpenRouterJob,
+    createOpenRouterErrorSession,
+    copySelectedBenchmarkJson,
+    downloadSelectedBenchmarkJson,
+    copyBenchmarkWithDictationScriptPrompt,
+    copyBenchmarkFeedbackPrompt,
+    copyBenchmarkFeedbackJson,
+    copySessionFeedbackJson,
+    copyDictationScriptPrompt,
+    copyDictationScriptTemplate,
+    copyBenchmarkFeedbackPromptWithHumanFeedback,
 
-  const adminWorkspaceProps = useAdminWorkspaceProps({
-    sessions: adminSessions,
-    summary: adminStorageSummary,
-    fileInventory: adminFileInventory,
-    fileInventoryError: adminFileInventoryError,
+    adminSessions,
+    adminStorageSummary,
+    adminFileInventory,
+    adminFileInventoryError,
     exportMessage,
-    syncStatus: supabaseSyncStatus,
-    languageView: adminLanguageView,
-    onChangeLanguage: setAdminLanguageView,
-    onBackToTraining: showLeaderboardWorkspace,
-    onImportLocalStorage: importDictaLocalStorageSnapshot,
+    supabaseSyncStatus,
+    adminLanguageView,
+    setAdminLanguageView,
+    importDictaLocalStorageSnapshot,
     appProfile,
     visibleProfiles,
-    profileSessionCounts: adminProfileSessionCounts,
-    selectedProfileFilter: adminProfileFilter,
-    onChangeProfileFilter: setAdminProfileFilter,
-    onUpdateProfileAccess: updateAdminProfileAccess,
-    getAuthHeaders,
-    remoteAdminStatus: adminRemoteStatus,
-    openRouterModels,
-    openRouterModelStatus: openRouterStatus,
-    openRouterModelError: openRouterError,
-    onRefreshOpenRouterModels: refreshOpenRouterModels,
+    adminProfileSessionCounts,
+    adminProfileFilter,
+    setAdminProfileFilter,
+    updateAdminProfileAccess,
+    adminRemoteStatus,
     setExportMessage,
-  });
 
-  const leaderboardWorkspaceProps = useLeaderboardWorkspaceProps({
     leaderboard,
     leaderboardSections,
     leaderboardLanguageView,
     leaderboardExpanded,
     leaderboardSectionExpanded,
     activeSessionId,
-    supportedLanguages: SUPPORTED_LANGUAGES,
-    languageLabels: LANGUAGE_LABELS,
-    onChangeLeaderboardLanguageView: setLeaderboardLanguageView,
+    setLeaderboardLanguageView,
     setLeaderboardExpanded,
     setLeaderboardSectionExpanded,
-    onOpenWorkspaceForSession: openWorkspaceForSession,
-    onOpenDashboardForSession: openDashboardForSession,
-    onDeleteSession: deleteSession,
-    onBackToTraining: showLeaderboardWorkspace,
-    formatLeaderboardSessionStatus,
-    formatSessionGenerationOrigin,
-    formatSessionPlaybackDuration,
-    formatSessionDate,
-    formatSessionPointsForSession,
-    buildSessionScoreHelpText,
-    buildSessionPointsHelpText,
-    computeSessionMaxPoints,
-    getSessionDisplayTitle,
-    isSessionReadyForTraining,
-    MetricComponent: Metric,
-    SessionDeviceIconComponent: SessionDeviceIcon,
+    openWorkspaceForSession,
+    openDashboardForSession,
+    deleteSession,
   });
-
 
   const appShellSyncStatusText = useAppShellSyncStatusText({
     isOnline,
