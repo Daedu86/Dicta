@@ -28,14 +28,10 @@ import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePe
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
 import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
 import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorkspaceState';
-import { useWorkspacePanelPropsRuntime } from './app/useWorkspacePanelPropsRuntime';
-import { useAppShellHeaderRuntime } from './app/useAppShellHeaderRuntime';
-import { useSessionCreateCardRuntime } from './app/useSessionCreateCardRuntime';
-import { useLiveMetricsDockRuntime } from './app/useLiveMetricsDockRuntime';
-import { useAuthWorkspaceRuntime } from './app/useAuthWorkspaceRuntime';
 import { useTtsRuntimeRefs } from './app/useTtsRuntimeRefs';
 import { useActiveSessionDerivedRuntime } from './app/useActiveSessionDerivedRuntime';
 import { useFocusedTrainingRuntime } from './app/useFocusedTrainingRuntime';
+import { useAppPresentationRuntime } from './app/useAppPresentationRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -877,7 +873,11 @@ function App() {
     openRouterWorkspaceProps,
     adminWorkspaceProps,
     leaderboardWorkspaceProps,
-  } = useWorkspacePanelPropsRuntime({
+    appShellHeaderProps,
+    authWorkspaceProps,
+    sessionCreateCardProps,
+    liveMetricsDockProps,
+  } = useAppPresentationRuntime({
     effectiveOpenRouterDefaultModel,
     assignedOpenRouterModel,
     getAuthHeaders,
@@ -887,7 +887,6 @@ function App() {
     openRouterError,
     refreshOpenRouterModels,
     showLeaderboardWorkspace,
-
     selectedBenchmarkProfile,
     selectedSessionFeedback,
     getBenchmarkActiveSessionStatus,
@@ -914,7 +913,6 @@ function App() {
     copyDictationScriptPrompt,
     copyDictationScriptTemplate,
     copyBenchmarkFeedbackPromptWithHumanFeedback,
-
     adminSessions,
     adminStorageSummary,
     adminFileInventory,
@@ -932,7 +930,6 @@ function App() {
     updateAdminProfileAccess,
     adminRemoteStatus,
     setExportMessage,
-
     leaderboard,
     leaderboardSections,
     leaderboardLanguageView,
@@ -945,34 +942,22 @@ function App() {
     openWorkspaceForSession,
     openDashboardForSession,
     deleteSession,
-  });
-
-  const { appShellHeaderProps } = useAppShellHeaderRuntime({
     themeMode,
     isOnline,
     openRouterAccessAllowed,
-    effectiveOpenRouterDefaultModel,
     isCurrentProfileAdmin,
     authRequired: syncConfig.authRequired,
-    supabaseSyncStatus,
     pendingSyncSummary,
-    appProfile,
     sessionQuotaStatus,
-    showLeaderboardWorkspace,
     navigateAppRoute,
     openAdaptiveWorkspaceFromHeader,
     showAdminWorkspace,
     showOpenRouterWorkspace,
     setThemeMode,
     signOut,
-  });
-
-  const { authWorkspaceProps } = useAuthWorkspaceRuntime({
-    themeMode,
     authLoading,
     authView,
     authSession,
-    appProfile,
     appProfileError,
     localStorageReadyForEffectiveProfile,
     supabaseInitialSyncPending,
@@ -989,18 +974,13 @@ function App() {
     signInWithSupabase,
     requestSupabasePasswordReset,
     updateSupabasePassword,
-    signOut,
     showAuthView,
     setAuthEmail,
     setAuthPassword,
     setAuthNewPassword,
     setAuthNewPasswordConfirm,
-  });
-
-  const { sessionCreateCardProps } = useSessionCreateCardRuntime({
     sessionCreationSource,
     sessionCreationName,
-    sessionQuotaStatus,
     localDevFeaturesAvailable: LOCAL_DEV_FEATURES_AVAILABLE,
     allowDictationScriptCreation: isCurrentProfileAdmin || !syncConfig.authRequired,
     dictationScriptJson,
@@ -1012,9 +992,6 @@ function App() {
     validateScriptImport,
     createSessionFromDictationScript,
     cancelSessionCreation,
-  });
-
-  const { liveMetricsDockProps } = useLiveMetricsDockRuntime({
     insightsCollapsed,
     metricsLanguageView,
     metricsRangeView,
