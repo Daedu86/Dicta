@@ -5,15 +5,16 @@ import { describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const appSource = readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8');
+const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
 
 function getPlayTtsFromWordSection(): string {
-  const start = appSource.indexOf('function playTtsFromWord(');
-  if (start < 0) throw new Error('Could not find playTtsFromWord in App.tsx.');
+  const start = playbackLoopSource.indexOf('function playTtsFromWord(');
+  if (start < 0) throw new Error('Could not find playTtsFromWord in useBrowserTtsPlaybackLoop.ts.');
 
-  const end = appSource.indexOf('  const { importDictaLocalStorageSnapshot', start);
+  const end = playbackLoopSource.indexOf('  return {', start);
   if (end < 0) throw new Error('Could not find end of playTtsFromWord section.');
 
-  return appSource.slice(start, end);
+  return playbackLoopSource.slice(start, end);
 }
 
 function getOnEndSection(playbackLoop: string): string {
@@ -47,7 +48,12 @@ function expectInOrder(source: string, labels: string[]): void {
 }
 
 describe('Browser TTS playback loop contract', () => {
-  it('keeps the SpeechSynthesis loop in App while delegating only bounded pure seams', () => {
+  it('keeps App as the playback loop caller instead of the loop owner', () => {
+    expect(appSource).toContain('useBrowserTtsPlaybackLoop({');
+    expect(appSource).not.toContain('function playTtsFromWord(');
+  });
+
+  it('keeps the SpeechSynthesis loop in the Browser TTS playback loop hook while delegating bounded pure seams', () => {
     const playbackLoop = getPlayTtsFromWordSection();
 
     expect(playbackLoop).toContain('const speakNext = () => {');
@@ -67,7 +73,7 @@ describe('Browser TTS playback loop contract', () => {
     const playbackLoop = getPlayTtsFromWordSection();
 
     expectInOrder(playbackLoop, [
-      'stopTtsPlayback();',
+      'stopTtsPlaybackRef.current();',
       'buildBrowserTtsPlaybackStartPlan({',
       'resolveActiveBrowserTtsVoice();',
       'collectBrowserTtsEnvironmentForSession(',
