@@ -47,6 +47,7 @@ import { useAdaptiveBenchmarkSectionProps } from './app/useAdaptiveBenchmarkSect
 import { useLiveMetricsDockProps } from './app/useLiveMetricsDockProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
+import { useAdaptiveWorkspaceEntryActions } from './app/useAdaptiveWorkspaceEntryActions';
 import { useAdaptiveWorkspacePresentationState } from './app/useAdaptiveWorkspacePresentationState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
 import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
@@ -85,9 +86,6 @@ import { SessionCreateCard } from './components/runtime-workspaces/SessionCreate
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import { Metric } from './components/shared/Metric';
 import { SessionDeviceIcon } from './components/shared/SessionDeviceIcon';
-import type {
-  BenchmarkLanguageButton,
-  } from './components/openrouter/types';
 import {
   formatInputModeLabel,
   formatSessionGenerationOrigin,
@@ -891,34 +889,21 @@ function App() {
     setExpressAdvancedOpenRouterBusy,
   });
 
-  function openAdaptiveExportsForActiveInput(): void {
-    if (!activeSession) return;
-    const inputMode = mapSessionInputMode(activeSession.inputMode);
-    const language: BenchmarkLanguageButton = dictaLanguageView;
-    setSelectedBenchmarkInputMode(inputMode);
-    setSelectedBenchmarkLanguage(language);
-    setBenchmarkExportMessage('');
-    setSessionFeedbackMessage('');
-    setAdaptiveBenchmarksFocusAnchor('exports');
-    setAdaptiveSectionExpanded((prev) => ({ ...prev, benchmarks: true }));
-    showAdaptiveWorkspace();
-  }
-
-  function openAdaptiveWorkspaceFromHeader(): void {
-    if (isMobileViewport()) {
-      setAdaptiveSectionExpanded((prev) => ({
-        ...prev,
-        decision: false,
-        architecture: false,
-        adapters: false,
-        latest: false,
-        live: false,
-        telemetry: false,
-        benchmarks: false,
-      }));
-    }
-    showAdaptiveWorkspace();
-  }
+  const {
+    openAdaptiveExportsForActiveInput,
+    openAdaptiveWorkspaceFromHeader,
+  } = useAdaptiveWorkspaceEntryActions({
+    activeSession,
+    dictaLanguageView,
+    showAdaptiveWorkspace,
+    setSelectedBenchmarkInputMode,
+    setSelectedBenchmarkLanguage,
+    setBenchmarkExportMessage,
+    setSessionFeedbackMessage,
+    setAdaptiveBenchmarksFocusAnchor,
+    setAdaptiveSectionExpanded,
+    isMobileViewport,
+  });
 
   const {
     ensureAttemptTelemetry,

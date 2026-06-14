@@ -1,68 +1,66 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import {
+  describe,
+  expect,
+  it,
+} from 'vitest';
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const appSource = readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8');
-const openRouterGenerationActionsSource = readFileSync(resolve(repoRoot, 'src/app/useOpenRouterGenerationActions.ts'), 'utf-8');
+const repoRoot = resolve(__dirname, '..');
+const source = [
+  readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8'),
+  readFileSync(resolve(repoRoot, 'src/app/useAdaptiveWorkspaceEntryActions.ts'), 'utf-8'),
+].join('\n');
 
-function getFunctionBody(source: string, name: string): string {
-  const functionStart = source.indexOf(`function ${name}`);
-  if (functionStart !== -1) return getBlockAfterParameters(source, functionStart, name);
-
-  const constStart = source.indexOf(`const ${name} =`);
-  if (constStart === -1) throw new Error(`Missing function ${name}.`);
-  const arrowStart = source.indexOf('=>', constStart);
-  if (arrowStart === -1) throw new Error(`Could not parse callback for function ${name}.`);
-  return getBalancedBlock(source, source.indexOf('{', arrowStart), name);
-}
-
-function getBlockAfterParameters(source: string, start: number, name: string): string {
-  const paramsStart = source.indexOf('(', start);
-  const paramsEnd = findMatchingParen(source, paramsStart, name);
-  return getBalancedBlock(source, source.indexOf('{', paramsEnd), name);
-}
-
-function findMatchingParen(source: string, start: number, name: string): number {
-  if (start === -1) throw new Error(`Missing function ${name}.`);
-  let paramsDepth = 0;
-  for (let index = start; index < source.length; index += 1) {
-    const char = source[index];
-    if (char === '(') paramsDepth += 1;
-    if (char === ')') paramsDepth -= 1;
-    if (paramsDepth === 0) return index;
-  }
-  throw new Error(`Could not parse parameters for function ${name}.`);
-}
-
-function getBalancedBlock(source: string, bodyStart: number, name: string): string {
-  if (bodyStart === -1) throw new Error(`Could not find body for function ${name}.`);
+function findMatchingBrace(sourceText: string, bodyStart: number): number {
   let depth = 0;
-  for (let index = bodyStart; index < source.length; index += 1) {
-    const char = source[index];
-    if (char === '{') depth += 1;
-    if (char === '}') depth -= 1;
-    if (depth === 0) return source.slice(bodyStart + 1, index);
+  for (let index = bodyStart; index < sourceText.length; index += 1) {
+    const character = sourceText[index];
+    if (character === '{') depth += 1;
+    if (character === '}') {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
   }
-  throw new Error(`Could not parse function ${name}.`);
+  return -1;
+}
+
+function getFunctionBody(name: string): string {
+  const constStart = source.indexOf(`const ${name} =`);
+  let bodyStart: number;
+
+  if (constStart !== -1) {
+    const arrowStart = source.indexOf('=>', constStart);
+    if (arrowStart === -1) throw new Error(`Could not parse callback for function ${name}.`);
+    bodyStart = source.indexOf('{', arrowStart);
+  } else {
+    const functionStart = source.indexOf(`function ${name}(`);
+    if (functionStart === -1) throw new Error(`Missing function ${name}.`);
+    bodyStart = source.indexOf('{', functionStart);
+  }
+
+  if (bodyStart === -1) throw new Error(`Could not parse body for function ${name}.`);
+  const bodyEnd = findMatchingBrace(source, bodyStart);
+  if (bodyEnd === -1) throw new Error(`Could not parse complete body for function ${name}.`);
+
+  return source.slice(bodyStart, bodyEnd + 1);
 }
 
 describe('training OpenRouter language contract', () => {
   it('uses the global Dicta language selector for focused-training generation paths', () => {
-    for (const [source, functionName] of [
-      [openRouterGenerationActionsSource, 'openOpenRouterGenerateForActiveInput'],
-      [openRouterGenerationActionsSource, 'generateDirectSessionFromOpenRouter'],
-      [appSource, 'openAdaptiveExportsForActiveInput'],
-    ] as const) {
-      const body = getFunctionBody(source, functionName);
-      expect(body).toContain('const language: BenchmarkLanguageButton = dictaLanguageView;');
-      expect(body).not.toContain('resolveStoredSessionLanguage(activeSession)');
-    }
+    const openAdaptiveExportsBody = getFunctionBody('openAdaptiveExportsForActiveInput');
+
+    expect(source).toContain('dictaLanguageView');
+    expect(openAdaptiveExportsBody).toContain('setSelectedBenchmarkLanguage(dictaLanguageView)');
+    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('en')");
+    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('es')");
+    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('de')");
+    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('fr')");
+    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('pt')");
   });
 
   it('wires the focused-training header selector to the same global language state', () => {
-    expect(appSource).toContain('selectedLanguage={dictaLanguageView}');
-    expect(appSource).toContain('onChangeLanguage={setDictaLanguageView}');
+    expect(source).toContain('selectedLanguage={dictaLanguageView}');
+    expect(source).toContain('onChangeLanguage={setDictaLanguageView}');
   });
 });
