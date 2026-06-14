@@ -29,15 +29,12 @@ import { useTtsRuntimeRefs } from './app/useTtsRuntimeRefs';
 import { useActiveSessionDerivedRuntime } from './app/useActiveSessionDerivedRuntime';
 import { useFocusedTrainingRuntime } from './app/useFocusedTrainingRuntime';
 import { useAppPresentationRuntime } from './app/useAppPresentationRuntime';
+import { useTrainingRuntimeState } from './app/useTrainingRuntimeState';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
 import { AppRouteRenderer } from './app/AppRouteRenderer';
 import './App.css';
-import type {
-  ControlAction,
-  TtsPacingMode } from './types/dictation';
-import type { Difficulty } from './core/config';
 import { normalizeSessionForPersistence } from './core/sessionNormalization';
 import {
   getDictaSessionQuotaStatus,
@@ -67,13 +64,7 @@ import {
   } from './app/appRuntimeHelpers';
 import { loadSessions,
   normalizeRestoredStoredSession } from './app/sessionStorage';
-import type {
-  PerformanceTrend,
-  SessionStatus,
-  StoredSession,
-  TtsLanguage,
-  TtsStatus,
-} from './app/sessionTypes';
+import type { StoredSession } from './app/sessionTypes';
 
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 
@@ -81,20 +72,52 @@ function App() {
   const perfDiagnosticsEnabled = useAppPerfDiagnosticsRuntime();
   const [sessions, setSessions] = useState<StoredSession[]>(() => loadSessions());
   const [activeSessionId, setActiveSessionId] = useState<string>(() => loadSessions()[0]?.id ?? '');
-  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
-  const [sessionStatus, setSessionStatus] = useState<SessionStatus>('ready');
-  const [controllerState, setControllerState] = useState<ControlAction>('hold');
-  const [rate, setRate] = useState(1);
-  const [lagSec, setLagSec] = useState(0);
-  const [lagWords, setLagWords] = useState(0);
-  const [wpm, setWpm] = useState(0);
-  const [accuracy, setAccuracy] = useState(100);
-  const [trend, setTrend] = useState<PerformanceTrend>('stable');
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState('');
-  const [exportMessage, setExportMessage] = useState('');
-  const [trainingSubmitMessage, setTrainingSubmitMessage] = useState('');
-  const [inputSettingsLocked, setInputSettingsLocked] = useState(false);
+  const {
+    difficulty,
+    setDifficulty,
+    sessionStatus,
+    setSessionStatus,
+    controllerState,
+    setControllerState,
+    rate,
+    setRate,
+    lagSec,
+    setLagSec,
+    lagWords,
+    setLagWords,
+    wpm,
+    setWpm,
+    accuracy,
+    setAccuracy,
+    trend,
+    setTrend,
+    running,
+    setRunning,
+    error,
+    setError,
+    exportMessage,
+    setExportMessage,
+    trainingSubmitMessage,
+    setTrainingSubmitMessage,
+    inputSettingsLocked,
+    setInputSettingsLocked,
+    ttsText,
+    setTtsText,
+    ttsLanguage,
+    setTtsLanguage,
+    ttsPracticeText,
+    setTtsPracticeText,
+    ttsStatus,
+    setTtsStatus,
+    ttsCurrentChunk,
+    setTtsCurrentChunk,
+    ttsPlayerProgressTick,
+    setTtsPlayerProgressTick,
+    ttsPacingMode,
+    setTtsPacingMode,
+    ttsSpeechRate,
+    setTtsSpeechRate,
+  } = useTrainingRuntimeState();
   const {
     workspaceMode,
     currentPath,
@@ -127,9 +150,6 @@ function App() {
     cancelSessionCreation,
   } = useSessionCreationWorkspaceState();
   const { themeMode, setThemeMode } = useThemeModeRuntime();
-  const [ttsText, setTtsText] = useState('');
-
-  const [ttsLanguage, setTtsLanguage] = useState<TtsLanguage>('de');
   const {
     browserTtsVoices,
     isBrowserTtsSupported,
@@ -137,13 +157,6 @@ function App() {
     resumeBrowserTts,
     cancelBrowserTts,
   } = useBrowserTtsRuntime();
-  const [ttsPracticeText, setTtsPracticeText] = useState('');
-  const [ttsStatus, setTtsStatus] = useState<TtsStatus>('idle');
-  const [ttsCurrentChunk, setTtsCurrentChunk] = useState('');
-  const [ttsPlayerProgressTick, setTtsPlayerProgressTick] = useState(0);
-  const [ttsPacingMode, setTtsPacingMode] = useState<TtsPacingMode>('balanced');
-  const [ttsSpeechRate, setTtsSpeechRate] = useState(1);
-
   const suppressSidebarAutoSelectRef = useRef(false);
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
