@@ -1,9 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
-import { useAuthHeaders } from './app/useAuthHeaders';
-import {
-  useDictaAppProfileRuntime,
-} from './app/useDictaAppProfileRuntime';
+import { useAuthProfileRuntime } from './app/useAuthProfileRuntime';
 import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
 import { useOpenRouterModelRuntime } from './app/useOpenRouterModelRuntime';
@@ -31,7 +27,6 @@ import { useFocusedTrainingRuntime } from './app/useFocusedTrainingRuntime';
 import { useAppPresentationRuntime } from './app/useAppPresentationRuntime';
 import { useTrainingRuntimeState } from './app/useTrainingRuntimeState';
 import { perfDiagnostics } from './core/perfDiagnostics';
-import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
 import { AppRouteRenderer } from './app/AppRouteRenderer';
 import './App.css';
@@ -217,31 +212,20 @@ function App() {
   } = useDictaSupabaseRuntime();
   const {
     authSession,
-    setAuthSession,
     authLoading,
     authEmail,
     setAuthEmail,
     authPassword,
     setAuthPassword,
     authError,
-    setAuthError,
     authView,
-    setAuthView,
     authNewPassword,
     setAuthNewPassword,
     authNewPasswordConfirm,
     setAuthNewPasswordConfirm,
     authMessage,
-    setAuthMessage,
     authMessageTone,
-    setAuthMessageTone,
     authBusy,
-    setAuthBusy,
-  } = useAuthWorkspaceState({
-    authRequired: syncConfig.authRequired,
-    supabaseClient,
-  });
-  const {
     appProfile,
     setAppProfile,
     appProfileError,
@@ -257,41 +241,15 @@ function App() {
     adminRemoteStatus,
     effectiveProfileId,
     isCurrentProfileAdmin,
-  } = useDictaAppProfileRuntime({
-    syncConfig,
-    supabaseClient,
-    authSession,
-    authLoading,
-  });
-  const {
     signInWithSupabase,
     showAuthView,
     requestSupabasePasswordReset,
     updateSupabasePassword,
     signOut,
-  } = useSupabaseAuthActions({
-    supabaseClient,
-    authSession,
-    authEmail,
-    authPassword,
-    authNewPassword,
-    authNewPasswordConfirm,
-    setAuthSession,
-    setAppProfile,
-    setAuthEmail,
-    setAuthPassword,
-    setAuthNewPassword,
-    setAuthNewPasswordConfirm,
-    setAuthView,
-    setAuthError,
-    setAuthMessage,
-    setAuthMessageTone,
-    setAuthBusy,
-  });
-  const {
     getAuthHeaders,
-  } = useAuthHeaders({
-    authSession,
+  } = useAuthProfileRuntime({
+    syncConfig,
+    supabaseClient,
   });
   const {
     setOpenRouterDefaultModel,
