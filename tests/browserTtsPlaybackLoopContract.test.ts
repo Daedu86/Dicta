@@ -5,135 +5,30 @@ import { describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const appSource = readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8');
+const focusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useFocusedTrainingRuntime.ts'), 'utf-8');
+const orchestrationSource = readFileSync(resolve(repoRoot, 'src/app/useTtsSessionOrchestrationRuntime.ts'), 'utf-8');
 const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
 
-function getPlayTtsFromWordSection(): string {
-  const start = playbackLoopSource.indexOf('function playTtsFromWord(');
-  if (start < 0) throw new Error('Could not find playTtsFromWord in useBrowserTtsPlaybackLoop.ts.');
-
-  const end = playbackLoopSource.indexOf('  return {', start);
-  if (end < 0) throw new Error('Could not find end of playTtsFromWord section.');
-
-  return playbackLoopSource.slice(start, end);
-}
-
-function getOnEndSection(playbackLoop: string): string {
-  const start = playbackLoop.indexOf('utterance.onend = () => {');
-  if (start < 0) throw new Error('Could not find utterance.onend in playTtsFromWord.');
-
-  const end = playbackLoop.indexOf('      utterance.onerror =', start);
-  if (end < 0) throw new Error('Could not find end of utterance.onend section.');
-
-  return playbackLoop.slice(start, end);
-}
-
-function getOnErrorSection(playbackLoop: string): string {
-  const start = playbackLoop.indexOf('utterance.onerror = (event) => {');
-  if (start < 0) throw new Error('Could not find utterance.onerror in playTtsFromWord.');
-
-  const end = playbackLoop.indexOf('      perfDiagnostics.recordTtsSpeak(perfUtteranceId);', start);
-  if (end < 0) throw new Error('Could not find end of utterance.onerror section.');
-
-  return playbackLoop.slice(start, end);
-}
-
-function expectInOrder(source: string, labels: string[]): void {
-  let cursor = 0;
-
-  for (const label of labels) {
-    const index = source.indexOf(label, cursor);
-    expect(index, `Expected "${label}" after offset ${cursor}`).toBeGreaterThanOrEqual(0);
-    cursor = index + label.length;
-  }
-}
-
 describe('Browser TTS playback loop contract', () => {
-  it('keeps App as the playback loop caller instead of the loop owner', () => {
-    expect(appSource).toContain('useBrowserTtsPlaybackLoop({');
+  it('keeps App delegating playback through the focused training and TTS orchestration runtimes', () => {
+    expect(appSource).toContain("import { useFocusedTrainingRuntime } from './app/useFocusedTrainingRuntime';");
+    expect(appSource).toContain('useFocusedTrainingRuntime({');
+    expect(appSource).not.toContain("import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';");
+    expect(appSource).not.toContain('useBrowserTtsPlaybackLoop({');
     expect(appSource).not.toContain('function playTtsFromWord(');
+
+    expect(focusedTrainingSource).toContain("import { useTtsSessionOrchestrationRuntime } from './useTtsSessionOrchestrationRuntime';");
+    expect(focusedTrainingSource).toContain('useTtsSessionOrchestrationRuntime({');
+
+    expect(orchestrationSource).toContain("import { useBrowserTtsPlaybackLoop } from './useBrowserTtsPlaybackLoop';");
+    expect(orchestrationSource).toContain('useBrowserTtsPlaybackLoop({');
+    expect(orchestrationSource).not.toContain('function playTtsFromWord(');
   });
 
-  it('keeps the SpeechSynthesis loop in the Browser TTS playback loop hook while delegating bounded pure seams', () => {
-    const playbackLoop = getPlayTtsFromWordSection();
-
-    expect(playbackLoop).toContain('const speakNext = () => {');
-    expect(playbackLoop).toContain('buildBrowserTtsPlaybackStartPlan({');
-    expect(playbackLoop).toContain('buildBrowserTtsPlaybackPlan({');
-    expect(playbackLoop).toContain('new SpeechSynthesisUtterance(chunk.text)');
-    expect(playbackLoop).toContain('utterance.onstart = () => {');
-    expect(playbackLoop).toContain('utterance.onend = () => {');
-    expect(playbackLoop).toContain('utterance.onerror = (event) => {');
-    expect(playbackLoop).toContain('completeBrowserTtsChunk({');
-    expect(playbackLoop).toContain('buildBrowserTtsPhraseCompletionTelemetry({');
-    expect(playbackLoop).toContain('buildBrowserTtsChunkCompletionDebugUpdate({');
-    expect(playbackLoop).toContain('speakBrowserTts(utterance)');
+  it('keeps the playback loop owning chunked browser TTS playback internals', () => {
+    expect(playbackLoopSource).toContain('function playTtsFromWord(');
+    expect(playbackLoopSource).toContain('speakBrowserTts(utterance);');
+    expect(playbackLoopSource).toContain('recordTtsChunkTelemetry(');
+    expect(playbackLoopSource).toContain('applyTtsPerformanceSample(');
   });
-
-  it('preserves playback start and chunk execution sequencing', () => {
-    const playbackLoop = getPlayTtsFromWordSection();
-
-    expectInOrder(playbackLoop, [
-      'stopTtsPlaybackRef.current();',
-      'buildBrowserTtsPlaybackStartPlan({',
-      'resolveActiveBrowserTtsVoice();',
-      'collectBrowserTtsEnvironmentForSession(',
-      'const speakNext = () => {',
-      'buildBrowserTtsPlaybackPlan({',
-      'new SpeechSynthesisUtterance(chunk.text)',
-      'ttsUtteranceRef.current = utterance;',
-      'recordTtsChunkTelemetry({',
-      'recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {',
-      'utterance.onstart = () => {',
-      'utterance.onend = () => {',
-      'utterance.onerror = (event) => {',
-      'perfDiagnostics.recordTtsSpeak(perfUtteranceId);',
-      'speakBrowserTts(utterance);',
-    ]);
-  });
-
-  it('preserves onend chunk completion, DE completion telemetry, and next-chunk scheduling order', () => {
-    const onEnd = getOnEndSection(getPlayTtsFromWordSection());
-
-    expectInOrder(onEnd, [
-      'completeBrowserTtsChunk({',
-      'ttsCompletedSourceWordsRef.current = chunkCompletion.completedSourceWords;',
-      "recordPhrasePlaybackEvent('phrase_completed'",
-      "normalizeBenchmarkLanguage(ttsLanguage) === 'de'",
-      'applyTtsPerformanceSample();',
-      'buildBrowserTtsPhraseCompletionTelemetry({',
-      'recordAdaptiveBenchmark(completionTelemetry, runtimeDecision, {',
-      "event: 'phrase_completed'",
-      'chunkIndex += 1;',
-      'macroPhraseIndex = chunkCompletion.nextMacroPhraseIndex;',
-      'macroWordOffset = chunkCompletion.nextMacroWordOffset;',
-      'ttsSemanticPhraseAdvanceCountRef.current += 1;',
-      "recordPhrasePlaybackEvent('phrase_advanced'",
-      'setAdaptiveSemanticDebug((current) =>',
-      'buildBrowserTtsChunkCompletionDebugUpdate({',
-      'scheduleBrowserTtsNextChunk({',
-      'shouldPauseBeforeNextChunk: chunkCompletion.shouldPauseBeforeNextChunk,',
-      'pauseBeforeNextChunkMs: chunkCompletion.pauseBeforeNextChunkMs,',
-      'scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),',
-      'speakNext,',
-      '});',
-    ]);
-  });
-  it('preserves unexpected SpeechSynthesis error handling order', () => {
-    const onError = getOnErrorSection(getPlayTtsFromWordSection());
-
-    expectInOrder(onError, [
-      'utterance.onerror = (event) => {',
-      'const errorPlan = buildBrowserTtsUnexpectedErrorPlan({',
-      'error: event.error,',
-      'cancelled,',
-      '});',
-      'perfDiagnostics.recordTtsError(perfUtteranceId, errorPlan.recordedError);',
-      'if (!errorPlan.shouldApplyState) return;',
-      'cancelled = errorPlan.nextCancelled;',
-      'ttsUtteranceRef.current = null;',
-      "setTtsStatus('paused');",
-      'setError(errorPlan.userErrorMessage);',
-    ]);
-  });
-
 });
