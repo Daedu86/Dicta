@@ -42,6 +42,7 @@ import {
 import { buildBrowserTtsPhraseCompletionTelemetry } from './app/browserTtsPhraseCompletionTelemetry';
 import { buildBrowserTtsPlaybackStartPlan } from './app/browserTtsPlaybackStartPlan';
 import { configureBrowserTtsUtterance } from './app/browserTtsUtteranceConfiguration';
+import { scheduleBrowserTtsNextChunk } from './app/browserTtsNextChunkScheduler';
 import { buildFinalizedTtsSessionState } from './app/ttsSessionFinalization';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
@@ -1490,13 +1491,12 @@ function App() {
             phraseReplayCount: ttsSemanticPhraseReplayCountRef.current,
           }),
         );
-        if (chunkCompletion.shouldPauseBeforeNextChunk) {
-          window.setTimeout(() => {
-            speakNext();
-          }, chunkCompletion.pauseBeforeNextChunkMs);
-        } else {
-          speakNext();
-        }
+        scheduleBrowserTtsNextChunk({
+          shouldPauseBeforeNextChunk: chunkCompletion.shouldPauseBeforeNextChunk,
+          pauseBeforeNextChunkMs: chunkCompletion.pauseBeforeNextChunkMs,
+          scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+          speakNext,
+        });
       };
 
       utterance.onerror = (event) => {

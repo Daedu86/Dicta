@@ -94,8 +94,12 @@ describe('Browser TTS playback loop contract', () => {
       "recordPhrasePlaybackEvent('phrase_advanced'",
       'setAdaptiveSemanticDebug((current) =>',
       'buildBrowserTtsChunkCompletionDebugUpdate({',
-      'window.setTimeout(() => {',
-      'speakNext();',
+      'scheduleBrowserTtsNextChunk({',
+      'shouldPauseBeforeNextChunk: chunkCompletion.shouldPauseBeforeNextChunk,',
+      'pauseBeforeNextChunkMs: chunkCompletion.pauseBeforeNextChunkMs,',
+      'scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),',
+      'speakNext,',
+      '});',
     ]);
   });
 });
