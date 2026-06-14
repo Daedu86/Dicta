@@ -20,13 +20,12 @@ import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime
 import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
 import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
-import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorkspaceState';
+import { useSessionCreationRuntime } from './app/useSessionCreationRuntime';
 import { useTtsSessionRuntime } from './app/useTtsSessionRuntime';
 import { useFocusedTrainingRuntime } from './app/useFocusedTrainingRuntime';
 import { useAppPresentationRuntime } from './app/useAppPresentationRuntime';
 import { useTrainingRuntimeState } from './app/useTrainingRuntimeState';
 import { perfDiagnostics } from './core/perfDiagnostics';
-import { useSessionCreationActions } from './app/useSessionCreationActions';
 import { AppRouteRenderer } from './app/AppRouteRenderer';
 import './App.css';
 import {
@@ -114,23 +113,6 @@ function App() {
     showDashboardWorkspace,
     showSessionInputWorkspace,
   } = useWorkspaceRouting();
-  const {
-    openRouterGenerateFocusRequest,
-    setOpenRouterGenerateFocusRequest,
-    sessionCreationMode,
-    setSessionCreationMode,
-    sessionCreationSource,
-    setSessionCreationSource,
-    changeSessionCreationSource,
-    sessionCreationName,
-    setSessionCreationName,
-    dictationScriptJson,
-    setDictationScriptJson,
-    changeDictationScriptJson,
-    dictationScriptValidation,
-    setDictationScriptValidation,
-    cancelSessionCreation,
-  } = useSessionCreationWorkspaceState();
   const { themeMode, setThemeMode } = useThemeModeRuntime();
   const {
     browserTtsVoices,
@@ -287,14 +269,22 @@ function App() {
   });
 
   const {
+    openRouterGenerateFocusRequest,
+    setOpenRouterGenerateFocusRequest,
+    sessionCreationMode,
+    sessionCreationSource,
+    changeSessionCreationSource,
+    sessionCreationName,
+    setSessionCreationName,
+    dictationScriptJson,
+    changeDictationScriptJson,
+    dictationScriptValidation,
+    cancelSessionCreation,
     createSessionWithMode,
     validateScriptImport,
     createSessionFromDictationScript,
     createSessionFromOpenRouterScript,
-  } = useSessionCreationActions({
-    sessionCreationName,
-    dictationScriptJson,
-    dictationScriptValidation,
+  } = useSessionCreationRuntime({
     browserTtsVoices,
     suppressSidebarAutoSelectRef,
     ensureCanCreateDictationSession,
@@ -303,11 +293,6 @@ function App() {
     showLeaderboardWorkspace,
     setActiveSessionId,
     setLeaderboardLanguageView,
-    setSessionCreationMode,
-    setSessionCreationSource,
-    setSessionCreationName,
-    setDictationScriptJson,
-    setDictationScriptValidation,
     setError,
     setOpenRouterError,
     setExportMessage,
