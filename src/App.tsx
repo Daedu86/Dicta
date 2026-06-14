@@ -340,7 +340,8 @@ function App() {
     sessionFeedbackMessage,
     setSessionFeedbackMessage,
   } = useAdaptiveWorkspaceState();
-  const {
+  const {
+    syncConfig,
     supabaseClient,
   } = useDictaSupabaseRuntime();
   const {
@@ -399,7 +400,6 @@ function App() {
     signOut,
   } = useSupabaseAuthActions({
     supabaseClient,
-    syncConfig,
     authSession,
     authEmail,
     authPassword,
