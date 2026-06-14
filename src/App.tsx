@@ -32,20 +32,13 @@ import { useAppPresentationRuntime } from './app/useAppPresentationRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
-import { AppWorkspaceContent } from './app/AppWorkspaceContent';
+import { AppRouteRenderer } from './app/AppRouteRenderer';
 import './App.css';
 import type {
   ControlAction,
   TtsPacingMode } from './types/dictation';
 import type { Difficulty } from './core/config';
 import { normalizeSessionForPersistence } from './core/sessionNormalization';
-import { PerfDiagnosticsOverlay } from './components/PerfDiagnosticsOverlay';
-import { TrainingView } from './components/TrainingView';
-import { AppShellHeader } from './components/app-shell/AppShellHeader';
-import { AuthWorkspace } from './components/auth/AuthWorkspace';
-import { TrainingHeader } from './components/training/TrainingHeader';
-import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
-import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
 import {
   getDictaSessionQuotaStatus,
   } from './core/appProfiles';
@@ -981,69 +974,48 @@ function App() {
     selectInsightsDiagnosticFallbackReport,
   });
 
-  if (
-    syncConfig.authRequired &&
-    (
-      authLoading ||
-      authView === 'updatePassword' ||
-      !authSession ||
-      !appProfile ||
-      appProfileError ||
-      !localStorageReadyForEffectiveProfile ||
-      supabaseInitialSyncPending
-    )
-  ) {
-    return (
-      <AuthWorkspace {...authWorkspaceProps} />
-    );
-  }
-
-  if (isFocusedTrainingRoute) {
-    return (
-      <main className={`app training-route-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
-        <TrainingHeader
-          selectedLanguage={dictaLanguageView}
-          onChangeLanguage={setDictaLanguageView}
-          onBackToApp={() => navigateAppRoute('/')}
-        />
-        <TrainingView {...focusedTrainingProps} />
-        <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />
-      </main>
-    );
-  }
-
   return (
-    <main className={`app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
-      <section className="layout">
-        <AppShellHeader {...appShellHeaderProps}>
-          {sessionCreationMode ? (
-            <SessionCreateCard {...sessionCreateCardProps} />
-          ) : null}
-        </AppShellHeader>
-        <AppWorkspaceContent
-          pendingSessions={pendingSessions}
-          activeSessionId={activeSessionId}
-          onOpenPendingSession={openWorkspaceForSession}
-          onDeleteSession={deleteSession}
-          workspaceMode={workspaceMode}
-          dashboardSession={dashboardSession}
-          sessions={sessions}
-          formatSessionStatus={formatSessionStatus}
-          formatSessionDate={formatSessionDate}
-          formatSessionPlaybackDuration={formatSessionPlaybackDuration}
-          onBackToTraining={showLeaderboardWorkspace}
-          adaptiveAdvancedDiagnosticsProps={adaptiveAdvancedDiagnosticsProps}
-          adaptiveBenchmarkSectionProps={adaptiveBenchmarkSectionProps}
-          openRouterAccessState={openRouterAccessState}
-          openRouterAccessMessage={openRouterAccessMessage}
-          openRouterWorkspaceProps={openRouterWorkspaceProps}
-          canAccessAdminWorkspace={isCurrentProfileAdmin || !syncConfig.authRequired}
-          adminWorkspaceProps={adminWorkspaceProps}
-          leaderboardWorkspaceProps={leaderboardWorkspaceProps}
-        />
-      </section>
-      <LiveMetricsDock {...liveMetricsDockProps} />
-    </main>
+    <AppRouteRenderer
+      syncAuthRequired={syncConfig.authRequired}
+      authLoading={authLoading}
+      authView={authView}
+      authSession={authSession}
+      appProfile={appProfile}
+      appProfileError={appProfileError}
+      localStorageReadyForEffectiveProfile={localStorageReadyForEffectiveProfile}
+      supabaseInitialSyncPending={supabaseInitialSyncPending}
+      authWorkspaceProps={authWorkspaceProps}
+      isFocusedTrainingRoute={isFocusedTrainingRoute}
+      themeMode={themeMode}
+      dictaLanguageView={dictaLanguageView}
+      setDictaLanguageView={setDictaLanguageView}
+      navigateAppRoute={navigateAppRoute}
+      focusedTrainingProps={focusedTrainingProps}
+      perfDiagnosticsEnabled={perfDiagnosticsEnabled}
+      appShellHeaderProps={appShellHeaderProps}
+      sessionCreationMode={sessionCreationMode}
+      sessionCreateCardProps={sessionCreateCardProps}
+      pendingSessions={pendingSessions}
+      activeSessionId={activeSessionId}
+      openWorkspaceForSession={openWorkspaceForSession}
+      deleteSession={deleteSession}
+      workspaceMode={workspaceMode}
+      dashboardSession={dashboardSession}
+      sessions={sessions}
+      formatSessionStatus={formatSessionStatus}
+      formatSessionDate={formatSessionDate}
+      formatSessionPlaybackDuration={formatSessionPlaybackDuration}
+      showLeaderboardWorkspace={showLeaderboardWorkspace}
+      adaptiveAdvancedDiagnosticsProps={adaptiveAdvancedDiagnosticsProps}
+      adaptiveBenchmarkSectionProps={adaptiveBenchmarkSectionProps}
+      openRouterAccessState={openRouterAccessState}
+      openRouterAccessMessage={openRouterAccessMessage}
+      openRouterWorkspaceProps={openRouterWorkspaceProps}
+      canAccessAdminWorkspace={isCurrentProfileAdmin || !syncConfig.authRequired}
+      adminWorkspaceProps={adminWorkspaceProps}
+      leaderboardWorkspaceProps={leaderboardWorkspaceProps}
+      liveMetricsDockProps={liveMetricsDockProps}
+    />
   );
 }
 

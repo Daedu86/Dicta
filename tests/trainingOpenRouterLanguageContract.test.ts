@@ -9,6 +9,7 @@ import {
 const repoRoot = resolve(__dirname, '..');
 const source = [
   readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8'),
+  readFileSync(resolve(repoRoot, 'src/app/AppRouteRenderer.tsx'), 'utf-8'),
   readFileSync(resolve(repoRoot, 'src/app/useAdaptiveWorkspaceEntryActions.ts'), 'utf-8'),
 ].join('\n');
 
