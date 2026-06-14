@@ -5,11 +5,10 @@ import { useOnlineStatus } from './app/useOnlineStatus';
 import { useOpenRouterModelRuntime } from './app/useOpenRouterModelRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useAdaptiveWorkspaceRouteRuntime } from './app/useAdaptiveWorkspaceRouteRuntime';
-import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionPersistenceRuntime } from './app/useSessionPersistenceRuntime';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
 import { useAdminFileInventory } from './app/useAdminFileInventory';
-import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries';
+import { useWorkspaceSessionRuntime } from './app/useWorkspaceSessionRuntime';
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
 import { useOpenRouterGenerationRuntime } from './app/useOpenRouterGenerationRuntime';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
@@ -382,32 +381,6 @@ function App() {
   });
 
   const {
-    latestSession,
-    activeTrainingSubmissionMeta,
-    pendingSessions,
-    pendingSyncSummary,
-    recentDictationSessionHints,
-    leaderboard,
-    leaderboardSections,
-    adminSessions,
-    adminStorageSummary,
-    lastSessionForLanguage,
-    lastSessionScoreHelpText,
-    languageTodaySummary,
-  } = useWorkspaceSessionSummaries({
-    sessions,
-    activeSession,
-    adaptiveBenchmarksByInputLanguage,
-    adaptiveSessionFeedbackByInputLanguage,
-    supabaseLastSyncedAt: supabaseSyncStatus.lastSyncedAt,
-    leaderboardLanguageView,
-    adminLanguageView,
-    adminProfileFilter,
-    adminRemoteSessions,
-    metricsLanguageView,
-    metricsRangeView,
-  });
-  const {
     getAdaptiveController,
     phrasePlaybackEventsRef,
     selectedBenchmarkInputMode,
@@ -481,10 +454,33 @@ function App() {
   });
 
   const {
+    latestSession,
+    activeTrainingSubmissionMeta,
+    pendingSessions,
+    pendingSyncSummary,
+    recentDictationSessionHints,
+    leaderboard,
+    leaderboardSections,
+    adminSessions,
+    adminStorageSummary,
+    lastSessionForLanguage,
+    lastSessionScoreHelpText,
+    languageTodaySummary,
     deleteSession,
     openDashboardForSession,
     openWorkspaceForSession,
-  } = useSessionWorkspaceActions({
+  } = useWorkspaceSessionRuntime({
+    sessions,
+    activeSession,
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
+    supabaseLastSyncedAt: supabaseSyncStatus.lastSyncedAt,
+    leaderboardLanguageView,
+    adminLanguageView,
+    adminProfileFilter,
+    adminRemoteSessions,
+    metricsLanguageView,
+    metricsRangeView,
     dashboardSessionId,
     workspaceMode,
     clearDashboardSession,
