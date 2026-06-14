@@ -1,4 +1,3 @@
-import { buildResetSessionState } from './app/resetSessionState';
 import { useActiveSessionStateSync } from './app/useActiveSessionStateSync';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthWorkspaceState } from './app/useAuthWorkspaceState';
@@ -32,6 +31,7 @@ import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
 import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
 import { useTtsSessionSubmitAction } from './app/useTtsSessionSubmitAction';
 import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
+import { useResetSessionRuntime } from './app/useResetSessionRuntime';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -794,46 +794,6 @@ function App() {
     return () => window.clearInterval(interval);
   }, [ttsStatus]);
 
-  function resetSession(options: { preserveInputSettingsLock?: boolean } = {}): void {
-    const resetState = buildResetSessionState({
-      preserveInputSettingsLock: options.preserveInputSettingsLock,
-      inputSettingsLocked,
-      ttsText,
-      activeInputMode,
-    });
-
-    if (activeSession?.status === 'finished') {
-      allowFinishedSessionResetRef.current = activeSession.id;
-    }
-    stopTtsPlayback();
-    setTtsPracticeText(resetState.ttsPracticeText);
-    ttsPracticeLiveTextRef.current = resetState.ttsPracticeText;
-    setTtsStatus(resetState.ttsStatus);
-    setTtsCurrentChunk(resetState.ttsCurrentChunk);
-    setTtsPacingMode(resetState.ttsPacingMode);
-    setTtsSpeechRate(resetState.ttsSpeechRate);
-    ttsStartedAtMsRef.current = resetState.refs.ttsStartedAtMs;
-    ttsChunkStartMsRef.current = resetState.refs.ttsChunkStartMs;
-    ttsChunkStartWordIndexRef.current = resetState.refs.ttsChunkStartWordIndex;
-    ttsChunkWordCountRef.current = resetState.refs.ttsChunkWordCount;
-    ttsCompletedSourceWordsRef.current = resetState.refs.ttsCompletedSourceWords;
-    ttsLastControllerActionRef.current = resetState.refs.ttsLastControllerAction;
-    setRunning(resetState.running);
-    setRate(resetState.rate);
-    setLagSec(resetState.lagSec);
-    setLagWords(resetState.lagWords);
-    setWpm(resetState.wpm);
-    setAccuracy(resetState.accuracy);
-    setControllerState(resetState.controllerState);
-    ttsUiLastPublishedAtRef.current = resetState.refs.ttsUiLastPublishedAt;
-    ttsPublishedUiRef.current = resetState.publishedUi;
-    setSessionStatus(resetState.sessionStatus);
-    setTrainingSubmitMessage(resetState.trainingSubmitMessage);
-    setInputSettingsLocked(resetState.nextInputSettingsLocked);
-    telemetryRef.current = resetState.refs.telemetry;
-    resetAdaptiveSessionFeedbackTracking(activeSession?.id);
-  }
-
   const {
     updateAdminProfileAccess,
   } = useAdminProfileAccessActions({
@@ -1132,6 +1092,41 @@ function App() {
     setSessionStatus,
     setTtsStatus,
     setTtsPlayerProgressTick,
+  });
+
+  const resetSession = useResetSessionRuntime({
+    activeSession,
+    activeInputMode,
+    inputSettingsLocked,
+    ttsText,
+    stopTtsPlayback,
+    resetAdaptiveSessionFeedbackTracking,
+    allowFinishedSessionResetRef,
+    ttsPracticeLiveTextRef,
+    ttsStartedAtMsRef,
+    ttsChunkStartMsRef,
+    ttsChunkStartWordIndexRef,
+    ttsChunkWordCountRef,
+    ttsCompletedSourceWordsRef,
+    ttsLastControllerActionRef,
+    ttsUiLastPublishedAtRef,
+    ttsPublishedUiRef,
+    telemetryRef,
+    setTtsPracticeText,
+    setTtsStatus,
+    setTtsCurrentChunk,
+    setTtsPacingMode,
+    setTtsSpeechRate,
+    setRunning,
+    setRate,
+    setLagSec,
+    setLagWords,
+    setWpm,
+    setAccuracy,
+    setControllerState,
+    setSessionStatus,
+    setTrainingSubmitMessage,
+    setInputSettingsLocked,
   });
 
   const submitTtsSession = useTtsSessionSubmitAction({
