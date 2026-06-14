@@ -14,6 +14,7 @@ import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImp
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { useTtsPracticeInputRuntime } from './app/useTtsPracticeInputRuntime';
 import { useTtsPlaybackMetricsRuntime } from './app/useTtsPlaybackMetricsRuntime';
+import { useTtsPlaybackIntervalsRuntime } from './app/useTtsPlaybackIntervalsRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
@@ -695,27 +696,15 @@ function App() {
     rate,
   });
 
-  useEffect(() => {
-    if (activeInputMode !== BROWSER_TTS_SESSION_INPUT_MODE || activeSessionFinished || !ttsHasText) {
-      return;
-    }
-
-    if (ttsStatus !== 'playing') {
-      return;
-    }
-
-    const id = window.setInterval(() => {
-      applyTtsPerformanceSampleRef.current();
-    }, config.tickMs);
-
-    return () => window.clearInterval(id);
-  }, [
+  useTtsPlaybackIntervalsRuntime({
     activeInputMode,
-    config.tickMs,
     activeSessionFinished,
     ttsHasText,
     ttsStatus,
-  ]);
+    tickMs: config.tickMs,
+    applyTtsPerformanceSampleRef,
+    setTtsPlayerProgressTick,
+  });
 
   useActiveSessionStateSync({
     sessions,
@@ -780,12 +769,6 @@ function App() {
     setTrainingSubmitMessage,
     resetAdaptiveSessionFeedbackTracking,
   });
-
-  useEffect(() => {
-    if (ttsStatus !== 'playing') return;
-    const interval = window.setInterval(() => setTtsPlayerProgressTick((value) => value + 1), 500);
-    return () => window.clearInterval(interval);
-  }, [ttsStatus]);
 
   const {
     updateAdminProfileAccess,
