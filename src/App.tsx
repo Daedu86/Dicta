@@ -32,7 +32,6 @@ import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
 import { useResetSessionRuntime } from './app/useResetSessionRuntime';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
-import { useLiveMetricsDockProps } from './app/useLiveMetricsDockProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAdaptiveWorkspaceEntryActions } from './app/useAdaptiveWorkspaceEntryActions';
@@ -44,6 +43,7 @@ import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorksp
 import { useWorkspacePanelPropsRuntime } from './app/useWorkspacePanelPropsRuntime';
 import { useAppShellHeaderRuntime } from './app/useAppShellHeaderRuntime';
 import { useSessionCreateCardRuntime } from './app/useSessionCreateCardRuntime';
+import { useLiveMetricsDockRuntime } from './app/useLiveMetricsDockRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -63,10 +63,6 @@ import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { TrainingHeader } from './components/training/TrainingHeader';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
-import {
-  formatInputModeLabel,
-  formatSessionInputMode,
-  } from './app/sessionDisplayFormatters';
 import {
   getDictaSessionQuotaStatus,
   } from './core/appProfiles';
@@ -92,8 +88,7 @@ import {
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './core/sessionInputModes';
 import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
-import { formatDuration,
-  formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
+import { formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
 import { buildCurrentSyncState } from './app/adminStorageSummary';
 import {
   mapSessionInputMode,
@@ -103,10 +98,7 @@ import { buildTtsPlaybackProfile,
   type TtsLiveSignal } from './app/ttsPlaybackProfile';
 import { loadSessions,
   normalizeRestoredStoredSession } from './app/sessionStorage';
-import {
-  buildOrderedSemanticPhrases,
-  formatTtsPacingMode,
-  } from './app/ttsPacingHelpers';
+import { buildOrderedSemanticPhrases } from './app/ttsPacingHelpers';
 import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
   PerformanceTrend,
@@ -1322,7 +1314,7 @@ function App() {
     cancelSessionCreation,
   });
 
-  const liveMetricsDockProps = useLiveMetricsDockProps({
+  const { liveMetricsDockProps } = useLiveMetricsDockRuntime({
     insightsCollapsed,
     metricsLanguageView,
     metricsRangeView,
@@ -1344,11 +1336,6 @@ function App() {
     copyInsightsDiagnosticPackage,
     setInsightsCollapsed,
     selectInsightsDiagnosticFallbackReport,
-    formatInputModeLabel,
-    formatSessionInputMode,
-    formatDuration,
-    formatSessionDate,
-    formatTtsPacingMode,
   });
 
   if (
