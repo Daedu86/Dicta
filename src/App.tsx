@@ -16,6 +16,7 @@ import { useTtsPracticeInputRuntime } from './app/useTtsPracticeInputRuntime';
 import { useTtsPlaybackMetricsRuntime } from './app/useTtsPlaybackMetricsRuntime';
 import { useTtsPlaybackIntervalsRuntime } from './app/useTtsPlaybackIntervalsRuntime';
 import { useFocusedTrainingRouteRuntime } from './app/useFocusedTrainingRouteRuntime';
+import { useAdaptiveWorkspaceRouteRuntime } from './app/useAdaptiveWorkspaceRouteRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
@@ -37,20 +38,16 @@ import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
 import { useAdminWorkspaceProps } from './app/useAdminWorkspaceProps';
 import { useLeaderboardWorkspaceProps } from './app/useLeaderboardWorkspaceProps';
-import { useAdaptiveAdvancedDiagnosticsProps } from './app/useAdaptiveAdvancedDiagnosticsProps';
-import { useAdaptiveBenchmarkSectionProps } from './app/useAdaptiveBenchmarkSectionProps';
 import { useLiveMetricsDockProps } from './app/useLiveMetricsDockProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAdaptiveWorkspaceEntryActions } from './app/useAdaptiveWorkspaceEntryActions';
-import { useAdaptiveWorkspacePresentationState } from './app/useAdaptiveWorkspacePresentationState';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
 import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
 import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
 import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorkspaceState';
 import { perfDiagnostics } from './core/perfDiagnostics';
-import { useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
 import { AppWorkspaceContent } from './app/AppWorkspaceContent';
@@ -126,7 +123,6 @@ import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 import {
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
-import { buildRepeatWordStats } from './app/repeatWordStats';
 import { buildSemanticPhrasesFromDictationScript } from './app/dictationScriptSemanticPhrases';
 import { buildTtsPlaybackProfile,
   type TtsLiveSignal } from './app/ttsPlaybackProfile';
@@ -1168,24 +1164,9 @@ function App() {
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
   const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
   const {
-    adaptiveAdapters,
     selectedBenchmarkProfile,
     selectedSessionFeedback,
-    insightsDiagnosticProfile,
-    insightsDiagnosticFeedback,
     insightsDiagnosticInputOptions,
-    latestAdaptiveMode,
-    latestInputAdapter,
-  } = useAdaptiveWorkspacePresentationState({
-    adaptiveBenchmarksByInputLanguage,
-    adaptiveSessionFeedbackByInputLanguage,
-    selectedBenchmarkInputMode,
-    selectedBenchmarkLanguage,
-    insightsDiagnosticInputMode,
-    metricsLanguageView,
-    latestSession,
-  });
-  const {
     getBenchmarkActiveSessionStatus,
     copySelectedBenchmarkJson,
     downloadSelectedBenchmarkJson,
@@ -1198,26 +1179,37 @@ function App() {
     selectInsightsDiagnosticFallbackReport,
     copyBenchmarkFeedbackPrompt,
     copyBenchmarkFeedbackPromptWithHumanFeedback,
-  } = useAdaptiveExportActions({
+    adaptiveAdvancedDiagnosticsProps,
+    adaptiveBenchmarkSectionProps,
+  } = useAdaptiveWorkspaceRouteRuntime({
+    adaptiveBenchmarksByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
+    selectedBenchmarkInputMode,
+    selectedBenchmarkLanguage,
+    insightsDiagnosticInputMode,
+    metricsLanguageView,
+    latestSession,
     sessions,
     activeSession,
     activeSessionFinished,
     sessionStatus,
     getActiveTypingLanguage,
-    insightsDiagnosticProfile,
-    insightsDiagnosticFeedback,
-    insightsDiagnosticInputMode,
-    metricsLanguageView,
+    adaptiveSectionExpanded,
+    adaptiveSemanticDebug,
+    mapSessionInputMode,
+    setAdaptiveSectionExpanded,
+    setSelectedBenchmarkInputMode,
+    setSelectedBenchmarkLanguage,
     setBenchmarkExportMessage,
     setExportMessage,
     setSessionFeedbackMessage,
     setInsightsDiagnosticFallbackReport,
     setInsightsDiagnosticMessage,
+    adaptiveBenchmarksFocusAnchor,
+    benchmarkExportMessage,
+    sessionFeedbackMessage,
+    formatSessionDate,
   });
-  const repeatWordStats = useMemo(
-    () => buildRepeatWordStats({ sessions, inputMode: selectedBenchmarkInputMode, language: selectedBenchmarkLanguage, now: new Date() }),
-    [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],
-  );
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
 
   void openAdaptiveExportsForActiveInput;
@@ -1317,49 +1309,6 @@ function App() {
     SessionDeviceIconComponent: SessionDeviceIcon,
   });
 
-  const adaptiveAdvancedDiagnosticsProps = useAdaptiveAdvancedDiagnosticsProps({
-    adaptiveSectionExpanded,
-    adaptiveAdapters,
-    latestSession,
-    latestInputAdapter,
-    latestAdaptiveMode,
-    selectedBenchmarkInputMode,
-    adaptiveSemanticDebug,
-    mapSessionInputMode,
-    setAdaptiveSectionExpanded,
-    setSelectedBenchmarkInputMode,
-    setBenchmarkExportMessage,
-    setSessionFeedbackMessage,
-  });
-
-  const adaptiveBenchmarkSectionProps = useAdaptiveBenchmarkSectionProps({
-    adaptiveAdapters,
-    adaptiveBenchmarksByInputLanguage,
-    adaptiveSectionExpanded,
-    adaptiveBenchmarksFocusAnchor,
-    selectedBenchmarkInputMode,
-    selectedBenchmarkLanguage,
-    selectedBenchmarkProfile,
-    repeatWordStats,
-    benchmarkExportMessage,
-    selectedSessionFeedback,
-    sessionFeedbackMessage,
-    formatSessionDate,
-    setAdaptiveSectionExpanded,
-    setSelectedBenchmarkInputMode,
-    setSelectedBenchmarkLanguage,
-    setBenchmarkExportMessage,
-    setSessionFeedbackMessage,
-    copySelectedBenchmarkJson,
-    downloadSelectedBenchmarkJson,
-    copyDictationScriptPrompt,
-    copyBenchmarkWithDictationScriptPrompt,
-    copyDictationScriptTemplate,
-    copySessionFeedbackJson,
-    copyBenchmarkFeedbackJson,
-    copyBenchmarkFeedbackPrompt,
-    copyBenchmarkFeedbackPromptWithHumanFeedback,
-  });
 
   const appShellSyncStatusText = useAppShellSyncStatusText({
     isOnline,

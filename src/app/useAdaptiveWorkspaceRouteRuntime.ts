@@ -8,12 +8,27 @@ import { useAdaptiveWorkspacePresentationState } from './useAdaptiveWorkspacePre
 type PresentationArgs = Parameters<typeof useAdaptiveWorkspacePresentationState>[0];
 type ExportArgs = Parameters<typeof useAdaptiveExportActions>[0];
 type DiagnosticsArgs = Parameters<typeof useAdaptiveAdvancedDiagnosticsProps>[0];
-type BenchmarkArgs = Parameters<typeof useAdaptiveBenchmarkSectionProps>[0];
+type BenchmarkArgs = Parameters<typeof useAdaptiveBenchmarkSectionProps<DiagnosticsArgs['adaptiveSectionExpanded']>>[0];
 
 export type UseAdaptiveWorkspaceRouteRuntimeArgs = PresentationArgs &
   Omit<ExportArgs, 'insightsDiagnosticProfile' | 'insightsDiagnosticFeedback'> &
   Omit<DiagnosticsArgs, 'adaptiveAdapters' | 'latestInputAdapter' | 'latestAdaptiveMode'> &
-  Omit<BenchmarkArgs, 'adaptiveAdapters' | 'selectedBenchmarkProfile' | 'selectedSessionFeedback' | 'repeatWordStats'>;
+  Omit<
+    BenchmarkArgs,
+    | 'adaptiveAdapters'
+    | 'selectedBenchmarkProfile'
+    | 'selectedSessionFeedback'
+    | 'repeatWordStats'
+    | 'copySelectedBenchmarkJson'
+    | 'downloadSelectedBenchmarkJson'
+    | 'copyDictationScriptPrompt'
+    | 'copyBenchmarkWithDictationScriptPrompt'
+    | 'copyDictationScriptTemplate'
+    | 'copySessionFeedbackJson'
+    | 'copyBenchmarkFeedbackJson'
+    | 'copyBenchmarkFeedbackPrompt'
+    | 'copyBenchmarkFeedbackPromptWithHumanFeedback'
+  >;
 
 export function useAdaptiveWorkspaceRouteRuntime(args: UseAdaptiveWorkspaceRouteRuntimeArgs) {
   const presentation = useAdaptiveWorkspacePresentationState(args);
