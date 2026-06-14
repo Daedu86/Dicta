@@ -11,9 +11,6 @@ import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
 import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
 import { useWorkspaceModelRefreshRuntime } from './app/useWorkspaceModelRefreshRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
-import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
-import { useTtsPracticeInputRuntime } from './app/useTtsPracticeInputRuntime';
-import { useTtsPlaybackMetricsRuntime } from './app/useTtsPlaybackMetricsRuntime';
 import { useTtsPlaybackIntervalsRuntime } from './app/useTtsPlaybackIntervalsRuntime';
 import { useFocusedTrainingRouteRuntime } from './app/useFocusedTrainingRouteRuntime';
 import { useAdaptiveWorkspaceRouteRuntime } from './app/useAdaptiveWorkspaceRouteRuntime';
@@ -26,10 +23,6 @@ import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffec
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
 import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
-import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
-import { useTtsSessionSubmitAction } from './app/useTtsSessionSubmitAction';
-import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
-import { useResetSessionRuntime } from './app/useResetSessionRuntime';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
@@ -46,6 +39,7 @@ import { useLiveMetricsDockRuntime } from './app/useLiveMetricsDockRuntime';
 import { useAuthWorkspaceRuntime } from './app/useAuthWorkspaceRuntime';
 import { useTtsRuntimeRefs } from './app/useTtsRuntimeRefs';
 import { useActiveSessionDerivedRuntime } from './app/useActiveSessionDerivedRuntime';
+import { useTtsSessionOrchestrationRuntime } from './app/useTtsSessionOrchestrationRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -89,11 +83,8 @@ import { buildCurrentSyncState } from './app/adminStorageSummary';
 import {
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
-import { buildSemanticPhrasesFromDictationScript } from './app/dictationScriptSemanticPhrases';
 import { loadSessions,
   normalizeRestoredStoredSession } from './app/sessionStorage';
-import { buildOrderedSemanticPhrases } from './app/ttsPacingHelpers';
-import type { SemanticPhrase } from './core/adaptive/SemanticPhrasePlanner';
 import type {
   PerformanceTrend,
   SessionStatus,
@@ -102,7 +93,6 @@ import type {
   TtsStatus,
 } from './app/sessionTypes';
 
-const TTS_BASE_WORDS_PER_SECOND = 2.6;
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 
 function App() {
@@ -704,13 +694,6 @@ function App() {
     setVisibleProfiles,
   });
 
-  function buildSemanticPhrasesForCurrentSession(text: string, language: string | undefined, mode: TtsPacingMode): SemanticPhrase[] {
-    if (activeSession?.sessionSource === 'dictationScript' && activeSession.dictationScript) {
-      return buildSemanticPhrasesFromDictationScript(activeSession.dictationScript);
-    }
-    return buildOrderedSemanticPhrases(text, language, mode);
-  }
-
   const {
     deleteSession,
     openDashboardForSession,
@@ -724,27 +707,6 @@ function App() {
     setActiveSessionId,
     showDashboardWorkspace,
     showSessionInputWorkspace,
-  });
-
-  const {
-    getActiveTypingLanguage,
-    handleEsKeyboardRemapKeyDown,
-  } = useKeyboardRemapRuntime({
-    activeInputMode,
-    inputSettingsLocked,
-    ttsLanguage,
-  });
-
-  const {
-    onTtsPracticeChange,
-    onTtsPracticeKeyDown,
-  } = useTtsPracticeInputRuntime({
-    activeSessionFinished,
-    telemetryRef,
-    ttsStartedAtMsRef,
-    ttsPracticeLiveTextRef,
-    setTtsPracticeText,
-    handleEsKeyboardRemapKeyDown,
   });
 
   const {
@@ -811,16 +773,29 @@ function App() {
   });
 
   const {
-    ensureAttemptTelemetry,
-    recordTtsTelemetryAction,
-    recordTtsChunkTelemetry,
+    getActiveTypingLanguage,
+    onTtsPracticeChange,
+    onTtsPracticeKeyDown,
     estimateTtsSpokenWordIndex,
-    applyTtsPerformanceSample,
-  } = useTtsPlaybackMetricsRuntime({
+    playTts,
+    pauseTts,
+    resumeTts,
+    stopTtsPlayback,
+    seekTtsPlayback,
+    resetSession,
+    submitTtsSession,
+  } = useTtsSessionOrchestrationRuntime({
+    activeInputMode,
+    inputSettingsLocked,
+    ttsLanguage,
+    activeSessionFinished,
+    telemetryRef,
+    ttsStartedAtMsRef,
+    ttsPracticeLiveTextRef,
+    setTtsPracticeText,
     ttsTranscript,
     ttsStatus,
     ttsSpeechRate,
-    ttsLanguage,
     controllerState,
     rate,
     lagSec,
@@ -828,9 +803,6 @@ function App() {
     wpm,
     accuracy,
     trend,
-    telemetryRef,
-    ttsStartedAtMsRef,
-    ttsPracticeLiveTextRef,
     ttsChunkStartMsRef,
     ttsChunkWordCountRef,
     ttsChunkStartWordIndexRef,
@@ -851,43 +823,20 @@ function App() {
     setWpm,
     setAccuracy,
     setTrend,
-    baseWordsPerSecond: TTS_BASE_WORDS_PER_SECOND,
-  });
-
-  const {
-    playTts,
-    playTtsFromWord,
-  } = useBrowserTtsPlaybackLoop({
-    activeSessionFinished,
     activeSession,
-    ttsStatus,
     ttsText,
-    ttsLanguage,
     ttsPacingMode,
-    ttsSpeechRate,
-    ttsTranscript,
     browserTtsVoices,
     ttsPlaybackProfile,
     perfDiagnostics,
     stopTtsPlaybackRef,
     ttsPausedAtWordIndexRef,
-    ttsCompletedSourceWordsRef,
-    ttsStartedAtMsRef,
-    ttsLagOutlierCountRef,
-    ttsLastValidControlLagSecRef,
     ttsUnsafeChunkCountRef,
     ttsChunkAccuracyWindowRef,
     ttsLastAccuracySnapshotRef,
-    ttsLastControllerActionRef,
-    ttsLiveSignalRef,
-    ttsPracticeLiveTextRef,
     ttsUtteranceRef,
-    ttsChunkStartMsRef,
-    ttsChunkStartWordIndexRef,
-    ttsChunkWordCountRef,
     ttsSemanticPhraseAdvanceCountRef,
     ttsSemanticPhraseReplayCountRef,
-    buildSemanticPhrasesForCurrentSession,
     isBrowserTtsSupported,
     speakBrowserTts,
     resolveActiveBrowserTtsVoice,
@@ -898,11 +847,6 @@ function App() {
     beginAdaptiveSessionFeedback,
     recordPhrasePlaybackEvent,
     recordAdaptiveBenchmark,
-    estimateTtsSpokenWordIndex,
-    ensureAttemptTelemetry,
-    recordTtsTelemetryAction,
-    recordTtsChunkTelemetry,
-    applyTtsPerformanceSample,
     setAdaptiveSemanticDebug,
     setTtsCurrentChunk,
     setTtsPacingMode,
@@ -911,6 +855,21 @@ function App() {
     setRunning,
     setSessionStatus,
     setError,
+    ttsHasText,
+    ttsPracticeText,
+    cancelBrowserTts,
+    resumeBrowserTts,
+    setTtsPlayerProgressTick,
+    resetAdaptiveSessionFeedbackTracking,
+    allowFinishedSessionResetRef,
+    setTrainingSubmitMessage,
+    setInputSettingsLocked,
+    sessions,
+    activeSessionId,
+    resolveBrowserTtsVoiceForSession,
+    persistAndPushSessionsNow,
+    completeAdaptiveSessionFeedback,
+    setSessions,
   });
 
   const { importDictaLocalStorageSnapshot } = useDictaLocalStorageImportRuntime({
@@ -924,99 +883,6 @@ function App() {
     showLeaderboardWorkspace,
     setExportMessage,
   });
-
-  const {
-    pauseTts,
-    resumeTts,
-    stopTtsPlayback,
-    seekTtsPlayback,
-  } = useTtsPlaybackControls({
-    activeInputMode,
-    activeSessionFinished,
-    ttsHasText,
-    ttsStatus,
-    ttsText,
-    ttsPracticeText,
-    ttsTranscriptWordCount: ttsTranscript?.words.length ?? 0,
-    isBrowserTtsSupported,
-    cancelBrowserTts,
-    resumeBrowserTts,
-    estimateTtsSpokenWordIndex,
-    playTtsFromWord,
-    recordTtsTelemetryAction,
-    ttsStartedAtMsRef,
-    ttsUtteranceRef,
-    ttsChunkStartMsRef,
-    ttsCompletedSourceWordsRef,
-    ttsPausedAtWordIndexRef,
-    setTtsCurrentChunk,
-    setTtsPacingMode,
-    setTtsSpeechRate,
-    setRunning,
-    setSessionStatus,
-    setTtsStatus,
-    setTtsPlayerProgressTick,
-  });
-
-  const resetSession = useResetSessionRuntime({
-    activeSession,
-    activeInputMode,
-    inputSettingsLocked,
-    ttsText,
-    stopTtsPlayback,
-    resetAdaptiveSessionFeedbackTracking,
-    allowFinishedSessionResetRef,
-    ttsPracticeLiveTextRef,
-    ttsStartedAtMsRef,
-    ttsChunkStartMsRef,
-    ttsChunkStartWordIndexRef,
-    ttsChunkWordCountRef,
-    ttsCompletedSourceWordsRef,
-    ttsLastControllerActionRef,
-    ttsUiLastPublishedAtRef,
-    ttsPublishedUiRef,
-    telemetryRef,
-    setTtsPracticeText,
-    setTtsStatus,
-    setTtsCurrentChunk,
-    setTtsPacingMode,
-    setTtsSpeechRate,
-    setRunning,
-    setRate,
-    setLagSec,
-    setLagWords,
-    setWpm,
-    setAccuracy,
-    setControllerState,
-    setSessionStatus,
-    setTrainingSubmitMessage,
-    setInputSettingsLocked,
-  });
-
-  const submitTtsSession = useTtsSessionSubmitAction({
-    activeInputMode,
-    ttsHasText,
-    ttsPracticeText,
-    ttsLanguage,
-    sessions,
-    activeSessionId,
-    activeSession,
-    applyTtsPerformanceSample,
-    resolveBrowserTtsVoiceForSession,
-    collectBrowserTtsEnvironmentForSession,
-    persistAndPushSessionsNow,
-    stopTtsPlayback,
-    completeAdaptiveSessionFeedback,
-    setTtsPracticeText,
-    setSessions,
-    setRunning,
-    setSessionStatus,
-    setTtsStatus,
-    setError,
-    setTrainingSubmitMessage,
-  });
-
-  stopTtsPlaybackRef.current = stopTtsPlayback;
 
   const { focusedTrainingProps } = useFocusedTrainingRouteRuntime({
     activeInputMode,
