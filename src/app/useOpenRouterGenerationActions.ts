@@ -27,7 +27,7 @@ import {
 import { requestOpenRouterGenerationJob } from './openRouterGenerationJobRequest';
 import type { StoredSession } from './sessionTypes';
 
-type OpenRouterGenerationBusyControls = {
+export type OpenRouterGenerationBusyControls = {
   directOpenRouterBusy: boolean;
   setDirectOpenRouterBusy: (value: boolean) => void;
   directIntermediateOpenRouterBusy: boolean;
@@ -54,7 +54,7 @@ type CreateGenerationErrorSessionArgs = {
   message: string;
 };
 
-type UseOpenRouterGenerationActionsOptions = OpenRouterGenerationBusyControls & {
+export type UseOpenRouterGenerationActionsOptions = OpenRouterGenerationBusyControls & {
   allowCustomSessionGeneration: boolean;
   sessions: StoredSession[];
   activeSession: StoredSession | null;

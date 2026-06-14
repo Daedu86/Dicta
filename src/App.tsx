@@ -17,8 +17,7 @@ import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions
 import { useAdminFileInventory } from './app/useAdminFileInventory';
 import { useWorkspaceSessionSummaries } from './app/useWorkspaceSessionSummaries';
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
-import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
-import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
+import { useOpenRouterGenerationRuntime } from './app/useOpenRouterGenerationRuntime';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
@@ -162,20 +161,6 @@ function App() {
     setOpenRouterDefaultModel,
   } = useModelPreferenceRuntime();
 
-  const {
-    directOpenRouterBusy,
-    setDirectOpenRouterBusy,
-    directIntermediateOpenRouterBusy,
-    setDirectIntermediateOpenRouterBusy,
-    directAdvancedOpenRouterBusy,
-    setDirectAdvancedOpenRouterBusy,
-    expressEasyOpenRouterBusy,
-    setExpressEasyOpenRouterBusy,
-    expressIntermediateOpenRouterBusy,
-    setExpressIntermediateOpenRouterBusy,
-    expressAdvancedOpenRouterBusy,
-    setExpressAdvancedOpenRouterBusy,
-  } = useOpenRouterGenerationBusyState();
   const {
     openRouterModels,
     openRouterStatus,
@@ -609,6 +594,12 @@ function App() {
   });
 
   const {
+    directOpenRouterBusy,
+    directIntermediateOpenRouterBusy,
+    directAdvancedOpenRouterBusy,
+    expressEasyOpenRouterBusy,
+    expressIntermediateOpenRouterBusy,
+    expressAdvancedOpenRouterBusy,
     openOpenRouterGenerateForActiveInput,
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
@@ -616,7 +607,7 @@ function App() {
     generateExpressEasyNextSessionFromOpenRouter,
     generateExpressIntermediateNextSessionFromOpenRouter,
     generateExpressAdvancedNextSessionFromOpenRouter,
-  } = useOpenRouterGenerationActions({
+  } = useOpenRouterGenerationRuntime({
     allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
     sessions,
     activeSession,
@@ -641,18 +632,6 @@ function App() {
     trackOpenRouterJob,
     recordOpenRouterGenerationFailure,
     createOpenRouterErrorSession,
-    directOpenRouterBusy,
-    setDirectOpenRouterBusy,
-    directIntermediateOpenRouterBusy,
-    setDirectIntermediateOpenRouterBusy,
-    directAdvancedOpenRouterBusy,
-    setDirectAdvancedOpenRouterBusy,
-    expressEasyOpenRouterBusy,
-    setExpressEasyOpenRouterBusy,
-    expressIntermediateOpenRouterBusy,
-    setExpressIntermediateOpenRouterBusy,
-    expressAdvancedOpenRouterBusy,
-    setExpressAdvancedOpenRouterBusy,
   });
 
   const {
