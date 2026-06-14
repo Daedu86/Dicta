@@ -15,6 +15,7 @@ import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { useTtsPracticeInputRuntime } from './app/useTtsPracticeInputRuntime';
 import { useTtsPlaybackMetricsRuntime } from './app/useTtsPlaybackMetricsRuntime';
 import { useTtsPlaybackIntervalsRuntime } from './app/useTtsPlaybackIntervalsRuntime';
+import { useFocusedTrainingRouteRuntime } from './app/useFocusedTrainingRouteRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
@@ -24,14 +25,10 @@ import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffec
 import { useOpenRouterGenerationBusyState } from './app/useOpenRouterGenerationBusyState';
 import { useOpenRouterGenerationActions } from './app/useOpenRouterGenerationActions';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
-import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
-import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPresentationState';
-import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainingInputTelemetryRuntime';
 import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
 import { useTtsSessionSubmitAction } from './app/useTtsSessionSubmitAction';
 import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
 import { useResetSessionRuntime } from './app/useResetSessionRuntime';
-import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
 import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
@@ -108,7 +105,6 @@ import {
 import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './app/useDictaUiPreferences';
 import { isMobileViewport } from './app/viewport';
-import { useTrainingSessionLifecycle } from './app/useTrainingSessionLifecycle';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
 import { useBrowserTtsSessionEnvironmentRuntime } from './app/useBrowserTtsSessionEnvironmentRuntime';
 import { useSessionPersistenceSync } from './app/useSessionPersistenceSync';
@@ -1093,60 +1089,80 @@ function App() {
 
   stopTtsPlaybackRef.current = stopTtsPlayback;
 
-  const { focusedTrainingControls } = useTrainingSessionLifecycle({
-    state: {
-      activeInputMode,
-      activeSessionPresent: Boolean(activeSession),
-      activeSessionFinished,
-      sessionStatus,
-      running,
-      ttsHasText,
-      ttsStatus,
-      inputSettingsLocked,
-    },
-    text: {
-      ttsPracticeText,
-    },
-    actions: {
-      resetSession,
-      playTts,
-      resumeTts,
-      pauseTts,
-      stopTts: stopTtsPlayback,
-      onTtsPracticeChange,
-      submitTtsSession,
-      setInputSettingsLocked,
-      setError,
-      setExportMessage,
-      collapseSetupPanels: () => undefined,
-    },
-  });
-  void ttsPlayerProgressTick;
-  const {
-    ttsPlayerDurationSec,
-    ttsPlayerProgressPercent,
-    focusedProgressLabel,
-    focusedSourceLabel,
-    focusedTextValue,
-    focusedTextPlaceholder,
-    focusedTrainingMessage,
-    focusedTrainingMessageTone,
-  } = useFocusedTrainingPresentationState({
-    ttsTranscriptWordCount: ttsTranscript?.words.length ?? 0,
-    ttsHasText,
-    ttsSpokenWordIndex: ttsHasText ? estimateTtsSpokenWordIndex() : 0,
-    ttsSpeechRate,
-    ttsLanguage,
-    ttsBaseWordsPerSecond: TTS_BASE_WORDS_PER_SECOND,
-    adaptiveSemanticCurrentPhraseIndex: adaptiveSemanticDebug.currentPhraseIndex,
-    adaptiveSemanticTotalPhrases: adaptiveSemanticDebug.totalSemanticPhrases,
+  const { focusedTrainingProps } = useFocusedTrainingRouteRuntime({
+    activeInputMode,
+    activeSession,
+    activeTrainingSubmissionMeta,
+    activeInputLabel,
+    sessionStatus,
+    ttsStatus,
+    running,
+    inputSettingsLocked,
+    activeVisibleScore,
+    activeLiveScoreHelpText,
+    activeLivePointsLabel,
+    activeLivePointsHelpText,
+    activeVisibleAccuracy,
+    activeLiveAccuracyHelpText,
+    lagSec,
     activeSessionFinished,
-    ttsPracticeText,
+    ttsHasText,
     error,
     trainingSubmitMessage,
     exportMessage,
     openRouterJobStatus,
     openRouterError,
+    ttsTranscript,
+    estimateTtsSpokenWordIndex,
+    ttsSpeechRate,
+    ttsLanguage,
+    adaptiveSemanticDebug,
+    ttsPracticeText,
+    ttsPlayerProgressTick,
+    seekTtsPlayback,
+    resetSession,
+    playTts,
+    resumeTts,
+    pauseTts,
+    stopTtsPlayback,
+    onTtsPracticeChange,
+    onTtsPracticeKeyDown,
+    submitTtsSession,
+    setInputSettingsLocked,
+    setError,
+    setExportMessage,
+    telemetryRef,
+    ttsStartedAtMsRef,
+    ttsPracticeLiveTextRef,
+    pendingSessions,
+    activeSessionId,
+    openWorkspaceForSession,
+    deleteSession,
+    supabaseSyncStatus,
+    pendingSyncSummary,
+    allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
+    openRouterAccessAllowed,
+    isOnline,
+    effectiveOpenRouterDefaultModel,
+    sessionQuotaStatus,
+    openRouterOfflineTitle,
+    activeOpenRouterJobs,
+    openRouterJobNotifications,
+    trainingGenerationNotices,
+    trainingGenerationNowMs,
+    directOpenRouterBusy,
+    directIntermediateOpenRouterBusy,
+    directAdvancedOpenRouterBusy,
+    expressEasyOpenRouterBusy,
+    expressIntermediateOpenRouterBusy,
+    expressAdvancedOpenRouterBusy,
+    generateEasyNextSessionFromOpenRouter,
+    generateIntermediateNextSessionFromOpenRouter,
+    generateAdvancedNextSessionFromOpenRouter,
+    generateExpressEasyNextSessionFromOpenRouter,
+    generateExpressIntermediateNextSessionFromOpenRouter,
+    generateExpressAdvancedNextSessionFromOpenRouter,
+    openOpenRouterGenerateForActiveInput,
   });
   const sessionCreationNameTrimmed = sessionCreationName.trim();
   const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
@@ -1203,80 +1219,6 @@ function App() {
     [sessions, selectedBenchmarkInputMode, selectedBenchmarkLanguage],
   );
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
-  const focusedInputHandler = onTtsPracticeChange;
-  const focusedImmediateInputHandler = useFocusedTrainingInputTelemetryRuntime({
-    telemetryRef,
-    ttsStartedAtMsRef,
-    ttsPracticeLiveTextRef,
-  });
-  const focusedKeyDownHandler = onTtsPracticeKeyDown;
-  const focusedTrainingGenerationButtons = useFocusedTrainingGenerationButtons({
-    allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
-    openRouterAccessAllowed,
-    isOnline,
-    activeSession,
-    effectiveOpenRouterDefaultModel,
-    sessionQuotaStatus,
-    openRouterOfflineTitle,
-    activeOpenRouterJobs,
-    openRouterJobNotifications,
-    trainingGenerationNotices,
-    trainingGenerationNowMs,
-    directOpenRouterBusy,
-    directIntermediateOpenRouterBusy,
-    directAdvancedOpenRouterBusy,
-    expressEasyOpenRouterBusy,
-    expressIntermediateOpenRouterBusy,
-    expressAdvancedOpenRouterBusy,
-    generateEasyNextSessionFromOpenRouter,
-    generateIntermediateNextSessionFromOpenRouter,
-    generateAdvancedNextSessionFromOpenRouter,
-    generateExpressEasyNextSessionFromOpenRouter,
-    generateExpressIntermediateNextSessionFromOpenRouter,
-    generateExpressAdvancedNextSessionFromOpenRouter,
-    openOpenRouterGenerateForActiveInput,
-  });
-
-  function replayFocusedTts(): void {
-    seekTtsPlayback(Math.max(0, ttsPlayerProgressPercent / 100 - 0.08));
-  }
-
-  const focusedTrainingProps = useFocusedTrainingViewProps({
-    activeSession,
-    submissionMeta: activeTrainingSubmissionMeta,
-    activeInputLabel,
-    sessionStatus,
-    sourceLabel: focusedSourceLabel,
-    progressLabel: focusedProgressLabel,
-    statusLabel: ttsStatus,
-    currentTextValue: focusedTextValue,
-    onTextChange: focusedInputHandler,
-    onImmediateTextChange: focusedImmediateInputHandler,
-    onTextKeyDown: focusedKeyDownHandler,
-    textPlaceholder: focusedTextPlaceholder,
-    activeVisibleScore,
-    liveScoreHelpText: activeLiveScoreHelpText,
-    livePointsLabel: activeLivePointsLabel,
-    livePointsHelpText: activeLivePointsHelpText,
-    activeVisibleAccuracy,
-    liveAccuracyHelpText: activeLiveAccuracyHelpText,
-    lagSec,
-    activeSessionFinished,
-    focusedTrainingControls,
-    ttsHasText,
-    ttsPlayerDurationSec,
-    onReplayFocusedTts: replayFocusedTts,
-    message: focusedTrainingMessage,
-    messageTone: focusedTrainingMessageTone,
-    pendingSessions,
-    activeSessionId,
-    onOpenPendingSession: openWorkspaceForSession,
-    onDeletePendingSession: deleteSession,
-    syncStatus: supabaseSyncStatus,
-    pendingSyncSummary,
-    isOnline,
-    generationButtons: focusedTrainingGenerationButtons,
-  });
 
   void openAdaptiveExportsForActiveInput;
 
