@@ -21,8 +21,7 @@ import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePe
 import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
 import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
 import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorkspaceState';
-import { useTtsRuntimeRefs } from './app/useTtsRuntimeRefs';
-import { useActiveSessionDerivedRuntime } from './app/useActiveSessionDerivedRuntime';
+import { useTtsSessionRuntime } from './app/useTtsSessionRuntime';
 import { useFocusedTrainingRuntime } from './app/useFocusedTrainingRuntime';
 import { useAppPresentationRuntime } from './app/useAppPresentationRuntime';
 import { useTrainingRuntimeState } from './app/useTrainingRuntimeState';
@@ -43,7 +42,6 @@ import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './app/useDictaUiPreferences';
 import { isMobileViewport } from './app/viewport';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
-import { useBrowserTtsSessionEnvironmentRuntime } from './app/useBrowserTtsSessionEnvironmentRuntime';
 import { useSessionPersistenceSync } from './app/useSessionPersistenceSync';
 import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import {
@@ -399,11 +397,6 @@ function App() {
     ttsLiveSignalRef,
     ttsUiLastPublishedAtRef,
     ttsPublishedUiRef,
-  } = useTtsRuntimeRefs({
-    ttsPracticeText,
-  });
-
-  const {
     config,
     activeSession,
     dashboardSession,
@@ -412,19 +405,16 @@ function App() {
     activeInputWorkspaceMode,
     activeSessionFinished,
     ttsPlaybackProfile,
-  } = useActiveSessionDerivedRuntime({
+    collectBrowserTtsEnvironmentForSession,
+    resolveBrowserTtsVoiceForSession,
+    resolveActiveBrowserTtsVoice,
+  } = useTtsSessionRuntime({
+    ttsPracticeText,
     sessions,
     activeSessionId,
     dashboardSessionId,
     difficulty,
     sessionStatus,
-  });
-  const {
-    collectBrowserTtsEnvironmentForSession,
-    resolveBrowserTtsVoiceForSession,
-    resolveActiveBrowserTtsVoice,
-  } = useBrowserTtsSessionEnvironmentRuntime({
-    activeSession,
     browserTtsVoices,
     setSessions,
     ttsLanguage,
