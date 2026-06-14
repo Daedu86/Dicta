@@ -12,6 +12,7 @@ import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
 import { useWorkspaceModelRefreshRuntime } from './app/useWorkspaceModelRefreshRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
+import { useTtsPracticeInputRuntime } from './app/useTtsPracticeInputRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
@@ -57,8 +58,6 @@ import { useAdaptiveExportActions } from './app/useAdaptiveExportActions';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
 import { AppWorkspaceContent } from './app/AppWorkspaceContent';
-import type {
-  KeyboardEvent } from 'react';
 import './App.css';
 import type {
   ControlAction,
@@ -72,8 +71,7 @@ import {
   formatSessionPointsForSession,
 } from './core/evaluation';
 import { buildSessionScoreHelpText } from './core/sessionScore';
-import { cloneTelemetry,
-  normalizeSessionForPersistence } from './core/sessionNormalization';
+import { normalizeSessionForPersistence } from './core/sessionNormalization';
 import {
   LANGUAGE_LABELS,
   SUPPORTED_LANGUAGES,
@@ -835,6 +833,18 @@ function App() {
   });
 
   const {
+    onTtsPracticeChange,
+    onTtsPracticeKeyDown,
+  } = useTtsPracticeInputRuntime({
+    activeSessionFinished,
+    telemetryRef,
+    ttsStartedAtMsRef,
+    ttsPracticeLiveTextRef,
+    setTtsPracticeText,
+    handleEsKeyboardRemapKeyDown,
+  });
+
+  const {
     openOpenRouterGenerateForActiveInput,
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
@@ -908,22 +918,6 @@ function App() {
       }));
     }
     showAdaptiveWorkspace();
-  }
-
-  function onTtsPracticeChange(value: string): void {
-    if (activeSessionFinished) return;
-    if (!telemetryRef.current || !telemetryRef.current.startedAt) {
-      telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
-    }
-    if (ttsStartedAtMsRef.current === null) {
-      ttsStartedAtMsRef.current = performance.now();
-    }
-    ttsPracticeLiveTextRef.current = value;
-    setTtsPracticeText(value);
-  }
-
-  function onTtsPracticeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
-    handleEsKeyboardRemapKeyDown(event, onTtsPracticeChange);
   }
 
   const {
