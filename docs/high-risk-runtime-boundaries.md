@@ -4,6 +4,10 @@ This document centralizes Dicta runtime areas that agents must treat as high-ris
 
 These boundaries can break real user behavior even when a refactor looks mechanically clean. Do not touch them casually.
 
+Last updated: 2026-06-14
+Verified against branch: `product/input-2`
+Verified against code baseline: post `Extract Browser TTS playback loop` push; `src/App.tsx` blob `09f94a6d52841c04ab13fe6790800a8dd839f11d`; `src/app/useBrowserTtsPlaybackLoop.ts` blob `b5156b5e9dfcfa80639506c7079847387b7d3476`
+
 ## Core rule
 
 Before changing a high-risk runtime area:
@@ -22,12 +26,22 @@ If the change requires modifying timing, lifecycle, persistence, playback, auth,
 High-risk areas:
 
 - `src/app/useBrowserTtsRuntime.ts`
+- `src/app/useBrowserTtsPlaybackLoop.ts`
+- `src/app/useTtsSessionSubmitAction.ts`
+- `src/app/useTtsPlaybackControls.ts`
 - `src/app/useTtsTelemetryRecorder.ts`
 - `src/app/useTtsUiPublisher.ts`
 - `src/app/useTtsPlaybackProgressEstimator.ts`
+- `src/app/useTtsPerformanceSampler.ts`
 - `src/app/browserTtsPlaybackPlan.ts`
+- `src/app/browserTtsPlaybackStartPlan.ts`
 - `src/app/browserTtsAdaptiveSemanticDebug.ts`
 - `src/app/browserTtsPhraseCompletionTelemetry.ts`
+- `src/app/browserTtsChunkCompletion.ts`
+- `src/app/browserTtsNextChunkScheduler.ts`
+- `src/app/browserTtsUnexpectedErrorPlan.ts`
+- `src/app/browserTtsUtteranceConfiguration.ts`
+- `src/app/browserTtsUtterancePerfMetadata.ts`
 - `src/app/ttsSessionFinalization.ts`
 - `src/inputs/browserTts/`
 - Browser speech synthesis behavior.
@@ -38,31 +52,40 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
-Current App shell anchors in the post-chunk-completion-debug working tree:
+Current App shell anchors after Browser TTS playback-loop extraction:
 
-- `resetSession`: `src/App.tsx:923`
-- `useTtsTelemetryRecorder` hook call: `src/App.tsx:1107`
-- `useTtsPlaybackProgressEstimator` hook call: `src/App.tsx:1113`
-- `useTtsUiPublisher` hook call: `src/App.tsx:1124`
-- `useTtsPerformanceSampler` hook call: `src/App.tsx:1143`
-- `submitTtsSession`: `src/App.tsx:1164`
-- `playTts`: `src/App.tsx:1211`
-- `playTtsFromWord`: `src/App.tsx:1216`
-- `useTtsPlaybackControls` hook call: `src/App.tsx:1551`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx:2078`
+- `resetSession`: `src/App.tsx`
+- `useTtsTelemetryRecorder` hook call: `src/App.tsx`
+- `useTtsPlaybackProgressEstimator` hook call: `src/App.tsx`
+- `useTtsUiPublisher` hook call: `src/App.tsx`
+- `useTtsPerformanceSampler` hook call: `src/App.tsx`
+- `useTtsSessionSubmitAction` hook call: `src/App.tsx`
+- `useBrowserTtsPlaybackLoop` hook call: `src/App.tsx`
+- `playTts` / `playTtsFromWord`: `src/app/useBrowserTtsPlaybackLoop.ts`
+- `useTtsPlaybackControls` hook call: `src/App.tsx`
+- `BrowserTtsSetupCard` render branch: `src/App.tsx`
 
-Recheck these anchors with `rg` before editing; line numbers are observational and will drift.
+Recheck these anchors with `git grep` or `rg` before editing; line numbers are observational and will drift.
 
 Primary tests:
 
 - `tests/useBrowserTtsRuntime.test.ts`
+- `tests/useTtsSessionSubmitAction.test.ts`
 - `tests/useTtsTelemetryRecorder.test.ts`
 - `tests/useTtsUiPublisher.test.ts`
 - `tests/useTtsPlaybackProgressEstimator.test.ts`
+- `tests/useTtsPerformanceSampler.test.ts`
+- `tests/useTtsPlaybackControls.test.ts`
 - `tests/browserTtsPlaybackLoopContract.test.ts`
+- `tests/browserTtsUtteranceConfigurationContract.test.ts`
+- `tests/mockSpeechSynthesisHarness.test.ts`
 - `tests/browserTtsPlaybackPlan.test.ts`
+- `tests/browserTtsPlaybackStartPlan.test.ts`
 - `tests/browserTtsAdaptiveSemanticDebug.test.ts`
 - `tests/browserTtsPhraseCompletionTelemetry.test.ts`
+- `tests/browserTtsChunkCompletion.test.ts`
+- `tests/browserTtsNextChunkScheduler.test.ts`
+- `tests/browserTtsUnexpectedErrorPlan.test.ts`
 - `tests/ttsSessionFinalization.test.ts`
 - `tests/browserTtsAdaptiveProfiles.test.ts`
 - `tests/browserTtsRatePolicy.test.ts`
@@ -74,10 +97,12 @@ Primary tests:
 Rules:
 
 1. Do not change playback behavior as part of unrelated modularization.
-2. Do not alter browser capability assumptions without tests.
-3. Do not rewrite recovery/rate policy casually.
-4. Keep policy changes separated from UI refactors.
-5. Prefer pure policy tests before runtime integration changes.
+2. Treat `src/app/useBrowserTtsPlaybackLoop.ts` as the Browser TTS playback-loop owner. Do not assume `src/App.tsx` still owns `playTtsFromWord`.
+3. Do not alter browser capability assumptions without tests.
+4. Do not rewrite recovery/rate policy casually.
+5. Keep policy changes separated from UI refactors.
+6. Prefer pure policy tests before runtime integration changes.
+7. For playback-loop changes, run the loop contract and utterance configuration contract tests before broad suite validation.
 
 ## Phrase progression
 
@@ -88,6 +113,7 @@ High-risk areas:
 - Repeat-word progression.
 - Macro phrase offset behavior.
 - Browser TTS chunk completion.
+- Browser TTS playback-loop phrase progression in `src/app/useBrowserTtsPlaybackLoop.ts`.
 
 Rules:
 
@@ -102,6 +128,7 @@ Primary tests:
 - `tests/browserTtsPlaybackPlan.test.ts`
 - `tests/browserTtsPlaybackStartPlan.test.ts`
 - `tests/browserTtsChunkCompletion.test.ts`
+- `tests/browserTtsPlaybackLoopContract.test.ts`
 - `tests/useTtsPlaybackControls.test.ts`
 
 ## Session lifecycle and reset
@@ -110,6 +137,8 @@ High-risk areas:
 
 - `resetSession` side-effect body.
 - `src/app/resetSessionState.ts`.
+- `src/app/useActiveSessionStateSync.ts`.
+- `src/app/useTtsSessionSubmitAction.ts`.
 - `src/app/ttsSessionFinalization.ts`.
 - Session completion and submit transitions.
 - Session storage and active-session hydration.
@@ -125,10 +154,13 @@ Rules:
 Primary tests:
 
 - `tests/resetSessionState.test.ts`
+- `tests/useActiveSessionStateSync.test.ts`
+- `tests/activeSessionHydration.test.ts`
+- `tests/useTtsSessionSubmitAction.test.ts`
 - `tests/ttsSessionFinalization.test.ts`
 - `tests/useTrainingSessionLifecycle.test.ts`
 - `tests/sessionStorage.test.ts`
-- `tests/activeSessionHydration.test.ts`
+- `tests/sessionStatusNormalization.test.ts`
 
 ## Persistence, sync, and auth
 
@@ -138,121 +170,19 @@ High-risk areas:
 - RLS-sensitive sync behavior.
 - Local/session storage migration.
 - Pending sync and offline status.
-- OpenRouter model assignment persistence.
+- Active-session live persistence sync.
 
 Rules:
 
-1. Do not mix auth, sync, and UI-only refactors.
-2. Do not weaken profile/workspace scoping.
-3. Keep service-role assumptions isolated to server/local-dev boundaries.
-4. Run focused persistence/sync tests before broad validation.
+1. Do not change auth or sync behavior as part of unrelated UI cleanup.
+2. Run the narrow persistence/auth tests before broad suite validation.
+3. Preserve profile-scoped storage and pending-sync semantics.
 
 Primary tests:
 
 - `tests/useSessionPersistenceSync.test.ts`
-- `tests/sessionStorage.test.ts`
-- `tests/activeSessionHydration.test.ts`
-- `tests/workspaceModelRefreshRuntime.test.ts`
-- Supabase/auth-specific tests listed in `docs/module-test-map.md`.
-
-## OpenRouter generation and local dev API
-
-High-risk areas:
-
-- OpenRouter request planning.
-- Job queue transitions.
-- Local dev API routes.
-- API key validation and masking.
-- Direct-generation action handlers.
-
-Rules:
-
-1. Keep request planning separate from UI state refactors.
-2. Do not change prompt bounds, max-token bounds, or model normalization without tests.
-3. Do not weaken API key masking or validation.
-4. Keep job-store transitions deterministic and covered.
-
-Primary tests:
-
-- `tests/openRouterDirectGenerationJobPlan.test.ts`
-- `tests/openRouterDirectGenerationPresets.test.ts`
-- `tests/useOpenRouterJobsRuntime.test.ts`
-- Local dev API tests listed in `docs/module-test-map.md`.
-
-## Low-latency typing and performance
-
-High-risk areas:
-
-- `LowLatencyTextarea`.
-- Live input telemetry.
-- Browser TTS live metric publishing.
-- Android/PWA performance behavior.
-- Render-count diagnostics.
-
-Rules:
-
-1. Do not replace low-latency typing paths casually.
-2. Do not add per-keystroke state churn without a performance reason.
-3. Run focused performance tests before broad UI changes.
-4. Smoke test Android/PWA when layout, input, or live metrics change.
-
-Primary tests:
-
-- `tests/LowLatencyTextareaContract.test.ts`
-- `tests/lowLatencyTextarea.test.ts`
-- `tests/lowLatencyPerformanceGate.test.ts`
-- `tests/perfDiagnostics.test.ts`
-- `tests/useTtsUiPublisher.test.ts`
-
-## CSS cascade and mobile layout
-
-High-risk areas:
-
-- Global CSS imports.
-- Broad selectors.
-- Mobile/PWA layout rules.
-- Component-level style changes that depend on cascade order.
-
-Rules:
-
-1. Do not reorder CSS imports casually.
-2. Avoid broad selectors when changing local component behavior.
-3. Check mobile impact for layout changes.
-4. Keep style-only changes separate from runtime changes.
-5. Prefer small, targeted CSS diffs.
-
-## Documentation-only safety
-
-Documentation can still create risk if it becomes misleading.
-
-Rules:
-
-1. Do not promote historical checkpoint docs to current truth without verification.
-2. Keep `docs/README.md` and `docs/documentation-inventory.md` aligned.
-3. Update `docs/module-test-map.md` when test relationships change.
-4. Repair broken references in dedicated commits.
-5. Do not delete historical docs only because they are old.
-6. Mark candidate rankings, line numbers, LOC counts, and "next recommended pass" text as historical when the document's verified commit does not match current `HEAD`.
-
-## AI-assisted refactor risk
-
-AI-assisted refactors can produce plausible, large mechanical changes faster than they can be reviewed. Treat AI-assisted modularization as higher-risk when it touches runtime, persistence, auth, mobile/PWA, or CSS cascade behavior.
-
-Rules:
-
-1. Keep AI-assisted refactors small, reversible, and behavior-preserving.
-2. Reject or split patches that pass broad opaque App state objects into new hooks.
-3. Reject or split patches that mix behavior changes with code movement.
-4. Require focused tests before broad validation.
-5. Require explicit stop conditions for Browser TTS, reset, phrase progression, Supabase, OpenRouter, PWA/mobile, and CSS cascade changes.
-6. Prefer characterization-only first patches when the runtime behavior is not already covered.
-
-## Escalation rule
-
-If a requested change touches more than one high-risk boundary, split the work.
-
-Prefer multiple small commits over a broad mixed change.
-
-## Modularization ROI override
-
-A high modularization score in `docs/modularization-roi.md` does not remove the need for validation. It also does not mean the candidate should be avoided by default. If a candidate touches Browser TTS playback/runtime, phrase progression, `playTtsFromWord`, `resetSession`, refs, timers, telemetry, Supabase, OpenRouter jobs, PWA/mobile performance, CSS cascade behavior, or an AI-assisted runtime extraction, convert that risk into focused tests, a bounded slice, manual smoke checks where needed, and a clear rollback plan before moving code.
+- `tests/supabaseSync.test.ts`
+- `tests/profileScopedStorage.test.ts`
+- `tests/appProfiles.test.ts`
+- `tests/supabaseProfileRoute.test.ts`
+- `tests/useActiveSessionStateSync.test.ts`
