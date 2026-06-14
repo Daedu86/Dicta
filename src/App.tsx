@@ -31,7 +31,6 @@ import { useTtsSessionSubmitAction } from './app/useTtsSessionSubmitAction';
 import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
 import { useResetSessionRuntime } from './app/useResetSessionRuntime';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
-import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
 import { useAdaptiveWorkspaceEntryActions } from './app/useAdaptiveWorkspaceEntryActions';
@@ -44,6 +43,7 @@ import { useWorkspacePanelPropsRuntime } from './app/useWorkspacePanelPropsRunti
 import { useAppShellHeaderRuntime } from './app/useAppShellHeaderRuntime';
 import { useSessionCreateCardRuntime } from './app/useSessionCreateCardRuntime';
 import { useLiveMetricsDockRuntime } from './app/useLiveMetricsDockRuntime';
+import { useAuthWorkspaceRuntime } from './app/useAuthWorkspaceRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -1267,7 +1267,7 @@ function App() {
     signOut,
   });
 
-  const authWorkspaceProps = useAuthWorkspaceProps({
+  const { authWorkspaceProps } = useAuthWorkspaceRuntime({
     themeMode,
     authLoading,
     authView,
@@ -1286,15 +1286,15 @@ function App() {
     authMessageTone,
     authError,
     perfDiagnosticsEnabled,
-    onSignIn: signInWithSupabase,
-    onRequestPasswordReset: requestSupabasePasswordReset,
-    onUpdatePassword: updateSupabasePassword,
-    onSignOut: signOut,
-    onShowAuthView: showAuthView,
-    onAuthEmailChange: setAuthEmail,
-    onAuthPasswordChange: setAuthPassword,
-    onAuthNewPasswordChange: setAuthNewPassword,
-    onAuthNewPasswordConfirmChange: setAuthNewPasswordConfirm,
+    signInWithSupabase,
+    requestSupabasePasswordReset,
+    updateSupabasePassword,
+    signOut,
+    showAuthView,
+    setAuthEmail,
+    setAuthPassword,
+    setAuthNewPassword,
+    setAuthNewPasswordConfirm,
   });
 
   const { sessionCreateCardProps } = useSessionCreateCardRuntime({
