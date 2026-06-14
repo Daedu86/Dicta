@@ -32,7 +32,6 @@ import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
 import { useResetSessionRuntime } from './app/useResetSessionRuntime';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
-import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
 import { useLiveMetricsDockProps } from './app/useLiveMetricsDockProps';
 import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
@@ -44,6 +43,7 @@ import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
 import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorkspaceState';
 import { useWorkspacePanelPropsRuntime } from './app/useWorkspacePanelPropsRuntime';
 import { useAppShellHeaderRuntime } from './app/useAppShellHeaderRuntime';
+import { useSessionCreateCardRuntime } from './app/useSessionCreateCardRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -63,7 +63,6 @@ import { AuthWorkspace } from './components/auth/AuthWorkspace';
 import { TrainingHeader } from './components/training/TrainingHeader';
 import { SessionCreateCard } from './components/runtime-workspaces/SessionCreateCard';
 import { LiveMetricsDock } from './components/runtime-workspaces/LiveMetricsDock';
-import { Metric } from './components/shared/Metric';
 import {
   formatInputModeLabel,
   formatSessionInputMode,
@@ -1131,9 +1130,6 @@ function App() {
     generateExpressAdvancedNextSessionFromOpenRouter,
     openOpenRouterGenerateForActiveInput,
   });
-  const sessionCreationNameTrimmed = sessionCreationName.trim();
-  const canCreateSessionFromDialog = sessionCreationNameTrimmed.length > 0 && !sessionQuotaStatus.blocked;
-  const validatedDictationScript = dictationScriptValidation?.ok ? dictationScriptValidation.script : null;
   const {
     selectedBenchmarkProfile,
     selectedSessionFeedback,
@@ -1309,24 +1305,21 @@ function App() {
     onAuthNewPasswordConfirmChange: setAuthNewPasswordConfirm,
   });
 
-  const sessionCreateCardProps = useSessionCreateCardProps({
+  const { sessionCreateCardProps } = useSessionCreateCardRuntime({
     sessionCreationSource,
     sessionCreationName,
     sessionQuotaStatus,
-    canCreateSessionFromDialog,
     localDevFeaturesAvailable: LOCAL_DEV_FEATURES_AVAILABLE,
     allowDictationScriptCreation: isCurrentProfileAdmin || !syncConfig.authRequired,
     dictationScriptJson,
     dictationScriptValidation,
-    validatedDictationScript,
-    onSessionCreationSourceChange: changeSessionCreationSource,
-    onSessionCreationNameChange: setSessionCreationName,
-    onCreateSessionWithMode: createSessionWithMode,
-    onDictationScriptJsonChange: changeDictationScriptJson,
-    onValidateScriptImport: validateScriptImport,
-    onCreateSessionFromDictationScript: createSessionFromDictationScript,
-    onCancel: cancelSessionCreation,
-    MetricComponent: Metric,
+    changeSessionCreationSource,
+    setSessionCreationName,
+    createSessionWithMode,
+    changeDictationScriptJson,
+    validateScriptImport,
+    createSessionFromDictationScript,
+    cancelSessionCreation,
   });
 
   const liveMetricsDockProps = useLiveMetricsDockProps({
