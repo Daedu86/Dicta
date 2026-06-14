@@ -26,6 +26,16 @@ function getOnEndSection(playbackLoop: string): string {
   return playbackLoop.slice(start, end);
 }
 
+function getOnErrorSection(playbackLoop: string): string {
+  const start = playbackLoop.indexOf('utterance.onerror = (event) => {');
+  if (start < 0) throw new Error('Could not find utterance.onerror in playTtsFromWord.');
+
+  const end = playbackLoop.indexOf('      perfDiagnostics.recordTtsSpeak(perfUtteranceId);', start);
+  if (end < 0) throw new Error('Could not find end of utterance.onerror section.');
+
+  return playbackLoop.slice(start, end);
+}
+
 function expectInOrder(source: string, labels: string[]): void {
   let cursor = 0;
 
@@ -102,4 +112,18 @@ describe('Browser TTS playback loop contract', () => {
       '});',
     ]);
   });
+  it('preserves unexpected SpeechSynthesis error handling order', () => {
+    const onError = getOnErrorSection(getPlayTtsFromWordSection());
+
+    expectInOrder(onError, [
+      'utterance.onerror = (event) => {',
+      "perfDiagnostics.recordTtsError(perfUtteranceId, event.error || 'unknown');",
+      'if (cancelled) return;',
+      'cancelled = true;',
+      'ttsUtteranceRef.current = null;',
+      "setTtsStatus('paused');",
+      "setError('TTS playback stopped unexpectedly.');",
+    ]);
+  });
+
 });
