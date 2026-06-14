@@ -31,8 +31,6 @@ import { useTtsSessionSubmitAction } from './app/useTtsSessionSubmitAction';
 import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
 import { useResetSessionRuntime } from './app/useResetSessionRuntime';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
-import { useAppShellHeaderProps } from './app/useAppShellHeaderProps';
-import { useAppShellSyncStatusText } from './app/useAppShellSyncStatusText';
 import { useAuthWorkspaceProps } from './app/useAuthWorkspaceProps';
 import { useSessionCreateCardProps } from './app/useSessionCreateCardProps';
 import { useLiveMetricsDockProps } from './app/useLiveMetricsDockProps';
@@ -45,6 +43,7 @@ import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
 import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
 import { useSessionCreationWorkspaceState } from './app/useSessionCreationWorkspaceState';
 import { useWorkspacePanelPropsRuntime } from './app/useWorkspacePanelPropsRuntime';
+import { useAppShellHeaderRuntime } from './app/useAppShellHeaderRuntime';
 import { perfDiagnostics } from './core/perfDiagnostics';
 import { useSupabaseAuthActions } from './app/useSupabaseAuthActions';
 import { useSessionCreationActions } from './app/useSessionCreationActions';
@@ -77,11 +76,6 @@ import {
   showGeneratedTrainingSessionNotification,
   } from './core/trainingNotifications';
 import {
-  buildBuildInfoLabel,
-  buildBuildInfoTitle,
-  type DictaBuildInfo,
-  } from './core/buildInfo';
-import {
   useWorkspaceRouting,
   type WorkspaceMode,
   } from './app/useWorkspaceRouting';
@@ -101,7 +95,6 @@ import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { formatDuration,
   formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
-import { formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildCurrentSyncState } from './app/adminStorageSummary';
 import {
   mapSessionInputMode,
@@ -125,13 +118,8 @@ import type {
   TtsStatus,
 } from './app/sessionTypes';
 
-declare const __DICTA_BUILD_INFO__: DictaBuildInfo;
-
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
-const DICTA_BUILD_INFO = __DICTA_BUILD_INFO__;
-const DICTA_BUILD_INFO_LABEL = buildBuildInfoLabel(DICTA_BUILD_INFO);
-const DICTA_BUILD_INFO_TITLE = buildBuildInfoTitle(DICTA_BUILD_INFO);
 
 function App() {
   const perfDiagnosticsEnabled = useAppPerfDiagnosticsRuntime();
@@ -1271,34 +1259,24 @@ function App() {
     deleteSession,
   });
 
-  const appShellSyncStatusText = useAppShellSyncStatusText({
+  const { appShellHeaderProps } = useAppShellHeaderRuntime({
+    themeMode,
     isOnline,
+    openRouterAccessAllowed,
+    effectiveOpenRouterDefaultModel,
+    isCurrentProfileAdmin,
+    authRequired: syncConfig.authRequired,
     supabaseSyncStatus,
     pendingSyncSummary,
-    formatSupabaseSyncState,
-    formatSessionDate,
-  });
-
-  const appShellHeaderProps = useAppShellHeaderProps({
-    themeMode,
-    showOpenRouterStatus: openRouterAccessAllowed,
-    effectiveOpenRouterDefaultModel,
-    buildInfoTitle: DICTA_BUILD_INFO_TITLE,
-    buildInfoLabel: DICTA_BUILD_INFO_LABEL,
-    showAdminButton: isCurrentProfileAdmin || !syncConfig.authRequired,
-    showAdaptiveButton: isCurrentProfileAdmin || !syncConfig.authRequired,
-    showOpenRouterButton: isCurrentProfileAdmin || !syncConfig.authRequired,
-    syncStatusState: supabaseSyncStatus.state,
-    syncStatusText: appShellSyncStatusText,
     appProfile,
     sessionQuotaStatus,
-    onOpenLeaderboard: showLeaderboardWorkspace,
-    onOpenMobileTraining: () => navigateAppRoute('/training'),
-    onOpenAdaptive: openAdaptiveWorkspaceFromHeader,
-    onOpenAdmin: showAdminWorkspace,
-    onOpenOpenRouter: showOpenRouterWorkspace,
-    onToggleTheme: () => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark')),
-    onSignOut: signOut,
+    showLeaderboardWorkspace,
+    navigateAppRoute,
+    openAdaptiveWorkspaceFromHeader,
+    showAdminWorkspace,
+    showOpenRouterWorkspace,
+    setThemeMode,
+    signOut,
   });
 
   const authWorkspaceProps = useAuthWorkspaceProps({
