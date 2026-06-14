@@ -6,9 +6,7 @@ import {
 } from './app/useDictaAppProfileRuntime';
 import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
-import { useModelPreferenceRuntime } from './app/useModelPreferenceRuntime';
-import { useModelCatalogRuntime } from './app/useModelCatalogRuntime';
-import { useWorkspaceModelRefreshRuntime } from './app/useWorkspaceModelRefreshRuntime';
+import { useOpenRouterModelRuntime } from './app/useOpenRouterModelRuntime';
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useAdaptiveWorkspaceRouteRuntime } from './app/useAdaptiveWorkspaceRouteRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
@@ -157,18 +155,6 @@ function App() {
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
   const {
-    openRouterDefaultModel,
-    setOpenRouterDefaultModel,
-  } = useModelPreferenceRuntime();
-
-  const {
-    openRouterModels,
-    openRouterStatus,
-    openRouterError,
-    setOpenRouterError,
-    refreshOpenRouterModels: refreshOpenRouterModelCatalog,
-  } = useModelCatalogRuntime();
-  const {
     adminFileInventory,
     adminFileInventoryError,
   } = useAdminFileInventory({
@@ -300,6 +286,20 @@ function App() {
     getAuthHeaders,
   } = useAuthHeaders({
     authSession,
+  });
+  const {
+    setOpenRouterDefaultModel,
+    openRouterModels,
+    openRouterStatus,
+    openRouterError,
+    setOpenRouterError,
+    assignedOpenRouterModel,
+    effectiveOpenRouterDefaultModel,
+    refreshOpenRouterModels,
+  } = useOpenRouterModelRuntime({
+    syncConfig,
+    appProfile,
+    getAuthHeaders,
   });
 
   const resetOpenRouterJobsRuntimeRef = useRef<() => void>(() => undefined);
@@ -464,19 +464,6 @@ function App() {
     browserTtsVoices,
     setSessions,
     ttsLanguage,
-  });
-
-  const {
-    assignedOpenRouterModel,
-    effectiveOpenRouterDefaultModel,
-    refreshOpenRouterModels,
-  } = useWorkspaceModelRefreshRuntime({
-    syncConfig,
-    appProfile,
-    getAuthHeaders,
-    openRouterDefaultModel,
-    setOpenRouterDefaultModel,
-    refreshOpenRouterModelCatalog,
   });
 
   const {
