@@ -2,9 +2,9 @@
 
 Status: ACTIVE
 Scope: whole repository
-Last updated: 2026-06-13
+Last updated: 2026-06-14
 Verified against branch: `product/input-2`
-Verified against commit: update before use with current `git rev-parse --short HEAD`
+Verified against code baseline: post `Extract Browser TTS playback loop` push; `src/App.tsx` blob `09f94a6d52841c04ab13fe6790800a8dd839f11d`; `src/app/useBrowserTtsPlaybackLoop.ts` blob `b5156b5e9dfcfa80639506c7079847387b7d3476`
 Source inspection command: `git status --short && git log --oneline --decorate -5`
 Test map checked: `docs/module-test-map.md`
 Last candidate decision updated: see active candidate queue in `docs/app-shell-modularization-map.md`
@@ -55,7 +55,7 @@ A candidate should be considered high ROI only when the scorecard can point to c
 
 ## Documentation freshness rule
 
-Every active modularization document must state the branch and commit it was verified against. If the document baseline does not match current `HEAD`, treat candidate rankings, line numbers, LOC counts, and "next recommended pass" text as historical guidance only.
+Every active modularization document must state the branch and code baseline it was verified against. If the documented baseline does not match current `HEAD`, treat candidate rankings, line numbers, LOC counts, and "next recommended pass" text as historical guidance only.
 
 Before using any modularization document to drive implementation:
 
@@ -225,12 +225,15 @@ For high-risk runtime areas, do not default to avoidance. Start with characteriz
 
 ## Latest App-shell checkpoint
 
-On 2026-06-13, `src/app/ttsSessionFinalization.ts` was selected as the next App-shell extraction because it is a deterministic state transition with explicit inputs and outputs, creates a focused unit-test seam, has low browser/runtime risk, and avoids wrapper-only indirection. `src/App.tsx` now delegates finalized-session state construction from `submitTtsSession`, while keeping validation, performance sampling, voice/environment collection, persistence, playback stop, UI setters, telemetry side effects, and feedback side effects in the App shell.
+On 2026-06-14, three App-shell extractions updated the active baseline:
 
-Later on 2026-06-13, `src/app/browserTtsPhraseCompletionTelemetry.ts` was selected as the smaller pure helper inside the playback loop. It owns deterministic DE phrase-completed benchmark telemetry payload construction while `App.tsx` keeps the `SpeechSynthesisUtterance` event handler, performance sampling, adaptive benchmark write, refs, timers, and playback orchestration.
+1. `src/app/useActiveSessionStateSync.ts` now owns active-session hydration, finished-session synchronization, and live session persistence state sync that previously lived directly in `src/App.tsx`.
+2. `src/app/useTtsSessionSubmitAction.ts` now owns Browser TTS submit orchestration: validation, final performance sample, final voice/environment capture, finalized-session state construction, persistence push, playback stop, finished statuses, adaptive feedback completion, and submit-message publication.
+3. `src/app/useBrowserTtsPlaybackLoop.ts` now owns Browser TTS `playTts` / `playTtsFromWord` playback-loop ownership: start validation, playback start planning, `SpeechSynthesisUtterance` creation/configuration, start/end/error handlers, phrase progression, adaptive benchmark writes, chunk telemetry, next-chunk scheduling, and completion transitions.
 
-Later on 2026-06-13, `tests/browserTtsPlaybackLoopContract.test.ts` added characterization for the current in-App playback loop contract: start planning, `SpeechSynthesisUtterance` creation, handler ownership, chunk completion, DE completion telemetry, and next-chunk scheduling order. This was selected before moving more runtime code because the loop still owns nested browser callbacks, refs, timers, adaptive benchmark writes, and phrase progression.
+The 2026-06-13 guidance that said not to extract `playTtsFromWord` wholesale is now historical. The extraction was accepted only after characterization and contract tests were updated to point at the new owner. Future Browser TTS work should treat `useBrowserTtsPlaybackLoop.ts` as the high-risk owner and avoid moving more behavior unless the slice has an explicit scorecard and validation plan.
 
-Later on 2026-06-13, `buildBrowserTtsChunkCompletionDebugUpdate` was added to `src/app/browserTtsAdaptiveSemanticDebug.ts` as the bounded helper from the `playTtsFromWord` `onend` completion/debug-update path. It owns deterministic current-phrase identity, preview, total phrase count, phrase counters, and `chunk_complete` reason construction while `App.tsx` keeps the `SpeechSynthesisUtterance` event handler, refs, timers, phrase playback events, setter invocation, benchmark writes, and next-chunk scheduling.
+The next likely App-shell candidates are no longer playback-loop ownership. Prefer either:
 
-After this extraction, do not recommend extracting `playTtsFromWord` wholesale yet. The next ROI candidate should be additional Browser TTS playback-loop characterization, such as a mocked SpeechSynthesis harness, before moving browser callback ownership. A smaller pure helper inside the playback loop remains acceptable only if inspection finds explicit inputs and direct tests. Keep wholesale `resetSession` extraction deferred unless inspection reveals a smaller deterministic helper with a strong test seam.
+- `resetSession` side-effect sequencing, only after hook characterization and manual reset smoke checks; or
+- small cleanup of remaining App shell helper functions, only when they create a real test seam rather than no-op indirection.
