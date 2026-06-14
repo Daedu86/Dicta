@@ -4,6 +4,9 @@ This document maps important Dicta modules and runtime areas to the tests that p
 
 Use this before changing code so validation starts with the narrowest relevant tests.
 
+Updated: 2026-06-14 after App-shell runtime consolidation.
+Verified against branch: `product/input-2`.
+
 ## Validation scripts
 
 | Scope | Command |
@@ -18,19 +21,31 @@ Use this before changing code so validation starts with the narrowest relevant t
 
 | Area / module | Responsibility | Relevant tests |
 | --- | --- | --- |
-| `src/App.tsx` | Main app shell and composition root. App wires Browser TTS state, refs, callbacks, and hooks; it no longer owns `playTtsFromWord` directly. | Use area-specific tests below based on the touched boundary. |
+| `src/App.tsx` | Main app shell and composition root. App wires auth/profile, sync, workspace routing, OpenRouter, focused training, presentation props, and route rendering. It no longer owns Browser TTS playback-loop internals or reset-session side-effect sequencing directly. | Use area-specific tests below based on the touched boundary. |
+| `src/app/AppRouteRenderer.tsx` | Route-level render branching for auth, focused training, workspace, dashboard, adaptive, OpenRouter, Admin, Leaderboard, and fallbacks. | Use touched surface tests; include training/header/workspace tests when route rendering changes. |
+| `src/app/useFocusedTrainingRuntime.ts` | Focused-training composition runtime: live metrics, playback intervals, active-session state sync, TTS session orchestration handoff, and focused route props. | `tests/browserTtsPlaybackLoopContract.test.ts`, `tests/useActiveSessionStateSync.test.ts`, `tests/focusedTrainingPresentation.test.ts`, `tests/focusedTrainingInputTelemetry.test.ts`; add focused characterization before changing orchestration shape. |
+| `src/app/useTtsSessionOrchestrationRuntime.ts` | TTS session orchestration: keyboard remap, practice input, playback metrics, Browser TTS playback loop, playback controls, reset-session runtime, and TTS submit action. | `tests/browserTtsPlaybackLoopContract.test.ts`, `tests/useKeyboardRemapRuntime.test.ts`, `tests/useTtsPlaybackControls.test.ts`, `tests/useTtsPerformanceSampler.test.ts`, `tests/useResetSessionRuntime.test.ts`, `tests/useTtsSessionSubmitAction.test.ts`; include playback plan/start/error tests when playback wiring changes. |
+| `src/app/useTrainingRuntimeState.ts` | Training state bucket used by App before focused/runtime handoff. | Use downstream focused-training, TTS, and lifecycle tests based on touched state. |
 | `src/app/useActiveSessionStateSync.ts` | Active-session hydration, finished-session state sync, and live-session persistence state sync. | `tests/useActiveSessionStateSync.test.ts`, `tests/activeSessionHydration.test.ts`, `tests/sessionStatusNormalization.test.ts` |
 | `src/app/activeSessionHydration.ts` | Pure active-session hydration state builder. | `tests/activeSessionHydration.test.ts` |
 | `src/app/resetSessionState.ts` | Pure reset-session default state construction. | `tests/resetSessionState.test.ts` |
+| `src/app/useResetSessionRuntime.ts` | Reset-session side-effect sequencing: stop playback, reset refs, clear UI metrics, preserve setup-lock semantics, reset status/message state, and reset adaptive feedback tracking. | `tests/useResetSessionRuntime.test.ts`, `tests/resetSessionState.test.ts`, `tests/useTrainingSessionLifecycle.test.ts`; include Browser TTS smoke checks if stop ordering changes. |
 | `src/app/sessionStorage.ts` | Session storage, restore, and persistence helpers. | `tests/sessionStorage.test.ts` |
+| `src/app/useSessionPersistenceRuntime.ts` | App-level persistence runtime: local/profile-scoped persistence, Supabase sync, quotas, adaptive feedback persistence, session deletion, and immediate persistence helpers. | `tests/useSessionPersistenceSync.test.ts`, `tests/supabaseSync.test.ts`, `tests/profileScopedStorage.test.ts`, `tests/sessionStorage.test.ts` |
 | `src/app/useSessionPersistenceSync.ts` | Session persistence/sync lifecycle. | `tests/useSessionPersistenceSync.test.ts` |
+| `src/app/useSessionCreationRuntime.ts` | Session creation state/actions for plain text, DictationScript import, and OpenRouter-generated scripts. | `tests/dictationScriptValidation.test.ts`, `tests/trainingGenerationCard.test.ts`, `tests/trainingNotifications.test.ts`; add runtime-specific characterization before changing side effects. |
+| `src/app/useWorkspaceSessionRuntime.ts` | Workspace-level derived session collections, summaries, leaderboard/admin/session-navigation actions, dashboard navigation, and deletion routing. | `tests/leaderboardWorkspace.test.ts`, `tests/useSessionWorkspaceActions.test.ts`, `tests/sessionStorage.test.ts`; include persistence tests when deletion/sync changes. |
 | `src/app/useWorkspaceRouting.ts` | Workspace route state and navigation helpers. | `tests/useWorkspaceRouting.test.ts` |
 | `src/app/useWorkspaceNavigationEffects.ts` | Workspace navigation effects. | `tests/useWorkspaceNavigationEffects.test.ts` |
 | `src/app/useWorkspaceModelRefreshRuntime.ts` | Resolves assigned/effective OpenRouter workspace model and delegates refresh actions. | `tests/workspaceModelRefreshRuntime.test.ts` |
+| `src/app/useAuthProfileRuntime.ts` | Auth/profile runtime: Supabase auth state, app profile state, visible profiles, profile access state, auth actions, and auth headers. | `tests/appProfiles.test.ts`, `tests/supabaseProfileRoute.test.ts`, `tests/profileScopedStorage.test.ts`; include auth/manual smoke when PWA/auth flow changes. |
 | `src/app/useKeyboardRemapRuntime.ts` | Keyboard remap runtime and input remapping behavior. | `tests/useKeyboardRemapRuntime.test.ts` |
+| `src/app/useOpenRouterModelRuntime.ts` | OpenRouter model assignment/default resolution and model refresh wiring used by the App shell. | `tests/workspaceModelRefreshRuntime.test.ts`, `tests/config.test.ts`; add model-runtime characterization before changing access/default behavior. |
+| `src/app/useOpenRouterGenerationRuntime.ts` | OpenRouter generation runtime entry points: access checks, direct/job-backed generation, focus request routing, failure recording, job tracking, and error-session creation. | `tests/openRouterChatRoute.test.ts`, `tests/openRouterJobRoute.test.ts`, `tests/openRouterJobs.test.ts`, `tests/useOpenRouterJobsRuntime.test.ts`, `tests/openRouterDirectGenerationJobPlan.test.ts`, `tests/openRouterDirectGenerationPresets.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts` |
 | `src/app/useOpenRouterJobsRuntime.ts` | OpenRouter job polling/runtime behavior. | `tests/useOpenRouterJobsRuntime.test.ts` |
 | `src/app/useTrainingSessionLifecycle.ts` | Training lifecycle controls and focused-training action wiring. | `tests/useTrainingSessionLifecycle.test.ts` |
 | `src/app/useSessionWorkspaceActions.ts` | Session workspace actions. | `tests/useSessionWorkspaceActions.test.ts` |
+| `src/app/useAppPresentationRuntime.ts` | App-level presentation prop composition for OpenRouter, Admin, Leaderboard, Auth, Session Create, Header, and Live Metrics surfaces. | Use the specific prop-hook tests below plus touched surface tests. |
 | `src/app/adaptiveExportPackages.ts` | Adaptive export package builders. | `tests/adaptiveExportPackages.test.ts` |
 | `src/app/adaptiveWorkspacePresentation.ts` | Adaptive workspace presentation derivations. | `tests/adaptiveWorkspacePresentation.test.ts` |
 | `src/app/openRouterDirectGenerationJobPlan.ts` | OpenRouter direct generation job planning. | `tests/openRouterDirectGenerationJobPlan.test.ts` |
@@ -46,6 +61,7 @@ Use this before changing code so validation starts with the narrowest relevant t
 | `src/app/useBrowserTtsPlaybackLoop.ts` | Browser TTS `playTts` / `playTtsFromWord` loop ownership: start validation, start planning, utterance creation/configuration, handlers, phrase progression, telemetry, adaptive benchmark writes, next-chunk scheduling, and completion transitions. | `tests/browserTtsPlaybackLoopContract.test.ts`, `tests/browserTtsUtteranceConfigurationContract.test.ts`, `tests/mockSpeechSynthesisHarness.test.ts`, `tests/browserTtsPlaybackPlan.test.ts`, `tests/browserTtsPlaybackStartPlan.test.ts`, `tests/browserTtsUnexpectedErrorPlan.test.ts`, `tests/useTtsPlaybackControls.test.ts` |
 | `src/app/useTtsSessionSubmitAction.ts` | Browser TTS submit orchestration: validation, final sampling, finalized-session state, persistence push, playback stop, finished statuses, feedback completion, and submit message. | `tests/useTtsSessionSubmitAction.test.ts`, `tests/ttsSessionFinalization.test.ts`, `tests/useTtsPlaybackControls.test.ts` |
 | `src/app/useTtsPlaybackControls.ts` | Browser TTS pause/resume/stop/seek controls, runtime ref cleanup, action telemetry, and status transitions. | `tests/useTtsPlaybackControls.test.ts` |
+| `src/app/useTtsPlaybackMetricsRuntime.ts` | Composition runtime for TTS telemetry recorder, UI publisher, progress estimator, and performance sampler. | `tests/useTtsTelemetryRecorder.test.ts`, `tests/useTtsUiPublisher.test.ts`, `tests/useTtsPlaybackProgressEstimator.test.ts`, `tests/useTtsPerformanceSampler.test.ts` |
 | `src/app/useTtsPerformanceSampler.ts` | Browser TTS performance sampling, live metric publication, lag stabilization, telemetry samples/actions, and final metric packaging. | `tests/useTtsPerformanceSampler.test.ts` |
 | `src/app/useTtsTelemetryRecorder.ts` | Browser TTS attempt telemetry initialization, elapsed-time calculation, control-action recording, and chunk telemetry recording. | `tests/useTtsTelemetryRecorder.test.ts` |
 | `src/app/useTtsUiPublisher.ts` | Browser TTS live metric UI publication thresholds, throttling, ref updates, and visible metric setter routing. | `tests/useTtsUiPublisher.test.ts` |
@@ -107,8 +123,9 @@ Examples:
 2. If changing OpenRouter direct generation planning, run `npx vitest run tests/openRouterDirectGenerationJobPlan.test.ts tests/openRouterDirectGenerationPresets.test.ts`.
 3. If changing Browser TTS policy modules, run the matching `browserTts*.test.ts` file first.
 4. If changing `src/app/useBrowserTtsPlaybackLoop.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/browserTtsUtteranceConfigurationContract.test.ts tests/mockSpeechSynthesisHarness.test.ts tests/useTtsPlaybackControls.test.ts tests/browserTtsPlaybackPlan.test.ts tests/browserTtsPlaybackStartPlan.test.ts tests/browserTtsUnexpectedErrorPlan.test.ts`.
-5. If changing Supabase sync or session persistence, run `npx vitest run tests/supabaseSync.test.ts tests/useSessionPersistenceSync.test.ts`.
-6. If changing mobile/PWA flow behavior, run focused unit tests first, then `npm run test:e2e:mobile`.
+5. If changing `src/app/useTtsSessionOrchestrationRuntime.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/useResetSessionRuntime.test.ts tests/useTtsSessionSubmitAction.test.ts tests/useTtsPlaybackControls.test.ts tests/useTtsPerformanceSampler.test.ts` before broad validation.
+6. If changing Supabase sync or session persistence, run `npx vitest run tests/supabaseSync.test.ts tests/useSessionPersistenceSync.test.ts tests/profileScopedStorage.test.ts`.
+7. If changing mobile/PWA flow behavior, run focused unit tests first, then `npm run test:e2e:mobile`.
 
 ## Gaps and maintenance
 
