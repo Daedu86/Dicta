@@ -42,6 +42,7 @@ import {
 import { buildBrowserTtsPhraseCompletionTelemetry } from './app/browserTtsPhraseCompletionTelemetry';
 import { buildBrowserTtsPlaybackStartPlan } from './app/browserTtsPlaybackStartPlan';
 import { configureBrowserTtsUtterance } from './app/browserTtsUtteranceConfiguration';
+import { buildBrowserTtsUtterancePerfMetadata } from './app/browserTtsUtterancePerfMetadata';
 import { scheduleBrowserTtsNextChunk } from './app/browserTtsNextChunkScheduler';
 import { buildBrowserTtsUnexpectedErrorPlan } from './app/browserTtsUnexpectedErrorPlan';
 import { buildFinalizedTtsSessionState } from './app/ttsSessionFinalization';
@@ -1366,20 +1367,19 @@ function App() {
         ttsUnsafeChunkCountRef.current += 1;
       }
       const utterance = new SpeechSynthesisUtterance(chunk.text);
-      const perfUtteranceId = perfDiagnostics.beginTtsUtterance({
-        playId: perfPlayId,
-        chunkIndex,
-        phraseLengthWords: chunk.wordCount,
-        phraseLengthChars: chunk.text.length,
-        language: ttsLanguage,
-        pacingMode,
-        voiceName: browserTtsVoice?.name,
-        voiceURI: browserTtsVoice?.voiceURI ?? activeSession?.ttsVoiceURI ?? null,
-        voiceLang: browserTtsVoice?.lang,
-        voiceResolved: Boolean(browserTtsVoice),
-        availableVoiceCount: browserTtsVoices.length,
-        matchingVoiceCount: browserTtsVoices.filter((voice) => voice.lang.toLowerCase().startsWith(ttsLanguage)).length,
-      });
+      const perfUtteranceId = perfDiagnostics.beginTtsUtterance(
+        buildBrowserTtsUtterancePerfMetadata({
+          playId: perfPlayId,
+          chunkIndex,
+          phraseLengthWords: chunk.wordCount,
+          phraseLengthChars: chunk.text.length,
+          language: ttsLanguage,
+          pacingMode,
+          voice: browserTtsVoice,
+          sessionVoiceURI: activeSession?.ttsVoiceURI ?? null,
+          availableVoices: browserTtsVoices,
+        }),
+      );
       configureBrowserTtsUtterance({
         utterance,
         rate,
