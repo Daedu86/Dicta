@@ -4,10 +4,10 @@ Status: ACTIVE
 Scope: whole repository
 Last updated: 2026-06-14
 Verified against branch: `product/input-2`
-Verified against code baseline: post `Extract Browser TTS playback loop` push; `src/App.tsx` blob `09f94a6d52841c04ab13fe6790800a8dd839f11d`; `src/app/useBrowserTtsPlaybackLoop.ts` blob `b5156b5e9dfcfa80639506c7079847387b7d3476`
-Source inspection command: `git status --short && git log --oneline --decorate -5`
+Verified against code baseline: post App-shell runtime consolidation and documentation refresh; see `docs/app-shell-modularization-map.md` for the current App-shell checkpoint.
+Source inspection command: `git status --short && git log --oneline --decorate -10 && git grep -n -e "useFocusedTrainingRuntime" -e "useTtsSessionOrchestrationRuntime" -e "useResetSessionRuntime" -e "useOpenRouterGenerationRuntime" src/App.tsx src/app tests docs`
 Test map checked: `docs/module-test-map.md`
-Last candidate decision updated: see active candidate queue in `docs/app-shell-modularization-map.md`
+Last candidate decision updated: see active candidate queue in `docs/app-shell-modularization-map.md`.
 
 This is the canonical ROI framework for deciding whether a repo area should be modularized, left as-is, documented first, or postponed.
 
@@ -33,7 +33,7 @@ For Dicta, high ROI comes from:
 - lower coupling between app orchestration, domain policy, adapters, persistence, and presentation;
 - deletion or consolidation of repeated logic;
 - improved ownership boundaries with explicit inputs and outputs;
-- preserved product behavior, including Browser TTS playback, adaptive profile isolation, persistence, sync, auth, rate limits, and mobile/PWA performance.
+- preserved product behavior, including Browser TTS playback, adaptive profile isolation, persistence, sync, auth, rate limits, OpenRouter generation, and mobile/PWA performance.
 
 Line reduction is useful evidence, but it is not the definition of ROI. A change can add total repo LOC and still have good ROI if it creates a durable test seam or separates a real ownership boundary.
 
@@ -214,26 +214,35 @@ Read this document with:
 3. `docs/repo-map.md`
 4. `docs/module-test-map.md`
 5. `docs/high-risk-runtime-boundaries.md`
+6. `docs/app-shell-modularization-map.md`
 
 Historical modularization documents may explain why a boundary exists, but this document decides whether the next modularization iteration has enough ROI and a realistic validation plan.
 
 ## Current default recommendation
 
-Use ROI-first selection. Prefer the highest-payoff candidate that can be bounded, tested, manually smoked where needed, and rolled back cleanly.
+Use ROI-first selection, but treat the current App shell as a consolidation-phase area.
 
-For high-risk runtime areas, do not default to avoidance. Start with characterization tests and a small reversible slice. Defer only when the candidate remains unbounded, untestable, or too ambiguous after inspection.
+The major App-shell ownership moves are already implemented: focused training runtime, TTS session orchestration runtime, reset-session runtime, OpenRouter generation/model runtimes, auth/profile runtime, session persistence runtime, session creation runtime, workspace session runtime, app presentation runtime, route renderer, and Browser TTS playback-loop ownership.
+
+Therefore, the default next step is no longer "extract more lines from `App.tsx`." Prefer:
+
+1. product-visible fixes and runtime hardening, especially PWA/auth, OpenRouter UX/jobs/errors/access messaging, and mobile smoke paths;
+2. documentation and test-map freshness when source ownership moves;
+3. narrow contract cleanup for `useFocusedTrainingRuntime` and `useTtsSessionOrchestrationRuntime`, only when the patch is mechanical, explicit, typed, and behavior-preserving;
+4. focused tests or characterization before touching Browser TTS, reset, persistence, auth/profile scoping, or OpenRouter jobs.
+
+Reject any new App-shell extraction whose main justification is local LOC reduction. The current candidate queue and contract evaluation live in `docs/app-shell-modularization-map.md`.
 
 ## Latest App-shell checkpoint
 
-On 2026-06-14, three App-shell extractions updated the active baseline:
+On 2026-06-14, the App-shell checkpoint moved beyond the Browser TTS playback-loop extraction. The current baseline is:
 
-1. `src/app/useActiveSessionStateSync.ts` now owns active-session hydration, finished-session synchronization, and live session persistence state sync that previously lived directly in `src/App.tsx`.
-2. `src/app/useTtsSessionSubmitAction.ts` now owns Browser TTS submit orchestration: validation, final performance sample, final voice/environment capture, finalized-session state construction, persistence push, playback stop, finished statuses, adaptive feedback completion, and submit-message publication.
-3. `src/app/useBrowserTtsPlaybackLoop.ts` now owns Browser TTS `playTts` / `playTtsFromWord` playback-loop ownership: start validation, playback start planning, `SpeechSynthesisUtterance` creation/configuration, start/end/error handlers, phrase progression, adaptive benchmark writes, chunk telemetry, next-chunk scheduling, and completion transitions.
+1. `src/App.tsx` acts primarily as the composition root.
+2. `src/app/useFocusedTrainingRuntime.ts` owns focused-training composition and delegates TTS work to `useTtsSessionOrchestrationRuntime`.
+3. `src/app/useTtsSessionOrchestrationRuntime.ts` owns TTS orchestration across keyboard input, practice input, metrics, playback loop, controls, reset, and submit.
+4. `src/app/useResetSessionRuntime.ts` owns reset-session side-effect sequencing. `resetSession` is no longer an active App-shell extraction candidate.
+5. `src/app/useBrowserTtsPlaybackLoop.ts` remains the high-risk Browser TTS playback-loop owner. The expected chain is `App.tsx -> useFocusedTrainingRuntime -> useTtsSessionOrchestrationRuntime -> useBrowserTtsPlaybackLoop`.
+6. `src/app/useOpenRouterGenerationRuntime.ts` and `src/app/useOpenRouterModelRuntime.ts` own OpenRouter generation/model wiring outside App.
+7. Session, workspace, auth/profile, presentation, and route-rendering ownership have also moved into focused runtimes/components.
 
-The 2026-06-13 guidance that said not to extract `playTtsFromWord` wholesale is now historical. The extraction was accepted only after characterization and contract tests were updated to point at the new owner. Future Browser TTS work should treat `useBrowserTtsPlaybackLoop.ts` as the high-risk owner and avoid moving more behavior unless the slice has an explicit scorecard and validation plan.
-
-The next likely App-shell candidates are no longer playback-loop ownership. Prefer either:
-
-- `resetSession` side-effect sequencing, only after hook characterization and manual reset smoke checks; or
-- small cleanup of remaining App shell helper functions, only when they create a real test seam rather than no-op indirection.
+Future App-shell work should start from `docs/app-shell-modularization-map.md`, not from historical candidate rankings that predate these extractions.
