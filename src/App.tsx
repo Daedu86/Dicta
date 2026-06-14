@@ -13,6 +13,7 @@ import { useWorkspaceModelRefreshRuntime } from './app/useWorkspaceModelRefreshR
 import { useDictaLocalStorageImportRuntime } from './app/useDictaLocalStorageImportRuntime';
 import { useKeyboardRemapRuntime } from './app/useKeyboardRemapRuntime';
 import { useTtsPracticeInputRuntime } from './app/useTtsPracticeInputRuntime';
+import { useTtsPlaybackMetricsRuntime } from './app/useTtsPlaybackMetricsRuntime';
 import { useSessionWorkspaceActions } from './app/useSessionWorkspaceActions';
 import { useSessionQuotaActions } from './app/useSessionQuotaActions';
 import { useAdminProfileAccessActions } from './app/useAdminProfileAccessActions';
@@ -25,10 +26,6 @@ import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessio
 import { useFocusedTrainingGenerationButtons } from './app/useFocusedTrainingGenerationButtons';
 import { useFocusedTrainingPresentationState } from './app/useFocusedTrainingPresentationState';
 import { useFocusedTrainingInputTelemetryRuntime } from './app/useFocusedTrainingInputTelemetryRuntime';
-import { useTtsTelemetryRecorder } from './app/useTtsTelemetryRecorder';
-import { useTtsUiPublisher } from './app/useTtsUiPublisher';
-import { useTtsPlaybackProgressEstimator } from './app/useTtsPlaybackProgressEstimator';
-import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
 import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
 import { useTtsSessionSubmitAction } from './app/useTtsSessionSubmitAction';
 import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';
@@ -907,29 +904,15 @@ function App() {
 
   const {
     ensureAttemptTelemetry,
-    getTtsElapsedSeconds,
     recordTtsTelemetryAction,
     recordTtsChunkTelemetry,
-  } = useTtsTelemetryRecorder({
-    telemetryRef,
-    ttsStartedAtMsRef,
-    ttsSpeechRate,
-  });
-
-  const estimateTtsSpokenWordIndex = useTtsPlaybackProgressEstimator({
-    sourceWordCount: ttsTranscript?.words.length ?? 0,
+    estimateTtsSpokenWordIndex,
+    applyTtsPerformanceSample,
+  } = useTtsPlaybackMetricsRuntime({
+    ttsTranscript,
     ttsStatus,
     ttsSpeechRate,
-    ttsChunkStartMsRef,
-    ttsChunkWordCountRef,
-    ttsChunkStartWordIndexRef,
-    ttsCompletedSourceWordsRef,
-    baseWordsPerSecond: TTS_BASE_WORDS_PER_SECOND,
-  });
-
-  const publishTtsUiState = useTtsUiPublisher({
-    ttsPublishedUiRef,
-    ttsUiLastPublishedAtRef,
+    ttsLanguage,
     controllerState,
     rate,
     lagSec,
@@ -937,6 +920,22 @@ function App() {
     wpm,
     accuracy,
     trend,
+    telemetryRef,
+    ttsStartedAtMsRef,
+    ttsPracticeLiveTextRef,
+    ttsChunkStartMsRef,
+    ttsChunkWordCountRef,
+    ttsChunkStartWordIndexRef,
+    ttsCompletedSourceWordsRef,
+    ttsLastValidControlLagSecRef,
+    ttsLagOutlierCountRef,
+    ttsLiveSignalRef,
+    previousLagRef,
+    previousAccuracyRef,
+    ttsLastControllerActionRef,
+    ttsPublishedUiRef,
+    ttsUiLastPublishedAtRef,
+    applyTtsPerformanceSampleRef,
     setControllerState,
     setRate,
     setLagSec,
@@ -944,30 +943,8 @@ function App() {
     setWpm,
     setAccuracy,
     setTrend,
+    baseWordsPerSecond: TTS_BASE_WORDS_PER_SECOND,
   });
-
-  const applyTtsPerformanceSample = useTtsPerformanceSampler({
-    ttsStartedAtMsRef,
-    ttsPracticeLiveTextRef,
-    ttsTranscript,
-    ttsSpeechRate,
-    ttsLanguage,
-    ttsLastValidControlLagSecRef,
-    ttsLagOutlierCountRef,
-    ttsLiveSignalRef,
-    previousLagRef,
-    previousAccuracyRef,
-    telemetryRef,
-    ttsLastControllerActionRef,
-    estimateTtsSpokenWordIndex,
-    getTtsElapsedSeconds,
-    ensureAttemptTelemetry,
-    publishTtsUiState,
-  });
-
-  applyTtsPerformanceSampleRef.current = applyTtsPerformanceSample;
-
-
 
   const {
     playTts,
