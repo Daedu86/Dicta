@@ -30,6 +30,7 @@ import { useTtsUiPublisher } from './app/useTtsUiPublisher';
 import { useTtsPlaybackProgressEstimator } from './app/useTtsPlaybackProgressEstimator';
 import { useTtsPerformanceSampler } from './app/useTtsPerformanceSampler';
 import { useTtsPlaybackControls } from './app/useTtsPlaybackControls';
+import { useTtsSessionSubmitAction } from './app/useTtsSessionSubmitAction';
 import {
   buildBrowserTtsPlaybackPlan,
   type BrowserTtsBoundaryStrictness,
@@ -45,7 +46,6 @@ import { configureBrowserTtsUtterance } from './app/browserTtsUtteranceConfigura
 import { buildBrowserTtsUtterancePerfMetadata } from './app/browserTtsUtterancePerfMetadata';
 import { scheduleBrowserTtsNextChunk } from './app/browserTtsNextChunkScheduler';
 import { buildBrowserTtsUnexpectedErrorPlan } from './app/browserTtsUnexpectedErrorPlan';
-import { buildFinalizedTtsSessionState } from './app/ttsSessionFinalization';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
 import { useOpenRouterWorkspaceProps } from './app/useOpenRouterWorkspaceProps';
@@ -118,7 +118,6 @@ import {
   formatSessionGenerationOrigin,
   formatSessionInputMode,
   } from './app/sessionDisplayFormatters';
-import { buildTrainingSubmitMessage } from './core/trainingSubmitMessage';
 import {
   getDictaSessionQuotaStatus,
   } from './core/appProfiles';
@@ -1051,52 +1050,6 @@ function App() {
 
   applyTtsPerformanceSampleRef.current = applyTtsPerformanceSample;
 
-  function submitTtsSession(latestPracticeText = ttsPracticeText): void {
-    const endPerfSpan = perfDiagnostics.startSpan('tts.submit', { inputMode: activeInputMode });
-    if (!ttsHasText || !latestPracticeText.trim()) {
-      setError('Paste TTS text and type your attempt before submitting.');
-      setTrainingSubmitMessage('');
-      endPerfSpan();
-      return;
-    }
-
-    try {
-      if (latestPracticeText !== ttsPracticeText) {
-        setTtsPracticeText(latestPracticeText);
-      }
-      const finalSample = applyTtsPerformanceSample({ action: 'submit', finalize: true, practiceTextOverride: latestPracticeText });
-      const finishedAt = new Date().toISOString();
-      const finalVoiceResolution =
-        activeSession?.inputMode === BROWSER_TTS_SESSION_INPUT_MODE
-          ? resolveBrowserTtsVoiceForSession(activeSession, ttsLanguage)
-          : null;
-      const finalVoiceURI = finalVoiceResolution?.voiceURI ?? activeSession?.ttsVoiceURI ?? null;
-      const finalTtsEnvironment = collectBrowserTtsEnvironmentForSession(activeSession, finalVoiceResolution?.voice ?? null, finalVoiceURI);
-      const { nextSessions, finalizedSession } = buildFinalizedTtsSessionState({
-        sessions,
-        activeSessionId,
-        activeSession,
-        latestPracticeText,
-        finalSample,
-        finishedAt,
-        finalVoiceURI,
-        finalTtsEnvironment,
-      });
-      setSessions(nextSessions);
-      persistAndPushSessionsNow(nextSessions, { criticalSessionIds: activeSessionId ? [activeSessionId] : [] });
-      stopTtsPlayback();
-      setRunning(false);
-      setSessionStatus('finished');
-      setTtsStatus('finished');
-      completeAdaptiveSessionFeedback(finalizedSession);
-      setError('');
-      if (activeSessionId) {
-        setTrainingSubmitMessage(buildTrainingSubmitMessage(nextSessions, activeSessionId));
-      }
-    } finally {
-      endPerfSpan();
-    }
-  }
 
   function playTts(): void {
     const perfPlayId = perfDiagnostics.beginTtsPlay('browser-tts-play-button');
@@ -1467,6 +1420,29 @@ function App() {
     setSessionStatus,
     setTtsStatus,
     setTtsPlayerProgressTick,
+  });
+
+  const submitTtsSession = useTtsSessionSubmitAction({
+    activeInputMode,
+    ttsHasText,
+    ttsPracticeText,
+    ttsLanguage,
+    sessions,
+    activeSessionId,
+    activeSession,
+    applyTtsPerformanceSample,
+    resolveBrowserTtsVoiceForSession,
+    collectBrowserTtsEnvironmentForSession,
+    persistAndPushSessionsNow,
+    stopTtsPlayback,
+    completeAdaptiveSessionFeedback,
+    setTtsPracticeText,
+    setSessions,
+    setRunning,
+    setSessionStatus,
+    setTtsStatus,
+    setError,
+    setTrainingSubmitMessage,
   });
 
   const { focusedTrainingControls } = useTrainingSessionLifecycle({
