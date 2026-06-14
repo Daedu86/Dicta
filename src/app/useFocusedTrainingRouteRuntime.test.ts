@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { useFocusedTrainingRouteRuntime } from './useFocusedTrainingRouteRuntime';
 
 describe('useFocusedTrainingRouteRuntime', () => {
-  it('is importable', () => {
-    expect(true).toBe(true);
+  it('exports the route runtime hook', () => {
+    expect(typeof useFocusedTrainingRouteRuntime).toBe('function');
   });
 });
