@@ -43,6 +43,7 @@ import { buildBrowserTtsPhraseCompletionTelemetry } from './app/browserTtsPhrase
 import { buildBrowserTtsPlaybackStartPlan } from './app/browserTtsPlaybackStartPlan';
 import { configureBrowserTtsUtterance } from './app/browserTtsUtteranceConfiguration';
 import { scheduleBrowserTtsNextChunk } from './app/browserTtsNextChunkScheduler';
+import { buildBrowserTtsUnexpectedErrorPlan } from './app/browserTtsUnexpectedErrorPlan';
 import { buildFinalizedTtsSessionState } from './app/ttsSessionFinalization';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
@@ -1500,12 +1501,18 @@ function App() {
       };
 
       utterance.onerror = (event) => {
-        perfDiagnostics.recordTtsError(perfUtteranceId, event.error || 'unknown');
-        if (cancelled) return;
-        cancelled = true;
+        const errorPlan = buildBrowserTtsUnexpectedErrorPlan({
+          error: event.error,
+          cancelled,
+        });
+
+        perfDiagnostics.recordTtsError(perfUtteranceId, errorPlan.recordedError);
+        if (!errorPlan.shouldApplyState) return;
+
+        cancelled = errorPlan.nextCancelled;
         ttsUtteranceRef.current = null;
         setTtsStatus('paused');
-        setError('TTS playback stopped unexpectedly.');
+        setError(errorPlan.userErrorMessage);
       };
 
       perfDiagnostics.recordTtsSpeak(perfUtteranceId);

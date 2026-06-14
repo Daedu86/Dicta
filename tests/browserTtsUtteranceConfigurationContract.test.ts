@@ -154,12 +154,16 @@ describe('Browser TTS utterance configuration contract', () => {
     const onError = getErrorHandlerSection(getPlayTtsFromWordSection());
 
     expectInOrder(onError, [
-      'perfDiagnostics.recordTtsError(perfUtteranceId, event.error || \'unknown\');',
-      'if (cancelled) return;',
-      'cancelled = true;',
+      'const errorPlan = buildBrowserTtsUnexpectedErrorPlan({',
+      'error: event.error,',
+      'cancelled,',
+      '});',
+      'perfDiagnostics.recordTtsError(perfUtteranceId, errorPlan.recordedError);',
+      'if (!errorPlan.shouldApplyState) return;',
+      'cancelled = errorPlan.nextCancelled;',
       'ttsUtteranceRef.current = null;',
       "setTtsStatus('paused');",
-      "setError('TTS playback stopped unexpectedly.');",
+      'setError(errorPlan.userErrorMessage);',
     ]);
   });
 });
