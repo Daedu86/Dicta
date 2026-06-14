@@ -41,6 +41,7 @@ import {
 } from './app/browserTtsAdaptiveSemanticDebug';
 import { buildBrowserTtsPhraseCompletionTelemetry } from './app/browserTtsPhraseCompletionTelemetry';
 import { buildBrowserTtsPlaybackStartPlan } from './app/browserTtsPlaybackStartPlan';
+import { configureBrowserTtsUtterance } from './app/browserTtsUtteranceConfiguration';
 import { buildFinalizedTtsSessionState } from './app/ttsSessionFinalization';
 import { useFocusedTrainingViewProps } from './app/useFocusedTrainingViewProps';
 import { useFocusedTrainingLiveMetrics } from './app/useFocusedTrainingLiveMetrics';
@@ -158,7 +159,6 @@ import { formatSupabaseSyncState } from './app/supabaseSyncPresentation';
 import { buildCurrentSyncState } from './app/adminStorageSummary';
 import { isSessionReadyForTraining } from './app/sessionTrainingReadiness';
 import {
-  getTtsVoiceLang,
   mapSessionInputMode,
   } from './app/appRuntimeHelpers';
 import { buildRepeatWordStats } from './app/repeatWordStats';
@@ -1378,13 +1378,12 @@ function App() {
         availableVoiceCount: browserTtsVoices.length,
         matchingVoiceCount: browserTtsVoices.filter((voice) => voice.lang.toLowerCase().startsWith(ttsLanguage)).length,
       });
-      utterance.rate = rate;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-      utterance.lang = getTtsVoiceLang(ttsLanguage);
-      if (browserTtsVoice) {
-        utterance.voice = browserTtsVoice;
-      }
+      configureBrowserTtsUtterance({
+        utterance,
+        rate,
+        language: ttsLanguage,
+        voice: browserTtsVoice,
+      });
       ttsUtteranceRef.current = utterance;
       setTtsCurrentChunk(chunk.text);
       setTtsPacingMode(pacingMode);

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { configureBrowserTtsUtterance } from '../src/app/browserTtsUtteranceConfiguration';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const appSource = readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8');
@@ -46,6 +47,64 @@ function expectInOrder(source: string, labels: string[]): void {
   }
 }
 
+function createUtterance(): SpeechSynthesisUtterance {
+  return {
+    rate: 0,
+    pitch: 0,
+    volume: 0,
+    lang: '',
+  } as SpeechSynthesisUtterance;
+}
+
+function createVoice(overrides: Partial<SpeechSynthesisVoice> = {}): SpeechSynthesisVoice {
+  return {
+    default: false,
+    lang: 'de-DE',
+    localService: true,
+    name: 'Anna',
+    voiceURI: 'voice-de',
+    ...overrides,
+  } as SpeechSynthesisVoice;
+}
+
+describe('configureBrowserTtsUtterance', () => {
+  it('sets playback parameters, resolved language, and resolved voice on the utterance', () => {
+    const voice = createVoice({ name: 'Anna', lang: 'de-DE', voiceURI: 'anna-de' });
+    const utterance = createUtterance();
+
+    const configured = configureBrowserTtsUtterance({
+      utterance,
+      rate: 0.85,
+      language: 'de',
+      voice,
+    });
+
+    expect(configured).toBe(utterance);
+    expect(utterance.rate).toBe(0.85);
+    expect(utterance.pitch).toBe(1);
+    expect(utterance.volume).toBe(1);
+    expect(utterance.lang).toBe('de-DE');
+    expect(utterance.voice).toBe(voice);
+  });
+
+  it('keeps voice unset when no browser voice is resolved', () => {
+    const utterance = createUtterance();
+
+    configureBrowserTtsUtterance({
+      utterance,
+      rate: 1.15,
+      language: 'es',
+      voice: null,
+    });
+
+    expect(utterance.rate).toBe(1.15);
+    expect(utterance.pitch).toBe(1);
+    expect(utterance.volume).toBe(1);
+    expect(utterance.lang).toBe('es-ES');
+    expect('voice' in utterance).toBe(false);
+  });
+});
+
 describe('Browser TTS utterance configuration contract', () => {
   it('keeps SpeechSynthesisUtterance configuration as a bounded extraction seam', () => {
     const setup = getUtteranceSetupSection(getPlayTtsFromWordSection());
@@ -64,12 +123,11 @@ describe('Browser TTS utterance configuration contract', () => {
       'voiceResolved: Boolean(browserTtsVoice),',
       'availableVoiceCount: browserTtsVoices.length,',
       'matchingVoiceCount: browserTtsVoices.filter((voice) => voice.lang.toLowerCase().startsWith(ttsLanguage)).length,',
-      'utterance.rate = rate;',
-      'utterance.pitch = 1;',
-      'utterance.volume = 1;',
-      'utterance.lang = getTtsVoiceLang(ttsLanguage);',
-      'if (browserTtsVoice) {',
-      'utterance.voice = browserTtsVoice;',
+      'configureBrowserTtsUtterance({',
+      'utterance,',
+      'rate,',
+      'language: ttsLanguage,',
+      'voice: browserTtsVoice,',
       'ttsUtteranceRef.current = utterance;',
     ]);
   });
