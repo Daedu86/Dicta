@@ -8,7 +8,7 @@ import { mapSessionInputMode } from './appRuntimeHelpers';
 
 export type { OpenRouterGenerationBusyControls } from './useOpenRouterDirectGenerationRuntime';
 
-export type UseOpenRouterGenerationActionsOptions = UseOpenRouterDirectGenerationRuntimeOptions & {
+export type UseOpenRouterGenerationActionsOptions = UseOpenRouterDirectGenerationRuntimeOptions & OpenRouterGenerationBusyControls & {
   allowCustomSessionGeneration: boolean;
   showOpenRouterWorkspace: () => void;
   setOpenRouterGenerateFocusRequest: (updater: (value: number) => number) => void;
