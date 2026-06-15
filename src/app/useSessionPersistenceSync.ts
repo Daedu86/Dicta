@@ -31,6 +31,7 @@ import {
   OPENROUTER_GENERATED_VARIANTS_KEY,
 } from '../components/openrouter/openRouterViewHelpers';
 import { perfDiagnostics } from '../core/perfDiagnostics';
+import { compactTelemetryForStorage } from './sessionPersistenceCompaction';
 
 export const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
 export const DELETED_SESSION_IDS_KEY = 'dicta.deletedSessionIds.v1';
@@ -40,9 +41,6 @@ export const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
 const SESSION_PERSIST_DEBOUNCE_MS = 1500;
 const SESSION_PERSIST_RECOVERY_MAX_SESSIONS = 50;
 const SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS = 8;
-const SESSION_PERSIST_RECOVERY_SERIES_LIMIT = 120;
-const SESSION_PERSIST_RECOVERY_ACTION_LIMIT = 160;
-const SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT = 80;
 const SUPABASE_BACKGROUND_PULL_INTERVAL_MS = 15_000;
 const SUPABASE_KEEPALIVE_BODY_MAX_BYTES = 60_000;
 
@@ -832,16 +830,4 @@ function isLocalStorageQuotaExceeded(error: unknown): boolean {
 
 function byteSize(value: string): number {
   return new TextEncoder().encode(value).length;
-}
-
-function compactTelemetryForStorage(telemetry: SessionTelemetry): SessionTelemetry {
-  return {
-    ...telemetry,
-    lagSeries: telemetry.lagSeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
-    wpmSeries: telemetry.wpmSeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
-    accuracySeries: telemetry.accuracySeries.slice(-SESSION_PERSIST_RECOVERY_SERIES_LIMIT),
-    actions: telemetry.actions.slice(-SESSION_PERSIST_RECOVERY_ACTION_LIMIT),
-    ttsChunks: telemetry.ttsChunks.slice(-SESSION_PERSIST_RECOVERY_TTS_CHUNK_LIMIT),
-    rateDistribution: telemetry.rateDistribution.slice(-40),
-  };
 }
