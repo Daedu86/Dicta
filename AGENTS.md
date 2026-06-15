@@ -32,6 +32,12 @@ After reading them, propose changes from the architecture rather than from an is
 
 Do not start implementation by guessing at a file. First map the request to the architecture, then make the smallest focused change that preserves existing boundaries. If behavior changes, keep `AGENTS.md`, `README.md`, and `docs/architecture.md` aligned.
 
+## Current Runtime Shell Boundary
+
+- `src/App.tsx` is shell-only and should stay small.
+- Main app orchestration lives in `src/app/DictaAppRuntime.tsx`.
+- Contract tests for focused training/TTS delegation should inspect `DictaAppRuntime`, not `App.tsx`.
+
 ## Project Snapshot
 
 Dicta trains listening and typing with one canonical Browser TTS input across 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 30 days.
