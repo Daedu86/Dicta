@@ -50,6 +50,7 @@ Use these documents in this order before proposing or applying modularization:
 | --- | --- | --- |
 | `modularization-roi.md` | Active | Repo-wide ROI scoring framework, current hotspot guidance, evidence calibration, freshness rules, and AI-assisted refactor risk guidance. |
 | `app-shell-modularization-map.md` | Active reference | Current App shell/runtime ownership map and candidate queue. Verify branch, commit, source anchors, and LOC before use. |
+| `session-persistence-sync-kb.md` | Active reference | Concise owner map for the current session persistence sync facade and `src/app/sessionPersistenceSync/` split. |
 | `module-test-map.md` | Active | Module-to-test validation map for narrow test selection. |
 | `high-risk-runtime-boundaries.md` | Active | Runtime risk rules for Browser TTS, persistence, auth, mobile/PWA, CSS cascade, and related fragile boundaries. |
 | `next-modularization-plan.md` | Reference / Historical | Former near-term plan. Preserved for checkpoint context only; do not use as the active candidate queue. |
