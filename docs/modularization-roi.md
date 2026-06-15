@@ -2,10 +2,10 @@
 
 Status: ACTIVE
 Scope: whole repository
-Last updated: 2026-06-14
+Last updated: 2026-06-15
 Verified against branch: `product/input-2`
-Verified against code baseline: post App-shell runtime consolidation and documentation refresh; see `docs/app-shell-modularization-map.md` for the current App-shell checkpoint.
-Source inspection command: `git status --short && git log --oneline --decorate -10 && git grep -n -e "useFocusedTrainingRuntime" -e "useTtsSessionOrchestrationRuntime" -e "useResetSessionRuntime" -e "useOpenRouterGenerationRuntime" src/App.tsx src/app tests docs`
+Verified against code baseline: post focused-training and TTS orchestration delegate-arg grouping; see `docs/app-shell-modularization-map.md` for the current App-shell checkpoint.
+Source inspection command: `git status --short && git log --oneline --decorate -10 && git grep -n -e "buildFocusedTrainingRuntimeDelegateArgs" -e "buildTtsSessionOrchestrationDelegateArgs" -e "useOpenRouterGenerationRuntime" src/App.tsx src/app tests docs`
 Test map checked: `docs/module-test-map.md`
 Last candidate decision updated: see active candidate queue in `docs/app-shell-modularization-map.md`.
 
@@ -224,22 +224,27 @@ Use ROI-first selection, but treat the current App shell as a consolidation-phas
 
 The major App-shell ownership moves are already implemented: focused training runtime, TTS session orchestration runtime, reset-session runtime, OpenRouter generation/model runtimes, auth/profile runtime, session persistence runtime, session creation runtime, workspace session runtime, app presentation runtime, route renderer, and Browser TTS playback-loop ownership.
 
-Therefore, the default next step is no longer "extract more lines from `App.tsx`." Prefer:
+The latest contract-cleanup passes also improved the two widest App-shell delegate seams:
 
-1. product-visible fixes and runtime hardening, especially PWA/auth, OpenRouter UX/jobs/errors/access messaging, and mobile smoke paths;
+1. `src/app/useFocusedTrainingRuntime.ts` now groups its delegate arguments internally without changing the caller-facing compatibility shape.
+2. `src/app/useTtsSessionOrchestrationRuntime.ts` now groups its delegate arguments internally without changing the caller-facing compatibility shape.
+
+Therefore, the default next step is no longer "extract more lines from `App.tsx`" or "keep grouping runtime contracts." Prefer:
+
+1. product-visible fixes and runtime hardening, especially OpenRouter UX/jobs/errors/access messaging and mobile smoke paths;
 2. documentation and test-map freshness when source ownership moves;
-3. narrow contract cleanup for `useFocusedTrainingRuntime` and `useTtsSessionOrchestrationRuntime`, only when the patch is mechanical, explicit, typed, and behavior-preserving;
-4. focused tests or characterization before touching Browser TTS, reset, persistence, auth/profile scoping, or OpenRouter jobs.
+3. focused tests or characterization before touching Browser TTS, reset, persistence, auth/profile scoping, OpenRouter jobs, or PWA/mobile flow;
+4. new modularization only when current source inspection finds a real owner/test seam, not local LOC reduction.
 
 Reject any new App-shell extraction whose main justification is local LOC reduction. The current candidate queue and contract evaluation live in `docs/app-shell-modularization-map.md`.
 
 ## Latest App-shell checkpoint
 
-On 2026-06-14, the App-shell checkpoint moved beyond the Browser TTS playback-loop extraction. The current baseline is:
+On 2026-06-15, the App-shell checkpoint moved beyond broad extraction and initial delegate-contract grouping. The current baseline is:
 
 1. `src/App.tsx` acts primarily as the composition root.
-2. `src/app/useFocusedTrainingRuntime.ts` owns focused-training composition and delegates TTS work to `useTtsSessionOrchestrationRuntime`.
-3. `src/app/useTtsSessionOrchestrationRuntime.ts` owns TTS orchestration across keyboard input, practice input, metrics, playback loop, controls, reset, and submit.
+2. `src/app/useFocusedTrainingRuntime.ts` owns focused-training composition and delegates TTS work to `useTtsSessionOrchestrationRuntime`; its child delegate args are now internally grouped.
+3. `src/app/useTtsSessionOrchestrationRuntime.ts` owns TTS orchestration across keyboard input, practice input, metrics, playback loop, controls, reset, and submit; its child delegate args are now internally grouped.
 4. `src/app/useResetSessionRuntime.ts` owns reset-session side-effect sequencing. `resetSession` is no longer an active App-shell extraction candidate.
 5. `src/app/useBrowserTtsPlaybackLoop.ts` remains the high-risk Browser TTS playback-loop owner. The expected chain is `App.tsx -> useFocusedTrainingRuntime -> useTtsSessionOrchestrationRuntime -> useBrowserTtsPlaybackLoop`.
 6. `src/app/useOpenRouterGenerationRuntime.ts` and `src/app/useOpenRouterModelRuntime.ts` own OpenRouter generation/model wiring outside App.
