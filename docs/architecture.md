@@ -39,23 +39,38 @@ Adaptive benchmarks, telemetry, recommendations, and session feedback are scoped
 
 Browser app:
 
-- `src/App.tsx`: workspace router and session orchestration host.
+- `src/App.tsx`: shell-only React entrypoint. It imports `App.css` and renders `DictaAppRuntime`; it should stay small and must not regain runtime ownership.
+- `src/app/DictaAppRuntime.tsx`: main browser composition root. It wires auth/profile, sync, workspace routing, OpenRouter, focused training, presentation props, and route rendering while delegating behavior to narrower owner hooks.
+- `src/app/AppRouteRenderer.tsx`: route-level render branching for auth, focused training, workspace, dashboard, adaptive, OpenRouter, Admin, Leaderboard, and fallbacks.
 - `src/app/useSupabaseAuthActions.ts`: browser-side Supabase sign-in, password reset/update, and sign-out action handlers. Password recovery redirects use `VITE_DICTA_AUTH_REDIRECT_ORIGIN` when configured, with a local/dev fallback to the current browser origin, so hosted member recovery does not depend on protected Vercel preview URLs.
-- `src/app/useSessionCreationActions.ts`: browser-side plain-text session creation, DictationScript import validation/creation, and OpenRouter script session creation actions.
-- `src/app/useOpenRouterGenerationActions.ts`: browser-side direct-training OpenRouter generation actions, prompt/job orchestration, and generation failure handling.
-- `src/app/useAdminWorkspaceProps.ts`: browser-side Admin workspace prop composition for local storage/session exports, profile access callbacks, auth headers, and model refresh wiring.
-- `src/app/useLeaderboardWorkspaceProps.ts`: browser-side Leaderboard workspace prop composition for expand/collapse state, session snapshot actions, navigation callbacks, and display formatter wiring.
-- `src/app/useAdaptiveAdvancedDiagnosticsProps.ts`: browser-side Adaptive advanced diagnostics prop composition for section toggles, adapter selection, diagnostic message reset, and benchmark-section scrolling.
-- `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
+- `src/app/useAuthProfileRuntime.ts`: auth/profile composition boundary over auth state, profile resolution, Supabase auth actions, and auth header construction.
+- `src/app/useSessionCreationRuntime.ts`: browser-side plain-text session creation, DictationScript import validation/creation, and OpenRouter script session creation actions.
+- `src/app/useSessionPersistenceRuntime.ts`: local/profile-scoped persistence, Supabase sync, quotas, deletion persistence, and pending sync state.
+- `src/app/useFocusedTrainingRuntime.ts`: focused-training composition, active-session sync, TTS handoff, and focused route props.
+- `src/app/useTtsSessionOrchestrationRuntime.ts`: TTS orchestration across keyboard remap, practice input, metrics, Browser TTS playback loop, controls, reset, and submit.
 - `src/app/useBrowserTtsRuntime.ts`: Browser TTS SpeechSynthesis voice discovery and command boundary.
+- `src/app/useBrowserTtsPlaybackLoop.ts`: Browser TTS playback loop owner for `playTts` / `playTtsFromWord`, utterance configuration, event handlers, phrase progression, telemetry handoff, and next-chunk scheduling.
+- `src/app/useTtsPlaybackControls.ts`: Browser TTS pause/resume/stop/seek controls and related status transitions.
+- `src/app/useResetSessionRuntime.ts`: reset-session side-effect sequencing, including playback stop ordering, ref cleanup, UI metric reset, setup-lock preservation, and adaptive feedback reset.
+- `src/app/useTtsSessionSubmitAction.ts`: Browser TTS submit orchestration, final sampling, finalization, persistence push, playback stop, and finished statuses.
 - `src/app/useTtsTelemetryRecorder.ts`: Browser TTS attempt telemetry initialization, elapsed-time calculation, control-action recording, and chunk telemetry recording.
 - `src/app/useTtsUiPublisher.ts`: Browser TTS live metric UI publication thresholds, throttling, ref updates, and visible metric setter routing.
 - `src/app/useTtsPlaybackProgressEstimator.ts`: Browser TTS spoken-word progress estimation for active chunks, completed-word fallback, and finished playback.
 - `src/app/browserTtsPlaybackPlan.ts`: pure Browser TTS next-chunk playback planning for candidate chunk selection, adaptive decision mapping, runtime rate floor, unsafe-boundary policy, mobile fallback, DE recovery, telemetry frames, and rolling accuracy state updates.
-- `src/app/browserTtsAdaptiveSemanticDebug.ts`: pure Browser TTS semantic debug state builders for phrase-start aggregation and chunk-completion phrase identity/counter updates; `App.tsx` still owns event handlers, refs, and setter invocation.
-- `src/app/browserTtsPhraseCompletionTelemetry.ts`: pure Browser TTS phrase-completion benchmark telemetry payload construction for DE completion samples; `App.tsx` still owns `SpeechSynthesisUtterance` event handlers, performance sampling, adaptive benchmark writes, refs, timers, and playback orchestration.
-- `src/app/ttsSessionFinalization.ts`: pure TTS session finalization state construction used by `submitTtsSession`; `App.tsx` still owns validation, performance sampling, voice/environment collection, persistence, playback stop, UI setters, telemetry side effects, and feedback side effects.
-- `src/app/useAdaptiveExportActions.ts`: browser-side adaptive benchmark/session-feedback export, copy, and insights diagnostic actions.
+- `src/app/browserTtsAdaptiveSemanticDebug.ts`: pure Browser TTS semantic debug state builders for phrase-start aggregation and chunk-completion phrase identity/counter updates.
+- `src/app/browserTtsPhraseCompletionTelemetry.ts`: pure Browser TTS phrase-completion benchmark telemetry payload construction.
+- `src/app/ttsSessionFinalization.ts`: pure TTS session finalization state construction used by `useTtsSessionSubmitAction`.
+- `src/app/useOpenRouterGenerationRuntime.ts`: OpenRouter generation entry wiring over busy state and generation actions.
+- `src/app/useOpenRouterGenerationActions.ts`: browser-side OpenRouter generation UI action routing and direct-generation delegation.
+- `src/app/useOpenRouterDirectGenerationRuntime.ts`: direct generation lifecycle owner for access/offline/model guards, job-plan request, job tracking, busy state, and direct failure handling.
+- `src/app/useOpenRouterJobsRuntime.ts`: public OpenRouter job runtime state, job tracking, manual failure recording, and reset.
+- `src/app/useOpenRouterJobPollingRuntime.ts`: OpenRouter job polling, terminal status settlement, generated-script validation, notices, error-session creation, and cleanup.
+- `src/app/openRouterGenerationFailurePolicy.ts`: shared OpenRouter failure labels, notices, and transient/persistent error decisions.
+- `src/app/useOpenRouterModelRuntime.ts`: OpenRouter model assignment/default resolution and refresh wiring.
+- `src/app/useAdminWorkspaceProps.ts`: browser-side Admin workspace prop composition for local storage/session exports, profile access callbacks, auth headers, and model refresh wiring.
+- `src/app/useLeaderboardWorkspaceProps.ts`: browser-side Leaderboard workspace prop composition for expand/collapse state, session snapshot actions, navigation callbacks, and display formatter wiring.
+- `src/app/useAdaptiveAdvancedDiagnosticsProps.ts`: browser-side Adaptive advanced diagnostics prop composition for section toggles, adapter selection, diagnostic message reset, and benchmark-section scrolling.
+- `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
 - Adaptive Pace Layer cockpit: benchmark and feedback diagnostics.
