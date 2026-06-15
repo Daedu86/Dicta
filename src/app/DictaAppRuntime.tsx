@@ -1,12 +1,8 @@
 import { useRef, useState } from 'react';
-import { useAuthProfileRuntime } from './useAuthProfileRuntime';
 import { useThemeModeRuntime } from './useThemeModeRuntime';
 import { useOnlineStatus } from './useOnlineStatus';
-import { useOpenRouterModelRuntime } from './useOpenRouterModelRuntime';
 import { useDictaLocalStorageImportRuntime } from './useDictaLocalStorageImportRuntime';
 import { useSessionPersistenceRuntime } from './useSessionPersistenceRuntime';
-import { useAdminProfileAccessActions } from './useAdminProfileAccessActions';
-import { useAdminFileInventory } from './useAdminFileInventory';
 import { useWorkspaceSessionRuntime } from './useWorkspaceSessionRuntime';
 import { useWorkspaceNavigationEffects } from './useWorkspaceNavigationEffects';
 import { useOpenRouterGenerationRuntime } from './useOpenRouterGenerationRuntime';
@@ -14,7 +10,6 @@ import { useOpenRouterErrorSessionActions } from './useOpenRouterErrorSessionAct
 import { useAdaptiveWorkspaceState } from './useAdaptiveWorkspaceState';
 import { useAdaptiveWorkspaceRuntime } from './useAdaptiveWorkspaceRuntime';
 import { useAppPerfDiagnosticsRuntime } from './useAppPerfDiagnosticsRuntime';
-import { useDictaSupabaseRuntime } from './useDictaSupabaseRuntime';
 import { useSessionCreationRuntime } from './useSessionCreationRuntime';
 import { useTtsSessionRuntime } from './useTtsSessionRuntime';
 import { useFocusedTrainingRuntime } from './useFocusedTrainingRuntime';
@@ -26,6 +21,7 @@ import { useWorkspaceRouting } from './useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './useDictaUiPreferences';
 import { useDictaAppRouteCompositionRuntime } from './useDictaAppRouteCompositionRuntime';
+import { useDictaAccessRuntime } from './useDictaAccessRuntime';
 import { isMobileViewport } from './viewport';
 import { useBrowserTtsRuntime } from './useBrowserTtsRuntime';
 import { formatSessionDate } from './sessionDateFormatters';
@@ -115,9 +111,54 @@ export function DictaAppRuntime() {
   const hydratingSessionIdRef = useRef<string | null>(null);
   const allowFinishedSessionResetRef = useRef<string | null>(null);
   const {
+    syncConfig,
+    supabaseClient,
+    authSession,
+    authLoading,
+    authEmail,
+    setAuthEmail,
+    authPassword,
+    setAuthPassword,
+    authError,
+    authView,
+    authNewPassword,
+    setAuthNewPassword,
+    authNewPasswordConfirm,
+    setAuthNewPasswordConfirm,
+    authMessage,
+    authMessageTone,
+    authBusy,
+    appProfile,
+    appProfileError,
+    openRouterAccessState,
+    openRouterAccessAllowed,
+    openRouterAccessMessage,
+    visibleProfiles,
+    adminProfileFilter,
+    setAdminProfileFilter,
+    adminRemoteSessions,
+    adminProfileSessionCounts,
+    adminRemoteStatus,
+    effectiveProfileId,
+    isCurrentProfileAdmin,
+    signInWithSupabase,
+    showAuthView,
+    requestSupabasePasswordReset,
+    updateSupabasePassword,
+    signOut,
+    getAuthHeaders,
+    setOpenRouterDefaultModel,
+    openRouterModels,
+    openRouterStatus,
+    openRouterError,
+    setOpenRouterError,
+    assignedOpenRouterModel,
+    effectiveOpenRouterDefaultModel,
+    refreshOpenRouterModels,
     adminFileInventory,
     adminFileInventoryError,
-  } = useAdminFileInventory({
+    updateAdminProfileAccess,
+  } = useDictaAccessRuntime({
     workspaceMode,
     localDevFeaturesAvailable: LOCAL_DEV_FEATURES_AVAILABLE,
   });
@@ -157,65 +198,6 @@ export function DictaAppRuntime() {
     sessionFeedbackMessage,
     setSessionFeedbackMessage,
   } = useAdaptiveWorkspaceState();
-  const {
-    syncConfig,
-    supabaseClient,
-  } = useDictaSupabaseRuntime();
-  const {
-    authSession,
-    authLoading,
-    authEmail,
-    setAuthEmail,
-    authPassword,
-    setAuthPassword,
-    authError,
-    authView,
-    authNewPassword,
-    setAuthNewPassword,
-    authNewPasswordConfirm,
-    setAuthNewPasswordConfirm,
-    authMessage,
-    authMessageTone,
-    authBusy,
-    appProfile,
-    setAppProfile,
-    appProfileError,
-    openRouterAccessState,
-    openRouterAccessAllowed,
-    openRouterAccessMessage,
-    visibleProfiles,
-    setVisibleProfiles,
-    adminProfileFilter,
-    setAdminProfileFilter,
-    adminRemoteSessions,
-    adminProfileSessionCounts,
-    adminRemoteStatus,
-    effectiveProfileId,
-    isCurrentProfileAdmin,
-    signInWithSupabase,
-    showAuthView,
-    requestSupabasePasswordReset,
-    updateSupabasePassword,
-    signOut,
-    getAuthHeaders,
-  } = useAuthProfileRuntime({
-    syncConfig,
-    supabaseClient,
-  });
-  const {
-    setOpenRouterDefaultModel,
-    openRouterModels,
-    openRouterStatus,
-    openRouterError,
-    setOpenRouterError,
-    assignedOpenRouterModel,
-    effectiveOpenRouterDefaultModel,
-    refreshOpenRouterModels,
-  } = useOpenRouterModelRuntime({
-    syncConfig,
-    appProfile,
-    getAuthHeaders,
-  });
 
   const resetOpenRouterJobsRuntimeRef = useRef<() => void>(() => undefined);
   const {
@@ -420,15 +402,6 @@ export function DictaAppRuntime() {
     setOpenRouterError,
     showLeaderboardWorkspace,
     showWorkspaceMode,
-  });
-
-  const {
-    updateAdminProfileAccess,
-  } = useAdminProfileAccessActions({
-    getAuthHeaders,
-    appProfile,
-    setAppProfile,
-    setVisibleProfiles,
   });
 
   const {
@@ -863,4 +836,3 @@ export function DictaAppRuntime() {
     />
   );
 }
-
