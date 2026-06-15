@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { DictationScript } from '../core/adaptive/dictationScriptValidation';
 import {
   addActiveOpenRouterJob,
   loadActiveOpenRouterJobs,
@@ -14,7 +15,7 @@ type OpenRouterJobsRuntimeOptions = {
   getAuthHeaders: () => Record<string, string>;
   onOpenRouterError: (message: string) => void;
   onCreateGenerationErrorSession: (trackedJob: ActiveOpenRouterJob, message: string) => void;
-  onGeneratedScript: Parameters<typeof useOpenRouterJobPollingRuntime>[0]['onGeneratedScript'];
+  onGeneratedScript: (script: DictationScript, trackedJob: ActiveOpenRouterJob) => void;
 };
 
 type OpenRouterJobsRuntime = {
