@@ -29,7 +29,15 @@ describe('sessionPersistenceSupabasePullPlan', () => {
 
   it('collects transient error session ids only from session rows', () => {
     const ids = collectTransientErrorSessionIds([
-      row({ item_key: 'transient-1', payload: { id: 'transient-1', status: 'error', error: 'OpenRouter generation still processing.' } }),
+      row({
+        item_key: 'transient-1',
+        payload: {
+          id: 'transient-1',
+          status: 'error',
+          name: 'OpenRouter generation error',
+          generationError: 'Failed to reach OpenRouter endpoint.',
+        },
+      }),
       row({ item_type: 'feedback', item_key: 'feedback-1', payload: { id: 'feedback-1', status: 'error' } }),
       row({ item_key: 'finished-1', payload: { id: 'finished-1', status: 'finished' } }),
     ]);
