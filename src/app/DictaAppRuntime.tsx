@@ -9,7 +9,7 @@ import { useAdaptiveWorkspaceRuntime } from './useAdaptiveWorkspaceRuntime';
 import { useAppPerfDiagnosticsRuntime } from './useAppPerfDiagnosticsRuntime';
 import { useSessionCreationRuntime } from './useSessionCreationRuntime';
 import { useTtsSessionRuntime } from './useTtsSessionRuntime';
-import { useFocusedTrainingRuntime } from './useFocusedTrainingRuntime';
+import { useDictaFocusedTrainingRuntime } from './useDictaFocusedTrainingRuntime';
 import { useTrainingRuntimeState } from './useTrainingRuntimeState';
 import { perfDiagnostics } from '../core/perfDiagnostics';
 import { AppRouteRenderer } from './AppRouteRenderer';
@@ -258,6 +258,18 @@ export function DictaAppRuntime() {
     setExportMessage,
   });
 
+  const ttsSessionRuntime = useTtsSessionRuntime({
+    ttsPracticeText,
+    sessions,
+    activeSessionId,
+    dashboardSessionId,
+    difficulty,
+    sessionStatus,
+    browserTtsVoices,
+    setSessions,
+    ttsLanguage,
+  });
+
   const {
     previousLagRef,
     previousAccuracyRef,
@@ -294,17 +306,7 @@ export function DictaAppRuntime() {
     collectBrowserTtsEnvironmentForSession,
     resolveBrowserTtsVoiceForSession,
     resolveActiveBrowserTtsVoice,
-  } = useTtsSessionRuntime({
-    ttsPracticeText,
-    sessions,
-    activeSessionId,
-    dashboardSessionId,
-    difficulty,
-    sessionStatus,
-    browserTtsVoices,
-    setSessions,
-    ttsLanguage,
-  });
+  } = ttsSessionRuntime;
 
   const {
     insightsDiagnosticInputMode,
@@ -483,21 +485,17 @@ export function DictaAppRuntime() {
   const {
     focusedTrainingProps,
     getActiveTypingLanguage,
-  } = useFocusedTrainingRuntime({
-    activeInputMode,
+  } = useDictaFocusedTrainingRuntime({
+    ttsSessionRuntime,
     ttsText,
     ttsPracticeText,
     lagSec,
     wpm,
     rate,
-    activeSessionFinished,
     ttsStatus,
-    config,
-    applyTtsPerformanceSampleRef,
     setTtsPlayerProgressTick,
     sessions,
     setSessions,
-    activeSession,
     activeSessionId,
     difficulty,
     inputSettingsLocked,
@@ -510,19 +508,6 @@ export function DictaAppRuntime() {
     trend,
     hydratingSessionIdRef,
     allowFinishedSessionResetRef,
-    ttsPracticeLiveTextRef,
-    ttsUiLastPublishedAtRef,
-    ttsPublishedUiRef,
-    telemetryRef,
-    previousLagRef,
-    previousAccuracyRef,
-    ttsStartedAtMsRef,
-    ttsChunkStartMsRef,
-    ttsChunkStartWordIndexRef,
-    ttsChunkWordCountRef,
-    ttsCompletedSourceWordsRef,
-    ttsLagOutlierCountRef,
-    ttsLastControllerActionRef,
     setDifficulty,
     setInputSettingsLocked,
     setTtsLanguage,
@@ -548,22 +533,9 @@ export function DictaAppRuntime() {
     ttsSpeechRate,
     ttsPacingMode,
     browserTtsVoices,
-    ttsPlaybackProfile,
     perfDiagnostics,
-    stopTtsPlaybackRef,
-    ttsPausedAtWordIndexRef,
-    ttsLastValidControlLagSecRef,
-    ttsLiveSignalRef,
-    ttsUnsafeChunkCountRef,
-    ttsChunkAccuracyWindowRef,
-    ttsLastAccuracySnapshotRef,
-    ttsUtteranceRef,
-    ttsSemanticPhraseAdvanceCountRef,
-    ttsSemanticPhraseReplayCountRef,
     isBrowserTtsSupported,
     speakBrowserTts,
-    resolveActiveBrowserTtsVoice,
-    collectBrowserTtsEnvironmentForSession,
     getHistoricalPerformanceProfile,
     getBenchmarkSnapshot,
     getAdaptiveController,
@@ -573,11 +545,9 @@ export function DictaAppRuntime() {
     setAdaptiveSemanticDebug,
     cancelBrowserTts,
     resumeBrowserTts,
-    resolveBrowserTtsVoiceForSession,
     persistAndPushSessionsNow,
     completeAdaptiveSessionFeedback,
     activeTrainingSubmissionMeta,
-    activeInputLabel,
     error,
     trainingSubmitMessage,
     exportMessage,
