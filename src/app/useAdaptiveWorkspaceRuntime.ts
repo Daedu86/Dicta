@@ -7,16 +7,17 @@ import type {
   BenchmarkLanguageButton,
 } from '../components/openrouter/types';
 import type { AdaptiveSectionExpandedState } from './useAdaptiveWorkspaceEntryActions';
+import type { StoredSession } from './sessionTypes';
 import { useAdaptiveDiagnosticsUiState } from './useAdaptiveDiagnosticsUiState';
-import { useAdaptiveRuntime, type AdaptiveRuntimeSessionInput } from './useAdaptiveRuntime';
+import { useAdaptiveRuntime } from './useAdaptiveRuntime';
 import { useAdaptiveStoragePersistenceEffects } from './useAdaptiveStoragePersistenceEffects';
 import { useAdaptiveWorkspaceEntryActions } from './useAdaptiveWorkspaceEntryActions';
 import { useDictaDebugExportEffect } from './useDictaDebugExportEffect';
 
 interface UseAdaptiveWorkspaceRuntimeArgs {
-  activeSession: AdaptiveRuntimeSessionInput | null;
+  activeSession: StoredSession | null;
   activeSessionId: string;
-  sessions: AdaptiveRuntimeSessionInput[];
+  sessions: StoredSession[];
   adaptiveBenchmarksByInputLanguage: AdaptiveBenchmarksByInputLanguage;
   setAdaptiveBenchmarksByInputLanguage: Dispatch<SetStateAction<AdaptiveBenchmarksByInputLanguage>>;
   adaptiveBenchmarksRef: { current: AdaptiveBenchmarksByInputLanguage };
@@ -51,6 +52,7 @@ export function useAdaptiveWorkspaceRuntime(args: UseAdaptiveWorkspaceRuntimeArg
     selectedBenchmarkLanguage: args.dictaLanguageView,
     setSelectedBenchmarkLanguage: args.setDictaLanguageView,
   });
+  const { ensureLatestBrowserTtsDeDictationScriptFeedback } = adaptiveRuntime;
 
   useAdaptiveStoragePersistenceEffects({
     adaptiveBenchmarksByInputLanguage: args.adaptiveBenchmarksByInputLanguage,
@@ -69,8 +71,8 @@ export function useAdaptiveWorkspaceRuntime(args: UseAdaptiveWorkspaceRuntimeArg
   });
 
   useEffect(() => {
-    adaptiveRuntime.ensureLatestBrowserTtsDeDictationScriptFeedback(args.sessions);
-  }, [adaptiveRuntime, args.sessions]);
+    ensureLatestBrowserTtsDeDictationScriptFeedback(args.sessions);
+  }, [ensureLatestBrowserTtsDeDictationScriptFeedback, args.sessions]);
 
   const entryActions = useAdaptiveWorkspaceEntryActions({
     activeSession: args.activeSession,
