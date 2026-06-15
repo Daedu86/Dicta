@@ -72,13 +72,13 @@ export function useAdaptiveWorkspaceRouteRuntime(args: UseAdaptiveWorkspaceRoute
 
   const repeatWordStats = useMemo(
     () => buildRepeatWordStats({
-      sessions: routeArgs.presentation.sessions,
+      sessions: routeArgs.exportActions.sessions,
       inputMode: routeArgs.presentation.selectedBenchmarkInputMode,
       language: routeArgs.presentation.selectedBenchmarkLanguage,
       now: new Date(),
     }),
     [
-      routeArgs.presentation.sessions,
+      routeArgs.exportActions.sessions,
       routeArgs.presentation.selectedBenchmarkInputMode,
       routeArgs.presentation.selectedBenchmarkLanguage,
     ],
