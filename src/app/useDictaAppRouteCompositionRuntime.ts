@@ -2,7 +2,52 @@ import { useAdaptiveWorkspaceRouteRuntime } from './useAdaptiveWorkspaceRouteRun
 import { useAppPresentationRuntime } from './useAppPresentationRuntime';
 import { mapSessionInputMode } from './appRuntimeHelpers';
 
-type DictaAppRouteCompositionRuntimeParams = Record<string, any>;
+type AdaptiveWorkspaceRouteRuntimeArgs = Parameters<typeof useAdaptiveWorkspaceRouteRuntime>[0];
+type AppPresentationRuntimeArgs = Parameters<typeof useAppPresentationRuntime>[0];
+
+type FlatAdaptiveWorkspaceRouteRuntimeArgs = Exclude<
+  AdaptiveWorkspaceRouteRuntimeArgs,
+  { presentation: unknown }
+>;
+
+type FlatAppPresentationRuntimeArgs = Exclude<
+  AppPresentationRuntimeArgs,
+  { workspacePanels: unknown }
+>;
+
+type RouteDerivedWorkspacePanelKey =
+  | 'selectedBenchmarkProfile'
+  | 'selectedSessionFeedback'
+  | 'getBenchmarkActiveSessionStatus'
+  | 'copySelectedBenchmarkJson'
+  | 'downloadSelectedBenchmarkJson'
+  | 'copyBenchmarkWithDictationScriptPrompt'
+  | 'copyBenchmarkFeedbackPrompt'
+  | 'copyBenchmarkFeedbackJson'
+  | 'copySessionFeedbackJson'
+  | 'copyDictationScriptPrompt'
+  | 'copyDictationScriptTemplate'
+  | 'copyBenchmarkFeedbackPromptWithHumanFeedback';
+
+type RouteDerivedLiveMetricsDockKey =
+  | 'insightsDiagnosticInputOptions'
+  | 'copyInsightsDiagnosticPackage'
+  | 'selectInsightsDiagnosticFallbackReport';
+
+type DictaAppRouteCompositionRuntimeParams =
+  Omit<FlatAdaptiveWorkspaceRouteRuntimeArgs, 'mapSessionInputMode'> &
+  Omit<
+    FlatAppPresentationRuntimeArgs,
+    | RouteDerivedWorkspacePanelKey
+    | RouteDerivedLiveMetricsDockKey
+    | 'authRequired'
+    | 'allowDictationScriptCreation'
+  > & {
+    currentPath: string;
+    openAdaptiveExportsForActiveInput: unknown;
+    syncConfig: { authRequired: boolean };
+    localDevFeaturesAvailable: boolean;
+  };
 
 export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteCompositionRuntimeParams) {
   const {
