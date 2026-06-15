@@ -67,4 +67,5 @@ export type UseSessionPersistenceSyncResult<TSession extends PersistableSession,
   persistAndPushSessionsNow: (nextSessions: TSession[], options?: ImmediateSessionSyncOptions) => void;
   prependSessionAndPersistNow: (createNextSession: (previousSessions: TSession[]) => TSession) => TSession;
   persistAndPushAdaptiveSessionFeedbackNow: (nextFeedback: TFeedback) => void;
+  deleteSessionAndSync: (sessionId: string) => void;
 };
