@@ -31,10 +31,20 @@ import {
   OPENROUTER_GENERATED_VARIANTS_KEY,
 } from '../components/openrouter/openRouterViewHelpers';
 import { perfDiagnostics } from '../core/perfDiagnostics';
+import {
+  DELETED_SESSION_IDS_KEY,
+  loadDeletedSessionIds,
+  persistDeletedSessionIds,
+} from './sessionPersistenceDeletedIds';
 import { buildSessionPersistenceQuotaRecoverySessions } from './sessionPersistenceRecoveryPlan';
 
+export {
+  DELETED_SESSION_IDS_KEY,
+  loadDeletedSessionIds,
+  persistDeletedSessionIds,
+} from './sessionPersistenceDeletedIds';
+
 export const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
-export const DELETED_SESSION_IDS_KEY = 'dicta.deletedSessionIds.v1';
 export const ADAPTIVE_BENCHMARKS_KEY = 'dicta.adaptiveBenchmarks.v1';
 export const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
 
@@ -781,23 +791,6 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     persistAndPushAdaptiveSessionFeedbackNow,
     deleteSessionAndSync,
   };
-}
-
-export function loadDeletedSessionIds(storage: Storage = window.localStorage): Set<string> {
-  const raw = storage.getItem(DELETED_SESSION_IDS_KEY);
-  if (!raw) return new Set();
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((value): value is string => typeof value === 'string' && value.length > 0));
-  } catch {
-    return new Set();
-  }
-}
-
-export function persistDeletedSessionIds(ids: Set<string>, storage: Storage = window.localStorage): void {
-  const normalized = [...ids].filter(Boolean).slice(-600);
-  storage.setItem(DELETED_SESSION_IDS_KEY, JSON.stringify(normalized));
 }
 
 function isLocalStorageQuotaExceeded(error: unknown): boolean {
