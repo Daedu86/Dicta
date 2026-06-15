@@ -7,14 +7,12 @@ import {
   OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
 } from '../core/openRouterJobs';
 import {
-  DICTA_SYNC_TABLE,
   deleteSessionSyncRow,
   latestSyncRowTimestamp,
   mergeSyncRowSnapshots,
   mergeSyncRows,
   pullSyncRows,
   pushSyncRowsDetailed,
-  selectPushableSyncRows,
   type DictaSyncConfig,
   type DictaSyncRow,
   type DictaSyncState,
@@ -34,6 +32,7 @@ import {
   loadDeletedSessionIds,
   persistDeletedSessionIds,
 } from './sessionPersistenceDeletedIds';
+import { buildPendingCriticalSessionRowsKeepalivePlan } from './sessionPersistenceKeepalivePlan';
 import {
   clearPendingCriticalSessionRowsSnapshot,
   rememberPendingCriticalSessionRowsSnapshot,
@@ -52,7 +51,6 @@ export const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
 
 const SESSION_PERSIST_DEBOUNCE_MS = 1500;
 const SUPABASE_BACKGROUND_PULL_INTERVAL_MS = 15_000;
-const SUPABASE_KEEPALIVE_BODY_MAX_BYTES = 60_000;
 
 const PROFILE_SCOPED_DICTA_STORAGE_KEYS = [
   SESSION_STORAGE_KEY,
@@ -287,31 +285,27 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
   }, [effectiveSyncConfig.enabled, effectiveSyncConfig.profileId]);
 
   const flushPendingCriticalSessionRowsKeepalive = useCallback((): void => {
-    if (!effectiveSyncConfig.enabled || pendingCriticalSessionRowsRef.current.length === 0) return;
-    const accessToken = supabaseAccessTokenRef.current;
-    if (!effectiveSyncConfig.url || !effectiveSyncConfig.anonKey || !accessToken) return;
-
-    const rows = selectPushableSyncRows(pendingCriticalSessionRowsRef.current, supabaseKnownRemoteRowsRef.current);
-    if (rows.length === 0) {
+    const { plan, clearPendingRows } = buildPendingCriticalSessionRowsKeepalivePlan({
+      syncConfig: {
+        enabled: effectiveSyncConfig.enabled,
+        url: effectiveSyncConfig.url,
+        anonKey: effectiveSyncConfig.anonKey,
+      },
+      accessToken: supabaseAccessTokenRef.current,
+      pendingRows: pendingCriticalSessionRowsRef.current,
+      knownRemoteRows: supabaseKnownRemoteRowsRef.current,
+    });
+    if (clearPendingRows) {
       pendingCriticalSessionRowsRef.current = [];
-      return;
     }
+    if (!plan) return;
 
-    const body = JSON.stringify(rows);
-    if (byteSize(body) > SUPABASE_KEEPALIVE_BODY_MAX_BYTES) return;
-
-    const endpoint = `${effectiveSyncConfig.url.replace(/\/+$/, '')}/rest/v1/${DICTA_SYNC_TABLE}?on_conflict=profile_id,item_type,item_key`;
     try {
-      void fetch(endpoint, {
+      void fetch(plan.endpoint, {
         method: 'POST',
         keepalive: true,
-        headers: {
-          apikey: effectiveSyncConfig.anonKey,
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          Prefer: 'resolution=merge-duplicates,return=minimal',
-        },
-        body,
+        headers: plan.headers,
+        body: plan.body,
       });
     } catch {
       // The normal Supabase retry path will run on the next visible/online sync cycle.
@@ -803,8 +797,4 @@ function isLocalStorageQuotaExceeded(error: unknown): boolean {
     candidate.code === 22 ||
     candidate.code === 1014
   );
-}
-
-function byteSize(value: string): number {
-  return new TextEncoder().encode(value).length;
 }
