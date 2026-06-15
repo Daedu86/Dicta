@@ -1,0 +1,209 @@
+.adaptive-coach-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1rem;
+  align-items: stretch;
+  margin-top: 1rem;
+}
+
+.adaptive-coach-card {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    radial-gradient(700px 280px at 22% 10%, rgba(96, 165, 250, 0.16), transparent 55%),
+    radial-gradient(600px 280px at 88% 18%, rgba(75, 225, 179, 0.12), transparent 55%),
+    rgba(2, 6, 23, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 16px 44px -36px rgba(0, 0, 0, 0.85);
+}
+
+.adaptive-coach-card-gauge {
+  display: grid;
+  grid-template-rows: 220px auto;
+  padding: 0.9rem;
+  gap: 0.85rem;
+}
+
+.adaptive-coach-card-zone {
+  min-height: 360px;
+  padding: 0.85rem;
+}
+
+.adaptive-coach-card-trends {
+  grid-column: 1 / -1;
+  min-height: 170px;
+  padding: 0.85rem;
+}
+
+.adaptive-coach-card-rate,
+.adaptive-coach-card-lag {
+  min-height: 210px;
+  padding: 0.85rem;
+}
+
+.adaptive-coach-card-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.adaptive-coach-card-meta span {
+  display: block;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.78rem;
+  letter-spacing: 0;
+}
+
+.adaptive-coach-card-meta strong {
+  display: block;
+  color: rgba(226, 232, 240, 0.96);
+  font-size: 1.02rem;
+}
+
+.adaptive-gauge {
+  position: relative;
+  width: 100%;
+  height: 220px;
+}
+
+.adaptive-gauge-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+
+.adaptive-gauge-center span {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.82rem;
+}
+
+.adaptive-gauge-center strong {
+  color: rgba(226, 232, 240, 0.96);
+  font-size: 1.55rem;
+}
+
+.adaptive-zone-chart {
+  width: 100%;
+  min-width: 0;
+  height: 340px;
+  min-height: 260px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.6rem;
+}
+
+.adaptive-zone-chart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.adaptive-zone-chart-header span {
+  display: block;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.82rem;
+}
+
+.adaptive-zone-chart-header strong {
+  display: block;
+  color: rgba(226, 232, 240, 0.96);
+  font-size: 0.96rem;
+}
+
+.adaptive-zone-kpis {
+  display: flex;
+  gap: 1rem;
+}
+
+.adaptive-zone-kpis span {
+  display: block;
+  color: rgba(226, 232, 240, 0.66);
+  font-size: 0.75rem;
+}
+
+.adaptive-zone-kpis strong {
+  display: block;
+  color: rgba(226, 232, 240, 0.92);
+  font-size: 0.9rem;
+}
+
+.adaptive-mini-trends {
+  width: 100%;
+  min-width: 0;
+  height: 160px;
+  min-height: 150px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.55rem;
+}
+
+.adaptive-mini-trends-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.adaptive-mini-trends-header span {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.82rem;
+}
+
+.adaptive-mini-trends-header strong {
+  color: rgba(226, 232, 240, 0.96);
+  font-size: 0.92rem;
+}
+
+.adaptive-mini-trends-legend {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.adaptive-mini-trends-legend .legend-item {
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(2, 6, 23, 0.38);
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 0.75rem;
+}
+
+.adaptive-mini-trends-legend .legend-rate {
+  border-color: rgba(75, 225, 179, 0.28);
+}
+
+.adaptive-mini-trends-legend .legend-lag {
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+.adaptive-mini-trends-legend .legend-acc {
+  border-color: rgba(168, 85, 247, 0.28);
+}
+
+.adaptive-rate-strip,
+.adaptive-lag-distribution {
+  width: 100%;
+  min-width: 0;
+  height: 190px;
+  min-height: 180px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.55rem;
+}
+
+.adaptive-chart-empty {
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+  color: rgba(226, 232, 240, 0.72);
+  font-weight: 800;
+}
