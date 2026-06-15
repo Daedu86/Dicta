@@ -43,7 +43,7 @@ type UseTtsSessionOrchestrationRuntimeArgs =
   PracticeInputDelegateArgs &
   Omit<PlaybackMetricsArgs, 'baseWordsPerSecond'> &
   Omit<BrowserPlaybackDelegateArgs, 'buildSemanticPhrasesForCurrentSession'> &
-  PlaybackControlsDelegateArgs &
+  Omit<PlaybackControlsDelegateArgs, 'ttsTranscriptWordCount'> &
   ResetSessionDelegateArgs &
   SubmitSessionDelegateArgs;
 
