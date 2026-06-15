@@ -22,6 +22,7 @@
 @import './dashboard-workspace.css';
 @import './admin.css';
 @import './adaptive-workspace.css';
+@import './adaptive-coach-charts.css';
 @import './adaptive-timeline.css';
 @import './adaptive-charts.css';
 @import './bottom-metrics.css';
