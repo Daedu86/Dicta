@@ -1,18 +1,10 @@
 import { useCallback } from 'react';
 import type { InputMode } from '../core/adaptive/types';
-import {
-  isTransientOpenRouterGenerationError,
-} from '../core/adaptive/openRouterFallbackScript';
 import type { ActiveOpenRouterJob } from '../core/openRouterJobs';
 import {
   requestTrainingNotificationPermission,
 } from '../core/trainingNotifications';
 import { perfDiagnostics } from '../core/perfDiagnostics';
-import {
-  formatInterruptedOpenRouterMessage,
-  parseTimestampMs,
-  shouldCreatePersistentGenerationErrorSession,
-} from '../components/openrouter/openRouterViewHelpers';
 import type {
   AdaptiveBenchmarksByInputLanguage,
   AdaptiveSessionFeedbackByInputLanguage,
@@ -25,6 +17,7 @@ import {
   type OpenRouterDirectGenerationPreset,
 } from './openRouterDirectGenerationPresets';
 import { requestOpenRouterGenerationJob } from './openRouterGenerationJobRequest';
+import { resolveOpenRouterDirectGenerationFailure } from './openRouterGenerationFailurePolicy';
 import type { StoredSession } from './sessionTypes';
 
 export type OpenRouterGenerationBusyControls = {
@@ -194,27 +187,23 @@ export function useOpenRouterDirectGenerationRuntime({
           : err instanceof Error
             ? err.message
             : 'OpenRouter generation failed.';
-      recordOpenRouterGenerationFailure({
+      const failure = resolveOpenRouterDirectGenerationFailure({
         slotLabel,
         displayLabel,
         model,
         startedAt: generationStartedAt,
-        error: message,
+        message,
       });
-      if (isTransientOpenRouterGenerationError(message)) {
-        const nowMs = Date.now();
-        setOpenRouterError(
-          formatInterruptedOpenRouterMessage(slotLabel, model, Math.max(0, nowMs - parseTimestampMs(generationStartedAt, nowMs))),
-        );
-      } else if (shouldCreatePersistentGenerationErrorSession(message)) {
+      recordOpenRouterGenerationFailure(failure.notice);
+      if (failure.createPersistentErrorSession) {
         createOpenRouterErrorSession({
           slotLabel,
           inputMode,
           language,
           message,
         }, { navigateToLeaderboard: false });
-      } else {
-        setOpenRouterError(message);
+      } else if (failure.openRouterErrorMessage) {
+        setOpenRouterError(failure.openRouterErrorMessage);
       }
     } finally {
       setBusy(false);
