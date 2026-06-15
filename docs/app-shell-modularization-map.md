@@ -28,6 +28,7 @@ This is the current App-shell checkpoint and candidate queue. Refresh source anc
 | OpenRouter generation failure policy owner | `src/app/openRouterGenerationFailurePolicy.ts` |
 | OpenRouter generated-script settlement owner | `src/app/useOpenRouterGeneratedScriptSettlement.ts` |
 | OpenRouter workspace runtime owner | `src/components/openrouter/useOpenRouterWorkspaceRuntime.ts` |
+| Adaptive benchmark cockpit runtime owner | `src/components/adaptive-workspace/useAdaptiveBenchmarkCockpitRuntime.ts` |
 | OpenRouter model owner | `src/app/useOpenRouterModelRuntime.ts` |
 | App route renderer owner | `src/app/AppRouteRenderer.tsx` |
 | Current posture | Consolidation phase. Prefer product/runtime hardening and tests over App LOC extraction. |
@@ -108,6 +109,7 @@ Scores use `docs/modularization-roi.md`: ROI is 0-100 where higher is better; ri
 | OpenRouter generation failure policy | `src/app/openRouterGenerationFailurePolicy.ts` | Shared failure notices, labels, transient/persistent error decisions | Used by direct generation and job polling. |
 | OpenRouter generated-script settlement | `src/app/useOpenRouterGeneratedScriptSettlement.ts` | Generated script session creation and ready notification | Extracted from `DictaAppRuntime` job callback. |
 | OpenRouter workspace runtime | `src/components/openrouter/useOpenRouterWorkspaceRuntime.ts` | Workspace state, export payloads, prompt controls, slot persistence, and custom job request actions | Extracted from `OpenRouterWorkspace.tsx`; UI remains in the component. |
+| Adaptive benchmark cockpit runtime | `src/components/adaptive-workspace/useAdaptiveBenchmarkCockpitRuntime.ts` | Derived cockpit state, diagnostics, export payloads, clipboard state, focus handling, and subsection expansion state | Extracted from `AdaptiveBenchmarkWorkspace.tsx`; JSX remains in place for the next section-extraction pass. |
 | OpenRouter generation/model runtimes | `useOpenRouterGenerationRuntime`, `useOpenRouterModelRuntime`, `useWorkspaceModelRefreshRuntime` | Generation/model/default resolution | Product/runtime reliability is now higher ROI than App extraction. |
 | App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | `DictaAppRuntime` remains the browser composition root; `src/App.tsx` remains a shell-only entrypoint. |
 | Auth/profile, session persistence, session creation, and workspace session runtimes | `useAuthProfileRuntime`, `useSessionPersistenceRuntime`, `useSessionCreationRuntime`, `useWorkspaceSessionRuntime` | Auth/profile access, persistence/sync/quota, session creation, workspace summaries/actions | Existing owner boundaries. |
