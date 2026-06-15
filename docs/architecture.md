@@ -40,7 +40,7 @@ Adaptive benchmarks, telemetry, recommendations, and session feedback are scoped
 Browser app:
 
 - `src/App.tsx`: workspace router and session orchestration host.
-- `src/app/useSupabaseAuthActions.ts`: browser-side Supabase sign-in, password reset/update, and sign-out action handlers.
+- `src/app/useSupabaseAuthActions.ts`: browser-side Supabase sign-in, password reset/update, and sign-out action handlers. Password recovery redirects use `VITE_DICTA_AUTH_REDIRECT_ORIGIN` when configured, with a local/dev fallback to the current browser origin, so hosted member recovery does not depend on protected Vercel preview URLs.
 - `src/app/useSessionCreationActions.ts`: browser-side plain-text session creation, DictationScript import validation/creation, and OpenRouter script session creation actions.
 - `src/app/useOpenRouterGenerationActions.ts`: browser-side direct-training OpenRouter generation actions, prompt/job orchestration, and generation failure handling.
 - `src/app/useAdminWorkspaceProps.ts`: browser-side Admin workspace prop composition for local storage/session exports, profile access callbacks, auth headers, and model refresh wiring.

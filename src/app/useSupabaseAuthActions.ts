@@ -2,12 +2,14 @@ import { useCallback } from 'react';
 import type { FormEvent } from 'react';
 import type { Session as SupabaseAuthSession, SupabaseClient } from '@supabase/supabase-js';
 import type { DictaAppProfile } from '../core/appProfiles';
+import { buildPasswordRecoveryRedirectUrl } from './passwordRecoveryRedirect';
 import type { AuthView } from './sessionTypes';
 
 type AuthMessageTone = 'hint' | 'success' | 'error';
 
 type UseSupabaseAuthActionsOptions = {
-  supabaseClient: SupabaseClient | null;
+  supabaseClient: SupabaseClient | null;
+
   authSession: SupabaseAuthSession | null;
   authEmail: string;
   authPassword: string;
@@ -27,7 +29,8 @@ type UseSupabaseAuthActionsOptions = {
 };
 
 export function useSupabaseAuthActions({
-  supabaseClient,
+  supabaseClient,
+
   authSession,
   authEmail,
   authPassword,
@@ -83,8 +86,12 @@ export function useSupabaseAuthActions({
     setAuthError('');
     setAuthMessage('');
     try {
+      const redirectTo = buildPasswordRecoveryRedirectUrl({
+        configuredOrigin: import.meta.env.VITE_DICTA_AUTH_REDIRECT_ORIGIN,
+        currentOrigin: window.location.origin,
+      });
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/training`,
+        redirectTo,
       });
       if (error) throw error;
       setAuthMessage(`Password reset email sent to ${email}. Open the newest email on this device.`);
@@ -154,7 +161,8 @@ export function useSupabaseAuthActions({
 
   const signOut = useCallback(async (): Promise<void> => {
     try {
-      await supabaseClient?.auth.signOut();
+      await supabaseClient?.auth.signOut();
+
     } finally {
       setAuthSession(null);
       setAppProfile(null);
@@ -170,7 +178,8 @@ export function useSupabaseAuthActions({
     setAuthPassword,
     setAuthSession,
     setAuthView,
-    supabaseClient,
+    supabaseClient,
+
   ]);
 
   return {
