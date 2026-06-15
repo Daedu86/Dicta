@@ -2,10 +2,10 @@ Repo-wide modularization ROI decisions live in `docs/modularization-roi.md`. Use
 
 # App shell modularization map
 
-Updated: 2026-06-15 after runtime ownership docs refresh.
-Status: ACTIVE REFERENCE
-Verified against branch: `product/input-2`
-Verified against code baseline: post `Refresh high-risk runtime ownership anchors`.
+Updated: 2026-06-15 after repo KB ownership refresh.  
+Status: ACTIVE REFERENCE  
+Verified against branch: `product/input-2`  
+Verified against code baseline: post archive compaction and repo KB refresh.  
 Test map checked: `docs/module-test-map.md`
 
 ## Current baseline
@@ -16,8 +16,12 @@ This is the current App-shell checkpoint and candidate queue. Refresh source anc
 | --- | --- |
 | Branch | `product/input-2` |
 | Current `src/App.tsx` role | Shell-only React entrypoint. It imports `App.css` and renders `DictaAppRuntime`; it should stay small and must not regain runtime ownership. |
+| Current `src/App.tsx` size anchor | 8 lines at the inspected baseline. |
 | Current runtime composition root | `src/app/DictaAppRuntime.tsx` wires auth/profile, sync, workspace routing, OpenRouter wiring, focused training, presentation props, and route rendering. |
-| Current `src/app/DictaAppRuntime.tsx` size anchor | About 940 lines at the inspected baseline; do not use this as a success metric. |
+| Current `src/app/DictaAppRuntime.tsx` size anchor | About 866 lines at the inspected baseline; do not use this alone as a success metric. |
+| Current persistence/sync hotspot | `src/app/useSessionPersistenceSync.ts`, about 847 lines, protected by `tests/useSessionPersistenceSync.test.ts`. |
+| Current OpenRouter workspace hotspot | `src/components/openrouter/OpenRouterWorkspace.tsx`, about 780 lines, with runtime state already separated in `useOpenRouterWorkspaceRuntime.ts`. |
+| Current adaptive cockpit hotspot | `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx`, about 779 lines, with runtime state already separated in `useAdaptiveBenchmarkCockpitRuntime.ts`. |
 | Focused training runtime owner | `src/app/useFocusedTrainingRuntime.ts` |
 | TTS session orchestration owner | `src/app/useTtsSessionOrchestrationRuntime.ts` |
 | Browser TTS playback-loop owner | `src/app/useBrowserTtsPlaybackLoop.ts` |
@@ -34,7 +38,7 @@ This is the current App-shell checkpoint and candidate queue. Refresh source anc
 | App route composition runtime owner | `src/app/useDictaAppRouteCompositionRuntime.ts` |
 | OpenRouter model owner | `src/app/useOpenRouterModelRuntime.ts` |
 | App route renderer owner | `src/app/AppRouteRenderer.tsx` |
-| Current posture | Consolidation phase. Prefer product/runtime hardening and tests over App LOC extraction. |
+| Current posture | Consolidation phase. Prefer product/runtime hardening and tested ownership seams over broad App LOC extraction. |
 
 ## Completed since the Browser TTS playback-loop checkpoint
 
@@ -50,7 +54,7 @@ Implemented boundaries; do not re-select them as pending App-shell extractions.
 - `useOpenRouterModelRuntime` owns OpenRouter model assignment/default resolution and refresh wiring.
 - `useTrainingRuntimeState` owns the training state bucket.
 - `useAuthProfileRuntime` owns Supabase auth/profile state and access state.
-- `useSessionPersistenceRuntime` owns local/profile-scoped persistence, Supabase sync, quotas, and deletion persistence.
+- `useSessionPersistenceRuntime` owns local/profile-scoped persistence, Supabase sync, quotas, and deletion persistence at the app-runtime level.
 - `useSessionCreationRuntime` owns session creation for plain text, DictationScript import, and generated scripts.
 - `useWorkspaceSessionRuntime` owns workspace-level derived session collections and workspace actions.
 - `useAppPresentationRuntime` owns App-level presentation prop composition.
@@ -62,6 +66,7 @@ Implemented boundaries; do not re-select them as pending App-shell extractions.
 - Keep `src/App.tsx` shell-only and keep `DictaAppRuntime` as the browser composition root unless a new extraction creates a real owner/test seam.
 - Do not keep grouping contracts just for LOC reduction.
 - Treat OpenRouter lifecycle ownership as mostly extracted; future OpenRouter work should be product-driven: UX, access messaging, quotas, route contracts, or error behavior.
+- Treat session persistence/sync as the best current modularization candidate only if the next task is explicitly refactor/modularization work and the patch starts with characterization or pure planning seams.
 - Keep Browser TTS, reset, refs/timers, telemetry, persistence, auth/profile scoping, OpenRouter jobs, PWA/mobile, and CSS cascade under high-risk validation rules.
 - Reject no-op wrappers, prop bags, string moves, and tiny callback moves.
 
@@ -90,8 +95,12 @@ Scores use `docs/modularization-roi.md`: ROI is 0-100 where higher is better; ri
 
 | Candidate name | Current location | Proposed target | Runtime boundaries touched | ROI | Risk | Required tests | Decision | Reason |
 | --- | --- | --- | --- | ---: | ---: | --- | --- | --- |
+| Session persistence planning/storage seams | `src/app/useSessionPersistenceSync.ts` | Pure helper(s) for snapshot/restore/write-plan/storage compaction before changing the public hook | Persistence, profile-scoped storage, Supabase sync adjacency | 76 | 58 | `tests/useSessionPersistenceSync.test.ts`; add focused helper tests if helpers are introduced; include `tests/supabaseSync.test.ts` and `tests/profileScopedStorage.test.ts` if behavior touches sync/profile scope | select with characterization | Large file with dedicated tests and likely separable pure seams; safer than `src/core/supabaseSync.ts`, but still high-risk. |
+| OpenRouter workspace UI section extraction | `src/components/openrouter/OpenRouterWorkspace.tsx` | Presentational subcomponents only, runtime unchanged | UI/workspace props | 62 | 36 | Existing OpenRouter workspace/job tests plus manual UI diff review | investigate | Good line reduction potential, but lower architectural payoff because runtime is already extracted. |
+| Adaptive benchmark cockpit UI section extraction | `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` | Presentational subcomponents only, runtime unchanged | Adaptive cockpit UI | 58 | 42 | `tests/adaptiveWorkspacePresentation.test.ts`, `tests/adaptiveExportPackages.test.ts`, touched UI tests | investigate | Large UI owner, but avoid mixing layout moves with adaptive behavior. |
+| Supabase sync decomposition | `src/core/supabaseSync.ts` | TBD after characterization | RLS-sensitive sync behavior | 68 | 82 | `tests/supabaseSync.test.ts`, `tests/useSessionPersistenceSync.test.ts`, `tests/profileScopedStorage.test.ts`, manual auth/sync smoke | defer | Important but too risky for a casual next cut. Characterize first. |
 | Semantic phrase selector extraction | `buildSemanticPhrasesForCurrentSession` inside `useTtsSessionOrchestrationRuntime.ts` | Possible pure helper only if behavior grows | Phrase selection | 34 | 24 | `tests/semanticPhrasePlanner.test.ts`, `tests/dictationScriptValidation.test.ts` | reject | Too small by itself. Extract only if phrase selection behavior grows. |
-| Product/runtime hardening | Current product issues | Targeted patches, not App-shell extraction | Depends on issue | n/a | n/a | Pick from `docs/module-test-map.md` | select case-by-case | Higher ROI now comes from concrete product/runtime fixes, not broad modularization. |
+| Product/runtime hardening | Current product issues | Targeted patches, not App-shell extraction | Depends on issue | n/a | n/a | Pick from `docs/module-test-map.md` | select case-by-case | Higher ROI may come from concrete product/runtime fixes, not broad modularization. |
 
 ## Completed extraction log after consolidation
 
@@ -116,9 +125,9 @@ Scores use `docs/modularization-roi.md`: ROI is 0-100 where higher is better; ri
 | Adaptive benchmark cockpit component | `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` | Selected profile cockpit visual layout for hero, exports, KPIs, coach charts, latest feedback, diagnostics, and timeline | Extracted from `AdaptiveBenchmarkWorkspace.tsx`; section orchestration and matrix remain in the original file. |
 | Browser TTS DE benchmark policy | `src/core/adaptive/browserTtsDeBenchmarkPolicy.ts` | German Browser TTS scoring filters, diagnostics, timeline pressure fallback, rejection tokens, semantic counters, and recommendation clamp | Extracted from `AdaptiveInputLanguageBenchmarkService.ts`; the main service remains the generic benchmark update orchestrator. |
 | App route composition runtime | `src/app/useDictaAppRouteCompositionRuntime.ts` | Adaptive route prop composition and app presentation prop composition for `AppRouteRenderer` | Extracted from `DictaAppRuntime.tsx`; the root runtime remains responsible for initializing stateful runtimes. |
-| OpenRouter generation/model runtimes | `useOpenRouterGenerationRuntime`, `useOpenRouterModelRuntime`, `useWorkspaceModelRefreshRuntime` | Generation/model/default resolution | Product/runtime reliability is now higher ROI than App extraction. |
+| OpenRouter generation/model runtimes | `useOpenRouterGenerationRuntime`, `useOpenRouterModelRuntime`, `useWorkspaceModelRefreshRuntime` | Generation/model/default resolution | Product/runtime reliability is now higher ROI than another OpenRouter extraction. |
 | App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | `DictaAppRuntime` remains the browser composition root; `src/App.tsx` remains a shell-only entrypoint. |
-| Auth/profile, session persistence, session creation, and workspace session runtimes | `useAuthProfileRuntime`, `useSessionPersistenceRuntime`, `useSessionCreationRuntime`, `useWorkspaceSessionRuntime` | Auth/profile access, persistence/sync/quota, session creation, workspace summaries/actions | Existing owner boundaries. |
+| Auth/profile, session persistence, session creation, and workspace session runtimes | `useAuthProfileRuntime`, `useSessionPersistenceRuntime`, `useSessionCreationRuntime`, `useWorkspaceSessionRuntime` | Auth/profile access, persistence/sync/quota, session creation, workspace summaries/actions | Existing owner boundaries; `useSessionPersistenceSync` remains a large internal hotspot. |
 
 ## Freshness and update rules
 
