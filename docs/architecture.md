@@ -35,6 +35,8 @@ Languages: `en`, `es`, `de`, `fr`, `pt`.
 
 Adaptive benchmarks, telemetry, recommendations, and session feedback are scoped per `(inputMode, language)`. Do not share behavioral fixes across profiles unless the task explicitly asks for that.
 
+Visible training modes are only `Precision`, `Stabilize`, and `Challenge`. Legacy one-minute express OpenRouter jobs and short historical sessions remain compatible storage/job metadata, but they are grouped into the same three modes in Training Mode, Leaderboard, OpenRouter status, Admin-visible summaries, Adaptive Pace Layer entry points, and notifications.
+
 ## Runtime Boundaries
 
 Browser app:
@@ -134,7 +136,7 @@ Important implementation details:
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior.
 - `ListeningTrainerPolicy` is the main future iteration point for listening-training quality. It preserves benchmark separation per `(inputMode, language)` and does not read localStorage, call network APIs, mutate benchmark data, or average across languages/inputs.
 - OpenRouter and other LLM paths generate structured training material only. The trainer prescription is the pedagogical source of truth for generation, while the runtime/adaptive pace layer controls actual playback, rate, pauses, chunking, recovery, and Browser TTS execution.
-- Direct mobile generation buttons represent user intent (`recover`, `progress`, `challenge`) rather than absolute difficulty commands; the policy can downgrade an unsafe challenge to stabilize or recover.
+- Direct mobile generation buttons represent user intent (`recover`, `progress`, `challenge`) rather than absolute difficulty commands; the policy can downgrade an unsafe challenge to stabilize or recover. The direct buttons create standard two-minute jobs only; one-minute express job payloads remain route-compatible for legacy/custom compatibility but are not a separate visible mode.
 - Browser TTS benchmark samples and completed session feedback are tagged with a structured `ttsEnvironment` fingerprint (hashed user agent, platform/PWA mode, selected voice metadata, and voice counts) so benchmark/report analysis can separate learner progress from browser, OS, voice, or speechSynthesis changes without storing the raw user agent.
 - Training text input is intentionally low-latency and uncontrolled.
 - Low-latency typing is covered by contract/regression tests plus the Playwright mobile guard for the dedicated training harness.

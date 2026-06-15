@@ -1,6 +1,7 @@
 import { isTransientOpenRouterGenerationError } from '../core/adaptive/openRouterFallbackScript';
 import type { ActiveOpenRouterJob } from '../core/openRouterJobs';
 import {
+  formatOpenRouterSlotDisplayLabel,
   formatInterruptedOpenRouterMessage,
   parseTimestampMs,
   shouldCreatePersistentGenerationErrorSession,
@@ -41,14 +42,7 @@ export type OpenRouterDirectGenerationFailureResolution = {
 };
 
 export function formatOpenRouterGenerationDisplayLabel(slotLabel: string): string {
-  const normalized = slotLabel.toLowerCase();
-  if (normalized.includes('express') && normalized.includes('easy')) return 'Express easy session';
-  if (normalized.includes('express') && normalized.includes('intermediate')) return 'Express medium session';
-  if (normalized.includes('express') && normalized.includes('advanced')) return 'Express hard session';
-  if (normalized.includes('easy')) return 'Easy session';
-  if (normalized.includes('intermediate')) return 'Medium session';
-  if (normalized.includes('advanced')) return 'Hard session';
-  return slotLabel;
+  return formatOpenRouterSlotDisplayLabel(slotLabel);
 }
 
 export function buildOpenRouterGenerationFailureNotice({

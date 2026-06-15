@@ -8,11 +8,11 @@ User-facing training intents are:
 
 | User-facing label | Internal historical values | Purpose |
 | --- | --- | --- |
-| `Precision` | `easy`, `recover`, `Easy direct session`, `easy-*` leaderboard ids | Rebuild listening recall with shorter, clearer phrases, stronger content-word anchors, safer boundaries, and a safer completion window. |
-| `Stabilize` | `normal`, `progress`, `Intermediate direct session`, `medium-*` leaderboard ids | Keep flow steady while protecting word order, semantic phrase boundaries, function-word accuracy, and controlled pacing. |
-| `Challenge` | `hard`, `challenge`, `Advanced direct session`, `hard-*` leaderboard ids | Increase density only when listening precision, flow, word order, and completion-window timing are stable. |
+| `Precision` | `easy`, `recover`, `Easy direct session`, legacy `Express easy direct session` | Rebuild listening recall with shorter, clearer phrases, stronger content-word anchors, safer boundaries, and a safer completion window. |
+| `Stabilize` | `normal`, `progress`, `Intermediate direct session`, legacy `Express intermediate direct session` | Keep flow steady while protecting word order, semantic phrase boundaries, function-word accuracy, and controlled pacing. |
+| `Challenge` | `hard`, `challenge`, `Advanced direct session`, legacy `Express advanced direct session` | Increase density only when listening precision, flow, word order, and completion-window timing are stable. |
 
-The historical values above are still valid storage and routing values. Do not migrate them just to change copy. UI and notifications should translate them through presentation helpers.
+The historical values above are still valid storage and routing values. Do not migrate them just to change copy. Express is legacy-compatible metadata, not a separate visible mode. UI, leaderboard grouping, OpenRouter notices, and notifications should translate legacy express metadata into `Precision`, `Stabilize`, or `Challenge` through presentation helpers.
 
 ## Listening precision signals
 
@@ -52,11 +52,11 @@ The listening-first score and policy use explicit listening precision metrics in
 | --- | --- | --- | --- |
 | Stored sessions | Yes | No | `difficulty: easy | normal | hard` remains the persistence contract. |
 | DictationScript schema | Yes | No | LLM output and validation still use `easy`, `normal`, `hard`. |
-| OpenRouter durable jobs | Yes | No | `slotLabel` strings stay stable for existing jobs and notifications. |
-| Leaderboard section ids | Yes | Yes | IDs like `easy-standard` stay stable; displayed labels are translated. |
-| Mobile generation buttons | Yes | Yes | Button IDs stay stable; labels/tooltips use intent vocabulary. |
+| OpenRouter durable jobs | Yes | Yes | Legacy express `slotLabel` strings stay readable, but notices map them to canonical modes. New direct buttons use standard two-minute slot labels. |
+| Leaderboard section ids | No express IDs | Yes | Active sections are `precision`, `stabilize`, and `challenge`; historical express-duration sessions are grouped by stored difficulty. |
+| Mobile generation buttons | Legacy-compatible only | Yes | Direct buttons are `easy`, `medium`, and `hard`, displayed as canonical modes. Legacy `express-*` button ids map to canonical labels if encountered. |
 | Session cards / pending sessions | Yes | Yes | `formatDifficultyLabel()` maps difficulty to intent labels. |
-| Notifications | Yes | Yes | Notification body uses intent labels while preserving job metadata. |
+| Notifications | Yes | Yes | Notification body uses intent labels only; job metadata is preserved in notification data. |
 | Tests for storage/routes/jobs | Yes | Usually no | Keep legacy expectations where they assert internal contracts. |
 | UI/copy tests | Yes | Yes | Assert `Precision`, `Stabilize`, and `Challenge` for visible labels. |
 
@@ -79,5 +79,6 @@ The current baseline is:
 - Speed increases are capped by listening precision.
 - Completion-window timing is measured and weighted.
 - `ListeningTrainerPolicy` reacts to precision pressure.
-- Mobile buttons, descriptions, leaderboard sections, session difficulty labels, and notifications use `Precision`, `Stabilize`, and `Challenge`.
+- Mobile buttons, descriptions, leaderboard sections, session difficulty labels, OpenRouter notices, and notifications use `Precision`, `Stabilize`, and `Challenge`.
+- Legacy express jobs and historical short sessions are compatible but grouped into the same three visible modes.
 - Legacy internal values remain in place for compatibility.

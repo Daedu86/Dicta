@@ -169,15 +169,9 @@ function createDefaultArgs(
     directOpenRouterBusy: false,
     directIntermediateOpenRouterBusy: false,
     directAdvancedOpenRouterBusy: false,
-    expressEasyOpenRouterBusy: false,
-    expressIntermediateOpenRouterBusy: false,
-    expressAdvancedOpenRouterBusy: false,
     generateEasyNextSessionFromOpenRouter: vi.fn(),
     generateIntermediateNextSessionFromOpenRouter: vi.fn(),
     generateAdvancedNextSessionFromOpenRouter: vi.fn(),
-    generateExpressEasyNextSessionFromOpenRouter: vi.fn(),
-    generateExpressIntermediateNextSessionFromOpenRouter: vi.fn(),
-    generateExpressAdvancedNextSessionFromOpenRouter: vi.fn(),
     openOpenRouterGenerateForActiveInput: vi.fn(),
     ...overrides,
   };
@@ -278,11 +272,8 @@ describe('useFocusedTrainingRouteRuntime', () => {
 
     expect(runtime.focusedTrainingProps.generationButtons.map((button) => button.id)).toEqual([
       'easy',
-      'express-easy',
       'medium',
-      'express-medium',
       'hard',
-      'express-hard',
       'custom',
     ]);
 

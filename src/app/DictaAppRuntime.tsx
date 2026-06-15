@@ -387,16 +387,10 @@ export function DictaAppRuntime() {
     directOpenRouterBusy,
     directIntermediateOpenRouterBusy,
     directAdvancedOpenRouterBusy,
-    expressEasyOpenRouterBusy,
-    expressIntermediateOpenRouterBusy,
-    expressAdvancedOpenRouterBusy,
     openOpenRouterGenerateForActiveInput,
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter,
-    generateExpressEasyNextSessionFromOpenRouter,
-    generateExpressIntermediateNextSessionFromOpenRouter,
-    generateExpressAdvancedNextSessionFromOpenRouter,
   } = useDictaOpenRouterRuntime({
     errorSessionActions: {
       ensureCanCreateDictationSession,
@@ -543,15 +537,9 @@ export function DictaAppRuntime() {
     directOpenRouterBusy,
     directIntermediateOpenRouterBusy,
     directAdvancedOpenRouterBusy,
-    expressEasyOpenRouterBusy,
-    expressIntermediateOpenRouterBusy,
-    expressAdvancedOpenRouterBusy,
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter,
-    generateExpressEasyNextSessionFromOpenRouter,
-    generateExpressIntermediateNextSessionFromOpenRouter,
-    generateExpressAdvancedNextSessionFromOpenRouter,
     openOpenRouterGenerateForActiveInput,
   });
 

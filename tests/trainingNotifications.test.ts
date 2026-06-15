@@ -23,7 +23,8 @@ describe('training notifications', () => {
     const notification = buildGeneratedTrainingSessionNotification(script, job);
 
     expect(notification.title).toBe('Dicta session ready');
-    expect(notification.options.body).toContain('Express Stabilize DE');
+    expect(notification.options.body).toContain('Stabilize DE');
+    expect(notification.options.body).not.toContain('Express');
     expect(notification.options.body).toContain('Ein entspannter Spaziergang im Park');
     expect(notification.options.data).toMatchObject({
       url: TRAINING_NOTIFICATION_URL,
@@ -33,7 +34,7 @@ describe('training notifications', () => {
     expect(notification.options.tag).toBe('dicta-session-ready-job-123');
   });
 
-  it('labels two-minute hard sessions as standard challenge sessions', () => {
+  it('labels two-minute hard sessions as challenge sessions', () => {
     const script = createScript({
       title: 'Philosophische Paradoxe',
       language: 'de',
@@ -47,7 +48,8 @@ describe('training notifications', () => {
 
     const notification = buildGeneratedTrainingSessionNotification(script, job);
 
-    expect(notification.options.body).toContain('Standard Challenge DE');
+    expect(notification.options.body).toContain('Challenge DE');
+    expect(notification.options.body).not.toContain('Standard');
     expect(notification.options.data).toMatchObject({ url: '/training' });
   });
 });

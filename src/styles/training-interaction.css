@@ -19,10 +19,15 @@
   width: 100%;
 }
 
-.training-control-grid,
-.training-generation-grid {
+.training-control-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.training-generation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.7rem;
 }
 

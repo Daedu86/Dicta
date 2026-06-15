@@ -96,14 +96,11 @@ describe('OpenRouter jobs route payload validation', () => {
     });
   });
 
-  it('accepts all six direct mobile generation button job payloads', () => {
+  it('accepts all three direct mobile generation button job payloads', () => {
     const buttonPayloads = [
       { slotLabel: 'Easy direct session', durationMinutes: 2, targetDifficulty: 'easy' },
       { slotLabel: 'Intermediate direct session', durationMinutes: 2, targetDifficulty: 'normal' },
       { slotLabel: 'Advanced direct session', durationMinutes: 2, targetDifficulty: 'hard' },
-      { slotLabel: 'Express easy direct session', durationMinutes: 1, targetDifficulty: 'easy' },
-      { slotLabel: 'Express intermediate direct session', durationMinutes: 1, targetDifficulty: 'normal' },
-      { slotLabel: 'Express advanced direct session', durationMinutes: 1, targetDifficulty: 'hard' },
     ] as const;
 
     for (const payload of buttonPayloads) {

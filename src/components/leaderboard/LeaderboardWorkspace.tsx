@@ -3,12 +3,9 @@ import { formatLeaderboardSectionIntentLabel } from './leaderboardViewHelpers';
 
 type LeaderboardLanguageCode = 'en' | 'es' | 'de' | 'fr' | 'pt';
 type LeaderboardSectionId =
-  | 'easy-express'
-  | 'medium-express'
-  | 'hard-express'
-  | 'easy-standard'
-  | 'medium-standard'
-  | 'hard-standard';
+  | 'precision'
+  | 'stabilize'
+  | 'challenge';
 type LeaderboardGenerationOrigin = 'manual' | 'openrouter' | 'fallback-template';
 type LeaderboardSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type LeaderboardSessionMetrics = {

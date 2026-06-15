@@ -121,22 +121,6 @@ describe('buildOpenRouterDirectGenerationJobPlan', () => {
     }
   });
 
-  it('respects express duration and max token sizing', () => {
-    const plan = createPlan(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressEasy);
-
-    expect(plan.targetMaxTokens).toBe(1_800);
-    expect(plan.jobRequestBody).toMatchObject({
-      maxTokens: 1_800,
-      slotLabel: 'Express easy direct session',
-      durationMinutes: 1,
-      targetDifficulty: 'easy',
-    });
-    expect(plan.activeJobDraft).toMatchObject({
-      durationMinutes: 1,
-      targetDifficulty: 'easy',
-    });
-  });
-
   it('does not execute fetch or other network side effects while planning', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

@@ -108,7 +108,6 @@ export function useWorkspaceSessionSummaries({
     () =>
       buildLeaderboardSections(sessionsWithVoiceDuration, leaderboardLanguageView, {
         resolveSessionLanguage,
-        getSessionVoiceDurationSec: estimateSessionVoiceDurationSec,
         buildRangeSummaryForLanguage,
         formatDuration,
       }),

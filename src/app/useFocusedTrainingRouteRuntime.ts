@@ -153,15 +153,9 @@ export function useFocusedTrainingRouteRuntime({
   directOpenRouterBusy,
   directIntermediateOpenRouterBusy,
   directAdvancedOpenRouterBusy,
-  expressEasyOpenRouterBusy,
-  expressIntermediateOpenRouterBusy,
-  expressAdvancedOpenRouterBusy,
   generateEasyNextSessionFromOpenRouter,
   generateIntermediateNextSessionFromOpenRouter,
   generateAdvancedNextSessionFromOpenRouter,
-  generateExpressEasyNextSessionFromOpenRouter,
-  generateExpressIntermediateNextSessionFromOpenRouter,
-  generateExpressAdvancedNextSessionFromOpenRouter,
   openOpenRouterGenerateForActiveInput,
 }: UseFocusedTrainingRouteRuntimeArgs): UseFocusedTrainingRouteRuntimeResult {
   const { focusedTrainingControls } = useTrainingSessionLifecycle({
@@ -243,15 +237,9 @@ export function useFocusedTrainingRouteRuntime({
     directOpenRouterBusy,
     directIntermediateOpenRouterBusy,
     directAdvancedOpenRouterBusy,
-    expressEasyOpenRouterBusy,
-    expressIntermediateOpenRouterBusy,
-    expressAdvancedOpenRouterBusy,
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter,
-    generateExpressEasyNextSessionFromOpenRouter,
-    generateExpressIntermediateNextSessionFromOpenRouter,
-    generateExpressAdvancedNextSessionFromOpenRouter,
     openOpenRouterGenerateForActiveInput,
   });
 

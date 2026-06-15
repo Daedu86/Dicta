@@ -125,20 +125,55 @@ export function formatOpenRouterJobNotifications(notifications: Record<string, O
   return ordered
     .map((notification) => {
       const startedMs = new Date(notification.startedAt).getTime();
+      const displayLabel = formatOpenRouterSlotDisplayLabel(notification.slotLabel);
       const elapsedMs =
         notification.completedAt
           ? new Date(notification.completedAt).getTime() - startedMs
           : Date.now() - startedMs;
       const elapsed = formatElapsedMs(Math.max(0, Number.isFinite(elapsedMs) ? elapsedMs : 0));
       if (notification.status === 'succeeded') {
-        return `${notification.slotLabel} finished with ${notification.model} in ${elapsed}.`;
+        return `${displayLabel} finished with ${notification.model} in ${elapsed}.`;
       }
       if (notification.status === 'failed') {
-        return `${notification.slotLabel} failed with ${notification.model} after ${elapsed}${notification.error ? `: ${notification.error}` : '.'}`;
+        return `${displayLabel} failed with ${notification.model} after ${elapsed}${notification.error ? `: ${notification.error}` : '.'}`;
       }
-      return `${notification.slotLabel} running with ${notification.model}; elapsed ${elapsed}.`;
+      return `${displayLabel} running with ${notification.model}; elapsed ${elapsed}.`;
     })
     .join(' ');
+}
+
+export function formatOpenRouterSlotDisplayLabel(slotLabel: string): string {
+  switch (resolveOpenRouterTrainingIntentFromLabel(slotLabel)) {
+    case 'precision':
+      return 'Precision session';
+    case 'stabilize':
+      return 'Stabilize session';
+    case 'challenge':
+      return 'Challenge session';
+    default:
+      return slotLabel;
+  }
+}
+
+function getOpenRouterTrainingSlotAliases(slotLabel: string): string[] {
+  switch (resolveOpenRouterTrainingIntentFromLabel(slotLabel)) {
+    case 'precision':
+      return ['Easy direct session', 'Express easy direct session'];
+    case 'stabilize':
+      return ['Intermediate direct session', 'Express intermediate direct session'];
+    case 'challenge':
+      return ['Advanced direct session', 'Express advanced direct session'];
+    default:
+      return [slotLabel];
+  }
+}
+
+function resolveOpenRouterTrainingIntentFromLabel(slotLabel: string): 'precision' | 'stabilize' | 'challenge' | null {
+  const normalized = slotLabel.trim().toLowerCase();
+  if (normalized.includes('easy')) return 'precision';
+  if (normalized.includes('intermediate') || normalized.includes('medium')) return 'stabilize';
+  if (normalized.includes('advanced') || normalized.includes('hard')) return 'challenge';
+  return null;
 }
 
 export function buildTrainingGenerationButtonNotice({
@@ -156,13 +191,14 @@ export function buildTrainingGenerationButtonNotice({
   activeJobs: ActiveOpenRouterJob[];
   nowMs: number;
 }): TrainingGenerationNoticeView | null {
-  const localNotice = notices[slotLabel];
+  const slotAliases = getOpenRouterTrainingSlotAliases(slotLabel);
+  const localNotice = slotAliases.map((alias) => notices[alias]).find(Boolean);
   const activeJob = [...activeJobs]
-    .filter((job) => job.slotLabel === slotLabel)
+    .filter((job) => slotAliases.includes(job.slotLabel))
     .sort((a, b) => parseTimestampMs(b.startedAt, nowMs) - parseTimestampMs(a.startedAt, nowMs))[0];
   if (activeJob) {
     return formatTrainingGenerationNotice({
-      slotLabel,
+      slotLabel: activeJob.slotLabel,
       displayLabel,
       model: activeJob.model,
       startedAt: activeJob.startedAt,
@@ -171,15 +207,15 @@ export function buildTrainingGenerationButtonNotice({
   }
 
   if (localNotice && localNotice.status !== 'running') {
-    return formatTrainingGenerationNotice(localNotice, nowMs);
+    return formatTrainingGenerationNotice({ ...localNotice, displayLabel }, nowMs);
   }
 
   const jobNotification = Object.values(jobNotifications)
-    .filter((notification) => notification.slotLabel === slotLabel)
+    .filter((notification) => slotAliases.includes(notification.slotLabel))
     .sort((a, b) => parseTimestampMs(b.startedAt, nowMs) - parseTimestampMs(a.startedAt, nowMs))[0];
   if (jobNotification) {
     return formatTrainingGenerationNotice({
-      slotLabel,
+      slotLabel: jobNotification.slotLabel,
       displayLabel,
       model: jobNotification.model,
       startedAt: jobNotification.startedAt,
@@ -190,7 +226,7 @@ export function buildTrainingGenerationButtonNotice({
   }
 
   if (localNotice) {
-    return formatTrainingGenerationNotice(localNotice, nowMs);
+    return formatTrainingGenerationNotice({ ...localNotice, displayLabel }, nowMs);
   }
 
   return null;

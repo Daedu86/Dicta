@@ -1,18 +1,12 @@
 type LeaderboardSectionId =
-  | 'easy-express'
-  | 'medium-express'
-  | 'hard-express'
-  | 'easy-standard'
-  | 'medium-standard'
-  | 'hard-standard';
+  | 'precision'
+  | 'stabilize'
+  | 'challenge';
 
 const LEADERBOARD_INTENT_LABELS: Record<LeaderboardSectionId, string> = {
-  'easy-express': 'Express Precision',
-  'medium-express': 'Express Stabilize',
-  'hard-express': 'Express Challenge',
-  'easy-standard': 'Precision',
-  'medium-standard': 'Stabilize',
-  'hard-standard': 'Challenge',
+  precision: 'Precision',
+  stabilize: 'Stabilize',
+  challenge: 'Challenge',
 };
 
 export function formatLeaderboardSectionIntentLabel(section: { id: string; label: string }): string {

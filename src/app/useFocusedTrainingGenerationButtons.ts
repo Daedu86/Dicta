@@ -36,15 +36,9 @@ type UseFocusedTrainingGenerationButtonsArgs = {
   directOpenRouterBusy: boolean;
   directIntermediateOpenRouterBusy: boolean;
   directAdvancedOpenRouterBusy: boolean;
-  expressEasyOpenRouterBusy: boolean;
-  expressIntermediateOpenRouterBusy: boolean;
-  expressAdvancedOpenRouterBusy: boolean;
   generateEasyNextSessionFromOpenRouter: GenerateSessionAction;
   generateIntermediateNextSessionFromOpenRouter: GenerateSessionAction;
   generateAdvancedNextSessionFromOpenRouter: GenerateSessionAction;
-  generateExpressEasyNextSessionFromOpenRouter: GenerateSessionAction;
-  generateExpressIntermediateNextSessionFromOpenRouter: GenerateSessionAction;
-  generateExpressAdvancedNextSessionFromOpenRouter: GenerateSessionAction;
   openOpenRouterGenerateForActiveInput: () => void;
 };
 
@@ -74,15 +68,9 @@ export function useFocusedTrainingGenerationButtons({
   directOpenRouterBusy,
   directIntermediateOpenRouterBusy,
   directAdvancedOpenRouterBusy,
-  expressEasyOpenRouterBusy,
-  expressIntermediateOpenRouterBusy,
-  expressAdvancedOpenRouterBusy,
   generateEasyNextSessionFromOpenRouter,
   generateIntermediateNextSessionFromOpenRouter,
   generateAdvancedNextSessionFromOpenRouter,
-  generateExpressEasyNextSessionFromOpenRouter,
-  generateExpressIntermediateNextSessionFromOpenRouter,
-  generateExpressAdvancedNextSessionFromOpenRouter,
   openOpenRouterGenerateForActiveInput,
 }: UseFocusedTrainingGenerationButtonsArgs): TrainingGenerationButton[] {
   return useMemo(() => {
@@ -140,62 +128,32 @@ export function useFocusedTrainingGenerationButtons({
       {
         preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.easy,
         busy: directOpenRouterBusy,
-        requestingLabel: 'Requesting easy...',
-        runningLabel: 'Generating easy...',
-        readyLabel: 'New Easy Session',
+        requestingLabel: 'Requesting precision...',
+        runningLabel: 'Generating precision...',
+        readyLabel: 'New Precision Session',
         action: generateEasyNextSessionFromOpenRouter,
-        title: 'Generate an easy two-minute session with OpenRouter.',
-        helpText: 'About 2 minutes. Easy level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
-      },
-      {
-        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressEasy,
-        busy: expressEasyOpenRouterBusy,
-        requestingLabel: 'Requesting express easy...',
-        runningLabel: 'Generating express easy...',
-        readyLabel: 'Express Easy Session',
-        action: generateExpressEasyNextSessionFromOpenRouter,
-        title: 'Generate an easy one-minute express session with OpenRouter.',
-        helpText: 'About 1 minute. Easy level, simpler vocabulary, and roughly half the spoken words of the standard easy session.',
+        title: 'Generate a two-minute Precision session with OpenRouter.',
+        helpText: 'About 2 minutes. Precision level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
       },
       {
         preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.medium,
         busy: directIntermediateOpenRouterBusy,
-        requestingLabel: 'Requesting medium...',
-        runningLabel: 'Generating medium...',
-        readyLabel: 'New Medium Session',
+        requestingLabel: 'Requesting stabilize...',
+        runningLabel: 'Generating stabilize...',
+        readyLabel: 'New Stabilize Session',
         action: generateIntermediateNextSessionFromOpenRouter,
-        title: 'Generate a medium two-minute session with OpenRouter.',
-        helpText: 'About 2 minutes. Medium level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
-      },
-      {
-        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressMedium,
-        busy: expressIntermediateOpenRouterBusy,
-        requestingLabel: 'Requesting express medium...',
-        runningLabel: 'Generating express medium...',
-        readyLabel: 'Express Medium Session',
-        action: generateExpressIntermediateNextSessionFromOpenRouter,
-        title: 'Generate a medium one-minute express session with OpenRouter.',
-        helpText: 'About 1 minute. Medium level, balanced phrasing, and roughly half the spoken words of the standard medium session.',
+        title: 'Generate a two-minute Stabilize session with OpenRouter.',
+        helpText: 'About 2 minutes. Stabilize level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
       },
       {
         preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.hard,
         busy: directAdvancedOpenRouterBusy,
-        requestingLabel: 'Requesting hard...',
-        runningLabel: 'Generating hard...',
-        readyLabel: 'New Hard Session',
+        requestingLabel: 'Requesting challenge...',
+        runningLabel: 'Generating challenge...',
+        readyLabel: 'New Challenge Session',
         action: generateAdvancedNextSessionFromOpenRouter,
-        title: 'Generate a hard two-minute session with OpenRouter.',
-        helpText: 'About 2 minutes. Hard level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
-      },
-      {
-        preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressHard,
-        busy: expressAdvancedOpenRouterBusy,
-        requestingLabel: 'Requesting express hard...',
-        runningLabel: 'Generating express hard...',
-        readyLabel: 'Express Hard Session',
-        action: generateExpressAdvancedNextSessionFromOpenRouter,
-        title: 'Generate a hard one-minute express session with OpenRouter.',
-        helpText: 'About 1 minute. Hard level, denser vocabulary, and roughly half the spoken words of the standard hard session.',
+        title: 'Generate a two-minute Challenge session with OpenRouter.',
+        helpText: 'About 2 minutes. Challenge level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
       },
     ];
 
@@ -228,17 +186,11 @@ export function useFocusedTrainingGenerationButtons({
     isOnline,
     activeSession,
     directOpenRouterBusy,
-    expressEasyOpenRouterBusy,
     directIntermediateOpenRouterBusy,
-    expressIntermediateOpenRouterBusy,
     directAdvancedOpenRouterBusy,
-    expressAdvancedOpenRouterBusy,
     generateEasyNextSessionFromOpenRouter,
-    generateExpressEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
-    generateExpressIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter,
-    generateExpressAdvancedNextSessionFromOpenRouter,
     openOpenRouterGenerateForActiveInput,
   ]);
 }

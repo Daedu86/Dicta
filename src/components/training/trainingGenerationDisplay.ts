@@ -35,15 +35,14 @@ export function buildTrainingGenerationButtonDisplay(button: TrainingGenerationB
   }
 
   const intentLabel = INTENT_LABELS[intent];
-  const isExpress = button.id.startsWith('express-');
-  const displayName = isExpress ? `Express ${intentLabel}` : intentLabel;
+  const displayName = intentLabel;
   const displayLabel = formatIntentButtonLabel(button.label, intentLabel, displayName);
 
   return {
     ...button,
     displayLabel,
-    displayTitle: buildIntentButtonTitle(intent, isExpress, button.title),
-    displayHelpText: buildIntentButtonHelpText(intent, isExpress),
+    displayTitle: buildIntentButtonTitle(intent, button.title),
+    displayHelpText: buildIntentButtonHelpText(intent),
   };
 }
 
@@ -65,15 +64,13 @@ function resolveTrainingGenerationIntent(id: string): TrainingGenerationIntent {
 
 function formatIntentButtonLabel(label: string, intentLabel: string, displayName: string): string {
   const normalized = label.trim().toLocaleLowerCase();
-  if (normalized.startsWith('requesting express')) return `Requesting Express ${intentLabel}...`;
-  if (normalized.startsWith('generating express')) return `Generating Express ${intentLabel}...`;
   if (normalized.startsWith('requesting')) return `Requesting ${intentLabel}...`;
   if (normalized.startsWith('generating')) return `Generating ${intentLabel}...`;
   return displayName;
 }
 
-function buildIntentButtonTitle(intent: Exclude<TrainingGenerationIntent, 'custom'>, isExpress: boolean, fallback: string): string {
-  const duration = isExpress ? 'one-minute express' : 'two-minute';
+function buildIntentButtonTitle(intent: Exclude<TrainingGenerationIntent, 'custom'>, fallback: string): string {
+  const duration = 'two-minute';
   switch (intent) {
     case 'precision':
       return `Generate a ${duration} Precision session: short, clear listening phrases that prioritize recall, content-word anchors, and on-time completion.`;
@@ -86,18 +83,12 @@ function buildIntentButtonTitle(intent: Exclude<TrainingGenerationIntent, 'custo
   }
 }
 
-function buildIntentButtonHelpText(intent: Exclude<TrainingGenerationIntent, 'custom'>, isExpress: boolean): string {
+function buildIntentButtonHelpText(intent: Exclude<TrainingGenerationIntent, 'custom'>): string {
   if (intent === 'precision') {
-    return isExpress
-      ? 'About 1 minute. Compact precision reset: shorter phrases, clearer content-word anchors, and a safer completion window.'
-      : 'About 2 minutes. Rebuilds listening precision with shorter phrases, clearer content-word anchors, detail recall, and a safer completion window.';
+    return 'About 2 minutes. Rebuilds listening precision with shorter phrases, clearer content-word anchors, detail recall, and a safer completion window.';
   }
   if (intent === 'stabilize') {
-    return isExpress
-      ? 'About 1 minute. Compact flow stabilization: balanced vocabulary, semantic phrases, and conservative pacing.'
-      : 'About 2 minutes. Stabilizes listening flow with balanced vocabulary, semantic phrase boundaries, word-order practice, and controlled pacing.';
+    return 'About 2 minutes. Stabilizes listening flow with balanced vocabulary, semantic phrase boundaries, word-order practice, and controlled pacing.';
   }
-  return isExpress
-    ? 'About 1 minute. Compact challenge: denser language while keeping precision, word order, and completion timing under control.'
-    : 'About 2 minutes. Challenges listening with richer vocabulary and grammar only after precision, word order, and completion-window timing are stable.';
+  return 'About 2 minutes. Challenges listening with richer vocabulary and grammar only after precision, word order, and completion-window timing are stable.';
 }

@@ -16,14 +16,13 @@ export function buildGeneratedTrainingSessionNotification(
   script: DictationScript,
   job: ActiveOpenRouterJob,
 ): TrainingSessionNotificationPayload {
-  const durationLabel = job.durationMinutes === 1 ? 'Express' : 'Standard';
   const difficultyLabel = formatNotificationDifficulty(script.difficulty);
   const languageLabel = script.language.toUpperCase();
   const sessionTitle = script.title.trim() || 'New session';
   return {
     title: 'Dicta session ready',
     options: {
-      body: `${durationLabel} ${difficultyLabel} ${languageLabel}: ${sessionTitle}. Tap to open Training Mode.`,
+      body: `${difficultyLabel} ${languageLabel}: ${sessionTitle}. Tap to open Training Mode.`,
       icon: TRAINING_NOTIFICATION_ICON,
       badge: TRAINING_NOTIFICATION_BADGE,
       tag: `dicta-session-ready-${job.jobId}`,

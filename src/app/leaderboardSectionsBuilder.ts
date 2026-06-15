@@ -5,18 +5,15 @@ import {
   LEADERBOARD_SECTION_DEFINITIONS,
   type LeaderboardRangeMetric,
   type LeaderboardSection,
-  type LeaderboardSessionLength,
 } from './leaderboardSections';
 
 type LeaderboardSessionSource = {
   difficulty: Difficulty;
-  dictationScript?: { estimatedDurationSec?: number | null } | null;
   metrics: {
     points: number;
     score: number;
     accuracy: number;
   };
-  voiceDurationSec?: number | null;
 };
 
 type LeaderboardRangeSummary = {
@@ -30,7 +27,6 @@ type LeaderboardRangeSummary = {
 
 type LeaderboardSectionsBuilderDependencies<TSession extends LeaderboardSessionSource> = {
   resolveSessionLanguage: (session: TSession) => MetricsLanguageView | null;
-  getSessionVoiceDurationSec: (session: TSession) => number | null;
   buildRangeSummaryForLanguage: (
     sessions: TSession[],
     language: MetricsLanguageView,
@@ -56,10 +52,7 @@ export function buildLeaderboardSections<TSession extends LeaderboardSessionSour
 
   return LEADERBOARD_SECTION_DEFINITIONS.map((definition) => {
     const sectionSessions = languageSessions.filter((session) => {
-      return (
-        session.difficulty === definition.difficulty &&
-        getLeaderboardSessionLength(session, dependencies.getSessionVoiceDurationSec) === definition.length
-      );
+      return session.difficulty === definition.difficulty;
     });
 
     return {
@@ -68,24 +61,6 @@ export function buildLeaderboardSections<TSession extends LeaderboardSessionSour
       rangeMetrics: buildLeaderboardRangeMetrics(sectionSessions, language, dependencies),
     };
   });
-}
-
-function getLeaderboardSessionLength<TSession extends LeaderboardSessionSource>(
-  session: TSession,
-  getSessionVoiceDurationSec: (session: TSession) => number | null,
-): LeaderboardSessionLength {
-  const scriptDurationSec = session.dictationScript?.estimatedDurationSec;
-  if (typeof scriptDurationSec === 'number' && Number.isFinite(scriptDurationSec) && scriptDurationSec > 0) {
-    return scriptDurationSec <= 90 ? 'express' : 'standard';
-  }
-
-  const voiceDurationSec = typeof session.voiceDurationSec === 'number'
-    ? session.voiceDurationSec
-    : getSessionVoiceDurationSec(session);
-
-  return typeof voiceDurationSec === 'number' && Number.isFinite(voiceDurationSec) && voiceDurationSec > 0 && voiceDurationSec <= 90
-    ? 'express'
-    : 'standard';
 }
 
 function buildLeaderboardRangeMetrics<TSession extends LeaderboardSessionSource>(

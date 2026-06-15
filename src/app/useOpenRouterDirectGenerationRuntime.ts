@@ -27,12 +27,6 @@ export type OpenRouterGenerationBusyControls = {
   setDirectIntermediateOpenRouterBusy: (value: boolean) => void;
   directAdvancedOpenRouterBusy: boolean;
   setDirectAdvancedOpenRouterBusy: (value: boolean) => void;
-  expressEasyOpenRouterBusy: boolean;
-  setExpressEasyOpenRouterBusy: (value: boolean) => void;
-  expressIntermediateOpenRouterBusy: boolean;
-  setExpressIntermediateOpenRouterBusy: (value: boolean) => void;
-  expressAdvancedOpenRouterBusy: boolean;
-  setExpressAdvancedOpenRouterBusy: (value: boolean) => void;
 };
 
 type RecentDictationSessionHint = {
@@ -110,12 +104,6 @@ export function useOpenRouterDirectGenerationRuntime({
   setDirectIntermediateOpenRouterBusy,
   directAdvancedOpenRouterBusy,
   setDirectAdvancedOpenRouterBusy,
-  expressEasyOpenRouterBusy,
-  setExpressEasyOpenRouterBusy,
-  expressIntermediateOpenRouterBusy,
-  setExpressIntermediateOpenRouterBusy,
-  expressAdvancedOpenRouterBusy,
-  setExpressAdvancedOpenRouterBusy,
 }: UseOpenRouterDirectGenerationRuntimeOptions) {
   const generateDirectSessionFromOpenRouter = useCallback(async ({
     id,
@@ -255,36 +243,9 @@ export function useOpenRouterDirectGenerationRuntime({
     });
   }, [directAdvancedOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectAdvancedOpenRouterBusy]);
 
-  const generateExpressEasyNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
-    await generateDirectSessionFromOpenRouter({
-      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressEasy,
-      isBusy: expressEasyOpenRouterBusy,
-      setBusy: setExpressEasyOpenRouterBusy,
-    });
-  }, [expressEasyOpenRouterBusy, generateDirectSessionFromOpenRouter, setExpressEasyOpenRouterBusy]);
-
-  const generateExpressIntermediateNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
-    await generateDirectSessionFromOpenRouter({
-      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressMedium,
-      isBusy: expressIntermediateOpenRouterBusy,
-      setBusy: setExpressIntermediateOpenRouterBusy,
-    });
-  }, [expressIntermediateOpenRouterBusy, generateDirectSessionFromOpenRouter, setExpressIntermediateOpenRouterBusy]);
-
-  const generateExpressAdvancedNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
-    await generateDirectSessionFromOpenRouter({
-      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.expressHard,
-      isBusy: expressAdvancedOpenRouterBusy,
-      setBusy: setExpressAdvancedOpenRouterBusy,
-    });
-  }, [expressAdvancedOpenRouterBusy, generateDirectSessionFromOpenRouter, setExpressAdvancedOpenRouterBusy]);
-
   return {
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter,
-    generateExpressEasyNextSessionFromOpenRouter,
-    generateExpressIntermediateNextSessionFromOpenRouter,
-    generateExpressAdvancedNextSessionFromOpenRouter,
   };
 }
