@@ -1,12 +1,9 @@
 import { useRef, useState } from 'react';
 import { useThemeModeRuntime } from './useThemeModeRuntime';
-import { useOnlineStatus } from './useOnlineStatus';
 import { useDictaLocalStorageImportRuntime } from './useDictaLocalStorageImportRuntime';
 import { useSessionPersistenceRuntime } from './useSessionPersistenceRuntime';
 import { useWorkspaceSessionRuntime } from './useWorkspaceSessionRuntime';
 import { useWorkspaceNavigationEffects } from './useWorkspaceNavigationEffects';
-import { useOpenRouterGenerationRuntime } from './useOpenRouterGenerationRuntime';
-import { useOpenRouterErrorSessionActions } from './useOpenRouterErrorSessionActions';
 import { useAdaptiveWorkspaceState } from './useAdaptiveWorkspaceState';
 import { useAdaptiveWorkspaceRuntime } from './useAdaptiveWorkspaceRuntime';
 import { useAppPerfDiagnosticsRuntime } from './useAppPerfDiagnosticsRuntime';
@@ -16,12 +13,11 @@ import { useFocusedTrainingRuntime } from './useFocusedTrainingRuntime';
 import { useTrainingRuntimeState } from './useTrainingRuntimeState';
 import { perfDiagnostics } from '../core/perfDiagnostics';
 import { AppRouteRenderer } from './AppRouteRenderer';
-import { useOpenRouterGeneratedScriptSettlement } from './useOpenRouterGeneratedScriptSettlement';
 import { useWorkspaceRouting } from './useWorkspaceRouting';
-import { useOpenRouterJobsRuntime } from './useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './useDictaUiPreferences';
 import { useDictaAppRouteCompositionRuntime } from './useDictaAppRouteCompositionRuntime';
 import { useDictaAccessRuntime } from './useDictaAccessRuntime';
+import { useDictaOpenRouterRuntime } from './useDictaOpenRouterRuntime';
 import { isMobileViewport } from './viewport';
 import { useBrowserTtsRuntime } from './useBrowserTtsRuntime';
 import { formatSessionDate } from './sessionDateFormatters';
@@ -263,41 +259,6 @@ export function DictaAppRuntime() {
   });
 
   const {
-    createOpenRouterErrorSession,
-    createCustomOpenRouterErrorSessionForJob,
-  } = useOpenRouterErrorSessionActions({
-    ensureCanCreateDictationSession,
-    suppressSidebarAutoSelectRef,
-    prependSessionAndPersistNow,
-    setLeaderboardLanguageView,
-    setActiveSessionId,
-    showLeaderboardWorkspace,
-    setError,
-    setOpenRouterError,
-  });
-  const settleOpenRouterGeneratedScript = useOpenRouterGeneratedScriptSettlement({
-    createSessionFromOpenRouterScript,
-  });
-  const {
-    activeOpenRouterJobs,
-    openRouterJobNotifications,
-    openRouterJobStatus,
-    trainingGenerationNotices,
-    trainingGenerationNowMs,
-    trackOpenRouterJob,
-    recordOpenRouterGenerationFailure,
-    resetOpenRouterJobsRuntime,
-  } = useOpenRouterJobsRuntime({
-    localStorageReady: localStorageReadyForEffectiveProfile,
-    openRouterAccessAllowed,
-    getAuthHeaders,
-    onOpenRouterError: setOpenRouterError,
-    onCreateGenerationErrorSession: createCustomOpenRouterErrorSessionForJob,
-    onGeneratedScript: settleOpenRouterGeneratedScript,
-  });
-  resetOpenRouterJobsRuntimeRef.current = resetOpenRouterJobsRuntime;
-  const isOnline = useOnlineStatus();
-  const {
     previousLagRef,
     previousAccuracyRef,
     ttsPracticeLiveTextRef,
@@ -388,7 +349,6 @@ export function DictaAppRuntime() {
     setSessionFeedbackMessage,
     isMobileViewport,
   });
-  const openRouterOfflineTitle = isOnline ? '' : 'Needs internet. Local practice still works offline and results stay on this device.';
   useWorkspaceNavigationEffects({
     sessions,
     activeSession,
@@ -443,6 +403,15 @@ export function DictaAppRuntime() {
   });
 
   const {
+    isOnline,
+    openRouterOfflineTitle,
+    createOpenRouterErrorSession,
+    activeOpenRouterJobs,
+    openRouterJobNotifications,
+    openRouterJobStatus,
+    trainingGenerationNotices,
+    trainingGenerationNowMs,
+    trackOpenRouterJob,
     directOpenRouterBusy,
     directIntermediateOpenRouterBusy,
     directAdvancedOpenRouterBusy,
@@ -456,43 +425,59 @@ export function DictaAppRuntime() {
     generateExpressEasyNextSessionFromOpenRouter,
     generateExpressIntermediateNextSessionFromOpenRouter,
     generateExpressAdvancedNextSessionFromOpenRouter,
-  } = useOpenRouterGenerationRuntime({
-    access: {
-      allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
-      openRouterAccessAllowed,
-      openRouterAccessMessage,
-      isOnline,
+  } = useDictaOpenRouterRuntime({
+    errorSessionActions: {
+      ensureCanCreateDictationSession,
+      suppressSidebarAutoSelectRef,
+      prependSessionAndPersistNow,
+      setLeaderboardLanguageView,
+      setActiveSessionId,
+      showLeaderboardWorkspace,
+      setError,
+      setOpenRouterError,
     },
-    sessionContext: {
-      sessions,
-      activeSession,
-      fallbackInputMode: mapSessionInputMode(activeInputMode),
-      dictaLanguageView,
-      recentDictationSessionHints,
+    generatedScriptSettlement: {
+      createSessionFromOpenRouterScript,
+    },
+    jobs: {
+      localStorageReady: localStorageReadyForEffectiveProfile,
+      openRouterAccessAllowed,
+      getAuthHeaders,
+      onOpenRouterError: setOpenRouterError,
     },
     generation: {
-      effectiveOpenRouterDefaultModel,
-      getAuthHeaders,
-      ensureCanCreateDictationSession,
+      access: {
+        allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
+        openRouterAccessAllowed,
+        openRouterAccessMessage,
+      },
+      sessionContext: {
+        sessions,
+        activeSession,
+        fallbackInputMode: mapSessionInputMode(activeInputMode),
+        dictaLanguageView,
+        recentDictationSessionHints,
+      },
+      generation: {
+        effectiveOpenRouterDefaultModel,
+        getAuthHeaders,
+        ensureCanCreateDictationSession,
+      },
+      adaptiveContext: {
+        adaptiveBenchmarksByInputLanguage,
+        adaptiveSessionFeedbackByInputLanguage,
+      },
+      presentationActions: {
+        showOpenRouterWorkspace,
+        setOpenRouterGenerateFocusRequest,
+        setOpenRouterError,
+        setSelectedBenchmarkInputMode,
+        setSelectedBenchmarkLanguage,
+        setBenchmarkExportMessage,
+        setSessionFeedbackMessage,
+      },
     },
-    adaptiveContext: {
-      adaptiveBenchmarksByInputLanguage,
-      adaptiveSessionFeedbackByInputLanguage,
-    },
-    presentationActions: {
-      showOpenRouterWorkspace,
-      setOpenRouterGenerateFocusRequest,
-      setOpenRouterError,
-      setSelectedBenchmarkInputMode,
-      setSelectedBenchmarkLanguage,
-      setBenchmarkExportMessage,
-      setSessionFeedbackMessage,
-    },
-    jobActions: {
-      trackOpenRouterJob,
-      recordOpenRouterGenerationFailure,
-      createOpenRouterErrorSession,
-    },
+    resetOpenRouterJobsRuntimeRef,
   });
 
   const {
