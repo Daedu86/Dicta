@@ -10,6 +10,8 @@ Agents should read, in order:
 
 This root file exists so tools or agents looking for `ARCHITECTURE.md` do not miss the actual architecture document.
 
+Current app boundary: `src/App.tsx` is the small React entry component; main runtime orchestration lives in `src/app/DictaAppRuntime.tsx`.
+
 <!-- agent-kb-entry -->
 ## Agent architecture entry points
 
