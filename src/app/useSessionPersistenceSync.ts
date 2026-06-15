@@ -38,6 +38,10 @@ import {
   rememberPendingCriticalSessionRowsSnapshot,
 } from './sessionPersistencePendingCriticalRows';
 import { buildSessionPersistenceQuotaRecoverySessions } from './sessionPersistenceRecoveryPlan';
+import {
+  collectTransientErrorSessionIds,
+  shouldUseFullSupabasePull,
+} from './sessionPersistenceSupabasePullPlan';
 
 export {
   DELETED_SESSION_IDS_KEY,
@@ -606,20 +610,19 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
         message: reason === 'initial' ? 'Pulling Supabase sync data...' : 'Refreshing Supabase sync data...',
       }));
       try {
-        const shouldFullPull = reason === 'initial' || Date.now() - supabaseLastFullPullAtMsRef.current > 60 * 60_000;
+        const nowMs = Date.now();
+        const shouldFullPull = shouldUseFullSupabasePull(reason, nowMs, supabaseLastFullPullAtMsRef.current);
         const rows = await pullSyncRows(client, effectiveSyncConfig.profileId, {
           updatedAfter: shouldFullPull ? null : supabaseLastRemoteUpdatedAtRef.current,
         });
         if (cancelled) return;
         if (shouldFullPull) {
-          supabaseLastFullPullAtMsRef.current = Date.now();
+          supabaseLastFullPullAtMsRef.current = nowMs;
         }
         supabaseKnownRemoteRowsRef.current = shouldFullPull ? rows : mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, rows);
         supabaseLastRemoteUpdatedAtRef.current =
           latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
-        const transientErrorSessionIds = rows
-          .filter((row) => row.item_type === 'session' && isTransientGenerationErrorSessionLike(row.payload))
-          .map((row) => row.item_key);
+        const transientErrorSessionIds = collectTransientErrorSessionIds(rows);
         if (transientErrorSessionIds.length > 0) {
           transientErrorSessionIds.forEach((sessionId) => deletedSessionIdsRef.current.add(sessionId));
           persistDeletedSessionIds(deletedSessionIdsRef.current);
