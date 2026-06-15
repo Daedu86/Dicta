@@ -23,10 +23,7 @@ import { useAppPresentationRuntime } from './useAppPresentationRuntime';
 import { useTrainingRuntimeState } from './useTrainingRuntimeState';
 import { perfDiagnostics } from '../core/perfDiagnostics';
 import { AppRouteRenderer } from './AppRouteRenderer';
-import {
-  buildGeneratedTrainingSessionNotification,
-  showGeneratedTrainingSessionNotification,
-  } from '../core/trainingNotifications';
+import { useOpenRouterGeneratedScriptSettlement } from './useOpenRouterGeneratedScriptSettlement';
 import { useWorkspaceRouting } from './useWorkspaceRouting';
 import { useOpenRouterJobsRuntime } from './useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './useDictaUiPreferences';
@@ -297,6 +294,9 @@ export function DictaAppRuntime() {
     setError,
     setOpenRouterError,
   });
+  const settleOpenRouterGeneratedScript = useOpenRouterGeneratedScriptSettlement({
+    createSessionFromOpenRouterScript,
+  });
   const {
     activeOpenRouterJobs,
     openRouterJobNotifications,
@@ -312,10 +312,7 @@ export function DictaAppRuntime() {
     getAuthHeaders,
     onOpenRouterError: setOpenRouterError,
     onCreateGenerationErrorSession: createCustomOpenRouterErrorSessionForJob,
-    onGeneratedScript: (script, trackedJob) => {
-      createSessionFromOpenRouterScript(script, { navigateToLeaderboard: false, generationOrigin: 'openrouter' });
-      void showGeneratedTrainingSessionNotification(buildGeneratedTrainingSessionNotification(script, trackedJob));
-    },
+    onGeneratedScript: settleOpenRouterGeneratedScript,
   });
   resetOpenRouterJobsRuntimeRef.current = resetOpenRouterJobsRuntime;
   const isOnline = useOnlineStatus();

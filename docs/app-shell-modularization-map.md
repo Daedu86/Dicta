@@ -26,6 +26,7 @@ This is the current App-shell checkpoint and candidate queue. Refresh source anc
 | OpenRouter direct generation lifecycle owner | `src/app/useOpenRouterDirectGenerationRuntime.ts` |
 | OpenRouter job polling owner | `src/app/useOpenRouterJobPollingRuntime.ts` |
 | OpenRouter generation failure policy owner | `src/app/openRouterGenerationFailurePolicy.ts` |
+| OpenRouter generated-script settlement owner | `src/app/useOpenRouterGeneratedScriptSettlement.ts` |
 | OpenRouter model owner | `src/app/useOpenRouterModelRuntime.ts` |
 | App route renderer owner | `src/app/AppRouteRenderer.tsx` |
 | Current posture | Consolidation phase. Prefer product/runtime hardening and tests over App LOC extraction. |
@@ -104,6 +105,7 @@ Scores use `docs/modularization-roi.md`: ROI is 0-100 where higher is better; ri
 | OpenRouter direct generation lifecycle | `src/app/useOpenRouterDirectGenerationRuntime.ts` | Direct generation guards, job-plan request, busy state, job tracking, direct failure handling | Extracted from OpenRouter generation actions. |
 | OpenRouter job polling lifecycle | `src/app/useOpenRouterJobPollingRuntime.ts` | Polling, terminal settlement, generated-script validation, notices, cleanup | Extracted from OpenRouter jobs runtime. |
 | OpenRouter generation failure policy | `src/app/openRouterGenerationFailurePolicy.ts` | Shared failure notices, labels, transient/persistent error decisions | Used by direct generation and job polling. |
+| OpenRouter generated-script settlement | `src/app/useOpenRouterGeneratedScriptSettlement.ts` | Generated script session creation and ready notification | Extracted from `DictaAppRuntime` job callback. |
 | OpenRouter generation/model runtimes | `useOpenRouterGenerationRuntime`, `useOpenRouterModelRuntime`, `useWorkspaceModelRefreshRuntime` | Generation/model/default resolution | Product/runtime reliability is now higher ROI than App extraction. |
 | App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | `DictaAppRuntime` remains the browser composition root; `src/App.tsx` remains a shell-only entrypoint. |
 | Auth/profile, session persistence, session creation, and workspace session runtimes | `useAuthProfileRuntime`, `useSessionPersistenceRuntime`, `useSessionCreationRuntime`, `useWorkspaceSessionRuntime` | Auth/profile access, persistence/sync/quota, session creation, workspace summaries/actions | Existing owner boundaries. |
