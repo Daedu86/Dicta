@@ -48,8 +48,8 @@ Use these documents in this order before proposing or applying modularization:
 
 | Document | Status | Purpose |
 | --- | --- | --- |
-| `modularization-roi.md` | Active | Repo-wide ROI scoring framework, evidence calibration, freshness rules, and AI-assisted refactor risk guidance. |
-| `app-shell-modularization-map.md` | Reference | Current App shell candidate queue and completed extraction log. Verify branch, commit, source anchors, and LOC before use. |
+| `modularization-roi.md` | Active | Repo-wide ROI scoring framework, current hotspot guidance, evidence calibration, freshness rules, and AI-assisted refactor risk guidance. |
+| `app-shell-modularization-map.md` | Active reference | Current App shell/runtime ownership map and candidate queue. Verify branch, commit, source anchors, and LOC before use. |
 | `module-test-map.md` | Active | Module-to-test validation map for narrow test selection. |
 | `high-risk-runtime-boundaries.md` | Active | Runtime risk rules for Browser TTS, persistence, auth, mobile/PWA, CSS cascade, and related fragile boundaries. |
 | `next-modularization-plan.md` | Reference / Historical | Former near-term plan. Preserved for checkpoint context only; do not use as the active candidate queue. |
@@ -65,7 +65,7 @@ These documents may contain useful context, but they are not current sources of 
 | `admin-workspace-modularization.md` | Historical modularization note. |
 | `app-post-leaderboard-measurement.md` | Historical measurement/modularization note. |
 | `app-shell-header-modularization.md` | Historical modularization note. |
-| `archive/app-shell-modularization-checkpoint.md` | Historical checkpoint log with stale baseline hashes. |
+| `archive/app-shell-modularization-checkpoint.md` | Compacted historical App-shell checkpoint summary. |
 | `auth-workspace-modularization.md` | Historical modularization note. |
 | `leaderboard-workspace-modularization.md` | Historical modularization note. |
 | `archive/legacy-multi-input-2026-06-05.md` | Historical legacy snapshot. |
