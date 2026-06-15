@@ -26,7 +26,12 @@ export function OpenRouterCopyActionsSection({ workspace, runtime }: OpenRouterC
         <OpenRouterDiagnosticsExportGroup workspace={workspace} runtime={runtime} />
         <OpenRouterTemplatesExportGroup workspace={workspace} runtime={runtime} />
       </div>
-      {notesEditorOpen ? <OpenRouterNotesEditor workspace={workspace} runtime={runtime} /> : null}
+      {notesEditorOpen ? (
+        <OpenRouterNotesEditor
+          workspace={workspace as unknown as Record<string, unknown>}
+          runtime={runtime as unknown as Record<string, unknown>}
+        />
+      ) : null}
     </div>
   );
 }
