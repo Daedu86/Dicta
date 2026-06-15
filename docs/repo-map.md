@@ -29,8 +29,9 @@ Use this as a navigation guide before changing code. It is not a replacement for
 
 | Path | Responsibility | Notes |
 | --- | --- | --- |
-| `src/App.tsx` | Main application shell and composition root. | High-change file. Prefer conservative extraction. |
-| `src/app/` | App-level hooks, runtimes, workspace orchestration, and feature composition. | Inspect tests before editing. |
+| `src/App.tsx` | Shell-only React entrypoint. | Imports `App.css` and renders `DictaAppRuntime`; it must not regain runtime ownership. |
+| `src/app/DictaAppRuntime.tsx` | Main browser composition root. | Wires auth/profile, sync, workspace routing, OpenRouter, focused training, presentation props, and route rendering. This is the current App-runtime hotspot. |
+| `src/app/` | App-level hooks, runtimes, workspace orchestration, and feature composition. | Inspect owner hooks and tests before editing. |
 | `src/components/` | React UI components. | Preserve props and user-visible behavior. |
 | `src/core/` | Core TypeScript domain logic. | Prefer pure helpers and direct unit tests. |
 | `src/core/adaptive/` | Adaptive training/domain logic. | Keep behavior covered by adaptive tests. |
@@ -76,7 +77,7 @@ Use this as a navigation guide before changing code. It is not a replacement for
 
 ## High-risk boundaries
 
-Treat these as high-risk until `docs/high-risk-runtime-boundaries.md` exists:
+Use `docs/high-risk-runtime-boundaries.md` as the detailed safety guide. The table below is only the quick navigation list.
 
 | Area | Risk |
 | --- | --- |
@@ -86,6 +87,7 @@ Treat these as high-risk until `docs/high-risk-runtime-boundaries.md` exists:
 | `resetSession` | Session lifecycle and persistence can regress. |
 | TTS refs, timers, telemetry | Timing-sensitive and hard to validate casually. |
 | `LowLatencyTextarea` | Typing latency and mobile behavior can regress. |
+| Debounced session persistence | Local/profile-scoped state, pending sync, and reload behavior can regress. |
 | Supabase auth/RLS/service role | Security and multi-user data boundaries. |
 | OpenRouter routes/jobs/rate limits | Server/API behavior, model availability, and quotas. |
 | PWA/mobile performance | Device-specific regressions. |
@@ -97,7 +99,7 @@ For code changes:
 
 1. Identify the smallest path boundary to touch.
 2. Inspect the source file and nearby tests.
-3. Check `docs/module-test-map.md` once it exists.
+3. Check `docs/module-test-map.md`.
 4. Avoid mixing refactor and behavior changes.
 5. Run the narrowest relevant validation first.
 6. Check the staged diff before committing.
