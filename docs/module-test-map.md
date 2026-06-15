@@ -4,7 +4,7 @@ This document maps important Dicta modules and runtime areas to the tests that p
 
 Use this before changing code so validation starts with the narrowest relevant tests.
 
-Updated: 2026-06-15 after session persistence recovery-plan extraction.  
+Updated: 2026-06-15 after session persistence deleted-id storage extraction.  
 Verified against branch: `product/input-2`.
 
 ## Validation scripts
@@ -36,6 +36,7 @@ Verified against branch: `product/input-2`.
 | `src/app/sessionStorage.ts` | Session storage, restore, and persistence helpers. | `tests/sessionStorage.test.ts` |
 | `src/app/sessionPersistenceCompaction.ts` | Pure telemetry compaction for quota-recovery session persistence. | `tests/sessionPersistenceCompaction.test.ts`, `tests/useSessionPersistenceSync.test.ts` |
 | `src/app/sessionPersistenceRecoveryPlan.ts` | Pure quota-recovery session selection and full/compacted telemetry decisions for localStorage quota recovery. | `tests/sessionPersistenceRecoveryPlan.test.ts`, `tests/sessionPersistenceCompaction.test.ts`, `tests/useSessionPersistenceSync.test.ts` |
+| `src/app/sessionPersistenceDeletedIds.ts` | Pure deleted-session-id storage loading, filtering, and capped persistence. | `tests/sessionPersistenceDeletedIds.test.ts`, `tests/useSessionPersistenceSync.test.ts`, `tests/sessionStorage.test.ts` |
 | `src/app/useSessionPersistenceRuntime.ts` | App-level persistence runtime. | `tests/useSessionPersistenceSync.test.ts`, `tests/supabaseSync.test.ts`, `tests/profileScopedStorage.test.ts`, `tests/sessionStorage.test.ts` |
 | `src/app/useSessionPersistenceSync.ts` | Session persistence/sync lifecycle; currently large and high-risk enough to need characterization before extraction. | `tests/useSessionPersistenceSync.test.ts`, plus `tests/supabaseSync.test.ts` and `tests/profileScopedStorage.test.ts` if sync/profile behavior changes. |
 | `src/app/useSessionCreationRuntime.ts` | Session creation state/actions for plain text, DictationScript import, and generated scripts. | `tests/dictationScriptValidation.test.ts`, `tests/trainingGenerationCard.test.ts`, `tests/trainingNotifications.test.ts` |
