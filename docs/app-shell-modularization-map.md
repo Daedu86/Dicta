@@ -31,6 +31,7 @@ This is the current App-shell checkpoint and candidate queue. Refresh source anc
 | Adaptive benchmark cockpit runtime owner | `src/components/adaptive-workspace/useAdaptiveBenchmarkCockpitRuntime.ts` |
 | Adaptive benchmark cockpit component owner | `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` |
 | Browser TTS DE benchmark policy owner | `src/core/adaptive/browserTtsDeBenchmarkPolicy.ts` |
+| App route composition runtime owner | `src/app/useDictaAppRouteCompositionRuntime.ts` |
 | OpenRouter model owner | `src/app/useOpenRouterModelRuntime.ts` |
 | App route renderer owner | `src/app/AppRouteRenderer.tsx` |
 | Current posture | Consolidation phase. Prefer product/runtime hardening and tests over App LOC extraction. |
@@ -114,6 +115,7 @@ Scores use `docs/modularization-roi.md`: ROI is 0-100 where higher is better; ri
 | Adaptive benchmark cockpit runtime | `src/components/adaptive-workspace/useAdaptiveBenchmarkCockpitRuntime.ts` | Derived cockpit state, diagnostics, export payloads, clipboard state, focus handling, and subsection expansion state | Extracted from `AdaptiveBenchmarkWorkspace.tsx`; JSX remains in place for the next section-extraction pass. |
 | Adaptive benchmark cockpit component | `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` | Selected profile cockpit visual layout for hero, exports, KPIs, coach charts, latest feedback, diagnostics, and timeline | Extracted from `AdaptiveBenchmarkWorkspace.tsx`; section orchestration and matrix remain in the original file. |
 | Browser TTS DE benchmark policy | `src/core/adaptive/browserTtsDeBenchmarkPolicy.ts` | German Browser TTS scoring filters, diagnostics, timeline pressure fallback, rejection tokens, semantic counters, and recommendation clamp | Extracted from `AdaptiveInputLanguageBenchmarkService.ts`; the main service remains the generic benchmark update orchestrator. |
+| App route composition runtime | `src/app/useDictaAppRouteCompositionRuntime.ts` | Adaptive route prop composition and app presentation prop composition for `AppRouteRenderer` | Extracted from `DictaAppRuntime.tsx`; the root runtime remains responsible for initializing stateful runtimes. |
 | OpenRouter generation/model runtimes | `useOpenRouterGenerationRuntime`, `useOpenRouterModelRuntime`, `useWorkspaceModelRefreshRuntime` | Generation/model/default resolution | Product/runtime reliability is now higher ROI than App extraction. |
 | App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | `DictaAppRuntime` remains the browser composition root; `src/App.tsx` remains a shell-only entrypoint. |
 | Auth/profile, session persistence, session creation, and workspace session runtimes | `useAuthProfileRuntime`, `useSessionPersistenceRuntime`, `useSessionCreationRuntime`, `useWorkspaceSessionRuntime` | Auth/profile access, persistence/sync/quota, session creation, workspace summaries/actions | Existing owner boundaries. |
