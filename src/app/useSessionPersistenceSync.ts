@@ -31,7 +31,7 @@ import {
   OPENROUTER_GENERATED_VARIANTS_KEY,
 } from '../components/openrouter/openRouterViewHelpers';
 import { perfDiagnostics } from '../core/perfDiagnostics';
-import { compactTelemetryForStorage } from './sessionPersistenceCompaction';
+import { buildSessionPersistenceQuotaRecoverySessions } from './sessionPersistenceRecoveryPlan';
 
 export const SESSION_STORAGE_KEY = 'dicta.sessions.v1';
 export const DELETED_SESSION_IDS_KEY = 'dicta.deletedSessionIds.v1';
@@ -39,8 +39,6 @@ export const ADAPTIVE_BENCHMARKS_KEY = 'dicta.adaptiveBenchmarks.v1';
 export const ADAPTIVE_SESSION_FEEDBACK_KEY = 'dicta.adaptiveSessionFeedback.v1';
 
 const SESSION_PERSIST_DEBOUNCE_MS = 1500;
-const SESSION_PERSIST_RECOVERY_MAX_SESSIONS = 50;
-const SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS = 8;
 const SUPABASE_BACKGROUND_PULL_INTERVAL_MS = 15_000;
 const SUPABASE_KEEPALIVE_BODY_MAX_BYTES = 60_000;
 
@@ -230,28 +228,13 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     sessionPersistTimerRef.current = null;
   }, []);
 
-  const buildQuotaRecoverySessions = useCallback((nextSessions: TSession[]): TSession[] => {
-    const sortedSessions = [...nextSessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    const recoverySessions = sortedSessions.filter(
-      (session, index) => index < SESSION_PERSIST_RECOVERY_MAX_SESSIONS || session.id === activeSessionId,
-    );
-
-    return recoverySessions.map((session, index) => {
-      const normalized = normalizeSessionForPersistence(session);
-      const keepFullTelemetry =
-        session.id === activeSessionId ||
-        index < SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS ||
-        session.status === 'running' ||
-        session.status === 'paused';
-
-      return keepFullTelemetry
-        ? normalized
-        : {
-            ...normalized,
-            telemetry: compactTelemetryForStorage(normalized.telemetry),
-          };
-    });
-  }, [activeSessionId, normalizeSessionForPersistence]);
+  const buildQuotaRecoverySessions = useCallback((nextSessions: TSession[]): TSession[] =>
+    buildSessionPersistenceQuotaRecoverySessions({
+      sessions: nextSessions,
+      activeSessionId,
+      normalizeSessionForPersistence,
+    }),
+  [activeSessionId, normalizeSessionForPersistence]);
 
   const persistSessionsToLocalStorage = useCallback((nextSessions: TSession[], spanName = 'session.localStorage.persist'): void => {
     perfDiagnostics.withSpan(spanName, () => {
