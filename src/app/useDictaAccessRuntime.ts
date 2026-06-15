@@ -3,9 +3,10 @@ import { useAdminProfileAccessActions } from './useAdminProfileAccessActions';
 import { useAuthProfileRuntime } from './useAuthProfileRuntime';
 import { useDictaSupabaseRuntime } from './useDictaSupabaseRuntime';
 import { useOpenRouterModelRuntime } from './useOpenRouterModelRuntime';
+import type { WorkspaceMode } from './useWorkspaceRouting';
 
 type UseDictaAccessRuntimeOptions = {
-  workspaceMode: string;
+  workspaceMode: WorkspaceMode;
   localDevFeaturesAvailable: boolean;
 };
 
