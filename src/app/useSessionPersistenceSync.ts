@@ -7,7 +7,6 @@ import {
   OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
 } from '../core/openRouterJobs';
 import {
-  buildSyncItems,
   DICTA_SYNC_TABLE,
   deleteSessionSyncRow,
   latestSyncRowTimestamp,
@@ -16,7 +15,6 @@ import {
   pullSyncRows,
   pushSyncRowsDetailed,
   selectPushableSyncRows,
-  toSyncRows,
   type DictaSyncConfig,
   type DictaSyncRow,
   type DictaSyncState,
@@ -36,6 +34,10 @@ import {
   loadDeletedSessionIds,
   persistDeletedSessionIds,
 } from './sessionPersistenceDeletedIds';
+import {
+  clearPendingCriticalSessionRowsSnapshot,
+  rememberPendingCriticalSessionRowsSnapshot,
+} from './sessionPersistencePendingCriticalRows';
 import { buildSessionPersistenceQuotaRecoverySessions } from './sessionPersistenceRecoveryPlan';
 
 export {
@@ -268,21 +270,20 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
   }, [buildQuotaRecoverySessions, normalizeSessionForPersistence, onQuotaRecovered]);
 
   const clearPendingCriticalSessionRows = useCallback((sessionIds: string[]): void => {
-    if (sessionIds.length === 0 || pendingCriticalSessionRowsRef.current.length === 0) return;
-    const ids = new Set(sessionIds);
-    pendingCriticalSessionRowsRef.current = pendingCriticalSessionRowsRef.current.filter(
-      (row) => row.item_type !== 'session' || !ids.has(row.item_key),
+    pendingCriticalSessionRowsRef.current = clearPendingCriticalSessionRowsSnapshot(
+      pendingCriticalSessionRowsRef.current,
+      sessionIds,
     );
   }, []);
 
   const rememberPendingCriticalSessionRows = useCallback((syncState: DictaSyncState, sessionIds: string[]): void => {
-    if (!effectiveSyncConfig.enabled || sessionIds.length === 0) return;
-    const ids = new Set(sessionIds.filter(Boolean));
-    if (ids.size === 0) return;
-    const rows = toSyncRows(effectiveSyncConfig.profileId, buildSyncItems(syncState)).filter(
-      (row) => row.item_type === 'session' && ids.has(row.item_key),
-    );
-    pendingCriticalSessionRowsRef.current = mergeSyncRowSnapshots(pendingCriticalSessionRowsRef.current, rows);
+    pendingCriticalSessionRowsRef.current = rememberPendingCriticalSessionRowsSnapshot({
+      enabled: effectiveSyncConfig.enabled,
+      profileId: effectiveSyncConfig.profileId,
+      existingRows: pendingCriticalSessionRowsRef.current,
+      syncState,
+      sessionIds,
+    });
   }, [effectiveSyncConfig.enabled, effectiveSyncConfig.profileId]);
 
   const flushPendingCriticalSessionRowsKeepalive = useCallback((): void => {
