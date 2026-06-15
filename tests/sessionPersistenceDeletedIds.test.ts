@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DELETED_SESSION_IDS_KEY,
@@ -16,7 +17,7 @@ describe('sessionPersistenceDeletedIds', () => {
   });
 
   it('returns an empty set for invalid JSON or non-array payloads', () => {
-    window.localStorage.setItem(DELETED_SESSION_IDS_KEY, '{not-json');
+    window.localStorage.setItem(DELETED_SESSION_IDS_KEY, '[');
     expect([...loadDeletedSessionIds()]).toEqual([]);
 
     window.localStorage.setItem(DELETED_SESSION_IDS_KEY, JSON.stringify({ deleted: ['session-1'] }));
@@ -41,7 +42,7 @@ describe('sessionPersistenceDeletedIds', () => {
     const persisted = JSON.parse(window.localStorage.getItem(DELETED_SESSION_IDS_KEY) ?? '[]') as string[];
     expect(persisted).toHaveLength(DELETED_SESSION_IDS_PERSIST_LIMIT);
     expect(persisted[0]).toBe('session-3');
-    expect(persisted.at(-1)).toBe(`session-${DELETED_SESSION_IDS_PERSIST_LIMIT + 2}`);
+    expect(persisted[persisted.length - 1]).toBe(`session-${DELETED_SESSION_IDS_PERSIST_LIMIT + 2}`);
     expect(persisted).not.toContain('');
   });
 });
