@@ -4,9 +4,9 @@ This document centralizes Dicta runtime areas that agents must treat as high-ris
 
 These boundaries can break real user behavior even when a refactor looks mechanically clean. Do not touch them casually.
 
-Last updated: 2026-06-14
+Last updated: 2026-06-15
 Verified against branch: `product/input-2`
-Verified against code baseline: post `Extract Browser TTS playback loop` push; `src/App.tsx` blob `09f94a6d52841c04ab13fe6790800a8dd839f11d`; `src/app/useBrowserTtsPlaybackLoop.ts` blob `b5156b5e9dfcfa80639506c7079847387b7d3476`
+Verified against code baseline: post OpenRouter direct generation, job polling, and failure-policy extraction. `src/App.tsx` is shell-only; main runtime orchestration lives in `src/app/DictaAppRuntime.tsx`.
 
 ## Core rule
 
@@ -21,14 +21,25 @@ Before changing a high-risk runtime area:
 
 If the change requires modifying timing, lifecycle, persistence, playback, auth, or mobile behavior, assume it needs extra scrutiny.
 
+## Current shell ownership
+
+- `src/App.tsx` is shell-only and should remain small.
+- `src/app/DictaAppRuntime.tsx` is the browser composition root for auth/profile, sync, workspace routing, OpenRouter wiring, focused training, presentation props, and route rendering.
+- `src/app/AppRouteRenderer.tsx` owns route-level render branching.
+- Focused training and Browser TTS delegation contract tests should inspect `DictaAppRuntime` and the owner hooks, not `src/App.tsx`.
+- Do not move runtime behavior back into `src/App.tsx`.
+
 ## Browser TTS runtime
 
 High-risk areas:
 
 - `src/app/useBrowserTtsRuntime.ts`
+- `src/app/useFocusedTrainingRuntime.ts`
+- `src/app/useTtsSessionOrchestrationRuntime.ts`
 - `src/app/useBrowserTtsPlaybackLoop.ts`
 - `src/app/useTtsSessionSubmitAction.ts`
 - `src/app/useTtsPlaybackControls.ts`
+- `src/app/useTtsPlaybackMetricsRuntime.ts`
 - `src/app/useTtsTelemetryRecorder.ts`
 - `src/app/useTtsUiPublisher.ts`
 - `src/app/useTtsPlaybackProgressEstimator.ts`
@@ -52,20 +63,20 @@ High-risk areas:
 - Dynamic chunk planning.
 - Telemetry adapter behavior.
 
-Current App shell anchors after Browser TTS playback-loop extraction:
+Current runtime anchors:
 
-- `resetSession`: `src/App.tsx`
-- `useTtsTelemetryRecorder` hook call: `src/App.tsx`
-- `useTtsPlaybackProgressEstimator` hook call: `src/App.tsx`
-- `useTtsUiPublisher` hook call: `src/App.tsx`
-- `useTtsPerformanceSampler` hook call: `src/App.tsx`
-- `useTtsSessionSubmitAction` hook call: `src/App.tsx`
-- `useBrowserTtsPlaybackLoop` hook call: `src/App.tsx`
-- `playTts` / `playTtsFromWord`: `src/app/useBrowserTtsPlaybackLoop.ts`
-- `useTtsPlaybackControls` hook call: `src/App.tsx`
-- `BrowserTtsSetupCard` render branch: `src/App.tsx`
+- App shell entrypoint: `src/App.tsx` renders `DictaAppRuntime` only.
+- Runtime composition root: `src/app/DictaAppRuntime.tsx` wires Browser TTS state, refs, runtime hooks, and presentation props.
+- Focused training composition: `src/app/useFocusedTrainingRuntime.ts`.
+- TTS session orchestration: `src/app/useTtsSessionOrchestrationRuntime.ts`.
+- Browser TTS playback loop: `src/app/useBrowserTtsPlaybackLoop.ts`.
+- Browser TTS playback controls: `src/app/useTtsPlaybackControls.ts`.
+- Browser TTS metrics composition: `src/app/useTtsPlaybackMetricsRuntime.ts` plus telemetry, UI publisher, progress estimator, and sampler hooks.
+- Reset-session side effects: `src/app/useResetSessionRuntime.ts`.
+- Submit-session side effects: `src/app/useTtsSessionSubmitAction.ts`.
+- Browser TTS setup card props: `src/app/useBrowserTtsSetupCardProps.ts`.
 
-Recheck these anchors with `git grep` or `rg` before editing; line numbers are observational and will drift.
+Recheck these anchors with `rg` before editing. Line numbers and call graphs are observational and will drift.
 
 Primary tests:
 
@@ -97,7 +108,7 @@ Primary tests:
 Rules:
 
 1. Do not change playback behavior as part of unrelated modularization.
-2. Treat `src/app/useBrowserTtsPlaybackLoop.ts` as the Browser TTS playback-loop owner. Do not assume `src/App.tsx` still owns `playTtsFromWord`.
+2. Treat `src/app/useBrowserTtsPlaybackLoop.ts` as the Browser TTS playback-loop owner. Do not assume `src/App.tsx` or `DictaAppRuntime` owns playback-loop internals.
 3. Do not alter browser capability assumptions without tests.
 4. Do not rewrite recovery/rate policy casually.
 5. Keep policy changes separated from UI refactors.
@@ -135,7 +146,7 @@ Primary tests:
 
 High-risk areas:
 
-- `resetSession` side-effect body.
+- `src/app/useResetSessionRuntime.ts` side-effect sequencing.
 - `src/app/resetSessionState.ts`.
 - `src/app/useActiveSessionStateSync.ts`.
 - `src/app/useTtsSessionSubmitAction.ts`.
@@ -154,6 +165,7 @@ Rules:
 Primary tests:
 
 - `tests/resetSessionState.test.ts`
+- `tests/useResetSessionRuntime.test.ts`
 - `tests/useActiveSessionStateSync.test.ts`
 - `tests/activeSessionHydration.test.ts`
 - `tests/useTtsSessionSubmitAction.test.ts`
@@ -167,22 +179,87 @@ Primary tests:
 High-risk areas:
 
 - Supabase auth and profile scoping.
+- Supabase Auth redirect and password recovery behavior.
 - RLS-sensitive sync behavior.
 - Local/session storage migration.
 - Pending sync and offline status.
 - Active-session live persistence sync.
+- PWA/mobile profile loading and post-submit sync behavior.
 
 Rules:
 
 1. Do not change auth or sync behavior as part of unrelated UI cleanup.
 2. Run the narrow persistence/auth tests before broad suite validation.
 3. Preserve profile-scoped storage and pending-sync semantics.
+4. Preserve the removed legacy app-gate invariant: hosted/PWA access must go through Supabase Auth + RLS, not a single-password gate.
 
 Primary tests:
 
+- `tests/legacyAuthGateRemoval.test.ts`
 - `tests/useSessionPersistenceSync.test.ts`
 - `tests/supabaseSync.test.ts`
 - `tests/profileScopedStorage.test.ts`
 - `tests/appProfiles.test.ts`
 - `tests/supabaseProfileRoute.test.ts`
 - `tests/useActiveSessionStateSync.test.ts`
+
+## OpenRouter runtime
+
+High-risk areas:
+
+- `src/app/useOpenRouterGenerationRuntime.ts`.
+- `src/app/useOpenRouterGenerationActions.ts`.
+- `src/app/useOpenRouterDirectGenerationRuntime.ts`.
+- `src/app/useOpenRouterJobsRuntime.ts`.
+- `src/app/useOpenRouterJobPollingRuntime.ts`.
+- `src/app/openRouterGenerationFailurePolicy.ts`.
+- `src/app/useOpenRouterModelRuntime.ts`.
+- `src/app/useWorkspaceModelRefreshRuntime.ts`.
+- `api/openrouter/*`.
+- Access checks, quotas, assigned model enforcement, job limits, rate limits, and failure-session creation.
+
+Rules:
+
+1. Treat OpenRouter as structured training-material generation only. It is not a playback engine.
+2. Keep server-only secrets out of Vite/client code.
+3. Do not mix model/access/quotas changes with unrelated UI or App-shell cleanup.
+4. Preserve member defaults: no OpenRouter access unless granted, session limits enforced, and assigned models enforced server-side.
+5. For job polling or failure-policy changes, validate both transient notice behavior and persistent error-session behavior.
+
+Primary tests:
+
+- `tests/openRouterChatRoute.test.ts`
+- `tests/openRouterJobRoute.test.ts`
+- `tests/openRouterJobs.test.ts`
+- `tests/useOpenRouterJobsRuntime.test.ts`
+- `tests/openRouterGenerationJobRequest.test.ts`
+- `tests/openRouterDirectGenerationJobPlan.test.ts`
+- `tests/openRouterDirectGenerationPresets.test.ts`
+- `tests/trainingOpenRouterLanguageContract.test.ts`
+- `tests/workspaceModelRefreshRuntime.test.ts`
+- `tests/config.test.ts`
+
+## PWA/mobile and CSS cascade
+
+High-risk areas:
+
+- PWA shell, manifest, service worker behavior.
+- Mobile training route and low-latency typing.
+- Page-exit keepalive sync for finalized sessions.
+- `src/styles/index.css` import order and responsive override order.
+- Runtime CSS modules under `src/styles/`.
+
+Rules:
+
+1. Do not change mobile/PWA behavior as part of unrelated App-shell cleanup.
+2. Run focused unit/perf tests first, then `npm run test:e2e:mobile` when flow-level mobile behavior is affected.
+3. Do not paste runtime selectors back into `src/App.css`.
+4. Do not reorder CSS imports without checking desktop, mobile width, sidebar expanded/collapsed, training, TTS workspace, dashboard/admin, adaptive views, and final responsive breakpoints.
+
+Primary tests / checks:
+
+- `tests/LowLatencyTextareaContract.test.ts`
+- `tests/lowLatencyTextarea.test.ts`
+- `tests/lowLatencyPerformanceGate.test.ts`
+- `e2e/training-mobile.spec.ts`
+- `npm run test:e2e:mobile`
