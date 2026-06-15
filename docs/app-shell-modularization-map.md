@@ -2,13 +2,13 @@ Repo-wide modularization ROI decisions now live in `docs/modularization-roi.md`.
 
 # App shell modularization map
 
-Updated: 2026-06-14 after focused-training, TTS orchestration, reset-session, OpenRouter, auth/profile, session, workspace, presentation, and route-renderer extractions.
+Updated: 2026-06-15 after focused-training and TTS orchestration delegate-arg grouping.
 Status: ACTIVE REFERENCE
 Verified against branch: `product/input-2`
-Verified against code baseline: post `Extract workspace session runtime`; `src/App.tsx` blob `cc6c8fb4ee0aa8d502b8171e3ac6f86596a77230`; `src/app/useFocusedTrainingRuntime.ts` blob `88109a818c92cc056fae650b167e80c619adaeb1`; `src/app/useTtsSessionOrchestrationRuntime.ts` blob `1c53c15e3258eb25b0e1c17ab2b42bbec2feabaf`; `src/app/useResetSessionRuntime.ts` blob `c936bdb3acbd36e8ef386634f40ccb8fe2727c7c`.
-Source inspection command: `git status --short && git log --oneline --decorate -10 && git grep -n -e "useFocusedTrainingRuntime" -e "useTtsSessionOrchestrationRuntime" -e "useResetSessionRuntime" -e "useBrowserTtsPlaybackLoop" -e "useOpenRouterGenerationRuntime" src/App.tsx src/app tests docs`
+Verified against code baseline: post `Keep TTS playback controls word count internal`; latest contract-grouping commits: `8a9d9db`, `79164b6`, `489a141`.
+Source inspection command: `git status --short && git log --oneline --decorate -10 && git grep -n -e "buildFocusedTrainingRuntimeDelegateArgs" -e "buildTtsSessionOrchestrationDelegateArgs" -e "useBrowserTtsPlaybackLoop" src/App.tsx src/app tests docs`
 Test map checked: `docs/module-test-map.md`
-Last candidate decision updated: 2026-06-14
+Last candidate decision updated: 2026-06-15
 
 ## Current baseline
 
@@ -22,20 +22,24 @@ The values below are observational anchors, not stable APIs. Recheck them before
 | Current `src/App.tsx` role | Composition root for auth/profile, sync, workspace routing, OpenRouter, focused training, presentation props, and route rendering. |
 | Current `src/App.tsx` size anchor | About 940 lines at the inspected baseline; do not use this as a success metric. |
 | Focused training runtime owner | `src/app/useFocusedTrainingRuntime.ts` |
+| Focused training delegate contract | Internally grouped by `buildFocusedTrainingRuntimeDelegateArgs`; public caller shape remains compatibility-oriented. |
 | TTS session orchestration owner | `src/app/useTtsSessionOrchestrationRuntime.ts` |
+| TTS orchestration delegate contract | Internally grouped by `buildTtsSessionOrchestrationDelegateArgs`; public caller shape remains compatibility-oriented. |
 | Browser TTS playback-loop owner | `src/app/useBrowserTtsPlaybackLoop.ts` |
 | Reset-session side-effect owner | `src/app/useResetSessionRuntime.ts` |
 | OpenRouter generation owner | `src/app/useOpenRouterGenerationRuntime.ts` |
 | OpenRouter model owner | `src/app/useOpenRouterModelRuntime.ts` |
 | App route renderer owner | `src/app/AppRouteRenderer.tsx` |
-| Current App-shell posture | Consolidation phase. Prefer product fixes, contract cleanup, docs/test-map freshness, and narrow runtime hardening over more App LOC extraction. |
+| Current App-shell posture | Consolidation phase. Prefer product fixes, runtime hardening, docs/test-map freshness, and narrow behavior characterization over more App LOC extraction. |
 
 ## Completed since the Browser TTS playback-loop checkpoint
 
 These entries are no longer App-shell candidates. Treat them as implemented ownership boundaries, not pending refactor targets.
 
 - `useFocusedTrainingRuntime` owns the focused-training composition layer: live metric derivation, TTS playback intervals, active-session state sync, TTS session orchestration handoff, and focused route prop assembly.
+- `useFocusedTrainingRuntime` now groups its delegate arguments internally into named blocks for live metrics, playback intervals, active-session sync, TTS orchestration, and focused route handoff.
 - `useTtsSessionOrchestrationRuntime` owns TTS session orchestration: keyboard remap, practice input, playback metrics, Browser TTS playback loop wiring, playback controls, reset-session runtime, and TTS submit action wiring.
+- `useTtsSessionOrchestrationRuntime` now groups its delegate arguments internally into named blocks for keyboard remap, practice input, playback metrics, browser playback, playback controls, reset session, and submit session.
 - `useResetSessionRuntime` owns reset-session side-effect sequencing, including playback stop ordering, ref resets, UI metric resets, session status reset, setup-lock preservation, and adaptive feedback tracking reset.
 - `useOpenRouterGenerationRuntime` owns OpenRouter generation entry points and delegates direct/job planning, access checks, failure recording, job tracking, and error-session creation.
 - `useOpenRouterModelRuntime` owns OpenRouter model assignment/default resolution and model refresh wiring used by the App shell.
@@ -46,7 +50,7 @@ These entries are no longer App-shell candidates. Treat them as implemented owne
 - `useWorkspaceSessionRuntime` owns workspace-level derived session collections, summaries, leaderboard/admin/session-navigation actions, dashboard navigation, and deletion routing.
 - `useAppPresentationRuntime` owns App-level presentation prop composition for OpenRouter, Admin, Leaderboard, Auth, Session Create, Header, and Live Metrics surfaces.
 - `AppRouteRenderer` owns route-level render branching and keeps `App.tsx` from carrying JSX branch ownership.
-- Browser TTS playback remains owned by `useBrowserTtsPlaybackLoop`, with the contract path now flowing through `App.tsx -> useFocusedTrainingRuntime -> useTtsSessionOrchestrationRuntime -> useBrowserTtsPlaybackLoop`.
+- Browser TTS playback remains owned by `useBrowserTtsPlaybackLoop`, with the contract path flowing through `App.tsx -> useFocusedTrainingRuntime -> useTtsSessionOrchestrationRuntime -> useBrowserTtsPlaybackLoop`.
 
 ## Current contract evaluation
 
@@ -56,15 +60,13 @@ These entries are no longer App-shell candidates. Treat them as implemented owne
 
 ### `src/app/useFocusedTrainingRuntime.ts`
 
-This is now the main focused-training composition seam. Its contract is wide because it receives most TTS, adaptive, session, OpenRouter generation, and route/presentation inputs that focused training needs. That width is acceptable as a consolidation step, but future edits should prefer named domain groups over one opaque App-state object.
-
-Recommended next work here is contract cleanup only: group related args into narrow, named bundles when the change is mechanical, reviewable, and covered by the underlying tests. Do not move new behavior into this hook.
+This is the main focused-training composition seam. Its delegate contract has been improved internally through named groups while preserving the caller-facing compatibility shape. Future edits should avoid broad opaque App-state objects and should not move new behavior into this hook unless a new owner/test seam is justified.
 
 ### `src/app/useTtsSessionOrchestrationRuntime.ts`
 
-This is now the main TTS orchestration seam. It deliberately composes several high-risk Browser TTS runtimes and owns the ordering between keyboard input, metrics, playback, controls, reset, and submit. Treat it as a stable orchestrator, not as a place to keep adding logic.
+This is the main TTS orchestration seam. Its delegate contract has been improved internally through named groups while preserving ordering between keyboard input, practice input, metrics, playback, controls, reset, and submit. Treat it as a stable orchestrator, not as a place to keep adding logic.
 
-Future work should reduce contract width or add characterization around orchestration order before any behavior movement. Pure policy or planning behavior still belongs in focused pure helpers with direct tests, not in this orchestrator.
+Future work here should be behavior-driven hardening or characterization, not more contract churn. Pure policy or planning behavior still belongs in focused pure helpers with direct tests, not in this orchestrator.
 
 ### `src/app/useResetSessionRuntime.ts`
 
@@ -78,8 +80,8 @@ OpenRouter model and generation ownership has moved out of App. Future work shou
 
 - Treat Dicta as being in consolidation phase, not broad extraction phase.
 - Keep `App.tsx` as a composition root unless a new extraction has a concrete ownership/testability payoff.
+- Do not select another App-shell contract-grouping pass merely for local LOC reduction or type rearrangement.
 - Prefer product-visible fixes and runtime hardening over more local LOC reduction.
-- Prefer contract cleanup for `useFocusedTrainingRuntime` and `useTtsSessionOrchestrationRuntime` before any new runtime movement.
 - Keep Browser TTS playback, reset, refs, timers, telemetry, persistence, auth/profile scoping, OpenRouter jobs, PWA/mobile, and CSS cascade under high-risk validation rules.
 - Reject no-op wrappers, prop bags, string moves, and tiny callback moves even when they are low risk.
 
@@ -90,7 +92,9 @@ These anchors are observational. Refresh them with `git grep` or `rg` before edi
 | Area | Current owner / anchor |
 | --- | --- |
 | Focused training composition | `src/app/useFocusedTrainingRuntime.ts` called by `src/App.tsx` |
+| Focused training delegate grouping | `buildFocusedTrainingRuntimeDelegateArgs` inside `useFocusedTrainingRuntime` |
 | TTS session orchestration | `src/app/useTtsSessionOrchestrationRuntime.ts` called by `useFocusedTrainingRuntime` |
+| TTS orchestration delegate grouping | `buildTtsSessionOrchestrationDelegateArgs` inside `useTtsSessionOrchestrationRuntime` |
 | Browser TTS playback loop | `src/app/useBrowserTtsPlaybackLoop.ts` called by `useTtsSessionOrchestrationRuntime` |
 | Browser TTS playback controls | `src/app/useTtsPlaybackControls.ts` called by `useTtsSessionOrchestrationRuntime` |
 | Reset session side effects | `src/app/useResetSessionRuntime.ts` called by `useTtsSessionOrchestrationRuntime` |
@@ -110,8 +114,6 @@ Only non-implemented candidates belong in this table. Implemented candidates bel
 
 | Candidate name | Current location / line range | Proposed target | Expected net LOC movement | Runtime boundaries touched | Main behavior preserved | ROI score | Risk / validation cost score | Required tests | Required manual smoke checks | Rollback plan | Decision | Reason |
 | --- | --- | --- | ---: | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |
-| Focused training contract grouping | `src/app/useFocusedTrainingRuntime.ts` args and `src/App.tsx` call site | Named domain arg groups, only if they remain explicit and typed | Neutral to modest App/caller reduction | focused training composition, TTS orchestration handoff, route props | Preserve the existing App -> focused runtime -> TTS orchestration -> playback chain and focused route props | 72 | 42 | `tests/browserTtsPlaybackLoopContract.test.ts`, `tests/useActiveSessionStateSync.test.ts`, `tests/focusedTrainingPresentation.test.ts`, `tests/focusedTrainingInputTelemetry.test.ts`, plus narrow tests for any touched child runtime | Focused training route loads; Browser TTS setup/playback controls still render; generated-session buttons still render correctly | Revert grouped types and restore explicit args at call site | investigate | Good consolidation candidate if strictly mechanical. It should reduce argument noise without hiding behavior inside an opaque App-state object. |
-| TTS orchestration contract grouping | `src/app/useTtsSessionOrchestrationRuntime.ts` args and `useFocusedTrainingRuntime` call site | Named TTS state/ref/setter/runtime bundles with explicit fields | Neutral | Browser TTS orchestration, reset, submit, controls, telemetry, adaptive feedback | Preserve ordering among metrics, playback, controls, reset, and submit | 68 | 62 | Add/confirm characterization before moving contract shape; run `tests/browserTtsPlaybackLoopContract.test.ts`, `tests/useResetSessionRuntime.test.ts`, `tests/useTtsSessionSubmitAction.test.ts`, `tests/useTtsPlaybackControls.test.ts`, and playback plan/start/error tests if touched | Browser TTS start, pause/resume, seek/replay, reset, and submit smoke | Revert grouped types and restore explicit args | defer | Worth doing eventually, but the blast radius is higher than focused-runtime grouping. Do not combine with behavior changes. |
 | OpenRouter UX/runtime hardening | `src/app/useOpenRouterGenerationRuntime.ts`, job runtime, routes, and UI props | Product/runtime patches, not App-shell extraction | Not an App LOC goal | OpenRouter access, jobs, offline state, error sessions, quotas | Preserve generation presets, language contract, job tracking, and error persistence | 76 | 55 | `tests/openRouterChatRoute.test.ts`, `tests/openRouterJobRoute.test.ts`, `tests/openRouterJobs.test.ts`, `tests/useOpenRouterJobsRuntime.test.ts`, `tests/openRouterDirectGenerationJobPlan.test.ts`, `tests/openRouterDirectGenerationPresets.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts` | Generate direct and job-backed sessions; verify error session creation and offline/access messaging | Revert the runtime/UI patch | select as product work | Higher ROI now comes from product-visible reliability and UX, not additional App extraction. |
 | Semantic phrase selector extraction | `buildSemanticPhrasesForCurrentSession` inside `useTtsSessionOrchestrationRuntime.ts` | Possible pure helper only if behavior grows | 0-5 fewer lines | phrase selection | Preserve DictationScript phrase behavior vs plain-text ordered semantic phrases | 34 | 24 | Existing `tests/semanticPhrasePlanner.test.ts` and `tests/dictationScriptValidation.test.ts` remain enough unless behavior changes | Create/import one script session and one plain-text Browser TTS session if touched | Revert helper import and inline conditional | reject | Still too small to justify extraction by itself. Extract only if phrase selection behavior grows. |
 
@@ -127,8 +129,10 @@ Implemented candidates stay here as historical evidence. Do not select them agai
 | TTS playback controls | `src/app/useTtsPlaybackControls.ts` | Pause/resume/stop/seek behavior, browser cancel/resume routing, telemetry actions, status transitions | Bounded Browser TTS runtime seam. |
 | TTS metrics, telemetry, UI publishing, and progress estimation | `useTtsPerformanceSampler`, `useTtsTelemetryRecorder`, `useTtsUiPublisher`, `useTtsPlaybackProgressEstimator` | Runtime metric sampling, telemetry, UI publish thresholds, spoken-word progress | These remain high-risk but have focused tests. |
 | Reset session runtime | `src/app/useResetSessionRuntime.ts` | Reset defaults, stop ordering, refs, UI metrics, session status, setup-lock preservation, adaptive feedback reset | The previous reset candidate is implemented and removed from the active queue. |
-| TTS session orchestration runtime | `src/app/useTtsSessionOrchestrationRuntime.ts` | Keyboard/input, metrics, playback loop, controls, reset, submit | Treat as orchestrator; future work should be contract cleanup only unless behavior needs change. |
+| TTS session orchestration runtime | `src/app/useTtsSessionOrchestrationRuntime.ts` | Keyboard/input, metrics, playback loop, controls, reset, submit | Treat as orchestrator; future work should be behavior-driven unless a new test seam is clear. |
+| TTS orchestration delegate grouping | `src/app/useTtsSessionOrchestrationRuntime.ts` | Explicit delegate blocks for keyboard remap, practice input, playback metrics, browser playback, playback controls, reset session, and submit session | Implemented as internal contract cleanup; caller-facing compatibility was preserved. |
 | Focused training runtime | `src/app/useFocusedTrainingRuntime.ts` | Focused-training composition, active sync, TTS orchestration handoff, route props | Broad but useful consolidation seam. |
+| Focused training delegate grouping | `src/app/useFocusedTrainingRuntime.ts` | Explicit delegate blocks for live metrics, playback intervals, active-session sync, TTS orchestration, and focused route handoff | Implemented as internal contract cleanup; caller-facing compatibility was preserved. |
 | OpenRouter generation/model runtimes | `useOpenRouterGenerationRuntime`, `useOpenRouterModelRuntime`, `useWorkspaceModelRefreshRuntime` | Generation actions/jobs/errors/access/model/default resolution | Product UX and runtime reliability are now higher ROI than App extraction. |
 | App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | App shell remains a composition root. |
 | Auth/profile, session persistence, session creation, and workspace session runtimes | `useAuthProfileRuntime`, `useSessionPersistenceRuntime`, `useSessionCreationRuntime`, `useWorkspaceSessionRuntime` | Auth/profile access, persistence/sync/quota, session creation, workspace summaries/actions | These should be treated as existing owner boundaries. |
