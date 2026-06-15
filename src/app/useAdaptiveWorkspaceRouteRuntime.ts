@@ -10,53 +10,89 @@ type ExportArgs = Parameters<typeof useAdaptiveExportActions>[0];
 type DiagnosticsArgs = Parameters<typeof useAdaptiveAdvancedDiagnosticsProps>[0];
 type BenchmarkArgs = Parameters<typeof useAdaptiveBenchmarkSectionProps<DiagnosticsArgs['adaptiveSectionExpanded']>>[0];
 
-export type UseAdaptiveWorkspaceRouteRuntimeArgs = PresentationArgs &
-  Omit<ExportArgs, 'insightsDiagnosticProfile' | 'insightsDiagnosticFeedback'> &
-  Omit<DiagnosticsArgs, 'adaptiveAdapters' | 'latestInputAdapter' | 'latestAdaptiveMode'> &
-  Omit<
-    BenchmarkArgs,
-    | 'adaptiveAdapters'
-    | 'selectedBenchmarkProfile'
-    | 'selectedSessionFeedback'
-    | 'repeatWordStats'
-    | 'copySelectedBenchmarkJson'
-    | 'downloadSelectedBenchmarkJson'
-    | 'copyDictationScriptPrompt'
-    | 'copyBenchmarkWithDictationScriptPrompt'
-    | 'copyDictationScriptTemplate'
-    | 'copySessionFeedbackJson'
-    | 'copyBenchmarkFeedbackJson'
-    | 'copyBenchmarkFeedbackPrompt'
-    | 'copyBenchmarkFeedbackPromptWithHumanFeedback'
-  >;
+type AdaptiveWorkspaceRouteExportArgs = Omit<ExportArgs, 'insightsDiagnosticProfile' | 'insightsDiagnosticFeedback'>;
+type AdaptiveWorkspaceRouteDiagnosticsArgs = Omit<
+  DiagnosticsArgs,
+  'adaptiveAdapters' | 'latestInputAdapter' | 'latestAdaptiveMode'
+>;
+type AdaptiveWorkspaceRouteBenchmarkArgs = Omit<
+  BenchmarkArgs,
+  | 'adaptiveAdapters'
+  | 'selectedBenchmarkProfile'
+  | 'selectedSessionFeedback'
+  | 'repeatWordStats'
+  | 'copySelectedBenchmarkJson'
+  | 'downloadSelectedBenchmarkJson'
+  | 'copyDictationScriptPrompt'
+  | 'copyBenchmarkWithDictationScriptPrompt'
+  | 'copyDictationScriptTemplate'
+  | 'copySessionFeedbackJson'
+  | 'copyBenchmarkFeedbackJson'
+  | 'copyBenchmarkFeedbackPrompt'
+  | 'copyBenchmarkFeedbackPromptWithHumanFeedback'
+>;
+
+type FlatAdaptiveWorkspaceRouteRuntimeArgs = PresentationArgs &
+  AdaptiveWorkspaceRouteExportArgs &
+  AdaptiveWorkspaceRouteDiagnosticsArgs &
+  AdaptiveWorkspaceRouteBenchmarkArgs;
+
+export type GroupedAdaptiveWorkspaceRouteRuntimeArgs = {
+  presentation: PresentationArgs;
+  exportActions: AdaptiveWorkspaceRouteExportArgs;
+  diagnostics: AdaptiveWorkspaceRouteDiagnosticsArgs;
+  benchmark: AdaptiveWorkspaceRouteBenchmarkArgs;
+};
+
+export type UseAdaptiveWorkspaceRouteRuntimeArgs =
+  | FlatAdaptiveWorkspaceRouteRuntimeArgs
+  | GroupedAdaptiveWorkspaceRouteRuntimeArgs;
+
+function normalizeAdaptiveWorkspaceRouteRuntimeArgs(
+  args: UseAdaptiveWorkspaceRouteRuntimeArgs,
+): GroupedAdaptiveWorkspaceRouteRuntimeArgs {
+  if ('presentation' in args) return args;
+
+  return {
+    presentation: args,
+    exportActions: args,
+    diagnostics: args,
+    benchmark: args,
+  };
+}
 
 export function useAdaptiveWorkspaceRouteRuntime(args: UseAdaptiveWorkspaceRouteRuntimeArgs) {
-  const presentation = useAdaptiveWorkspacePresentationState(args);
+  const routeArgs = normalizeAdaptiveWorkspaceRouteRuntimeArgs(args);
+  const presentation = useAdaptiveWorkspacePresentationState(routeArgs.presentation);
   const exportActions = useAdaptiveExportActions({
-    ...args,
+    ...routeArgs.exportActions,
     insightsDiagnosticProfile: presentation.insightsDiagnosticProfile,
     insightsDiagnosticFeedback: presentation.insightsDiagnosticFeedback,
   });
 
   const repeatWordStats = useMemo(
     () => buildRepeatWordStats({
-      sessions: args.sessions,
-      inputMode: args.selectedBenchmarkInputMode,
-      language: args.selectedBenchmarkLanguage,
+      sessions: routeArgs.presentation.sessions,
+      inputMode: routeArgs.presentation.selectedBenchmarkInputMode,
+      language: routeArgs.presentation.selectedBenchmarkLanguage,
       now: new Date(),
     }),
-    [args.sessions, args.selectedBenchmarkInputMode, args.selectedBenchmarkLanguage],
+    [
+      routeArgs.presentation.sessions,
+      routeArgs.presentation.selectedBenchmarkInputMode,
+      routeArgs.presentation.selectedBenchmarkLanguage,
+    ],
   );
 
   const adaptiveAdvancedDiagnosticsProps = useAdaptiveAdvancedDiagnosticsProps({
-    ...args,
+    ...routeArgs.diagnostics,
     adaptiveAdapters: presentation.adaptiveAdapters,
     latestInputAdapter: presentation.latestInputAdapter,
     latestAdaptiveMode: presentation.latestAdaptiveMode,
   });
 
   const adaptiveBenchmarkSectionProps = useAdaptiveBenchmarkSectionProps({
-    ...args,
+    ...routeArgs.benchmark,
     adaptiveAdapters: presentation.adaptiveAdapters,
     selectedBenchmarkProfile: presentation.selectedBenchmarkProfile,
     selectedSessionFeedback: presentation.selectedSessionFeedback,
