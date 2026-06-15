@@ -2,10 +2,10 @@ Repo-wide modularization ROI decisions live in `docs/modularization-roi.md`. Use
 
 # App shell modularization map
 
-Updated: 2026-06-15 after OpenRouter direct generation, job polling, and failure-policy extraction.
+Updated: 2026-06-15 after runtime ownership docs refresh.
 Status: ACTIVE REFERENCE
 Verified against branch: `product/input-2`
-Verified against code baseline: post `Apply OpenRouter job failure policy`.
+Verified against code baseline: post `Refresh high-risk runtime ownership anchors`.
 Test map checked: `docs/module-test-map.md`
 
 ## Current baseline
@@ -15,8 +15,9 @@ This is the current App-shell checkpoint and candidate queue. Refresh source anc
 | Item | Current value |
 | --- | --- |
 | Branch | `product/input-2` |
-| Current `src/App.tsx` role | Composition root for auth/profile, sync, workspace routing, OpenRouter wiring, focused training, presentation props, and route rendering. |
-| Current `src/App.tsx` size anchor | About 940 lines at the inspected baseline; do not use this as a success metric. |
+| Current `src/App.tsx` role | Shell-only React entrypoint. It imports `App.css` and renders `DictaAppRuntime`; it should stay small and must not regain runtime ownership. |
+| Current runtime composition root | `src/app/DictaAppRuntime.tsx` wires auth/profile, sync, workspace routing, OpenRouter wiring, focused training, presentation props, and route rendering. |
+| Current `src/app/DictaAppRuntime.tsx` size anchor | About 940 lines at the inspected baseline; do not use this as a success metric. |
 | Focused training runtime owner | `src/app/useFocusedTrainingRuntime.ts` |
 | TTS session orchestration owner | `src/app/useTtsSessionOrchestrationRuntime.ts` |
 | Browser TTS playback-loop owner | `src/app/useBrowserTtsPlaybackLoop.ts` |
@@ -48,11 +49,11 @@ Implemented boundaries; do not re-select them as pending App-shell extractions.
 - `useWorkspaceSessionRuntime` owns workspace-level derived session collections and workspace actions.
 - `useAppPresentationRuntime` owns App-level presentation prop composition.
 - `AppRouteRenderer` owns route-level render branching.
-- Browser TTS playback remains owned by `useBrowserTtsPlaybackLoop`, with the contract path `App.tsx -> useFocusedTrainingRuntime -> useTtsSessionOrchestrationRuntime -> useBrowserTtsPlaybackLoop`.
+- Browser TTS playback remains owned by `useBrowserTtsPlaybackLoop`, with the contract path `DictaAppRuntime -> useFocusedTrainingRuntime -> useTtsSessionOrchestrationRuntime -> useBrowserTtsPlaybackLoop`.
 
 ## Current recommendation
 
-- Keep `App.tsx` as composition root unless a new extraction creates a real owner/test seam.
+- Keep `src/App.tsx` shell-only and keep `DictaAppRuntime` as the browser composition root unless a new extraction creates a real owner/test seam.
 - Do not keep grouping contracts just for LOC reduction.
 - Treat OpenRouter lifecycle ownership as mostly extracted; future OpenRouter work should be product-driven: UX, access messaging, quotas, route contracts, or error behavior.
 - Keep Browser TTS, reset, refs/timers, telemetry, persistence, auth/profile scoping, OpenRouter jobs, PWA/mobile, and CSS cascade under high-risk validation rules.
@@ -62,13 +63,13 @@ Implemented boundaries; do not re-select them as pending App-shell extractions.
 
 | Area | Current owner / anchor |
 | --- | --- |
-| Focused training composition | `src/app/useFocusedTrainingRuntime.ts` called by `src/App.tsx` |
+| Focused training composition | `src/app/useFocusedTrainingRuntime.ts` called by `src/app/DictaAppRuntime.tsx` |
 | TTS session orchestration | `src/app/useTtsSessionOrchestrationRuntime.ts` called by `useFocusedTrainingRuntime` |
 | Browser TTS playback loop | `src/app/useBrowserTtsPlaybackLoop.ts` called by `useTtsSessionOrchestrationRuntime` |
 | Browser TTS playback controls | `src/app/useTtsPlaybackControls.ts` called by `useTtsSessionOrchestrationRuntime` |
 | Reset session side effects | `src/app/useResetSessionRuntime.ts` called by `useTtsSessionOrchestrationRuntime` |
 | TTS session submit | `src/app/useTtsSessionSubmitAction.ts` called by `useTtsSessionOrchestrationRuntime` |
-| OpenRouter generation entry | `src/app/useOpenRouterGenerationRuntime.ts` called by `src/App.tsx` |
+| OpenRouter generation entry | `src/app/useOpenRouterGenerationRuntime.ts` called by `src/app/DictaAppRuntime.tsx` |
 | OpenRouter direct generation | `src/app/useOpenRouterDirectGenerationRuntime.ts` |
 | OpenRouter job polling | `src/app/useOpenRouterJobPollingRuntime.ts` called by `useOpenRouterJobsRuntime` |
 | OpenRouter failure policy | `src/app/openRouterGenerationFailurePolicy.ts` |
@@ -104,7 +105,7 @@ Scores use `docs/modularization-roi.md`: ROI is 0-100 where higher is better; ri
 | OpenRouter job polling lifecycle | `src/app/useOpenRouterJobPollingRuntime.ts` | Polling, terminal settlement, generated-script validation, notices, cleanup | Extracted from OpenRouter jobs runtime. |
 | OpenRouter generation failure policy | `src/app/openRouterGenerationFailurePolicy.ts` | Shared failure notices, labels, transient/persistent error decisions | Used by direct generation and job polling. |
 | OpenRouter generation/model runtimes | `useOpenRouterGenerationRuntime`, `useOpenRouterModelRuntime`, `useWorkspaceModelRefreshRuntime` | Generation/model/default resolution | Product/runtime reliability is now higher ROI than App extraction. |
-| App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | App shell remains a composition root. |
+| App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | `DictaAppRuntime` remains the browser composition root; `src/App.tsx` remains a shell-only entrypoint. |
 | Auth/profile, session persistence, session creation, and workspace session runtimes | `useAuthProfileRuntime`, `useSessionPersistenceRuntime`, `useSessionCreationRuntime`, `useWorkspaceSessionRuntime` | Auth/profile access, persistence/sync/quota, session creation, workspace summaries/actions | Existing owner boundaries. |
 
 ## Freshness and update rules
