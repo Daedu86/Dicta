@@ -154,3 +154,4 @@ When renaming or moving tests:
 
 Use `docs/modularization-roi.md` to decide whether a modularization candidate has enough payoff. This map supplies the validation side of that score: existing tests, required test additions, and risk-specific commands.
 | `src/components/adaptive-workspace/useAdaptiveBenchmarkCockpitRuntime.ts` | Adaptive benchmark cockpit derived state, diagnostics, export payloads, clipboard state, focus handling, and subsection expansion state. | `tests/adaptiveBenchmarkService.test.ts`, `tests/adaptiveExportPackages.test.ts`, `tests/sessionFeedbackAdaptive.test.ts`, `tests/adaptiveWorkspacePresentation.test.ts` |
+| `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` | Selected adaptive benchmark profile cockpit visual layout: hero, exports, KPIs, coach charts, latest feedback, diagnostics, and timeline. | `tests/adaptiveWorkspacePresentation.test.ts`, `tests/adaptiveExportPackages.test.ts`, `tests/trainingGenerationCard.test.ts` |
