@@ -19,6 +19,10 @@ import type {
   OpenRouterJobNotification,
   TrainingGenerationNotice,
 } from '../components/openrouter/types';
+import {
+  buildTrackedOpenRouterGenerationFailureNotice,
+  formatOpenRouterGenerationDisplayLabel,
+} from './openRouterGenerationFailurePolicy';
 
 type OpenRouterJobPollingRuntimeOptions = {
   activeOpenRouterJobs: ActiveOpenRouterJob[];
@@ -88,15 +92,7 @@ export function useOpenRouterJobPollingRuntime({
       }
       setTrainingGenerationNotices((current) => ({
         ...current,
-        [trackedJob.slotLabel]: {
-          slotLabel: trackedJob.slotLabel,
-          displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
-          model: trackedJob.model,
-          startedAt: trackedJob.startedAt,
-          status: 'failed',
-          completedAt,
-          error: message,
-        },
+        [trackedJob.slotLabel]: buildTrackedOpenRouterGenerationFailureNotice(trackedJob, message, completedAt),
       }));
     }
 
@@ -148,7 +144,7 @@ export function useOpenRouterJobPollingRuntime({
                 ...current,
                 [trackedJob.slotLabel]: {
                   slotLabel: trackedJob.slotLabel,
-                  displayLabel: formatGenerationDisplayLabel(trackedJob.slotLabel),
+                  displayLabel: formatOpenRouterGenerationDisplayLabel(trackedJob.slotLabel),
                   model: trackedJob.model,
                   startedAt: trackedJob.startedAt,
                   status: 'succeeded',
@@ -211,15 +207,4 @@ export function useOpenRouterJobPollingRuntime({
   }, []);
 
   return { resetOpenRouterJobPollingRuntime };
-}
-
-function formatGenerationDisplayLabel(slotLabel: string): string {
-  const normalized = slotLabel.toLowerCase();
-  if (normalized.includes('express') && normalized.includes('easy')) return 'Express easy session';
-  if (normalized.includes('express') && normalized.includes('intermediate')) return 'Express medium session';
-  if (normalized.includes('express') && normalized.includes('advanced')) return 'Express hard session';
-  if (normalized.includes('easy')) return 'Easy session';
-  if (normalized.includes('intermediate')) return 'Medium session';
-  if (normalized.includes('advanced')) return 'Hard session';
-  return slotLabel;
 }
