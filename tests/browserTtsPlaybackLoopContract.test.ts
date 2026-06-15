@@ -4,18 +4,18 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const appSource = readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8');
+const appRuntimeSource = readFileSync(resolve(repoRoot, 'src/app/DictaAppRuntime.tsx'), 'utf-8');
 const focusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useFocusedTrainingRuntime.ts'), 'utf-8');
 const orchestrationSource = readFileSync(resolve(repoRoot, 'src/app/useTtsSessionOrchestrationRuntime.ts'), 'utf-8');
 const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
 
 describe('Browser TTS playback loop contract', () => {
-  it('keeps App delegating playback through the focused training and TTS orchestration runtimes', () => {
-    expect(appSource).toContain("import { useFocusedTrainingRuntime } from './app/useFocusedTrainingRuntime';");
-    expect(appSource).toContain('useFocusedTrainingRuntime({');
-    expect(appSource).not.toContain("import { useBrowserTtsPlaybackLoop } from './app/useBrowserTtsPlaybackLoop';");
-    expect(appSource).not.toContain('useBrowserTtsPlaybackLoop({');
-    expect(appSource).not.toContain('function playTtsFromWord(');
+  it('keeps DictaAppRuntime delegating playback through the focused training and TTS orchestration runtimes', () => {
+    expect(appRuntimeSource).toContain("import { useFocusedTrainingRuntime } from './useFocusedTrainingRuntime';");
+    expect(appRuntimeSource).toContain('useFocusedTrainingRuntime({');
+    expect(appRuntimeSource).not.toContain("import { useBrowserTtsPlaybackLoop } from './useBrowserTtsPlaybackLoop';");
+    expect(appRuntimeSource).not.toContain('useBrowserTtsPlaybackLoop({');
+    expect(appRuntimeSource).not.toContain('function playTtsFromWord(');
 
     expect(focusedTrainingSource).toContain("import { useTtsSessionOrchestrationRuntime } from './useTtsSessionOrchestrationRuntime';");
     expect(focusedTrainingSource).toContain('useTtsSessionOrchestrationRuntime({');

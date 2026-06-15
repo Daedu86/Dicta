@@ -4,16 +4,16 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const appSource = readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8');
+const appRuntimeSource = readFileSync(resolve(repoRoot, 'src/app/DictaAppRuntime.tsx'), 'utf-8');
 const focusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useFocusedTrainingRuntime.ts'), 'utf-8');
 const hookSource = readFileSync(resolve(repoRoot, 'src/app/useActiveSessionStateSync.ts'), 'utf-8');
 
 describe('useActiveSessionStateSync extraction', () => {
-  it('keeps App.tsx delegating active-session sync through the focused training runtime', () => {
-    expect(appSource).toContain("import { useFocusedTrainingRuntime } from './app/useFocusedTrainingRuntime';");
-    expect(appSource).toContain('useFocusedTrainingRuntime({');
-    expect(appSource).not.toContain("import { useActiveSessionStateSync } from './app/useActiveSessionStateSync';");
-    expect(appSource).not.toContain('useActiveSessionStateSync({');
+  it('keeps DictaAppRuntime delegating active-session sync through the focused training runtime', () => {
+    expect(appRuntimeSource).toContain("import { useFocusedTrainingRuntime } from './useFocusedTrainingRuntime';");
+    expect(appRuntimeSource).toContain('useFocusedTrainingRuntime({');
+    expect(appRuntimeSource).not.toContain("import { useActiveSessionStateSync } from './useActiveSessionStateSync';");
+    expect(appRuntimeSource).not.toContain('useActiveSessionStateSync({');
 
     expect(focusedTrainingSource).toContain("import { useActiveSessionStateSync } from './useActiveSessionStateSync';");
     expect(focusedTrainingSource).toContain('useActiveSessionStateSync({');
