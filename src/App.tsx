@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuthProfileRuntime } from './app/useAuthProfileRuntime';
 import { useThemeModeRuntime } from './app/useThemeModeRuntime';
 import { useOnlineStatus } from './app/useOnlineStatus';
@@ -12,12 +12,9 @@ import { useWorkspaceSessionRuntime } from './app/useWorkspaceSessionRuntime';
 import { useWorkspaceNavigationEffects } from './app/useWorkspaceNavigationEffects';
 import { useOpenRouterGenerationRuntime } from './app/useOpenRouterGenerationRuntime';
 import { useOpenRouterErrorSessionActions } from './app/useOpenRouterErrorSessionActions';
-import { useAdaptiveDiagnosticsUiState } from './app/useAdaptiveDiagnosticsUiState';
 import { useAdaptiveWorkspaceState } from './app/useAdaptiveWorkspaceState';
-import { useAdaptiveWorkspaceEntryActions } from './app/useAdaptiveWorkspaceEntryActions';
+import { useAdaptiveWorkspaceRuntime } from './app/useAdaptiveWorkspaceRuntime';
 import { useAppPerfDiagnosticsRuntime } from './app/useAppPerfDiagnosticsRuntime';
-import { useAdaptiveStoragePersistenceEffects } from './app/useAdaptiveStoragePersistenceEffects';
-import { useDictaDebugExportEffect } from './app/useDictaDebugExportEffect';
 import { useDictaSupabaseRuntime } from './app/useDictaSupabaseRuntime';
 import { useSessionCreationRuntime } from './app/useSessionCreationRuntime';
 import { useTtsSessionRuntime } from './app/useTtsSessionRuntime';
@@ -36,7 +33,6 @@ import { useOpenRouterJobsRuntime } from './app/useOpenRouterJobsRuntime';
 import { useDictaUiPreferences } from './app/useDictaUiPreferences';
 import { isMobileViewport } from './app/viewport';
 import { useBrowserTtsRuntime } from './app/useBrowserTtsRuntime';
-import { useAdaptiveRuntime } from './app/useAdaptiveRuntime';
 import { formatSessionDate } from './app/sessionDateFormatters';
 import { formatSessionStatus } from './app/sessionStatusFormatters';
 import { formatSessionPlaybackDuration } from './app/sessionPlaybackDuration';
@@ -150,14 +146,6 @@ function App() {
     adaptiveSectionExpanded,
     setAdaptiveSectionExpanded,
   } = useDictaUiPreferences();
-  const {
-    insightsDiagnosticInputMode,
-    setInsightsDiagnosticInputMode,
-    insightsDiagnosticMessage,
-    setInsightsDiagnosticMessage,
-    insightsDiagnosticFallbackReport,
-    setInsightsDiagnosticFallbackReport,
-  } = useAdaptiveDiagnosticsUiState();
   const {
     adaptiveSemanticDebug,
     setAdaptiveSemanticDebug,
@@ -381,8 +369,13 @@ function App() {
   });
 
   const {
+    insightsDiagnosticInputMode,
+    setInsightsDiagnosticInputMode,
+    insightsDiagnosticMessage,
+    setInsightsDiagnosticMessage,
+    insightsDiagnosticFallbackReport,
+    setInsightsDiagnosticFallbackReport,
     getAdaptiveController,
-    phrasePlaybackEventsRef,
     selectedBenchmarkInputMode,
     setSelectedBenchmarkInputMode,
     selectedBenchmarkLanguage,
@@ -393,20 +386,30 @@ function App() {
     beginAdaptiveSessionFeedback,
     recordPhrasePlaybackEvent,
     completeAdaptiveSessionFeedback,
-    ensureLatestBrowserTtsDeDictationScriptFeedback,
     resetAdaptiveSessionFeedbackTracking,
-  } = useAdaptiveRuntime({
+    openAdaptiveExportsForActiveInput,
+    openAdaptiveWorkspaceFromHeader,
+  } = useAdaptiveWorkspaceRuntime({
     activeSession,
     activeSessionId,
     sessions,
-    setAdaptiveBenchmarks: setAdaptiveBenchmarksByInputLanguage,
+    adaptiveBenchmarksByInputLanguage,
+    setAdaptiveBenchmarksByInputLanguage,
     adaptiveBenchmarksRef,
-    adaptiveSessionFeedback: adaptiveSessionFeedbackByInputLanguage,
-    setAdaptiveSessionFeedback: setAdaptiveSessionFeedbackByInputLanguage,
+    adaptiveSessionFeedbackByInputLanguage,
+    setAdaptiveSessionFeedbackByInputLanguage,
     adaptiveSessionFeedbackRef,
-    persistAdaptiveSessionFeedbackNow: persistAndPushAdaptiveSessionFeedbackNow,
-    selectedBenchmarkLanguage: dictaLanguageView,
-    setSelectedBenchmarkLanguage: setDictaLanguageView,
+    persistAndPushAdaptiveSessionFeedbackNow,
+    localStorageReadyForEffectiveProfile,
+    perfDiagnosticsEnabled,
+    dictaLanguageView,
+    setDictaLanguageView,
+    showAdaptiveWorkspace,
+    setAdaptiveBenchmarksFocusAnchor,
+    setAdaptiveSectionExpanded,
+    setBenchmarkExportMessage,
+    setSessionFeedbackMessage,
+    isMobileViewport,
   });
   const openRouterOfflineTitle = isOnline ? '' : 'Needs internet. Local practice still works offline and results stay on this device.';
   useWorkspaceNavigationEffects({
@@ -423,26 +426,6 @@ function App() {
     showLeaderboardWorkspace,
     showWorkspaceMode,
   });
-
-  useAdaptiveStoragePersistenceEffects({
-    adaptiveBenchmarksByInputLanguage,
-    adaptiveBenchmarksRef,
-    adaptiveSessionFeedbackByInputLanguage,
-    adaptiveSessionFeedbackRef,
-    localStorageReadyForEffectiveProfile,
-  });
-
-  useDictaDebugExportEffect({
-    activeSessionId,
-    adaptiveBenchmarksByInputLanguage,
-    adaptiveSessionFeedbackByInputLanguage,
-    perfDiagnosticsEnabled,
-    phrasePlaybackEventsRef,
-  });
-
-  useEffect(() => {
-    ensureLatestBrowserTtsDeDictationScriptFeedback(sessions);
-  }, [ensureLatestBrowserTtsDeDictationScriptFeedback, sessions]);
 
   const {
     updateAdminProfileAccess,
@@ -530,22 +513,6 @@ function App() {
     trackOpenRouterJob,
     recordOpenRouterGenerationFailure,
     createOpenRouterErrorSession,
-  });
-
-  const {
-    openAdaptiveExportsForActiveInput,
-    openAdaptiveWorkspaceFromHeader,
-  } = useAdaptiveWorkspaceEntryActions({
-    activeSession,
-    dictaLanguageView,
-    showAdaptiveWorkspace,
-    setSelectedBenchmarkInputMode,
-    setSelectedBenchmarkLanguage,
-    setBenchmarkExportMessage,
-    setSessionFeedbackMessage,
-    setAdaptiveBenchmarksFocusAnchor,
-    setAdaptiveSectionExpanded,
-    isMobileViewport,
   });
 
   const {
