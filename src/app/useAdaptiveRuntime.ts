@@ -5,7 +5,6 @@ import {
   normalizeBenchmarkLanguage,
 } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import {
-  buildAdaptiveSessionFeedback,
   hasAdaptiveSessionFeedbackForSession,
   upsertAdaptiveSessionFeedbackByInputLanguage,
 } from '../core/adaptive/sessionFeedback';
@@ -27,6 +26,11 @@ import { perfDiagnostics } from '../core/perfDiagnostics';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 import { buildAdaptiveBenchmarkUpdate } from './adaptiveRuntimeBenchmarkUpdate';
 import { appendAdaptivePhrasePlaybackEvent } from './adaptiveRuntimePhrasePlaybackEvents';
+import {
+  buildCompletedAdaptiveSessionFeedback,
+  isBrowserTtsDeFeedbackScope,
+  type CompleteAdaptiveSessionFeedbackOptions,
+} from './adaptiveRuntimeSessionFeedbackCompletion';
 import {
   buildHistoricalPerformanceProfile,
   findLatestFinishedBrowserTtsDeDictationScriptSession,
@@ -175,15 +179,14 @@ export function useAdaptiveRuntime({
   const completeAdaptiveSessionFeedback = useCallback(
     (
       completedSession = activeSession,
-      options: { phraseEvents?: PhrasePlaybackEvent[]; totalPhrases?: number } = {},
+      options: CompleteAdaptiveSessionFeedbackOptions = {},
     ): void => {
       if (!completedSession) return;
       const context = sessionFeedbackContextRef.current[completedSession.id];
       const inputMode = context?.inputMode ?? mapRuntimeSessionInputMode(completedSession.inputMode);
       const language = normalizeBenchmarkLanguage(context?.language ?? resolveRuntimeSessionLanguage(completedSession));
       if (
-        inputMode === 'browser-tts' &&
-        language === 'de' &&
+        isBrowserTtsDeFeedbackScope(inputMode, language) &&
         hasAdaptiveSessionFeedbackForSession(
           adaptiveSessionFeedbackRef.current[inputMode]?.[language],
           inputMode,
@@ -197,20 +200,12 @@ export function useAdaptiveRuntime({
       }
       const before = sessionBenchmarkBeforeRef.current[completedSession.id] ?? getBenchmarkSnapshot(inputMode, language);
       const after = getBenchmarkSnapshot(inputMode, language);
-      const feedback = buildAdaptiveSessionFeedback({
-        sessionId: completedSession.id,
+      const feedback = buildCompletedAdaptiveSessionFeedback({
+        completedSession,
         inputMode,
         language,
-        sourceType: completedSession.sessionSource === 'dictationScript' ? 'dictation_script' : 'plain_text',
-        createdAt: completedSession.createdAt,
-        completedAt: completedSession.telemetry.finishedAt ?? completedSession.updatedAt ?? new Date().toISOString(),
-        scriptId: completedSession.dictationScript
-          ? `${completedSession.id}:${completedSession.dictationScript.title}`
-          : undefined,
-        scriptTitle: completedSession.dictationScript?.title,
         benchmarkBefore: before,
         benchmarkAfter: after,
-        ttsEnvironment: inputMode === 'browser-tts' ? completedSession.ttsEnvironment ?? null : null,
         phraseEvents: options.phraseEvents ?? phrasePlaybackEventsRef.current,
         totalPhrases: options.totalPhrases ?? (phrasePlaybackTotalPhrasesRef.current || undefined),
       });
