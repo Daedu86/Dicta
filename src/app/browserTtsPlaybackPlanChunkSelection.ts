@@ -72,9 +72,7 @@ export function selectBrowserTtsCandidateChunk({
   );
 }
 
-export type SelectBrowserTtsDecisionChunkInput = Omit<SelectBrowserTtsChunkInput, 'phraseSize' | 'boundaryStrictness'> & {
-  phraseSize: PhraseSize;
-  boundaryStrictness: BrowserTtsBoundaryStrictness;
+export type SelectBrowserTtsDecisionChunkInput = SelectBrowserTtsChunkInput & {
   fallbackChunk: PlannedBrowserTtsChunk;
 };
 
