@@ -1,11 +1,11 @@
 # Runtime access boundary
 
-Date: 2026-06-15  
+Date: 2026-06-16  
 Branch: `product/input-2`
 
 ## Purpose
 
-`src/app/useDictaAccessRuntime.ts` owns the access-oriented runtime wiring that previously lived inline in `DictaAppRuntime.tsx`.
+`src/app/useDictaAccessRuntime.ts` owns the access-oriented runtime wiring that previously lived inline in the app runtime root.
 
 This boundary groups:
 
@@ -17,7 +17,7 @@ This boundary groups:
 
 ## Why this boundary exists
 
-`DictaAppRuntime.tsx` is the browser composition root. It should keep routing/training/workspace orchestration visible, but auth/admin/model access setup was a separable cluster with a clear dependency chain:
+`src/app/DictaAppRuntimeRoot.tsx` is the browser composition root. It should keep routing/training/workspace orchestration visible, but auth/admin/model access setup was a separable cluster with a clear dependency chain:
 
 ```text
 useDictaSupabaseRuntime
@@ -27,7 +27,7 @@ useDictaSupabaseRuntime
   -> useAdminFileInventory
 ```
 
-`useDictaAccessRuntime` keeps that chain together and returns the same public values consumed by the app composition root.
+`useDictaAccessRuntime` keeps that chain together and returns the same public values consumed by the app composition root. `src/app/DictaAppRuntime.tsx` is only the export shim for `DictaAppRuntimeRoot`.
 
 ## Validation
 
