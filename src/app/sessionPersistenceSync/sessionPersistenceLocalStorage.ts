@@ -1,7 +1,10 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { MutableRefObject } from 'react';
 import { perfDiagnostics } from '../../core/perfDiagnostics';
-import { buildSessionPersistenceQuotaRecoverySessions } from '../sessionPersistenceRecoveryPlan';
+import {
+  buildSessionPersistenceQuotaRecoverySessions,
+  buildSessionPersistenceStorageSessions,
+} from '../sessionPersistenceRecoveryPlan';
 import {
   SESSION_PERSIST_DEBOUNCE_MS,
   SESSION_STORAGE_KEY,
@@ -33,6 +36,8 @@ export function useSessionLocalPersistence<TSession extends PersistableSession>(
   normalizeSessionForPersistence,
   onQuotaRecovered,
 }: UseSessionLocalPersistenceOptions<TSession>): SessionLocalPersistenceController<TSession> {
+  const quotaRecoveryNoticeShownRef = useRef(false);
+
   const clearScheduledSessionPersist = useCallback((): void => {
     if (sessionPersistTimerRef.current === null) return;
     window.clearTimeout(sessionPersistTimerRef.current);
@@ -41,12 +46,17 @@ export function useSessionLocalPersistence<TSession extends PersistableSession>(
 
   const persistSessionsToLocalStorage = useCallback((nextSessions: TSession[], spanName = 'session.localStorage.persist'): void => {
     perfDiagnostics.withSpan(spanName, () => {
-      const json = JSON.stringify(nextSessions.map((session) => normalizeSessionForPersistence(session)));
+      const json = JSON.stringify(buildSessionPersistenceStorageSessions({
+        sessions: nextSessions,
+        activeSessionId,
+        normalizeSessionForPersistence,
+      }));
       if (json === lastPersistedSessionsJsonRef.current) return;
 
       try {
         window.localStorage.setItem(SESSION_STORAGE_KEY, json);
         lastPersistedSessionsJsonRef.current = json;
+        quotaRecoveryNoticeShownRef.current = false;
       } catch (error) {
         if (!isLocalStorageQuotaExceeded(error)) {
           throw error;
@@ -59,7 +69,10 @@ export function useSessionLocalPersistence<TSession extends PersistableSession>(
         }));
         window.localStorage.setItem(SESSION_STORAGE_KEY, recoveryJson);
         lastPersistedSessionsJsonRef.current = recoveryJson;
-        onQuotaRecovered('Local session storage was full. Dicta compacted older session telemetry so the current session can keep saving.');
+        if (!quotaRecoveryNoticeShownRef.current) {
+          quotaRecoveryNoticeShownRef.current = true;
+          onQuotaRecovered('Local session storage was full. Dicta compacted older session telemetry so the current session can keep saving.');
+        }
       }
     }, { sessionCount: nextSessions.length });
   }, [activeSessionId, lastPersistedSessionsJsonRef, normalizeSessionForPersistence, onQuotaRecovered]);

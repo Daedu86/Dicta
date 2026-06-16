@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS,
+  SESSION_PERSIST_STORAGE_FULL_TELEMETRY_SESSIONS,
   SESSION_PERSIST_RECOVERY_MAX_SESSIONS,
   buildSessionPersistenceQuotaRecoverySessions,
+  buildSessionPersistenceStorageSessions,
   shouldKeepFullTelemetryForRecovery,
 } from '../src/app/sessionPersistenceRecoveryPlan';
 import {
@@ -62,15 +63,15 @@ describe('sessionPersistenceRecoveryPlan', () => {
 
   it('keeps full telemetry for active, recent, running, and paused sessions', () => {
     expect(shouldKeepFullTelemetryForRecovery({ session: session(1), index: 100, activeSessionId: 'session-1' })).toBe(true);
-    expect(shouldKeepFullTelemetryForRecovery({ session: session(2), index: SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS - 1, activeSessionId: '' })).toBe(true);
+    expect(shouldKeepFullTelemetryForRecovery({ session: session(2), index: SESSION_PERSIST_STORAGE_FULL_TELEMETRY_SESSIONS - 1, activeSessionId: '' })).toBe(true);
     expect(shouldKeepFullTelemetryForRecovery({ session: session(3, { status: 'running' }), index: 100, activeSessionId: '' })).toBe(true);
     expect(shouldKeepFullTelemetryForRecovery({ session: session(4, { status: 'paused' }), index: 100, activeSessionId: '' })).toBe(true);
-    expect(shouldKeepFullTelemetryForRecovery({ session: session(5), index: SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS, activeSessionId: '' })).toBe(false);
+    expect(shouldKeepFullTelemetryForRecovery({ session: session(5), index: SESSION_PERSIST_STORAGE_FULL_TELEMETRY_SESSIONS, activeSessionId: '' })).toBe(false);
   });
 
   it('compacts old finished session telemetry after normalization', () => {
     const oldSession = session(1);
-    const sessions = Array.from({ length: SESSION_PERSIST_RECOVERY_FULL_TELEMETRY_SESSIONS }, (_, index) => session(index + 20));
+    const sessions = Array.from({ length: SESSION_PERSIST_STORAGE_FULL_TELEMETRY_SESSIONS }, (_, index) => session(index + 20));
     sessions.push(oldSession);
     const normalizeSessionForPersistence = vi.fn((value: TestSession) => ({
       ...value,
@@ -88,5 +89,31 @@ describe('sessionPersistenceRecoveryPlan', () => {
     expect(compactedOldSession?.normalized).toBe(true);
     expect(compactedOldSession?.telemetry.lagSeries).toHaveLength(SESSION_PERSIST_RECOVERY_SERIES_LIMIT);
     expect(compactedOldSession?.telemetry.lagSeries[0]).toBe(10);
+  });
+
+  it('compacts older finished sessions before localStorage quota is hit', () => {
+    const sessions = Array.from({ length: 12 }, (_, index) => session(index + 1));
+    const activeSession = sessions[0];
+    const normalizeSessionForPersistence = vi.fn((value: TestSession) => ({
+      ...value,
+      telemetry: telemetry(SESSION_PERSIST_RECOVERY_SERIES_LIMIT + 10),
+      normalized: true,
+    }));
+
+    const storageSessions = buildSessionPersistenceStorageSessions({
+      sessions,
+      activeSessionId: activeSession.id,
+      normalizeSessionForPersistence,
+    });
+
+    expect(storageSessions).toHaveLength(12);
+    expect(storageSessions[0]?.id).toBe('session-12');
+    expect(storageSessions.some((value) => value.id === activeSession.id)).toBe(true);
+    expect(storageSessions.find((value) => value.id === 'session-12')?.telemetry.lagSeries).toHaveLength(SESSION_PERSIST_RECOVERY_SERIES_LIMIT + 10);
+    expect(storageSessions.find((value) => value.id === activeSession.id)?.telemetry.lagSeries).toHaveLength(SESSION_PERSIST_RECOVERY_SERIES_LIMIT + 10);
+    expect(storageSessions.find((value) => value.id === 'session-2')?.telemetry.lagSeries).toHaveLength(SESSION_PERSIST_RECOVERY_SERIES_LIMIT);
+    expect(storageSessions.find((value) => value.id === 'session-6')?.telemetry.lagSeries).toHaveLength(SESSION_PERSIST_RECOVERY_SERIES_LIMIT);
+    expect(storageSessions.find((value) => value.id === 'session-8')?.telemetry.lagSeries).toHaveLength(SESSION_PERSIST_RECOVERY_SERIES_LIMIT + 10);
+    expect(storageSessions.find((value) => value.id === 'session-7')?.telemetry.lagSeries).toHaveLength(SESSION_PERSIST_RECOVERY_SERIES_LIMIT);
   });
 });
