@@ -270,7 +270,7 @@ export class AdaptiveDictationController {
         ? extremeSupportRateFloor
         : mode === 'support'
           ? (extremeSupport ? extremeSupportRateFloor : supportRateFloor)
-          : balancedFlowFloor;
+          : Math.max(balancedFlowFloor, baselineRate);
     const modeCeiling = isSupportLikeMode ? supportRateCeiling : comfortRateMax;
     playbackRate = Number(clamp(playbackRate, modeFloor, modeCeiling).toFixed(2));
     if (isSupportLikeMode && reasonCodes.includes('support-needed')) {
