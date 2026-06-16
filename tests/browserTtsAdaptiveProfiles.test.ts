@@ -26,44 +26,46 @@ describe('resolveBrowserTtsAdaptiveProfile', () => {
 
   it('returns ES profile values', () => {
     const profile = resolveBrowserTtsAdaptiveProfile('es');
-    expect(profile.supportRateFloor).toBe(0.7);
-    expect(profile.extremeSupportRateFloor).toBe(0.7);
-    expect(profile.balancedFlowFloor).toBe(0.7);
-    expect(profile.supportRateCeiling).toBe(0.95);
+    expect(profile.supportRateFloor).toBe(0.6);
+    expect(profile.extremeSupportRateFloor).toBe(0.6);
+    expect(profile.balancedFlowFloor).toBe(0.6);
+    expect(profile.supportRateCeiling).toBe(1.0);
     expect(profile.unsafeBoundaryMinPauseMs).toBe(1800);
-    expect(profile.minRecommendedRate).toBe(0.7);
+    expect(profile.minRecommendedRate).toBe(0.6);
     expect(profile.recommendationCalibrationEnabled).toBe(true);
-    expect(profile.adaptivePause.minPauseMs).toBe(1800);
-    expect(profile.adaptivePause.maxPauseMs).toBe(3600);
+    expect(profile.sessionWarmup.enabled).toBe(false);
+    expect(profile.adaptivePause.minPauseMs).toBe(1200);
+    expect(profile.adaptivePause.maxPauseMs).toBe(4000);
+    expect(profile.adaptivePause.severeLagBehindPauseMs).toBe(3800);
   });
 
-  it('returns EN listening-first profile values with expanded pause/rate windows', () => {
+  it('returns EN profile values without language-specific warmup', () => {
     const profile = resolveBrowserTtsAdaptiveProfile('en');
-    expect(profile.supportRateFloor).toBe(0.7);
-    expect(profile.extremeSupportRateFloor).toBe(0.7);
-    expect(profile.balancedFlowFloor).toBe(0.7);
-    expect(profile.supportRateCeiling).toBe(0.92);
+    expect(profile.supportRateFloor).toBe(0.6);
+    expect(profile.extremeSupportRateFloor).toBe(0.6);
+    expect(profile.balancedFlowFloor).toBe(0.6);
+    expect(profile.supportRateCeiling).toBe(1.0);
     expect(profile.unsafeBoundaryMinPauseMs).toBe(1800);
-    expect(profile.minRecommendedRate).toBe(0.7);
+    expect(profile.minRecommendedRate).toBe(0.6);
     expect(profile.recommendationCalibrationEnabled).toBe(false);
-    expect(profile.sessionWarmup.enabled).toBe(true);
-    expect(profile.sessionWarmup.playbackRate).toBe(0.72);
-    expect(profile.sessionWarmup.pauseMs).toBe(2400);
-    expect(profile.adaptivePause.minPauseMs).toBe(1800);
-    expect(profile.adaptivePause.maxPauseMs).toBe(3600);
+    expect(profile.sessionWarmup.enabled).toBe(false);
+    expect(profile.adaptivePause.minPauseMs).toBe(1200);
+    expect(profile.adaptivePause.maxPauseMs).toBe(4000);
+    expect(profile.supportRecoveryAggressiveness).toBe('high');
   });
 
   it('returns DE conservative profile values inside the expanded global window', () => {
     const profile = resolveBrowserTtsAdaptiveProfile('de');
-    expect(profile.supportRateFloor).toBe(0.7);
-    expect(profile.extremeSupportRateFloor).toBe(0.7);
-    expect(profile.balancedFlowFloor).toBe(0.7);
-    expect(profile.supportRateCeiling).toBe(0.9);
+    expect(profile.supportRateFloor).toBe(0.6);
+    expect(profile.extremeSupportRateFloor).toBe(0.6);
+    expect(profile.balancedFlowFloor).toBe(0.6);
+    expect(profile.supportRateCeiling).toBe(0.95);
     expect(profile.unsafeBoundaryMinPauseMs).toBe(1800);
-    expect(profile.minRecommendedRate).toBe(0.7);
+    expect(profile.minRecommendedRate).toBe(0.6);
     expect(profile.recommendationCalibrationEnabled).toBe(false);
-    expect(profile.adaptivePause.minPauseMs).toBe(1800);
-    expect(profile.adaptivePause.maxPauseMs).toBe(3600);
+    expect(profile.sessionWarmup.enabled).toBe(false);
+    expect(profile.adaptivePause.minPauseMs).toBe(1200);
+    expect(profile.adaptivePause.maxPauseMs).toBe(4000);
     expect(profile.germanShortBias.enabled).toBe(true);
   });
 });
