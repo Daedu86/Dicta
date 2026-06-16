@@ -13,11 +13,16 @@ import { useSessionPersistenceExitFlush } from './sessionPersistenceLifecycle';
 import { useSupabaseAccessTokenRef } from './sessionPersistenceSupabaseAccessToken';
 import { useSupabaseSessionPullRuntime } from './sessionPersistenceSupabasePull';
 import { useSupabaseSyncIdentityReset } from './sessionPersistenceSupabaseReset';
+import {
+  buildEffectiveSyncConfig,
+  createSupabaseInitialPullState,
+  createSupabaseSyncStatus,
+  isLocalStorageReadyForEffectiveProfile,
+  isSupabaseInitialSyncComplete,
+} from './sessionPersistenceSyncReadiness';
 import { useSessionPersistenceSyncActions } from './sessionPersistenceSyncActions';
 import type {
   PersistableSession,
-  SupabaseInitialPullState,
-  SupabaseSyncStatus,
   UseSessionPersistenceSyncOptions,
   UseSessionPersistenceSyncResult,
 } from './sessionPersistenceSyncTypes';
@@ -49,32 +54,27 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
   const [activeLocalSyncProfileId, setActiveLocalSyncProfileId] = useState(() =>
     readActiveSyncStorageProfileId(window.localStorage),
   );
-  const localStorageReadyForEffectiveProfile =
-    !syncConfig.authRequired || !effectiveProfileId || activeLocalSyncProfileId === effectiveProfileId;
+  const localStorageReadyForEffectiveProfile = isLocalStorageReadyForEffectiveProfile(
+    syncConfig,
+    effectiveProfileId,
+    activeLocalSyncProfileId,
+  );
   const effectiveSyncConfig = useMemo(
-    () => ({
-      ...syncConfig,
-      enabled: Boolean(syncConfig.url && syncConfig.anonKey && effectiveProfileId && localStorageReadyForEffectiveProfile),
-      profileId: effectiveProfileId,
-    }),
+    () => buildEffectiveSyncConfig(syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile),
     [syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile],
   );
-  const [supabaseSyncStatus, setSupabaseSyncStatus] = useState<SupabaseSyncStatus>({
-    enabled: effectiveSyncConfig.enabled,
-    state: effectiveSyncConfig.enabled ? 'idle' : 'disabled',
-    message: effectiveSyncConfig.enabled ? 'Supabase sync ready.' : 'Sign in with Supabase Auth to enable cross-device sync.',
-    lastSyncedAt: null,
-    imported: 0,
-    pushed: 0,
-  });
+  const [supabaseSyncStatus, setSupabaseSyncStatus] = useState(() =>
+    createSupabaseSyncStatus(effectiveSyncConfig.enabled),
+  );
   const supabaseSyncIdentity = effectiveSyncConfig.enabled ? effectiveSyncConfig.profileId : '';
-  const [supabaseInitialPullState, setSupabaseInitialPullState] = useState<SupabaseInitialPullState>(() => ({
-    key: supabaseSyncIdentity,
-    complete: !effectiveSyncConfig.enabled,
-  }));
-  const supabaseInitialSyncComplete =
-    !effectiveSyncConfig.enabled ||
-    (supabaseInitialPullState.key === supabaseSyncIdentity && supabaseInitialPullState.complete);
+  const [supabaseInitialPullState, setSupabaseInitialPullState] = useState(() =>
+    createSupabaseInitialPullState(supabaseSyncIdentity, effectiveSyncConfig.enabled),
+  );
+  const supabaseInitialSyncComplete = isSupabaseInitialSyncComplete(
+    effectiveSyncConfig.enabled,
+    supabaseInitialPullState,
+    supabaseSyncIdentity,
+  );
   const supabaseInitialSyncPending = effectiveSyncConfig.enabled && !supabaseInitialSyncComplete;
 
   const supabaseInitialPullCompleteRef = useRef(!effectiveSyncConfig.enabled);
