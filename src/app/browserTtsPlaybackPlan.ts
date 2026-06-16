@@ -1,101 +1,32 @@
 import {
   clampBrowserTtsDeDecisionToRecommendation,
 } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import type {
-  AdaptivePacingInput,
-  HistoricalPerformanceProfile,
-  InputLanguageBenchmarkMetrics,
-  LiveTelemetryFrame,
-  PacingDecision,
-  PhraseSize,
-} from '../core/adaptive/types';
-import type { AttemptEvaluation } from '../core/evaluation';
 import { buildAdaptiveBrowserTtsInput } from '../inputs/browserTts/browserTtsTelemetryAdapter';
-import type { BrowserTtsAdaptiveProfile } from '../inputs/browserTts/browserTtsAdaptiveProfiles';
-import type { BrowserTtsDeRecoveryState } from '../inputs/browserTts/browserTtsRecoveryPolicy';
-import type {
-  PlanBrowserTtsChunkInput,
-  PlannedBrowserTtsChunk,
-  SupportedLanguage,
-} from '../inputs/browserTts/ttsDynamicChunkPlanner';
-import { planBrowserTtsAdaptiveChunk } from '../inputs/browserTts/ttsDynamicChunkPlanner';
-import type { TtsPacingMode } from '../types/dictation';
 import { buildBrowserTtsChunkAccuracySnapshot } from './browserTtsChunkAccuracy';
 import {
   computeBrowserTtsChunkCorrectionPressure,
   computeBrowserTtsChunkListeningPrecision,
 } from './browserTtsChunkListeningMetrics';
+import {
+  selectBrowserTtsCandidateChunk,
+  selectBrowserTtsDecisionChunk,
+  shouldApplyGermanShortBias,
+  shouldUseBrowserTtsRecoverySafeChunks,
+} from './browserTtsPlaybackPlanChunkSelection';
+import type {
+  BrowserTtsPlaybackPlan,
+  BrowserTtsPlaybackPlanInput,
+} from './browserTtsPlaybackPlanTypes';
 import { buildBrowserTtsRuntimeDecisionPipeline } from './browserTtsPlaybackDecisionPipeline';
 import { buildBrowserTtsTelemetry } from './browserTtsPlaybackTelemetry';
-import type { TtsLiveSignal } from './ttsPlaybackProfile';
 import { mapAdaptivePacingMode } from './ttsPacingHelpers';
 
-export type BrowserTtsBoundaryStrictness = 'sentence' | 'clause' | 'phrase';
-
-export type BrowserTtsChunkPlanner = (input: PlanBrowserTtsChunkInput) => PlannedBrowserTtsChunk | null;
-
-export type BrowserTtsPlaybackPlanInput = {
-  macroWords: string[];
-  macroWordOffset: number;
-  macroStartWordIndex: number;
-  language: SupportedLanguage;
-  lastPhraseSize: PhraseSize;
-  lastBoundaryStrictness: BrowserTtsBoundaryStrictness;
-  liveSignal: TtsLiveSignal;
-  livePracticeEvaluation: AttemptEvaluation;
-  browserTtsProfile: BrowserTtsAdaptiveProfile;
-  browserTtsBenchmark: InputLanguageBenchmarkMetrics | null | undefined;
-  browserTtsRecovery: BrowserTtsDeRecoveryState;
-  ttsSpeechRate: number;
-  ttsPlaybackPauseMs: number;
-  adaptiveController: {
-    decide(input: AdaptivePacingInput): PacingDecision;
-  };
-  historyProfile: HistoricalPerformanceProfile;
-  sourceWordCount: number;
-  estimatedSpokenWordIndex: number;
-  chunkIndex: number;
-  unsafeChunkCount: number;
-  accuracyWindow: number[];
-  lastAccuracySnapshot: {
-    typedWords: number;
-    matchedWords: number;
-  };
-  navigatorInfo: {
-    userAgent?: string;
-    platform?: string;
-    maxTouchPoints?: number;
-  };
-  chunkPlanner?: BrowserTtsChunkPlanner;
-};
-
-export type BrowserTtsPlaybackPlan = {
-  candidateChunk: PlannedBrowserTtsChunk;
-  chunk: PlannedBrowserTtsChunk;
-  rawDecision: PacingDecision;
-  decision: PacingDecision;
-  runtimeDecision: PacingDecision;
-  pacingMode: TtsPacingMode;
-  pauseAtBoundary: boolean;
-  semanticCompleteness: number;
-  rate: number;
-  effectivePauseNow: boolean;
-  effectiveReplay: false;
-  browserTelemetry: LiveTelemetryFrame;
-  chunkTelemetry: LiveTelemetryFrame;
-  rollingAccuracyLast3: number;
-  rollingAccuracyLast5: number;
-  nextAccuracyWindow: number[];
-  typedWordsNow: number;
-  matchedWordsNow: number;
-  nextLastPhraseSize: PhraseSize;
-  nextLastBoundaryStrictness: BrowserTtsBoundaryStrictness;
-  unsafeBoundaryApplied: boolean;
-  unsafeChunkCount: number;
-  mobileFallbackApplied: boolean;
-  germanShortBias: boolean;
-  recoverySafeBoundary: boolean;
-};
+export type {
+  BrowserTtsBoundaryStrictness,
+  BrowserTtsChunkPlanner,
+  BrowserTtsPlaybackPlan,
+  BrowserTtsPlaybackPlanInput,
+} from './browserTtsPlaybackPlanTypes';
 
 export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput): BrowserTtsPlaybackPlan | null {
   const {
@@ -121,11 +52,10 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     accuracyWindow,
     lastAccuracySnapshot,
     navigatorInfo,
-    chunkPlanner = planBrowserTtsAdaptiveChunk,
+    chunkPlanner,
   } = input;
 
-  const useBrowserTtsDeRecoverySafeChunks =
-    language === 'de' && (browserTtsRecovery.level === 'strong' || browserTtsRecovery.level === 'severe');
+  const useBrowserTtsDeRecoverySafeChunks = shouldUseBrowserTtsRecoverySafeChunks(language, browserTtsRecovery);
   const {
     sessionAccuracy,
     chunkAccuracy,
@@ -140,34 +70,20 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     accuracyWindow,
     lastAccuracySnapshot,
   });
-  const germanShortBias =
-    browserTtsProfile.germanShortBias.enabled &&
-    (liveSignal.lagSec > browserTtsProfile.germanShortBias.lagSecTrigger ||
-      liveSignal.accuracy < browserTtsProfile.germanShortBias.accuracyPercentTrigger);
+  const germanShortBias = shouldApplyGermanShortBias(liveSignal, browserTtsProfile);
 
-  const candidateChunk =
-    chunkPlanner({
-      macroWords,
-      macroWordOffset,
-      globalStartWordIndex: macroStartWordIndex,
-      language,
-      nextPhraseSize: lastPhraseSize,
-      boundaryStrictness: lastBoundaryStrictness,
-      germanShortBias,
-      maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
-      recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
-    }) ??
-    chunkPlanner({
-      macroWords,
-      macroWordOffset,
-      globalStartWordIndex: macroStartWordIndex,
-      language,
-      nextPhraseSize: 'short',
-      boundaryStrictness: 'phrase',
-      germanShortBias,
-      maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
-      recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
-    });
+  const candidateChunk = selectBrowserTtsCandidateChunk({
+    macroWords,
+    macroWordOffset,
+    macroStartWordIndex,
+    language,
+    phraseSize: lastPhraseSize,
+    boundaryStrictness: lastBoundaryStrictness,
+    germanShortBias,
+    recovery: browserTtsRecovery,
+    recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
+    chunkPlanner,
+  });
 
   if (!candidateChunk) {
     return null;
@@ -200,18 +116,19 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
   const rawDecision = adaptiveController.decide(buildAdaptiveBrowserTtsInput(browserTelemetry, historyProfile));
   const decision = clampBrowserTtsDeDecisionToRecommendation(rawDecision, browserTtsBenchmark);
   const pacingMode = mapAdaptivePacingMode(decision.mode);
-  const chunk =
-    chunkPlanner({
-      macroWords,
-      macroWordOffset,
-      globalStartWordIndex: macroStartWordIndex,
-      language,
-      nextPhraseSize: decision.nextPhraseSize,
-      boundaryStrictness: decision.boundaryStrictness,
-      germanShortBias,
-      maxWordsOverride: browserTtsRecovery.shortChunkWordCap,
-      recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
-    }) ?? candidateChunk;
+  const chunk = selectBrowserTtsDecisionChunk({
+    macroWords,
+    macroWordOffset,
+    macroStartWordIndex,
+    language,
+    phraseSize: decision.nextPhraseSize,
+    boundaryStrictness: decision.boundaryStrictness,
+    germanShortBias,
+    recovery: browserTtsRecovery,
+    recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
+    chunkPlanner,
+    fallbackChunk: candidateChunk,
+  });
 
   const pauseAtBoundary = chunk.canPauseAfter ?? true;
   const semanticCompleteness = chunk.semanticCompleteness ?? 1;
