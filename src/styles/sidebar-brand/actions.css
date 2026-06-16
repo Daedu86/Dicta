@@ -1,0 +1,62 @@
+.brand-leaderboard-button {
+  flex-shrink: 0;
+}
+
+.brand-new-session-button {
+  flex-shrink: 0;
+}
+
+.brand-header-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+}
+
+.brand-sync-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.25rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid #2d4f74;
+  background: rgba(7, 20, 35, 0.7);
+  color: #a7c3e6;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.brand-sync-status-error {
+  border-color: #8a2b2b;
+  color: #f7b5b5;
+}
+
+.brand-sync-status-synced {
+  border-color: #275a3f;
+  color: #9ee3bc;
+}
+
+.brand-sync-status-pulling,
+.brand-sync-status-pushing {
+  border-color: #365d87;
+  color: #b9d9ff;
+}
+
+.brand-session-create-card {
+  flex: 1 1 100%;
+  width: 100%;
+  margin-top: 0.85rem;
+}
+
+.sidebar-collapse-button {
+  min-width: 42px;
+  align-self: flex-end;
+}
+
+.theme-toggle-button {
+  min-width: 128px;
+  text-align: center;
+}
