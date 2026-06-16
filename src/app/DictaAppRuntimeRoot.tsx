@@ -1,10 +1,8 @@
-import { useRef } from 'react';
 import { useDictaLocalStorageImportRuntime } from './useDictaLocalStorageImportRuntime';
-import { useSessionPersistenceRuntime } from './useSessionPersistenceRuntime';
-import { useWorkspaceSessionRuntime } from './useWorkspaceSessionRuntime';
-import { useWorkspaceNavigationEffects } from './useWorkspaceNavigationEffects';
 import { useAdaptiveWorkspaceState } from './useAdaptiveWorkspaceState';
-import { useAdaptiveWorkspaceRuntime } from './useAdaptiveWorkspaceRuntime';
+import { useDictaRootAdaptiveRuntime } from './useDictaRootAdaptiveRuntime';
+import { useDictaRootPersistenceRuntime } from './useDictaRootPersistenceRuntime';
+import { useDictaRootWorkspaceSessionRuntime } from './useDictaRootWorkspaceSessionRuntime';
 import { useSessionCreationRuntime } from './useSessionCreationRuntime';
 import { useTtsSessionRuntime } from './useTtsSessionRuntime';
 import { useDictaRootFocusedTrainingRuntime } from './useDictaRootFocusedTrainingRuntime';
@@ -146,6 +144,7 @@ export function DictaAppRuntime() {
     adaptiveSectionExpanded,
     setAdaptiveSectionExpanded,
   } = useDictaUiPreferences();
+  const adaptiveWorkspaceState = useAdaptiveWorkspaceState();
   const {
     adaptiveSemanticDebug,
     setAdaptiveSemanticDebug,
@@ -156,14 +155,12 @@ export function DictaAppRuntime() {
     setAdaptiveSessionFeedbackByInputLanguage,
     adaptiveSessionFeedbackRef,
     adaptiveBenchmarksFocusAnchor,
-    setAdaptiveBenchmarksFocusAnchor,
     benchmarkExportMessage,
     setBenchmarkExportMessage,
     sessionFeedbackMessage,
     setSessionFeedbackMessage,
-  } = useAdaptiveWorkspaceState();
+  } = adaptiveWorkspaceState;
 
-  const resetOpenRouterJobsRuntimeRef = useRef<() => void>(() => undefined);
   const {
     localStorageReadyForEffectiveProfile,
     supabaseInitialSyncPending,
@@ -174,7 +171,8 @@ export function DictaAppRuntime() {
     deleteSessionAndSync,
     sessionQuotaStatus,
     ensureCanCreateDictationSession,
-  } = useSessionPersistenceRuntime({
+    resetOpenRouterJobsRuntimeRef,
+  } = useDictaRootPersistenceRuntime({
     sessions,
     setSessions,
     activeSessionId,
@@ -193,7 +191,6 @@ export function DictaAppRuntime() {
     setOpenRouterError,
     setExportMessage,
     clearDashboardSession,
-    resetOpenRouterJobsRuntime: () => resetOpenRouterJobsRuntimeRef.current(),
   });
 
   const {
@@ -267,41 +264,19 @@ export function DictaAppRuntime() {
     resetAdaptiveSessionFeedbackTracking,
     openAdaptiveExportsForActiveInput,
     openAdaptiveWorkspaceFromHeader,
-  } = useAdaptiveWorkspaceRuntime({
+  } = useDictaRootAdaptiveRuntime({
     activeSession,
     activeSessionId,
     sessions,
-    adaptiveBenchmarksByInputLanguage,
-    setAdaptiveBenchmarksByInputLanguage,
-    adaptiveBenchmarksRef,
-    adaptiveSessionFeedbackByInputLanguage,
-    setAdaptiveSessionFeedbackByInputLanguage,
-    adaptiveSessionFeedbackRef,
+    adaptiveWorkspaceState,
     persistAndPushAdaptiveSessionFeedbackNow,
     localStorageReadyForEffectiveProfile,
     perfDiagnosticsEnabled,
     dictaLanguageView,
     setDictaLanguageView,
     showAdaptiveWorkspace,
-    setAdaptiveBenchmarksFocusAnchor,
     setAdaptiveSectionExpanded,
-    setBenchmarkExportMessage,
-    setSessionFeedbackMessage,
     isMobileViewport,
-  });
-  useWorkspaceNavigationEffects({
-    sessions,
-    activeSession,
-    activeSessionId,
-    activeInputWorkspaceMode,
-    workspaceMode,
-    openRouterAccessState,
-    openRouterAccessMessage,
-    suppressSidebarAutoSelectRef,
-    setActiveSessionId,
-    setOpenRouterError,
-    showLeaderboardWorkspace,
-    showWorkspaceMode,
   });
 
   const {
@@ -320,9 +295,19 @@ export function DictaAppRuntime() {
     deleteSession,
     openDashboardForSession,
     openWorkspaceForSession,
-  } = useWorkspaceSessionRuntime({
+  } = useDictaRootWorkspaceSessionRuntime({
     sessions,
     activeSession,
+    activeSessionId,
+    activeInputWorkspaceMode,
+    workspaceMode,
+    openRouterAccessState,
+    openRouterAccessMessage,
+    suppressSidebarAutoSelectRef,
+    setActiveSessionId,
+    setOpenRouterError,
+    showLeaderboardWorkspace,
+    showWorkspaceMode,
     adaptiveBenchmarksByInputLanguage,
     adaptiveSessionFeedbackByInputLanguage,
     supabaseLastSyncedAt: supabaseSyncStatus.lastSyncedAt,
@@ -333,11 +318,8 @@ export function DictaAppRuntime() {
     metricsLanguageView,
     metricsRangeView,
     dashboardSessionId,
-    workspaceMode,
     clearDashboardSession,
-    showLeaderboardWorkspace,
     deleteSessionAndSync,
-    setActiveSessionId,
     showDashboardWorkspace,
     showSessionInputWorkspace,
   });
