@@ -2,9 +2,9 @@
 
 This document is the current inventory of Markdown documentation in the Dicta repo.
 
-Status as of: 2026-06-15  
+Status as of: 2026-06-16  
 Current branch: `product/input-2`  
-Current baseline observed before this inventory refresh: `ee15ef7`
+Current baseline observed before this inventory refresh: `10be9fe`
 
 ## Status legend
 
@@ -23,18 +23,19 @@ Current baseline observed before this inventory refresh: `ee15ef7`
 | `AGENTS.md` | ACTIVE | Primary agent instructions and repo safety rules. | Current runtime shell boundary is listed there. |
 | `README.md` | ACTIVE | Product overview, setup, and high-level documentation entry. | Keep broad and user-facing. |
 | `ARCHITECTURE.md` | ACTIVE | Root architecture pointer. | Should remain short; it currently redirects to `docs/architecture.md`. |
-| `docs/architecture.md` | ACTIVE | Current architecture map and system boundaries. | Source of truth for runtime topology. |
+| `docs/architecture.md` | ACTIVE | Current architecture map and system boundaries. | Refreshed on 2026-06-16 for `DictaAppRuntimeRoot`, boot runtime, root OpenRouter, and root route-composition boundaries. |
 | `docs/listening-first-architecture.md` | ACTIVE | Product/learning architecture around listening-first training. | Keep as product architecture context. |
 | `docs/README.md` | ACTIVE | Canonical documentation index. | Refreshed on 2026-06-15 after repo KB ownership update. |
 | `docs/agent-onboarding.md` | ACTIVE | Official technical onboarding flow for agents. | Canonical agent workflow. |
-| `docs/repo-map.md` | ACTIVE | Repository responsibilities and boundaries. | Refreshed on 2026-06-15 to mark `src/App.tsx` shell-only and `DictaAppRuntime` as runtime composition root. |
-| `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Refreshed on 2026-06-15 to fix App/runtime ownership and remove malformed trailing rows. |
-| `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Current high-risk runtime anchor map. |
+| `docs/repo-map.md` | ACTIVE | Repository responsibilities and boundaries. | Refreshed on 2026-06-16 to mark `DictaAppRuntime.tsx` as an export shim and `DictaAppRuntimeRoot.tsx` as the runtime composition root. |
+| `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Refreshed on 2026-06-16 with root runtime, boot, OpenRouter adapter, and route-composition boundary tests. |
+| `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Refreshed on 2026-06-16 for runtime root ownership and root OpenRouter validation. |
 | `docs/modularization-roi.md` | ACTIVE | Repo-wide modularization ROI scoring framework. | Refreshed on 2026-06-15 with current hotspot guidance and `useSessionPersistenceSync` as the best modularization candidate when explicitly refactoring. |
+| `docs/session-persistence-sync-kb.md` | ACTIVE REFERENCE | Concise owner map for session persistence sync modules. | Persistence sync is no longer a pending monolith extraction; future work should be narrow and characterized. |
 | `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
 | `docs/android-pwa-performance-debugging.md` | REFERENCE | Android/PWA performance debugging notes. | Keep as runtime/performance context. |
-| `docs/app-shell-modularization-map.md` | ACTIVE REFERENCE | App shell/runtime ownership map and current candidate queue. | Refreshed on 2026-06-15 with latest line-count hotspots and candidate decisions. Verify source before using. |
+| `docs/app-shell-modularization-map.md` | ACTIVE REFERENCE | App shell/runtime ownership map and current candidate queue. | Refreshed on 2026-06-16 for the runtime root boundary; verify source before using. |
 | `docs/archive/app-shell-modularization-checkpoint.md` | HISTORICAL, ARCHIVED | Compacted historical checkpoint summary for App shell modularization. | Replaced the long checkpoint log with a concise archive summary on 2026-06-15. |
 | `docs/next-modularization-plan.md` | REFERENCE, HISTORICAL | Former near-term modularization planning context. | Do not use as the active queue; use `docs/app-shell-modularization-map.md` and `docs/modularization-roi.md`. |
 | `docs/adaptive-advanced-diagnostics-modularization.md` | HISTORICAL | Plan/checkpoint for adaptive diagnostics modularization. | Review whether completed before archiving. |
@@ -86,6 +87,14 @@ This pass aligned the repo KB with the current shell/runtime ownership:
 - `docs/modularization-roi.md` now states that `useSessionPersistenceSync` is the best current modularization candidate when the task is explicitly refactor work.
 - `docs/README.md` now classifies the compacted archive correctly.
 
+### 2026-06-16 runtime root boundary refresh
+
+This pass aligned the active KB with the final runtime-root boundary commits:
+
+- `docs/architecture.md`, `docs/repo-map.md`, and `docs/high-risk-runtime-boundaries.md` now treat `src/app/DictaAppRuntime.tsx` as an export shim and `src/app/DictaAppRuntimeRoot.tsx` as the browser composition root.
+- `docs/module-test-map.md` now includes `useDictaAppBootRuntime`, `useDictaRootOpenRouterRuntime`, `useDictaRootRouteCompositionRuntime`, and their focused boundary tests.
+- `docs/app-shell-modularization-map.md` now records the root boot/adapter boundaries as completed and keeps session persistence as the only strong current refactor candidate.
+
 ### Stale baseline references
 
 These commit baselines appear in historical modularization docs and should not be treated as the current baseline:
@@ -97,10 +106,11 @@ These commit baselines appear in historical modularization docs and should not b
 - `abe497a`
 - `b1fc1d8`
 - `10ad99d`
+- `ee15ef7`
 
 Current observed baseline for this inventory pass before updating this file:
 
-- `ee15ef7`
+- `10be9fe`
 
 ## Proposed next documentation stages
 
@@ -119,6 +129,7 @@ Current observed baseline for this inventory pass before updating this file:
 | 8L | Refresh modularization ROI docs for 2026 evidence, freshness, and AI-assisted refactor risk. | Done. |
 | 8M | Compact the App shell modularization archive. | Done. |
 | 8N | Refresh repo KB ownership docs after the current line-count review. | Done. |
+| 8O | Refresh active KB after runtime root boundary commits. | Done. |
 
 ## Agent rule
 
