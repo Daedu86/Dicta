@@ -12,6 +12,7 @@ import { buildBrowserTtsPlaybackStartPlan } from './browserTtsPlaybackStartPlan'
 import { configureBrowserTtsUtterance } from './browserTtsUtteranceConfiguration';
 import { buildBrowserTtsUtterancePerfMetadata } from './browserTtsUtterancePerfMetadata';
 import { handleBrowserTtsPlaybackLoopChunkEnd } from './browserTtsPlaybackLoopCompletionHandler';
+import { handleBrowserTtsPlaybackLoopChunkStart } from './browserTtsPlaybackLoopStartHandler';
 import { handleBrowserTtsPlaybackLoopError } from './browserTtsPlaybackLoopErrorHandler';
 import { resolveBrowserTtsPlaybackStartError } from './browserTtsPlaybackLoopGuards';
 import { collectBrowserTtsNavigatorInfo } from './browserTtsPlaybackLoopNavigator';
@@ -308,7 +309,10 @@ export function useBrowserTtsPlaybackLoop({
       );
 
       utterance.onstart = () => {
-        perfDiagnostics.recordTtsStart(perfUtteranceId);
+        handleBrowserTtsPlaybackLoopChunkStart({
+          perfDiagnostics,
+          perfUtteranceId,
+        });
       };
 
       utterance.onend = () => {
