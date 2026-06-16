@@ -1,7 +1,7 @@
 import { computeSessionScore } from '../sessionScore';
 
 import type { CompletedFeedbackEvidence } from './feedbackEvidence';
-import { asRecord, getStringField, isRecord, normalizeNumberArray, numberField } from './records';
+import { getStringField, isRecord, normalizeNumberArray, numberField } from './records';
 import { isSubmittedFinishedSession } from './sessionConflictPolicy';
 import { isSessionTombstonePayload } from './sessionTombstones';
 import { timestampFrom } from './timestamps';
