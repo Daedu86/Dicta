@@ -6,6 +6,8 @@ import { configureBrowserTtsUtterance } from '../src/app/browserTtsUtteranceConf
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
+const playbackLoopUtteranceSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopUtterance.ts'), 'utf-8');
+const playbackLoopChunkCommitSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopChunkCommit.ts'), 'utf-8');
 const playbackLoopErrorHandlerSource = readFileSync(
   resolve(repoRoot, 'src/app/browserTtsPlaybackLoopErrorHandler.ts'),
   'utf-8',
@@ -19,16 +21,6 @@ function getPlayTtsFromWordSection(): string {
   if (end < 0) throw new Error('Could not find end of playTtsFromWord section.');
 
   return playbackLoopSource.slice(start, end);
-}
-
-function getUtteranceSetupSection(playbackLoop: string): string {
-  const start = playbackLoop.indexOf('const utterance = new SpeechSynthesisUtterance(chunk.text);');
-  if (start < 0) throw new Error('Could not find SpeechSynthesisUtterance setup.');
-
-  const end = playbackLoop.indexOf('      utterance.onstart = () => {', start);
-  if (end < 0) throw new Error('Could not find utterance handler setup boundary.');
-
-  return playbackLoop.slice(start, end);
 }
 
 function getErrorHandlerSection(playbackLoop: string): string {
@@ -111,9 +103,9 @@ describe('configureBrowserTtsUtterance', () => {
 
 describe('Browser TTS utterance configuration contract', () => {
   it('keeps SpeechSynthesisUtterance configuration as a bounded extraction seam', () => {
-    const setup = getUtteranceSetupSection(getPlayTtsFromWordSection());
+    expect(getPlayTtsFromWordSection()).toContain('createBrowserTtsPlaybackUtterance({');
 
-    expectInOrder(setup, [
+    expectInOrder(playbackLoopUtteranceSource, [
       'const utterance = new SpeechSynthesisUtterance(chunk.text);',
       'const perfUtteranceId = perfDiagnostics.beginTtsUtterance(',
       'buildBrowserTtsUtterancePerfMetadata({',
@@ -133,15 +125,18 @@ describe('Browser TTS utterance configuration contract', () => {
       'rate,',
       'language: ttsLanguage,',
       'voice: browserTtsVoice,',
-      'ttsUtteranceRef.current = utterance;',
+      'return { utterance, perfUtteranceId };',
     ]);
   });
 
   it('publishes current chunk state after the utterance is fully configured', () => {
-    const setup = getUtteranceSetupSection(getPlayTtsFromWordSection());
-
-    expectInOrder(setup, [
+    expectInOrder(getPlayTtsFromWordSection(), [
+      'createBrowserTtsPlaybackUtterance({',
       'ttsUtteranceRef.current = utterance;',
+      'commitBrowserTtsPlaybackLoopChunk({',
+    ]);
+
+    expectInOrder(playbackLoopChunkCommitSource, [
       'setTtsCurrentChunk(chunk.text);',
       'setTtsPacingMode(pacingMode);',
       'setTtsSpeechRate(rate);',
