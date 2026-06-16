@@ -1,14 +1,12 @@
 import type {
   AdaptivePacingInput,
   PacingDecision,
-  PacingMode,
 } from './types';
 import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browserTtsAdaptiveProfiles';
 import {
   MAX_PLAYBACK_RATE,
   MIN_PLAYBACK_RATE,
   clamp,
-  computeProgressGap,
   idealPauseByMode,
   smoothRate,
 } from './adaptiveDictationControllerMath';
@@ -22,6 +20,7 @@ import {
   resolveAdaptiveSessionChunkIndex,
   shouldForceAdaptiveSessionWarmup,
 } from './adaptiveDictationControllerWarmup';
+import { transitionAdaptiveControllerFrames } from './adaptiveDictationControllerFrames';
 import { resolveListeningPrecisionRateCeiling } from './adaptiveDictationControllerPrecision';
 import { resolveAdaptiveNextPhraseSize } from './adaptiveDictationControllerPhrase';
 import { applyAdaptivePausePolicy, buildAdaptivePacingReasonArtifacts } from './adaptiveDictationControllerReasons';
@@ -87,82 +86,37 @@ export class AdaptiveDictationController {
     const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
     const phraseOverload = longPhrase && (rollingAccuracyLast3 < 0.88 || live.lagSec > 1.5 || live.correctionRate > 0.08);
     const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
-    const progressGap = computeProgressGap(live);
-    const userIsStruggling =
-      live.lagSec > 2.0 ||
-      rollingAccuracyLast3 < 0.82 ||
-      live.correctionRate > 0.12 ||
-      (live.lagSec > 1.8 && progressGap > 0.18) ||
-      phraseOverload ||
-      longPhraseSensitive;
-    if (userIsStruggling) {
-      this.struggleFrames += 1;
-      this.recoveryFrames = 0;
-    } else {
-      this.recoveryFrames += 1;
-      this.struggleFrames = 0;
-    }
-    const catchUpPressure =
-      live.lagSec > 3.0 ||
-      (live.lagSec > 2.4 && progressGap > 0.1);
-    const recoveryPrecisionStable = rollingAccuracyLast3 >= 0.86 && live.correctionRate < 0.12;
-    const immediateRecoveryNeeded = catchUpPressure && recoveryPrecisionStable;
-    const sustainedRecoveryNeeded =
-      this.struggleFrames >= 2 &&
-      recoveryPrecisionStable &&
-      (live.lagSec > 2.6 || progressGap > 0.14) &&
-      (live.lagSec > 1.8 && progressGap > 0.08);
+    const frameTransition = transitionAdaptiveControllerFrames({
+      live,
+      rollingAccuracyLast3,
+      rollingAccuracyLast5,
+      chosenMode,
+      phraseOverload,
+      longPhraseSensitive,
+      frameState: {
+        struggleFrames: this.struggleFrames,
+        recoveryFrames: this.recoveryFrames,
+        supportFrames: this.supportFrames,
+        balancedFrames: this.balancedFrames,
+        catchUpFrames: this.catchUpFrames,
+        flowLockFrames: this.flowLockFrames,
+      },
+    });
 
-    let mode: PacingMode = immediateRecoveryNeeded || sustainedRecoveryNeeded ? 'recovery' : chosenMode;
-    let flowBlockedAfterRecovery = false;
-    let stableRecoveryConfirmed = false;
+    this.struggleFrames = frameTransition.frameState.struggleFrames;
+    this.recoveryFrames = frameTransition.frameState.recoveryFrames;
+    this.supportFrames = frameTransition.frameState.supportFrames;
+    this.balancedFrames = frameTransition.frameState.balancedFrames;
+    this.catchUpFrames = frameTransition.frameState.catchUpFrames;
+    this.flowLockFrames = frameTransition.frameState.flowLockFrames;
 
-    if (this.flowLockFrames > 0 && mode === 'flow') {
-      mode = 'balanced';
-      flowBlockedAfterRecovery = true;
-    }
-
-    if (mode === 'recovery') {
-      this.catchUpFrames += 1;
-      this.flowLockFrames = Math.max(this.flowLockFrames, 6);
-      this.supportFrames = 0;
-      this.balancedFrames = 0;
-    } else if (mode === 'support') {
-      this.supportFrames += 1;
-      this.balancedFrames = 0;
-      if (this.flowLockFrames > 0) this.flowLockFrames -= 1;
-    } else {
-      this.balancedFrames += 1;
-      this.supportFrames = 0;
-      if (this.flowLockFrames > 0) this.flowLockFrames -= 1;
-    }
-
-    if (
-      mode === 'recovery' &&
-      this.recoveryFrames >= 6 &&
-      rollingAccuracyLast5 > 0.9 &&
-      Math.abs(live.lagSec) < 1.0 &&
-      live.correctionRate < 0.08 &&
-      progressGap < 0.06
-    ) {
-      mode = 'support';
-      stableRecoveryConfirmed = true;
-    }
-
-    if (
-      mode === 'support' &&
-      this.supportFrames >= 2 &&
-      this.recoveryFrames >= 5 &&
-      rollingAccuracyLast5 > 0.93 &&
-      Math.abs(live.lagSec) < 1.0 &&
-      progressGap < 0.08
-    ) {
-      mode = 'balanced';
-    }
-
-    if (mode !== 'recovery' && this.recoveryFrames >= 6 && this.catchUpFrames > 0) {
-      this.catchUpFrames = 0;
-    }
+    const {
+      mode,
+      progressGap,
+      userIsStruggling,
+      flowBlockedAfterRecovery,
+      stableRecoveryConfirmed,
+    } = frameTransition;
 
     const isSupportLikeMode = mode === 'support' || mode === 'recovery';
     const boundaryStrictness: 'sentence' | 'clause' | 'phrase' = isSupportLikeMode ? 'clause' : mode === 'flow' ? 'phrase' : 'sentence';
