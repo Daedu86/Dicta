@@ -12,10 +12,8 @@ import type {
 } from '../components/openrouter/types';
 import { buildOpenRouterDirectGenerationJobPlan } from './openRouterDirectGenerationJobPlan';
 import { buildOpenRouterDirectGenerationStartPlan } from './openRouterDirectGenerationStartPlan';
-import {
-  OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
-  type OpenRouterDirectGenerationPreset,
-} from './openRouterDirectGenerationPresets';
+import type { OpenRouterDirectGenerationPreset } from './openRouterDirectGenerationPresets';
+import { useOpenRouterDirectGenerationPresetActions } from './useOpenRouterDirectGenerationPresetActions';
 import { requestOpenRouterGenerationJob } from './openRouterGenerationJobRequest';
 import { resolveOpenRouterDirectGenerationFailure } from './openRouterGenerationFailurePolicy';
 import type { StoredSession } from './sessionTypes';
@@ -222,33 +220,13 @@ export function useOpenRouterDirectGenerationRuntime({
     trackOpenRouterJob,
   ]);
 
-  const generateEasyNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
-    await generateDirectSessionFromOpenRouter({
-      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.easy,
-      isBusy: directOpenRouterBusy,
-      setBusy: setDirectOpenRouterBusy,
-    });
-  }, [directOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectOpenRouterBusy]);
-
-  const generateIntermediateNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
-    await generateDirectSessionFromOpenRouter({
-      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.medium,
-      isBusy: directIntermediateOpenRouterBusy,
-      setBusy: setDirectIntermediateOpenRouterBusy,
-    });
-  }, [directIntermediateOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectIntermediateOpenRouterBusy]);
-
-  const generateAdvancedNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
-    await generateDirectSessionFromOpenRouter({
-      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.hard,
-      isBusy: directAdvancedOpenRouterBusy,
-      setBusy: setDirectAdvancedOpenRouterBusy,
-    });
-  }, [directAdvancedOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectAdvancedOpenRouterBusy]);
-
-  return {
-    generateEasyNextSessionFromOpenRouter,
-    generateIntermediateNextSessionFromOpenRouter,
-    generateAdvancedNextSessionFromOpenRouter,
-  };
+  return useOpenRouterDirectGenerationPresetActions({
+    generateDirectSessionFromOpenRouter,
+    directOpenRouterBusy,
+    setDirectOpenRouterBusy,
+    directIntermediateOpenRouterBusy,
+    setDirectIntermediateOpenRouterBusy,
+    directAdvancedOpenRouterBusy,
+    setDirectAdvancedOpenRouterBusy,
+  });
 }
