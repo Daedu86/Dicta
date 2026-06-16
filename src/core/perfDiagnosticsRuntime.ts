@@ -10,16 +10,28 @@ import type {
 import {
   DEFAULT_SLOW_SPAN_THRESHOLD_MS,
   MAX_RECENT_ITEMS,
-  getHeapSnapshot,
   getStandaloneMode,
   getUserAgent,
   isPerfDiagnosticsEnabled,
   now,
   roundMs,
-  summarizeMetric,
-  summarizeVoiceCounts,
   trimArray,
 } from './perfDiagnosticsUtils';
+import {
+  buildPerfInputEvent,
+  recordPerfInputCommit,
+  recordPerfInputPaint,
+} from './perfDiagnosticsInputEvents';
+import { createPerfLongTaskObserver } from './perfDiagnosticsLongTaskObserver';
+import { buildPerfDiagnosticsSnapshot } from './perfDiagnosticsSnapshot';
+import {
+  buildPerfTtsUtterance,
+  recordPerfTtsEnd,
+  recordPerfTtsError,
+  recordPerfTtsSpeak,
+  recordPerfTtsStart,
+  type PerfTtsUtteranceArgs,
+} from './perfDiagnosticsTtsEvents';
 
 export class PerfDiagnostics {
   private enabled = false;
@@ -89,17 +101,7 @@ export class PerfDiagnostics {
     if (!this.enabled) return 0;
     const id = this.nextInputId;
     this.nextInputId += 1;
-    const event: PerfInputEvent = {
-      id,
-      component: args.component,
-      keydownAt: args.keydownAt,
-      inputAt: args.inputAt,
-      localSetAt: args.localSetAt,
-      valueLength: args.valueLength,
-      renderCount: args.renderCount,
-      keydownToInputMs: args.keydownAt === undefined ? undefined : args.inputAt - args.keydownAt,
-      inputToLocalSetMs: args.localSetAt - args.inputAt,
-    };
+    const event = buildPerfInputEvent(id, args);
     this.inputEventsById.set(id, event);
     this.inputEvents.push(event);
     trimArray(this.inputEvents, MAX_RECENT_ITEMS);
@@ -110,16 +112,14 @@ export class PerfDiagnostics {
     if (!this.enabled || id <= 0) return;
     const event = this.inputEventsById.get(id);
     if (!event) return;
-    event.paintAt = paintAt;
-    event.inputToPaintMs = paintAt - event.inputAt;
+    recordPerfInputPaint(event, paintAt);
   }
 
   recordInputCommit(id: number, commitAt: number): void {
     if (!this.enabled || id <= 0) return;
     const event = this.inputEventsById.get(id);
     if (!event) return;
-    event.commitAt = commitAt;
-    event.inputToCommitMs = commitAt - event.inputAt;
+    recordPerfInputCommit(event, commitAt);
   }
 
   beginTtsPlay(source: string): number {
@@ -130,40 +130,12 @@ export class PerfDiagnostics {
     return id;
   }
 
-  beginTtsUtterance(args: {
-    playId: number;
-    chunkIndex: number;
-    phraseLengthWords: number;
-    phraseLengthChars: number;
-    language: string;
-    pacingMode: string;
-    voiceName?: string;
-    voiceURI?: string | null;
-    voiceLang?: string;
-    voiceResolved?: boolean;
-    availableVoiceCount?: number;
-    matchingVoiceCount?: number;
-  }): number {
+  beginTtsUtterance(args: PerfTtsUtteranceArgs): number {
     if (!this.enabled) return 0;
     const play = this.ttsPlays.get(args.playId);
     const id = this.nextTtsUtteranceId;
     this.nextTtsUtteranceId += 1;
-    const utterance: PerfTtsUtterance = {
-      id,
-      playId: args.playId,
-      chunkIndex: args.chunkIndex,
-      phraseLengthWords: args.phraseLengthWords,
-      phraseLengthChars: args.phraseLengthChars,
-      language: args.language,
-      pacingMode: args.pacingMode,
-      voiceName: args.voiceName,
-      voiceURI: args.voiceURI,
-      voiceLang: args.voiceLang,
-      voiceResolved: args.voiceResolved,
-      availableVoiceCount: args.availableVoiceCount,
-      matchingVoiceCount: args.matchingVoiceCount,
-      playClickedAt: play?.clickedAt ?? now(),
-    };
+    const utterance = buildPerfTtsUtterance(id, args, play?.clickedAt ?? now());
     this.ttsUtterancesById.set(id, utterance);
     this.ttsUtterances.push(utterance);
     trimArray(this.ttsUtterances, MAX_RECENT_ITEMS);
@@ -182,31 +154,25 @@ export class PerfDiagnostics {
   recordTtsSpeak(utteranceId: number): void {
     const utterance = this.ttsUtterancesById.get(utteranceId);
     if (!this.enabled || !utterance) return;
-    utterance.speakCalledAt = now();
-    utterance.playToSpeakMs = utterance.speakCalledAt - utterance.playClickedAt;
+    recordPerfTtsSpeak(utterance);
   }
 
   recordTtsStart(utteranceId: number): void {
     const utterance = this.ttsUtterancesById.get(utteranceId);
     if (!this.enabled || !utterance) return;
-    utterance.onstartAt = now();
-    utterance.playToStartMs = utterance.onstartAt - utterance.playClickedAt;
+    recordPerfTtsStart(utterance);
   }
 
   recordTtsEnd(utteranceId: number): void {
     const utterance = this.ttsUtterancesById.get(utteranceId);
     if (!this.enabled || !utterance) return;
-    utterance.onendAt = now();
-    if (utterance.onstartAt !== undefined) {
-      utterance.startToEndMs = utterance.onendAt - utterance.onstartAt;
-    }
+    recordPerfTtsEnd(utterance);
   }
 
   recordTtsError(utteranceId: number, error: string): void {
     const utterance = this.ttsUtterancesById.get(utteranceId);
     if (!this.enabled || !utterance) return;
-    utterance.errorAt = now();
-    utterance.error = error;
+    recordPerfTtsError(utterance, error);
     this.log('tts-error', utterance);
   }
 
@@ -252,36 +218,15 @@ export class PerfDiagnostics {
   }
 
   snapshot(): PerfDiagnosticsSnapshot {
-    const latestInput = this.inputEvents[this.inputEvents.length - 1];
-    const latestLongTask = this.longTasks[this.longTasks.length - 1];
-    const latestSlowSpan = this.slowSpans[this.slowSpans.length - 1];
-    const latestTts = this.ttsUtterances[this.ttsUtterances.length - 1];
-    return {
+    return buildPerfDiagnosticsSnapshot({
       enabled: this.enabled,
-      generatedAt: new Date().toISOString(),
-      input: {
-        keydownToInput: summarizeMetric(this.inputEvents.map((event) => event.keydownToInputMs)),
-        inputToPaint: summarizeMetric(this.inputEvents.map((event) => event.inputToPaintMs)),
-        inputToCommit: summarizeMetric(this.inputEvents.map((event) => event.inputToCommitMs)),
-        latest: latestInput,
-      },
-      longTasks: {
-        count: this.longTasks.length,
-        maxDurationMs: roundMs(Math.max(0, ...this.longTasks.map((task) => task.duration))),
-        latest: latestLongTask,
-      },
-      slowSpans: {
-        count: this.slowSpans.length,
-        latest: latestSlowSpan,
-      },
-      tts: {
-        latest: latestTts,
-        voices: [...this.ttsVoices],
-        voiceCounts: summarizeVoiceCounts(this.ttsVoices),
-      },
-      renders: { ...this.renderCounts },
-      heap: getHeapSnapshot(),
-    };
+      inputEvents: this.inputEvents,
+      longTasks: this.longTasks,
+      slowSpans: this.slowSpans,
+      ttsUtterances: this.ttsUtterances,
+      ttsVoices: this.ttsVoices,
+      renderCounts: this.renderCounts,
+    });
   }
 
   log(event: string, payload: unknown): void {
@@ -290,23 +235,8 @@ export class PerfDiagnostics {
   }
 
   private startLongTaskObserver(): void {
-    if (this.observer || typeof PerformanceObserver === 'undefined') return;
-    const supported = PerformanceObserver.supportedEntryTypes?.includes('longtask');
-    if (!supported) return;
-    this.observer = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        this.recordLongTask({
-          name: entry.name || 'longtask',
-          startTime: entry.startTime,
-          duration: entry.duration,
-        });
-      }
-    });
-    try {
-      this.observer.observe({ entryTypes: ['longtask'] });
-    } catch {
-      this.observer = null;
-    }
+    if (this.observer) return;
+    this.observer = createPerfLongTaskObserver((task) => this.recordLongTask(task));
   }
 
   private installGlobal(): void {
