@@ -4,9 +4,9 @@ This document centralizes Dicta runtime areas that agents must treat as high-ris
 
 These boundaries can break real user behavior even when a refactor looks mechanically clean. Do not touch them casually.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 Verified against branch: `product/input-2`
-Verified against code baseline: post OpenRouter direct generation, job polling, and failure-policy extraction. `src/App.tsx` is shell-only; main runtime orchestration lives in `src/app/DictaAppRuntime.tsx`.
+Verified against code baseline: runtime root boundary refresh. `src/App.tsx` is shell-only, `src/app/DictaAppRuntime.tsx` is an export shim, and main runtime orchestration lives in `src/app/DictaAppRuntimeRoot.tsx`.
 
 ## Core rule
 
@@ -24,10 +24,14 @@ If the change requires modifying timing, lifecycle, persistence, playback, auth,
 ## Current shell ownership
 
 - `src/App.tsx` is shell-only and should remain small.
-- `src/app/DictaAppRuntime.tsx` is the browser composition root for auth/profile, sync, workspace routing, OpenRouter wiring, focused training, presentation props, and route rendering.
+- `src/app/DictaAppRuntime.tsx` only re-exports `DictaAppRuntime` from `DictaAppRuntimeRoot`.
+- `src/app/DictaAppRuntimeRoot.tsx` is the browser composition root for auth/profile, sync, workspace routing, OpenRouter wiring, focused training, presentation props, and route rendering.
+- `src/app/useDictaAppBootRuntime.ts` owns root boot state buckets and refs.
+- `src/app/useDictaRootOpenRouterRuntime.ts` owns root-level OpenRouter adaptation before delegating to `useDictaOpenRouterRuntime`.
+- `src/app/useDictaRootRouteCompositionRuntime.ts` owns root-level route-composition handoff before delegating to `useDictaAppRouteCompositionRuntime`.
 - `src/app/AppRouteRenderer.tsx` owns route-level render branching.
-- Focused training and Browser TTS delegation contract tests should inspect `DictaAppRuntime` and the owner hooks, not `src/App.tsx`.
-- Do not move runtime behavior back into `src/App.tsx`.
+- Focused training, Browser TTS, active-session, OpenRouter, and route-composition boundary tests should inspect `DictaAppRuntimeRoot` and owner hooks, not `src/App.tsx`.
+- Do not move runtime behavior back into `src/App.tsx` or the `DictaAppRuntime.tsx` export shim.
 
 ## Browser TTS runtime
 
@@ -66,8 +70,9 @@ High-risk areas:
 Current runtime anchors:
 
 - App shell entrypoint: `src/App.tsx` renders `DictaAppRuntime` only.
-- Runtime composition root: `src/app/DictaAppRuntime.tsx` wires Browser TTS state, refs, runtime hooks, and presentation props.
-- Focused training composition: `src/app/useFocusedTrainingRuntime.ts`.
+- Runtime export shim: `src/app/DictaAppRuntime.tsx` re-exports `DictaAppRuntimeRoot` only.
+- Runtime composition root: `src/app/DictaAppRuntimeRoot.tsx` wires Browser TTS state, refs, runtime hooks, and presentation props.
+- Focused training composition: `src/app/useFocusedTrainingRuntime.ts` via `useDictaRootFocusedTrainingRuntime`.
 - TTS session orchestration: `src/app/useTtsSessionOrchestrationRuntime.ts`.
 - Browser TTS playback loop: `src/app/useBrowserTtsPlaybackLoop.ts`.
 - Browser TTS playback controls: `src/app/useTtsPlaybackControls.ts`.
@@ -108,7 +113,7 @@ Primary tests:
 Rules:
 
 1. Do not change playback behavior as part of unrelated modularization.
-2. Treat `src/app/useBrowserTtsPlaybackLoop.ts` as the Browser TTS playback-loop owner. Do not assume `src/App.tsx` or `DictaAppRuntime` owns playback-loop internals.
+2. Treat `src/app/useBrowserTtsPlaybackLoop.ts` as the Browser TTS playback-loop owner. Do not assume `src/App.tsx`, `DictaAppRuntime`, or `DictaAppRuntimeRoot` owns playback-loop internals.
 3. Do not alter browser capability assumptions without tests.
 4. Do not rewrite recovery/rate policy casually.
 5. Keep policy changes separated from UI refactors.
@@ -207,6 +212,8 @@ Primary tests:
 
 High-risk areas:
 
+- `src/app/useDictaRootOpenRouterRuntime.ts`.
+- `src/app/useDictaOpenRouterRuntime.ts`.
 - `src/app/useOpenRouterGenerationRuntime.ts`.
 - `src/app/useOpenRouterGenerationActions.ts`.
 - `src/app/useOpenRouterDirectGenerationRuntime.ts`.
@@ -225,9 +232,12 @@ Rules:
 3. Do not mix model/access/quotas changes with unrelated UI or App-shell cleanup.
 4. Preserve member defaults: no OpenRouter access unless granted, session limits enforced, and assigned models enforced server-side.
 5. For job polling or failure-policy changes, validate both transient notice behavior and persistent error-session behavior.
+6. For root OpenRouter wiring changes, validate the root OpenRouter boundary before broader OpenRouter tests.
 
 Primary tests:
 
+- `tests/dictaAppRuntimeRootOpenRouterBoundary.test.ts`
+- `tests/dictaOpenRouterRuntimeBoundary.test.ts`
 - `tests/openRouterChatRoute.test.ts`
 - `tests/openRouterJobRoute.test.ts`
 - `tests/openRouterJobs.test.ts`
