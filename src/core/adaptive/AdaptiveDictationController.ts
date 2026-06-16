@@ -1,150 +1,22 @@
 import type {
   AdaptivePacingInput,
-  ListeningPrecisionMetrics,
   PacingDecision,
   PacingMode,
-  PacingReasonCode,
-  PhraseSize,
 } from './types';
 import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browserTtsAdaptiveProfiles';
-
-const MIN_PLAYBACK_RATE = 0.84;
-const MAX_PLAYBACK_RATE = 1.15;
-const MAX_RATE_DELTA = 0.05;
-
-const phraseSizeForMode: Record<PacingMode, PhraseSize> = {
-  recovery: 'short',
-  support: 'short',
-  balanced: 'medium',
-  flow: 'long',
-};
-
-const idealPauseByMode: Record<PacingMode, number> = {
-  recovery: 2200,
-  support: 1200,
-  balanced: 750,
-  flow: 350,
-};
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-function smoothRate(current: number, target: number, minRate: number): number {
-  const delta = clamp(target - current, -MAX_RATE_DELTA, MAX_RATE_DELTA);
-  return Number(clamp(current + delta, minRate, MAX_PLAYBACK_RATE).toFixed(2));
-}
-
-function computeScore(value: number, min: number, max: number): number {
-  return clamp((value - min) / Math.max(0.01, max - min), 0, 1);
-}
-
-function computeProgressGap(live: AdaptivePacingInput['live']): number {
-  const spokenProgress = live.spokenProgressRatio;
-  const typedProgress = live.typedProgressRatio;
-
-  // Treat incomplete/default progress telemetry as absent. Several semantic controller
-  // paths do not model Browser TTS progress, and a zero typed ratio should not by itself
-  // force support/recovery or defer-pause behavior.
-  if (!Number.isFinite(spokenProgress) || !Number.isFinite(typedProgress)) {
-    return 0;
-  }
-  if (spokenProgress <= 0 || typedProgress <= 0) {
-    return 0;
-  }
-
-  return Math.max(0, spokenProgress - typedProgress);
-}
-
-function chooseMode(input: AdaptivePacingInput): PacingMode {
-  const { live, history } = input;
-  const sessionAccuracy = live.sessionAccuracy ?? live.accuracy;
-  const chunkAccuracy = live.chunkAccuracy ?? sessionAccuracy;
-  const rollingAccuracy = live.rollingAccuracyLast3 ?? chunkAccuracy;
-  const lag = live.lagSec;
-  const correction = live.correctionRate;
-  const wpm = live.wpm;
-  const progressGap = computeProgressGap(live);
-
-  const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
-  const phraseOverload = longPhrase && (rollingAccuracy < 0.88 || lag > 1.5 || correction > 0.08);
-  const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
-
-  const goodFlow =
-    rollingAccuracy >= 0.94 &&
-    lag < 0.7 &&
-    wpm >= Math.max(history.averageWpm * 0.95, 0) &&
-    !phraseOverload &&
-    !longPhraseSensitive;
-  const catchUpPressure = lag > 3.0 || (lag > 2.4 && progressGap > 0.1);
-  const recoveryPrecisionStable = rollingAccuracy >= 0.86 && correction < 0.12;
-  const recoveryNeeded = catchUpPressure && recoveryPrecisionStable;
-  const struggling =
-    lag > 2.0 ||
-    rollingAccuracy < 0.8 ||
-    correction > 0.10 ||
-    (lag > 1.8 && progressGap > 0.18) ||
-    phraseOverload ||
-    longPhraseSensitive;
-
-  if (recoveryNeeded) {
-    return 'recovery';
-  }
-
-  if (struggling) {
-    return 'support';
-  }
-
-  if (goodFlow) {
-    return 'flow';
-  }
-
-  return 'balanced';
-}
-
-function computeListeningPrecisionControlScore(metrics: ListeningPrecisionMetrics): number {
-  return clamp(
-    metrics.listeningRecallScore * 0.28 +
-      metrics.contentWordRecall * 0.23 +
-      metrics.detailPrecisionScore * 0.14 +
-      metrics.functionWordAccuracy * 0.14 +
-      metrics.wordOrderAccuracy * 0.09 +
-      metrics.completionWindowScore * 0.12,
-    0,
-    1,
-  );
-}
-
-function resolveListeningPrecisionRateCeiling(
-  metrics: ListeningPrecisionMetrics | undefined,
-  mode: PacingMode,
-  supportRateCeiling: number,
-): number | null {
-  if (!metrics) return null;
-  const precisionScore = computeListeningPrecisionControlScore(metrics);
-  const severePrecisionRisk =
-    precisionScore < 0.78 ||
-    metrics.contentWordRecall < 0.75 ||
-    metrics.omissionRate > 0.18 ||
-    metrics.completionWindowScore < 0.65;
-  if (severePrecisionRisk) return mode === 'support' || mode === 'recovery' ? supportRateCeiling : 0.92;
-
-  const unstablePrecisionRisk =
-    precisionScore < 0.86 ||
-    metrics.detailPrecisionScore < 0.78 ||
-    metrics.functionWordAccuracy < 0.78 ||
-    metrics.wordOrderAccuracy < 0.8 ||
-    metrics.completionWindowScore < 0.8;
-  if (unstablePrecisionRisk) return mode === 'flow' ? 0.98 : 0.96;
-
-  const emergingPrecisionRisk =
-    precisionScore < 0.92 ||
-    metrics.omissionRate > 0.08 ||
-    metrics.completionWindowScore < 0.9;
-  if (emergingPrecisionRisk) return mode === 'flow' ? 1.02 : 1;
-
-  return null;
-}
+import {
+  MAX_PLAYBACK_RATE,
+  MIN_PLAYBACK_RATE,
+  clamp,
+  computeProgressGap,
+  computeScore,
+  idealPauseByMode,
+  smoothRate,
+} from './adaptiveDictationControllerMath';
+import { chooseAdaptivePacingMode } from './adaptiveDictationControllerMode';
+import { resolveListeningPrecisionRateCeiling } from './adaptiveDictationControllerPrecision';
+import { resolveAdaptiveNextPhraseSize } from './adaptiveDictationControllerPhrase';
+import { applyAdaptivePausePolicy, buildAdaptivePacingReasonArtifacts } from './adaptiveDictationControllerReasons';
 
 export class AdaptiveDictationController {
   private previousRate = 1;
@@ -169,7 +41,7 @@ export class AdaptiveDictationController {
     const rollingAccuracyLast3 = live.rollingAccuracyLast3 ?? chunkAccuracy;
     const rollingAccuracyLast5 = live.rollingAccuracyLast5 ?? rollingAccuracyLast3;
     const supportsPhraseReplay = input.capabilities?.supportsPhraseReplay ?? true;
-    const chosenMode = chooseMode(input);
+    const chosenMode = chooseAdaptivePacingMode(input);
     const baselineRate = clamp(history.comfortablePlaybackRate || 1, balancedFlowFloor, MAX_PLAYBACK_RATE);
     const rateBias = (rollingAccuracyLast3 - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
     const targetRate = clamp(baselineRate + rateBias, balancedFlowFloor, MAX_PLAYBACK_RATE);
@@ -316,24 +188,17 @@ export class AdaptiveDictationController {
     const shouldReplayPhrase = supportsPhraseReplay && replayWanted;
     let pauseAfterPhraseMs = shouldReplayPhrase ? Math.max(1200, idealPauseByMode[mode]) : idealPauseByMode[mode];
 
-    let nextPhraseSize = phraseSizeForMode[mode];
-    if (phraseOverload || longPhraseSensitive) {
-      nextPhraseSize = 'short';
-    }
-    if (semanticCompleteness < 0.6) {
-      nextPhraseSize = 'short';
-    } else if (
-      rollingAccuracyLast3 > 0.96 &&
-      live.lagSec < 0.5 &&
-      live.correctionRate < 0.05 &&
-      live.phraseDifficulty < 0.5
-    ) {
-      nextPhraseSize = mode === 'support' ? 'medium' : phraseSizeForMode[mode];
-    }
-
-    if (history.preferredPhraseSize === 'short' && nextPhraseSize === 'long') {
-      nextPhraseSize = 'medium';
-    }
+    let nextPhraseSize = resolveAdaptiveNextPhraseSize({
+      mode,
+      live,
+      history,
+      phraseOverload,
+      longPhraseSensitive,
+      semanticCompleteness,
+      rollingAccuracyLast3,
+      recoveryFrames: this.recoveryFrames,
+      flowLockFrames: this.flowLockFrames,
+    });
 
     // When replay is not supported, convert "replay wanted" into stronger recovery.
     if (!supportsPhraseReplay && replayWanted) {
@@ -343,115 +208,38 @@ export class AdaptiveDictationController {
       pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, idealPauseByMode.recovery);
     }
 
-    // Gradual recovery: require a wider stable window before allowing aggressive growth.
-    if (mode === 'recovery') {
-      nextPhraseSize = 'short';
-    } else if ((this.recoveryFrames < 5 || this.flowLockFrames > 0) && nextPhraseSize === 'long') {
-      nextPhraseSize = 'medium';
-    }
-
     let replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, MAX_PLAYBACK_RATE);
 
-    const reason = [`mode=${mode}`];
-    const reasonCodes: PacingReasonCode[] = [`mode-${mode}`];
-    if (phraseOverload) {
-      reason.push('phrase-overload');
-      reasonCodes.push('phrase-overload');
-    }
-    if (longPhraseSensitive) {
-      reason.push('long-phrase-sensitive');
-      reasonCodes.push('long-phrase-sensitive');
-    }
-    if (shouldReplayPhrase) {
-      reason.push('replay-due-to-lag-or-error');
-      reasonCodes.push('replay-due-to-lag-or-error');
-    } else if (!supportsPhraseReplay && replayWanted) {
-      reason.push('replay-disabled-recovery');
-      reasonCodes.push('replay-disabled-recovery');
-    } else if (live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && !canReplayIndependently) {
-      reason.push('replay-blocked-boundary');
-      reasonCodes.push('replay-blocked-boundary');
-    } else if (live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && semanticCompleteness < 0.65) {
-      reason.push('replay-blocked-incomplete-phrase');
-      reasonCodes.push('replay-blocked-incomplete-phrase');
-    }
-    if (deferPauseUntilSafeBoundary) {
-      reason.push('defer-pause-until-safe-boundary');
-      reasonCodes.push('defer-pause-until-safe-boundary');
-    }
-    if (flowBlockedAfterRecovery) {
-      reason.push('flow-blocked-after-recovery');
-      reasonCodes.push('flow-blocked-after-recovery');
-    }
-    if (stableRecoveryConfirmed) {
-      reason.push('stable-recovery-confirmed');
-      reasonCodes.push('stable-recovery-confirmed');
-    }
-    if (mode === 'flow') {
-      reason.push('high-accuracy-low-lag');
-      reasonCodes.push('high-accuracy-low-lag');
-    }
-    if (mode === 'recovery') {
-      reason.push('recovery-needed');
-      reason.push('extended-catch-up-window');
-      reason.push('support-needed');
-      reasonCodes.push('recovery-needed');
-      reasonCodes.push('extended-catch-up-window');
-      reasonCodes.push('support-needed');
-    } else if (mode === 'support') {
-      reason.push('support-needed');
-      reasonCodes.push('support-needed');
-    }
-    if (history.sessionsCount < 3) {
-      reason.push('low-history-confidence');
-      reasonCodes.push('low-history-confidence');
-    }
+    const { reason, reasonCodes } = buildAdaptivePacingReasonArtifacts({
+      mode,
+      history,
+      live,
+      phraseOverload,
+      longPhraseSensitive,
+      shouldReplayPhrase,
+      supportsPhraseReplay,
+      replayWanted,
+      canReplayIndependently,
+      semanticCompleteness,
+      rollingAccuracyLast3,
+      deferPauseUntilSafeBoundary,
+      flowBlockedAfterRecovery,
+      stableRecoveryConfirmed,
+    });
 
-    const adaptivePause = browserTtsProfile?.adaptivePause;
-    if (adaptivePause?.enabled) {
-      const historicalPressure = history.averageAccuracy < adaptivePause.historyLowAccuracyThreshold || Math.abs(history.averageLagSec) > adaptivePause.historyHighLagSec;
-      const catchUpTargets: number[] = [pauseAfterPhraseMs];
-
-      if (mode === 'recovery') {
-        catchUpTargets.push(Math.max(adaptivePause.severeLagBehindPauseMs, adaptivePause.progressBehindPauseMs));
-      }
-      if (rollingAccuracyLast3 < adaptivePause.veryLowAccuracyThreshold) {
-        catchUpTargets.push(adaptivePause.veryLowAccuracyPauseMs);
-        reason.push('adaptive-pause-very-low-accuracy');
-        reasonCodes.push('adaptive-pause-very-low-accuracy');
-      } else if (rollingAccuracyLast3 < adaptivePause.lowAccuracyThreshold) {
-        catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
-        reason.push('adaptive-pause-low-accuracy');
-        reasonCodes.push('adaptive-pause-low-accuracy');
-      }
-      if (live.lagSec > adaptivePause.severeLagBehindSec) {
-        catchUpTargets.push(adaptivePause.severeLagBehindPauseMs);
-        reason.push('adaptive-pause-severe-lag');
-        reasonCodes.push('adaptive-pause-severe-lag');
-      } else if (live.lagSec > adaptivePause.lagBehindSec) {
-        catchUpTargets.push(adaptivePause.lagBehindPauseMs);
-        reason.push('adaptive-pause-lag');
-        reasonCodes.push('adaptive-pause-lag');
-      }
-      if (progressGap > adaptivePause.progressBehindRatio) {
-        catchUpTargets.push(adaptivePause.progressBehindPauseMs);
-        reason.push('adaptive-pause-progress-gap');
-        reasonCodes.push('adaptive-pause-progress-gap');
-      }
-      if (historicalPressure && mode !== 'flow') {
-        catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
-        reason.push('adaptive-pause-history-pressure');
-        reasonCodes.push('adaptive-pause-history-pressure');
-      }
-      if (this.struggleFrames >= 2) {
-        catchUpTargets.push(adaptivePause.lowAccuracyPauseMs);
-        reason.push('adaptive-pause-session-pressure');
-        reasonCodes.push('adaptive-pause-session-pressure');
-      }
-
-      const adaptivePauseMs = Math.max(...catchUpTargets);
-      pauseAfterPhraseMs = Math.round(clamp(adaptivePauseMs, adaptivePause.minPauseMs, adaptivePause.maxPauseMs));
-    }
+    const adaptivePauseResult = applyAdaptivePausePolicy({
+      adaptivePause: browserTtsProfile?.adaptivePause,
+      history,
+      live,
+      mode,
+      rollingAccuracyLast3,
+      progressGap,
+      struggleFrames: this.struggleFrames,
+      pauseAfterPhraseMs,
+      reason,
+      reasonCodes,
+    });
+    pauseAfterPhraseMs = adaptivePauseResult.pauseAfterPhraseMs;
 
     const extremeSupport = isSupportLikeMode && live.lagSec > 4 && rollingAccuracyLast3 < 0.76;
     const modeFloor =
