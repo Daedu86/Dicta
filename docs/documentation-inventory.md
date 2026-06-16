@@ -4,7 +4,7 @@ This document is the current inventory of Markdown documentation in the Dicta re
 
 Status as of: 2026-06-16  
 Current branch: `product/input-2`  
-Current baseline observed before this inventory refresh: `91ff8ac`
+Current baseline observed before this inventory refresh: `c558573`
 
 ## Status legend
 
@@ -25,7 +25,7 @@ Current baseline observed before this inventory refresh: `91ff8ac`
 | `ARCHITECTURE.md` | ACTIVE | Root architecture pointer. | Should remain short; it currently redirects to `docs/architecture.md`. |
 | `docs/architecture.md` | ACTIVE | Current architecture map and system boundaries. | Refreshed on 2026-06-16 for `DictaAppRuntimeRoot`, boot runtime, root OpenRouter, and root route-composition boundaries. |
 | `docs/listening-first-architecture.md` | ACTIVE | Product/learning architecture around listening-first training. | Keep as product architecture context. |
-| `docs/README.md` | ACTIVE | Canonical documentation index. | Refreshed on 2026-06-15 after repo KB ownership update. |
+| `docs/README.md` | ACTIVE | Canonical documentation index. | Refreshed on 2026-06-16 to include the runtime access boundary. |
 | `docs/agent-onboarding.md` | ACTIVE | Official technical onboarding flow for agents. | Canonical agent workflow. |
 | `docs/repo-map.md` | ACTIVE | Repository responsibilities and boundaries. | Refreshed on 2026-06-16 to mark `DictaAppRuntime.tsx` as an export shim and `DictaAppRuntimeRoot.tsx` as the runtime composition root. |
 | `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Refreshed on 2026-06-16 with root runtime, boot, OpenRouter adapter, and route-composition boundary tests. |
@@ -94,6 +94,7 @@ This pass aligned the active KB with the final runtime-root boundary commits:
 
 - `docs/architecture.md`, `docs/repo-map.md`, and `docs/high-risk-runtime-boundaries.md` now treat `src/app/DictaAppRuntime.tsx` as an export shim and `src/app/DictaAppRuntimeRoot.tsx` as the browser composition root.
 - `docs/runtime-access-boundary.md` now points access-runtime context at `DictaAppRuntimeRoot` instead of the export shim.
+- `docs/README.md` and this inventory now include `docs/runtime-access-boundary.md`.
 - `docs/module-test-map.md` now includes `useDictaAppBootRuntime`, `useDictaRootOpenRouterRuntime`, `useDictaRootRouteCompositionRuntime`, and their focused boundary tests.
 - `docs/app-shell-modularization-map.md` now records the root boot/adapter boundaries as completed and keeps session persistence as the only strong current refactor candidate.
 
@@ -112,7 +113,7 @@ These commit baselines appear in historical modularization docs and should not b
 
 Current observed baseline for this inventory pass before updating this file:
 
-- `91ff8ac`
+- `c558573`
 
 ## Proposed next documentation stages
 
