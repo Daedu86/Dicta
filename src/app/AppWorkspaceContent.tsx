@@ -2,7 +2,6 @@ import type { ComponentProps } from 'react';
 import type { OpenRouterAccessState } from '../core/appProfiles';
 import { PendingSessionLane } from '../components/training/PendingSessionLane';
 import { OpenRouterWorkspace } from '../components/openrouter/OpenRouterWorkspace';
-import { LeaderboardWorkspace, type LeaderboardWorkspaceProps } from '../components/leaderboard/LeaderboardWorkspace';
 import { SessionDashboard } from '../components/session-dashboard/SessionDashboard';
 import { AdaptiveBenchmarkSection } from '../components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
 import { AdaptiveAdvancedDiagnostics } from '../components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
@@ -29,7 +28,6 @@ type AppWorkspaceContentProps = {
   openRouterWorkspaceProps: ComponentProps<typeof OpenRouterWorkspace>;
   canAccessAdminWorkspace: boolean;
   adminWorkspaceProps: AdminWorkspaceProps<StoredSession>;
-  leaderboardWorkspaceProps: LeaderboardWorkspaceProps<StoredSession>;
 };
 
 export function AppWorkspaceContent({
@@ -51,7 +49,6 @@ export function AppWorkspaceContent({
   openRouterWorkspaceProps,
   canAccessAdminWorkspace,
   adminWorkspaceProps,
-  leaderboardWorkspaceProps,
 }: AppWorkspaceContentProps) {
   return (
     <section className="workspace">
@@ -69,7 +66,6 @@ export function AppWorkspaceContent({
             formatSessionStatus={formatSessionStatus}
             formatSessionDate={formatSessionDate}
             formatSessionPlaybackDuration={formatSessionPlaybackDuration}
-            onBackToLeaderboard={onBackToTraining}
             onBackToTraining={onBackToTraining}
           />
         ) : workspaceMode === 'adaptive' ? (
@@ -110,8 +106,6 @@ export function AppWorkspaceContent({
               <p className="error">Admin access required.</p>
             </section>
           )
-        ) : workspaceMode === 'leaderboard' ? (
-          <LeaderboardWorkspace {...leaderboardWorkspaceProps} />
         ) : (
           <section className="panel workspace-panel">
             <p className="hint">Choose Browser TTS to train.</p>

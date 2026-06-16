@@ -74,6 +74,8 @@ Browser app:
 - `src/app/useTtsUiPublisher.ts`: Browser TTS live metric UI publication thresholds, throttling, ref updates, and visible metric setter routing.
 - `src/app/useTtsPlaybackProgressEstimator.ts`: Browser TTS spoken-word progress estimation for active chunks, completed-word fallback, and finished playback.
 - `src/app/browserTtsPlaybackPlan.ts`: pure Browser TTS next-chunk playback planning for candidate chunk selection, adaptive decision mapping, runtime rate floor, unsafe-boundary policy, mobile fallback, DE recovery, telemetry frames, and rolling accuracy state updates.
+- `src/app/browserTtsPlaybackDecisionTrace.ts`: pure diagnostic decision trace snapshots for planned, clamped, runtime, and benchmark-recorded Browser TTS chunk outcomes.
+- `src/app/browserTtsPlaybackLoopChunkSpeaker.ts`: single-chunk Browser TTS execution seam for plan build, utterance creation, telemetry commit, utterance handlers, and SpeechSynthesis execution.
 - `src/app/browserTtsAdaptiveSemanticDebug.ts`: pure Browser TTS semantic debug state builders for phrase-start aggregation and chunk-completion phrase identity/counter updates.
 - `src/app/browserTtsPhraseCompletionTelemetry.ts`: pure Browser TTS phrase-completion benchmark telemetry payload construction.
 - `src/app/ttsSessionFinalization.ts`: pure TTS session finalization state construction used by `useTtsSessionSubmitAction`.
@@ -103,9 +105,11 @@ Core TypeScript domain:
 - `src/core/languages.ts`: supported languages.
 - `src/app/useAdaptiveRuntime.ts`: browser-side adaptive controller wiring, benchmark update dispatch, selected profile glue, live telemetry application, and session feedback orchestration.
 - `ListeningTrainerPolicy`: pure profile-specific pedagogical policy that converts one `(inputMode, language)` benchmark, latest matching feedback, and user intent into a `ListeningTrainingPrescription` for next-session generation.
+- `src/core/adaptive/adaptivePolicyLayers.ts`: nested runtime-versus-learning policy types shared by `ListeningTrainerPolicy` and OpenRouter prompt generation.
 - `SemanticPhrasePlanner`: language-aware phrase boundaries.
 - `AdaptiveDictationController`: rate, pause, replay, and chunk decisions.
 - `AdaptiveInputLanguageBenchmarkService`: 30-day rolling profiles.
+- `src/core/adaptive/benchmarkRejectedSampleDiagnostics.ts`: compact accepted/rejected benchmark sample summary by rejection reason.
 - `sessionFeedback` and `benchmarkJson`: exports and diagnostics.
 - `HistoricalPerformanceService`: prior-session profile input.
 - `supabaseSync` and `profileScopedStorage`: profile-aware persistence.
@@ -153,8 +157,12 @@ Important implementation details:
 - Browser TTS German has extra recovery, lag, and unsafe-boundary filtering.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior.
 - `ListeningTrainerPolicy` stays pure and profile-scoped.
+- `ListeningTrainingPrescription` now exposes flat legacy fields plus nested `runtimePolicy` and `learningPolicy` views for runtime playback and next-script generation.
+- `useBrowserTtsPlaybackLoop` delegates to `browserTtsPlaybackLoopActions`, `browserTtsPlaybackLoopRunner`, and `browserTtsPlaybackLoopChunkSpeaker`; the chunk speaker owns one Browser TTS chunk execution.
 - OpenRouter and other LLM paths generate structured training material only.
+- OpenRouter adaptive prompts consume `trainingPrescription.runtimePolicy` and `trainingPrescription.learningPolicy`; runtime recovery should not cause harder learning content.
 - Browser TTS benchmark samples and completed session feedback include a structured `ttsEnvironment` fingerprint.
+- Browser TTS benchmark timelines can carry compact decision-trace metadata and rejection reasons for diagnostics.
 
 ## Account And Access Model
 

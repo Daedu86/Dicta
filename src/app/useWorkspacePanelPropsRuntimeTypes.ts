@@ -1,10 +1,8 @@
 import type { useAdminWorkspaceProps } from './useAdminWorkspaceProps';
-import type { useLeaderboardWorkspaceProps } from './useLeaderboardWorkspaceProps';
 import type { useOpenRouterWorkspaceProps } from './useOpenRouterWorkspaceProps';
 
 export type OpenRouterWorkspacePropsArgs = Parameters<typeof useOpenRouterWorkspaceProps>[0];
 export type AdminWorkspacePropsArgs = Parameters<typeof useAdminWorkspaceProps>[0];
-export type LeaderboardWorkspacePropsArgs = Parameters<typeof useLeaderboardWorkspaceProps>[0];
 
 export type UseWorkspacePanelPropsRuntimeArgs = {
   effectiveOpenRouterDefaultModel: OpenRouterWorkspacePropsArgs['defaultModel'];
@@ -61,18 +59,4 @@ export type UseWorkspacePanelPropsRuntimeArgs = {
   updateAdminProfileAccess: AdminWorkspacePropsArgs['onUpdateProfileAccess'];
   adminRemoteStatus: AdminWorkspacePropsArgs['remoteAdminStatus'];
   setExportMessage: AdminWorkspacePropsArgs['setExportMessage'];
-
-  leaderboard: LeaderboardWorkspacePropsArgs['leaderboard'];
-  leaderboardSections: LeaderboardWorkspacePropsArgs['leaderboardSections'];
-  leaderboardMonthSessionCount: LeaderboardWorkspacePropsArgs['leaderboardMonthSessionCount'];
-  leaderboardLanguageView: LeaderboardWorkspacePropsArgs['leaderboardLanguageView'];
-  leaderboardExpanded: LeaderboardWorkspacePropsArgs['leaderboardExpanded'];
-  leaderboardSectionExpanded: LeaderboardWorkspacePropsArgs['leaderboardSectionExpanded'];
-  activeSessionId: LeaderboardWorkspacePropsArgs['activeSessionId'];
-  setLeaderboardLanguageView: LeaderboardWorkspacePropsArgs['onChangeLeaderboardLanguageView'];
-  setLeaderboardExpanded: LeaderboardWorkspacePropsArgs['setLeaderboardExpanded'];
-  setLeaderboardSectionExpanded: LeaderboardWorkspacePropsArgs['setLeaderboardSectionExpanded'];
-  openWorkspaceForSession: LeaderboardWorkspacePropsArgs['onOpenWorkspaceForSession'];
-  openDashboardForSession: LeaderboardWorkspacePropsArgs['onOpenDashboardForSession'];
-  deleteSession: LeaderboardWorkspacePropsArgs['onDeleteSession'];
 };

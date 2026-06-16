@@ -22,7 +22,6 @@ type BuildHardRulesPromptArgs = {
 };
 
 type BuildCompactAdaptiveV2PromptArgs = BuildHardRulesPromptArgs & {
-  trainingPrescription: ListeningTrainingPrescription;
   compactAdaptiveV2Context: string;
 };
 

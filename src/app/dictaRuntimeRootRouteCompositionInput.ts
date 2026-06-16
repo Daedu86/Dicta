@@ -59,7 +59,6 @@ export function buildDictaRuntimeRootRouteCompositionInput({
     ...openRouterGraph,
     ...focusedTrainingGraph,
     sessions: sessionsState.sessions,
-    activeSessionId: sessionsState.activeSessionId,
     selectedBenchmarkInputMode: openRouterGraph.selectedBenchmarkInputMode,
     selectedBenchmarkLanguage: openRouterGraph.selectedBenchmarkLanguage,
     formatSessionDate,

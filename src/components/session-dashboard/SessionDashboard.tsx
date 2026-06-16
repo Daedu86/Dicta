@@ -12,7 +12,6 @@ export type { SessionDashboardSession } from './sessionDashboardTypes';
 type SessionDashboardProps<TSession extends SessionDashboardSession = SessionDashboardSession> = {
   session: TSession;
   sessions: TSession[];
-  onBackToLeaderboard: () => void;
   onBackToTraining: () => void;
   formatSessionStatus: (status: SessionDashboardStatus) => string;
   formatSessionDate: (value: string) => string;
@@ -22,7 +21,6 @@ type SessionDashboardProps<TSession extends SessionDashboardSession = SessionDas
 export function SessionDashboard<TSession extends SessionDashboardSession = SessionDashboardSession>({
   session,
   sessions,
-  onBackToLeaderboard,
   onBackToTraining,
   formatSessionStatus,
   formatSessionDate,
@@ -47,9 +45,6 @@ export function SessionDashboard<TSession extends SessionDashboardSession = Sess
           </span>
         </div>
         <div className="dashboard-header-actions">
-          <button type="button" className="secondary-button" onClick={onBackToLeaderboard}>
-            Back to leaderboard
-          </button>
           <button type="button" className="secondary-button" onClick={onBackToTraining}>
             Back to training
           </button>

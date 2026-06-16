@@ -49,7 +49,6 @@ export function useAppPresentationRuntime(args: UseAppPresentationRuntimeArgs) {
   const {
     openRouterWorkspaceProps,
     adminWorkspaceProps,
-    leaderboardWorkspaceProps,
   } = useWorkspacePanelPropsRuntime(workspacePanelArgs);
 
   const { appShellHeaderProps } = useAppShellHeaderRuntime(appShellHeaderArgs);
@@ -60,7 +59,6 @@ export function useAppPresentationRuntime(args: UseAppPresentationRuntimeArgs) {
   return {
     openRouterWorkspaceProps,
     adminWorkspaceProps,
-    leaderboardWorkspaceProps,
     appShellHeaderProps,
     authWorkspaceProps,
     sessionCreateCardProps,

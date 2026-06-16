@@ -51,14 +51,24 @@ export function applyRecommendationHysteresis(
   const targetRateRange = [...recommendation.targetRateRange] as [number, number];
   let targetPhraseSize = recommendation.targetPhraseSize;
   let targetPauseMs = recommendation.targetPauseMs;
+  const preferredPhraseSize = metrics.preferredPhraseSize ?? recommendation.targetPhraseSize;
+  const sensitiveWeakAreas = hasSensitiveWeakAreas(metrics.weakAreas);
+  const unstableBrowserTtsDe = metrics.inputMode === 'browser-tts' && metrics.language === 'de';
   if (confidence < 0.4) {
-    targetRateRange[1] = Math.min(targetRateRange[1], metrics.preferredPlaybackRate, 0.95);
-    targetPhraseSize = 'short';
+    targetRateRange[1] = Math.min(targetRateRange[1], metrics.preferredPlaybackRate, unstableBrowserTtsDe ? 0.95 : metrics.preferredPlaybackRate);
+    targetPhraseSize = sensitiveWeakAreas ? 'short' : clampPhraseSizeAtMost(targetPhraseSize, preferredPhraseSize);
     targetPauseMs = Math.max(targetPauseMs, 900);
   } else if (confidence < 0.6) {
     targetRateRange[0] = Math.max(targetRateRange[0], metrics.preferredPlaybackRate - 0.04);
     targetRateRange[1] = Math.min(targetRateRange[1], metrics.preferredPlaybackRate + 0.04);
-    if (targetPhraseSize === 'long') targetPhraseSize = metrics.preferredPhraseSize === 'short' ? 'short' : 'medium';
+    targetPhraseSize = movePhraseSizeBySteps(preferredPhraseSize, targetPhraseSize, 1);
+  }
+  if (sensitiveWeakAreas) {
+    targetPhraseSize = 'short';
+    targetPauseMs = Math.max(targetPauseMs, 900);
+  }
+  if (targetRateRange[0] > targetRateRange[1]) {
+    targetRateRange[0] = targetRateRange[1];
   }
   return { ...recommendation, targetRateRange, targetPhraseSize, targetPauseMs };
 }
@@ -100,6 +110,56 @@ function rateBucketScore(bucket: RateAccuracyBucket): number {
 
 function formatWeakArea(value: AdaptiveWeakArea): string {
   return value.replace(/_/g, ' ');
+}
+
+function hasSensitiveWeakAreas(weakAreas: AdaptiveWeakArea[]): boolean {
+  const sensitive = new Set<AdaptiveWeakArea>([
+    'lag',
+    'low_accuracy',
+    'unsafe_boundary_pressure',
+    'flow_instability',
+    'support_dependency',
+  ]);
+  return weakAreas.some((weakArea) => sensitive.has(weakArea));
+}
+
+function clampPhraseSizeAtMost(value: InputLanguageBenchmarkRecommendation['targetPhraseSize'], maximum: InputLanguageBenchmarkRecommendation['targetPhraseSize']): InputLanguageBenchmarkRecommendation['targetPhraseSize'] {
+  return comparePhraseSize(value, maximum) <= 0 ? value : maximum;
+}
+
+function movePhraseSizeBySteps(
+  anchor: InputLanguageBenchmarkRecommendation['targetPhraseSize'],
+  desired: InputLanguageBenchmarkRecommendation['targetPhraseSize'],
+  maxSteps: number,
+): InputLanguageBenchmarkRecommendation['targetPhraseSize'] {
+  const anchorRank = phraseSizeRank(anchor);
+  const desiredRank = phraseSizeRank(desired);
+  const delta = Math.max(-maxSteps, Math.min(maxSteps, desiredRank - anchorRank));
+  return phraseSizeFromRank(anchorRank + delta);
+}
+
+function comparePhraseSize(
+  left: InputLanguageBenchmarkRecommendation['targetPhraseSize'],
+  right: InputLanguageBenchmarkRecommendation['targetPhraseSize'],
+): number {
+  return phraseSizeRank(left) - phraseSizeRank(right);
+}
+
+function phraseSizeRank(size: InputLanguageBenchmarkRecommendation['targetPhraseSize']): number {
+  switch (size) {
+    case 'short':
+      return 0;
+    case 'medium':
+      return 1;
+    case 'long':
+      return 2;
+  }
+}
+
+function phraseSizeFromRank(rank: number): InputLanguageBenchmarkRecommendation['targetPhraseSize'] {
+  if (rank <= 0) return 'short';
+  if (rank === 1) return 'medium';
+  return 'long';
 }
 
 function calibrateTargetRateRangeForProfile(

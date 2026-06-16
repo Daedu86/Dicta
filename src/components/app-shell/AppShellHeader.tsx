@@ -21,7 +21,6 @@ export type AppShellHeaderProps = {
   sessionQuotaUsed: number;
   sessionQuotaBlocked: boolean;
   children?: ReactNode;
-  onOpenLeaderboard: () => void;
   onOpenMobileTraining: () => void;
   onOpenAdaptive: () => void;
   onOpenAdmin: () => void;
@@ -48,7 +47,6 @@ export function AppShellHeader({
   sessionQuotaUsed,
   sessionQuotaBlocked,
   children,
-  onOpenLeaderboard,
   onOpenMobileTraining,
   onOpenAdaptive,
   onOpenAdmin,
@@ -94,13 +92,6 @@ export function AppShellHeader({
         </div>
       </div>
       <div className="brand-header-actions">
-        <button
-          type="button"
-          className="secondary-button brand-leaderboard-button"
-          onClick={onOpenLeaderboard}
-        >
-          Leaderboard
-        </button>
         <button
           type="button"
           className="secondary-button brand-training-mode-button"

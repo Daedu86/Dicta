@@ -54,7 +54,6 @@ export function useWorkspaceNavigationEffects({
     if (suppressSidebarAutoSelectRef.current) return;
     if (
       activeSession &&
-      workspaceMode !== 'leaderboard' &&
       workspaceMode !== 'dashboard' &&
       workspaceMode !== 'adaptive' &&
       workspaceMode !== 'admin' &&

@@ -31,7 +31,7 @@ Use the narrowest relevant validation before broad validation.
 | Model runtime | `tests/workspaceModelRefreshRuntime.test.ts`, `tests/config.test.ts` |
 | Direct generation | `tests/openRouterDirectGenerationRuntimeBoundary.test.ts`, `tests/openRouterDirectGenerationPresetActionsBoundary.test.ts`, `tests/openRouterDirectGenerationStartPlan.test.ts`, `tests/openRouterDirectGenerationJobPlan.test.ts`, `tests/openRouterDirectGenerationPresets.test.ts` |
 | Jobs polling/settlement | `tests/useOpenRouterJobsRuntime.test.ts`, `tests/openRouterJobs.test.ts`, `tests/openRouterGeneratedScriptSettlement.test.ts` |
-| Workspace runtime helpers | `tests/openRouterJobs.test.ts`, `tests/openRouterGenerationJobRequest.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts`, `tests/openRouterViewHelpers.test.ts` |
+| Workspace runtime helpers | `tests/openRouterJobs.test.ts`, `tests/openRouterGenerationJobRequest.test.ts`, `tests/openRouterGenerationPrompt.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts`, `tests/openRouterViewHelpers.test.ts` |
 | Jobs route helpers | `tests/openRouterJobRoute.test.ts`, `tests/openRouterJobs.test.ts`, `tests/openRouterGenerationJobRequest.test.ts` |
 
 ## Browser TTS
@@ -46,7 +46,7 @@ Use the narrowest relevant validation before broad validation.
 
 | Area | Tests |
 | --- | --- |
-| Adaptive runtime/controller/policy | `tests/dictaAppRuntimeRootAdaptiveBoundary.test.ts`, `tests/adaptiveController.test.ts`, `tests/adaptiveControllerReasonCodes.test.ts`, `tests/adaptiveSemantic.test.ts`, `tests/listeningTrainerPolicy.test.ts` |
+| Adaptive runtime/controller/policy | `tests/dictaAppRuntimeRootAdaptiveBoundary.test.ts`, `tests/adaptiveController.test.ts`, `tests/adaptiveControllerReasonCodes.test.ts`, `tests/adaptiveSemantic.test.ts`, `tests/listeningTrainerPolicy.test.ts`, `tests/inputLanguageBenchmarkRecommendationHysteresis.test.ts` |
 | Adaptive benchmark/workspace | `tests/adaptiveBenchmarkService.test.ts`, `tests/adaptiveExportPackages.test.ts`, `tests/sessionFeedbackAdaptive.test.ts`, `tests/adaptiveWorkspacePresentation.test.ts`, `tests/adaptiveBenchmarkCockpitBoundary.test.ts`, `tests/adaptiveWorkspaceRouteRuntime.test.ts` |
 
 ## Other areas

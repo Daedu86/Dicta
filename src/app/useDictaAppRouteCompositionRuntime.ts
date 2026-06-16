@@ -31,7 +31,6 @@ export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteComposit
   const {
     openRouterWorkspaceProps,
     adminWorkspaceProps,
-    leaderboardWorkspaceProps,
     appShellHeaderProps,
     authWorkspaceProps,
     sessionCreateCardProps,
@@ -62,7 +61,6 @@ export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteComposit
     isFocusedTrainingRoute,
     openRouterWorkspaceProps,
     adminWorkspaceProps,
-    leaderboardWorkspaceProps,
     appShellHeaderProps,
     authWorkspaceProps,
     sessionCreateCardProps,

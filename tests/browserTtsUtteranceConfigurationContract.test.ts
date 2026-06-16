@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { configureBrowserTtsUtterance } from '../src/app/browserTtsUtteranceConfiguration';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
+const playbackLoopActionsSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopActions.ts'), 'utf-8');
+const playbackLoopRunnerSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopRunner.ts'), 'utf-8');
+const playbackLoopChunkSpeakerSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopChunkSpeaker.ts'), 'utf-8');
 const playbackLoopUtteranceSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopUtterance.ts'), 'utf-8');
 const playbackLoopChunkCommitSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopChunkCommit.ts'), 'utf-8');
 const playbackLoopErrorHandlerSource = readFileSync(
@@ -20,16 +22,6 @@ const playbackLoopUtteranceHandlersSource = readFileSync(
   resolve(repoRoot, 'src/app/browserTtsPlaybackLoopUtteranceHandlers.ts'),
   'utf-8',
 );
-
-function getPlayTtsFromWordSection(): string {
-  const start = playbackLoopSource.indexOf('function playTtsFromWord(');
-  if (start < 0) throw new Error('Could not find playTtsFromWord in useBrowserTtsPlaybackLoop.ts.');
-
-  const end = playbackLoopSource.indexOf('  return {', start);
-  if (end < 0) throw new Error('Could not find end of playTtsFromWord section.');
-
-  return playbackLoopSource.slice(start, end);
-}
 
 
 function expectInOrder(source: string, labels: string[]): void {
@@ -102,7 +94,18 @@ describe('configureBrowserTtsUtterance', () => {
 
 describe('Browser TTS utterance configuration contract', () => {
   it('keeps SpeechSynthesisUtterance configuration as a bounded extraction seam', () => {
-    expect(getPlayTtsFromWordSection()).toContain('createBrowserTtsPlaybackUtterance({');
+    expect(playbackLoopActionsSource).toContain('function playTtsFromWord(');
+    expect(playbackLoopActionsSource).toContain('runBrowserTtsPlaybackLoop({');
+    expect(playbackLoopRunnerSource).toContain('speakBrowserTtsPlaybackLoopChunk(');
+
+    expectInOrder(playbackLoopChunkSpeakerSource, [
+      'const { utterance, perfUtteranceId } = createBrowserTtsPlaybackUtterance({',
+      'input.playbackRuntime.ttsUtteranceRef.current = utterance;',
+      'commitBrowserTtsPlaybackLoopChunk({',
+      'attachBrowserTtsPlaybackLoopUtteranceHandlers({',
+      'input.telemetryContext.perfDiagnostics.recordTtsSpeak(perfUtteranceId);',
+      'input.playbackRuntime.speakBrowserTts(utterance);',
+    ]);
 
     expectInOrder(playbackLoopUtteranceSource, [
       'const utterance = new SpeechSynthesisUtterance(chunk.text);',
@@ -129,12 +132,6 @@ describe('Browser TTS utterance configuration contract', () => {
   });
 
   it('publishes current chunk state after the utterance is fully configured', () => {
-    expectInOrder(getPlayTtsFromWordSection(), [
-      'createBrowserTtsPlaybackUtterance({',
-      'ttsUtteranceRef.current = utterance;',
-      'commitBrowserTtsPlaybackLoopChunk({',
-    ]);
-
     expectInOrder(playbackLoopChunkCommitSource, [
       'setTtsCurrentChunk(chunk.text);',
       'setTtsPacingMode(pacingMode);',
@@ -150,7 +147,7 @@ describe('Browser TTS utterance configuration contract', () => {
   });
 
   it('keeps unexpected SpeechSynthesis errors paused, detached from the active utterance, and user-visible', () => {
-    expectInOrder(playbackLoopSource, [
+    expectInOrder(playbackLoopChunkSpeakerSource, [
       'attachBrowserTtsPlaybackLoopUtteranceHandlers({',
       'error: (event) => ({',
       'error: event.error,',
@@ -158,7 +155,7 @@ describe('Browser TTS utterance configuration contract', () => {
       'ttsUtteranceRef',
       'setTtsStatus',
       'setError',
-      'setCancelled: (nextCancelled) => {',
+      'setCancelled: (nextCancelled: boolean) => {',
       'cancelled = nextCancelled;',
     ]);
 

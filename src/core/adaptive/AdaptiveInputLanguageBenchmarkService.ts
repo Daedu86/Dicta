@@ -69,6 +69,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
   const semanticCutPenalty = unsafePause ? 1 : args.decision.deferPauseUntilSafeBoundary ? 0.35 : 0;
   const executionFidelity = computeExecutionFidelity(args.execution);
   const ttsEnvironment = args.live.inputMode === 'browser-tts' ? args.ttsEnvironment ?? undefined : undefined;
+  const benchmarkRejectionReason = args.benchmarkRejectionReason ?? undefined;
   const timelinePoint = buildInputLanguageBenchmarkTimelinePoint({
     live: args.live,
     decision: args.decision,
@@ -109,11 +110,11 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     deferPauseUntilSafeBoundary: args.decision.deferPauseUntilSafeBoundary,
     replayDenied,
   });
-  const benchmarkRejectionReason =
+  const resolvedBenchmarkRejectionReason =
     args.live.inputMode === 'browser-tts' && language === 'de' && !isValidBrowserTtsDeBenchmarkSample(timelinePoint)
       ? getBrowserTtsDeBenchmarkRejectionReason(timelinePoint)
-      : args.benchmarkRejectionReason ?? undefined;
-  timelinePoint.benchmarkRejectionReason = benchmarkRejectionReason ?? undefined;
+      : benchmarkRejectionReason;
+  timelinePoint.benchmarkRejectionReason = resolvedBenchmarkRejectionReason ?? undefined;
   const next = buildNextInputLanguageBenchmarkSnapshot({
     current,
     live: args.live,

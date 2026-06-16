@@ -10,6 +10,7 @@ const dictaFocusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useDi
 const focusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useFocusedTrainingRuntime.ts'), 'utf-8');
 const orchestrationSource = readFileSync(resolve(repoRoot, 'src/app/useTtsSessionOrchestrationRuntime.ts'), 'utf-8');
 const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
+const playbackLoopActionsSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopActions.ts'), 'utf-8');
 const playbackLoopRunnerSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopRunner.ts'), 'utf-8');
 const playbackLoopChunkSpeakerSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopChunkSpeaker.ts'), 'utf-8');
 const playbackLoopUtteranceHandlersSource = readFileSync(
@@ -46,10 +47,12 @@ describe('Browser TTS playback loop contract', () => {
   });
 
   it('keeps the playback loop owning chunked browser TTS playback internals through extracted seams', () => {
-    expect(playbackLoopSource).toContain('function playTtsFromWord(');
-    expect(playbackLoopSource).toContain('commitBrowserTtsPlaybackLoopChunk({');
-    expect(playbackLoopSource).toContain('attachBrowserTtsPlaybackLoopUtteranceHandlers({');
-    expect(playbackLoopRunnerSource).toContain('speakBrowserTtsPlaybackLoopChunk({');
+    expect(playbackLoopSource).toContain('createBrowserTtsPlaybackLoopActions(');
+    expect(playbackLoopSource).not.toContain('function playTtsFromWord(');
+    expect(playbackLoopSource).not.toContain('commitBrowserTtsPlaybackLoopChunk({');
+    expect(playbackLoopSource).not.toContain('attachBrowserTtsPlaybackLoopUtteranceHandlers({');
+    expect(playbackLoopActionsSource).toContain('runBrowserTtsPlaybackLoop({');
+    expect(playbackLoopRunnerSource).toContain('speakBrowserTtsPlaybackLoopChunk(');
     expect(playbackLoopRunnerSource).not.toContain('any');
     expect(playbackLoopChunkSpeakerSource).toContain('buildBrowserTtsPlaybackLoopChunkPlan(');
     expect(playbackLoopChunkSpeakerSource).toContain('createBrowserTtsPlaybackUtterance({');
@@ -58,7 +61,6 @@ describe('Browser TTS playback loop contract', () => {
     expect(playbackLoopChunkSpeakerSource).toContain('speakBrowserTts(utterance);');
     expect(playbackLoopChunkSpeakerSource).not.toContain('any');
     expect(playbackLoopUtteranceHandlersSource).toContain('handleBrowserTtsPlaybackLoopChunkEnd(end());');
-    expect(playbackLoopSource).toContain('speakBrowserTts(utterance);');
     expect(playbackLoopChunkCommitSource).toContain('recordTtsChunkTelemetry({');
     expect(playbackLoopCompletionSource).toContain('applyTtsPerformanceSample(');
   });

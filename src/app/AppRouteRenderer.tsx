@@ -41,7 +41,6 @@ type AppRouteRendererProps = {
   formatSessionStatus: AppWorkspaceContentProps['formatSessionStatus'];
   formatSessionDate: AppWorkspaceContentProps['formatSessionDate'];
   formatSessionPlaybackDuration: AppWorkspaceContentProps['formatSessionPlaybackDuration'];
-  showLeaderboardWorkspace: AppWorkspaceContentProps['onBackToTraining'];
   adaptiveAdvancedDiagnosticsProps: AppWorkspaceContentProps['adaptiveAdvancedDiagnosticsProps'];
   adaptiveBenchmarkSectionProps: AppWorkspaceContentProps['adaptiveBenchmarkSectionProps'];
   openRouterAccessState: AppWorkspaceContentProps['openRouterAccessState'];
@@ -49,7 +48,7 @@ type AppRouteRendererProps = {
   openRouterWorkspaceProps: AppWorkspaceContentProps['openRouterWorkspaceProps'];
   canAccessAdminWorkspace: AppWorkspaceContentProps['canAccessAdminWorkspace'];
   adminWorkspaceProps: AppWorkspaceContentProps['adminWorkspaceProps'];
-  leaderboardWorkspaceProps: AppWorkspaceContentProps['leaderboardWorkspaceProps'];
+  showLeaderboardWorkspace: AppWorkspaceContentProps['onBackToTraining'];
   liveMetricsDockProps: ComponentProps<typeof LiveMetricsDock>;
 };
 
@@ -83,7 +82,6 @@ export function AppRouteRenderer({
   formatSessionStatus,
   formatSessionDate,
   formatSessionPlaybackDuration,
-  showLeaderboardWorkspace,
   adaptiveAdvancedDiagnosticsProps,
   adaptiveBenchmarkSectionProps,
   openRouterAccessState,
@@ -91,7 +89,7 @@ export function AppRouteRenderer({
   openRouterWorkspaceProps,
   canAccessAdminWorkspace,
   adminWorkspaceProps,
-  leaderboardWorkspaceProps,
+  showLeaderboardWorkspace,
   liveMetricsDockProps,
 }: AppRouteRendererProps) {
   if (
@@ -152,7 +150,6 @@ export function AppRouteRenderer({
           openRouterWorkspaceProps={openRouterWorkspaceProps}
           canAccessAdminWorkspace={canAccessAdminWorkspace}
           adminWorkspaceProps={adminWorkspaceProps}
-          leaderboardWorkspaceProps={leaderboardWorkspaceProps}
         />
       </section>
       <LiveMetricsDock {...liveMetricsDockProps} />

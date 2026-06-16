@@ -1,24 +1,5 @@
 import { useOpenRouterWorkspaceProps } from './useOpenRouterWorkspaceProps';
 import { useAdminWorkspaceProps } from './useAdminWorkspaceProps';
-import { useLeaderboardWorkspaceProps } from './useLeaderboardWorkspaceProps';
-import {
-  buildSessionPointsHelpText,
-  computeSessionMaxPoints,
-  formatSessionPointsForSession,
-} from '../core/evaluation';
-import { buildSessionScoreHelpText } from '../core/sessionScore';
-import {
-  LANGUAGE_LABELS,
-  SUPPORTED_LANGUAGES,
-} from '../core/languages';
-import { Metric } from '../components/shared/Metric';
-import { SessionDeviceIcon } from '../components/shared/SessionDeviceIcon';
-import { formatSessionGenerationOrigin } from './sessionDisplayFormatters';
-import { formatSessionDate } from './sessionDateFormatters';
-import { formatLeaderboardSessionStatus } from './sessionLeaderboardFormatters';
-import { formatSessionPlaybackDuration } from './sessionPlaybackDuration';
-import { getSessionDisplayTitle } from './sessionDisplayTitle';
-import { isSessionReadyForTraining } from './sessionTrainingReadiness';
 import type { UseWorkspacePanelPropsRuntimeArgs } from './useWorkspacePanelPropsRuntimeTypes';
 
 export type { UseWorkspacePanelPropsRuntimeArgs } from './useWorkspacePanelPropsRuntimeTypes';
@@ -78,20 +59,6 @@ export function useWorkspacePanelPropsRuntime({
   updateAdminProfileAccess,
   adminRemoteStatus,
   setExportMessage,
-
-  leaderboard,
-  leaderboardSections,
-  leaderboardMonthSessionCount,
-  leaderboardLanguageView,
-  leaderboardExpanded,
-  leaderboardSectionExpanded,
-  activeSessionId,
-  setLeaderboardLanguageView,
-  setLeaderboardExpanded,
-  setLeaderboardSectionExpanded,
-  openWorkspaceForSession,
-  openDashboardForSession,
-  deleteSession,
 }: UseWorkspacePanelPropsRuntimeArgs) {
   const openRouterWorkspaceProps = useOpenRouterWorkspaceProps({
     defaultModel: effectiveOpenRouterDefaultModel,
@@ -158,40 +125,8 @@ export function useWorkspacePanelPropsRuntime({
     setExportMessage,
   });
 
-  const leaderboardWorkspaceProps = useLeaderboardWorkspaceProps({
-    leaderboard,
-    leaderboardSections,
-    leaderboardMonthSessionCount,
-    leaderboardLanguageView,
-    leaderboardExpanded,
-    leaderboardSectionExpanded,
-    activeSessionId,
-    supportedLanguages: SUPPORTED_LANGUAGES,
-    languageLabels: LANGUAGE_LABELS,
-    onChangeLeaderboardLanguageView: setLeaderboardLanguageView,
-    setLeaderboardExpanded,
-    setLeaderboardSectionExpanded,
-    onOpenWorkspaceForSession: openWorkspaceForSession,
-    onOpenDashboardForSession: openDashboardForSession,
-    onDeleteSession: deleteSession,
-    onBackToTraining: showLeaderboardWorkspace,
-    formatLeaderboardSessionStatus,
-    formatSessionGenerationOrigin,
-    formatSessionPlaybackDuration,
-    formatSessionDate,
-    formatSessionPointsForSession,
-    buildSessionScoreHelpText,
-    buildSessionPointsHelpText,
-    computeSessionMaxPoints,
-    getSessionDisplayTitle,
-    isSessionReadyForTraining,
-    MetricComponent: Metric,
-    SessionDeviceIconComponent: SessionDeviceIcon,
-  });
-
   return {
     openRouterWorkspaceProps,
     adminWorkspaceProps,
-    leaderboardWorkspaceProps,
   };
 }

@@ -16,7 +16,6 @@ type UseAppShellHeaderPropsArgs = {
   syncStatusText: string;
   appProfile: DictaAppProfile | null;
   sessionQuotaStatus: DictaSessionQuotaStatus;
-  onOpenLeaderboard: () => void;
   onOpenMobileTraining: () => void;
   onOpenAdaptive: () => void;
   onOpenAdmin: () => void;
@@ -38,7 +37,6 @@ export function useAppShellHeaderProps({
   syncStatusText,
   appProfile,
   sessionQuotaStatus,
-  onOpenLeaderboard,
   onOpenMobileTraining,
   onOpenAdaptive,
   onOpenAdmin,
@@ -66,7 +64,6 @@ export function useAppShellHeaderProps({
       sessionQuotaLimit: sessionQuotaStatus.limit,
       sessionQuotaUsed: sessionQuotaStatus.used,
       sessionQuotaBlocked: sessionQuotaStatus.blocked,
-      onOpenLeaderboard,
       onOpenMobileTraining,
       onOpenAdaptive,
       onOpenAdmin,
@@ -89,7 +86,6 @@ export function useAppShellHeaderProps({
     sessionQuotaStatus.limit,
     sessionQuotaStatus.used,
     sessionQuotaStatus.blocked,
-    onOpenLeaderboard,
     onOpenMobileTraining,
     onOpenAdaptive,
     onOpenAdmin,

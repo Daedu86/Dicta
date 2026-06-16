@@ -139,7 +139,6 @@ export function useDictaRuntimeRootPresentationGraph({
       openRouterWorkspaceProps: routeCompositionRuntime.openRouterWorkspaceProps,
       canAccessAdminWorkspace: openRouterGraph.allowCustomSessionGeneration,
       adminWorkspaceProps: routeCompositionRuntime.adminWorkspaceProps,
-      leaderboardWorkspaceProps: routeCompositionRuntime.leaderboardWorkspaceProps,
       liveMetricsDockProps: routeCompositionRuntime.liveMetricsDockProps,
     },
   };

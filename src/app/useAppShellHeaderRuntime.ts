@@ -33,7 +33,6 @@ type UseAppShellHeaderRuntimeArgs = {
   pendingSyncSummary: PendingSyncSummary;
   appProfile: AppShellHeaderPropsArgs['appProfile'];
   sessionQuotaStatus: AppShellHeaderPropsArgs['sessionQuotaStatus'];
-  showLeaderboardWorkspace: AppShellHeaderPropsArgs['onOpenLeaderboard'];
   navigateAppRoute: (path: '/training') => void;
   openAdaptiveWorkspaceFromHeader: AppShellHeaderPropsArgs['onOpenAdaptive'];
   showAdminWorkspace: AppShellHeaderPropsArgs['onOpenAdmin'];
@@ -53,7 +52,6 @@ export function useAppShellHeaderRuntime({
   pendingSyncSummary,
   appProfile,
   sessionQuotaStatus,
-  showLeaderboardWorkspace,
   navigateAppRoute,
   openAdaptiveWorkspaceFromHeader,
   showAdminWorkspace,
@@ -84,7 +82,6 @@ export function useAppShellHeaderRuntime({
     syncStatusText: appShellSyncStatusText,
     appProfile,
     sessionQuotaStatus,
-    onOpenLeaderboard: showLeaderboardWorkspace,
     onOpenMobileTraining: () => navigateAppRoute('/training'),
     onOpenAdaptive: openAdaptiveWorkspaceFromHeader,
     onOpenAdmin: showAdminWorkspace,

@@ -5,7 +5,6 @@ const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 
 export type WorkspaceMode =
   | 'training'
-  | 'leaderboard'
   | 'dashboard'
   | 'tts'
   | 'adaptive'
@@ -30,12 +29,12 @@ type WorkspaceRouting = {
 };
 
 export function useWorkspaceRouting(): WorkspaceRouting {
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('leaderboard');
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('training');
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [dashboardSessionId, setDashboardSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    setWorkspaceMode('leaderboard');
+    setWorkspaceMode('training');
     setDashboardSessionId(null);
   }, []);
 
@@ -69,7 +68,7 @@ export function useWorkspaceRouting(): WorkspaceRouting {
     setDashboardSessionId(null);
   }, []);
 
-  const showLeaderboardWorkspace = useCallback(() => showWorkspace('leaderboard'), [showWorkspace]);
+  const showLeaderboardWorkspace = useCallback(() => showWorkspace('training'), [showWorkspace]);
   const showAdminWorkspace = useCallback(() => showWorkspace('admin'), [showWorkspace]);
   const showOpenRouterWorkspace = useCallback(() => showWorkspace('openrouter'), [showWorkspace]);
   const showAdaptiveWorkspace = useCallback(() => showWorkspace('adaptive'), [showWorkspace]);
