@@ -1,17 +1,8 @@
-import {
-  useCallback,
-  useRef,
-  useState,
-  type Dispatch,
-  type MutableRefObject,
-  type SetStateAction,
-} from 'react';
-import type { BrowserTtsEnvironmentFingerprint, SessionTelemetry } from '../types/dictation';
+import { useCallback, useRef, useState } from 'react';
 import { AdaptiveDictationController } from '../core/adaptive/AdaptiveDictationController';
 import {
   createEmptyInputLanguageBenchmark,
   normalizeBenchmarkLanguage,
-  updateInputLanguageBenchmark,
 } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import {
   buildAdaptiveSessionFeedback,
@@ -19,117 +10,44 @@ import {
   upsertAdaptiveSessionFeedbackByInputLanguage,
 } from '../core/adaptive/sessionFeedback';
 import type {
-  AdaptiveTimelinePoint,
-  HistoricalPerformanceProfile,
   InputLanguageBenchmarkMetrics,
   InputMode,
   LanguageCode,
   LiveTelemetryFrame,
   PacingDecision,
-  PhraseBoundaryType,
   PhrasePlaybackEvent,
 } from '../core/adaptive/types';
 import { HistoricalPerformanceService } from '../core/history/HistoricalPerformanceService';
-import { estimateSessionVoiceDurationSec } from '../core/sessionDuration';
 import {
   getAdaptiveControllerForScope,
   resetAdaptiveControllerForScope,
   type ScopedAdaptiveControllerRegistry,
 } from './adaptiveControllerRegistry';
 import { perfDiagnostics } from '../core/perfDiagnostics';
-import type {
-  AdaptiveBenchmarksByInputLanguage,
-  AdaptiveSessionFeedbackByInputLanguage,
-  BenchmarkLanguageButton,
-} from '../components/openrouter/types';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
+import { buildAdaptiveBenchmarkUpdate } from './adaptiveRuntimeBenchmarkUpdate';
+import {
+  buildHistoricalPerformanceProfile,
+  findLatestFinishedBrowserTtsDeDictationScriptSession,
+  mapRuntimeSessionInputMode,
+  resolveRuntimeSessionLanguage,
+} from './adaptiveRuntimeSessionUtils';
+import type {
+  AdaptiveRuntime,
+  AdaptiveRuntimeOptions,
+  AdaptiveRuntimeRecordBenchmarkOptions,
+  AdaptiveRuntimeSessionInput,
+} from './adaptiveRuntimeTypes';
 
-export type AdaptiveRuntimeSessionInputMode = string;
-export type AdaptiveRuntimeSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error' | string;
-export type AdaptiveRuntimeSessionSource = 'plainText' | 'dictationScript' | string;
-
-export type AdaptiveRuntimeSessionInput = {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  inputMode: AdaptiveRuntimeSessionInputMode;
-  status: AdaptiveRuntimeSessionStatus;
-  ttsText?: string;
-  ttsLanguage?: LanguageCode | null;
-  metrics: {
-    rate: number;
-    wpm: number;
-    accuracy: number;
-    lagSec: number;
-    trend: 'improving' | 'stable' | 'declining';
-    score: number;
-    points: number;
-  };
-  telemetry: Partial<SessionTelemetry> & { finishedAt?: string };
-  sessionSource: AdaptiveRuntimeSessionSource;
-  dictationScript?: { title: string; phrases?: unknown[] } | null;
-  ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
-  voiceDurationSec?: number | null;
-};
-
-export type AdaptiveRuntimeRecordBenchmarkOptions = {
-  actualPlaybackRate?: number;
-  actualPauseMs?: number;
-  replayExecuted?: boolean;
-  actualBoundaryType?: PhraseBoundaryType;
-  ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
-  event?: AdaptiveTimelinePoint['event'];
-  phraseIndex?: number;
-  totalSemanticPhrases?: number;
-  throttleMs?: number;
-};
-
-type AdaptiveRuntimeOptions = {
-  activeSession: AdaptiveRuntimeSessionInput | null;
-  activeSessionId: string;
-  sessions: AdaptiveRuntimeSessionInput[];
-  setAdaptiveBenchmarks: Dispatch<SetStateAction<AdaptiveBenchmarksByInputLanguage>>;
-  adaptiveBenchmarksRef: MutableRefObject<AdaptiveBenchmarksByInputLanguage>;
-  adaptiveSessionFeedback: AdaptiveSessionFeedbackByInputLanguage;
-  setAdaptiveSessionFeedback: Dispatch<SetStateAction<AdaptiveSessionFeedbackByInputLanguage>>;
-  adaptiveSessionFeedbackRef: MutableRefObject<AdaptiveSessionFeedbackByInputLanguage>;
-  persistAdaptiveSessionFeedbackNow: (feedback: AdaptiveSessionFeedbackByInputLanguage) => void;
-  selectedBenchmarkLanguage: BenchmarkLanguageButton;
-  setSelectedBenchmarkLanguage: (language: BenchmarkLanguageButton) => void;
-};
-
-export type AdaptiveRuntime = {
-  adaptiveControllerRef: MutableRefObject<AdaptiveDictationController>;
-  getAdaptiveController: (inputMode: InputMode, language: LanguageCode) => AdaptiveDictationController;
-  historyServiceRef: MutableRefObject<HistoricalPerformanceService>;
-  phrasePlaybackEventsRef: MutableRefObject<PhrasePlaybackEvent[]>;
-  phrasePlaybackTotalPhrasesRef: MutableRefObject<number>;
-  selectedBenchmarkInputMode: InputMode;
-  setSelectedBenchmarkInputMode: Dispatch<SetStateAction<InputMode>>;
-  selectedBenchmarkLanguage: BenchmarkLanguageButton;
-  setSelectedBenchmarkLanguage: (language: BenchmarkLanguageButton) => void;
-  getHistoricalPerformanceProfile: (inputMode: InputMode, language?: string) => HistoricalPerformanceProfile;
-  getBenchmarkSnapshot: (inputMode: InputMode, language: LanguageCode) => InputLanguageBenchmarkMetrics;
-  recordAdaptiveBenchmark: (
-    live: LiveTelemetryFrame,
-    decision: PacingDecision,
-    options?: AdaptiveRuntimeRecordBenchmarkOptions,
-  ) => void;
-  beginAdaptiveSessionFeedback: (inputMode: InputMode, language: LanguageCode, totalPhrases?: number) => void;
-  recordPhrasePlaybackEvent: (
-    event: PhrasePlaybackEvent['event'],
-    inputMode: InputMode,
-    language: LanguageCode,
-    phrase: SemanticPhrase | null | undefined,
-    phraseIndex: number,
-  ) => void;
-  completeAdaptiveSessionFeedback: (
-    completedSession?: AdaptiveRuntimeSessionInput | null,
-    options?: { phraseEvents?: PhrasePlaybackEvent[]; totalPhrases?: number },
-  ) => void;
-  ensureLatestBrowserTtsDeDictationScriptFeedback: (sourceSessions: AdaptiveRuntimeSessionInput[]) => void;
-  resetAdaptiveSessionFeedbackTracking: (sessionId?: string | null) => void;
-};
+export type {
+  AdaptiveRuntime,
+  AdaptiveRuntimeOptions,
+  AdaptiveRuntimeRecordBenchmarkOptions,
+  AdaptiveRuntimeSessionInput,
+  AdaptiveRuntimeSessionInputMode,
+  AdaptiveRuntimeSessionSource,
+  AdaptiveRuntimeSessionStatus,
+} from './adaptiveRuntimeTypes';
 
 export function useAdaptiveRuntime({
   activeSession,
@@ -161,7 +79,7 @@ export function useAdaptiveRuntime({
   );
 
   const getHistoricalPerformanceProfile = useCallback(
-    (inputMode: InputMode, language?: string): HistoricalPerformanceProfile =>
+    (inputMode: InputMode, language?: string) =>
       buildHistoricalPerformanceProfile(sessions, historyServiceRef.current, inputMode, language),
     [sessions],
   );
@@ -194,37 +112,15 @@ export function useAdaptiveRuntime({
 
       try {
         setAdaptiveBenchmarks((current) => {
-          const inputBenchmarks = current[live.inputMode] ?? {};
-          const existing = inputBenchmarks[language] ?? createEmptyInputLanguageBenchmark(live.inputMode, language);
-          const updated = updateInputLanguageBenchmark({
-            current: existing,
+          const nextBenchmarks = buildAdaptiveBenchmarkUpdate({
+            current,
             live,
             decision,
             sessionId: activeSessionId,
-            ttsEnvironment: options.ttsEnvironment,
-            phraseIndex: options.phraseIndex,
-            totalSemanticPhrases: options.totalSemanticPhrases,
-            event: options.event,
-            execution: {
-              requestedPlaybackRate: decision.playbackRate,
-              actualPlaybackRate: options.actualPlaybackRate ?? live.currentPlaybackRate,
-              requestedPauseMs: decision.pauseAfterPhraseMs,
-              actualPauseMs: options.actualPauseMs,
-              requestedReplay: decision.shouldReplayPhrase,
-              replayExecuted: options.replayExecuted,
-              requestedBoundaryType: live.phraseBoundaryType,
-              actualBoundaryType: options.actualBoundaryType ?? live.phraseBoundaryType,
-              decisionAppliedAtMs: now,
-              executionStartedAtMs: now,
-            },
+            language,
+            now,
+            options,
           });
-          const nextBenchmarks = {
-            ...current,
-            [live.inputMode]: {
-              ...inputBenchmarks,
-              [language]: updated,
-            },
-          };
           adaptiveBenchmarksRef.current = nextBenchmarks;
           return nextBenchmarks;
         });
@@ -396,113 +292,4 @@ export function useAdaptiveRuntime({
     ensureLatestBrowserTtsDeDictationScriptFeedback,
     resetAdaptiveSessionFeedbackTracking,
   };
-}
-
-function buildHistoricalPerformanceProfile(
-  sessions: AdaptiveRuntimeSessionInput[],
-  historyService: HistoricalPerformanceService,
-  inputMode: InputMode,
-  language?: string,
-): HistoricalPerformanceProfile {
-  const records = sessions
-    .filter((session) => session.status === 'finished' && session.metrics.points > 0)
-    .map((session) => {
-      const mode = mapRuntimeSessionInputMode(session.inputMode);
-      return {
-        inputMode: mode,
-        language:
-          (mode === 'browser-tts'
-            ? session.ttsLanguage
-            : session.ttsLanguage) ?? undefined,
-        durationSec: Math.max(1, estimateSessionVoiceDurationSec(session) ?? session.metrics.points * 2),
-        averagePlaybackRate: clamp(session.metrics.rate, 0.75, 1.15),
-        averageWpm: session.metrics.wpm,
-        averageAccuracy: clamp01(session.metrics.accuracy / 100),
-        averageLagSec: Math.abs(session.metrics.lagSec),
-        averagePauseMs: 700,
-        replayCount: 0,
-        phraseCount: 1,
-        supportCount: session.metrics.trend === 'declining' ? 1 : 0,
-        balancedCount: session.metrics.trend === 'stable' ? 1 : 0,
-        flowCount: session.metrics.trend === 'improving' ? 1 : 0,
-        backspaceRate: 0.03,
-        correctionRate: 0.05,
-        strugglesWithLongPhrases: session.metrics.wpm < 40,
-        strugglesWithNumbers: false,
-        strugglesWithNames: false,
-        strugglesWithPunctuation: false,
-        score: session.metrics.score,
-        points: session.metrics.points,
-        improvementTrend: session.metrics.trend,
-        timestamp: session.updatedAt,
-        sessionsCount: 1,
-        profileConfidence: 0.5,
-      };
-    });
-
-  if (records.length === 0) {
-    return {
-      language,
-      inputMode,
-      comfortablePlaybackRate: 1,
-      averageWpm: 55,
-      averageAccuracy: 0.92,
-      averageLagSec: 1.2,
-      averagePauseMs: 700,
-      preferredPhraseSize: 'medium',
-      preferredPauseAfterPhraseMs: 700,
-      typicalBackspaceRate: 0.05,
-      typicalCorrectionRate: 0.05,
-      strugglesWithLongPhrases: false,
-      strugglesWithNumbers: false,
-      strugglesWithNames: false,
-      strugglesWithPunctuation: false,
-      improvementTrend: 'stable',
-      sessionsCount: 0,
-      profileConfidence: 0.2,
-    };
-  }
-
-  return historyService.computeProfile(records, language, inputMode);
-}
-
-function findLatestFinishedBrowserTtsDeDictationScriptSession(
-  sourceSessions: AdaptiveRuntimeSessionInput[],
-): AdaptiveRuntimeSessionInput | null {
-  return (
-    sourceSessions
-      .filter(isFinishedBrowserTtsDeDictationScriptSession)
-      .sort((a, b) => getRuntimeSessionFinishedAtMs(b) - getRuntimeSessionFinishedAtMs(a))[0] ?? null
-  );
-}
-
-function isFinishedBrowserTtsDeDictationScriptSession(session: AdaptiveRuntimeSessionInput): boolean {
-  return (
-    session.status === 'finished' &&
-    session.sessionSource === 'dictationScript' &&
-    mapRuntimeSessionInputMode(session.inputMode) === 'browser-tts' &&
-    normalizeBenchmarkLanguage(resolveRuntimeSessionLanguage(session)) === 'de'
-  );
-}
-
-function getRuntimeSessionFinishedAtMs(session: AdaptiveRuntimeSessionInput): number {
-  const finishedAtMs = new Date(session.telemetry.finishedAt ?? session.updatedAt ?? session.createdAt).getTime();
-  return Number.isFinite(finishedAtMs) ? finishedAtMs : 0;
-}
-
-function mapRuntimeSessionInputMode(mode: AdaptiveRuntimeSessionInputMode): InputMode {
-  if (mode === 'browser-tts') return 'browser-tts';
-  return 'browser-tts';
-}
-
-function resolveRuntimeSessionLanguage(session: AdaptiveRuntimeSessionInput): LanguageCode {
-  return session.ttsLanguage ?? 'unknown';
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
