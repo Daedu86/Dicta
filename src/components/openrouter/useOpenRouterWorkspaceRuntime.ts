@@ -1,48 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { InputMode } from '../../core/adaptive/types';
-import { createEmptyInputLanguageBenchmark } from '../../core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import {
-  buildOpenRouterGenerationPrompt,
-  estimateOpenRouterPromptSize,
-  getOpenRouterGenerationMaxTokens,
-  type OpenRouterGeneratePromptSource,
-} from '../../core/adaptive/openRouterGenerationPrompt';
-import { isTransientOpenRouterGenerationError } from '../../core/adaptive/openRouterFallbackScript';
-import type { DictationScriptValidationResult } from '../../core/adaptive/dictationScriptValidation';
-import { selectLatestAdaptiveSessionFeedback } from '../../core/adaptive/sessionFeedback';
-import type { ActiveOpenRouterJob, OpenRouterJobResponse } from '../../core/openRouterJobs';
-import { isSupportedLanguage } from '../../core/languages';
-import { requestTrainingNotificationPermission } from '../../core/trainingNotifications';
-import {
-  buildOpenRouterModelOptions,
-  formatInterruptedOpenRouterMessage,
-  formatTrainingGenerationNotice,
-  getOpenRouterSlotLabel,
-  parseTimestampMs,
-  releaseOpenRouterWakeLock,
-  requestOpenRouterWakeLock,
-  shouldCreatePersistentGenerationErrorSession,
-  validateGeneratedScriptForTarget,
-} from './openRouterViewHelpers';
-import {
-  OPEN_ROUTER_GENERATE_DURATION_OPTIONS,
-  OPEN_ROUTER_GENERATE_PROMPT_SOURCE_OPTIONS,
-  OPEN_ROUTER_PROFILE_INPUT_MODE_OPTIONS,
-  OPEN_ROUTER_PROFILE_LANGUAGE_OPTIONS,
-  buildOpenRouterWorkspaceExportPayloads,
-  buildOpenRouterWorkspaceVariantPrompt,
-  formatOpenRouterPromptSizeHint,
-} from './openRouterWorkspaceRuntimeHelpers';
-import type {
-  BenchmarkLanguageButton,
-  OpenRouterGenerationSlotId,
-  OpenRouterWorkspaceProps,
-  TrainingGenerationNoticeView,
-} from './types';
-import { useOpenRouterApiKeyStatus } from './useOpenRouterApiKeyStatus';
+import { useEffect } from 'react';
 import { useOpenRouterGenerationSlots } from './useOpenRouterGenerationSlots';
-
-const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
+import type { OpenRouterWorkspaceProps } from './types';
+import { formatOpenRouterPromptSizeHint } from './openRouterWorkspaceRuntimeHelpers';
+import { LOCAL_DEV_FEATURES_AVAILABLE } from './openRouterWorkspaceRuntimeConfig';
+import { useOpenRouterWorkspaceClipboard } from './useOpenRouterWorkspaceClipboard';
+import { useOpenRouterWorkspaceDerivations } from './useOpenRouterWorkspaceDerivations';
+import { useOpenRouterWorkspaceSlotGeneration } from './useOpenRouterWorkspaceSlotGeneration';
+import { useOpenRouterWorkspaceUiState } from './useOpenRouterWorkspaceUiState';
 
 export function useOpenRouterWorkspaceRuntime({
   defaultModel,
@@ -63,33 +27,11 @@ export function useOpenRouterWorkspaceRuntime({
   onTrackJob,
   onCreateGenerationErrorSession,
 }: OpenRouterWorkspaceProps) {
-  const {
-    apiKeyDraft,
-    setApiKeyDraft,
-    apiKeyVisible,
-    setApiKeyVisible,
-    apiKeyConfigured,
-    apiKeySuffix,
-    apiKeyMessage,
-    setApiKeyMessage,
-    apiKeyBusy,
-    setApiKeyBusy,
-    refreshApiKeyStatus,
-  } = useOpenRouterApiKeyStatus(LOCAL_DEV_FEATURES_AVAILABLE);
-  const [selectedModel, setSelectedModel] = useState(defaultModel);
-  const [testPrompt, setTestPrompt] = useState('');
-  const [testResponse, setTestResponse] = useState('');
-  const [testUsage, setTestUsage] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null);
-  const [testBusy, setTestBusy] = useState(false);
-  const [testError, setTestError] = useState('');
-  const [exportStatusMessage, setExportStatusMessage] = useState('');
-  const [humanFeedbackEditorOpen, setHumanFeedbackEditorOpen] = useState(false);
-  const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
-  const [generateInputMode, setGenerateInputMode] = useState<InputMode>(defaultGenerateInputMode);
-  const [generateLanguage, setGenerateLanguage] = useState<BenchmarkLanguageButton>(defaultGenerateLanguage);
-  const [generatePromptSource, setGeneratePromptSource] = useState<OpenRouterGeneratePromptSource>('compact-adaptive');
-  const [generateDurationMinutes, setGenerateDurationMinutes] = useState<2 | 3 | 4>(3);
-  const [activeGenerateSlotId, setActiveGenerateSlotId] = useState<OpenRouterGenerationSlotId>('prompt1');
+  const uiState = useOpenRouterWorkspaceUiState({
+    defaultModel,
+    defaultGenerateInputMode,
+    defaultGenerateLanguage,
+  });
   const {
     generationSlots,
     generateBusySlots,
@@ -98,326 +40,94 @@ export function useOpenRouterWorkspaceRuntime({
     clearGeneratedScriptDraft,
   } = useOpenRouterGenerationSlots(defaultModel);
 
-  const [sectionsExpanded, setSectionsExpanded] = useState({
-    apiKey: true,
-    models: true,
-    test: true,
-    exports: true,
-    generate: true,
+  const derivations = useOpenRouterWorkspaceDerivations({
+    defaultModel,
+    assignedModel,
+    models,
+    exportActiveSessionStatus,
+    exportProfile,
+    exportSessionFeedback,
+    benchmarks,
+    sessionFeedbackByInputLanguage,
+    activeJobs,
+    jobNotifications,
+    generationNowMs,
+    generationSlots,
+    generateBusySlots,
+    humanFeedbackDraft: uiState.humanFeedbackDraft,
+    generateInputMode: uiState.generateInputMode,
+    generateLanguage: uiState.generateLanguage,
+    generatePromptSource: uiState.generatePromptSource,
+    generateDurationMinutes: uiState.generateDurationMinutes,
+    activeGenerateSlotId: uiState.activeGenerateSlotId,
   });
 
-  const modelSelectionLocked = Boolean(assignedModel);
-  const modelOptions = useMemo(
-    () => buildOpenRouterModelOptions(models, [defaultModel, assignedModel]),
-    [assignedModel, defaultModel, models],
-  );
+  const copyToClipboard = useOpenRouterWorkspaceClipboard({
+    exportProfile,
+    setExportStatusMessage: uiState.setExportStatusMessage,
+  });
 
-  const copyToClipboard = async (label: string, text: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setExportStatusMessage(`Copied: ${label} · ${exportProfile.inputMode}/${exportProfile.language}`);
-    } catch {
-      setExportStatusMessage(`Could not copy: ${label}.`);
-    }
-  };
-
-  async function generateOpenRouterSlot(slotId: OpenRouterGenerationSlotId): Promise<void> {
-    const slot = generationSlots[slotId];
-    const slotModel = defaultModel;
-    const slotLabel = getOpenRouterSlotLabel(slotId);
-    const existingJob = activeJobs.some((job) => job.origin === 'custom-workspace' && job.customSlotId === slotId);
-    if (existingJob || generateBusySlots[slotId]) return;
-
-    if (!slotModel) {
-      const message = `Set a model for ${slotLabel} first.`;
-      updateGenerationSlot(slotId, { error: message });
-      onCreateGenerationErrorSession({
-        slotLabel,
-        inputMode: generateInputMode,
-        language: generateLanguage,
-        message,
-      });
-      return;
-    }
-
-    void requestTrainingNotificationPermission();
-
-    setGenerateBusySlots((current) => ({ ...current, [slotId]: true }));
-    updateGenerationSlot(slotId, { error: '' });
-    const slotPrompt = buildOpenRouterWorkspaceVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
-    const slotMaxTokens = getOpenRouterGenerationMaxTokens(generateDurationMinutes);
-    const generationStartedAt = new Date().toISOString();
-    const promptSize = estimateOpenRouterPromptSize(slotPrompt, {
-      promptMode: generatePromptSource,
-      durationMinutes: generateDurationMinutes,
-      inputMode: generateInputMode,
-      language: generateLanguage,
-    });
-    const wakeLock = await requestOpenRouterWakeLock();
-    try {
-      const response = await fetch('/api/openrouter/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({
-          model: slotModel,
-          prompt: slotPrompt,
-          maxTokens: slotMaxTokens,
-          slotLabel,
-          inputMode: generateInputMode,
-          language: generateLanguage,
-          durationMinutes: generateDurationMinutes,
-        }),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Generation request failed (${response.status}).`);
-      }
-      const payload = (await response.json()) as OpenRouterJobResponse;
-      const jobId = payload.jobId;
-      if (!jobId) throw new Error('OpenRouter job did not return an id.');
-      const activeJob: ActiveOpenRouterJob = {
-        jobId,
-        model: slotModel,
-        slotLabel,
-        inputMode: generateInputMode,
-        language: generateLanguage,
-        durationMinutes: generateDurationMinutes,
-        promptMode: promptSize.promptMode,
-        promptCharacterCount: promptSize.characterCount,
-        promptApproximateTokenCount: promptSize.approximateTokenCount,
-        origin: 'custom-workspace',
-        customSlotId: slotId,
-        startedAt: generationStartedAt,
-      };
-      onTrackJob(activeJob);
-      updateGenerationSlot(slotId, {
-        inputMode: generateInputMode,
-        language: generateLanguage,
-        generatedAt: generationStartedAt,
-        model: slotModel,
-        error: '',
-      });
-    } catch (err) {
-      const message =
-        err instanceof TypeError
-          ? 'Failed to reach OpenRouter endpoint. Refresh the page and try a free model such as openrouter/free.'
-          : err instanceof Error
-            ? err.message
-            : 'OpenRouter generation failed.';
-      if (isTransientOpenRouterGenerationError(message)) {
-        const nowMs = Date.now();
-        updateGenerationSlot(slotId, {
-          inputMode: generateInputMode,
-          language: generateLanguage,
-          generatedAt: new Date().toISOString(),
-          model: slotModel,
-          error: formatInterruptedOpenRouterMessage(
-            slotLabel,
-            slotModel,
-            Math.max(0, nowMs - parseTimestampMs(generationStartedAt, nowMs)),
-          ),
-        });
-        return;
-      }
-      updateGenerationSlot(slotId, {
-        inputMode: generateInputMode,
-        language: generateLanguage,
-        generatedAt: new Date().toISOString(),
-        model: slotModel,
-        error: message,
-      });
-      if (shouldCreatePersistentGenerationErrorSession(message)) {
-        onCreateGenerationErrorSession({
-          slotLabel,
-          inputMode: generateInputMode,
-          language: generateLanguage,
-          message,
-        });
-      }
-    } finally {
-      await releaseOpenRouterWakeLock(wakeLock);
-      setGenerateBusySlots((current) => ({ ...current, [slotId]: false }));
-    }
-  }
-
-  const exportPayloads = useMemo(
-    () =>
-      buildOpenRouterWorkspaceExportPayloads({
-        exportActiveSessionStatus,
-        exportProfile,
-        exportSessionFeedback,
-        humanFeedbackDraft,
-      }),
-    [exportActiveSessionStatus, exportProfile, exportSessionFeedback, humanFeedbackDraft],
-  );
-
-  const generateProfile =
-    benchmarks[generateInputMode]?.[generateLanguage] ?? createEmptyInputLanguageBenchmark(generateInputMode, generateLanguage);
-  const generateSessionFeedback = selectLatestAdaptiveSessionFeedback(
-    sessionFeedbackByInputLanguage[generateInputMode]?.[generateLanguage],
-    generateInputMode,
-    generateLanguage,
-  );
-  const generateHasBenchmarkData = generateProfile.sampleCount > 0 || generateProfile.sessionCount > 0;
-  const generateHasSessionFeedback = Boolean(generateSessionFeedback);
-  const generatePayloads = useMemo(
-    () =>
-      buildOpenRouterGenerationPrompt({
-        profile: generateProfile,
-        sessionFeedback: generateSessionFeedback,
-        promptSource: generatePromptSource,
-        durationMinutes: generateDurationMinutes,
-        userIntent: 'auto',
-      }),
-    [generateDurationMinutes, generateProfile, generatePromptSource, generateSessionFeedback],
-  );
-  const activeGenerateSlot = generationSlots[activeGenerateSlotId];
-  const activeGenerateSlotModel = defaultModel;
-  const activeGenerateSlotPrompt = useMemo(
-    () => buildOpenRouterWorkspaceVariantPrompt(activeGenerateSlotId, generatePayloads.prompt, activeGenerateSlot, activeGenerateSlotModel),
-    [activeGenerateSlotId, activeGenerateSlot, activeGenerateSlotModel, generatePayloads.prompt],
-  );
-  const activeGenerateSlotValidation = useMemo<DictationScriptValidationResult | null>(() => {
-    if (!activeGenerateSlot.json || !activeGenerateSlot.inputMode || !activeGenerateSlot.language) return null;
-    return validateGeneratedScriptForTarget(activeGenerateSlot.json, activeGenerateSlot.inputMode, activeGenerateSlot.language);
-  }, [activeGenerateSlot.inputMode, activeGenerateSlot.json, activeGenerateSlot.language]);
-  const activeGenerateSlotJob = useMemo(
-    () =>
-      [...activeJobs]
-        .filter((job) => job.origin === 'custom-workspace' && job.customSlotId === activeGenerateSlotId)
-        .sort((a, b) => parseTimestampMs(b.startedAt, generationNowMs) - parseTimestampMs(a.startedAt, generationNowMs))[0] ?? null,
-    [activeGenerateSlotId, activeJobs, generationNowMs],
-  );
-  const activeGenerateSlotJobNotice = useMemo<TrainingGenerationNoticeView | null>(() => {
-    if (activeGenerateSlotJob) {
-      return formatTrainingGenerationNotice(
-        {
-          slotLabel: activeGenerateSlotJob.slotLabel,
-          displayLabel: activeGenerateSlotJob.slotLabel,
-          model: activeGenerateSlotJob.model,
-          startedAt: activeGenerateSlotJob.startedAt,
-          status: 'running',
-        },
-        generationNowMs,
-      );
-    }
-
-    const latestNotification =
-      Object.values(jobNotifications)
-        .filter((notification) => notification.slotLabel === getOpenRouterSlotLabel(activeGenerateSlotId))
-        .sort((a, b) => parseTimestampMs(b.startedAt, generationNowMs) - parseTimestampMs(a.startedAt, generationNowMs))[0] ?? null;
-    if (!latestNotification) return null;
-
-    return formatTrainingGenerationNotice(
-      {
-        slotLabel: latestNotification.slotLabel,
-        displayLabel: latestNotification.slotLabel,
-        model: latestNotification.model,
-        startedAt: latestNotification.startedAt,
-        status: latestNotification.status,
-        completedAt: latestNotification.completedAt,
-        error: latestNotification.error,
-      },
-      generationNowMs,
-    );
-  }, [activeGenerateSlotId, activeGenerateSlotJob, generationNowMs, jobNotifications]);
-  const activeGenerateSlotBusy = generateBusySlots[activeGenerateSlotId] || Boolean(activeGenerateSlotJob);
+  const { generateOpenRouterSlot } = useOpenRouterWorkspaceSlotGeneration({
+    defaultModel,
+    authHeaders,
+    activeJobs,
+    onTrackJob,
+    onCreateGenerationErrorSession,
+    generationSlots,
+    generateBusySlots,
+    setGenerateBusySlots,
+    updateGenerationSlot,
+    generateInputMode: uiState.generateInputMode,
+    generateLanguage: uiState.generateLanguage,
+    generatePromptSource: uiState.generatePromptSource,
+    generateDurationMinutes: uiState.generateDurationMinutes,
+    generatePayloadPrompt: derivations.generatePayloads.prompt,
+  });
 
   useEffect(() => {
-    setSelectedModel(defaultModel);
+    uiState.setSelectedModel(defaultModel);
   }, [defaultModel]);
 
   useEffect(() => {
-    setGenerateInputMode(LOCAL_DEV_FEATURES_AVAILABLE ? defaultGenerateInputMode : 'browser-tts');
-    setGenerateLanguage(defaultGenerateLanguage);
+    uiState.setGenerateInputMode(LOCAL_DEV_FEATURES_AVAILABLE ? defaultGenerateInputMode : 'browser-tts');
+    uiState.setGenerateLanguage(defaultGenerateLanguage);
   }, [defaultGenerateInputMode, defaultGenerateLanguage]);
 
   useEffect(() => {
     if (focusGenerateRequest === 0) return;
-    setSectionsExpanded((prev) => ({ ...prev, generate: true }));
+    uiState.setSectionsExpanded((prev) => ({ ...prev, generate: true }));
     window.setTimeout(() => {
       document.getElementById('openrouter-generate-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
   }, [focusGenerateRequest]);
 
-  const exportHasBenchmarkData = exportProfile.sampleCount > 0 || exportProfile.sessionCount > 0;
-  const exportHasSessionFeedback = Boolean(exportSessionFeedback);
-  const exportLanguage: BenchmarkLanguageButton = isSupportedLanguage(exportProfile.language) ? exportProfile.language : 'en';
-  const profileInputModeOptions = OPEN_ROUTER_PROFILE_INPUT_MODE_OPTIONS;
-  const generateInputModeOptions = LOCAL_DEV_FEATURES_AVAILABLE
-    ? profileInputModeOptions
-    : profileInputModeOptions.filter((option) => option.value === 'browser-tts');
-  const profileLanguageOptions = OPEN_ROUTER_PROFILE_LANGUAGE_OPTIONS;
-  const generatePromptSourceOptions = OPEN_ROUTER_GENERATE_PROMPT_SOURCE_OPTIONS;
-  const generateDurationOptions = OPEN_ROUTER_GENERATE_DURATION_OPTIONS;
-
   return {
-    apiKeyDraft,
-    setApiKeyDraft,
-    apiKeyVisible,
-    setApiKeyVisible,
-    apiKeyConfigured,
-    apiKeySuffix,
-    apiKeyMessage,
-    setApiKeyMessage,
-    apiKeyBusy,
-    setApiKeyBusy,
-    selectedModel,
-    setSelectedModel,
-    testPrompt,
-    setTestPrompt,
-    testResponse,
-    setTestResponse,
-    testUsage,
-    setTestUsage,
-    testBusy,
-    setTestBusy,
-    testError,
-    setTestError,
-    exportStatusMessage,
-    setExportStatusMessage,
-    humanFeedbackEditorOpen,
-    setHumanFeedbackEditorOpen,
-    humanFeedbackDraft,
-    setHumanFeedbackDraft,
-    generateInputMode,
-    setGenerateInputMode,
-    generateLanguage,
-    setGenerateLanguage,
-    generatePromptSource,
-    setGeneratePromptSource,
-    generateDurationMinutes,
-    setGenerateDurationMinutes,
-    activeGenerateSlotId,
-    setActiveGenerateSlotId,
+    ...uiState,
     generationSlots,
     generateBusySlots,
-    sectionsExpanded,
-    setSectionsExpanded,
-    modelSelectionLocked,
-    modelOptions,
+    modelSelectionLocked: derivations.modelSelectionLocked,
+    modelOptions: derivations.modelOptions,
     copyToClipboard,
     formatPromptSizeHint: formatOpenRouterPromptSizeHint,
     clearGeneratedScriptDraft,
     generateOpenRouterSlot,
-    exportPayloads,
-    generateHasBenchmarkData,
-    generateHasSessionFeedback,
-    activeGenerateSlot,
-    activeGenerateSlotModel,
-    activeGenerateSlotPrompt,
-    activeGenerateSlotValidation,
-    activeGenerateSlotJob,
-    activeGenerateSlotJobNotice,
-    activeGenerateSlotBusy,
-    refreshApiKeyStatus,
-    exportHasBenchmarkData,
-    exportHasSessionFeedback,
-    exportLanguage,
-    profileInputModeOptions,
-    generateInputModeOptions,
-    profileLanguageOptions,
-    generatePromptSourceOptions,
-    generateDurationOptions,
+    exportPayloads: derivations.exportPayloads,
+    generateHasBenchmarkData: derivations.generateHasBenchmarkData,
+    generateHasSessionFeedback: derivations.generateHasSessionFeedback,
+    activeGenerateSlot: derivations.activeGenerateSlot,
+    activeGenerateSlotModel: derivations.activeGenerateSlotModel,
+    activeGenerateSlotPrompt: derivations.activeGenerateSlotPrompt,
+    activeGenerateSlotValidation: derivations.activeGenerateSlotValidation,
+    activeGenerateSlotJob: derivations.activeGenerateSlotJob,
+    activeGenerateSlotJobNotice: derivations.activeGenerateSlotJobNotice,
+    activeGenerateSlotBusy: derivations.activeGenerateSlotBusy,
+    exportHasBenchmarkData: derivations.exportHasBenchmarkData,
+    exportHasSessionFeedback: derivations.exportHasSessionFeedback,
+    exportLanguage: derivations.exportLanguage,
+    profileInputModeOptions: derivations.profileInputModeOptions,
+    generateInputModeOptions: derivations.generateInputModeOptions,
+    profileLanguageOptions: derivations.profileLanguageOptions,
+    generatePromptSourceOptions: derivations.generatePromptSourceOptions,
+    generateDurationOptions: derivations.generateDurationOptions,
   };
 }
