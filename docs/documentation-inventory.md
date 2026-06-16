@@ -4,7 +4,7 @@ This document is the current inventory of Markdown documentation in the Dicta re
 
 Status as of: 2026-06-16  
 Current branch: `product/input-2`  
-Current baseline observed before this inventory refresh: `c558573`
+Current baseline observed before this inventory refresh: `2868ad5`
 
 ## Status legend
 
@@ -30,7 +30,7 @@ Current baseline observed before this inventory refresh: `c558573`
 | `docs/repo-map.md` | ACTIVE | Repository responsibilities and boundaries. | Refreshed on 2026-06-16 to mark `DictaAppRuntime.tsx` as an export shim and `DictaAppRuntimeRoot.tsx` as the runtime composition root. |
 | `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Refreshed on 2026-06-16 with root runtime, boot, OpenRouter adapter, and route-composition boundary tests. |
 | `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Refreshed on 2026-06-16 for runtime root ownership and root OpenRouter validation. |
-| `docs/modularization-roi.md` | ACTIVE | Repo-wide modularization ROI scoring framework. | Refreshed on 2026-06-15 with current hotspot guidance and `useSessionPersistenceSync` as the best modularization candidate when explicitly refactoring. |
+| `docs/modularization-roi.md` | ACTIVE | Repo-wide modularization ROI scoring framework. | Refreshed on 2026-06-16 with runtime root ownership and session persistence as the remaining strong refactor candidate. |
 | `docs/runtime-access-boundary.md` | ACTIVE REFERENCE | Access runtime boundary for Supabase/auth/profile/OpenRouter model/admin inventory wiring. | Refreshed on 2026-06-16 to point at `DictaAppRuntimeRoot` instead of the export shim. |
 | `docs/session-persistence-sync-kb.md` | ACTIVE REFERENCE | Concise owner map for session persistence sync modules. | Persistence sync is no longer a pending monolith extraction; future work should be narrow and characterized. |
 | `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
@@ -96,7 +96,7 @@ This pass aligned the active KB with the final runtime-root boundary commits:
 - `docs/runtime-access-boundary.md` now points access-runtime context at `DictaAppRuntimeRoot` instead of the export shim.
 - `docs/README.md` and this inventory now include `docs/runtime-access-boundary.md`.
 - `docs/module-test-map.md` now includes `useDictaAppBootRuntime`, `useDictaRootOpenRouterRuntime`, `useDictaRootRouteCompositionRuntime`, and their focused boundary tests.
-- `docs/app-shell-modularization-map.md` now records the root boot/adapter boundaries as completed and keeps session persistence as the only strong current refactor candidate.
+- `docs/app-shell-modularization-map.md` and `docs/modularization-roi.md` now record the root boot/adapter boundaries as completed and keep session persistence as the only strong current refactor candidate.
 
 ### Stale baseline references
 
@@ -113,7 +113,7 @@ These commit baselines appear in historical modularization docs and should not b
 
 Current observed baseline for this inventory pass before updating this file:
 
-- `c558573`
+- `2868ad5`
 
 ## Proposed next documentation stages
 
