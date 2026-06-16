@@ -2,118 +2,17 @@
  * @vitest-environment jsdom
  */
 
-import { act, createElement, useEffect } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BROWSER_TTS_SESSION_INPUT_MODE } from '../src/core/sessionInputModes';
+import { act } from 'react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { deriveTrainingLifecycleState } from '../src/app/useTrainingSessionLifecycle';
 import {
-  deriveTrainingLifecycleState,
-  useTrainingSessionLifecycle,
-  type TrainingLifecycleStateInput,
-  type TrainingSessionLifecycle,
-} from '../src/app/useTrainingSessionLifecycle';
-
-const reactActGlobal = globalThis as typeof globalThis & {
-  IS_REACT_ACT_ENVIRONMENT?: boolean;
-};
-
-reactActGlobal.IS_REACT_ACT_ENVIRONMENT = true;
-
-type HookOptions = Parameters<typeof useTrainingSessionLifecycle>[0];
-type HookActions = HookOptions['actions'];
-
-type TestHarnessProps = HookOptions & {
-  onLifecycle: (lifecycle: TrainingSessionLifecycle) => void;
-};
-
-let root: Root | null = null;
-let container: HTMLDivElement | null = null;
-
-function TestHarness({ onLifecycle, ...options }: TestHarnessProps) {
-  const lifecycle = useTrainingSessionLifecycle(options);
-
-  useEffect(() => {
-    onLifecycle(lifecycle);
-  }, [lifecycle, onLifecycle]);
-
-  return null;
-}
-
-function createDefaultState(overrides: Partial<TrainingLifecycleStateInput> = {}): TrainingLifecycleStateInput {
-  return {
-    activeInputMode: BROWSER_TTS_SESSION_INPUT_MODE,
-    activeSessionPresent: true,
-    activeSessionFinished: false,
-    sessionStatus: 'ready',
-    running: false,
-    ttsHasText: true,
-    ttsStatus: 'ready',
-    inputSettingsLocked: false,
-    ...overrides,
-  };
-}
-
-function createDefaultActions(overrides: Partial<HookActions> = {}): HookActions {
-  return {
-    resetSession: vi.fn(),
-    playTts: vi.fn(),
-    resumeTts: vi.fn(),
-    pauseTts: vi.fn(),
-    stopTts: vi.fn(),
-    onTtsPracticeChange: vi.fn(),
-    submitTtsSession: vi.fn(),
-    setInputSettingsLocked: vi.fn(),
-    setError: vi.fn(),
-    setExportMessage: vi.fn(),
-    collapseSetupPanels: vi.fn(),
-    ...overrides,
-  };
-}
-
-async function renderTrainingSessionLifecycle(
-  options: Partial<HookOptions> = {},
-): Promise<{
-  lifecycle: TrainingSessionLifecycle;
-  actions: HookActions;
-}> {
-  let renderedLifecycle: TrainingSessionLifecycle | null = null;
-  const actions = options.actions ?? createDefaultActions();
-
-  const onLifecycle = (lifecycle: TrainingSessionLifecycle) => {
-    renderedLifecycle = lifecycle;
-  };
-
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
-
-  await act(async () => {
-    root?.render(createElement(TestHarness, {
-      state: options.state ?? createDefaultState(),
-      text: options.text ?? { ttsPracticeText: 'current text' },
-      actions,
-      onLifecycle,
-    }));
-  });
-
-  if (!renderedLifecycle) {
-    throw new Error('useTrainingSessionLifecycle did not render lifecycle state.');
-  }
-
-  return { lifecycle: renderedLifecycle, actions };
-}
+  cleanupTrainingSessionLifecycleHarness,
+  createDefaultState,
+  renderTrainingSessionLifecycle,
+} from './helpers/trainingSessionLifecycleHarness';
 
 afterEach(async () => {
-  if (root) {
-    await act(async () => {
-      root?.unmount();
-    });
-  }
-
-  root = null;
-  container?.remove();
-  container = null;
-  vi.clearAllMocks();
+  await cleanupTrainingSessionLifecycleHarness();
 });
 
 describe('deriveTrainingLifecycleState', () => {
