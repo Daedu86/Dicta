@@ -4,6 +4,23 @@ import { isSupportedLanguage, type SupportedLanguage } from './languages';
 // Persisted legacy storage value for Browser TTS sessions. Adaptive/script profiles use `browser-tts`.
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './sessionInputModes';
 import type { SessionInputMode } from './sessionInputModes';
+import {
+  asRecord,
+  hasNonEmptyText,
+  normalizeTrend,
+  numberOr,
+  safeLength,
+  stringOr,
+  type UnknownRecord,
+} from './sessionNormalizationPrimitives';
+import {
+  cloneTelemetry,
+  hasFinalizedAttemptTelemetry,
+  normalizeRateDistribution,
+} from './sessionTelemetryNormalization';
+
+export { cloneTelemetry, hasFinalizedAttemptTelemetry, normalizeRateDistribution } from './sessionTelemetryNormalization';
+
 export type Input2Language = SupportedLanguage;
 
 export type SessionLanguageFields = {
@@ -21,8 +38,6 @@ export type SessionModeData = {
   input2: Input2ModeData | null;
 };
 
-type UnknownRecord = Record<string, unknown>;
-
 type CommonRestoredSessionFields = {
   ttsText: string;
   ttsPracticeText: string;
@@ -31,27 +46,6 @@ type CommonRestoredSessionFields = {
 
 function isInput2Language(value: unknown): value is Input2Language {
   return isSupportedLanguage(value);
-}
-
-function numberOr(value: unknown, fallback: number): number {
-  const num = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(num) ? num : fallback;
-}
-
-function stringOr(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback;
-}
-
-function safeLength(value: unknown): number {
-  return typeof value === 'string' ? value.length : 0;
-}
-
-function asRecord(value: unknown): UnknownRecord {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {};
-}
-
-function normalizeTrend(value: unknown): 'improving' | 'stable' | 'declining' {
-  return value === 'improving' || value === 'declining' || value === 'stable' ? value : 'stable';
 }
 
 function normalizeCommonRestoredSessionFields(session: unknown): CommonRestoredSessionFields {
@@ -74,75 +68,6 @@ function normalizeCommonRestoredSessionFields(session: unknown): CommonRestoredS
       points: numberOr(metrics.points, 0),
     },
   };
-}
-
-export function normalizeRateDistribution(input: unknown): Array<{ rate: number; seconds: number }> {
-  if (!input) return [];
-
-  if (Array.isArray(input)) {
-    return input
-      .map((entry) => {
-        if (!entry || typeof entry !== 'object') return null;
-        const candidate = entry as { rate?: unknown; seconds?: unknown };
-        const rate = typeof candidate.rate === 'number' ? candidate.rate : Number(candidate.rate);
-        const seconds = typeof candidate.seconds === 'number' ? candidate.seconds : Number(candidate.seconds);
-        if (!Number.isFinite(rate) || !Number.isFinite(seconds)) return null;
-        return { rate, seconds };
-      })
-      .filter((value): value is { rate: number; seconds: number } => Boolean(value))
-      .sort((a, b) => a.rate - b.rate);
-  }
-
-  if (typeof input === 'object') {
-    const record = input as Record<string, number>;
-    return Object.entries(record)
-      .map(([rateKey, seconds]) => ({ rate: Number(rateKey), seconds: Number(seconds) }))
-      .filter((entry) => Number.isFinite(entry.rate) && Number.isFinite(entry.seconds))
-      .sort((a, b) => a.rate - b.rate);
-  }
-
-  return [];
-}
-
-export function cloneTelemetry(telemetry: unknown): SessionTelemetry {
-  if (!telemetry) {
-    return {
-      startedAt: '',
-      lagSeries: [],
-      wpmSeries: [],
-      accuracySeries: [],
-      actions: [],
-      ttsChunks: [],
-      repeatCount: 0,
-      rateDistribution: [],
-    };
-  }
-
-  const input = asRecord(telemetry);
-  const normalizedRateDistribution = normalizeRateDistribution(input.rateDistribution ?? input.timeAtRate ?? {});
-
-  return {
-    startedAt: typeof input.startedAt === 'string' ? input.startedAt : '',
-    finishedAt: typeof input.finishedAt === 'string' ? input.finishedAt : undefined,
-    lagSeries: Array.isArray(input.lagSeries) ? input.lagSeries.filter((value): value is number => typeof value === 'number') : [],
-    wpmSeries: Array.isArray(input.wpmSeries) ? input.wpmSeries.filter((value): value is number => typeof value === 'number') : [],
-    accuracySeries: Array.isArray(input.accuracySeries)
-      ? input.accuracySeries.filter((value): value is number => typeof value === 'number')
-      : [],
-    actions: Array.isArray(input.actions) ? (input.actions as SessionTelemetry['actions']) : [],
-    ttsChunks: Array.isArray(input.ttsChunks) ? (input.ttsChunks as SessionTelemetry['ttsChunks']) : [],
-    repeatCount: numberOr(input.repeatCount, 0),
-    rateDistribution: normalizedRateDistribution,
-  };
-}
-
-export function hasFinalizedAttemptTelemetry(telemetry: unknown): boolean {
-  const normalized = cloneTelemetry(telemetry);
-  return Boolean(normalized.finishedAt || normalized.actions.some((entry) => entry.action === 'submit'));
-}
-
-function hasNonEmptyText(value: unknown): boolean {
-  return typeof value === 'string' && value.trim().length > 0;
 }
 
 export function isSubmittedFinishedAttempt(payload: unknown): boolean {
