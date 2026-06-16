@@ -32,20 +32,24 @@ export class AdaptiveDictationController {
     const browserTtsProfile = input.live.inputMode === 'browser-tts'
       ? resolveBrowserTtsAdaptiveProfile(input.live.language)
       : null;
-    const supportRateFloor = browserTtsProfile?.supportRateFloor ?? 0.82;
-    const extremeSupportRateFloor = browserTtsProfile?.extremeSupportRateFloor ?? 0.78;
-    const supportRateCeiling = browserTtsProfile?.supportRateCeiling ?? 0.92;
-    const balancedFlowFloor = browserTtsProfile?.balancedFlowFloor ?? MIN_PLAYBACK_RATE;
+    const adaptiveComfort = history.adaptivePlaybackComfortProfile;
+    const comfortRateMin = adaptiveComfort?.rateRange[0] ?? MIN_PLAYBACK_RATE;
+    const comfortRateMax = adaptiveComfort?.rateRange[1] ?? MAX_PLAYBACK_RATE;
+    const supportRateFloor = Math.min(browserTtsProfile?.supportRateFloor ?? 0.82, comfortRateMin);
+    const extremeSupportRateFloor = Math.min(browserTtsProfile?.extremeSupportRateFloor ?? 0.78, supportRateFloor);
+    const supportRateCeiling = Math.min(browserTtsProfile?.supportRateCeiling ?? 0.92, comfortRateMax);
+    const balancedFlowFloor = Math.min(browserTtsProfile?.balancedFlowFloor ?? MIN_PLAYBACK_RATE, comfortRateMin);
     const sessionAccuracy = live.sessionAccuracy ?? live.accuracy;
     const chunkAccuracy = live.chunkAccuracy ?? sessionAccuracy;
     const rollingAccuracyLast3 = live.rollingAccuracyLast3 ?? chunkAccuracy;
     const rollingAccuracyLast5 = live.rollingAccuracyLast5 ?? rollingAccuracyLast3;
     const supportsPhraseReplay = input.capabilities?.supportsPhraseReplay ?? true;
     const chosenMode = chooseAdaptivePacingMode(input);
-    const baselineRate = clamp(history.comfortablePlaybackRate || 1, balancedFlowFloor, MAX_PLAYBACK_RATE);
+    const preferredRate = adaptiveComfort?.preferredRate ?? history.comfortablePlaybackRate || 1;
+    const baselineRate = clamp(preferredRate, comfortRateMin, comfortRateMax);
     const rateBias = (rollingAccuracyLast3 - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
-    const targetRate = clamp(baselineRate + rateBias, balancedFlowFloor, MAX_PLAYBACK_RATE);
-    let playbackRate = Number(clamp(smoothRate(this.previousRate, targetRate, balancedFlowFloor), balancedFlowFloor, MAX_PLAYBACK_RATE).toFixed(2));
+    const targetRate = clamp(baselineRate + rateBias, comfortRateMin, comfortRateMax);
+    let playbackRate = Number(clamp(smoothRate(this.previousRate, targetRate, balancedFlowFloor), balancedFlowFloor, comfortRateMax).toFixed(2));
     this.previousRate = playbackRate;
 
     const lagScore = computeScore(2.5 - live.lagSec, 0, 2.5);
@@ -186,7 +190,10 @@ export class AdaptiveDictationController {
     const catchUpReplayWanted = mode === 'recovery' && rollingAccuracyLast3 < 0.86 && canReplayIndependently && semanticCompleteness >= 0.65;
     const replayWanted = lagReplayWanted || catchUpReplayWanted;
     const shouldReplayPhrase = supportsPhraseReplay && replayWanted;
-    let pauseAfterPhraseMs = shouldReplayPhrase ? Math.max(1200, idealPauseByMode[mode]) : idealPauseByMode[mode];
+    const comfortPauseForMode = adaptiveComfort?.statePauseMs[mode];
+    let pauseAfterPhraseMs = shouldReplayPhrase
+      ? Math.max(1200, comfortPauseForMode ?? idealPauseByMode[mode])
+      : comfortPauseForMode ?? idealPauseByMode[mode];
 
     let nextPhraseSize = resolveAdaptiveNextPhraseSize({
       mode,
@@ -200,15 +207,26 @@ export class AdaptiveDictationController {
       flowLockFrames: this.flowLockFrames,
     });
 
+    if (adaptiveComfort?.preferredPhraseSize === 'short' && mode !== 'flow') {
+      nextPhraseSize = 'short';
+    } else if (
+      adaptiveComfort?.preferredPhraseSize === 'long' &&
+      mode === 'flow' &&
+      !phraseOverload &&
+      !longPhraseSensitive
+    ) {
+      nextPhraseSize = 'long';
+    }
+
     // When replay is not supported, convert "replay wanted" into stronger recovery.
     if (!supportsPhraseReplay && replayWanted) {
       nextPhraseSize = 'short';
       const provisional = Number((playbackRate - 0.06).toFixed(2));
       playbackRate = Math.max(supportRateFloor, provisional);
-      pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, idealPauseByMode.recovery);
+      pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, adaptiveComfort?.statePauseMs.recovery ?? idealPauseByMode.recovery);
     }
 
-    let replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, MAX_PLAYBACK_RATE);
+    let replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, comfortRateMax);
 
     const { reason, reasonCodes } = buildAdaptivePacingReasonArtifacts({
       mode,
@@ -240,6 +258,11 @@ export class AdaptiveDictationController {
       reasonCodes,
     });
     pauseAfterPhraseMs = adaptivePauseResult.pauseAfterPhraseMs;
+    if (adaptiveComfort) {
+      pauseAfterPhraseMs = Math.round(clamp(pauseAfterPhraseMs, adaptiveComfort.pauseRangeMs[0], adaptiveComfort.pauseRangeMs[1]));
+      reason.push(`adaptive-playback-comfort-profile:${adaptiveComfort.source}`);
+      reasonCodes.push('adaptive-playback-comfort-profile');
+    }
 
     const extremeSupport = isSupportLikeMode && live.lagSec > 4 && rollingAccuracyLast3 < 0.76;
     const modeFloor =
@@ -248,7 +271,8 @@ export class AdaptiveDictationController {
         : mode === 'support'
           ? (extremeSupport ? extremeSupportRateFloor : supportRateFloor)
           : balancedFlowFloor;
-    playbackRate = Number(Math.max(modeFloor, playbackRate).toFixed(2));
+    const modeCeiling = isSupportLikeMode ? supportRateCeiling : comfortRateMax;
+    playbackRate = Number(clamp(playbackRate, modeFloor, modeCeiling).toFixed(2));
     if (isSupportLikeMode && reasonCodes.includes('support-needed')) {
       playbackRate = Number(Math.min(supportRateCeiling, playbackRate).toFixed(2));
     }
@@ -266,7 +290,7 @@ export class AdaptiveDictationController {
     const finalPlaybackRate = deferPauseUntilSafeBoundary
       ? Number(Math.max(modeFloor, Number((playbackRate - 0.04).toFixed(2))).toFixed(2))
       : playbackRate;
-    replayRate = Number(clamp(Math.min(replayRate, finalPlaybackRate - 0.02), modeFloor, MAX_PLAYBACK_RATE).toFixed(2));
+    replayRate = Number(clamp(Math.min(replayRate, finalPlaybackRate - 0.02), modeFloor, modeCeiling).toFixed(2));
     this.previousRate = finalPlaybackRate;
 
     return {
