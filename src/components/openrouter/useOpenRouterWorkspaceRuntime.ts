@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { InputMode } from '../../core/adaptive/types';
 import { createEmptyInputLanguageBenchmark } from '../../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import {
@@ -15,14 +15,10 @@ import { isSupportedLanguage } from '../../core/languages';
 import { requestTrainingNotificationPermission } from '../../core/trainingNotifications';
 import {
   buildOpenRouterModelOptions,
-  createEmptyOpenRouterGenerationSlot,
-  createEmptyOpenRouterGenerationSlots,
   formatInterruptedOpenRouterMessage,
   formatTrainingGenerationNotice,
   getOpenRouterSlotLabel,
-  loadPersistedOpenRouterGenerationVariants,
   parseTimestampMs,
-  persistOpenRouterGenerationVariants,
   releaseOpenRouterWakeLock,
   requestOpenRouterWakeLock,
   shouldCreatePersistentGenerationErrorSession,
@@ -40,12 +36,11 @@ import {
 import type {
   BenchmarkLanguageButton,
   OpenRouterGenerationSlotId,
-  OpenRouterGenerationSlots,
-  OpenRouterGenerationSlotState,
   OpenRouterWorkspaceProps,
   TrainingGenerationNoticeView,
 } from './types';
 import { useOpenRouterApiKeyStatus } from './useOpenRouterApiKeyStatus';
+import { useOpenRouterGenerationSlots } from './useOpenRouterGenerationSlots';
 
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 
@@ -68,7 +63,6 @@ export function useOpenRouterWorkspaceRuntime({
   onTrackJob,
   onCreateGenerationErrorSession,
 }: OpenRouterWorkspaceProps) {
-  const persistedGenerationSlotsRef = useRef<OpenRouterGenerationSlots | null>(loadPersistedOpenRouterGenerationVariants(defaultModel));
   const {
     apiKeyDraft,
     setApiKeyDraft,
@@ -96,13 +90,14 @@ export function useOpenRouterWorkspaceRuntime({
   const [generatePromptSource, setGeneratePromptSource] = useState<OpenRouterGeneratePromptSource>('compact-adaptive');
   const [generateDurationMinutes, setGenerateDurationMinutes] = useState<2 | 3 | 4>(3);
   const [activeGenerateSlotId, setActiveGenerateSlotId] = useState<OpenRouterGenerationSlotId>('prompt1');
-  const [generationSlots, setGenerationSlots] = useState<OpenRouterGenerationSlots>(
-    () => persistedGenerationSlotsRef.current ?? createEmptyOpenRouterGenerationSlots(defaultModel),
-  );
-  const [generateBusySlots, setGenerateBusySlots] = useState<Record<OpenRouterGenerationSlotId, boolean>>({
-    prompt1: false,
-    prompt2: false,
-  });
+  const {
+    generationSlots,
+    generateBusySlots,
+    setGenerateBusySlots,
+    updateGenerationSlot,
+    clearGeneratedScriptDraft,
+  } = useOpenRouterGenerationSlots(defaultModel);
+
   const [sectionsExpanded, setSectionsExpanded] = useState({
     apiKey: true,
     models: true,
@@ -110,8 +105,12 @@ export function useOpenRouterWorkspaceRuntime({
     exports: true,
     generate: true,
   });
+
   const modelSelectionLocked = Boolean(assignedModel);
-  const modelOptions = useMemo(() => buildOpenRouterModelOptions(models, [defaultModel, assignedModel]), [assignedModel, defaultModel, models]);
+  const modelOptions = useMemo(
+    () => buildOpenRouterModelOptions(models, [defaultModel, assignedModel]),
+    [assignedModel, defaultModel, models],
+  );
 
   const copyToClipboard = async (label: string, text: string): Promise<void> => {
     try {
@@ -121,31 +120,6 @@ export function useOpenRouterWorkspaceRuntime({
       setExportStatusMessage(`Could not copy: ${label}.`);
     }
   };
-
-  function updateGenerationSlots(updater: (current: OpenRouterGenerationSlots) => OpenRouterGenerationSlots): void {
-    setGenerationSlots((current) => {
-      const next = updater(current);
-      persistOpenRouterGenerationVariants(next);
-      return next;
-    });
-  }
-
-  function updateGenerationSlot(slotId: OpenRouterGenerationSlotId, patch: Partial<OpenRouterGenerationSlotState>): void {
-    updateGenerationSlots((current) => ({
-      ...current,
-      [slotId]: {
-        ...current[slotId],
-        ...patch,
-      },
-    }));
-  }
-
-  function clearGeneratedScriptDraft(slotId: OpenRouterGenerationSlotId): void {
-    updateGenerationSlots((current) => ({
-      ...current,
-      [slotId]: createEmptyOpenRouterGenerationSlot(defaultModel),
-    }));
-  }
 
   async function generateOpenRouterSlot(slotId: OpenRouterGenerationSlotId): Promise<void> {
     const slot = generationSlots[slotId];
