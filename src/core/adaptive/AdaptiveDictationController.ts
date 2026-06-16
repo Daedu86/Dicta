@@ -24,7 +24,7 @@ import {
   applyUnsupportedPhraseReplayFallback,
   resolveAdaptivePauseReplayPolicy,
 } from './adaptiveDictationControllerPlaybackPolicy';
-import { resolveListeningPrecisionRateCeiling } from './adaptiveDictationControllerPrecision';
+import { resolveAdaptiveControllerRatePolicy } from './adaptiveDictationControllerRatePolicy';
 import { resolveAdaptiveNextPhraseSize } from './adaptiveDictationControllerPhrase';
 import { applyAdaptivePausePolicy, buildAdaptivePacingReasonArtifacts } from './adaptiveDictationControllerReasons';
 
@@ -213,34 +213,27 @@ export class AdaptiveDictationController {
       reasonCodes.push('adaptive-playback-comfort-profile');
     }
 
-    const extremeSupport = isSupportLikeMode && live.lagSec > 4 && rollingAccuracyLast3 < 0.76;
-    const modeFloor =
-      mode === 'recovery'
-        ? extremeSupportRateFloor
-        : mode === 'support'
-          ? (extremeSupport ? extremeSupportRateFloor : supportRateFloor)
-          : Math.max(balancedFlowFloor, baselineRate);
-    const modeCeiling = isSupportLikeMode ? supportRateCeiling : comfortRateMax;
-    playbackRate = Number(clamp(playbackRate, modeFloor, modeCeiling).toFixed(2));
-    if (isSupportLikeMode && reasonCodes.includes('support-needed')) {
-      playbackRate = Number(Math.min(0.92, supportRateCeiling, playbackRate).toFixed(2));
-    }
+    const ratePolicy = resolveAdaptiveControllerRatePolicy({
+      live,
+      mode,
+      isSupportLikeMode,
+      playbackRate,
+      replayRate,
+      deferPauseUntilSafeBoundary,
+      rollingAccuracyLast3,
+      reason,
+      reasonCodes,
+      extremeSupportRateFloor,
+      supportRateFloor,
+      supportRateCeiling,
+      balancedFlowFloor,
+      baselineRate,
+      comfortRateMax,
+    });
 
-    const precisionRateCeiling = resolveListeningPrecisionRateCeiling(live.listeningPrecision, mode, supportRateCeiling);
-    if (precisionRateCeiling !== null) {
-      const precisionRateFloor = isSupportLikeMode ? modeFloor : balancedFlowFloor;
-      const cappedRate = Number(Math.max(precisionRateFloor, Math.min(precisionRateCeiling, playbackRate)).toFixed(2));
-      if (cappedRate < playbackRate) {
-        playbackRate = cappedRate;
-        reason.push('listening-precision-rate-ceiling');
-        reasonCodes.push('listening-precision-rate-ceiling');
-      }
-    }
-
-    const finalPlaybackRate = deferPauseUntilSafeBoundary
-      ? Number(Math.max(modeFloor, Number((playbackRate - 0.04).toFixed(2))).toFixed(2))
-      : playbackRate;
-    replayRate = Number(clamp(Math.min(replayRate, finalPlaybackRate - 0.02), modeFloor, modeCeiling).toFixed(2));
+    playbackRate = ratePolicy.playbackRate;
+    const finalPlaybackRate = ratePolicy.finalPlaybackRate;
+    replayRate = ratePolicy.replayRate;
     this.previousRate = finalPlaybackRate;
 
     return {
