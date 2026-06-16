@@ -109,6 +109,11 @@ export const BROWSER_TTS_ES_PROFILE: BrowserTtsAdaptiveProfile = {
 
 export const BROWSER_TTS_EN_PROFILE: BrowserTtsAdaptiveProfile = {
   ...BROWSER_TTS_BASE_PROFILE,
+  supportRateFloor: 0.78,
+  extremeSupportRateFloor: 0.74,
+  balancedFlowFloor: 0.8,
+  supportRateCeiling: 0.88,
+  unsafeBoundaryMinPauseMs: 1200,
   recommendationCalibrationEnabled: false,
   supportRecoveryAggressiveness: 'high',
   phraseGrowthConservatism: 'high',
@@ -116,7 +121,11 @@ export const BROWSER_TTS_EN_PROFILE: BrowserTtsAdaptiveProfile = {
 
 export const BROWSER_TTS_DE_PROFILE: BrowserTtsAdaptiveProfile = {
   ...BROWSER_TTS_BASE_PROFILE,
-  supportRateCeiling: 0.95,
+  supportRateFloor: 0.8,
+  extremeSupportRateFloor: 0.78,
+  balancedFlowFloor: 0.82,
+  supportRateCeiling: 0.9,
+  unsafeBoundaryMinPauseMs: 1200,
   recommendationCalibrationEnabled: false,
   supportRecoveryAggressiveness: 'low',
   phraseGrowthConservatism: 'high',
