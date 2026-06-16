@@ -1,50 +1,11 @@
 import { formatDifficultyLabel } from '../../core/config';
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from '../../core/languages';
-import { rangeLabel, type LanguageRangeSummary, type MetricsLanguageView, type MetricsRangeView, type SessionForMetrics } from '../../core/liveMetrics';
-import type { InputMode } from '../../core/adaptive/types';
-import type { TtsPacingMode } from '../../types/dictation';
+import { rangeLabel } from '../../core/liveMetrics';
+import { LiveMetric } from './LiveMetric';
+import { LiveMetricsRangeTabs } from './LiveMetricsRangeTabs';
+import type { LiveMetricsDockProps, RuntimeSessionInputMode } from './liveMetricsDockTypes';
 
-type PerformanceTrend = 'improving' | 'stable' | 'declining';
-type RuntimeWorkspaceMode = string;
-type RuntimeTtsStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
-type RuntimeSessionInputMode = string;
-
-type LiveMetricsDockProps = {
-  insightsCollapsed: boolean;
-  metricsLanguageView: MetricsLanguageView;
-  metricsRangeView: MetricsRangeView;
-  trend: PerformanceTrend;
-  insightsDiagnosticInputOptions: ReadonlyArray<{ inputMode: InputMode; label: string }>;
-  insightsDiagnosticInputMode: InputMode;
-  insightsDiagnosticMessage: string;
-  insightsDiagnosticFallbackReport: string;
-  workspaceMode: RuntimeWorkspaceMode;
-  hasTtsCurrentChunk: boolean;
-  ttsPacingMode: TtsPacingMode;
-  ttsStatus: RuntimeTtsStatus;
-  lastSessionForLanguage: SessionForMetrics | null;
-  lastSessionScoreHelpText?: string;
-  languageTodaySummary: LanguageRangeSummary;
-  onChangeMetricsLanguageView: (language: MetricsLanguageView) => void;
-  onChangeMetricsRangeView: (range: MetricsRangeView) => void;
-  onChangeInsightsDiagnosticInputMode: (inputMode: InputMode) => void;
-  onCopyInsightsDiagnosticPackage: () => void | Promise<void>;
-  onToggleInsightsCollapsed: () => void;
-  onSelectInsightsDiagnosticFallbackReport: () => void;
-  formatInputModeLabel: (inputMode: InputMode) => string;
-  formatSessionInputMode: (inputMode: RuntimeSessionInputMode) => string;
-  formatDuration: (seconds: number) => string;
-  formatSessionDate: (value: string) => string;
-  formatTtsPacingMode: (mode: TtsPacingMode) => string;
-};
-
-const RANGE_TABS: Array<[MetricsRangeView, string]> = [
-  ['today', 'Today'],
-  ['week', 'Week'],
-  ['twoWeeks', '2 Weeks'],
-  ['threeWeeks', '3 Weeks'],
-  ['month', 'Month'],
-];
+export type { LiveMetricsDockProps } from './liveMetricsDockTypes';
 
 export function LiveMetricsDock({
   insightsCollapsed,
@@ -176,16 +137,16 @@ export function LiveMetricsDock({
               </div>
               {!lastSessionForLanguage ? <p className="hint">No sessions found for this language yet.</p> : null}
               <div className="bottom-summary-grid">
-                <Metric label="Name" value={lastSessionForLanguage?.name ?? '—'} />
-                <Metric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode as RuntimeSessionInputMode) : '—'} />
-                <Metric label="Difficulty" value={lastSessionForLanguage?.difficulty ? formatDifficultyLabel(lastSessionForLanguage.difficulty) : '—'} />
-                <Metric
+                <LiveMetric label="Name" value={lastSessionForLanguage?.name ?? '—'} />
+                <LiveMetric label="Input mode" value={lastSessionForLanguage ? formatSessionInputMode(lastSessionForLanguage.inputMode as RuntimeSessionInputMode) : '—'} />
+                <LiveMetric label="Difficulty" value={lastSessionForLanguage?.difficulty ? formatDifficultyLabel(lastSessionForLanguage.difficulty) : '—'} />
+                <LiveMetric
                   label="Score"
                   value={lastSessionForLanguage ? String(lastSessionForLanguage.metrics.score) : '—'}
                   title={lastSessionScoreHelpText}
                 />
-                <Metric label="Accuracy" value={lastSessionForLanguage ? `${lastSessionForLanguage.metrics.accuracy.toFixed(1)}%` : '—'} />
-                <Metric
+                <LiveMetric label="Accuracy" value={lastSessionForLanguage ? `${lastSessionForLanguage.metrics.accuracy.toFixed(1)}%` : '—'} />
+                <LiveMetric
                   label="Duration"
                   value={
                     typeof lastSessionForLanguage?.voiceDurationSec === 'number'
@@ -193,35 +154,26 @@ export function LiveMetricsDock({
                       : '—'
                   }
                 />
-                <Metric label="Updated" value={lastSessionForLanguage ? formatSessionDate(lastSessionForLanguage.updatedAt) : '—'} />
+                <LiveMetric label="Updated" value={lastSessionForLanguage ? formatSessionDate(lastSessionForLanguage.updatedAt) : '—'} />
               </div>
             </section>
 
             <section className="bottom-summary-section today-summary-section live-metrics-section live-metrics-section-period">
               <div className="bottom-summary-header">
                 <h3>{rangeLabel(metricsRangeView)} ({metricsLanguageView.toUpperCase()})</h3>
-                <div className="live-metrics-range-tabs" role="tablist" aria-label="Live metrics range">
-                  {RANGE_TABS.map(([code, label]) => (
-                    <button
-                      key={code}
-                      type="button"
-                      className={`live-metrics-range-tab ${metricsRangeView === code ? 'live-metrics-range-tab-active' : ''}`}
-                      onClick={() => onChangeMetricsRangeView(code)}
-                      aria-pressed={metricsRangeView === code}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <LiveMetricsRangeTabs
+                  metricsRangeView={metricsRangeView}
+                  onChangeMetricsRangeView={onChangeMetricsRangeView}
+                />
               </div>
               {languageTodaySummary.sessionsInRange.length === 0 ? <p className="hint">No sessions in this period for this language.</p> : null}
               <div className="today-summary-grid">
-                <Metric label="Sessions" value={String(languageTodaySummary.sessionsInRange.length)} />
-                <Metric label="Duration" value={formatDuration(languageTodaySummary.durationSeconds)} />
-                <Metric label="Avg points" value={languageTodaySummary.avgPoints !== null ? languageTodaySummary.avgPoints.toFixed(1) : '—'} />
-                <Metric label="Avg score" value={languageTodaySummary.avgScore !== null ? languageTodaySummary.avgScore.toFixed(1) : '—'} />
-                <Metric label="Avg accuracy" value={languageTodaySummary.avgAccuracy !== null ? `${languageTodaySummary.avgAccuracy.toFixed(1)}%` : '—'} />
-                <Metric label="Avg WPM" value={languageTodaySummary.avgWpm !== null ? languageTodaySummary.avgWpm.toFixed(1) : '—'} />
+                <LiveMetric label="Sessions" value={String(languageTodaySummary.sessionsInRange.length)} />
+                <LiveMetric label="Duration" value={formatDuration(languageTodaySummary.durationSeconds)} />
+                <LiveMetric label="Avg points" value={languageTodaySummary.avgPoints !== null ? languageTodaySummary.avgPoints.toFixed(1) : '—'} />
+                <LiveMetric label="Avg score" value={languageTodaySummary.avgScore !== null ? languageTodaySummary.avgScore.toFixed(1) : '—'} />
+                <LiveMetric label="Avg accuracy" value={languageTodaySummary.avgAccuracy !== null ? `${languageTodaySummary.avgAccuracy.toFixed(1)}%` : '—'} />
+                <LiveMetric label="Avg WPM" value={languageTodaySummary.avgWpm !== null ? languageTodaySummary.avgWpm.toFixed(1) : '—'} />
               </div>
               <div className="today-chart-row">
                 {languageTodaySummary.days.map((item) => (
@@ -241,14 +193,5 @@ export function LiveMetricsDock({
         ) : null}
       </div>
     </section>
-  );
-}
-
-function Metric({ label, value, title }: { label: string; value: string; title?: string }) {
-  return (
-    <div className="metric" title={title} aria-label={title ? `${label}: ${value}. ${title}` : undefined}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }
