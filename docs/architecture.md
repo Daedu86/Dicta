@@ -20,8 +20,18 @@ Before proposing or making behavior changes, agents must read and understand the
 1. `AGENTS.md`
 2. `README.md`
 3. `docs/architecture.md`
+4. `docs/adaptive-training-cycle.md` for adaptive generation, planner, controller, Browser TTS, benchmark/feedback, or insight-report work.
 
 After reading them, propose changes from the architecture rather than from an isolated file edit. A valid proposal should identify the affected boundary: browser, core TypeScript domain, input adapter, Vercel/server route, Supabase/RLS, or local-only sidecar. If adaptive behavior is involved, identify the affected `(inputMode, language)` profile and how neighboring profiles stay unchanged.
+
+## Related adaptive docs
+
+Start adaptive iteration from [Adaptive Training Cycle](./adaptive-training-cycle.md). It connects this repo-wide architecture to the listening-first product policy and the runtime adaptive brain.
+
+Layer-specific references:
+
+- [Listening-First Architecture](./listening-first-architecture.md) — product labels, listening precision metrics, and policy guardrails.
+- [Adaptive Listening Brain](./adaptive-listening-brain.md) — runtime controller, Browser TTS pacing, scoped controller state, language profiles, and reason codes.
 
 ## Product Matrix
 
@@ -122,6 +132,8 @@ Local-only services:
 
 ## Adaptive Brain Loop
 
+For the full adaptive iteration map, start with [Adaptive Training Cycle](./adaptive-training-cycle.md). The short loop below remains the repo-wide runtime summary.
+
 1. A session source provides typed text or an OpenRouter script.
 2. `SemanticPhrasePlanner` produces phrase boundaries and difficulty.
 3. The active input engine plays TTS or generated local audio.
@@ -178,7 +190,3 @@ Primary browser storage keys:
 - `dicta.adaptiveSessionFeedback.v1`
 - `dicta.perfDiagnostics.v1`
 - `dicta.openrouterDefaultModel.v1`
-- `dicta.openrouterGeneratedVariants.v1`
-- `dicta.openrouterActiveJobs.v1`
-
-Supabase sync stores JSON rows in `dicta_sync_items` with item types `session`, `benchmark`, and `feedback`.
