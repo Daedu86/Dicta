@@ -1,6 +1,7 @@
 import { formatSessionPointsLabel } from '../../core/evaluation';
+import { Metric } from './DashboardMetric';
 import type { TranscriptReview } from './sessionDashboardTypes';
-import { Metric, WidgetTools } from './SessionDashboardWidgetTools';
+import { WidgetTools } from './SessionDashboardWidgetTools';
 
 export function TranscriptReviewWidget({ review }: { review: TranscriptReview }) {
   const tooltip = 'Compares what you typed against the target Browser TTS text.';
