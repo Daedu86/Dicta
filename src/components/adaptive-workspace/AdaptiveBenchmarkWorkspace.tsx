@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics, InputMode } from '../../core/adaptive/types';
 import { createEmptyInputLanguageBenchmark } from '../../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { SUPPORTED_LANGUAGES } from '../../core/languages';
-import type { AdaptiveBenchmarksByInputLanguage, BenchmarkLanguageButton } from '../openrouter/types';
-import type { AdaptiveAdapterCardConfig, AdaptiveWorkspaceFocusAnchor, RepeatWordStat } from './types';
+import type { BenchmarkLanguageButton } from '../openrouter/types';
 import {
   benchmarkSubtitle,
   formatBenchmarkLanguage,
@@ -11,53 +9,10 @@ import {
   getBenchmarkHealth,
 } from './adaptiveWorkspaceViewHelpers';
 import { AdaptiveBenchmarkCockpit } from './AdaptiveBenchmarkCockpit';
+import { isCompactViewport, mapSessionInputMode } from './adaptiveBenchmarkWorkspaceUtils';
+import type { AdaptiveBenchmarkSectionProps, AdaptiveProfileMatrixProps } from './adaptiveBenchmarkWorkspaceTypes';
 
-function Metric({ label, value, title }: { label: string; value: string; title?: string }) {
-  return (
-    <div className="metric" title={title} aria-label={title ? `${label}: ${value}. ${title}` : undefined}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function isMobileViewport(): boolean {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches;
-}
-
-function mapSessionInputMode(mode: AdaptiveAdapterCardConfig['inputMode']): InputMode {
-  if (mode === 'browser-tts') return 'browser-tts';
-  return 'browser-tts';
-}
-export function AdaptiveAdapterCard({
-  adapter,
-  active,
-  selected,
-  onOpen,
-}: {
-  adapter: AdaptiveAdapterCardConfig;
-  active: boolean;
-  selected: boolean;
-  onOpen: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`adaptive-adapter-card ${active ? 'adaptive-adapter-card-active' : ''} ${selected ? 'adaptive-adapter-card-selected' : ''}`}
-      onClick={onOpen}
-    >
-      <div className="adaptive-adapter-card-header">
-        <h4>{adapter.title}</h4>
-        {active ? <span>Latest</span> : null}
-      </div>
-      <p>{adapter.execution}</p>
-      <div className="adaptive-adapter-meta">
-        <Metric label="Telemetry adapter" value={adapter.adapter} />
-        <Metric label="Controls" value={adapter.controls} />
-      </div>
-    </button>
-  );
-}
+export { AdaptiveAdapterCard } from './AdaptiveAdapterCard';
 
 export function AdaptiveBenchmarkSection({
   id,
@@ -84,40 +39,11 @@ export function AdaptiveBenchmarkSection({
   onCopyBenchmarkFeedback,
   onCopyBenchmarkFeedbackPrompt,
   onCopyBenchmarkFeedbackPromptWithHumanFeedback,
-}: {
-  id?: string;
-  adapters: AdaptiveAdapterCardConfig[];
-  benchmarks: AdaptiveBenchmarksByInputLanguage;
-  expanded: boolean;
-  onToggleExpanded: () => void;
-  focusAnchor?: AdaptiveWorkspaceFocusAnchor;
-  selectedInputMode: InputMode;
-  selectedLanguage: BenchmarkLanguageButton;
-  selectedProfile: InputLanguageBenchmarkMetrics;
-  repeatWordStats: RepeatWordStat[];
-  formatSessionDate: (value: string) => string;
-  onSelect: (inputMode: InputMode, language: BenchmarkLanguageButton) => void;
-  benchmarkExportMessage: string;
-  sessionFeedback: AdaptiveSessionFeedback | null;
-  sessionFeedbackMessage: string;
-  onCopyBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
-  onExportBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
-  onCopyScriptPrompt: (profile: InputLanguageBenchmarkMetrics) => void;
-  onCopyBenchmarkWithScriptPrompt: (profile: InputLanguageBenchmarkMetrics) => void;
-  onCopyScriptTemplate: (profile: InputLanguageBenchmarkMetrics) => void;
-  onCopySessionFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
-  onCopyBenchmarkFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
-  onCopyBenchmarkFeedbackPrompt: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
-  onCopyBenchmarkFeedbackPromptWithHumanFeedback: (
-    profile: InputLanguageBenchmarkMetrics,
-    feedback: AdaptiveSessionFeedback | null,
-    humanFeedback: string,
-  ) => void;
-}) {
+}: AdaptiveBenchmarkSectionProps) {
   const selectedAdapter = adapters.find((adapter) => mapSessionInputMode(adapter.inputMode) === selectedInputMode);
   const [benchmarkSubsectionsExpanded, setBenchmarkSubsectionsExpanded] = useState(() => ({
     selector: true,
-    workspace: !isMobileViewport(),
+    workspace: !isCompactViewport(),
   }));
 
   useEffect(() => {
@@ -238,13 +164,7 @@ function AdaptiveProfileMatrix({
   selectedInputMode,
   selectedLanguage,
   onSelect,
-}: {
-  adapters: AdaptiveAdapterCardConfig[];
-  benchmarks: AdaptiveBenchmarksByInputLanguage;
-  selectedInputMode: InputMode;
-  selectedLanguage: BenchmarkLanguageButton;
-  onSelect: (inputMode: InputMode, language: BenchmarkLanguageButton) => void;
-}) {
+}: AdaptiveProfileMatrixProps) {
   const languages: BenchmarkLanguageButton[] = [...SUPPORTED_LANGUAGES];
   return (
     <div className="adaptive-profile-matrix" aria-label="Benchmark profile matrix">
