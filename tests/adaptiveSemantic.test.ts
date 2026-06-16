@@ -1,65 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AdaptiveDictationController } from '../src/core/adaptive/AdaptiveDictationController';
-import {
-  advanceSemanticPhrasePlayback,
-  createSemanticPhrasePlaybackState,
-  pickNextPhrase,
-  planSemanticPhrases,
-  replaySemanticPhrasePlayback,
-} from '../src/core/adaptive/SemanticPhrasePlanner';
-import type { AdaptivePacingInput, HistoricalPerformanceProfile, LiveTelemetryFrame } from '../src/core/adaptive/types';
+import type { AdaptivePacingInput } from '../src/core/adaptive/types';
 import { resolveBrowserTtsAdaptiveProfile } from '../src/inputs/browserTts/browserTtsAdaptiveProfiles';
-
-function buildHistory(overrides: Partial<HistoricalPerformanceProfile> = {}): HistoricalPerformanceProfile {
-  return {
-    language: 'en',
-    inputMode: 'browser-tts',
-    comfortablePlaybackRate: 1,
-    averageWpm: 55,
-    averageAccuracy: 0.9,
-    averageLagSec: 1.1,
-    averagePauseMs: 700,
-    preferredPhraseSize: 'medium',
-    preferredPauseAfterPhraseMs: 700,
-    typicalBackspaceRate: 0.04,
-    typicalCorrectionRate: 0.05,
-    strugglesWithLongPhrases: false,
-    strugglesWithNumbers: false,
-    strugglesWithNames: false,
-    strugglesWithPunctuation: false,
-    improvementTrend: 'stable',
-    sessionsCount: 5,
-    profileConfidence: 0.8,
-    ...overrides,
-  };
-}
-
-function buildLive(overrides: Partial<LiveTelemetryFrame> = {}): LiveTelemetryFrame {
-  return {
-    inputMode: 'browser-tts',
-    phraseId: 'p1',
-    spokenProgressRatio: 0.6,
-    typedProgressRatio: 0.4,
-    lagSec: 2.7,
-    lagWords: 4,
-    lagChars: 18,
-    accuracy: 0.78,
-    errorRate: 0.22,
-    wpm: 34,
-    charsPerMinute: 180,
-    pauseMs: 500,
-    longestPauseMs: 900,
-    backspaceRate: 0.06,
-    correctionRate: 0.13,
-    phraseDifficulty: 0.65,
-    phraseLengthWords: 11,
-    phraseLengthChars: 74,
-    currentPlaybackRate: 1,
-    currentPauseAfterPhraseMs: 700,
-    trend: 'declining',
-    ...overrides,
-  };
-}
+import { buildHistory, buildLive } from './helpers/adaptiveSemanticFixtures';
 
 describe('AdaptiveDictationController semantic guardrails', () => {
   it('defers pause when struggling on unsafe boundary', () => {
@@ -293,71 +236,5 @@ describe('AdaptiveDictationController semantic guardrails', () => {
     expect(deDecision.mode).toBe('support');
     expect(deDecision.playbackRate).toBeGreaterThanOrEqual(deProfile.supportRateFloor);
     expect(deDecision.playbackRate).toBeLessThanOrEqual(deProfile.supportRateCeiling);
-  });
-});
-
-describe('SemanticPhrasePlanner heuristics', () => {
-  it('produces sentence and clause chunks for EN/ES/DE/FR/PT', () => {
-    const en = planSemanticPhrases('We start slowly, then we speed up. Finally we review.', 'en', 'medium');
-    const es = planSemanticPhrases('Primero escuchamos, luego escribimos. Al final revisamos.', 'es', 'medium');
-    const de = planSemanticPhrases('Zuerst horen wir zu, dann schreiben wir. Danach prufen wir.', 'de', 'medium');
-    const fr = planSemanticPhrases('D abord nous ecoutons, puis nous ecrivons. Ensuite nous relisons.', 'fr', 'medium');
-    const pt = planSemanticPhrases('Primeiro escutamos, depois escrevemos. No final revisamos.', 'pt', 'medium');
-    expect(en.some((item) => item.boundaryType === 'sentence' || item.boundaryType === 'clause')).toBe(true);
-    expect(es.some((item) => item.boundaryType === 'sentence' || item.boundaryType === 'clause')).toBe(true);
-    expect(de.some((item) => item.boundaryType === 'sentence' || item.boundaryType === 'clause')).toBe(true);
-    expect(fr.some((item) => item.language === 'fr' && (item.boundaryType === 'sentence' || item.boundaryType === 'clause'))).toBe(true);
-    expect(pt.some((item) => item.language === 'pt' && (item.boundaryType === 'sentence' || item.boundaryType === 'clause'))).toBe(true);
-  });
-
-  it('avoids unsafe determiner+noun split when obvious', () => {
-    const phrases = planSemanticPhrases('The final answer is clear and the result is stable.', 'en', 'short');
-    const hasUnsafeEdge = phrases.some((phrase) => /\bthe$/i.test(phrase.text));
-    expect(hasUnsafeEdge).toBe(false);
-  });
-
-  it('picks size from safe semantic candidates', () => {
-    const phrases = planSemanticPhrases('One short sentence. Another sentence with a comma, and a smooth ending.', 'en', 'long');
-    const picked = pickNextPhrase(phrases, 'short', 'clause');
-    expect(picked).not.toBeNull();
-    expect((picked?.boundaryType ?? 'unsafe') === 'sentence' || (picked?.boundaryType ?? 'unsafe') === 'clause').toBe(true);
-  });
-});
-
-describe('semantic phrase playback progression', () => {
-  it('starts playback at phrase index 0', () => {
-    const state = createSemanticPhrasePlaybackState();
-    expect(state.currentPhraseIndex).toBe(0);
-    expect(state.lastPhraseAdvanceReason).toBe('start');
-  });
-
-  it('advances phrase completion by exactly 1', () => {
-    const state = createSemanticPhrasePlaybackState();
-    const next = advanceSemanticPhrasePlayback(state, 4, 'phrase_complete');
-    expect(next.currentPhraseIndex).toBe(1);
-    expect(next.phraseAdvanceCount).toBe(1);
-    expect(next.lastPhraseAdvanceReason).toBe('phrase_complete');
-  });
-
-  it('replay does not advance phrase index', () => {
-    const state = advanceSemanticPhrasePlayback(createSemanticPhrasePlaybackState(), 4);
-    const replay = replaySemanticPhrasePlayback(state);
-    expect(replay.currentPhraseIndex).toBe(1);
-    expect(replay.phraseReplayCount).toBe(1);
-  });
-
-  it('deferred pause leaves phrase index unchanged', () => {
-    const state = createSemanticPhrasePlaybackState();
-    expect(state.currentPhraseIndex).toBe(0);
-  });
-
-  it('typed progress noise cannot choose a later paragraph', () => {
-    const text = 'First paragraph starts here. It continues calmly. Second paragraph should not start first.';
-    const phrases = planSemanticPhrases(text, 'en', 'short');
-    const noisyTypedProgressRatio = 0.95;
-    const currentPhraseIndex = 0;
-    expect(noisyTypedProgressRatio).toBeGreaterThan(0.9);
-    expect(phrases[currentPhraseIndex].text).toContain('First paragraph');
-    expect(phrases[currentPhraseIndex].text).not.toContain('Second paragraph');
   });
 });
