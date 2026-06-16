@@ -1,78 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildAdaptiveUserSystemReport } from '../src/core/adaptive/adaptiveUserSystemReport';
-import { buildAdaptiveSessionFeedback } from '../src/core/adaptive/sessionFeedback';
-import type { PhrasePlaybackEvent } from '../src/core/adaptive/types';
-import type { BrowserTtsEnvironmentFingerprint } from '../src/types/dictation';
-
-const browserEnvironment: BrowserTtsEnvironmentFingerprint = {
-  engine: 'browser',
-  browserUserAgentHash: 'abcdef12',
-  platform: 'Linux armv8l',
-  standalonePwa: true,
-  voiceURI: 'de-local',
-  voiceName: 'German Local',
-  voiceLang: 'de-DE',
-  localService: true,
-  availableVoiceCount: 5,
-  matchingVoiceCount: 2,
-};
-
-function phraseEvent(
-  phraseIndex: number,
-  event: PhrasePlaybackEvent['event'],
-  timestampMs: number,
-): PhrasePlaybackEvent {
-  return {
-    sessionId: 'session-1',
-    phraseId: `phrase-${phraseIndex}`,
-    phraseIndex,
-    textPreview: `Phrase ${phraseIndex}`,
-    event,
-    timestampMs,
-    inputMode: 'browser-tts',
-    language: 'de',
-  };
-}
+import {
+  REPORT_GENERATED_AT,
+  browserEnvironment,
+  createBrowserTtsBenchmarkProfile,
+  createLegacyBenchmarkProfile,
+  createPoorAdaptiveFeedback,
+  createPoorBenchmarkProfile,
+  createRecoveryBenchmarkProfile,
+  createStrongPerformanceBenchmarkProfile,
+} from './helpers/adaptiveUserSystemReportHarness';
 
 describe('adaptiveUserSystemReport', () => {
   it('wraps the technical debug package with human and system summaries', () => {
-    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
-    profile.sessionCount = 4;
-    profile.sampleCount = 12;
-    profile.recommendation = {
-      targetRateRange: [0.9, 1],
-      targetPhraseSize: 'medium',
-      targetPauseMs: 850,
-      nextTrainingFocus: ['steady timing'],
-      confidence: 0.62,
-      summary: 'Keep steady Browser TTS pacing.',
-    };
-    profile.weakAreas = ['lag'];
-    profile.timeline = [
-      {
-        timestampMs: 1,
-        inputMode: 'browser-tts',
-        language: 'de',
-        mode: 'balanced',
-        playbackRate: 0.9,
-        accuracy: 0.75,
-        lagSec: 4.2,
-        wpm: 34,
-        pauseMs: 850,
-        phraseBoundaryType: 'clause',
-        semanticCompleteness: 0.8,
-        event: 'rate_change',
-        decisionReason: 'lag-pressure',
-      },
-    ];
     const technicalDebugData = { benchmarkProfile: { sampleCount: 12 }, recentTimelinePoints: [{ event: 'rate_change' }] };
 
     const report = buildAdaptiveUserSystemReport({
-      profile,
+      profile: createRecoveryBenchmarkProfile(),
       feedback: null,
       technicalDebugData,
-      generatedAt: '2026-05-24T20:00:00.000Z',
+      generatedAt: REPORT_GENERATED_AT,
       inputModeLabel: 'Browser TTS',
       languageLabel: 'DE',
       latestSession: {
@@ -98,7 +45,7 @@ describe('adaptiveUserSystemReport', () => {
         },
         ttsEnvironment: browserEnvironment,
         durationLabel: '1m 20s',
-        updatedAt: '2026-05-24T20:00:00.000Z',
+        updatedAt: REPORT_GENERATED_AT,
       },
     });
 
@@ -129,12 +76,11 @@ describe('adaptiveUserSystemReport', () => {
   });
 
   it('falls back cleanly when no finished session or feedback exists', () => {
-    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'en');
     const report = buildAdaptiveUserSystemReport({
-      profile,
+      profile: createBrowserTtsBenchmarkProfile('en'),
       feedback: null,
       technicalDebugData: { status: 'debug' },
-      generatedAt: '2026-05-24T20:00:00.000Z',
+      generatedAt: REPORT_GENERATED_AT,
     });
 
     expect(report.executiveSummary.status).toBe('needs_more_data');
@@ -148,23 +94,11 @@ describe('adaptiveUserSystemReport', () => {
   });
 
   it('normalizes legacy benchmark profiles that are missing recommendation fields', () => {
-    const legacyProfile = {
-      inputMode: 'browser-tts',
-      language: 'de',
-      rollingWindowDays: 30,
-      sessionCount: 2,
-      sampleCount: 4,
-      weakAreas: ['lag'],
-      averageAccuracy: 0.7,
-      averageWpm: 30,
-      averageLagSec: 4.5,
-    } as unknown as ReturnType<typeof createEmptyInputLanguageBenchmark>;
-
     const report = buildAdaptiveUserSystemReport({
-      profile: legacyProfile,
+      profile: createLegacyBenchmarkProfile(),
       feedback: null,
       technicalDebugData: { legacy: true },
-      generatedAt: '2026-05-24T20:00:00.000Z',
+      generatedAt: REPORT_GENERATED_AT,
     });
 
     expect(report.reportMetadata.reportType).toBe('adaptive_user_system_report');
@@ -174,26 +108,9 @@ describe('adaptiveUserSystemReport', () => {
   });
 
   it('recommends easier support when accuracy, lag, and repeats are poor', () => {
-    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
-    profile.weakAreas = ['low_accuracy', 'replay', 'flow_instability'];
-    const feedback = buildAdaptiveSessionFeedback({
-      sessionId: 'session-1',
-      inputMode: 'browser-tts',
-      language: 'de',
-      sourceType: 'dictation_script',
-      createdAt: '2026-05-24T20:00:00.000Z',
-      phraseEvents: [
-        phraseEvent(0, 'phrase_started', 1),
-        phraseEvent(0, 'phrase_replayed', 2),
-        phraseEvent(0, 'phrase_started', 3),
-        phraseEvent(1, 'phrase_skipped', 4),
-      ],
-      totalPhrases: 2,
-    });
-
     const report = buildAdaptiveUserSystemReport({
-      profile,
-      feedback,
+      profile: createPoorBenchmarkProfile(),
+      feedback: createPoorAdaptiveFeedback(),
       technicalDebugData: {},
       latestSession: {
         id: 'session-1',
@@ -221,39 +138,8 @@ describe('adaptiveUserSystemReport', () => {
   });
 
   it('recommends a harder next exercise when latest performance is strong', () => {
-    const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
-    profile.sessionCount = 8;
-    profile.sampleCount = 40;
-    profile.recommendation = {
-      ...profile.recommendation,
-      targetRateRange: [0.95, 1.05],
-      targetPhraseSize: 'medium',
-      targetPauseMs: 700,
-      confidence: 0.7,
-    };
-    profile.timeline = Array.from({ length: 30 }, (_, index) => ({
-      timestampMs: index + 1,
-      sessionId: 'session-2',
-      phraseIndex: index,
-      totalSemanticPhrases: 30,
-      inputMode: 'browser-tts',
-      language: 'de',
-      mode: 'flow',
-      playbackRate: 0.98,
-      accuracy: 0.94,
-      lagSec: 0.8,
-      rawLagSec: 0.8,
-      stableLagSec: 0.8,
-      wpm: 48,
-      pauseMs: 700,
-      phraseBoundaryType: 'clause',
-      semanticCompleteness: 0.92,
-      event: 'phrase_completed',
-      decisionReason: 'flow-stable',
-    }));
-
     const report = buildAdaptiveUserSystemReport({
-      profile,
+      profile: createStrongPerformanceBenchmarkProfile(),
       feedback: null,
       technicalDebugData: {},
       latestSession: {
