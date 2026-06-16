@@ -9,9 +9,8 @@ import { useAdaptiveWorkspaceRuntime } from './useAdaptiveWorkspaceRuntime';
 import { useAppPerfDiagnosticsRuntime } from './useAppPerfDiagnosticsRuntime';
 import { useSessionCreationRuntime } from './useSessionCreationRuntime';
 import { useTtsSessionRuntime } from './useTtsSessionRuntime';
-import { useDictaFocusedTrainingRuntime } from './useDictaFocusedTrainingRuntime';
+import { useDictaRootFocusedTrainingRuntime } from './useDictaRootFocusedTrainingRuntime';
 import { useTrainingRuntimeState } from './useTrainingRuntimeState';
-import { perfDiagnostics } from '../core/perfDiagnostics';
 import { AppRouteRenderer } from './AppRouteRenderer';
 import { useWorkspaceRouting } from './useWorkspaceRouting';
 import { useDictaUiPreferences } from './useDictaUiPreferences';
@@ -444,7 +443,7 @@ export function DictaAppRuntime() {
   const {
     focusedTrainingProps,
     getActiveTypingLanguage,
-  } = useDictaFocusedTrainingRuntime({
+  } = useDictaRootFocusedTrainingRuntime({
     ttsSessionRuntime,
     ttsText,
     ttsPracticeText,
@@ -492,7 +491,6 @@ export function DictaAppRuntime() {
     ttsSpeechRate,
     ttsPacingMode,
     browserTtsVoices,
-    perfDiagnostics,
     isBrowserTtsSupported,
     speakBrowserTts,
     getHistoricalPerformanceProfile,
