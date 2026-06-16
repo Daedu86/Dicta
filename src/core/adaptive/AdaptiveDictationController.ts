@@ -279,7 +279,8 @@ export class AdaptiveDictationController {
 
     const precisionRateCeiling = resolveListeningPrecisionRateCeiling(live.listeningPrecision, mode, supportRateCeiling);
     if (precisionRateCeiling !== null) {
-      const cappedRate = Number(Math.max(modeFloor, Math.min(precisionRateCeiling, playbackRate)).toFixed(2));
+      const precisionRateFloor = isSupportLikeMode ? modeFloor : balancedFlowFloor;
+      const cappedRate = Number(Math.max(precisionRateFloor, Math.min(precisionRateCeiling, playbackRate)).toFixed(2));
       if (cappedRate < playbackRate) {
         playbackRate = cappedRate;
         reason.push('listening-precision-rate-ceiling');
