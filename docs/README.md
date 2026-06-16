@@ -21,6 +21,7 @@ Agents should use this index to decide which documents are current sources of tr
 | --- | --- | --- |
 | `architecture.md` | Active | Current architecture map for app, core domain, inputs, server routes, Supabase, local services, and PWA shell. |
 | `listening-first-architecture.md` | Active | Product architecture for listening-first dictation training. |
+| `runtime-access-boundary.md` | Active reference | Access runtime boundary for Supabase/auth/profile/OpenRouter model/admin inventory wiring. |
 | `supabase-multiuser-auth.md` | Reference | Supabase auth, sync, RLS, and service-role context. |
 | `android-pwa-performance-debugging.md` | Reference | Android/PWA performance investigation notes. |
 | `../src/styles/README.md` | Reference | CSS and styling organization guidance. |
