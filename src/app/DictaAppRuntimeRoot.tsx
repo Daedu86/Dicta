@@ -1,107 +1,112 @@
-import { useRef, useState } from 'react';
-import { useThemeModeRuntime } from './useThemeModeRuntime';
+import { useRef } from 'react';
 import { useDictaLocalStorageImportRuntime } from './useDictaLocalStorageImportRuntime';
 import { useSessionPersistenceRuntime } from './useSessionPersistenceRuntime';
 import { useWorkspaceSessionRuntime } from './useWorkspaceSessionRuntime';
 import { useWorkspaceNavigationEffects } from './useWorkspaceNavigationEffects';
 import { useAdaptiveWorkspaceState } from './useAdaptiveWorkspaceState';
 import { useAdaptiveWorkspaceRuntime } from './useAdaptiveWorkspaceRuntime';
-import { useAppPerfDiagnosticsRuntime } from './useAppPerfDiagnosticsRuntime';
 import { useSessionCreationRuntime } from './useSessionCreationRuntime';
 import { useTtsSessionRuntime } from './useTtsSessionRuntime';
 import { useDictaRootFocusedTrainingRuntime } from './useDictaRootFocusedTrainingRuntime';
-import { useTrainingRuntimeState } from './useTrainingRuntimeState';
 import { AppRouteRenderer } from './AppRouteRenderer';
-import { useWorkspaceRouting } from './useWorkspaceRouting';
 import { useDictaUiPreferences } from './useDictaUiPreferences';
 import { useDictaRootRouteCompositionRuntime } from './useDictaRootRouteCompositionRuntime';
 import { useDictaAccessRuntime } from './useDictaAccessRuntime';
+import { useDictaAppBootRuntime } from './useDictaAppBootRuntime';
 import { useDictaRootOpenRouterRuntime } from './useDictaRootOpenRouterRuntime';
 import { isMobileViewport } from './viewport';
-import { useBrowserTtsRuntime } from './useBrowserTtsRuntime';
 import { formatSessionDate } from './sessionDateFormatters';
 import { formatSessionStatus } from './sessionStatusFormatters';
 import { formatSessionPlaybackDuration } from './sessionPlaybackDuration';
-import { loadSessions } from './sessionStorage';
-import type { StoredSession } from './sessionTypes';
 
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 
 export function DictaAppRuntime() {
-  const perfDiagnosticsEnabled = useAppPerfDiagnosticsRuntime();
-  const [sessions, setSessions] = useState<StoredSession[]>(() => loadSessions());
-  const [activeSessionId, setActiveSessionId] = useState<string>(() => loadSessions()[0]?.id ?? '');
   const {
-    difficulty,
-    setDifficulty,
-    sessionStatus,
-    setSessionStatus,
-    controllerState,
-    setControllerState,
-    rate,
-    setRate,
-    lagSec,
-    setLagSec,
-    lagWords,
-    setLagWords,
-    wpm,
-    setWpm,
-    accuracy,
-    setAccuracy,
-    trend,
-    setTrend,
-    running,
-    setRunning,
-    error,
-    setError,
-    exportMessage,
-    setExportMessage,
-    trainingSubmitMessage,
-    setTrainingSubmitMessage,
-    inputSettingsLocked,
-    setInputSettingsLocked,
-    ttsText,
-    setTtsText,
-    ttsLanguage,
-    setTtsLanguage,
-    ttsPracticeText,
-    setTtsPracticeText,
-    ttsStatus,
-    setTtsStatus,
-    ttsCurrentChunk,
-    setTtsCurrentChunk,
-    ttsPlayerProgressTick,
-    setTtsPlayerProgressTick,
-    ttsPacingMode,
-    setTtsPacingMode,
-    ttsSpeechRate,
-    setTtsSpeechRate,
-  } = useTrainingRuntimeState();
-  const {
-    workspaceMode,
-    currentPath,
-    dashboardSessionId,
-    clearDashboardSession,
-    navigateAppRoute,
-    showWorkspaceMode,
-    showLeaderboardWorkspace,
-    showAdminWorkspace,
-    showOpenRouterWorkspace,
-    showAdaptiveWorkspace,
-    showDashboardWorkspace,
-    showSessionInputWorkspace,
-  } = useWorkspaceRouting();
-  const { themeMode, setThemeMode } = useThemeModeRuntime();
-  const {
-    browserTtsVoices,
-    isBrowserTtsSupported,
-    speakBrowserTts,
-    resumeBrowserTts,
-    cancelBrowserTts,
-  } = useBrowserTtsRuntime();
-  const suppressSidebarAutoSelectRef = useRef(false);
-  const hydratingSessionIdRef = useRef<string | null>(null);
-  const allowFinishedSessionResetRef = useRef<string | null>(null);
+    perfDiagnosticsEnabled,
+    sessionsState: {
+      sessions,
+      setSessions,
+      activeSessionId,
+      setActiveSessionId,
+    },
+    trainingState: {
+      difficulty,
+      setDifficulty,
+      sessionStatus,
+      setSessionStatus,
+      controllerState,
+      setControllerState,
+      rate,
+      setRate,
+      lagSec,
+      setLagSec,
+      lagWords,
+      setLagWords,
+      wpm,
+      setWpm,
+      accuracy,
+      setAccuracy,
+      trend,
+      setTrend,
+      running,
+      setRunning,
+      error,
+      setError,
+      exportMessage,
+      setExportMessage,
+      trainingSubmitMessage,
+      setTrainingSubmitMessage,
+      inputSettingsLocked,
+      setInputSettingsLocked,
+      ttsText,
+      setTtsText,
+      ttsLanguage,
+      setTtsLanguage,
+      ttsPracticeText,
+      setTtsPracticeText,
+      ttsStatus,
+      setTtsStatus,
+      ttsCurrentChunk,
+      setTtsCurrentChunk,
+      ttsPlayerProgressTick,
+      setTtsPlayerProgressTick,
+      ttsPacingMode,
+      setTtsPacingMode,
+      ttsSpeechRate,
+      setTtsSpeechRate,
+    },
+    routing: {
+      workspaceMode,
+      currentPath,
+      dashboardSessionId,
+      clearDashboardSession,
+      navigateAppRoute,
+      showWorkspaceMode,
+      showLeaderboardWorkspace,
+      showAdminWorkspace,
+      showOpenRouterWorkspace,
+      showAdaptiveWorkspace,
+      showDashboardWorkspace,
+      showSessionInputWorkspace,
+    },
+    theme: {
+      themeMode,
+      setThemeMode,
+    },
+    browserTts: {
+      browserTtsVoices,
+      isBrowserTtsSupported,
+      speakBrowserTts,
+      resumeBrowserTts,
+      cancelBrowserTts,
+    },
+    refs: {
+      suppressSidebarAutoSelectRef,
+      hydratingSessionIdRef,
+      allowFinishedSessionResetRef,
+    },
+  } = useDictaAppBootRuntime();
   const {
     syncConfig,
     supabaseClient,
