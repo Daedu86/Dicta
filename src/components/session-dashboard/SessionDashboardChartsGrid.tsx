@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import type { SessionTelemetry } from '../../types/dictation';
-import { ChartLoadingState, DashboardChart, WidgetTools, chartHelpText } from './SessionDashboardWidgetTools';
+import { ChartLoadingState, DashboardChart, WidgetTools } from './SessionDashboardWidgetTools';
+import { chartHelpText } from './sessionDashboardWidgetHelpText';
 
 const DashboardLineChart = lazy(() =>
   import('../DashboardCharts').then((module) => ({ default: module.DashboardLineChart })),
