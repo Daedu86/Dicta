@@ -1,4 +1,5 @@
 import { normalizeBenchmarkLanguage } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
+import { buildAdaptivePlaybackComfortProfile } from '../core/adaptive/adaptivePlaybackComfortProfile';
 import type { HistoricalPerformanceProfile, InputMode, LanguageCode } from '../core/adaptive/types';
 import type { HistoricalPerformanceService } from '../core/history/HistoricalPerformanceService';
 import { estimateSessionVoiceDurationSec } from '../core/sessionDuration';
@@ -21,11 +22,11 @@ export function buildHistoricalPerformanceProfile(
             ? session.ttsLanguage
             : session.ttsLanguage) ?? undefined,
         durationSec: Math.max(1, estimateSessionVoiceDurationSec(session) ?? session.metrics.points * 2),
-        averagePlaybackRate: clamp(session.metrics.rate, 0.75, 1.15),
+        averagePlaybackRate: clamp(session.metrics.rate, 0.6, 1.15),
         averageWpm: session.metrics.wpm,
         averageAccuracy: clamp01(session.metrics.accuracy / 100),
         averageLagSec: Math.abs(session.metrics.lagSec),
-        averagePauseMs: 700,
+        averagePauseMs: 1200,
         replayCount: 0,
         phraseCount: 1,
         supportCount: session.metrics.trend === 'declining' ? 1 : 0,
@@ -47,16 +48,16 @@ export function buildHistoricalPerformanceProfile(
     });
 
   if (records.length === 0) {
-    return {
+    const profile: HistoricalPerformanceProfile = {
       language,
       inputMode,
-      comfortablePlaybackRate: 1,
+      comfortablePlaybackRate: 0.82,
       averageWpm: 55,
       averageAccuracy: 0.92,
       averageLagSec: 1.2,
-      averagePauseMs: 700,
+      averagePauseMs: 1200,
       preferredPhraseSize: 'medium',
-      preferredPauseAfterPhraseMs: 700,
+      preferredPauseAfterPhraseMs: 1200,
       typicalBackspaceRate: 0.05,
       typicalCorrectionRate: 0.05,
       strugglesWithLongPhrases: false,
@@ -66,6 +67,10 @@ export function buildHistoricalPerformanceProfile(
       improvementTrend: 'stable',
       sessionsCount: 0,
       profileConfidence: 0.2,
+    };
+    return {
+      ...profile,
+      adaptivePlaybackComfortProfile: buildAdaptivePlaybackComfortProfile({ history: profile }),
     };
   }
 
