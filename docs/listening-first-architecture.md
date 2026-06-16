@@ -2,6 +2,15 @@
 
 Dicta's current training architecture is listening-first. Typing speed remains useful as a diagnostic signal, but it must not dominate the training prescription, session score, or user-facing training language.
 
+## Related adaptive docs
+
+Start adaptive iteration from [Adaptive Training Cycle](./adaptive-training-cycle.md). This document owns product language, listening precision metrics, and policy guardrails; the cycle doc connects those concepts to LLM generation, planner/chunking, controller decisions, Browser TTS runtime, benchmark/feedback, and the adaptive insight report.
+
+Related references:
+
+- [Dicta Architecture](./architecture.md) — repo-wide ownership and runtime boundaries.
+- [Adaptive Listening Brain](./adaptive-listening-brain.md) — runtime controller, Browser TTS pacing, language profiles, and reason codes.
+
 ## Product language
 
 User-facing training intents are:
