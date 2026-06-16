@@ -9,6 +9,7 @@ const dictaRootFocusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/u
 const dictaFocusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useDictaFocusedTrainingRuntime.ts'), 'utf-8');
 const focusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useFocusedTrainingRuntime.ts'), 'utf-8');
 const hookSource = readFileSync(resolve(repoRoot, 'src/app/useActiveSessionStateSync.ts'), 'utf-8');
+const syncActionsSource = readFileSync(resolve(repoRoot, 'src/app/activeSessionStateSyncActions.ts'), 'utf-8');
 
 describe('useActiveSessionStateSync extraction', () => {
   it('keeps DictaAppRuntime delegating active-session sync through root and focused training runtimes', () => {
@@ -34,11 +35,15 @@ describe('useActiveSessionStateSync extraction', () => {
     expect(focusedTrainingSource).not.toContain('normalizeLiveSessionStatusForPersistence');
   });
 
-  it('preserves hydration, finished-session sync, and finished-downgrade protection in the extracted hook', () => {
-    expect(hookSource).toContain('buildActiveSessionHydrationState(activeSession)');
-    expect(hookSource).toContain("activeSession.status !== 'finished' || sessionStatus === 'finished'");
-    expect(hookSource).toContain('normalizeLiveSessionStatusForPersistence(sessionStatus, nextTelemetry, running)');
-    expect(hookSource).toContain("session.status === 'finished' && nextStatus !== 'finished' && !isExplicitFinishedReset");
-    expect(hookSource).toContain('allowFinishedSessionResetRef.current = null;');
+  it('preserves hydration, finished-session sync, and finished-downgrade protection in the extracted actions', () => {
+    expect(hookSource).toContain('hydrateActiveSessionState(params);');
+    expect(hookSource).toContain('syncFinishedActiveSessionState(params);');
+    expect(hookSource).toContain('persistActiveSessionState(params);');
+
+    expect(syncActionsSource).toContain('buildActiveSessionHydrationState(activeSession)');
+    expect(syncActionsSource).toContain("activeSession.status !== 'finished' || params.sessionStatus === 'finished'");
+    expect(syncActionsSource).toContain('normalizeLiveSessionStatusForPersistence(params.sessionStatus, nextTelemetry, params.running)');
+    expect(syncActionsSource).toContain("session.status === 'finished' && nextStatus !== 'finished' && !isExplicitFinishedReset");
+    expect(syncActionsSource).toContain('params.allowFinishedSessionResetRef.current = null;');
   });
 });
