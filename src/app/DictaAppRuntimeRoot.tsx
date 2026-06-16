@@ -17,15 +17,12 @@ import { useWorkspaceRouting } from './useWorkspaceRouting';
 import { useDictaUiPreferences } from './useDictaUiPreferences';
 import { useDictaAppRouteCompositionRuntime } from './useDictaAppRouteCompositionRuntime';
 import { useDictaAccessRuntime } from './useDictaAccessRuntime';
-import { useDictaOpenRouterRuntime } from './useDictaOpenRouterRuntime';
+import { useDictaRootOpenRouterRuntime } from './useDictaRootOpenRouterRuntime';
 import { isMobileViewport } from './viewport';
 import { useBrowserTtsRuntime } from './useBrowserTtsRuntime';
 import { formatSessionDate } from './sessionDateFormatters';
 import { formatSessionStatus } from './sessionStatusFormatters';
 import { formatSessionPlaybackDuration } from './sessionPlaybackDuration';
-import {
-  mapSessionInputMode,
-  } from './appRuntimeHelpers';
 import { loadSessions } from './sessionStorage';
 import type { StoredSession } from './sessionTypes';
 
@@ -391,7 +388,7 @@ export function DictaAppRuntime() {
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter,
-  } = useDictaOpenRouterRuntime({
+  } = useDictaRootOpenRouterRuntime({
     errorSessionActions: {
       ensureCanCreateDictationSession,
       suppressSidebarAutoSelectRef,
@@ -411,37 +408,35 @@ export function DictaAppRuntime() {
       getAuthHeaders,
       onOpenRouterError: setOpenRouterError,
     },
+    access: {
+      allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
+      openRouterAccessAllowed,
+      openRouterAccessMessage,
+    },
+    sessionContext: {
+      sessions,
+      activeSession,
+      activeInputMode,
+      dictaLanguageView,
+      recentDictationSessionHints,
+    },
     generation: {
-      access: {
-        allowCustomSessionGeneration: isCurrentProfileAdmin || !syncConfig.authRequired,
-        openRouterAccessAllowed,
-        openRouterAccessMessage,
-      },
-      sessionContext: {
-        sessions,
-        activeSession,
-        fallbackInputMode: mapSessionInputMode(activeInputMode),
-        dictaLanguageView,
-        recentDictationSessionHints,
-      },
-      generation: {
-        effectiveOpenRouterDefaultModel,
-        getAuthHeaders,
-        ensureCanCreateDictationSession,
-      },
-      adaptiveContext: {
-        adaptiveBenchmarksByInputLanguage,
-        adaptiveSessionFeedbackByInputLanguage,
-      },
-      presentationActions: {
-        showOpenRouterWorkspace,
-        setOpenRouterGenerateFocusRequest,
-        setOpenRouterError,
-        setSelectedBenchmarkInputMode,
-        setSelectedBenchmarkLanguage,
-        setBenchmarkExportMessage,
-        setSessionFeedbackMessage,
-      },
+      effectiveOpenRouterDefaultModel,
+      getAuthHeaders,
+      ensureCanCreateDictationSession,
+    },
+    adaptiveContext: {
+      adaptiveBenchmarksByInputLanguage,
+      adaptiveSessionFeedbackByInputLanguage,
+    },
+    presentationActions: {
+      showOpenRouterWorkspace,
+      setOpenRouterGenerateFocusRequest,
+      setOpenRouterError,
+      setSelectedBenchmarkInputMode,
+      setSelectedBenchmarkLanguage,
+      setBenchmarkExportMessage,
+      setSessionFeedbackMessage,
     },
     resetOpenRouterJobsRuntimeRef,
   });
