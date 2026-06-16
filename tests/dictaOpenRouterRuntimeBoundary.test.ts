@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 describe('Dicta OpenRouter runtime boundary', () => {
-  it('keeps app OpenRouter orchestration behind useDictaOpenRouterRuntime', () => {
+  it('keeps app OpenRouter orchestration behind the root and Dicta OpenRouter runtimes', () => {
     const boundary = readFileSync('src/app/useDictaOpenRouterRuntime.ts', 'utf8');
-    const runtime = readFileSync('src/app/DictaAppRuntime.tsx', 'utf8');
+    const rootBoundary = readFileSync('src/app/useDictaRootOpenRouterRuntime.ts', 'utf8');
+    const runtime = readFileSync('src/app/DictaAppRuntimeRoot.tsx', 'utf8');
 
     expect(boundary).toContain('export function useDictaOpenRouterRuntime');
     expect(boundary).toContain("import { useOnlineStatus } from './useOnlineStatus';");
@@ -14,7 +15,10 @@ describe('Dicta OpenRouter runtime boundary', () => {
     expect(boundary).not.toContain("import { useOpenRouterGeneratedScriptSettlement } from './useOpenRouterGeneratedScriptSettlement';");
     expect(boundary).not.toContain("import { useOpenRouterJobsRuntime } from './useOpenRouterJobsRuntime';");
 
-    expect(runtime).toContain("import { useDictaOpenRouterRuntime } from './useDictaOpenRouterRuntime';");
+    expect(rootBoundary).toContain("import { useDictaOpenRouterRuntime } from './useDictaOpenRouterRuntime';");
+    expect(rootBoundary).toContain('useDictaOpenRouterRuntime({');
+    expect(runtime).toContain("import { useDictaRootOpenRouterRuntime } from './useDictaRootOpenRouterRuntime';");
+    expect(runtime).not.toContain("import { useDictaOpenRouterRuntime } from './useDictaOpenRouterRuntime';");
     expect(runtime).not.toContain("import { useOnlineStatus } from './useOnlineStatus';");
     expect(runtime).not.toContain("import { useOpenRouterGenerationRuntime } from './useOpenRouterGenerationRuntime';");
     expect(runtime).not.toContain("import { useOpenRouterErrorSessionActions } from './useOpenRouterErrorSessionActions';");
