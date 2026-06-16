@@ -13,11 +13,7 @@ import {
   stringOr,
   type UnknownRecord,
 } from './sessionNormalizationPrimitives';
-import {
-  cloneTelemetry,
-  hasFinalizedAttemptTelemetry,
-  normalizeRateDistribution,
-} from './sessionTelemetryNormalization';
+import { cloneTelemetry, hasFinalizedAttemptTelemetry } from './sessionTelemetryNormalization';
 
 export { cloneTelemetry, hasFinalizedAttemptTelemetry, normalizeRateDistribution } from './sessionTelemetryNormalization';
 
