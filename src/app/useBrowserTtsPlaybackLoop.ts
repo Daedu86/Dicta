@@ -1,17 +1,15 @@
-import type { PhraseSize } from '../core/adaptive/types';
-import type { BrowserTtsBoundaryStrictness } from './browserTtsPlaybackPlan';
 import { buildBrowserTtsPlaybackLoopChunkPlan } from './browserTtsPlaybackLoopChunkPlan';
+import { commitBrowserTtsPlaybackLoopChunk } from './browserTtsPlaybackLoopChunkCommit';
+import { createBrowserTtsPlaybackLoopCursor } from './browserTtsPlaybackLoopCursor';
 import { createBrowserTtsPlaybackLoopStartContext } from './browserTtsPlaybackLoopStartContext';
 import { resolveBrowserTtsPlaybackStartError } from './browserTtsPlaybackLoopGuards';
 import {
-  advanceBrowserTtsMacroPhraseCursor,
   finishBrowserTtsPlaybackLoop,
   startBrowserTtsPlaybackLoopState,
 } from './browserTtsPlaybackLoopLifecycle';
-import { commitBrowserTtsPlaybackLoopChunk } from './browserTtsPlaybackLoopChunkCommit';
 import { createBrowserTtsPlaybackUtterance } from './browserTtsPlaybackLoopUtterance';
-import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 import { attachBrowserTtsPlaybackLoopUtteranceHandlers } from './browserTtsPlaybackLoopUtteranceHandlers';
+import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 
 export type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 
@@ -110,12 +108,14 @@ export function useBrowserTtsPlaybackLoop({
       semanticPhraseWords,
       semanticPhraseStartWordIndices,
     } = playbackStartPlan;
-    let chunkIndex = playbackStartPlan.chunkIndex;
-    let macroPhraseIndex = playbackStartPlan.macroPhraseIndex;
-    let macroWordOffset = playbackStartPlan.macroWordOffset;
+    const playbackCursor = createBrowserTtsPlaybackLoopCursor({
+      chunkIndex: playbackStartPlan.chunkIndex,
+      macroPhraseIndex: playbackStartPlan.macroPhraseIndex,
+      macroWordOffset: playbackStartPlan.macroWordOffset,
+      lastPhraseSize: playbackStartPlan.lastPhraseSize,
+      lastBoundaryStrictness: playbackStartPlan.lastBoundaryStrictness,
+    });
     let cancelled = false;
-    let lastPhraseSize: PhraseSize = playbackStartPlan.lastPhraseSize;
-    let lastBoundaryStrictness: BrowserTtsBoundaryStrictness = playbackStartPlan.lastBoundaryStrictness;
     if (clampedStartWordIndex === 0) {
       beginAdaptiveSessionFeedback('browser-tts', ttsLanguage, semanticPhrases.length);
     }
@@ -142,17 +142,15 @@ export function useBrowserTtsPlaybackLoop({
     });
 
     const advanceToNextMacroPhrase = (): void => {
-      const nextCursor = advanceBrowserTtsMacroPhraseCursor({ chunkIndex, macroPhraseIndex, macroWordOffset });
-      chunkIndex = nextCursor.chunkIndex;
-      macroPhraseIndex = nextCursor.macroPhraseIndex;
-      macroWordOffset = nextCursor.macroWordOffset;
+      playbackCursor.advanceMacroPhrase();
       if (!cancelled) {
         speakNext();
       }
     };
 
     const speakNext = () => {
-      if (cancelled || macroPhraseIndex >= semanticPhrases.length) {
+      const cursor = playbackCursor.get();
+      if (cancelled || cursor.macroPhraseIndex >= semanticPhrases.length) {
         finishBrowserTtsPlaybackLoop({
           ttsTranscript,
           ttsCompletedSourceWordsRef,
@@ -167,18 +165,18 @@ export function useBrowserTtsPlaybackLoop({
         return;
       }
 
-      const semanticPhrase = semanticPhrases[macroPhraseIndex];
-      const macroWords = semanticPhraseWords[macroPhraseIndex] ?? [];
-      const macroStartWordIndex = semanticPhraseStartWordIndices[macroPhraseIndex] ?? 0;
+      const semanticPhrase = semanticPhrases[cursor.macroPhraseIndex];
+      const macroWords = semanticPhraseWords[cursor.macroPhraseIndex] ?? [];
+      const macroStartWordIndex = semanticPhraseStartWordIndices[cursor.macroPhraseIndex] ?? 0;
 
       // If the current macro phrase is empty or already fully spoken, advance to the next macro phrase.
-      if (macroWords.length === 0 || macroWordOffset >= macroWords.length) {
+      if (macroWords.length === 0 || cursor.macroWordOffset >= macroWords.length) {
         advanceToNextMacroPhrase();
         return;
       }
 
-      if (macroWordOffset === 0) {
-        recordPhrasePlaybackEvent('phrase_started', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
+      if (cursor.macroWordOffset === 0) {
+        recordPhrasePlaybackEvent('phrase_started', 'browser-tts', ttsLanguage, semanticPhrase, cursor.macroPhraseIndex);
       }
 
       const playbackPlan = buildBrowserTtsPlaybackLoopChunkPlan({
@@ -193,12 +191,12 @@ export function useBrowserTtsPlaybackLoop({
         getAdaptiveController,
         estimateTtsSpokenWordIndex,
         macroWords,
-        macroWordOffset,
+        macroWordOffset: cursor.macroWordOffset,
         macroStartWordIndex,
-        lastPhraseSize,
-        lastBoundaryStrictness,
+        lastPhraseSize: cursor.lastPhraseSize,
+        lastBoundaryStrictness: cursor.lastBoundaryStrictness,
         sourceWordCount: sourceWords.length,
-        chunkIndex,
+        chunkIndex: cursor.chunkIndex,
         unsafeChunkCount: ttsUnsafeChunkCountRef.current,
         accuracyWindow: ttsChunkAccuracyWindowRef.current,
         lastAccuracySnapshot: ttsLastAccuracySnapshotRef.current,
@@ -211,13 +209,15 @@ export function useBrowserTtsPlaybackLoop({
 
       const { chunk, runtimeDecision, pacingMode, rate, effectivePauseNow, chunkTelemetry } = playbackPlan;
       // Persist the final executable decision so the next chunk reflects runtime constraints.
-      lastPhraseSize = playbackPlan.nextLastPhraseSize;
-      lastBoundaryStrictness = playbackPlan.nextLastBoundaryStrictness;
+      playbackCursor.updateDecisionState({
+        lastPhraseSize: playbackPlan.nextLastPhraseSize,
+        lastBoundaryStrictness: playbackPlan.nextLastBoundaryStrictness,
+      });
       const { utterance, perfUtteranceId } = createBrowserTtsPlaybackUtterance({
         chunk,
         perfDiagnostics,
         perfPlayId,
-        chunkIndex,
+        chunkIndex: cursor.chunkIndex,
         ttsLanguage,
         pacingMode,
         rate,
@@ -228,7 +228,7 @@ export function useBrowserTtsPlaybackLoop({
       ttsUtteranceRef.current = utterance;
       commitBrowserTtsPlaybackLoopChunk({
         playbackPlan,
-        macroPhraseIndex,
+        macroPhraseIndex: cursor.macroPhraseIndex,
         semanticPhrase,
         semanticPhraseCount: semanticPhrases.length,
         browserTtsEnvironment,
@@ -255,39 +255,40 @@ export function useBrowserTtsPlaybackLoop({
           perfDiagnostics,
           perfUtteranceId,
         }),
-        end: () => ({
-          perfDiagnostics,
-          perfUtteranceId,
-          cancelled,
-          chunkIndex,
-          macroPhraseIndex,
-          macroWordOffset,
-          macroWordsLength: macroWords.length,
-          chunk,
-          effectivePauseNow,
-          runtimeDecision,
-          ttsCompletedSourceWordsRef,
-          recordPhrasePlaybackEvent,
-          ttsLanguage,
-          semanticPhrase,
-          applyTtsPerformanceSample,
-          ttsLiveSignalRef,
-          chunkTelemetry,
-          ttsUnsafeChunkCountRef,
-          recordAdaptiveBenchmark,
-          rate,
-          browserTtsEnvironment,
-          semanticPhrases,
-          ttsSemanticPhraseAdvanceCountRef,
-          ttsSemanticPhraseReplayCountRef,
-          setAdaptiveSemanticDebug,
-          speakNext,
-          updatePlaybackCursor: (nextCursor) => {
-            chunkIndex = nextCursor.chunkIndex;
-            macroPhraseIndex = nextCursor.macroPhraseIndex;
-            macroWordOffset = nextCursor.macroWordOffset;
-          },
-        }),
+        end: () => {
+          const currentCursor = playbackCursor.get();
+          return {
+            perfDiagnostics,
+            perfUtteranceId,
+            cancelled,
+            chunkIndex: currentCursor.chunkIndex,
+            macroPhraseIndex: currentCursor.macroPhraseIndex,
+            macroWordOffset: currentCursor.macroWordOffset,
+            macroWordsLength: macroWords.length,
+            chunk,
+            effectivePauseNow,
+            runtimeDecision,
+            ttsCompletedSourceWordsRef,
+            recordPhrasePlaybackEvent,
+            ttsLanguage,
+            semanticPhrase,
+            applyTtsPerformanceSample,
+            ttsLiveSignalRef,
+            chunkTelemetry,
+            ttsUnsafeChunkCountRef,
+            recordAdaptiveBenchmark,
+            rate,
+            browserTtsEnvironment,
+            semanticPhrases,
+            ttsSemanticPhraseAdvanceCountRef,
+            ttsSemanticPhraseReplayCountRef,
+            setAdaptiveSemanticDebug,
+            speakNext,
+            updatePlaybackCursor: (nextCursor) => {
+              playbackCursor.updatePosition(nextCursor);
+            },
+          };
+        },
         error: (event) => ({
           error: event.error,
           cancelled,
