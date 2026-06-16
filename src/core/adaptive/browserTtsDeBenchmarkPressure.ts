@@ -8,7 +8,10 @@ import {
   BROWSER_TTS_DE_RECENT_PRESSURE_SAMPLE_COUNT,
   isBrowserTtsDe,
 } from './browserTtsDeBenchmarkCore';
-import { isValidBrowserTtsDeBenchmarkSample } from './browserTtsDeBenchmarkSamples';
+import {
+  includesDiagnosticReason,
+  isValidBrowserTtsDeBenchmarkSample,
+} from './browserTtsDeBenchmarkSamples';
 import {
   buildBrowserTtsDeConservativeFocus,
   buildBrowserTtsDePressureSummary,
@@ -104,14 +107,14 @@ export function analyzeBrowserTtsDeTimelinePressure(metrics: InputLanguageBenchm
   const learnerDenominator = Math.max(1, learnerPressurePoints.length);
   const boundaryDenominator = Math.max(1, pressurePoints.length);
   const supportCount = countBrowserTtsDeSupportPressure(learnerPressurePoints);
-  const unsafeBoundaryCount = pressurePoints.filter((point) => point.phraseBoundaryType === 'unsafe' || point.reasonCodes?.includes('replay-blocked-boundary')).length;
+  const unsafeBoundaryCount = pressurePoints.filter((point) => point.phraseBoundaryType === 'unsafe' || includesDiagnosticReason(point, 'replay-blocked-boundary')).length;
   const severeRawLagOutlierCount = pressurePoints.filter((point) => typeof point.rawLagSec === 'number' && Number.isFinite(point.rawLagSec) && Math.abs(point.rawLagSec) > 10).length;
   const technicalTimingIssueCount = pressurePoints.filter(isBrowserTtsDeTechnicalTimingIssue).length;
   const severeRecoveryCount = learnerPressurePoints.filter((point) =>
-    point.reasonCodes?.includes('browser-tts-de-recovery-severe') &&
+    includesDiagnosticReason(point, 'browser-tts-de-recovery-severe') &&
     hasBrowserTtsDeLearnerPressure(point)
   ).length;
-  const unsafeChunkCount = pressurePoints.filter((point) => point.reasonCodes?.includes('unsafe-boundary-conservative')).length;
+  const unsafeChunkCount = pressurePoints.filter((point) => includesDiagnosticReason(point, 'unsafe-boundary-conservative')).length;
   const highLagCount = learnerPressurePoints.filter(hasBrowserTtsDeHighLagPressure).length;
   const lowAccuracyCount = learnerPressurePoints.filter(hasBrowserTtsDeLowAccuracyPressure).length;
   const supportRatio = supportCount / learnerDenominator;
