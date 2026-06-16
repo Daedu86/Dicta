@@ -135,20 +135,20 @@ export type AdaptiveUserSystemReport = {
     browserTtsEnvironment: {
       status: 'not_browser_tts' | 'available' | 'missing';
       selectedVoice: null | {
-        engine?: string;
-        voiceName?: string;
-        voiceLang?: string;
-        voiceURI?: string;
-        localService?: boolean;
+        engine: string;
+        voiceName: string | null;
+        voiceLang: string | null;
+        voiceURI: string | null;
+        localService: boolean | null;
       };
       availableVoicesSummary: null | {
-        availableVoiceCount?: number;
-        matchingVoiceCount?: number;
+        availableVoiceCount: number;
+        matchingVoiceCount: number;
       };
       platformSummary: null | {
-        platform?: string;
-        standalonePwa?: boolean;
-        browserUserAgentHash?: string;
+        platform: string;
+        standalonePwa: boolean;
+        browserUserAgentHash: string;
       };
       environmentChanged: boolean;
       historyCount: number;
