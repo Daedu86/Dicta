@@ -1,9 +1,4 @@
 import { useCallback } from 'react';
-import type {
-  ControlAction,
-  SessionTelemetry,
-  Transcript,
-} from '../types/dictation';
 import { evaluateTranscriptAttempt } from '../core/evaluation';
 import { computeSessionScore } from '../core/sessionScore';
 import { buildBrowserTtsControlLagSample } from '../inputs/browserTts/browserTtsRatePolicy';
@@ -13,46 +8,19 @@ import {
   derivePerformanceTrend,
   deriveTtsControlAction,
 } from './appRuntimeHelpers';
+import type { TtsPerformanceSampleResult } from './sessionTypes';
 import type {
-  TtsLanguage,
-  TtsPerformanceSampleResult,
-  TtsPublishedUiState,
-} from './sessionTypes';
-import type { TtsLiveSignal } from './ttsPlaybackProfile';
+  TtsPerformanceSampleOptions,
+  TtsPerformanceSamplerDependencies,
+} from './ttsPerformanceSamplerTypes';
+
+export type {
+  TtsPerformanceSampleOptions,
+  TtsPerformanceSamplerDependencies,
+  WritableRef,
+} from './ttsPerformanceSamplerTypes';
 
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
-
-type WritableRef<T> = {
-  current: T;
-};
-
-export type TtsPerformanceSampleOptions = {
-  action?: ControlAction;
-  finalize?: boolean;
-  forcePublishUi?: boolean;
-  practiceTextOverride?: string;
-};
-
-export type TtsPerformanceSamplerDependencies = {
-  ttsStartedAtMsRef: WritableRef<number | null>;
-  ttsPracticeLiveTextRef: WritableRef<string>;
-  ttsTranscript: Transcript | null;
-  ttsSpeechRate: number;
-  ttsLanguage: TtsLanguage;
-  ttsLastValidControlLagSecRef: WritableRef<number>;
-  ttsLagOutlierCountRef: WritableRef<number>;
-  ttsLiveSignalRef: WritableRef<TtsLiveSignal>;
-  previousLagRef: WritableRef<number>;
-  previousAccuracyRef: WritableRef<number>;
-  telemetryRef: WritableRef<SessionTelemetry | null>;
-  ttsLastControllerActionRef: WritableRef<ControlAction>;
-  estimateTtsSpokenWordIndex: (now?: number) => number;
-  getTtsElapsedSeconds: (now?: number) => number;
-  ensureAttemptTelemetry: () => SessionTelemetry;
-  publishTtsUiState: (next: TtsPublishedUiState, now: number, force?: boolean) => void;
-  nowMs?: () => number;
-  nowIso?: () => string;
-};
 
 export function sampleTtsPerformance(
   {
