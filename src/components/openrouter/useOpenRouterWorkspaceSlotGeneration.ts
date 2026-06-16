@@ -1,12 +1,9 @@
-import type { Dispatch, SetStateAction } from 'react';
-import type { InputMode } from '../../core/adaptive/types';
 import {
   estimateOpenRouterPromptSize,
   getOpenRouterGenerationMaxTokens,
-  type OpenRouterGeneratePromptSource,
 } from '../../core/adaptive/openRouterGenerationPrompt';
 import { isTransientOpenRouterGenerationError } from '../../core/adaptive/openRouterFallbackScript';
-import type { ActiveOpenRouterJob, OpenRouterJobResponse } from '../../core/openRouterJobs';
+import type { OpenRouterJobResponse } from '../../core/openRouterJobs';
 import { requestTrainingNotificationPermission } from '../../core/trainingNotifications';
 import {
   formatInterruptedOpenRouterMessage,
@@ -17,74 +14,17 @@ import {
   shouldCreatePersistentGenerationErrorSession,
 } from './openRouterViewHelpers';
 import { buildOpenRouterWorkspaceVariantPrompt } from './openRouterWorkspaceRuntimeHelpers';
-import type {
-  BenchmarkLanguageButton,
-  OpenRouterGenerationSlotId,
-  OpenRouterGenerationSlots,
-  OpenRouterGenerationSlotState,
-  OpenRouterWorkspaceProps,
-} from './types';
+import { buildWorkspaceActiveOpenRouterJob } from './openRouterWorkspaceSlotGenerationJob';
+import type { UseOpenRouterWorkspaceSlotGenerationArgs } from './useOpenRouterWorkspaceSlotGenerationTypes';
+import type { OpenRouterGenerationSlotId } from './types';
 
-type SetGenerateBusySlots = Dispatch<SetStateAction<Record<OpenRouterGenerationSlotId, boolean>>>;
-
-type UseOpenRouterWorkspaceSlotGenerationArgs = Pick<
-  OpenRouterWorkspaceProps,
-  'authHeaders' | 'activeJobs' | 'onTrackJob' | 'onCreateGenerationErrorSession'
-> & {
-  defaultModel: string;
-  generationSlots: OpenRouterGenerationSlots;
-  generateBusySlots: Record<OpenRouterGenerationSlotId, boolean>;
-  setGenerateBusySlots: SetGenerateBusySlots;
-  updateGenerationSlot: (slotId: OpenRouterGenerationSlotId, patch: Partial<OpenRouterGenerationSlotState>) => void;
-  generateInputMode: InputMode;
-  generateLanguage: BenchmarkLanguageButton;
-  generatePromptSource: OpenRouterGeneratePromptSource;
-  generateDurationMinutes: 2 | 3 | 4;
-  generatePayloadPrompt: string;
-};
+export type { UseOpenRouterWorkspaceSlotGenerationArgs } from './useOpenRouterWorkspaceSlotGenerationTypes';
 
 function formatOpenRouterWorkspaceGenerationError(err: unknown): string {
   if (err instanceof TypeError) {
     return 'Failed to reach OpenRouter endpoint. Refresh the page and try a free model such as openrouter/free.';
   }
   return err instanceof Error ? err.message : 'OpenRouter generation failed.';
-}
-
-function buildWorkspaceActiveOpenRouterJob({
-  jobId,
-  slotId,
-  slotLabel,
-  slotModel,
-  generationStartedAt,
-  promptSize,
-  generateInputMode,
-  generateLanguage,
-  generateDurationMinutes,
-}: {
-  jobId: string;
-  slotId: OpenRouterGenerationSlotId;
-  slotLabel: string;
-  slotModel: string;
-  generationStartedAt: string;
-  promptSize: ReturnType<typeof estimateOpenRouterPromptSize>;
-  generateInputMode: InputMode;
-  generateLanguage: BenchmarkLanguageButton;
-  generateDurationMinutes: 2 | 3 | 4;
-}): ActiveOpenRouterJob {
-  return {
-    jobId,
-    model: slotModel,
-    slotLabel,
-    inputMode: generateInputMode,
-    language: generateLanguage,
-    durationMinutes: generateDurationMinutes,
-    promptMode: promptSize.promptMode,
-    promptCharacterCount: promptSize.characterCount,
-    promptApproximateTokenCount: promptSize.approximateTokenCount,
-    origin: 'custom-workspace',
-    customSlotId: slotId,
-    startedAt: generationStartedAt,
-  };
 }
 
 export function useOpenRouterWorkspaceSlotGeneration({
