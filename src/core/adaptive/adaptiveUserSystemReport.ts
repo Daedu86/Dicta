@@ -1,4 +1,4 @@
-import type { AdaptiveSessionFeedback, AdaptiveTimelinePoint, InputLanguageBenchmarkMetrics } from './types';
+import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics } from './types';
 
 import {
   buildTtsEnvironmentReport,
