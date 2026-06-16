@@ -40,7 +40,6 @@ export function DictaAppRuntime() {
   const {
     difficulty,
     sessionStatus,
-    error,
     setError,
     exportMessage,
     setExportMessage,

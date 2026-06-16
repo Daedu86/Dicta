@@ -13,9 +13,12 @@ describe('Dicta app runtime boundary', () => {
     expect(shell).not.toContain('<AppRouteRenderer');
 
     expect(root).toContain('export function DictaAppRuntime');
-    expect(root).toContain('useTrainingRuntimeState');
+    const bootRuntime = readFileSync('src/app/useDictaAppBootRuntime.ts', 'utf8');
+
+    expect(root).toContain('useDictaAppBootRuntime');
     expect(root).toContain('useDictaAccessRuntime');
-    expect(root).toContain('useDictaAppRouteCompositionRuntime');
+    expect(root).toContain('useDictaRootRouteCompositionRuntime');
     expect(root).toContain('<AppRouteRenderer');
+    expect(bootRuntime).toContain('useTrainingRuntimeState');
   });
 });
