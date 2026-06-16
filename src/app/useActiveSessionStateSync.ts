@@ -6,6 +6,8 @@ import {
 } from './activeSessionStateSyncActions';
 import type { UseActiveSessionStateSyncParams } from './activeSessionStateSyncTypes';
 
+export type { UseActiveSessionStateSyncParams } from './activeSessionStateSyncTypes';
+
 export function useActiveSessionStateSync(params: UseActiveSessionStateSyncParams): void {
   useEffect(() => {
     hydrateActiveSessionState(params);
