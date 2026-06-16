@@ -1,6 +1,4 @@
 import { useEffect } from 'react';
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { isTransientGenerationErrorSessionLike } from '../../core/adaptive/openRouterFallbackScript';
 import {
   deleteSessionSyncRow,
@@ -9,8 +7,6 @@ import {
   mergeSyncRows,
   pullSyncRows,
   pushSyncRowsDetailed,
-  type DictaSyncRow,
-  type DictaSyncState,
 } from '../../core/supabaseSync';
 import { persistDeletedSessionIds } from '../sessionPersistenceDeletedIds';
 import {
@@ -18,33 +14,10 @@ import {
   shouldUseFullSupabasePull,
 } from '../sessionPersistenceSupabasePullPlan';
 import { SUPABASE_BACKGROUND_PULL_INTERVAL_MS } from './sessionPersistenceSyncConstants';
-import type {
-  PersistableSession,
-  SupabaseInitialPullState,
-  SupabaseSyncStatus,
-} from './sessionPersistenceSyncTypes';
+import type { PersistableSession } from './sessionPersistenceSyncTypes';
+import type { UseSupabaseSessionPullRuntimeOptions } from './sessionPersistenceSupabasePullTypes';
 
-type UseSupabaseSessionPullRuntimeOptions<TSession extends PersistableSession, TBenchmarks, TFeedback> = {
-  supabaseClient: SupabaseClient | null;
-  syncEnabled: boolean;
-  profileId: string;
-  supabaseSyncIdentity: string;
-  normalizeRestoredSession: (session: TSession) => TSession;
-  setSessions: Dispatch<SetStateAction<TSession[]>>;
-  setAdaptiveBenchmarks: Dispatch<SetStateAction<TBenchmarks>>;
-  setAdaptiveSessionFeedback: Dispatch<SetStateAction<TFeedback>>;
-  setSupabaseSyncStatus: Dispatch<SetStateAction<SupabaseSyncStatus>>;
-  setSupabaseInitialPullState: Dispatch<SetStateAction<SupabaseInitialPullState>>;
-  syncStateRef: MutableRefObject<DictaSyncState>;
-  deletedSessionIdsRef: MutableRefObject<Set<string>>;
-  supabasePullInFlightRef: MutableRefObject<boolean>;
-  supabaseKnownRemoteRowsRef: MutableRefObject<DictaSyncRow[]>;
-  supabaseLastRemoteUpdatedAtRef: MutableRefObject<string | null>;
-  supabaseLastFullPullAtMsRef: MutableRefObject<number>;
-  supabaseApplyingRemoteRef: MutableRefObject<boolean>;
-  supabaseInitialPullCompleteRef: MutableRefObject<boolean>;
-  clearPendingCriticalSessionRows: (sessionIds: string[]) => void;
-};
+export type { UseSupabaseSessionPullRuntimeOptions } from './sessionPersistenceSupabasePullTypes';
 
 export function useSupabaseSessionPullRuntime<TSession extends PersistableSession, TBenchmarks, TFeedback>({
   supabaseClient,
