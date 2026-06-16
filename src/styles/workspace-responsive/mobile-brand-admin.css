@@ -1,0 +1,59 @@
+@media (max-width: 640px) {
+  .brand-header-panel,
+  .brand-header-main {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .brand-header-actions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .workspace-main-header .brand-header-actions {
+    flex-direction: column;
+  }
+
+  .workspace-main-header .brand-header-actions .secondary-button,
+  .workspace-main-header .brand-header-actions .danger-button,
+  .workspace-main-header .brand-leaderboard-button,
+  .workspace-main-header .brand-new-session-button,
+  .workspace-main-header .theme-toggle-button {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+
+  .brand-leaderboard-button,
+  .leaderboard-collapse-button,
+  .sidebar-collapse-button {
+    width: 100%;
+  }
+
+  .workspace-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-header-actions {
+    justify-content: stretch;
+  }
+
+  .dashboard-header-actions button {
+    flex: 1;
+  }
+
+  .admin-card-header,
+  .admin-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-table-row,
+  .admin-access-row {
+    grid-template-columns: 1fr;
+  }
+}
