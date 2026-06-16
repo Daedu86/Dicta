@@ -1,19 +1,6 @@
-import type {
-  Dispatch,
-  MutableRefObject,
-  SetStateAction,
-} from 'react';
-import type {
-  BrowserTtsEnvironmentFingerprint,
-  ControlAction,
-  Transcript,
-  TtsPacingMode,
-} from '../types/dictation';
-import { evaluateTranscriptAttempt } from '../core/evaluation';
 import type { PhraseSize } from '../core/adaptive/types';
-import {
-  normalizeBenchmarkLanguage,
-} from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
+import { normalizeBenchmarkLanguage } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
+import { evaluateTranscriptAttempt } from '../core/evaluation';
 import { summarizeBrowserTtsDeRecoveryState } from '../inputs/browserTts/browserTtsRecoveryPolicy';
 import { resolveBrowserTtsAdaptiveProfile } from '../inputs/browserTts/browserTtsAdaptiveProfiles';
 import {
@@ -31,89 +18,12 @@ import { configureBrowserTtsUtterance } from './browserTtsUtteranceConfiguration
 import { buildBrowserTtsUtterancePerfMetadata } from './browserTtsUtterancePerfMetadata';
 import { scheduleBrowserTtsNextChunk } from './browserTtsNextChunkScheduler';
 import { buildBrowserTtsUnexpectedErrorPlan } from './browserTtsUnexpectedErrorPlan';
-import type { PerfDiagnostics } from '../core/perfDiagnostics';
-import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
-import type { AdaptiveRuntime } from './useAdaptiveRuntime';
-import type {
-  AdaptiveSemanticDebug,
-  SessionStatus,
-  StoredSession,
-  TtsLanguage,
-  TtsPerformanceSampleResult,
-  TtsStatus,
-} from './sessionTypes';
-import type {
-  TtsLiveSignal,
-  TtsPlaybackProfile,
-} from './ttsPlaybackProfile';
-import type {
-  TtsPerformanceSampleOptions,
-} from './useTtsPerformanceSampler';
-import type {
-  TtsTelemetryRecorder,
-} from './useTtsTelemetryRecorder';
+import { resolveBrowserTtsPlaybackStartError } from './browserTtsPlaybackLoopGuards';
+import { collectBrowserTtsNavigatorInfo } from './browserTtsPlaybackLoopNavigator';
+import { resetBrowserTtsPlaybackLoopRefs } from './browserTtsPlaybackLoopRefs';
+import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 
-type BrowserTtsEnvironmentResolver = (
-  session: StoredSession | null | undefined,
-  selectedVoice?: SpeechSynthesisVoice | null,
-  selectedVoiceURI?: string | null | undefined,
-) => BrowserTtsEnvironmentFingerprint | null;
-
-export type BrowserTtsPlaybackLoopOptions = {
-  activeSessionFinished: boolean;
-  activeSession: StoredSession | null;
-  ttsStatus: TtsStatus;
-  ttsText: string;
-  ttsLanguage: TtsLanguage;
-  ttsPacingMode: TtsPacingMode;
-  ttsSpeechRate: number;
-  ttsTranscript: Transcript | null;
-  browserTtsVoices: SpeechSynthesisVoice[];
-  ttsPlaybackProfile: TtsPlaybackProfile;
-  perfDiagnostics: PerfDiagnostics;
-  stopTtsPlaybackRef: MutableRefObject<() => void>;
-  ttsPausedAtWordIndexRef: MutableRefObject<number | null>;
-  ttsCompletedSourceWordsRef: MutableRefObject<number>;
-  ttsStartedAtMsRef: MutableRefObject<number | null>;
-  ttsLagOutlierCountRef: MutableRefObject<number>;
-  ttsLastValidControlLagSecRef: MutableRefObject<number>;
-  ttsUnsafeChunkCountRef: MutableRefObject<number>;
-  ttsChunkAccuracyWindowRef: MutableRefObject<number[]>;
-  ttsLastAccuracySnapshotRef: MutableRefObject<{ typedWords: number; matchedWords: number }>;
-  ttsLastControllerActionRef: MutableRefObject<ControlAction>;
-  ttsLiveSignalRef: MutableRefObject<TtsLiveSignal>;
-  ttsPracticeLiveTextRef: MutableRefObject<string>;
-  ttsUtteranceRef: MutableRefObject<SpeechSynthesisUtterance | null>;
-  ttsChunkStartMsRef: MutableRefObject<number | null>;
-  ttsChunkStartWordIndexRef: MutableRefObject<number>;
-  ttsChunkWordCountRef: MutableRefObject<number>;
-  ttsSemanticPhraseAdvanceCountRef: MutableRefObject<number>;
-  ttsSemanticPhraseReplayCountRef: MutableRefObject<number>;
-  buildSemanticPhrasesForCurrentSession: (text: string, language: string | undefined, mode: TtsPacingMode) => SemanticPhrase[];
-  isBrowserTtsSupported: () => boolean;
-  speakBrowserTts: (utterance: SpeechSynthesisUtterance) => boolean;
-  resolveActiveBrowserTtsVoice: () => SpeechSynthesisVoice | null;
-  collectBrowserTtsEnvironmentForSession: BrowserTtsEnvironmentResolver;
-  getHistoricalPerformanceProfile: AdaptiveRuntime['getHistoricalPerformanceProfile'];
-  getBenchmarkSnapshot: AdaptiveRuntime['getBenchmarkSnapshot'];
-  getAdaptiveController: AdaptiveRuntime['getAdaptiveController'];
-  beginAdaptiveSessionFeedback: AdaptiveRuntime['beginAdaptiveSessionFeedback'];
-  recordPhrasePlaybackEvent: AdaptiveRuntime['recordPhrasePlaybackEvent'];
-  recordAdaptiveBenchmark: AdaptiveRuntime['recordAdaptiveBenchmark'];
-  estimateTtsSpokenWordIndex: (now?: number) => number;
-  ensureAttemptTelemetry: TtsTelemetryRecorder['ensureAttemptTelemetry'];
-  recordTtsTelemetryAction: TtsTelemetryRecorder['recordTtsTelemetryAction'];
-  recordTtsChunkTelemetry: TtsTelemetryRecorder['recordTtsChunkTelemetry'];
-  applyTtsPerformanceSample: (options?: TtsPerformanceSampleOptions) => TtsPerformanceSampleResult;
-  setAdaptiveSemanticDebug: Dispatch<SetStateAction<AdaptiveSemanticDebug>>;
-  setTtsCurrentChunk: Dispatch<SetStateAction<string>>;
-  setTtsPacingMode: Dispatch<SetStateAction<TtsPacingMode>>;
-  setTtsSpeechRate: Dispatch<SetStateAction<number>>;
-  setTtsStatus: Dispatch<SetStateAction<TtsStatus>>;
-  setRunning: Dispatch<SetStateAction<boolean>>;
-  setSessionStatus: Dispatch<SetStateAction<SessionStatus>>;
-  setError: Dispatch<SetStateAction<string>>;
-};
+export type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 
 export function useBrowserTtsPlaybackLoop({
   activeSessionFinished,
@@ -176,17 +86,13 @@ export function useBrowserTtsPlaybackLoop({
   }
 
   function playTtsFromWord(startWordIndex: number, perfPlayId = perfDiagnostics.beginTtsPlay('browser-tts-direct')): void {
-    if (activeSessionFinished) {
-      setError('Reset the finished session before playing TTS again.');
-      return;
-    }
-
-    if (!ttsText.trim()) {
-      setError('Paste TTS text before playing.');
-      return;
-    }
-    if (!isBrowserTtsSupported()) {
-      setError('This browser does not support speech synthesis.');
+    const startError = resolveBrowserTtsPlaybackStartError({
+      activeSessionFinished,
+      ttsText,
+      isBrowserTtsSupported,
+    });
+    if (startError) {
+      setError(startError);
       return;
     }
 
@@ -225,17 +131,20 @@ export function useBrowserTtsPlaybackLoop({
     if (clampedStartWordIndex === 0) {
       beginAdaptiveSessionFeedback('browser-tts', ttsLanguage, semanticPhrases.length);
     }
-    ttsSemanticPhraseAdvanceCountRef.current = 0;
-    ttsSemanticPhraseReplayCountRef.current = 0;
-    ttsStartedAtMsRef.current = performance.now();
-    ttsCompletedSourceWordsRef.current = clampedStartWordIndex;
-    ttsPausedAtWordIndexRef.current = null;
-    ttsLagOutlierCountRef.current = 0;
-    ttsLastValidControlLagSecRef.current = 0;
-    ttsUnsafeChunkCountRef.current = 0;
-    ttsChunkAccuracyWindowRef.current = [];
-    ttsLastAccuracySnapshotRef.current = { typedWords: 0, matchedWords: 0 };
-    ttsLastControllerActionRef.current = 'hold';
+    resetBrowserTtsPlaybackLoopRefs({
+      clampedStartWordIndex,
+      ttsSemanticPhraseAdvanceCountRef,
+      ttsSemanticPhraseReplayCountRef,
+      ttsStartedAtMsRef,
+      ttsCompletedSourceWordsRef,
+      ttsPausedAtWordIndexRef,
+      ttsLagOutlierCountRef,
+      ttsLastValidControlLagSecRef,
+      ttsUnsafeChunkCountRef,
+      ttsChunkAccuracyWindowRef,
+      ttsLastAccuracySnapshotRef,
+      ttsLastControllerActionRef,
+    });
     ensureAttemptTelemetry();
     recordTtsTelemetryAction('play', ttsSpeechRate);
     setError('');
@@ -261,11 +170,10 @@ export function useBrowserTtsPlaybackLoop({
       const livePracticeEvaluation = evaluateTranscriptAttempt(ttsPracticeLiveTextRef.current, ttsTranscript);
       const browserTtsProfile = resolveBrowserTtsAdaptiveProfile(ttsLanguage);
       const browserTtsBenchmark = getBenchmarkSnapshot('browser-tts', normalizeBenchmarkLanguage(ttsLanguage));
+      const navigatorInfo = collectBrowserTtsNavigatorInfo();
       const browserTtsRecovery = summarizeBrowserTtsDeRecoveryState({
         timeline: browserTtsBenchmark.timeline,
-        userAgent: window.navigator.userAgent,
-        platform: window.navigator.platform,
-        maxTouchPoints: window.navigator.maxTouchPoints,
+        ...navigatorInfo,
       });
       const semanticPhrase = semanticPhrases[macroPhraseIndex];
       const macroWords = semanticPhraseWords[macroPhraseIndex] ?? [];
@@ -307,11 +215,7 @@ export function useBrowserTtsPlaybackLoop({
         unsafeChunkCount: ttsUnsafeChunkCountRef.current,
         accuracyWindow: ttsChunkAccuracyWindowRef.current,
         lastAccuracySnapshot: ttsLastAccuracySnapshotRef.current,
-        navigatorInfo: {
-          userAgent: window.navigator.userAgent,
-          platform: window.navigator.platform,
-          maxTouchPoints: window.navigator.maxTouchPoints,
-        },
+        navigatorInfo,
       });
 
       if (!playbackPlan) {
