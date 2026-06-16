@@ -31,12 +31,14 @@ Use this as a navigation guide before changing code. It is not a replacement for
 | --- | --- | --- |
 | `src/App.tsx` | Shell-only React entrypoint. | Imports `App.css` and renders `DictaAppRuntime`; it must not regain runtime ownership. |
 | `src/app/DictaAppRuntime.tsx` | Runtime export shim. | Re-exports `DictaAppRuntime` from `DictaAppRuntimeRoot`; do not add runtime behavior here. |
-| `src/app/DictaAppRuntimeRoot.tsx` | Main browser composition root. | Wires auth/profile, sync, workspace routing, root OpenRouter, focused training, presentation props, and route rendering. This is the current App-runtime hotspot. |
+| `src/app/DictaAppRuntimeRoot.tsx` | Main browser composition root. | Wires auth/profile, sync, workspace routing, root OpenRouter, focused training, presentation props, and route rendering. |
 | `src/app/useDictaAppBootRuntime.ts` | Root boot-state boundary. | Owns app boot state buckets: perf diagnostics, sessions, training state, routing, theme, Browser TTS, and root refs. |
-| `src/app/` | App-level hooks, runtimes, workspace orchestration, and feature composition. | Inspect owner hooks and tests before editing. |
-| `src/components/` | React UI components. | Preserve props and user-visible behavior. |
-| `src/core/` | Core TypeScript domain logic. | Prefer pure helpers and direct unit tests. |
-| `src/core/adaptive/` | Adaptive training/domain logic. | Keep behavior covered by adaptive tests. |
+| `src/app/useAdaptiveRuntime.ts` and `src/app/adaptiveRuntime*.ts` | Adaptive runtime hook plus public types and pure helpers. | Preserve the hook export; use focused adaptive/runtime tests. |
+| `src/app/useBrowserTtsPlaybackLoop.ts` and `src/app/browserTtsPlaybackLoop*.ts` | Browser TTS playback loop and helper modules. | Keep utterance setup and boundary-sensitive playback flow covered by Browser TTS tests. |
+| `src/app/` | App-level hooks, runtimes, workspace orchestration, and feature composition. | Inspect owner hooks, adjacent helper modules, and tests before editing. |
+| `src/components/` | React UI components. | Preserve props and user-visible behavior. Session dashboard and adaptive cockpit/diagnostics now use section modules. |
+| `src/core/` | Core TypeScript domain logic. | Prefer pure helpers and direct unit tests. Perf diagnostics is now a facade over runtime/types/utils. |
+| `src/core/adaptive/` | Adaptive training/domain logic. | Controller and policy files now have adjacent helper modules; keep behavior covered by adaptive tests. |
 | `src/inputs/` | Input adapters and input-specific runtime code. | Treat browser TTS input as high-risk. |
 | `src/inputs/browserTts/` | Browser TTS input/runtime area. | High-risk: avoid casual edits. |
 | `src/styles/` | Global CSS, design tokens, and style modules. | Watch cascade and import order. |
@@ -124,10 +126,16 @@ The adaptive listening brain is documented in `docs/adaptive-listening-brain.md`
 Primary runtime/code areas:
 
 - `src/core/adaptive/AdaptiveDictationController.ts`
+- `src/core/adaptive/adaptiveDictationController*.ts`
+- `src/core/adaptive/ListeningTrainerPolicy.ts`
+- `src/core/adaptive/listeningTrainerPolicy*.ts`
+- `src/core/adaptive/browserTtsDeBenchmarkPolicy.ts`
+- `src/core/adaptive/browserTtsDeBenchmark*.ts`
 - `src/core/adaptive/types.ts`
 - `src/core/adaptive/pacingReasonCodes.ts`
 - `src/app/adaptiveControllerRegistry.ts`
 - `src/app/useAdaptiveRuntime.ts`
+- `src/app/adaptiveRuntime*.ts`
 - `src/app/browserTtsPlaybackPlan.ts`
 - `src/inputs/browserTts/browserTtsTelemetryAdapter.ts`
 - `src/inputs/browserTts/browserTtsAdaptiveProfiles.ts`
