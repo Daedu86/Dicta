@@ -14,8 +14,25 @@ describe('Adaptive benchmark cockpit boundary', () => {
 
     expect(view).toContain('export function AdaptiveBenchmarkCockpit');
     expect(view).toContain('useAdaptiveBenchmarkCockpitRuntime');
-    expect(view).toContain('adaptive-export-copy-actions');
+    expect(view).toContain('AdaptiveBenchmarkExportPanel');
     expect(view).toContain('adaptive-session-feedback-panel');
     expect(view).toContain('adaptive-benchmark-timeline');
+  });
+
+  it('keeps advanced export actions behind AdaptiveBenchmarkExportPanel', () => {
+    const view = readFileSync('src/components/adaptive-workspace/AdaptiveBenchmarkCockpitView.tsx', 'utf8');
+    const exportPanel = readFileSync('src/components/adaptive-workspace/AdaptiveBenchmarkExportPanel.tsx', 'utf8');
+
+    expect(view).toContain("import { AdaptiveBenchmarkExportPanel } from './AdaptiveBenchmarkExportPanel';");
+    expect(view).not.toContain('id="adaptive-export-copy-actions"');
+    expect(view).not.toContain('Copy Benchmark JSON');
+    expect(view).not.toContain('Copy next adaptive script prompt');
+    expect(view).not.toContain('adaptive-human-feedback-editor');
+
+    expect(exportPanel).toContain('export function AdaptiveBenchmarkExportPanel');
+    expect(exportPanel).toContain('id="adaptive-export-copy-actions"');
+    expect(exportPanel).toContain('Copy Benchmark JSON');
+    expect(exportPanel).toContain('Copy next adaptive script prompt');
+    expect(exportPanel).toContain('adaptive-human-feedback-editor');
   });
 });
