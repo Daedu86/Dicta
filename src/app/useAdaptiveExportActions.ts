@@ -173,19 +173,19 @@ export function useAdaptiveExportActions({
       if (copied) {
         setInsightsDiagnosticFallbackReport('');
         setInsightsDiagnosticMessage(
-          `Copied adaptive user/system report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`,
+          `Copied adaptive report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`,
         );
         return;
       }
 
       setInsightsDiagnosticFallbackReport(reportJson);
-      setInsightsDiagnosticMessage('Clipboard access is blocked. Report generated below; select it and press Ctrl+C.');
+      setInsightsDiagnosticMessage('Clipboard access is blocked. Adaptive report generated below; select it and press Ctrl+C.');
       window.setTimeout(selectInsightsDiagnosticFallbackReport, 0);
     } catch (error) {
-      console.error('Copy insights report failed.', error);
+      console.error('Copy adaptive report failed.', error);
       const message = error instanceof Error ? error.message : String(error);
       setInsightsDiagnosticFallbackReport('');
-      setInsightsDiagnosticMessage(`Could not prepare the insights report. ${message}`);
+      setInsightsDiagnosticMessage(`Could not prepare the adaptive report. ${message}`);
     }
   }, [
     getBenchmarkActiveSessionStatus,
