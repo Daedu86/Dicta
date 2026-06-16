@@ -42,9 +42,9 @@ export function createEmptyInputLanguageBenchmark(
     replayDeniedByBoundaryCount: 0,
     averageSemanticCompleteness: 1,
     averagePhraseDifficulty: 0,
-    preferredPlaybackRate: 1,
+    preferredPlaybackRate: 0.82,
     preferredPhraseSize: 'medium',
-    preferredPauseAfterPhraseMs: 700,
+    preferredPauseAfterPhraseMs: 1200,
     recoveryScore: 0,
     timeToRecoveryMs: null,
     errorBurstLength: 0,
@@ -61,9 +61,9 @@ export function createEmptyInputLanguageBenchmark(
 
 export function buildDefaultRecommendation(): InputLanguageBenchmarkRecommendation {
   return {
-    targetRateRange: [0.9, 1],
+    targetRateRange: [0.6, 1.15],
     targetPhraseSize: 'medium',
-    targetPauseMs: 700,
+    targetPauseMs: 1200,
     nextTrainingFocus: ['Collect benchmark samples'],
     confidence: 0,
     summary: 'No benchmark samples yet.',
