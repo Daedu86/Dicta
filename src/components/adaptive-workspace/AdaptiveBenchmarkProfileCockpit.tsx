@@ -1,5 +1,5 @@
+import type { ReactNode } from 'react';
 import { formatScore, formatWeakAreaLabel, getBenchmarkHealth } from './adaptiveWorkspaceViewHelpers';
-import { AdaptiveBenchmarkExportPanel } from './AdaptiveBenchmarkExportPanel';
 import type { AdaptiveBenchmarkCockpitProps, AdaptiveBenchmarkCockpitRuntime } from './AdaptiveBenchmarkCockpitTypes';
 
 export function AdaptiveBenchmarkProfileCockpit({
@@ -16,8 +16,7 @@ export function AdaptiveBenchmarkProfileCockpit({
   feedbackIssueCount,
   sessionFeedback,
   formatSessionDate,
-  runtime,
-  actions,
+  exportPanel,
 }: Pick<AdaptiveBenchmarkCockpitProps, 'profile' | 'inputTitle' | 'sessionFeedback' | 'formatSessionDate'> & {
   languageLabel: string;
   recommendedRange: string;
@@ -28,33 +27,7 @@ export function AdaptiveBenchmarkProfileCockpit({
   maxRepeatWordTotal: number;
   sequencingClean: boolean;
   feedbackIssueCount: number;
-  runtime: Pick<
-    AdaptiveBenchmarkCockpitRuntime,
-    | 'exportPanelOpen'
-    | 'setExportPanelOpen'
-    | 'exportPayloads'
-    | 'hasBenchmarkData'
-    | 'hasSessionFeedback'
-    | 'humanFeedbackEditorOpen'
-    | 'setHumanFeedbackEditorOpen'
-    | 'humanFeedbackDraft'
-    | 'setHumanFeedbackDraft'
-    | 'setExportStatusMessage'
-    | 'copyToClipboard'
-    | 'formatPromptSizeHint'
-  >;
-  actions: Pick<
-    AdaptiveBenchmarkCockpitProps,
-    | 'onCopyBenchmark'
-    | 'onExportBenchmark'
-    | 'onCopyScriptPrompt'
-    | 'onCopyBenchmarkWithScriptPrompt'
-    | 'onCopyScriptTemplate'
-    | 'onCopySessionFeedback'
-    | 'onCopyBenchmarkFeedback'
-    | 'onCopyBenchmarkFeedbackPrompt'
-    | 'onCopyBenchmarkFeedbackPromptWithHumanFeedback'
-  >;
+  exportPanel: ReactNode;
 }) {
   return (
     <section className="adaptive-benchmark-subpanel adaptive-cockpit-panel">
@@ -125,31 +98,7 @@ export function AdaptiveBenchmarkProfileCockpit({
           </div>
         </section>
 
-        <AdaptiveBenchmarkExportPanel
-          profile={profile}
-          sessionFeedback={sessionFeedback}
-          exportPanelOpen={runtime.exportPanelOpen}
-          setExportPanelOpen={runtime.setExportPanelOpen}
-          exportPayloads={runtime.exportPayloads}
-          hasBenchmarkData={runtime.hasBenchmarkData}
-          hasSessionFeedback={runtime.hasSessionFeedback}
-          humanFeedbackEditorOpen={runtime.humanFeedbackEditorOpen}
-          setHumanFeedbackEditorOpen={runtime.setHumanFeedbackEditorOpen}
-          humanFeedbackDraft={runtime.humanFeedbackDraft}
-          setHumanFeedbackDraft={runtime.setHumanFeedbackDraft}
-          setExportStatusMessage={runtime.setExportStatusMessage}
-          copyToClipboard={runtime.copyToClipboard}
-          formatPromptSizeHint={runtime.formatPromptSizeHint}
-          onCopyBenchmark={actions.onCopyBenchmark}
-          onExportBenchmark={actions.onExportBenchmark}
-          onCopyScriptPrompt={actions.onCopyScriptPrompt}
-          onCopyBenchmarkWithScriptPrompt={actions.onCopyBenchmarkWithScriptPrompt}
-          onCopyScriptTemplate={actions.onCopyScriptTemplate}
-          onCopySessionFeedback={actions.onCopySessionFeedback}
-          onCopyBenchmarkFeedback={actions.onCopyBenchmarkFeedback}
-          onCopyBenchmarkFeedbackPrompt={actions.onCopyBenchmarkFeedbackPrompt}
-          onCopyBenchmarkFeedbackPromptWithHumanFeedback={actions.onCopyBenchmarkFeedbackPromptWithHumanFeedback}
-        />
+        {exportPanel}
       </div>
     </section>
   );
