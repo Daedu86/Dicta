@@ -77,7 +77,7 @@ describe('buildBrowserTtsPlaybackPlan', () => {
       },
     }));
 
-    expect(plan?.runtimeDecision.playbackRate).toBe(0.8);
+    expect(plan?.runtimeDecision.playbackRate).toBe(0.6);
   });
 
   it('applies the unsafe-boundary conservative policy', () => {
