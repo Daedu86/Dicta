@@ -79,7 +79,6 @@ export function useDictaRuntimeRootFocusedTrainingGraph({
     openWorkspaceForSession,
     deleteSession,
     pendingSyncSummary,
-    allowCustomSessionGeneration: openRouterGraph.allowCustomSessionGeneration,
     openRouterAccessAllowed: accessRuntime.openRouterAccessAllowed,
     effectiveOpenRouterDefaultModel: accessRuntime.effectiveOpenRouterDefaultModel,
     sessionQuotaStatus,
@@ -97,7 +96,6 @@ export function useDictaRuntimeRootFocusedTrainingGraph({
     generateEasyNextSessionFromOpenRouter: openRouterGraph.generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter: openRouterGraph.generateIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter: openRouterGraph.generateAdvancedNextSessionFromOpenRouter,
-    openOpenRouterGenerateForActiveInput: openRouterGraph.openOpenRouterGenerateForActiveInput,
   });
 }
 

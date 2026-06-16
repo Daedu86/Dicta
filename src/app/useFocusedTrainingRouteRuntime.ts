@@ -140,7 +140,6 @@ export function useFocusedTrainingRouteRuntime({
   deleteSession,
   supabaseSyncStatus,
   pendingSyncSummary,
-  allowCustomSessionGeneration,
   openRouterAccessAllowed,
   isOnline,
   effectiveOpenRouterDefaultModel,
@@ -156,7 +155,6 @@ export function useFocusedTrainingRouteRuntime({
   generateEasyNextSessionFromOpenRouter,
   generateIntermediateNextSessionFromOpenRouter,
   generateAdvancedNextSessionFromOpenRouter,
-  openOpenRouterGenerateForActiveInput,
 }: UseFocusedTrainingRouteRuntimeArgs): UseFocusedTrainingRouteRuntimeResult {
   const { focusedTrainingControls } = useTrainingSessionLifecycle({
     state: {
@@ -223,7 +221,6 @@ export function useFocusedTrainingRouteRuntime({
   });
 
   const focusedTrainingGenerationButtons = useFocusedTrainingGenerationButtons({
-    allowCustomSessionGeneration,
     openRouterAccessAllowed,
     isOnline,
     activeSession,
@@ -240,7 +237,6 @@ export function useFocusedTrainingRouteRuntime({
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter,
-    openOpenRouterGenerateForActiveInput,
   });
 
   const replayFocusedTts = useCallback((): void => {

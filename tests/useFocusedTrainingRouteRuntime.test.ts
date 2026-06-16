@@ -153,7 +153,6 @@ function createDefaultArgs(
       count: 0,
       hasPending: false,
     },
-    allowCustomSessionGeneration: true,
     openRouterAccessAllowed: true,
     isOnline: true,
     effectiveOpenRouterDefaultModel: 'test-model',
@@ -172,7 +171,6 @@ function createDefaultArgs(
     generateEasyNextSessionFromOpenRouter: vi.fn(),
     generateIntermediateNextSessionFromOpenRouter: vi.fn(),
     generateAdvancedNextSessionFromOpenRouter: vi.fn(),
-    openOpenRouterGenerateForActiveInput: vi.fn(),
     ...overrides,
   };
 }
@@ -274,19 +272,15 @@ describe('useFocusedTrainingRouteRuntime', () => {
       'easy',
       'medium',
       'hard',
-      'custom',
     ]);
 
     const easyButton = runtime.focusedTrainingProps.generationButtons.find((button) => button.id === 'easy');
-    const customButton = runtime.focusedTrainingProps.generationButtons.find((button) => button.id === 'custom');
 
     act(() => {
       easyButton?.onClick();
-      customButton?.onClick();
     });
 
     expect(args.generateEasyNextSessionFromOpenRouter).toHaveBeenCalledTimes(1);
-    expect(args.openOpenRouterGenerateForActiveInput).toHaveBeenCalledTimes(1);
   });
 
   it('replays focused TTS from the current progress minus the rewind buffer', async () => {

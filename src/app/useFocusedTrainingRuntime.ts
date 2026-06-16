@@ -254,7 +254,6 @@ function buildFocusedTrainingRuntimeDelegateArgs(
       deleteSession: args.deleteSession,
       supabaseSyncStatus: args.supabaseSyncStatus,
       pendingSyncSummary: args.pendingSyncSummary,
-      allowCustomSessionGeneration: args.allowCustomSessionGeneration,
       openRouterAccessAllowed: args.openRouterAccessAllowed,
       isOnline: args.isOnline,
       effectiveOpenRouterDefaultModel: args.effectiveOpenRouterDefaultModel,
@@ -270,7 +269,6 @@ function buildFocusedTrainingRuntimeDelegateArgs(
       generateEasyNextSessionFromOpenRouter: args.generateEasyNextSessionFromOpenRouter,
       generateIntermediateNextSessionFromOpenRouter: args.generateIntermediateNextSessionFromOpenRouter,
       generateAdvancedNextSessionFromOpenRouter: args.generateAdvancedNextSessionFromOpenRouter,
-      openOpenRouterGenerateForActiveInput: args.openOpenRouterGenerateForActiveInput,
     },
   };
 }

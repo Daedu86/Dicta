@@ -22,7 +22,6 @@ type SessionQuotaStatusForGenerationButtons = {
 };
 
 type UseFocusedTrainingGenerationButtonsArgs = {
-  allowCustomSessionGeneration: boolean;
   openRouterAccessAllowed: boolean;
   isOnline: boolean;
   activeSession: StoredSession | null;
@@ -39,7 +38,6 @@ type UseFocusedTrainingGenerationButtonsArgs = {
   generateEasyNextSessionFromOpenRouter: GenerateSessionAction;
   generateIntermediateNextSessionFromOpenRouter: GenerateSessionAction;
   generateAdvancedNextSessionFromOpenRouter: GenerateSessionAction;
-  openOpenRouterGenerateForActiveInput: () => void;
 };
 
 type FocusedTrainingDirectGenerationButtonConfig = {
@@ -54,7 +52,6 @@ type FocusedTrainingDirectGenerationButtonConfig = {
 };
 
 export function useFocusedTrainingGenerationButtons({
-  allowCustomSessionGeneration,
   openRouterAccessAllowed,
   isOnline,
   activeSession,
@@ -71,7 +68,6 @@ export function useFocusedTrainingGenerationButtons({
   generateEasyNextSessionFromOpenRouter,
   generateIntermediateNextSessionFromOpenRouter,
   generateAdvancedNextSessionFromOpenRouter,
-  openOpenRouterGenerateForActiveInput,
 }: UseFocusedTrainingGenerationButtonsArgs): TrainingGenerationButton[] {
   return useMemo(() => {
     if (!openRouterAccessAllowed) return [];
@@ -157,23 +153,8 @@ export function useFocusedTrainingGenerationButtons({
       },
     ];
 
-    const buttons: TrainingGenerationButton[] = [
-      ...directGenerationButtonConfigs.map(buildDirectGenerationButton),
-    ];
-    if (allowCustomSessionGeneration) {
-      buttons.push({
-        id: 'custom',
-        label: 'New Custom Session',
-        onClick: openOpenRouterGenerateForActiveInput,
-        disabled: !isOnline || !activeSession || sessionQuotaStatus.blocked,
-        title: sessionQuotaStatus.blocked
-          ? sessionQuotaStatus.message
-          : openRouterOfflineTitle || 'Open the existing OpenRouter custom generation workspace.',
-      });
-    }
-    return buttons;
+    return directGenerationButtonConfigs.map(buildDirectGenerationButton);
   }, [
-    allowCustomSessionGeneration,
     openRouterAccessAllowed,
     effectiveOpenRouterDefaultModel,
     trainingGenerationNotices,
@@ -191,6 +172,5 @@ export function useFocusedTrainingGenerationButtons({
     generateEasyNextSessionFromOpenRouter,
     generateIntermediateNextSessionFromOpenRouter,
     generateAdvancedNextSessionFromOpenRouter,
-    openOpenRouterGenerateForActiveInput,
   ]);
 }

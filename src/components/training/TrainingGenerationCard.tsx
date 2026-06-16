@@ -15,7 +15,7 @@ export function TrainingGenerationCard({ generationButtons }: TrainingGeneration
         {generationButtons.map((button) => {
           const display = buildTrainingGenerationButtonDisplay(button);
           return (
-            <div key={button.id} className={`training-generation-action ${button.id === 'custom' ? 'training-generation-action-wide' : ''}`.trim()}>
+            <div key={button.id} className="training-generation-action">
               <div className="training-generation-button-row">
                 <button
                   type="button"

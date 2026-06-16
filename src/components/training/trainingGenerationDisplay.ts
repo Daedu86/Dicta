@@ -15,9 +15,9 @@ export type TrainingGenerationButtonDisplay = TrainingGenerationButton & {
   displayHelpText?: string;
 };
 
-type TrainingGenerationIntent = 'precision' | 'stabilize' | 'challenge' | 'custom';
+type TrainingGenerationIntent = 'precision' | 'stabilize' | 'challenge';
 
-const INTENT_LABELS: Record<Exclude<TrainingGenerationIntent, 'custom'>, string> = {
+const INTENT_LABELS: Record<TrainingGenerationIntent, string> = {
   precision: 'Precision',
   stabilize: 'Stabilize',
   challenge: 'Challenge',
@@ -25,15 +25,6 @@ const INTENT_LABELS: Record<Exclude<TrainingGenerationIntent, 'custom'>, string>
 
 export function buildTrainingGenerationButtonDisplay(button: TrainingGenerationButton): TrainingGenerationButtonDisplay {
   const intent = resolveTrainingGenerationIntent(button.id);
-  if (intent === 'custom') {
-    return {
-      ...button,
-      displayLabel: button.label,
-      displayTitle: button.title,
-      displayHelpText: button.helpText,
-    };
-  }
-
   const intentLabel = INTENT_LABELS[intent];
   const displayName = intentLabel;
   const displayLabel = formatIntentButtonLabel(button.label, intentLabel, displayName);
@@ -58,7 +49,7 @@ function resolveTrainingGenerationIntent(id: string): TrainingGenerationIntent {
     case 'express-hard':
       return 'challenge';
     default:
-      return 'custom';
+      return 'precision';
   }
 }
 
@@ -69,7 +60,7 @@ function formatIntentButtonLabel(label: string, intentLabel: string, displayName
   return displayName;
 }
 
-function buildIntentButtonTitle(intent: Exclude<TrainingGenerationIntent, 'custom'>, fallback: string): string {
+function buildIntentButtonTitle(intent: TrainingGenerationIntent, fallback: string): string {
   const duration = 'two-minute';
   switch (intent) {
     case 'precision':
@@ -83,7 +74,7 @@ function buildIntentButtonTitle(intent: Exclude<TrainingGenerationIntent, 'custo
   }
 }
 
-function buildIntentButtonHelpText(intent: Exclude<TrainingGenerationIntent, 'custom'>): string {
+function buildIntentButtonHelpText(intent: TrainingGenerationIntent): string {
   if (intent === 'precision') {
     return 'About 2 minutes. Rebuilds listening precision with shorter phrases, clearer content-word anchors, detail recall, and a safer completion window.';
   }

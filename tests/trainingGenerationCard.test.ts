@@ -64,16 +64,4 @@ describe('TrainingGenerationCard intent labels', () => {
     expect(legacyExpress.displayHelpText).not.toContain('Compact');
   });
 
-  it('keeps custom generation unchanged', () => {
-    const display = buildTrainingGenerationButtonDisplay(button({
-      id: 'custom',
-      label: 'New Custom Session',
-      title: 'Open custom generator.',
-      helpText: 'Custom help.',
-    }));
-
-    expect(display.displayLabel).toBe('New Custom Session');
-    expect(display.displayTitle).toBe('Open custom generator.');
-    expect(display.displayHelpText).toBe('Custom help.');
-  });
 });

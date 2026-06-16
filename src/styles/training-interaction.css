@@ -37,10 +37,6 @@
   align-content: start;
 }
 
-.training-generation-action-wide {
-  grid-column: 1 / -1;
-}
-
 .training-generation-button-row {
   display: flex;
   align-items: stretch;
