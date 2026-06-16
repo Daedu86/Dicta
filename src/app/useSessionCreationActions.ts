@@ -1,8 +1,7 @@
-import { useCallback, useMemo, type MutableRefObject } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   parseDictationScriptJson,
   type DictationScript,
-  type DictationScriptValidationResult,
 } from '../core/adaptive/dictationScriptValidation';
 import type { SessionInputMode } from '../core/sessionInputModes';
 import { createStoredSession, getNextSessionIndex } from './sessionFactory';
@@ -11,66 +10,19 @@ import {
   mapDictationScriptInputModeToSession,
   scriptLanguageToTtsLanguage,
 } from './sessionRestoreGuards';
+import { createSessionCreationFormResetAction } from './sessionCreationFormResetAction';
 import type {
-  GenerationOrigin,
-  SessionSource,
-  StoredSession,
-  TtsLanguage,
-} from './sessionTypes';
-
-type SessionCreationMessageTarget = 'error' | 'openrouter' | 'export';
-
-type OpenRouterScriptCreationOptions = {
-  navigateToLeaderboard?: boolean;
-  generationOrigin?: GenerationOrigin;
-};
-
-type UseSessionCreationActionsOptions = {
-  sessionCreationName: string;
-  dictationScriptJson: string;
-  dictationScriptValidation: DictationScriptValidationResult | null;
-  browserTtsVoices: readonly SpeechSynthesisVoice[];
-  suppressSidebarAutoSelectRef: MutableRefObject<boolean>;
-  ensureCanCreateDictationSession: (messageTarget: SessionCreationMessageTarget) => boolean;
-  prependSessionAndPersistNow: (createNextSession: (previousSessions: StoredSession[]) => StoredSession) => StoredSession;
-  showSessionInputWorkspace: (inputMode: SessionInputMode) => void;
-  showLeaderboardWorkspace: () => void;
-  setActiveSessionId: (sessionId: string) => void;
-  setLeaderboardLanguageView: (language: TtsLanguage) => void;
-  setSessionCreationMode: (mode: SessionInputMode | null) => void;
-  setSessionCreationSource: (source: SessionSource) => void;
-  setSessionCreationName: (name: string) => void;
-  setDictationScriptJson: (json: string) => void;
-  setDictationScriptValidation: (validation: DictationScriptValidationResult | null) => void;
-  setError: (message: string) => void;
-  setOpenRouterError: (message: string) => void;
-  setExportMessage: (message: string) => void;
-};
-
-type SessionCreationFormResetActionOptions = Pick<
+  OpenRouterScriptCreationOptions,
   UseSessionCreationActionsOptions,
-  | 'setSessionCreationMode'
-  | 'setSessionCreationSource'
-  | 'setSessionCreationName'
-  | 'setDictationScriptJson'
-  | 'setDictationScriptValidation'
->;
+} from './sessionCreationActionsTypes';
 
-export function createSessionCreationFormResetAction({
-  setSessionCreationMode,
-  setSessionCreationSource,
-  setSessionCreationName,
-  setDictationScriptJson,
-  setDictationScriptValidation,
-}: SessionCreationFormResetActionOptions) {
-  return (): void => {
-    setSessionCreationMode(null);
-    setSessionCreationSource('plainText');
-    setSessionCreationName('');
-    setDictationScriptJson('');
-    setDictationScriptValidation(null);
-  };
-}
+export { createSessionCreationFormResetAction } from './sessionCreationFormResetAction';
+export type {
+  OpenRouterScriptCreationOptions,
+  SessionCreationFormResetActionOptions,
+  SessionCreationMessageTarget,
+  UseSessionCreationActionsOptions,
+} from './sessionCreationActionsTypes';
 
 export function useSessionCreationActions({
   sessionCreationName,
