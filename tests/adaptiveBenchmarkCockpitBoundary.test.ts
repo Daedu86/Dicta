@@ -19,9 +19,21 @@ describe('Adaptive benchmark cockpit boundary', () => {
     expect(view).toContain('adaptive-benchmark-timeline');
   });
 
-  it('keeps advanced export actions behind AdaptiveBenchmarkExportPanel', () => {
+  it('keeps advanced export actions behind AdaptiveBenchmarkExportPanel and its extracted groups', () => {
     const view = readFileSync('src/components/adaptive-workspace/AdaptiveBenchmarkCockpitView.tsx', 'utf8');
     const exportPanel = readFileSync('src/components/adaptive-workspace/AdaptiveBenchmarkExportPanel.tsx', 'utf8');
+    const benchmarkJsonGroup = readFileSync(
+      'src/components/adaptive-workspace/AdaptiveBenchmarkBenchmarkJsonExportGroup.tsx',
+      'utf8',
+    );
+    const primaryExportGroup = readFileSync(
+      'src/components/adaptive-workspace/AdaptiveBenchmarkPrimaryExportGroup.tsx',
+      'utf8',
+    );
+    const humanFeedbackEditor = readFileSync(
+      'src/components/adaptive-workspace/AdaptiveBenchmarkHumanFeedbackEditor.tsx',
+      'utf8',
+    );
 
     expect(view).toContain("import { AdaptiveBenchmarkExportPanel } from './AdaptiveBenchmarkExportPanel';");
     expect(view).not.toContain('id="adaptive-export-copy-actions"');
@@ -30,9 +42,11 @@ describe('Adaptive benchmark cockpit boundary', () => {
     expect(view).not.toContain('adaptive-human-feedback-editor');
 
     expect(exportPanel).toContain('export function AdaptiveBenchmarkExportPanel');
+    expect(exportPanel).toContain('AdaptiveBenchmarkExportGroups');
+    expect(exportPanel).toContain('AdaptiveBenchmarkHumanFeedbackEditor');
     expect(exportPanel).toContain('id="adaptive-export-copy-actions"');
-    expect(exportPanel).toContain('Copy Benchmark JSON');
-    expect(exportPanel).toContain('Copy next adaptive script prompt');
-    expect(exportPanel).toContain('adaptive-human-feedback-editor');
+    expect(benchmarkJsonGroup).toContain('Copy Benchmark JSON');
+    expect(primaryExportGroup).toContain('Copy next adaptive script prompt');
+    expect(humanFeedbackEditor).toContain('adaptive-human-feedback-editor');
   });
 });
