@@ -49,6 +49,23 @@ describe('adaptiveUserSystemReport', () => {
       summary: 'Keep steady Browser TTS pacing.',
     };
     profile.weakAreas = ['lag'];
+    profile.timeline = [
+      {
+        timestampMs: 1,
+        inputMode: 'browser-tts',
+        language: 'de',
+        mode: 'balanced',
+        playbackRate: 0.9,
+        accuracy: 0.75,
+        lagSec: 4.2,
+        wpm: 34,
+        pauseMs: 850,
+        phraseBoundaryType: 'clause',
+        semanticCompleteness: 0.8,
+        event: 'rate_change',
+        decisionReason: 'lag-pressure',
+      },
+    ];
     const technicalDebugData = { benchmarkProfile: { sampleCount: 12 }, recentTimelinePoints: [{ event: 'rate_change' }] };
 
     const report = buildAdaptiveUserSystemReport({
@@ -86,14 +103,23 @@ describe('adaptiveUserSystemReport', () => {
     });
 
     expect(report.reportMetadata).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       reportType: 'adaptive_user_system_report',
       inputMode: 'browser-tts',
       inputModeLabel: 'Browser TTS',
       language: 'de',
       languageLabel: 'DE',
     });
+    expect(report.reportMetadata.reportLayers).toContain('executiveSummary');
     expect(report.reportMetadata.ttsEnvironment).toEqual(browserEnvironment);
+    expect(report.executiveSummary.status).toBe('recovery_recommended');
+    expect(report.adaptiveLoopBreakdown.sourceOfTruth.insightReport).toContain('not the direct LLM prompt');
+    expect(report.componentDiagnostics.generationAndPrescription.promptMode).toBe('compact-adaptive-v2');
+    expect(report.componentDiagnostics.plannerAndChunking.targetPhraseSize).toBe('medium');
+    expect(report.componentDiagnostics.plannerAndChunking.boundaryDistribution).toContainEqual({ name: 'clause', count: 1 });
+    expect(report.componentDiagnostics.controllerAndPacing.topDecisionReasons).toContainEqual({ name: 'lag-pressure', count: 1 });
+    expect(report.componentDiagnostics.browserTtsEnvironment.selectedVoice?.voiceName).toBe('German Local');
+    expect(report.compactTechnicalDebugSummary.debugTopLevelKeys).toContain('benchmarkProfile');
     expect(report.userProgressSummary.latestSession?.points).toBe('3/4');
     expect(report.userProgressSummary.howYouDid).toContain('3/4 points');
     expect(report.userProgressSummary.needsImprovement.join(' ')).toContain('Accuracy needs work');
@@ -111,10 +137,12 @@ describe('adaptiveUserSystemReport', () => {
       generatedAt: '2026-05-24T20:00:00.000Z',
     });
 
+    expect(report.executiveSummary.status).toBe('needs_more_data');
     expect(report.userProgressSummary.status).toBe('no_finished_session');
     expect(report.userProgressSummary.latestSession).toBeNull();
     expect(report.userProgressSummary.howYouDid).toContain('No finished session');
     expect(report.adaptiveSystemSummary.feedbackStatus).toContain('No current completed-session feedback');
+    expect(report.componentDiagnostics.browserTtsEnvironment.status).toBe('missing');
     expect(report.technicalDebugData).toEqual({ status: 'debug' });
     expect(report.reportMetadata.ttsEnvironment).toBeUndefined();
   });
@@ -141,6 +169,7 @@ describe('adaptiveUserSystemReport', () => {
 
     expect(report.reportMetadata.reportType).toBe('adaptive_user_system_report');
     expect(report.adaptiveSystemSummary.benchmarkHealth.recommendationSummary).toBeTruthy();
+    expect(report.componentDiagnostics.benchmarkAndFeedback.recommendationSummary).toBeTruthy();
     expect(report.userProgressSummary.needsImprovement.join(' ')).toContain('Lag is a weak area');
   });
 
@@ -184,6 +213,7 @@ describe('adaptiveUserSystemReport', () => {
     });
 
     expect(report.userProgressSummary.recommendedNextExercise.difficulty).toBe('easy');
+    expect(report.componentDiagnostics.generationAndPrescription.targetDifficulty).toBe('easy');
     expect(report.userProgressSummary.needsImprovement.join(' ')).toContain('Accuracy needs work');
     expect(report.userProgressSummary.needsImprovement.join(' ')).toContain('Replay behavior needs tuning');
     expect(report.adaptiveSystemSummary.recommendedSystemAdjustments.pauseAfterPhraseMs).toContain('Increase pause');
@@ -222,6 +252,7 @@ describe('adaptiveUserSystemReport', () => {
     });
 
     expect(report.userProgressSummary.recommendedNextExercise.difficulty).toBe('hard');
+    expect(report.executiveSummary.status).toBe('challenge_ready');
     expect(report.userProgressSummary.positiveSignals.join(' ')).toContain('Strong latest-session accuracy');
     expect(report.adaptiveSystemSummary.recommendedSystemAdjustments.playbackRate).toContain('0.95x-1.00x');
   });
