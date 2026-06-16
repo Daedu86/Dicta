@@ -1,0 +1,57 @@
+@media (max-width: 640px) {
+  #root {
+    padding: 0.75rem;
+  }
+
+  .sidebar-actions,
+  .metrics,
+  .controls,
+  .adaptive-adapter-grid,
+  .adaptive-advanced-grid,
+  .adaptive-benchmark-card-grid,
+  .adaptive-benchmark-grid,
+  .adaptive-flow-row,
+  .adaptive-input-workspace,
+  .adaptive-workspace-grid,
+  .leaderboard-stats,
+  .leaderboard-range-metrics,
+  .leaderboard-range-grid,
+  .admin-grid,
+  .admin-kpi-grid,
+  .admin-session-card,
+  .admin-session-metrics,
+  .dashboard-kpis,
+  .dashboard-grid,
+  .locked-input-summary-grid,
+  .bottom-summary-grid,
+  .bottom-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .adaptive-profile-matrix-header {
+    display: none;
+  }
+
+  .adaptive-profile-matrix-row {
+    grid-template-columns: 1fr;
+  }
+
+  .adaptive-score-bar,
+  .adaptive-rate-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .adaptive-profile-hero-metrics,
+  .adaptive-target-token-grid,
+  .adaptive-feedback-widget-grid,
+  .today-summary-grid,
+  .today-chart-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tts-controls,
+  .tts-runtime,
+  .transcript-review-stats {
+    grid-template-columns: 1fr;
+  }
+}
