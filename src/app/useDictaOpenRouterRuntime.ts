@@ -1,23 +1,16 @@
-import type { MutableRefObject } from 'react';
 import { useOnlineStatus } from './useOnlineStatus';
-import { useOpenRouterErrorSessionActions } from './useOpenRouterErrorSessionActions';
-import { useOpenRouterGeneratedScriptSettlement } from './useOpenRouterGeneratedScriptSettlement';
+import {
+  useDictaOpenRouterJobsRuntime,
+  type UseDictaOpenRouterJobsRuntimeOptions,
+} from './useDictaOpenRouterJobsRuntime';
 import { useOpenRouterGenerationRuntime } from './useOpenRouterGenerationRuntime';
-import { useOpenRouterJobsRuntime } from './useOpenRouterJobsRuntime';
 
 type OpenRouterGenerationRuntimeOptions = Parameters<typeof useOpenRouterGenerationRuntime>[0];
 
-type UseDictaOpenRouterRuntimeOptions = {
-  errorSessionActions: Parameters<typeof useOpenRouterErrorSessionActions>[0];
-  generatedScriptSettlement: Parameters<typeof useOpenRouterGeneratedScriptSettlement>[0];
-  jobs: Omit<
-    Parameters<typeof useOpenRouterJobsRuntime>[0],
-    'onCreateGenerationErrorSession' | 'onGeneratedScript'
-  >;
+type UseDictaOpenRouterRuntimeOptions = UseDictaOpenRouterJobsRuntimeOptions & {
   generation: Omit<OpenRouterGenerationRuntimeOptions, 'access' | 'jobActions'> & {
     access: Omit<OpenRouterGenerationRuntimeOptions['access'], 'isOnline'>;
   };
-  resetOpenRouterJobsRuntimeRef: MutableRefObject<() => void>;
 };
 
 export function useDictaOpenRouterRuntime({
@@ -29,12 +22,6 @@ export function useDictaOpenRouterRuntime({
 }: UseDictaOpenRouterRuntimeOptions) {
   const {
     createOpenRouterErrorSession,
-    createCustomOpenRouterErrorSessionForJob,
-  } = useOpenRouterErrorSessionActions(errorSessionActions);
-
-  const settleOpenRouterGeneratedScript = useOpenRouterGeneratedScriptSettlement(generatedScriptSettlement);
-
-  const {
     activeOpenRouterJobs,
     openRouterJobNotifications,
     openRouterJobStatus,
@@ -42,14 +29,12 @@ export function useDictaOpenRouterRuntime({
     trainingGenerationNowMs,
     trackOpenRouterJob,
     recordOpenRouterGenerationFailure,
-    resetOpenRouterJobsRuntime,
-  } = useOpenRouterJobsRuntime({
-    ...jobs,
-    onCreateGenerationErrorSession: createCustomOpenRouterErrorSessionForJob,
-    onGeneratedScript: settleOpenRouterGeneratedScript,
+  } = useDictaOpenRouterJobsRuntime({
+    errorSessionActions,
+    generatedScriptSettlement,
+    jobs,
+    resetOpenRouterJobsRuntimeRef,
   });
-
-  resetOpenRouterJobsRuntimeRef.current = resetOpenRouterJobsRuntime;
 
   const isOnline = useOnlineStatus();
   const openRouterOfflineTitle = isOnline
