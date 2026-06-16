@@ -23,6 +23,7 @@ export type PacingReasonCode =
   | 'flow-blocked-after-recovery'
   | 'stable-recovery-confirmed'
   | 'low-history-confidence'
+  | 'adaptive-playback-comfort-profile'
   | 'adaptive-pause-very-low-accuracy'
   | 'adaptive-pause-low-accuracy'
   | 'adaptive-pause-severe-lag'
@@ -97,6 +98,17 @@ export interface LiveTelemetryFrame {
   trend: ImprovementTrend;
 }
 
+export interface AdaptivePlaybackComfortProfile {
+  source: 'bootstrap' | 'history' | 'benchmark';
+  confidence: number;
+  rateRange: [number, number];
+  pauseRangeMs: [number, number];
+  preferredRate: number;
+  preferredPauseMs: number;
+  preferredPhraseSize: PhraseSize;
+  statePauseMs: Record<PacingMode, number>;
+}
+
 export interface HistoricalPerformanceProfile {
   language?: string;
   inputMode?: InputMode;
@@ -109,6 +121,8 @@ export interface HistoricalPerformanceProfile {
 
   preferredPhraseSize: PhraseSize;
   preferredPauseAfterPhraseMs: number;
+
+  adaptivePlaybackComfortProfile?: AdaptivePlaybackComfortProfile;
 
   typicalBackspaceRate: number;
   typicalCorrectionRate: number;
