@@ -14,6 +14,7 @@ import {
   buildInputLanguageBenchmarkTimelinePoint,
   pruneTimelineToRollingWindow,
 } from './inputLanguageBenchmarkTimeline';
+import { getBrowserTtsDeBenchmarkRejectionReason, isValidBrowserTtsDeBenchmarkSample } from './browserTtsDeBenchmarkPolicy';
 import { normalizeInputLanguageBenchmarkForRecommendation } from './inputLanguageBenchmarkRecommendation';
 
 export type { InputLanguageBenchmarkUpdateArgs } from './inputLanguageBenchmarkUpdateTypes';
@@ -79,6 +80,16 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     phraseIndex: args.phraseIndex,
     totalSemanticPhrases: args.totalSemanticPhrases,
     event: args.event,
+    decisionTraceId: args.decisionTraceId,
+    requestedPlaybackRate: args.execution?.requestedPlaybackRate,
+    actualPlaybackRate: args.execution?.actualPlaybackRate,
+    requestedPauseMs: args.execution?.requestedPauseMs,
+    actualPauseMs: args.execution?.actualPauseMs,
+    replayExecuted: args.execution?.replayExecuted,
+    unsafeBoundaryApplied: args.decision.deferPauseUntilSafeBoundary,
+    mobileFallbackApplied: args.execution?.fallbackUsed,
+    recoverySafeBoundary: args.decision.deferPauseUntilSafeBoundary,
+    germanShortBias: language === 'de' && args.live.inputMode === 'browser-tts',
   });
   const timeline = pruneTimelineToRollingWindow([...current.timeline, timelinePoint], ROLLING_WINDOW_DAYS);
   const environmentState = buildBrowserTtsEnvironmentBenchmarkState({
@@ -98,6 +109,11 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     deferPauseUntilSafeBoundary: args.decision.deferPauseUntilSafeBoundary,
     replayDenied,
   });
+  const benchmarkRejectionReason =
+    args.live.inputMode === 'browser-tts' && language === 'de' && !isValidBrowserTtsDeBenchmarkSample(timelinePoint)
+      ? getBrowserTtsDeBenchmarkRejectionReason(timelinePoint)
+      : args.benchmarkRejectionReason ?? undefined;
+  timelinePoint.benchmarkRejectionReason = benchmarkRejectionReason ?? undefined;
   const next = buildNextInputLanguageBenchmarkSnapshot({
     current,
     live: args.live,

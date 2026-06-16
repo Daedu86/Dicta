@@ -43,6 +43,26 @@ export function computeBenchmarkRecommendation(metrics: InputLanguageBenchmarkMe
   };
 }
 
+export function applyRecommendationHysteresis(
+  metrics: InputLanguageBenchmarkMetrics,
+  recommendation: InputLanguageBenchmarkRecommendation,
+): InputLanguageBenchmarkRecommendation {
+  const confidence = recommendation.confidence;
+  const targetRateRange = [...recommendation.targetRateRange] as [number, number];
+  let targetPhraseSize = recommendation.targetPhraseSize;
+  let targetPauseMs = recommendation.targetPauseMs;
+  if (confidence < 0.4) {
+    targetRateRange[1] = Math.min(targetRateRange[1], metrics.preferredPlaybackRate, 0.95);
+    targetPhraseSize = 'short';
+    targetPauseMs = Math.max(targetPauseMs, 900);
+  } else if (confidence < 0.6) {
+    targetRateRange[0] = Math.max(targetRateRange[0], metrics.preferredPlaybackRate - 0.04);
+    targetRateRange[1] = Math.min(targetRateRange[1], metrics.preferredPlaybackRate + 0.04);
+    if (targetPhraseSize === 'long') targetPhraseSize = metrics.preferredPhraseSize === 'short' ? 'short' : 'medium';
+  }
+  return { ...recommendation, targetRateRange, targetPhraseSize, targetPauseMs };
+}
+
 export function pickBestRateRange(rateAccuracyBuckets: RateAccuracyBucket[]): [number, number] {
   if (rateAccuracyBuckets.length === 0) return [0.6, 1.15];
   const scored = [...rateAccuracyBuckets].sort((a, b) => rateBucketScore(b) - rateBucketScore(a));

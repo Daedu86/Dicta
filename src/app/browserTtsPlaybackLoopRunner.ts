@@ -1,164 +1,32 @@
-import { buildBrowserTtsPlaybackLoopChunkPlan } from './browserTtsPlaybackLoopChunkPlan';
-import { commitBrowserTtsPlaybackLoopChunk } from './browserTtsPlaybackLoopChunkCommit';
-import { createBrowserTtsPlaybackLoopCursor } from './browserTtsPlaybackLoopCursor';
-import { createBrowserTtsPlaybackLoopStartContext } from './browserTtsPlaybackLoopStartContext';
-import { finishBrowserTtsPlaybackLoop, startBrowserTtsPlaybackLoopState } from './browserTtsPlaybackLoopLifecycle';
-import { createBrowserTtsPlaybackUtterance } from './browserTtsPlaybackLoopUtterance';
-import { attachBrowserTtsPlaybackLoopUtteranceHandlers } from './browserTtsPlaybackLoopUtteranceHandlers';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { resolveBrowserTtsPlaybackStartError } from './browserTtsPlaybackLoopGuards';
-import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
+import { createBrowserTtsPlaybackLoopStartContext } from './browserTtsPlaybackLoopStartContext';
+import { createBrowserTtsPlaybackLoopCursor } from './browserTtsPlaybackLoopCursor';
+import { finishBrowserTtsPlaybackLoop, startBrowserTtsPlaybackLoopState } from './browserTtsPlaybackLoopLifecycle';
+import { speakBrowserTtsPlaybackLoopChunk } from './browserTtsPlaybackLoopChunkSpeaker';
 
-type BrowserTtsPlaybackLoopRunnerInput = Pick<
-  BrowserTtsPlaybackLoopOptions,
-  | 'activeSessionFinished'
-  | 'activeSession'
-  | 'ttsText'
-  | 'ttsLanguage'
-  | 'ttsPacingMode'
-  | 'ttsSpeechRate'
-  | 'ttsTranscript'
-  | 'browserTtsVoices'
-  | 'ttsPlaybackProfile'
-  | 'perfDiagnostics'
-  | 'stopTtsPlaybackRef'
-  | 'ttsPausedAtWordIndexRef'
-  | 'ttsCompletedSourceWordsRef'
-  | 'ttsStartedAtMsRef'
-  | 'ttsLagOutlierCountRef'
-  | 'ttsLastValidControlLagSecRef'
-  | 'ttsUnsafeChunkCountRef'
-  | 'ttsChunkAccuracyWindowRef'
-  | 'ttsLastAccuracySnapshotRef'
-  | 'ttsLastControllerActionRef'
-  | 'ttsLiveSignalRef'
-  | 'ttsPracticeLiveTextRef'
-  | 'ttsUtteranceRef'
-  | 'ttsChunkStartMsRef'
-  | 'ttsChunkStartWordIndexRef'
-  | 'ttsChunkWordCountRef'
-  | 'ttsSemanticPhraseAdvanceCountRef'
-  | 'ttsSemanticPhraseReplayCountRef'
-  | 'buildSemanticPhrasesForCurrentSession'
-  | 'isBrowserTtsSupported'
-  | 'speakBrowserTts'
-  | 'resolveActiveBrowserTtsVoice'
-  | 'collectBrowserTtsEnvironmentForSession'
-  | 'getHistoricalPerformanceProfile'
-  | 'getBenchmarkSnapshot'
-  | 'getAdaptiveController'
-  | 'beginAdaptiveSessionFeedback'
-  | 'recordPhrasePlaybackEvent'
-  | 'recordAdaptiveBenchmark'
-  | 'estimateTtsSpokenWordIndex'
-  | 'ensureAttemptTelemetry'
-  | 'recordTtsTelemetryAction'
-  | 'recordTtsChunkTelemetry'
-  | 'applyTtsPerformanceSample'
-  | 'setAdaptiveSemanticDebug'
-  | 'setTtsCurrentChunk'
-  | 'setTtsPacingMode'
-  | 'setTtsSpeechRate'
-  | 'setTtsStatus'
-  | 'setRunning'
-  | 'setSessionStatus'
-  | 'setError'
->;
-
-type BrowserTtsLoopPlaybackRunInput = BrowserTtsPlaybackLoopRunnerInput & {
-  startWordIndex: number;
-  perfPlayId: ReturnType<BrowserTtsPlaybackLoopOptions['perfDiagnostics']['beginTtsPlay']>;
-};
-
-export function runBrowserTtsPlaybackLoop({
-  activeSessionFinished,
-  activeSession,
-  ttsText,
-  ttsLanguage,
-  ttsPacingMode,
-  startWordIndex,
-  ttsSpeechRate,
-  ttsTranscript,
-  browserTtsVoices,
-  ttsPlaybackProfile,
-  perfDiagnostics,
-  stopTtsPlaybackRef,
-  ttsPausedAtWordIndexRef,
-  ttsCompletedSourceWordsRef,
-  ttsStartedAtMsRef,
-  ttsLagOutlierCountRef,
-  ttsLastValidControlLagSecRef,
-  ttsUnsafeChunkCountRef,
-  ttsChunkAccuracyWindowRef,
-  ttsLastAccuracySnapshotRef,
-  ttsLastControllerActionRef,
-  ttsLiveSignalRef,
-  ttsPracticeLiveTextRef,
-  ttsUtteranceRef,
-  ttsChunkStartMsRef,
-  ttsChunkStartWordIndexRef,
-  ttsChunkWordCountRef,
-  ttsSemanticPhraseAdvanceCountRef,
-  ttsSemanticPhraseReplayCountRef,
-  buildSemanticPhrasesForCurrentSession,
-  isBrowserTtsSupported,
-  speakBrowserTts,
-  resolveActiveBrowserTtsVoice,
-  collectBrowserTtsEnvironmentForSession,
-  getHistoricalPerformanceProfile,
-  getBenchmarkSnapshot,
-  getAdaptiveController,
-  beginAdaptiveSessionFeedback,
-  recordPhrasePlaybackEvent,
-  recordAdaptiveBenchmark,
-  estimateTtsSpokenWordIndex,
-  ensureAttemptTelemetry,
-  recordTtsTelemetryAction,
-  recordTtsChunkTelemetry,
-  applyTtsPerformanceSample,
-  setAdaptiveSemanticDebug,
-  setTtsCurrentChunk,
-  setTtsPacingMode,
-  setTtsSpeechRate,
-  setTtsStatus,
-  setRunning,
-  setSessionStatus,
-  setError,
-  perfPlayId,
-}: BrowserTtsLoopPlaybackRunInput): void {
+export function runBrowserTtsPlaybackLoop(options: any): void {
   const startError = resolveBrowserTtsPlaybackStartError({
-    activeSessionFinished,
-    ttsText,
-    isBrowserTtsSupported,
+    activeSessionFinished: options.activeSessionFinished,
+    ttsText: options.ttsText,
+    isBrowserTtsSupported: options.isBrowserTtsSupported,
   });
-  if (startError) {
-    setError(startError);
-    return;
-  }
+  if (startError) return options.setError(startError);
 
-  stopTtsPlaybackRef.current();
+  options.stopTtsPlaybackRef.current();
   const startContext = createBrowserTtsPlaybackLoopStartContext({
-    activeSession,
-    ttsText,
-    ttsLanguage,
-    ttsPacingMode,
-    startWordIndex,
-    buildSemanticPhrasesForCurrentSession,
-    resolveActiveBrowserTtsVoice,
-    collectBrowserTtsEnvironmentForSession,
+    activeSession: options.activeSession,
+    ttsText: options.ttsText,
+    ttsLanguage: options.ttsLanguage,
+    ttsPacingMode: options.ttsPacingMode,
+    startWordIndex: options.startWordIndex,
+    buildSemanticPhrasesForCurrentSession: options.buildSemanticPhrasesForCurrentSession,
+    resolveActiveBrowserTtsVoice: options.resolveActiveBrowserTtsVoice,
+    collectBrowserTtsEnvironmentForSession: options.collectBrowserTtsEnvironmentForSession,
   });
-  if (!startContext.ok) {
-    setError(startContext.error);
-    return;
-  }
+  if (!startContext.ok) return options.setError(startContext.error);
 
-  const { playbackStartPlan, browserTtsVoice, browserTtsEnvironment } = startContext;
-  const {
-    sourceWords,
-    clampedStartWordIndex,
-    semanticPhrases,
-    semanticPhraseWords,
-    semanticPhraseStartWordIndices,
-  } = playbackStartPlan;
+  const { playbackStartPlan, browserTtsEnvironment } = startContext;
   const playbackCursor = createBrowserTtsPlaybackLoopCursor({
     chunkIndex: playbackStartPlan.chunkIndex,
     macroPhraseIndex: playbackStartPlan.macroPhraseIndex,
@@ -166,193 +34,161 @@ export function runBrowserTtsPlaybackLoop({
     lastPhraseSize: playbackStartPlan.lastPhraseSize,
     lastBoundaryStrictness: playbackStartPlan.lastBoundaryStrictness,
   });
-  let cancelled = false;
-  if (clampedStartWordIndex === 0) {
-    beginAdaptiveSessionFeedback('browser-tts', ttsLanguage, semanticPhrases.length);
-  }
+
   startBrowserTtsPlaybackLoopState({
-    clampedStartWordIndex,
-    ttsSpeechRate,
-    ttsSemanticPhraseAdvanceCountRef,
-    ttsSemanticPhraseReplayCountRef,
-    ttsStartedAtMsRef,
-    ttsCompletedSourceWordsRef,
-    ttsPausedAtWordIndexRef,
-    ttsLagOutlierCountRef,
-    ttsLastValidControlLagSecRef,
-    ttsUnsafeChunkCountRef,
-    ttsChunkAccuracyWindowRef,
-    ttsLastAccuracySnapshotRef,
-    ttsLastControllerActionRef,
-    ensureAttemptTelemetry,
-    recordTtsTelemetryAction,
-    setError,
-    setTtsStatus,
-    setRunning,
-    setSessionStatus,
+    clampedStartWordIndex: playbackStartPlan.clampedStartWordIndex,
+    ttsSpeechRate: options.ttsSpeechRate,
+    ttsSemanticPhraseAdvanceCountRef: options.ttsSemanticPhraseAdvanceCountRef,
+    ttsSemanticPhraseReplayCountRef: options.ttsSemanticPhraseReplayCountRef,
+    ttsStartedAtMsRef: options.ttsStartedAtMsRef,
+    ttsCompletedSourceWordsRef: options.ttsCompletedSourceWordsRef,
+    ttsPausedAtWordIndexRef: options.ttsPausedAtWordIndexRef,
+    ttsLagOutlierCountRef: options.ttsLagOutlierCountRef,
+    ttsLastValidControlLagSecRef: options.ttsLastValidControlLagSecRef,
+    ttsUnsafeChunkCountRef: options.ttsUnsafeChunkCountRef,
+    ttsChunkAccuracyWindowRef: options.ttsChunkAccuracyWindowRef,
+    ttsLastAccuracySnapshotRef: options.ttsLastAccuracySnapshotRef,
+    ttsLastControllerActionRef: options.ttsLastControllerActionRef,
+    ensureAttemptTelemetry: options.ensureAttemptTelemetry,
+    recordTtsTelemetryAction: options.recordTtsTelemetryAction,
+    setError: options.setError,
+    setTtsStatus: options.setTtsStatus,
+    setRunning: options.setRunning,
+    setSessionStatus: options.setSessionStatus,
   });
 
-  const advanceToNextMacroPhrase = (): void => {
-    playbackCursor.advanceMacroPhrase();
-    if (!cancelled) speakNext();
-  };
+  const semanticPhrases = playbackStartPlan.semanticPhrases;
+  if (playbackStartPlan.clampedStartWordIndex === 0) {
+    options.beginAdaptiveSessionFeedback('browser-tts', options.ttsLanguage, semanticPhrases.length);
+  }
 
-  function speakNext(): void {
+  const speakNext = () => {
     const cursor = playbackCursor.get();
-    if (cancelled || cursor.macroPhraseIndex >= semanticPhrases.length) {
-      finishBrowserTtsPlaybackLoop({
-        ttsTranscript,
-        ttsCompletedSourceWordsRef,
-        ttsChunkStartMsRef,
-        ttsUtteranceRef,
-        applyTtsPerformanceSample,
-        setTtsCurrentChunk,
-        setTtsStatus,
-        setRunning,
-        setSessionStatus,
+    if (cursor.macroPhraseIndex >= semanticPhrases.length) {
+      return finishBrowserTtsPlaybackLoop({
+        ttsTranscript: options.ttsTranscript,
+        ttsCompletedSourceWordsRef: options.ttsCompletedSourceWordsRef,
+        ttsChunkStartMsRef: options.ttsChunkStartMsRef,
+        ttsUtteranceRef: options.ttsUtteranceRef,
+        applyTtsPerformanceSample: options.applyTtsPerformanceSample,
+        setTtsCurrentChunk: options.setTtsCurrentChunk,
+        setTtsStatus: options.setTtsStatus,
+        setRunning: options.setRunning,
+        setSessionStatus: options.setSessionStatus,
       });
-      return;
     }
-
     const semanticPhrase = semanticPhrases[cursor.macroPhraseIndex];
-    const macroWords = semanticPhraseWords[cursor.macroPhraseIndex] ?? [];
-    const macroStartWordIndex = semanticPhraseStartWordIndices[cursor.macroPhraseIndex] ?? 0;
-
+    const macroWords = playbackStartPlan.semanticPhraseWords[cursor.macroPhraseIndex] ?? [];
     if (macroWords.length === 0 || cursor.macroWordOffset >= macroWords.length) {
-      advanceToNextMacroPhrase();
-      return;
+      playbackCursor.advanceMacroPhrase();
+      return speakNext();
     }
-
-    if (cursor.macroWordOffset === 0) {
-      recordPhrasePlaybackEvent('phrase_started', 'browser-tts', ttsLanguage, semanticPhrase, cursor.macroPhraseIndex);
-    }
-
-    const playbackPlan = buildBrowserTtsPlaybackLoopChunkPlan({
-      ttsLanguage,
-      ttsTranscript,
-      ttsLiveSignalRef,
-      ttsPracticeLiveTextRef,
-      getHistoricalPerformanceProfile,
-      getBenchmarkSnapshot,
-      ttsSpeechRate,
-      ttsPlaybackProfile,
-      getAdaptiveController,
-      estimateTtsSpokenWordIndex,
-      macroWords,
-      macroWordOffset: cursor.macroWordOffset,
-      macroStartWordIndex,
-      lastPhraseSize: cursor.lastPhraseSize,
-      lastBoundaryStrictness: cursor.lastBoundaryStrictness,
-      sourceWordCount: sourceWords.length,
-      chunkIndex: cursor.chunkIndex,
-      unsafeChunkCount: ttsUnsafeChunkCountRef.current,
-      accuracyWindow: ttsChunkAccuracyWindowRef.current,
-      lastAccuracySnapshot: ttsLastAccuracySnapshotRef.current,
-    });
-
-    if (!playbackPlan) {
-      advanceToNextMacroPhrase();
-      return;
-    }
-
-    const { chunk, runtimeDecision, pacingMode, rate, effectivePauseNow, chunkTelemetry } = playbackPlan;
-    playbackCursor.updateDecisionState({
-      lastPhraseSize: playbackPlan.nextLastPhraseSize,
-      lastBoundaryStrictness: playbackPlan.nextLastBoundaryStrictness,
-    });
-    const { utterance, perfUtteranceId } = createBrowserTtsPlaybackUtterance({
-      chunk,
-      perfDiagnostics,
-      perfPlayId,
-      chunkIndex: cursor.chunkIndex,
-      ttsLanguage,
-      pacingMode,
-      rate,
-      browserTtsVoice,
-      activeSession,
-      browserTtsVoices,
-    });
-    ttsUtteranceRef.current = utterance;
-    commitBrowserTtsPlaybackLoopChunk({
-      playbackPlan,
-      macroPhraseIndex: cursor.macroPhraseIndex,
-      semanticPhrase,
-      semanticPhraseCount: semanticPhrases.length,
-      browserTtsEnvironment,
-      ttsCompletedSourceWordsRef,
-      ttsChunkStartMsRef,
-      ttsChunkStartWordIndexRef,
-      ttsChunkWordCountRef,
-      ttsChunkAccuracyWindowRef,
-      ttsLastAccuracySnapshotRef,
-      ttsUnsafeChunkCountRef,
-      ttsSemanticPhraseAdvanceCountRef,
-      ttsSemanticPhraseReplayCountRef,
-      recordTtsChunkTelemetry,
-      recordAdaptiveBenchmark,
-      setAdaptiveSemanticDebug,
-      setTtsCurrentChunk,
-      setTtsPacingMode,
-      setTtsSpeechRate,
-    });
-
-    attachBrowserTtsPlaybackLoopUtteranceHandlers({
-      utterance,
-      start: () => ({
-        perfDiagnostics,
-        perfUtteranceId,
+    const played = speakBrowserTtsPlaybackLoopChunk({
+      chunkPlanArgs: {
+        ttsLanguage: options.ttsLanguage,
+        ttsTranscript: options.ttsTranscript,
+        ttsLiveSignalRef: options.ttsLiveSignalRef,
+        ttsPracticeLiveTextRef: options.ttsPracticeLiveTextRef,
+        getHistoricalPerformanceProfile: options.getHistoricalPerformanceProfile,
+        getBenchmarkSnapshot: options.getBenchmarkSnapshot,
+        ttsSpeechRate: options.ttsSpeechRate,
+        ttsPlaybackProfile: options.ttsPlaybackProfile,
+        getAdaptiveController: options.getAdaptiveController,
+        estimateTtsSpokenWordIndex: options.estimateTtsSpokenWordIndex,
+        macroWords,
+        macroWordOffset: cursor.macroWordOffset,
+        macroStartWordIndex: playbackStartPlan.semanticPhraseStartWordIndices[cursor.macroPhraseIndex] ?? 0,
+        lastPhraseSize: cursor.lastPhraseSize,
+        lastBoundaryStrictness: cursor.lastBoundaryStrictness,
+        sourceWordCount: playbackStartPlan.sourceWords.length,
+        chunkIndex: cursor.chunkIndex,
+        unsafeChunkCount: options.ttsUnsafeChunkCountRef.current,
+        accuracyWindow: options.ttsChunkAccuracyWindowRef.current,
+        lastAccuracySnapshot: options.ttsLastAccuracySnapshotRef.current,
+      },
+      utteranceArgs: (playbackPlan: any) => ({
+        chunk: playbackPlan.chunk,
+        perfDiagnostics: options.perfDiagnostics,
+        perfPlayId: options.perfPlayId,
+        chunkIndex: cursor.chunkIndex,
+        ttsLanguage: options.ttsLanguage,
+        pacingMode: playbackPlan.pacingMode,
+        rate: playbackPlan.rate,
+        browserTtsVoice: startContext.browserTtsVoice,
+        activeSession: options.activeSession,
+        browserTtsVoices: options.browserTtsVoices,
       }),
-      end: () => {
-        const currentCursor = playbackCursor.get();
-        return {
-          perfDiagnostics,
+      commitArgs: (playbackPlan: any) => ({
+        playbackPlan,
+        macroPhraseIndex: cursor.macroPhraseIndex,
+        semanticPhrase,
+        semanticPhraseCount: semanticPhrases.length,
+        browserTtsEnvironment,
+        ttsCompletedSourceWordsRef: options.ttsCompletedSourceWordsRef,
+        ttsChunkStartMsRef: options.ttsChunkStartMsRef,
+        ttsChunkStartWordIndexRef: options.ttsChunkStartWordIndexRef,
+        ttsChunkWordCountRef: options.ttsChunkWordCountRef,
+        ttsChunkAccuracyWindowRef: options.ttsChunkAccuracyWindowRef,
+        ttsLastAccuracySnapshotRef: options.ttsLastAccuracySnapshotRef,
+        ttsUnsafeChunkCountRef: options.ttsUnsafeChunkCountRef,
+        ttsSemanticPhraseAdvanceCountRef: options.ttsSemanticPhraseAdvanceCountRef,
+        ttsSemanticPhraseReplayCountRef: options.ttsSemanticPhraseReplayCountRef,
+        recordTtsChunkTelemetry: options.recordTtsChunkTelemetry,
+        recordAdaptiveBenchmark: options.recordAdaptiveBenchmark,
+        setAdaptiveSemanticDebug: options.setAdaptiveSemanticDebug,
+        setTtsCurrentChunk: options.setTtsCurrentChunk,
+        setTtsPacingMode: options.setTtsPacingMode,
+        setTtsSpeechRate: options.setTtsSpeechRate,
+      }),
+      handlerArgs: (playbackPlan: any, utterance: SpeechSynthesisUtterance, perfUtteranceId: number) => ({
+        utterance,
+        start: () => ({ perfDiagnostics: options.perfDiagnostics, perfUtteranceId }),
+        end: () => ({
+          perfDiagnostics: options.perfDiagnostics,
           perfUtteranceId,
-          cancelled,
-          chunkIndex: currentCursor.chunkIndex,
-          macroPhraseIndex: currentCursor.macroPhraseIndex,
-          macroWordOffset: currentCursor.macroWordOffset,
+          cancelled: false,
+          chunkIndex: cursor.chunkIndex,
+          macroPhraseIndex: cursor.macroPhraseIndex,
+          macroWordOffset: cursor.macroWordOffset,
           macroWordsLength: macroWords.length,
-          chunk,
-          effectivePauseNow,
-          runtimeDecision,
-          ttsCompletedSourceWordsRef,
-          recordPhrasePlaybackEvent,
-          ttsLanguage,
+          chunk: playbackPlan.chunk,
+          effectivePauseNow: playbackPlan.effectivePauseNow,
+          runtimeDecision: playbackPlan.runtimeDecision,
+          ttsCompletedSourceWordsRef: options.ttsCompletedSourceWordsRef,
+          recordPhrasePlaybackEvent: options.recordPhrasePlaybackEvent,
+          ttsLanguage: options.ttsLanguage,
           semanticPhrase,
-          applyTtsPerformanceSample,
-          ttsLiveSignalRef,
-          chunkTelemetry,
-          ttsUnsafeChunkCountRef,
-          recordAdaptiveBenchmark,
-          rate,
+          applyTtsPerformanceSample: options.applyTtsPerformanceSample,
+          ttsLiveSignalRef: options.ttsLiveSignalRef,
+          chunkTelemetry: playbackPlan.chunkTelemetry,
+          ttsUnsafeChunkCountRef: options.ttsUnsafeChunkCountRef,
+          recordAdaptiveBenchmark: options.recordAdaptiveBenchmark,
+          rate: playbackPlan.rate,
           browserTtsEnvironment,
           semanticPhrases,
-          ttsSemanticPhraseAdvanceCountRef,
-          ttsSemanticPhraseReplayCountRef,
-          setAdaptiveSemanticDebug,
+          ttsSemanticPhraseAdvanceCountRef: options.ttsSemanticPhraseAdvanceCountRef,
+          ttsSemanticPhraseReplayCountRef: options.ttsSemanticPhraseReplayCountRef,
+          setAdaptiveSemanticDebug: options.setAdaptiveSemanticDebug,
           speakNext,
-          updatePlaybackCursor: (nextCursor) => {
-            playbackCursor.updatePosition(nextCursor);
-          },
-        };
-      },
-      error: (event) => ({
-        error: event.error,
-        cancelled,
-        perfDiagnostics,
-        perfUtteranceId,
-        ttsUtteranceRef,
-        setTtsStatus,
-        setError,
-        setCancelled: (nextCancelled) => {
-          cancelled = nextCancelled;
-        },
+          updatePlaybackCursor: (nextCursor: any) => playbackCursor.updatePosition(nextCursor),
+        }),
+        error: (event: any) => ({
+          error: event.error,
+          cancelled: false,
+          perfDiagnostics: options.perfDiagnostics,
+          perfUtteranceId,
+          ttsUtteranceRef: options.ttsUtteranceRef,
+          setTtsStatus: options.setTtsStatus,
+          setError: options.setError,
+          setCancelled: () => undefined,
+        }),
       }),
+      perfDiagnostics: options.perfDiagnostics,
+      speakBrowserTts: options.speakBrowserTts,
+      ttsUtteranceRef: options.ttsUtteranceRef,
     });
-
-    perfDiagnostics.recordTtsSpeak(perfUtteranceId);
-    speakBrowserTts(utterance);
-  }
+    if (!played) playbackCursor.advanceMacroPhrase();
+  };
 
   speakNext();
 }

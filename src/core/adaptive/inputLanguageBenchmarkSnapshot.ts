@@ -31,6 +31,7 @@ import {
 import {
   computeBenchmarkRecommendation,
   deriveWeakAreas,
+  applyRecommendationHysteresis,
 } from './inputLanguageBenchmarkRecommendation';
 
 export function buildNextInputLanguageBenchmarkSnapshot({
@@ -172,6 +173,6 @@ export function applyScoredBenchmarkDerivedMetrics(
   next.flowStabilityScore = computeFlowStabilityScore(next);
   next.sweetSpotScore = computeSweetSpotScore(next);
   next.weakAreas = deriveWeakAreas(next);
-  next.recommendation = computeBenchmarkRecommendation(next);
+  next.recommendation = applyRecommendationHysteresis(next, computeBenchmarkRecommendation(next));
   return next;
 }

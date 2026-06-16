@@ -35,6 +35,17 @@ export interface AdaptiveTimelinePoint {
   phraseId?: string;
   phraseIndex?: number;
   totalSemanticPhrases?: number;
+  decisionTraceId?: string;
+  benchmarkRejectionReason?: string;
+  requestedPlaybackRate?: number;
+  actualPlaybackRate?: number;
+  requestedPauseMs?: number;
+  actualPauseMs?: number;
+  replayExecuted?: boolean;
+  unsafeBoundaryApplied?: boolean;
+  mobileFallbackApplied?: boolean;
+  recoverySafeBoundary?: boolean;
+  germanShortBias?: boolean;
   decisionReason?: string;
   executionHint?: string;
   event?:

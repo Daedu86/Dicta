@@ -18,4 +18,15 @@ export type InputLanguageBenchmarkUpdateArgs = {
   phraseIndex?: number;
   totalSemanticPhrases?: number;
   event?: AdaptiveTimelinePoint['event'];
+  decisionTraceId?: string;
+  benchmarkRejectionReason?: string | null;
+  requestedPlaybackRate?: number;
+  actualPlaybackRate?: number;
+  requestedPauseMs?: number;
+  actualPauseMs?: number;
+  replayExecuted?: boolean;
+  unsafeBoundaryApplied?: boolean;
+  mobileFallbackApplied?: boolean;
+  recoverySafeBoundary?: boolean;
+  germanShortBias?: boolean;
 };

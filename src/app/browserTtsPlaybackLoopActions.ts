@@ -8,11 +8,7 @@ export function createBrowserTtsPlaybackLoopActions(options: BrowserTtsPlaybackL
     startWordIndex: number,
     perfPlayId = options.perfDiagnostics.beginTtsPlay('browser-tts-direct'),
   ): void {
-    runBrowserTtsPlaybackLoop({
-      ...options,
-      startWordIndex,
-      perfPlayId,
-    });
+    runBrowserTtsPlaybackLoop({ ...options, startWordIndex, perfPlayId });
   }
 
   function playTts(): void {
