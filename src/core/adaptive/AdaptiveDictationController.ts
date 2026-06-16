@@ -45,7 +45,7 @@ export class AdaptiveDictationController {
     const rollingAccuracyLast5 = live.rollingAccuracyLast5 ?? rollingAccuracyLast3;
     const supportsPhraseReplay = input.capabilities?.supportsPhraseReplay ?? true;
     const chosenMode = chooseAdaptivePacingMode(input);
-    const preferredRate = adaptiveComfort?.preferredRate ?? history.comfortablePlaybackRate || 1;
+    const preferredRate = adaptiveComfort?.preferredRate ?? (history.comfortablePlaybackRate || 1);
     const baselineRate = clamp(preferredRate, comfortRateMin, comfortRateMax);
     const rateBias = (rollingAccuracyLast3 - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
     const targetRate = clamp(baselineRate + rateBias, comfortRateMin, comfortRateMax);
