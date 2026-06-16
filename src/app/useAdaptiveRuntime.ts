@@ -26,6 +26,7 @@ import {
 import { perfDiagnostics } from '../core/perfDiagnostics';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 import { buildAdaptiveBenchmarkUpdate } from './adaptiveRuntimeBenchmarkUpdate';
+import { appendAdaptivePhrasePlaybackEvent } from './adaptiveRuntimePhrasePlaybackEvents';
 import {
   buildHistoricalPerformanceProfile,
   findLatestFinishedBrowserTtsDeDictationScriptSession,
@@ -158,19 +159,15 @@ export function useAdaptiveRuntime({
       phraseIndex: number,
     ): void => {
       if (!activeSession || phraseIndex < 0) return;
-      phrasePlaybackEventsRef.current = [
-        ...phrasePlaybackEventsRef.current,
-        {
-          sessionId: activeSession.id,
-          phraseId: phrase?.id ?? `phrase-${phraseIndex}`,
-          phraseIndex,
-          textPreview: phrase?.text.slice(0, 120) ?? '',
-          event,
-          timestampMs: Date.now(),
-          inputMode,
-          language: normalizeBenchmarkLanguage(language),
-        },
-      ].slice(-500);
+      phrasePlaybackEventsRef.current = appendAdaptivePhrasePlaybackEvent({
+        currentEvents: phrasePlaybackEventsRef.current,
+        sessionId: activeSession.id,
+        event,
+        inputMode,
+        language,
+        phrase,
+        phraseIndex,
+      });
     },
     [activeSession],
   );
