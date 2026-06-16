@@ -1,4 +1,3 @@
-import { computeSessionMaxPoints, formatSessionPointsLabel } from '../evaluation';
 import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
 import {
   createEmptyInputLanguageBenchmark,
@@ -7,6 +6,12 @@ import {
 import type { AdaptiveSessionFeedback, AdaptiveWeakArea, InputLanguageBenchmarkMetrics } from './types';
 
 import type { AdaptiveReportSession, AdaptiveUserSystemReport } from './adaptiveUserSystemReportTypes';
+import {
+  buildHowYouDid,
+  normalizePercent,
+  parsePointsRatio,
+  summarizeLatestSession,
+} from './adaptiveUserSystemReportSessionSummary';
 export type { AdaptiveReportSession, AdaptiveReportSessionMetrics, AdaptiveUserSystemReport } from './adaptiveUserSystemReportTypes';
 
 export function buildAdaptiveUserSystemReport({
@@ -95,36 +100,6 @@ function buildTtsEnvironmentReport(
     ...(history && history.length > 0 ? { ttsEnvironmentHistory: history } : {}),
     ...(profile.environmentChanged || (history && history.length > 1) ? { environmentChanged: true } : {}),
   };
-}
-
-function summarizeLatestSession(session: AdaptiveReportSession): AdaptiveUserSystemReport['userProgressSummary']['latestSession'] {
-  const maxPoints = computeSessionMaxPoints(session);
-  const pointsLabel = formatSessionPointsLabel(session.metrics.points, maxPoints);
-  return {
-    id: session.id,
-    name: session.name,
-    status: session.status,
-    difficulty: session.difficulty ?? session.dictationScript?.difficulty ?? null,
-    inputMode: session.inputModeLabel ?? session.inputMode ?? null,
-    language: session.language ?? null,
-    score: session.metrics.score,
-    points: pointsLabel,
-    accuracy: `${normalizePercent(session.metrics.accuracy).toFixed(1)}%`,
-    wpm: session.metrics.wpm.toFixed(1),
-    lag: `${session.metrics.lagSec.toFixed(2)}s`,
-    duration: session.durationLabel ?? null,
-    updatedAt: session.updatedAt ?? null,
-    finishedAt: session.telemetry?.finishedAt ?? null,
-    trend: session.metrics.trend ?? null,
-    repeatCount: typeof session.telemetry?.repeatCount === 'number' ? session.telemetry.repeatCount : null,
-  };
-}
-
-function buildHowYouDid(session: AdaptiveUserSystemReport['userProgressSummary']['latestSession']): string {
-  if (!session) {
-    return 'No finished session is available for this selected input/language yet, so the learner summary is based on benchmark data only.';
-  }
-  return `${session.name} finished with ${session.accuracy} accuracy, ${session.points} points, ${session.wpm} WPM, ${session.lag} lag, and score ${session.score}.`;
 }
 
 function buildPositiveSignals(
@@ -295,19 +270,6 @@ function formatWeakAreaNeed(weakArea: AdaptiveWeakArea): string {
     flow_instability: 'Flow stability needs tuning; reduce abrupt rate/pause changes.',
   };
   return labels[weakArea] ?? `Weak area: ${weakArea}.`;
-}
-
-function normalizePercent(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return value <= 1 ? value * 100 : value;
-}
-
-function parsePointsRatio(pointsLabel: string): number | null {
-  const [earnedText, totalText] = pointsLabel.split('/');
-  const earned = Number(earnedText);
-  const total = Number(totalText);
-  if (!Number.isFinite(earned) || !Number.isFinite(total) || total <= 0) return null;
-  return earned / total;
 }
 
 function estimateJsonBytes(value: unknown): number | null {
