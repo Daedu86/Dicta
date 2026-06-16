@@ -4,7 +4,7 @@ This document maps important Dicta modules and runtime areas to the tests that p
 
 Use this before changing code so validation starts with the narrowest relevant tests.
 
-Updated: 2026-06-16 after OpenRouter direct generation runtime extraction.  
+Updated: 2026-06-16 after runtime root boundary refresh.  
 Verified against branch: `product/input-2`.
 
 ## Validation scripts
@@ -22,13 +22,16 @@ Verified against branch: `product/input-2`.
 | Area / module | Responsibility | Relevant tests |
 | --- | --- | --- |
 | `src/App.tsx` | Shell-only React entrypoint. It imports `App.css` and renders `DictaAppRuntime`. | Use touched runtime/route tests; do not add runtime behavior here. |
-| `src/app/DictaAppRuntime.tsx` | Main browser composition root for auth/profile, sync, workspace routing, OpenRouter, focused training, presentation props, and route rendering. | Use area-specific rows below; include route/presentation tests when wiring changes. |
+| `src/app/DictaAppRuntime.tsx` | Runtime export shim for `DictaAppRuntimeRoot`; it should stay behavior-free. | `tests/dictaAppRuntimeBoundary.test.ts` |
+| `src/app/DictaAppRuntimeRoot.tsx` | Main browser composition root for auth/profile, sync, workspace routing, root OpenRouter, focused training, presentation props, and route rendering. | `tests/dictaAppRuntimeBoundary.test.ts`, `tests/dictaAppRuntimeRootOpenRouterBoundary.test.ts`, `tests/dictaAppRuntimeRootRouteCompositionBoundary.test.ts`, touched area tests below. |
+| `src/app/useDictaAppBootRuntime.ts` | Root boot-state boundary for perf diagnostics, sessions, training state, routing, theme, Browser TTS, and root refs. | `tests/dictaAppRuntimeBoundary.test.ts`, touched runtime tests for changed state buckets. |
 | `src/app/AppRouteRenderer.tsx` | Route-level render branching for auth, focused training, workspace, dashboard, adaptive, OpenRouter, Admin, Leaderboard, and fallbacks. | `tests/appRouteRenderer.test.ts`, touched workspace/training tests. |
-| `src/app/useDictaAppRouteCompositionRuntime.ts` | Composes adaptive route props and app presentation props for `AppRouteRenderer`, keeping `DictaAppRuntime` focused on runtime initialization. | `tests/appRouteRenderer.test.ts`, `tests/appPresentationRuntime.test.ts`, `tests/adaptiveWorkspaceRouteRuntime.test.ts` |
+| `src/app/useDictaRootRouteCompositionRuntime.ts` | Root route-composition adapter that delegates to `useDictaAppRouteCompositionRuntime`. | `tests/dictaAppRuntimeRootRouteCompositionBoundary.test.ts`, `tests/appRouteRenderer.test.ts`, `tests/appPresentationRuntime.test.ts` |
+| `src/app/useDictaAppRouteCompositionRuntime.ts` | Composes adaptive route props and app presentation props for `AppRouteRenderer`. | `tests/appRouteRenderer.test.ts`, `tests/appPresentationRuntime.test.ts`, `tests/adaptiveWorkspaceRouteRuntime.test.ts` |
 | `src/app/useAppPresentationRuntime.ts` | App-level presentation prop composition. | `tests/appPresentationRuntime.test.ts`, touched route/workspace tests. |
 | `src/app/useFocusedTrainingRuntime.ts` | Focused-training composition runtime and TTS handoff. | `tests/browserTtsPlaybackLoopContract.test.ts`, `tests/useActiveSessionStateSync.test.ts`, `tests/focusedTrainingPresentation.test.ts`, `tests/focusedTrainingInputTelemetry.test.ts` |
 | `src/app/useTtsSessionOrchestrationRuntime.ts` | TTS orchestration: keyboard remap, practice input, metrics, playback loop, controls, reset, and submit. | `tests/browserTtsPlaybackLoopContract.test.ts`, `tests/useKeyboardRemapRuntime.test.ts`, `tests/useTtsPlaybackControls.test.ts`, `tests/useTtsPerformanceSampler.test.ts`, `tests/useResetSessionRuntime.test.ts`, `tests/useTtsSessionSubmitAction.test.ts` |
-| `src/app/useTrainingRuntimeState.ts` | Training state bucket used before focused/runtime handoff. | Use downstream focused-training, TTS, and lifecycle tests. |
+| `src/app/useTrainingRuntimeState.ts` | Training state bucket used by `useDictaAppBootRuntime` before focused/runtime handoff. | `tests/dictaAppRuntimeBoundary.test.ts`, downstream focused-training, TTS, and lifecycle tests. |
 | `src/app/useActiveSessionStateSync.ts` | Active-session hydration, finished-session state sync, and live-session persistence state sync. | `tests/useActiveSessionStateSync.test.ts`, `tests/activeSessionHydration.test.ts`, `tests/sessionStatusNormalization.test.ts` |
 | `src/app/activeSessionHydration.ts` | Pure active-session hydration state builder. | `tests/activeSessionHydration.test.ts` |
 | `src/app/resetSessionState.ts` | Pure reset-session default state construction. | `tests/resetSessionState.test.ts` |
@@ -56,6 +59,7 @@ Verified against branch: `product/input-2`.
 | Area / module | Responsibility | Relevant tests |
 | --- | --- | --- |
 | `src/app/useOpenRouterModelRuntime.ts` | OpenRouter model assignment/default resolution and refresh wiring. | `tests/workspaceModelRefreshRuntime.test.ts`, `tests/config.test.ts` |
+| `src/app/useDictaRootOpenRouterRuntime.ts` | Root OpenRouter adapter: maps active input mode to fallback input mode and delegates to `useDictaOpenRouterRuntime`. | `tests/dictaAppRuntimeRootOpenRouterBoundary.test.ts`, `tests/dictaOpenRouterRuntimeBoundary.test.ts` |
 | `src/app/useDictaOpenRouterRuntime.ts` | Dicta-level OpenRouter composition: online status, jobs boundary, generation runtime handoff, and public runtime surface. | `tests/dictaOpenRouterRuntimeBoundary.test.ts` |
 | `src/app/useDictaOpenRouterJobsRuntime.ts` | Dicta-level OpenRouter jobs composition: error-session actions, generated-script settlement, job runtime wiring, and reset ref ownership. | `tests/dictaOpenRouterRuntimeBoundary.test.ts`, `tests/useOpenRouterJobsRuntime.test.ts`, `tests/openRouterGeneratedScriptSettlement.test.ts` |
 | `src/app/useOpenRouterGenerationRuntime.ts` | OpenRouter generation entry wiring. | `tests/dictaOpenRouterRuntimeBoundary.test.ts`, OpenRouter tests below. |
@@ -150,15 +154,17 @@ Use the smallest relevant validation first.
 
 Examples:
 
-1. If changing `src/app/useWorkspaceModelRefreshRuntime.ts`, run `npx vitest run tests/workspaceModelRefreshRuntime.test.ts`.
-2. If changing OpenRouter generation workspace opening, run `npx vitest run tests/openRouterGenerateWorkspacePlan.test.ts tests/openRouterDirectGenerationRuntimeBoundary.test.ts`.
-3. If changing OpenRouter direct generation execution, run `npx vitest run tests/openRouterDirectGenerationStartPlan.test.ts tests/openRouterDirectGenerationRuntimeBoundary.test.ts tests/openRouterDirectGenerationPresetActionsBoundary.test.ts tests/openRouterGenerationJobRequest.test.ts tests/openRouterDirectGenerationJobPlan.test.ts tests/openRouterDirectGenerationPresets.test.ts tests/trainingOpenRouterLanguageContract.test.ts`.
-4. If changing OpenRouter job polling or failure policy, run `npx vitest run tests/openRouterJobs.test.ts tests/useOpenRouterJobsRuntime.test.ts tests/openRouterJobRoute.test.ts tests/openRouterGenerationJobRequest.test.ts`.
-5. If changing Browser TTS policy modules, run the matching `browserTts*.test.ts` file first.
-6. If changing `src/app/useBrowserTtsPlaybackLoop.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/browserTtsUtteranceConfigurationContract.test.ts tests/mockSpeechSynthesisHarness.test.ts tests/useTtsPlaybackControls.test.ts tests/browserTtsPlaybackPlan.test.ts tests/browserTtsPlaybackStartPlan.test.ts tests/browserTtsUnexpectedErrorPlan.test.ts`.
-7. If changing `src/app/useTtsSessionOrchestrationRuntime.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/useResetSessionRuntime.test.ts tests/useTtsSessionSubmitAction.test.ts tests/useTtsPlaybackControls.test.ts tests/useTtsPerformanceSampler.test.ts`.
-8. If changing Supabase sync or session persistence, run `npx vitest run tests/supabaseSync.test.ts tests/useSessionPersistenceSync.test.ts tests/profileScopedStorage.test.ts`.
-9. If changing mobile/PWA flow behavior, run focused unit tests first, then `npm run test:e2e:mobile`.
+1. If changing `src/app/DictaAppRuntimeRoot.tsx`, start with the root boundary tests, then the touched runtime area tests.
+2. If changing `src/app/useDictaAppBootRuntime.ts`, run `npx vitest run tests/dictaAppRuntimeBoundary.test.ts` plus the tests for the moved state bucket.
+3. If changing `src/app/useWorkspaceModelRefreshRuntime.ts`, run `npx vitest run tests/workspaceModelRefreshRuntime.test.ts`.
+4. If changing OpenRouter generation workspace opening, run `npx vitest run tests/openRouterGenerateWorkspacePlan.test.ts tests/openRouterDirectGenerationRuntimeBoundary.test.ts`.
+5. If changing OpenRouter direct generation execution, run `npx vitest run tests/openRouterDirectGenerationStartPlan.test.ts tests/openRouterDirectGenerationRuntimeBoundary.test.ts tests/openRouterDirectGenerationPresetActionsBoundary.test.ts tests/openRouterGenerationJobRequest.test.ts tests/openRouterDirectGenerationJobPlan.test.ts tests/openRouterDirectGenerationPresets.test.ts tests/trainingOpenRouterLanguageContract.test.ts`.
+6. If changing OpenRouter job polling or failure policy, run `npx vitest run tests/openRouterJobs.test.ts tests/useOpenRouterJobsRuntime.test.ts tests/openRouterJobRoute.test.ts tests/openRouterGenerationJobRequest.test.ts`.
+7. If changing Browser TTS policy modules, run the matching `browserTts*.test.ts` file first.
+8. If changing `src/app/useBrowserTtsPlaybackLoop.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/browserTtsUtteranceConfigurationContract.test.ts tests/mockSpeechSynthesisHarness.test.ts tests/useTtsPlaybackControls.test.ts tests/browserTtsPlaybackPlan.test.ts tests/browserTtsPlaybackStartPlan.test.ts tests/browserTtsUnexpectedErrorPlan.test.ts`.
+9. If changing `src/app/useTtsSessionOrchestrationRuntime.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/useResetSessionRuntime.test.ts tests/useTtsSessionSubmitAction.test.ts tests/useTtsPlaybackControls.test.ts tests/useTtsPerformanceSampler.test.ts`.
+10. If changing Supabase sync or session persistence, run `npx vitest run tests/supabaseSync.test.ts tests/useSessionPersistenceSync.test.ts tests/profileScopedStorage.test.ts`.
+11. If changing mobile/PWA flow behavior, run focused unit tests first, then `npm run test:e2e:mobile`.
 
 ## Gaps and maintenance
 
