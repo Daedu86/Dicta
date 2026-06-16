@@ -2,8 +2,12 @@ import type { useAppPresentationRuntime } from './useAppPresentationRuntime';
 import type { DictaAppRouteCompositionRuntimeParams } from './useDictaAppRouteCompositionRuntime';
 
 type AppPresentationRuntimeInput = Parameters<typeof useAppPresentationRuntime>[0];
-type WorkspacePanelsInput = AppPresentationRuntimeInput['workspacePanels'];
-type LiveMetricsDockInput = AppPresentationRuntimeInput['liveMetricsDock'];
+type GroupedAppPresentationRuntimeInput = Extract<
+  AppPresentationRuntimeInput,
+  { workspacePanels: unknown }
+>;
+type WorkspacePanelsInput = GroupedAppPresentationRuntimeInput['workspacePanels'];
+type LiveMetricsDockInput = GroupedAppPresentationRuntimeInput['liveMetricsDock'];
 
 type RouteDerivedPresentationInput = Pick<
   WorkspacePanelsInput,
