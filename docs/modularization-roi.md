@@ -2,9 +2,9 @@
 
 Status: ACTIVE  
 Scope: whole repository  
-Last updated: 2026-06-16 after runtime modularization wave  
+Last updated: 2026-06-16 after OpenRouter workspace/jobs split  
 Verified against branch: `product/input-2`  
-Verified against code baseline: post Fase 1-9 runtime modularization wave.  
+Verified against code baseline: post OpenRouter workspace runtime and jobs route modularization.  
 Test map checked: `docs/module-test-map.md`  
 Current App-shell checkpoint: `docs/app-shell-modularization-map.md`
 
@@ -28,14 +28,15 @@ Already completed:
 - TTS controls, metrics, telemetry, UI publishing, progress estimation, reset, and submit runtimes.
 - Focused training runtime and TTS orchestration runtime seams.
 - OpenRouter generation/model/direct/job/failure-policy runtime extraction.
+- OpenRouter workspace runtime split into UI state, derivations, clipboard, and slot-generation owners.
+- `api/openrouter/jobs.js` split into thin route handler plus `_job*` helpers.
 - Auth/profile, app-level session persistence runtime, session creation, workspace session, app presentation, and route rendering ownership.
-- Runtime modularization wave for OpenRouter workspace runtime helpers, SessionDashboard, adaptive cockpit/diagnostics UI sections, adaptive policies, adaptive controller helpers, adaptive runtime helpers, and performance diagnostics facade.
+- Runtime modularization wave for SessionDashboard, adaptive cockpit/diagnostics UI sections, adaptive policies, adaptive controller helpers, adaptive runtime helpers, and performance diagnostics facade.
 
 Current hotspots:
 
 - `src/app/DictaAppRuntimeRoot.tsx` remains the main composition root; do not split it unless the new owner/test seam is clear.
 - `src/app/useSessionPersistenceSync.ts` is the best current modularization candidate if the task is explicitly refactor/modularization work.
-- `src/components/openrouter/OpenRouterWorkspace.tsx` remains a possible UI-size hotspot; runtime helpers are already separated.
 - `src/core/supabaseSync.ts` is important but high-risk; characterize before extracting.
 
 Default next step:
@@ -44,7 +45,7 @@ Default next step:
 2. If the next task is modularization, score `useSessionPersistenceSync` planning/storage seams first.
 3. Add characterization tests before touching high-risk behavior.
 4. Update docs/test-map when ownership moves.
-5. Avoid broad App-shell extraction unless a new owner/test seam is clear.
+5. Avoid broad App-shell or OpenRouter extraction unless a new owner/test seam is clear.
 
 ## ROI score
 
