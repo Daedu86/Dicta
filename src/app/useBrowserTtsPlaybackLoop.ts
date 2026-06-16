@@ -2,9 +2,6 @@ import type { PhraseSize } from '../core/adaptive/types';
 import type { BrowserTtsBoundaryStrictness } from './browserTtsPlaybackPlan';
 import { buildBrowserTtsPlaybackLoopChunkPlan } from './browserTtsPlaybackLoopChunkPlan';
 import { createBrowserTtsPlaybackLoopStartContext } from './browserTtsPlaybackLoopStartContext';
-import { handleBrowserTtsPlaybackLoopChunkEnd } from './browserTtsPlaybackLoopCompletionHandler';
-import { handleBrowserTtsPlaybackLoopChunkStart } from './browserTtsPlaybackLoopStartHandler';
-import { handleBrowserTtsPlaybackLoopError } from './browserTtsPlaybackLoopErrorHandler';
 import { resolveBrowserTtsPlaybackStartError } from './browserTtsPlaybackLoopGuards';
 import {
   advanceBrowserTtsMacroPhraseCursor,
@@ -14,7 +11,7 @@ import {
 import { commitBrowserTtsPlaybackLoopChunk } from './browserTtsPlaybackLoopChunkCommit';
 import { createBrowserTtsPlaybackUtterance } from './browserTtsPlaybackLoopUtterance';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
-import { attachBrowserTtsUtteranceLifecycle } from './browserTtsUtteranceLifecycle';
+import { attachBrowserTtsPlaybackLoopUtteranceHandlers } from './browserTtsPlaybackLoopUtteranceHandlers';
 
 export type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 
@@ -252,17 +249,13 @@ export function useBrowserTtsPlaybackLoop({
         setTtsSpeechRate,
       });
 
-      attachBrowserTtsUtteranceLifecycle({
+      attachBrowserTtsPlaybackLoopUtteranceHandlers({
         utterance,
-        onStart: () => {
-        handleBrowserTtsPlaybackLoopChunkStart({
+        start: () => ({
           perfDiagnostics,
           perfUtteranceId,
-        });
-      
-        },
-        onEnd: () => {
-        handleBrowserTtsPlaybackLoopChunkEnd({
+        }),
+        end: () => ({
           perfDiagnostics,
           perfUtteranceId,
           cancelled,
@@ -294,11 +287,8 @@ export function useBrowserTtsPlaybackLoop({
             macroPhraseIndex = nextCursor.macroPhraseIndex;
             macroWordOffset = nextCursor.macroWordOffset;
           },
-        });
-      
-        },
-        onError: (event) => {
-        handleBrowserTtsPlaybackLoopError({
+        }),
+        error: (event) => ({
           error: event.error,
           cancelled,
           perfDiagnostics,
@@ -309,9 +299,7 @@ export function useBrowserTtsPlaybackLoop({
           setCancelled: (nextCancelled) => {
             cancelled = nextCancelled;
           },
-        });
-      
-        },
+        }),
       });
 
       perfDiagnostics.recordTtsSpeak(perfUtteranceId);

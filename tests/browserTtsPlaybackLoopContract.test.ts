@@ -10,6 +10,10 @@ const dictaFocusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useDi
 const focusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useFocusedTrainingRuntime.ts'), 'utf-8');
 const orchestrationSource = readFileSync(resolve(repoRoot, 'src/app/useTtsSessionOrchestrationRuntime.ts'), 'utf-8');
 const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
+const playbackLoopUtteranceHandlersSource = readFileSync(
+  resolve(repoRoot, 'src/app/browserTtsPlaybackLoopUtteranceHandlers.ts'),
+  'utf-8',
+);
 const playbackLoopChunkCommitSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopChunkCommit.ts'), 'utf-8');
 const playbackLoopCompletionSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopCompletionHandler.ts'), 'utf-8');
 
@@ -42,7 +46,8 @@ describe('Browser TTS playback loop contract', () => {
   it('keeps the playback loop owning chunked browser TTS playback internals through extracted seams', () => {
     expect(playbackLoopSource).toContain('function playTtsFromWord(');
     expect(playbackLoopSource).toContain('commitBrowserTtsPlaybackLoopChunk({');
-    expect(playbackLoopSource).toContain('handleBrowserTtsPlaybackLoopChunkEnd({');
+    expect(playbackLoopSource).toContain('attachBrowserTtsPlaybackLoopUtteranceHandlers({');
+    expect(playbackLoopUtteranceHandlersSource).toContain('handleBrowserTtsPlaybackLoopChunkEnd(end());');
     expect(playbackLoopSource).toContain('speakBrowserTts(utterance);');
     expect(playbackLoopChunkCommitSource).toContain('recordTtsChunkTelemetry({');
     expect(playbackLoopCompletionSource).toContain('applyTtsPerformanceSample(');

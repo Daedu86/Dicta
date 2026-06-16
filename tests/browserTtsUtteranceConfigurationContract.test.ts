@@ -16,6 +16,10 @@ const playbackLoopUtteranceLifecycleSource = readFileSync(
   resolve(repoRoot, 'src/app/browserTtsUtteranceLifecycle.ts'),
   'utf-8',
 );
+const playbackLoopUtteranceHandlersSource = readFileSync(
+  resolve(repoRoot, 'src/app/browserTtsPlaybackLoopUtteranceHandlers.ts'),
+  'utf-8',
+);
 
 function getPlayTtsFromWordSection(): string {
   const start = playbackLoopSource.indexOf('function playTtsFromWord(');
@@ -27,15 +31,6 @@ function getPlayTtsFromWordSection(): string {
   return playbackLoopSource.slice(start, end);
 }
 
-function getErrorHandlerSection(playbackLoop: string): string {
-  const start = playbackLoop.indexOf('onError: (event) => {');
-  if (start < 0) throw new Error('Could not find onError lifecycle callback in playTtsFromWord.');
-
-  const end = playbackLoop.indexOf('      perfDiagnostics.recordTtsSpeak(perfUtteranceId);', start);
-  if (end < 0) throw new Error('Could not find end of onError lifecycle callback section.');
-
-  return playbackLoop.slice(start, end);
-}
 
 function expectInOrder(source: string, labels: string[]): void {
   let cursor = 0;
@@ -155,19 +150,21 @@ describe('Browser TTS utterance configuration contract', () => {
   });
 
   it('keeps unexpected SpeechSynthesis errors paused, detached from the active utterance, and user-visible', () => {
-    const onError = getErrorHandlerSection(getPlayTtsFromWordSection());
-
-    expectInOrder(onError, [
-      'handleBrowserTtsPlaybackLoopError({',
+    expectInOrder(playbackLoopSource, [
+      'attachBrowserTtsPlaybackLoopUtteranceHandlers({',
+      'error: (event) => ({',
       'error: event.error,',
       'cancelled,',
-      'perfDiagnostics,',
-      'perfUtteranceId,',
-      'ttsUtteranceRef,',
-      'setTtsStatus,',
-      'setError,',
+      'ttsUtteranceRef',
+      'setTtsStatus',
+      'setError',
       'setCancelled: (nextCancelled) => {',
       'cancelled = nextCancelled;',
+    ]);
+
+    expectInOrder(playbackLoopUtteranceHandlersSource, [
+      'onError:',
+      'handleBrowserTtsPlaybackLoopError(error(event));',
     ]);
 
     expectInOrder(playbackLoopErrorHandlerSource, [
@@ -189,4 +186,5 @@ describe('Browser TTS utterance configuration contract', () => {
       'utterance.onerror = onError;',
     ]);
   });
+
 });
