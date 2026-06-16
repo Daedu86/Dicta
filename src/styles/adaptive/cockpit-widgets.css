@@ -1,0 +1,137 @@
+.adaptive-profile-hero-card,
+.adaptive-next-action-card,
+.adaptive-words-widget,
+.adaptive-feedback-status-card {
+  min-height: 170px;
+}
+
+.adaptive-profile-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.adaptive-profile-hero-top h4 {
+  margin-top: 0.45rem;
+  font-size: 1.45rem;
+}
+
+.adaptive-profile-hero-top > strong {
+  color: #102f63;
+  font-size: 2rem;
+}
+
+.adaptive-confidence-pill,
+.adaptive-weak-area-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.adaptive-confidence-strong,
+.adaptive-weak-area-chip-good {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.adaptive-confidence-watch {
+  background: #ffedd5;
+  color: #7c2d12;
+}
+
+.adaptive-confidence-empty {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.adaptive-profile-hero-metrics,
+.adaptive-target-token-grid,
+.adaptive-feedback-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.adaptive-profile-hero-metrics span,
+.adaptive-target-token-grid span,
+.adaptive-feedback-widget-grid span {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem;
+  border-radius: 10px;
+  background: #f4f8fd;
+  color: #5f7086;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.adaptive-profile-hero-metrics strong,
+.adaptive-target-token-grid strong,
+.adaptive-feedback-widget-grid strong {
+  color: #102f63;
+  font-size: 0.92rem;
+}
+
+.adaptive-weak-area-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.adaptive-weak-area-chip {
+  background: #eef2ff;
+  color: #243b7a;
+}
+
+.adaptive-word-bars {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.adaptive-word-bar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.5rem;
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 42px;
+  overflow: hidden;
+}
+
+.adaptive-word-bar > span {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #22c55e);
+}
+
+.adaptive-word-bar strong,
+.adaptive-word-bar small {
+  display: block;
+}
+
+.adaptive-word-bar small {
+  color: #6b7a90;
+}
+
+.adaptive-word-bar em {
+  color: #102f63;
+  font-style: normal;
+  font-weight: 950;
+  text-align: right;
+}
+
+.adaptive-feedback-status-good {
+  border-color: #86efac;
+}
+
+.adaptive-feedback-status-watch {
+  border-color: #f59e0b;
+}
