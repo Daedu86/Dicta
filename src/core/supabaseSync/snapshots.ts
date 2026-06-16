@@ -1,4 +1,4 @@
-import { compareTimestamp, latestSyncRowTimestamp } from './timestamps';
+import { compareTimestamp } from './timestamps';
 import { isValidSyncRow, syncRowIdentity } from './rowValidation';
 import type { DictaSyncRow } from './types';
 
