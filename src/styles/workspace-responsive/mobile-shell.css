@@ -1,0 +1,113 @@
+@media (max-width: 640px) {
+  .panel,
+  .workspace-shell,
+  .workspace-panel,
+  .pending-session-lane,
+  .tts-workspace,
+  .adaptive-workspace,
+  .adaptive-workspace-grid,
+  .adaptive-benchmark-panel,
+  .adaptive-benchmark-workspace,
+  .adaptive-benchmark-subpanel,
+  .adaptive-advanced-shell,
+  .adaptive-advanced-grid,
+  .adaptive-cockpit-grid,
+  .adaptive-coach-grid,
+  .adaptive-coach-card,
+  .bottom-metrics-dock,
+  .bottom-metrics-inner {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .adaptive-workspace,
+  .adaptive-benchmark-subpanel,
+  .adaptive-coach-card {
+    overflow-x: clip;
+  }
+
+  .adaptive-workspace h2,
+  .adaptive-workspace h3,
+  .adaptive-workspace h4,
+  .adaptive-workspace p,
+  .adaptive-workspace strong,
+  .adaptive-workspace small,
+  .adaptive-workspace button,
+  .metric strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .workspace-main-header {
+    padding: 0.75rem;
+  }
+
+  .workspace-main-header .brand-copy {
+    min-width: 0;
+  }
+
+  .workspace-main-header .brand-status-row,
+  .metrics-header,
+  .adaptive-section-header,
+  .adaptive-advanced-shell summary,
+  .adaptive-export-panel summary,
+  .adaptive-profile-hero-top,
+  .adaptive-zone-chart-header,
+  .adaptive-mini-trends-header,
+  .pending-session-lane-header,
+  .tts-source-meta,
+  .typing-panel-header,
+  .locked-input-summary-header,
+  .bottom-metrics-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .brand-llm-status,
+  .brand-build-status {
+    width: 100%;
+  }
+
+  .pending-session-count,
+  .locked-input-status {
+    align-self: flex-start;
+  }
+
+  .pending-session-strip {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+    grid-auto-columns: auto;
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+
+  .pending-session-chip,
+  .pending-session-open-button {
+    min-height: 66px;
+  }
+
+  .pending-session-chip {
+    scroll-snap-align: start;
+  }
+
+  .tts-workspace-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tts-workspace-header .dashboard-header-actions,
+  .tts-workspace-header .secondary-button {
+    width: 100%;
+  }
+
+  .adaptive-section-header > div,
+  .adaptive-advanced-shell summary span,
+  .adaptive-export-panel summary span {
+    min-width: 0;
+  }
+
+  .adaptive-section-toggle {
+    flex: 0 0 auto;
+    align-self: flex-start;
+  }
+}
