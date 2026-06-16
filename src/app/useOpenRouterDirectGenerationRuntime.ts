@@ -220,7 +220,7 @@ export function useOpenRouterDirectGenerationRuntime({
     trackOpenRouterJob,
   ]);
 
-  return useOpenRouterDirectGenerationPresetActions({
+  const presetActions = useOpenRouterDirectGenerationPresetActions({
     generateDirectSessionFromOpenRouter,
     directOpenRouterBusy,
     setDirectOpenRouterBusy,
@@ -229,4 +229,6 @@ export function useOpenRouterDirectGenerationRuntime({
     directAdvancedOpenRouterBusy,
     setDirectAdvancedOpenRouterBusy,
   });
+
+  return presetActions;
 }
