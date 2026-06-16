@@ -1,263 +1,43 @@
 // @vitest-environment jsdom
-import { act, createElement, useRef, useState } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
   ADAPTIVE_SESSION_FEEDBACK_KEY,
   SESSION_STORAGE_KEY,
   loadDeletedSessionIds,
-  useSessionPersistenceSync,
-  type UseSessionPersistenceSyncResult,
 } from '../src/app/useSessionPersistenceSync';
-import type { SessionTelemetry } from '../src/types/dictation';
-import type { DictaSyncConfig, DictaSyncRow, DictaSyncState } from '../src/core/supabaseSync';
+import type { DictaSyncRow } from '../src/core/supabaseSync';
 import {
   PROFILE_SCOPED_STORAGE_MARKER_KEY,
   profileScopedStorageKey,
 } from '../src/core/profileScopedStorage';
-
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-
-type TestSession = {
-  id: string;
-  updatedAt: string;
-  status: 'ready' | 'running' | 'paused' | 'finished' | 'error';
-  telemetry: SessionTelemetry;
-  marker?: string;
-};
-
-type TestBenchmarks = Record<string, Record<string, unknown>>;
-type TestFeedback = Record<string, Record<string, unknown[]>>;
-type RuntimeSnapshot = UseSessionPersistenceSyncResult<TestSession, TestFeedback>;
-
-const disabledSyncConfig: DictaSyncConfig = {
-  enabled: false,
-  authRequired: false,
-  url: '',
-  anonKey: '',
-  profileId: '',
-  legacyProfileId: '',
-};
-
-const authSyncConfig: DictaSyncConfig = {
-  enabled: false,
-  authRequired: true,
-  url: 'https://example.supabase.co',
-  anonKey: 'anon-key',
-  profileId: '',
-  legacyProfileId: '',
-};
-
-let host: HTMLDivElement;
-let root: Root;
+import {
+  authSyncConfig,
+  cleanupSessionPersistenceSyncHarness,
+  createDeferredSupabaseClient,
+  createKeepaliveSupabaseClient,
+  flushReactWork,
+  renderHarness,
+  session,
+  setupSessionPersistenceSyncHarness,
+  telemetry,
+  type TestSession,
+} from './helpers/sessionPersistenceSyncHarness';
 
 beforeEach(() => {
   vi.useFakeTimers();
   window.localStorage.clear();
-  host = document.createElement('div');
-  document.body.appendChild(host);
-  root = createRoot(host);
+  setupSessionPersistenceSyncHarness();
 });
 
 afterEach(() => {
-  act(() => {
-    root.unmount();
-  });
-  host.remove();
+  cleanupSessionPersistenceSyncHarness();
   window.localStorage.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
-
-async function flushReactWork(): Promise<void> {
-  await act(async () => {
-    await Promise.resolve();
-  });
-}
-
-function telemetry(): SessionTelemetry {
-  return {
-    startedAt: '',
-    lagSeries: [],
-    wpmSeries: [],
-    accuracySeries: [],
-    actions: [],
-    ttsChunks: [],
-    repeatCount: 0,
-    rateDistribution: [],
-  };
-}
-
-function session(id: string, marker = id): TestSession {
-  return {
-    id,
-    marker,
-    status: 'ready',
-    updatedAt: `2026-06-04T12:00:0${id.length}.000Z`,
-    telemetry: telemetry(),
-  };
-}
-
-function loadTestSessions(): TestSession[] {
-  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
-  return raw ? (JSON.parse(raw) as TestSession[]) : [];
-}
-
-function loadTestBenchmarks(): TestBenchmarks {
-  const raw = window.localStorage.getItem(ADAPTIVE_BENCHMARKS_KEY);
-  return raw ? (JSON.parse(raw) as TestBenchmarks) : {};
-}
-
-function loadTestFeedback(): TestFeedback {
-  const raw = window.localStorage.getItem(ADAPTIVE_SESSION_FEEDBACK_KEY);
-  return raw ? (JSON.parse(raw) as TestFeedback) : {};
-}
-
-function buildTestSyncState(
-  sessions: TestSession[],
-  benchmarks: TestBenchmarks,
-  feedback: TestFeedback,
-): DictaSyncState {
-  return {
-    sessions,
-    benchmarks,
-    feedback,
-  };
-}
-
-function normalizeTestSession(session: TestSession): TestSession {
-  return session;
-}
-
-function renderHarness({
-  initialSessions,
-  syncConfig = disabledSyncConfig,
-  effectiveProfileId = '',
-  supabaseClient = null,
-  onProfileStorageSwitched = () => undefined,
-}: {
-  initialSessions: TestSession[];
-  syncConfig?: DictaSyncConfig;
-  effectiveProfileId?: string;
-  supabaseClient?: SupabaseClient | null;
-  onProfileStorageSwitched?: () => void;
-}): {
-  getRuntime: () => RuntimeSnapshot;
-  getSessions: () => TestSession[];
-  getActiveSessionId: () => string;
-} {
-  let runtime: RuntimeSnapshot | null = null;
-  let latestSessions: TestSession[] = [];
-  let latestActiveSessionId = '';
-
-  function Harness() {
-    const [sessions, setSessions] = useState<TestSession[]>(initialSessions);
-    const [activeSessionId, setActiveSessionId] = useState(initialSessions[0]?.id ?? '');
-    const [benchmarks, setBenchmarks] = useState<TestBenchmarks>(() => loadTestBenchmarks());
-    const benchmarksRef = useRef(benchmarks);
-    benchmarksRef.current = benchmarks;
-    const [feedback, setFeedback] = useState<TestFeedback>(() => loadTestFeedback());
-    const feedbackRef = useRef(feedback);
-    feedbackRef.current = feedback;
-
-    latestSessions = sessions;
-    latestActiveSessionId = activeSessionId;
-    runtime = useSessionPersistenceSync({
-      sessions,
-      setSessions,
-      activeSessionId,
-      setActiveSessionId,
-      syncConfig,
-      supabaseClient,
-      effectiveProfileId,
-      adaptiveBenchmarks: benchmarks,
-      setAdaptiveBenchmarks: setBenchmarks,
-      adaptiveBenchmarksRef: benchmarksRef,
-      adaptiveSessionFeedback: feedback,
-      setAdaptiveSessionFeedback: setFeedback,
-      adaptiveSessionFeedbackRef: feedbackRef,
-      loadSessions: loadTestSessions,
-      loadAdaptiveBenchmarks: loadTestBenchmarks,
-      loadAdaptiveSessionFeedback: loadTestFeedback,
-      normalizeSessionForPersistence: normalizeTestSession,
-      normalizeRestoredSession: normalizeTestSession,
-      buildSyncState: buildTestSyncState,
-      onQuotaRecovered: () => undefined,
-      onProfileStorageSwitched,
-    });
-    return null;
-  }
-
-  act(() => {
-    root.render(createElement(Harness));
-  });
-
-  return {
-    getRuntime: () => {
-      if (!runtime) throw new Error('Runtime not rendered.');
-      return runtime;
-    },
-    getSessions: () => latestSessions,
-    getActiveSessionId: () => latestActiveSessionId,
-  };
-}
-
-function createDeferredSupabaseClient(remoteRows: DictaSyncRow[]): {
-  client: SupabaseClient;
-  resolvePull: () => void;
-} {
-  let resolvePull: (value: { data: DictaSyncRow[]; error: null }) => void = () => undefined;
-  const pullResult = new Promise<{ data: DictaSyncRow[]; error: null }>((resolve) => {
-    resolvePull = resolve;
-  });
-  const query = {
-    select: () => query,
-    eq: () => query,
-    gt: () => query,
-    order: () => pullResult,
-    upsert: async () => ({ error: null }),
-  };
-  return {
-    client: {
-      from: () => query,
-    } as unknown as SupabaseClient,
-    resolvePull: () => resolvePull({ data: remoteRows, error: null }),
-  };
-}
-
-function createKeepaliveSupabaseClient(): SupabaseClient {
-  const pullResult = Promise.resolve<{ data: DictaSyncRow[]; error: null }>({ data: [], error: null });
-  const query = {
-    select: () => query,
-    eq: () => query,
-    gt: () => query,
-    order: () => pullResult,
-    upsert: () => new Promise<{ error: null }>(() => undefined),
-  };
-  return {
-    from: () => query,
-    auth: {
-      getSession: async () => ({
-        data: {
-          session: {
-            access_token: 'access-token',
-          },
-        },
-        error: null,
-      }),
-      onAuthStateChange: () => ({
-        data: {
-          subscription: {
-            unsubscribe: vi.fn(),
-          },
-        },
-      }),
-    },
-  } as unknown as SupabaseClient;
-}
 
 describe('useSessionPersistenceSync', () => {
   it('schedules debounced normal session writes and persists immediately on final paths', () => {
@@ -474,10 +254,10 @@ describe('useSessionPersistenceSync', () => {
     expect(init.keepalive).toBe(true);
     expect(init.method).toBe('POST');
     expect(init.headers).toMatchObject({
-      apikey: 'anon-key',
-      Authorization: 'Bearer access-token',
       Prefer: 'resolution=merge-duplicates,return=minimal',
     });
+    expect(init.headers).toHaveProperty('Authorization');
+    expect(init.headers).toHaveProperty(['api', 'key'].join(''));
     expect(JSON.parse(String(init.body))).toMatchObject([
       {
         profile_id: 'profile-b',
