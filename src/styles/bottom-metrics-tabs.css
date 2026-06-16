@@ -1,0 +1,73 @@
+.live-metrics-language-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.live-metrics-input-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  gap: 0.35rem;
+  width: min(100%, 560px);
+}
+
+.live-metrics-language-tab {
+  width: auto;
+  margin-top: 0;
+  padding: 0.35rem 0.55rem;
+  min-height: 34px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid #bfd2e8;
+  background: #eef4fb;
+  color: #274767;
+}
+
+.live-metrics-input-tab {
+  display: grid;
+  gap: 0.05rem;
+  width: auto;
+  min-width: 82px;
+  min-height: 42px;
+  margin-top: 0;
+  padding: 0.32rem 0.5rem;
+  border: 1px solid #bfd2e8;
+  border-radius: 10px;
+  background: #eef4fb;
+  color: #274767;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.live-metrics-input-tab small {
+  color: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+.live-metrics-language-tab-active {
+  background: #102f63;
+  border-color: #102f63;
+  color: #ffffff;
+}
+
+.live-metrics-input-tab-active {
+  background: #102f63;
+  border-color: #102f63;
+  color: #ffffff;
+}
+
+.live-metrics-report-button {
+  width: auto;
+  margin-top: 0;
+  min-height: 34px;
+  padding: 0.35rem 0.65rem;
+  border-color: #5a94e8;
+  background: #e8f3ff;
+  color: #0f4f8f;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
