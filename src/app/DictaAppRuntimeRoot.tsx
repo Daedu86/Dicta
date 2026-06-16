@@ -14,7 +14,7 @@ import { useTrainingRuntimeState } from './useTrainingRuntimeState';
 import { AppRouteRenderer } from './AppRouteRenderer';
 import { useWorkspaceRouting } from './useWorkspaceRouting';
 import { useDictaUiPreferences } from './useDictaUiPreferences';
-import { useDictaAppRouteCompositionRuntime } from './useDictaAppRouteCompositionRuntime';
+import { useDictaRootRouteCompositionRuntime } from './useDictaRootRouteCompositionRuntime';
 import { useDictaAccessRuntime } from './useDictaAccessRuntime';
 import { useDictaRootOpenRouterRuntime } from './useDictaRootOpenRouterRuntime';
 import { isMobileViewport } from './viewport';
@@ -559,7 +559,7 @@ export function DictaAppRuntime() {
     authWorkspaceProps,
     sessionCreateCardProps,
     liveMetricsDockProps,
-  } = useDictaAppRouteCompositionRuntime({
+  } = useDictaRootRouteCompositionRuntime({
     adaptiveBenchmarksByInputLanguage,
     adaptiveSessionFeedbackByInputLanguage,
     adaptiveBenchmarksFocusAnchor,
