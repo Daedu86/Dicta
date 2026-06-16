@@ -1,3 +1,1 @@
-export function AdaptiveProfileMatrix() {
-  return null;
-}
+export {};
