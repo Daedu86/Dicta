@@ -1,0 +1,90 @@
+.bottom-summary-section {
+  margin-bottom: 0.75rem;
+}
+
+.live-metrics-section {
+  border: 1px solid rgba(111, 141, 177, 0.45);
+  border-radius: 14px;
+  padding: 0.7rem;
+  background: linear-gradient(180deg, rgba(13, 31, 53, 0.18), rgba(10, 24, 42, 0.1));
+}
+
+.live-metrics-section-header {
+  background: linear-gradient(180deg, rgba(28, 60, 95, 0.2), rgba(12, 29, 49, 0.12));
+}
+
+.live-metrics-section-player {
+  align-self: stretch;
+}
+
+.live-metrics-section-period,
+.live-metrics-section-last,
+.live-metrics-section-runtime {
+  margin-top: 0.15rem;
+}
+
+.runtime-metrics-panel {
+  border: 1px solid #b8cce3;
+  border-radius: 12px;
+  padding: 0.55rem;
+  background: linear-gradient(180deg, rgba(18, 49, 82, 0.14), rgba(14, 38, 66, 0.08));
+}
+
+.runtime-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.bottom-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bottom-summary-header h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+  color: #173d71;
+}
+
+.live-metrics-range-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(5, minmax(0, auto));
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.live-metrics-range-tab {
+  width: auto;
+  margin-top: 0;
+  padding: 0.3rem 0.5rem;
+  min-height: 32px;
+  border-radius: 9px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid #bfd2e8;
+  background: #eef4fb;
+  color: #274767;
+}
+
+.live-metrics-range-tab-active {
+  background: #102f63;
+  border-color: #102f63;
+  color: #ffffff;
+}
+
+.bottom-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.bottom-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.6rem;
+  min-width: 0;
+}
