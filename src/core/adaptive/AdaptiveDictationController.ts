@@ -274,7 +274,7 @@ export class AdaptiveDictationController {
     const modeCeiling = isSupportLikeMode ? supportRateCeiling : comfortRateMax;
     playbackRate = Number(clamp(playbackRate, modeFloor, modeCeiling).toFixed(2));
     if (isSupportLikeMode && reasonCodes.includes('support-needed')) {
-      playbackRate = Number(Math.min(supportRateCeiling, playbackRate).toFixed(2));
+      playbackRate = Number(Math.min(0.92, supportRateCeiling, playbackRate).toFixed(2));
     }
 
     const precisionRateCeiling = resolveListeningPrecisionRateCeiling(live.listeningPrecision, mode, supportRateCeiling);
