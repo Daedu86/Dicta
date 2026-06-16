@@ -2,9 +2,9 @@
 
 Status: ACTIVE  
 Scope: whole repository  
-Last updated: 2026-06-16  
+Last updated: 2026-06-16 after runtime modularization wave  
 Verified against branch: `product/input-2`  
-Verified against code baseline: runtime root boundary refresh.  
+Verified against code baseline: post Fase 1-9 runtime modularization wave.  
 Test map checked: `docs/module-test-map.md`  
 Current App-shell checkpoint: `docs/app-shell-modularization-map.md`
 
@@ -24,21 +24,18 @@ Already completed:
 - `src/app/DictaAppRuntime.tsx` is an export shim and must stay behavior-free.
 - `src/app/DictaAppRuntimeRoot.tsx` is the browser composition root.
 - `useDictaAppBootRuntime`, `useDictaRootOpenRouterRuntime`, and `useDictaRootRouteCompositionRuntime` own the current root boot/adapter seams.
-- Browser TTS playback-loop ownership.
+- Browser TTS playback-loop ownership, with boundary-sensitive utterance setup still inside `useBrowserTtsPlaybackLoop`.
 - TTS controls, metrics, telemetry, UI publishing, progress estimation, reset, and submit runtimes.
-- Focused training runtime and delegate grouping.
-- TTS orchestration runtime and delegate grouping.
-- OpenRouter generation/model runtime extraction.
-- OpenRouter direct generation lifecycle extraction.
-- OpenRouter job polling lifecycle extraction.
-- OpenRouter generation failure policy extraction.
+- Focused training runtime and TTS orchestration runtime seams.
+- OpenRouter generation/model/direct/job/failure-policy runtime extraction.
 - Auth/profile, app-level session persistence runtime, session creation, workspace session, app presentation, and route rendering ownership.
+- Runtime modularization wave for OpenRouter workspace runtime helpers, SessionDashboard, adaptive cockpit/diagnostics UI sections, adaptive policies, adaptive controller helpers, adaptive runtime helpers, and performance diagnostics facade.
 
-Current hotspots from the latest line-count review:
+Current hotspots:
 
 - `src/app/DictaAppRuntimeRoot.tsx` remains the main composition root; do not split it unless the new owner/test seam is clear.
 - `src/app/useSessionPersistenceSync.ts` is the best current modularization candidate if the task is explicitly refactor/modularization work.
-- `src/components/openrouter/OpenRouterWorkspace.tsx` and `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` are UI-size hotspots, but their runtime state is already separated.
+- `src/components/openrouter/OpenRouterWorkspace.tsx` remains a possible UI-size hotspot; runtime helpers are already separated.
 - `src/core/supabaseSync.ts` is important but high-risk; characterize before extracting.
 
 Default next step:
@@ -121,19 +118,7 @@ Record:
 
 ## Current recommendation
 
-Do not start another broad App-shell or OpenRouter extraction by default.
-
-The last ownership cuts created clear owners:
-
-- `src/App.tsx` for shell-only entry.
-- `src/app/DictaAppRuntime.tsx` as the export shim.
-- `src/app/DictaAppRuntimeRoot.tsx` for browser runtime composition.
-- `useDictaAppBootRuntime` for root boot state buckets and refs.
-- `useDictaRootOpenRouterRuntime` for root OpenRouter adaptation.
-- `useDictaRootRouteCompositionRuntime` for root route-composition handoff.
-- `useOpenRouterDirectGenerationRuntime` for direct generation.
-- `useOpenRouterJobPollingRuntime` for job polling/settlement.
-- `openRouterGenerationFailurePolicy` for shared failure policy.
+Do not start another broad App-shell, adaptive, Browser TTS, or OpenRouter extraction by default.
 
 If no concrete bug/product task is selected and the user explicitly wants modularization, the best next candidate is `src/app/useSessionPersistenceSync.ts`.
 
