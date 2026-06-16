@@ -1,6 +1,13 @@
 import { buildSelectedBenchmarkExportPayload } from './benchmarkJson';
 import type { DictationScriptDifficulty } from './dictationScriptValidation';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from './dictationScriptPrompt';
+import {
+  buildCompactAdaptiveV2Context,
+  buildCompactBenchmarkContext,
+  buildCompactPromptPackage,
+  buildCompactSessionFeedbackContext,
+} from './openRouterPromptContext';
+import { buildCompactAdaptiveV2Prompt, buildOpenRouterHardRulesPrompt } from './openRouterPromptRules';
 import { buildBenchmarkFeedbackPromptPackage } from './sessionFeedback';
 import { normalizeInputLanguageBenchmarkForRecommendation } from './AdaptiveInputLanguageBenchmarkService';
 import { buildListeningTrainingPrescription } from './ListeningTrainerPolicy';
@@ -10,7 +17,6 @@ import type {
   ListeningTrainingIntent,
   ListeningTrainingPrescription,
 } from './types';
-import { formatSupportedLanguage } from '../languages';
 
 export type OpenRouterGeneratePromptSource =
   | 'compact-adaptive'
@@ -95,222 +101,92 @@ export function buildOpenRouterGenerationPrompt({
   const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(normalizedProfile), null, 2);
   const llmPrompt = buildDictationScriptPrompt(normalizedProfile);
   const outputTemplate = buildDictationScriptTemplate(normalizedProfile.inputMode, normalizedProfile.language);
-  const hasSessionFeedback = Boolean(sessionFeedback);
-  const compactBenchmark = JSON.stringify(
-    {
-      profileKey: `${normalizedProfile.inputMode}/${normalizedProfile.language}`,
-      sessionCount: normalizedProfile.sessionCount,
-      sampleCount: normalizedProfile.sampleCount,
-      lastUpdatedAt: normalizedProfile.lastUpdatedAt ?? null,
-      recommendation: normalizedProfile.recommendation,
-      weakAreas: normalizedProfile.weakAreas,
-      kpis: {
-        sweetSpotScore: normalizedProfile.sweetSpotScore,
-        semanticFidelityScore: normalizedProfile.semanticFidelityScore,
-        controlFidelityScore: normalizedProfile.controlFidelityScore,
-        learningEffectivenessScore: normalizedProfile.learningEffectivenessScore,
-        flowStabilityScore: normalizedProfile.flowStabilityScore,
-        averageAccuracy: normalizedProfile.averageAccuracy,
-        averageWpm: normalizedProfile.averageWpm,
-        averageLagSec: normalizedProfile.averageLagSec,
-        preferredPlaybackRate: normalizedProfile.preferredPlaybackRate,
-        preferredPhraseSize: normalizedProfile.preferredPhraseSize,
-      },
-    },
-    null,
-    2,
-  );
-  const compactSessionFeedback = JSON.stringify(
-    sessionFeedback
-      ? {
-          verdict: sessionFeedback.verdict,
-          improvementDelta: sessionFeedback.improvementDelta,
-          playbackIssues: {
-            repeatedPhraseCount: sessionFeedback.playbackIssues.repeatedPhraseCount,
-            maxRepeatCountForSinglePhrase: sessionFeedback.playbackIssues.maxRepeatCountForSinglePhrase,
-            skippedPhraseCount: sessionFeedback.playbackIssues.skippedPhraseCount,
-            outOfOrderAdvanceCount: sessionFeedback.playbackIssues.outOfOrderAdvanceCount,
-            replayAdvancedPhraseCount: sessionFeedback.playbackIssues.replayAdvancedPhraseCount,
-            phraseIndexJumpCount: sessionFeedback.playbackIssues.phraseIndexJumpCount,
-          },
-          phraseStats: sessionFeedback.phraseStats,
-          notes: sessionFeedback.notes.slice(0, 8),
-        }
-      : { verdict: 'n/a' },
-    null,
-    2,
-  );
-  const compactPromptPackage = JSON.stringify(
-    {
-      benchmark: JSON.parse(compactBenchmark) as Record<string, unknown>,
-      latestSessionFeedback: JSON.parse(compactSessionFeedback) as Record<string, unknown>,
-      llmPrompt,
-    },
-    null,
-    2,
-  );
-  const compactAdaptiveV2Context = JSON.stringify(
-    {
-      profileKey: `${normalizedProfile.inputMode}/${normalizedProfile.language}`,
-      inputMode: normalizedProfile.inputMode,
-      language: normalizedProfile.language,
-      trainingPrescription,
-      sessionCount: normalizedProfile.sessionCount,
-      sampleCount: normalizedProfile.sampleCount,
-      weakAreas: normalizedProfile.weakAreas,
-      recommendation: normalizedProfile.recommendation,
-      kpis: {
-        sweetSpotScore: normalizedProfile.sweetSpotScore,
-        semanticFidelityScore: normalizedProfile.semanticFidelityScore,
-        controlFidelityScore: normalizedProfile.controlFidelityScore,
-        learningEffectivenessScore: normalizedProfile.learningEffectivenessScore,
-        flowStabilityScore: normalizedProfile.flowStabilityScore,
-        averageAccuracy: normalizedProfile.averageAccuracy,
-        averageWpm: normalizedProfile.averageWpm,
-        averageLagSec: normalizedProfile.averageLagSec,
-        preferredPlaybackRate: normalizedProfile.preferredPlaybackRate,
-        preferredPhraseSize: normalizedProfile.preferredPhraseSize,
-      },
-      ...(sessionFeedback
-        ? {
-            latestSessionFeedback: {
-              verdict: sessionFeedback.verdict,
-              improvementDelta: sessionFeedback.improvementDelta,
-              playbackIssues: {
-                repeatedPhraseCount: sessionFeedback.playbackIssues.repeatedPhraseCount,
-                maxRepeatCountForSinglePhrase: sessionFeedback.playbackIssues.maxRepeatCountForSinglePhrase,
-                skippedPhraseCount: sessionFeedback.playbackIssues.skippedPhraseCount,
-                outOfOrderAdvanceCount: sessionFeedback.playbackIssues.outOfOrderAdvanceCount,
-                replayAdvancedPhraseCount: sessionFeedback.playbackIssues.replayAdvancedPhraseCount,
-                phraseIndexJumpCount: sessionFeedback.playbackIssues.phraseIndexJumpCount,
-              },
-              phraseStats: sessionFeedback.phraseStats,
-              notes: sessionFeedback.notes.slice(0, 8),
-            },
-          }
-        : {}),
-    },
-    null,
-    2,
-  );
+  const compactBenchmark = buildCompactBenchmarkContext(normalizedProfile);
+  const compactSessionFeedback = buildCompactSessionFeedbackContext(sessionFeedback);
+  const compactPromptPackage = buildCompactPromptPackage({ compactBenchmark, compactSessionFeedback, llmPrompt });
+  const compactAdaptiveV2Context = buildCompactAdaptiveV2Context({
+    normalizedProfile,
+    sessionFeedback,
+    trainingPrescription,
+  });
   const compactBenchmarkOnlyPackage = `Compact benchmark context:\n${compactBenchmark}\n\nLLM prompt:\n${llmPrompt}`;
   const originalBenchmarkOnlyPackage = `Benchmark JSON context:\n${benchmarkJson}\n\nLLM prompt:\n${llmPrompt}`;
   const originalAdaptivePackage = buildBenchmarkFeedbackPromptPackage(normalizedProfile, sessionFeedback, llmPrompt, {
     activeSessionStatus: undefined,
   });
-  const targetSpokenWords = Math.round(durationMinutes * 60 * 2.6);
-  const minSpokenWords = Math.round(targetSpokenWords * 0.85);
-  const maxSpokenWords = Math.round(targetSpokenWords * 1.1);
-  const minimumPhraseCount = durationMinutes * 10;
-  const durationLabel = formatDurationMinutes(durationMinutes);
-  const hardRules = [
-    'Return only a single JSON object. Do not wrap it in Markdown.',
-    `The returned JSON field "inputMode" must be exactly "${normalizedProfile.inputMode}".`,
-    `The returned JSON field "language" must be exactly "${normalizedProfile.language}".`,
-    ...(targetDifficulty ? [`The returned JSON field "difficulty" must be exactly "${targetDifficulty}".`] : []),
-    ...(difficultyInstruction ? [difficultyInstruction] : []),
-    `Generate a training script with voice playback duration of ${durationLabel} and set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
-    `The combined spoken text across all phrases should be ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total, so the actual dictation lasts about ${durationLabel}.`,
-    `Create at least ${minimumPhraseCount} phrases unless the phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
-    'If unsure, prefer a slightly longer script over a short one. Do not satisfy the duration by changing only "estimatedDurationSec"; generate enough phrase text to match the requested audio length.',
-    '"estimatedDurationSec" means the expected time the learner hears the voice/audio, not total attempt or typing time.',
-    'The JSON must validate against the DictationScript output template.',
-    ...(diversificationHints && diversificationHints.length > 0
-      ? [
-          'Diversification constraints:',
-          ...diversificationHints.map((hint, index) => `${index + 1}. ${hint}`),
-        ]
-      : []),
-    '',
-    'Output template:',
-    outputTemplate,
-  ].join('\n');
-  const languageName = formatSupportedLanguage(normalizedProfile.language);
-  const compactAdaptiveV2Prompt = [
-    'Generate the next Dicta dictation training session.',
-    'Return only valid JSON. Do not use Markdown or code fences.',
-    `Use exactly inputMode "${normalizedProfile.inputMode}" and language "${normalizedProfile.language}".`,
-    `Write all phrase text naturally in ${languageName}.`,
-    'The LLM generates structured training material only.',
-    'Dicta runtime and the Adaptive Pace Layer control playback, pacing, recovery, rate, pauses, chunking, and Browser TTS execution.',
-    'Follow trainingPrescription as the pedagogical source of truth.',
-    'Use benchmark and latest feedback as context, but do not override trainingPrescription.',
-    `Set "difficulty" exactly to "${trainingPrescription.difficulty}".`,
-    `Set "recommendedRateRange" to ${JSON.stringify(trainingPrescription.targetRateRange)}.`,
-    `Set "recommendedPhraseSize" to "${trainingPrescription.targetPhraseSize}".`,
-    `Set "recommendedPauseMs" close to ${trainingPrescription.targetPauseMs}.`,
-    `Keep phrase-level "difficulty" values in ${trainingPrescription.phraseDifficultyRange[0].toFixed(2)}-${trainingPrescription.phraseDifficultyRange[1].toFixed(2)}.`,
-    ...buildTrainingPrescriptionRequestNotes(trainingPrescription, targetDifficulty, difficultyInstruction),
-    `Target voice playback duration: ${durationLabel}; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
-    `Combined spoken phrase text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
-    `Create at least ${minimumPhraseCount} phrases unless phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
-    'Generate semantic phrases compatible with trainingPrescription.',
-    'Use safe semantic boundaries, replayable phrases when possible, the prescribed phrase difficulty range, content guidance, and pacing-compatible phrase lengths.',
-    'Do not satisfy duration by changing only "estimatedDurationSec"; generate enough phrase text.',
-    ...(diversificationHints && diversificationHints.length > 0
-      ? [
-          'Diversification constraints:',
-          ...diversificationHints.map((hint, index) => `${index + 1}. ${hint}`),
-        ]
-      : []),
-    '',
-    'Required output JSON schema/template:',
-    outputTemplate,
-    '',
-    'Compact adaptive context:',
-    compactAdaptiveV2Context,
-  ].join('\n');
-  const sourcePayload = (() => {
-    switch (promptSource) {
-      case 'compact-adaptive':
-        return hasSessionFeedback ? compactPromptPackage : compactBenchmarkOnlyPackage;
-      case 'compact-adaptive-v2':
-        return null;
-      case 'compact-benchmark-only':
-        return compactBenchmarkOnlyPackage;
-      case 'compact-base':
-        return llmPrompt;
-      case 'original-adaptive':
-        return hasSessionFeedback ? originalAdaptivePackage : originalBenchmarkOnlyPackage;
-      case 'original-benchmark-only':
-        return originalBenchmarkOnlyPackage;
-      case 'original-base':
-        return llmPrompt;
-    }
-  })();
 
   if (promptSource === 'compact-adaptive-v2') {
     return {
-      prompt: compactAdaptiveV2Prompt,
+      prompt: buildCompactAdaptiveV2Prompt({
+        normalizedProfile,
+        trainingPrescription,
+        outputTemplate,
+        durationMinutes,
+        targetDifficulty,
+        difficultyInstruction,
+        diversificationHints,
+        compactAdaptiveV2Context,
+      }),
       outputTemplate,
       trainingPrescription,
     };
   }
 
   return {
-    prompt: `${hardRules}\n\nGeneration context:\n${sourcePayload}`,
+    prompt: `${buildOpenRouterHardRulesPrompt({
+      normalizedProfile,
+      outputTemplate,
+      durationMinutes,
+      targetDifficulty,
+      difficultyInstruction,
+      diversificationHints,
+    })}\n\nGeneration context:\n${selectOpenRouterSourcePayload({
+      promptSource,
+      hasSessionFeedback: Boolean(sessionFeedback),
+      compactPromptPackage,
+      compactBenchmarkOnlyPackage,
+      originalAdaptivePackage,
+      originalBenchmarkOnlyPackage,
+      llmPrompt,
+    })}`,
     outputTemplate,
     trainingPrescription,
   };
 }
 
-function formatDurationMinutes(minutes: OpenRouterDurationMinutes): string {
-  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
-}
+type OpenRouterSourcePayloadArgs = {
+  promptSource: OpenRouterGeneratePromptSource;
+  hasSessionFeedback: boolean;
+  compactPromptPackage: string;
+  compactBenchmarkOnlyPackage: string;
+  originalAdaptivePackage: string;
+  originalBenchmarkOnlyPackage: string;
+  llmPrompt: string;
+};
 
-function buildTrainingPrescriptionRequestNotes(
-  trainingPrescription: ListeningTrainingPrescription,
-  targetDifficulty?: DictationScriptDifficulty,
-  difficultyInstruction?: string,
-): string[] {
-  const notes: string[] = [];
-  if (targetDifficulty) {
-    notes.push(
-      `User requested difficulty "${targetDifficulty}", resolved trainer difficulty "${trainingPrescription.difficulty}". Use the resolved trainer difficulty.`,
-    );
+function selectOpenRouterSourcePayload({
+  promptSource,
+  hasSessionFeedback,
+  compactPromptPackage,
+  compactBenchmarkOnlyPackage,
+  originalAdaptivePackage,
+  originalBenchmarkOnlyPackage,
+  llmPrompt,
+}: OpenRouterSourcePayloadArgs): string {
+  switch (promptSource) {
+    case 'compact-adaptive':
+      return hasSessionFeedback ? compactPromptPackage : compactBenchmarkOnlyPackage;
+    case 'compact-benchmark-only':
+      return compactBenchmarkOnlyPackage;
+    case 'compact-base':
+      return llmPrompt;
+    case 'original-adaptive':
+      return hasSessionFeedback ? originalAdaptivePackage : originalBenchmarkOnlyPackage;
+    case 'original-benchmark-only':
+      return originalBenchmarkOnlyPackage;
+    case 'original-base':
+      return llmPrompt;
+    case 'compact-adaptive-v2':
+      return compactBenchmarkOnlyPackage;
   }
-  if (difficultyInstruction) {
-    notes.push(`Original difficulty note is secondary to trainingPrescription: ${difficultyInstruction}`);
-  }
-  return notes;
 }
