@@ -1,21 +1,16 @@
 import type {
   PerfDiagnosticsConfig,
   PerfDiagnosticsSnapshot,
-  PerfInputEvent,
   PerfLongTask,
-  PerfSlowSpan,
-  PerfTtsUtterance,
   PerfTtsVoice,
 } from './perfDiagnosticsTypes';
 import {
   DEFAULT_SLOW_SPAN_THRESHOLD_MS,
-  MAX_RECENT_ITEMS,
   getStandaloneMode,
   getUserAgent,
   isPerfDiagnosticsEnabled,
   now,
   roundMs,
-  trimArray,
 } from './perfDiagnosticsUtils';
 import {
   buildPerfInputEvent,
@@ -23,7 +18,7 @@ import {
   recordPerfInputPaint,
 } from './perfDiagnosticsInputEvents';
 import { createPerfLongTaskObserver } from './perfDiagnosticsLongTaskObserver';
-import { buildPerfDiagnosticsSnapshot } from './perfDiagnosticsSnapshot';
+import { PerfDiagnosticsState } from './perfDiagnosticsState';
 import {
   buildPerfTtsUtterance,
   recordPerfTtsEnd,
@@ -36,18 +31,7 @@ import {
 export class PerfDiagnostics {
   private enabled = false;
   private slowSpanThresholdMs = DEFAULT_SLOW_SPAN_THRESHOLD_MS;
-  private nextInputId = 1;
-  private nextTtsPlayId = 1;
-  private nextTtsUtteranceId = 1;
-  private inputEvents: PerfInputEvent[] = [];
-  private inputEventsById = new Map<number, PerfInputEvent>();
-  private longTasks: PerfLongTask[] = [];
-  private slowSpans: PerfSlowSpan[] = [];
-  private ttsPlays = new Map<number, { id: number; clickedAt: number; source: string }>();
-  private ttsUtterances: PerfTtsUtterance[] = [];
-  private ttsUtterancesById = new Map<number, PerfTtsUtterance>();
-  private ttsVoices: PerfTtsVoice[] = [];
-  private renderCounts: Record<string, number> = {};
+  private state = new PerfDiagnosticsState();
   private observer: PerformanceObserver | null = null;
 
   configure(config: PerfDiagnosticsConfig): boolean {
@@ -66,18 +50,7 @@ export class PerfDiagnostics {
   }
 
   reset(): void {
-    this.nextInputId = 1;
-    this.nextTtsPlayId = 1;
-    this.nextTtsUtteranceId = 1;
-    this.inputEvents = [];
-    this.inputEventsById.clear();
-    this.longTasks = [];
-    this.slowSpans = [];
-    this.ttsPlays.clear();
-    this.ttsUtterances = [];
-    this.ttsUtterancesById.clear();
-    this.ttsVoices = [];
-    this.renderCounts = {};
+    this.state.reset();
   }
 
   dispose(): void {
@@ -87,7 +60,7 @@ export class PerfDiagnostics {
 
   recordRender(component: string, count: number): void {
     if (!this.enabled) return;
-    this.renderCounts[component] = count;
+    this.state.recordRender(component, count);
   }
 
   recordInputChange(args: {
@@ -99,51 +72,44 @@ export class PerfDiagnostics {
     renderCount: number;
   }): number {
     if (!this.enabled) return 0;
-    const id = this.nextInputId;
-    this.nextInputId += 1;
+    const id = this.state.nextInputEventId();
     const event = buildPerfInputEvent(id, args);
-    this.inputEventsById.set(id, event);
-    this.inputEvents.push(event);
-    trimArray(this.inputEvents, MAX_RECENT_ITEMS);
+    this.state.addInputEvent(event);
     return id;
   }
 
   recordInputPaint(id: number, paintAt: number): void {
     if (!this.enabled || id <= 0) return;
-    const event = this.inputEventsById.get(id);
+    const event = this.state.getInputEvent(id);
     if (!event) return;
     recordPerfInputPaint(event, paintAt);
   }
 
   recordInputCommit(id: number, commitAt: number): void {
     if (!this.enabled || id <= 0) return;
-    const event = this.inputEventsById.get(id);
+    const event = this.state.getInputEvent(id);
     if (!event) return;
     recordPerfInputCommit(event, commitAt);
   }
 
   beginTtsPlay(source: string): number {
     if (!this.enabled) return 0;
-    const id = this.nextTtsPlayId;
-    this.nextTtsPlayId += 1;
-    this.ttsPlays.set(id, { id, clickedAt: now(), source });
+    const id = this.state.nextTtsPlayIdentifier();
+    this.state.setTtsPlay({ id, clickedAt: now(), source });
     return id;
   }
 
   beginTtsUtterance(args: PerfTtsUtteranceArgs): number {
     if (!this.enabled) return 0;
-    const play = this.ttsPlays.get(args.playId);
-    const id = this.nextTtsUtteranceId;
-    this.nextTtsUtteranceId += 1;
+    const play = this.state.getTtsPlay(args.playId);
+    const id = this.state.nextTtsUtteranceIdentifier();
     const utterance = buildPerfTtsUtterance(id, args, play?.clickedAt ?? now());
-    this.ttsUtterancesById.set(id, utterance);
-    this.ttsUtterances.push(utterance);
-    trimArray(this.ttsUtterances, MAX_RECENT_ITEMS);
+    this.state.addTtsUtterance(utterance);
     return id;
   }
 
   recordTtsVoices(voices: PerfTtsVoice[]): void {
-    this.ttsVoices = voices;
+    this.state.setTtsVoices(voices);
     if (!this.enabled) return;
     this.log('tts-voices', {
       count: voices.length,
@@ -152,25 +118,25 @@ export class PerfDiagnostics {
   }
 
   recordTtsSpeak(utteranceId: number): void {
-    const utterance = this.ttsUtterancesById.get(utteranceId);
+    const utterance = this.state.getTtsUtterance(utteranceId);
     if (!this.enabled || !utterance) return;
     recordPerfTtsSpeak(utterance);
   }
 
   recordTtsStart(utteranceId: number): void {
-    const utterance = this.ttsUtterancesById.get(utteranceId);
+    const utterance = this.state.getTtsUtterance(utteranceId);
     if (!this.enabled || !utterance) return;
     recordPerfTtsStart(utterance);
   }
 
   recordTtsEnd(utteranceId: number): void {
-    const utterance = this.ttsUtterancesById.get(utteranceId);
+    const utterance = this.state.getTtsUtterance(utteranceId);
     if (!this.enabled || !utterance) return;
     recordPerfTtsEnd(utterance);
   }
 
   recordTtsError(utteranceId: number, error: string): void {
-    const utterance = this.ttsUtterancesById.get(utteranceId);
+    const utterance = this.state.getTtsUtterance(utteranceId);
     if (!this.enabled || !utterance) return;
     recordPerfTtsError(utterance, error);
     this.log('tts-error', utterance);
@@ -178,12 +144,11 @@ export class PerfDiagnostics {
 
   recordLongTask(task: PerfLongTask): void {
     if (!this.enabled) return;
-    this.longTasks.push({
+    this.state.addLongTask({
       name: task.name,
       startTime: roundMs(task.startTime),
       duration: roundMs(task.duration),
     });
-    trimArray(this.longTasks, MAX_RECENT_ITEMS);
   }
 
   recordSpan(name: string, startedAt: number, context?: Record<string, unknown>): void {
@@ -196,8 +161,7 @@ export class PerfDiagnostics {
       duration: roundMs(duration),
       context,
     };
-    this.slowSpans.push(span);
-    trimArray(this.slowSpans, MAX_RECENT_ITEMS);
+    this.state.addSlowSpan(span);
     this.log('slow-span', span);
   }
 
@@ -218,15 +182,7 @@ export class PerfDiagnostics {
   }
 
   snapshot(): PerfDiagnosticsSnapshot {
-    return buildPerfDiagnosticsSnapshot({
-      enabled: this.enabled,
-      inputEvents: this.inputEvents,
-      longTasks: this.longTasks,
-      slowSpans: this.slowSpans,
-      ttsUtterances: this.ttsUtterances,
-      ttsVoices: this.ttsVoices,
-      renderCounts: this.renderCounts,
-    });
+    return this.state.snapshot(this.enabled);
   }
 
   log(event: string, payload: unknown): void {
