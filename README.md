@@ -123,8 +123,13 @@ Set public Vite Supabase vars locally and in Vercel:
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUPABASE_SYNC_PROFILE_ID`
 - `VITE_DICTA_AUTH_REDIRECT_ORIGIN`
+- `VITE_DICTA_APP_ORIGIN`
 
 Set `VITE_DICTA_AUTH_REDIRECT_ORIGIN` to the public canonical Dicta app origin in production so Supabase password recovery emails do not send members to protected Vercel preview/deployment URLs. Supabase Auth URL Configuration must allow the resulting `${VITE_DICTA_AUTH_REDIRECT_ORIGIN}/training` redirect URL.
+
+Set `VITE_DICTA_APP_ORIGIN` to the public canonical Dicta app origin in production so in-app navigation from preview deployments returns to production instead of staying on the preview host.
+
+Set `VITE_DICTA_APP_ORIGIN` to the public canonical Dicta app origin in production so in-app training navigation such as the `Full app` button returns users to production instead of the current preview deployment.
 
 Optional local-only verification vars:
 

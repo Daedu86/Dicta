@@ -1,4 +1,5 @@
 import { useDictaLocalStorageImportRuntime } from './useDictaLocalStorageImportRuntime';
+import { buildAppUrl } from './appOrigin';
 import { useDictaRootRouteCompositionRuntime } from './useDictaRootRouteCompositionRuntime';
 import { buildDictaRuntimeRootRouteCompositionInput } from './dictaRuntimeRootRouteCompositionInput';
 import type { DictaRuntimeRootAdaptiveWorkspaceGraph } from './useDictaRuntimeRootAdaptiveWorkspaceGraph';
@@ -39,8 +40,12 @@ export function useDictaRuntimeRootPresentationGraph({
   } = environment;
 
   const { sessions, setSessions, activeSessionId, setActiveSessionId } = sessionsState;
-  const { workspaceMode, navigateAppRoute, showLeaderboardWorkspace, clearDashboardSession } = routing;
+  const { workspaceMode, showLeaderboardWorkspace, clearDashboardSession } = routing;
   const { themeMode } = theme;
+  const onBackToApp = () => window.location.assign(buildAppUrl('/', {
+    configuredOrigin: import.meta.env.VITE_DICTA_APP_ORIGIN,
+    currentOrigin: window.location.origin,
+  }));
 
   const {
     syncConfig,
@@ -110,7 +115,7 @@ export function useDictaRuntimeRootPresentationGraph({
       themeMode,
       dictaLanguageView,
       setDictaLanguageView,
-      navigateAppRoute,
+      onBackToApp,
       focusedTrainingProps,
       perfDiagnosticsEnabled,
       appShellHeaderProps: routeCompositionRuntime.appShellHeaderProps,

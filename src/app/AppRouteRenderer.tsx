@@ -25,7 +25,7 @@ type AppRouteRendererProps = {
   themeMode: string;
   dictaLanguageView: ComponentProps<typeof TrainingHeader>['selectedLanguage'];
   setDictaLanguageView: ComponentProps<typeof TrainingHeader>['onChangeLanguage'];
-  navigateAppRoute: (path: '/') => void;
+  onBackToApp: ComponentProps<typeof TrainingHeader>['onBackToApp'];
   focusedTrainingProps: TrainingViewProps<StoredSession>;
   perfDiagnosticsEnabled: boolean;
   appShellHeaderProps: Omit<ComponentProps<typeof AppShellHeader>, 'children'>;
@@ -67,7 +67,7 @@ export function AppRouteRenderer({
   themeMode,
   dictaLanguageView,
   setDictaLanguageView,
-  navigateAppRoute,
+  onBackToApp,
   focusedTrainingProps,
   perfDiagnosticsEnabled,
   appShellHeaderProps,
@@ -117,7 +117,7 @@ export function AppRouteRenderer({
         <TrainingHeader
           selectedLanguage={dictaLanguageView}
           onChangeLanguage={setDictaLanguageView}
-          onBackToApp={() => navigateAppRoute('/')}
+          onBackToApp={onBackToApp}
         />
         <TrainingView {...focusedTrainingProps} />
         <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />

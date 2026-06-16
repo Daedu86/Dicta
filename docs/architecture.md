@@ -58,6 +58,7 @@ Browser app:
 - `src/app/useDictaRootOpenRouterRuntime.ts`: root OpenRouter adapter that maps active input mode to OpenRouter fallback input mode and delegates to `useDictaOpenRouterRuntime`.
 - `src/app/useDictaRootRouteCompositionRuntime.ts`: root route-composition adapter that delegates to `useDictaAppRouteCompositionRuntime`.
 - `src/app/AppRouteRenderer.tsx`: route-level render branching for auth, focused training, workspace, dashboard, adaptive, OpenRouter, Admin, Leaderboard, and fallbacks.
+- `src/app/appOrigin.ts`: canonical app-origin helper used for production-return navigation and other absolute in-app links.
 - `src/app/useSupabaseAuthActions.ts`: browser-side Supabase sign-in, password reset/update, and sign-out action handlers. Password recovery redirects use `VITE_DICTA_AUTH_REDIRECT_ORIGIN` when configured, with a local/dev fallback to the current browser origin, so hosted member recovery does not depend on protected Vercel preview URLs.
 - `src/app/useAuthProfileRuntime.ts`: auth/profile composition boundary over auth state, profile resolution, Supabase auth actions, and auth header construction.
 - `src/app/useSessionCreationRuntime.ts`: browser-side plain-text session creation, DictationScript import validation/creation, and OpenRouter script session creation actions.
