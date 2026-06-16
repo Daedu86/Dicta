@@ -118,9 +118,9 @@ export function LiveMetricsDock({
               type="button"
               className="secondary-button live-metrics-report-button"
               onClick={() => void onCopyInsightsDiagnosticPackage()}
-              title={`Copy user progress summary + adaptive system diagnosis + technical debug data for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}.`}
+              title={`Copy one structured adaptive report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
             >
-              Copy insights report
+              Copy adaptive report
             </button>
             <button
               type="button"
