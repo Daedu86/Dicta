@@ -12,10 +12,10 @@ export const phraseSizeForMode: Record<PacingMode, PhraseSize> = {
 };
 
 export const idealPauseByMode: Record<PacingMode, number> = {
-  recovery: 2200,
-  support: 1200,
-  balanced: 750,
-  flow: 350,
+  recovery: 3200,
+  support: 2400,
+  balanced: 1800,
+  flow: 1200,
 };
 
 export function clamp(value: number, min: number, max: number): number {
