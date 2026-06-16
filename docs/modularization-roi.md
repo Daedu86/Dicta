@@ -2,9 +2,9 @@
 
 Status: ACTIVE  
 Scope: whole repository  
-Last updated: 2026-06-15  
+Last updated: 2026-06-16  
 Verified against branch: `product/input-2`  
-Verified against code baseline: repo KB ownership refresh after App shell archive compaction.  
+Verified against code baseline: runtime root boundary refresh.  
 Test map checked: `docs/module-test-map.md`  
 Current App-shell checkpoint: `docs/app-shell-modularization-map.md`
 
@@ -21,7 +21,9 @@ Dicta is in consolidation phase.
 Already completed:
 
 - `src/App.tsx` is shell-only and must stay that way.
-- `src/app/DictaAppRuntime.tsx` is the browser composition root.
+- `src/app/DictaAppRuntime.tsx` is an export shim and must stay behavior-free.
+- `src/app/DictaAppRuntimeRoot.tsx` is the browser composition root.
+- `useDictaAppBootRuntime`, `useDictaRootOpenRouterRuntime`, and `useDictaRootRouteCompositionRuntime` own the current root boot/adapter seams.
 - Browser TTS playback-loop ownership.
 - TTS controls, metrics, telemetry, UI publishing, progress estimation, reset, and submit runtimes.
 - Focused training runtime and delegate grouping.
@@ -34,7 +36,7 @@ Already completed:
 
 Current hotspots from the latest line-count review:
 
-- `src/app/DictaAppRuntime.tsx` remains the main composition root; do not split it unless the new owner/test seam is clear.
+- `src/app/DictaAppRuntimeRoot.tsx` remains the main composition root; do not split it unless the new owner/test seam is clear.
 - `src/app/useSessionPersistenceSync.ts` is the best current modularization candidate if the task is explicitly refactor/modularization work.
 - `src/components/openrouter/OpenRouterWorkspace.tsx` and `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` are UI-size hotspots, but their runtime state is already separated.
 - `src/core/supabaseSync.ts` is important but high-risk; characterize before extracting.
@@ -124,7 +126,11 @@ Do not start another broad App-shell or OpenRouter extraction by default.
 The last ownership cuts created clear owners:
 
 - `src/App.tsx` for shell-only entry.
-- `src/app/DictaAppRuntime.tsx` for browser runtime composition.
+- `src/app/DictaAppRuntime.tsx` as the export shim.
+- `src/app/DictaAppRuntimeRoot.tsx` for browser runtime composition.
+- `useDictaAppBootRuntime` for root boot state buckets and refs.
+- `useDictaRootOpenRouterRuntime` for root OpenRouter adaptation.
+- `useDictaRootRouteCompositionRuntime` for root route-composition handoff.
 - `useOpenRouterDirectGenerationRuntime` for direct generation.
 - `useOpenRouterJobPollingRuntime` for job polling/settlement.
 - `openRouterGenerationFailurePolicy` for shared failure policy.
