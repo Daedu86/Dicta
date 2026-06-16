@@ -1,9 +1,7 @@
 import type { PhraseSize } from '../core/adaptive/types';
-import {
-  buildBrowserTtsPlaybackPlan,
-  type BrowserTtsBoundaryStrictness,
-} from './browserTtsPlaybackPlan';
-import { buildBrowserTtsPlaybackStartPlan } from './browserTtsPlaybackStartPlan';
+import type { BrowserTtsBoundaryStrictness } from './browserTtsPlaybackPlan';
+import { buildBrowserTtsPlaybackLoopChunkPlan } from './browserTtsPlaybackLoopChunkPlan';
+import { createBrowserTtsPlaybackLoopStartContext } from './browserTtsPlaybackLoopStartContext';
 import { handleBrowserTtsPlaybackLoopChunkEnd } from './browserTtsPlaybackLoopCompletionHandler';
 import { handleBrowserTtsPlaybackLoopChunkStart } from './browserTtsPlaybackLoopStartHandler';
 import { handleBrowserTtsPlaybackLoopError } from './browserTtsPlaybackLoopErrorHandler';
@@ -13,7 +11,6 @@ import {
   finishBrowserTtsPlaybackLoop,
   startBrowserTtsPlaybackLoopState,
 } from './browserTtsPlaybackLoopLifecycle';
-import { buildBrowserTtsPlaybackRuntimeSnapshot } from './browserTtsPlaybackLoopRuntimeSnapshot';
 import { commitBrowserTtsPlaybackLoopChunk } from './browserTtsPlaybackLoopChunkCommit';
 import { createBrowserTtsPlaybackUtterance } from './browserTtsPlaybackLoopUtterance';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
@@ -92,24 +89,22 @@ export function useBrowserTtsPlaybackLoop({
     }
 
     stopTtsPlaybackRef.current();
-    const playbackStartPlan = buildBrowserTtsPlaybackStartPlan({
+    const startContext = createBrowserTtsPlaybackLoopStartContext({
+      activeSession,
       ttsText,
       ttsLanguage,
       ttsPacingMode,
       startWordIndex,
       buildSemanticPhrasesForCurrentSession,
+      resolveActiveBrowserTtsVoice,
+      collectBrowserTtsEnvironmentForSession,
     });
-    if (!playbackStartPlan.ok) {
-      setError('Paste TTS text before playing.');
+    if (!startContext.ok) {
+      setError(startContext.error);
       return;
     }
 
-    const browserTtsVoice = resolveActiveBrowserTtsVoice();
-    const browserTtsEnvironment = collectBrowserTtsEnvironmentForSession(
-      activeSession,
-      browserTtsVoice,
-      browserTtsVoice?.voiceURI ?? activeSession?.ttsVoiceURI ?? null,
-    );
+    const { playbackStartPlan, browserTtsVoice, browserTtsEnvironment } = startContext;
     const {
       sourceWords,
       clampedStartWordIndex,
@@ -174,22 +169,6 @@ export function useBrowserTtsPlaybackLoop({
         return;
       }
 
-      const {
-        historyProfile,
-        liveSignal,
-        livePracticeEvaluation,
-        browserTtsProfile,
-        browserTtsBenchmark,
-        navigatorInfo,
-        browserTtsRecovery,
-      } = buildBrowserTtsPlaybackRuntimeSnapshot({
-        ttsLanguage,
-        ttsTranscript,
-        ttsLiveSignalRef,
-        ttsPracticeLiveTextRef,
-        getHistoricalPerformanceProfile,
-        getBenchmarkSnapshot,
-      });
       const semanticPhrase = semanticPhrases[macroPhraseIndex];
       const macroWords = semanticPhraseWords[macroPhraseIndex] ?? [];
       const macroStartWordIndex = semanticPhraseStartWordIndices[macroPhraseIndex] ?? 0;
@@ -204,29 +183,27 @@ export function useBrowserTtsPlaybackLoop({
         recordPhrasePlaybackEvent('phrase_started', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
       }
 
-      const playbackPlan = buildBrowserTtsPlaybackPlan({
+      const playbackPlan = buildBrowserTtsPlaybackLoopChunkPlan({
+        ttsLanguage,
+        ttsTranscript,
+        ttsLiveSignalRef,
+        ttsPracticeLiveTextRef,
+        getHistoricalPerformanceProfile,
+        getBenchmarkSnapshot,
+        ttsSpeechRate,
+        ttsPlaybackProfile,
+        getAdaptiveController,
+        estimateTtsSpokenWordIndex,
         macroWords,
         macroWordOffset,
         macroStartWordIndex,
-        language: ttsLanguage,
         lastPhraseSize,
         lastBoundaryStrictness,
-        liveSignal,
-        livePracticeEvaluation,
-        browserTtsProfile,
-        browserTtsBenchmark,
-        browserTtsRecovery,
-        ttsSpeechRate,
-        ttsPlaybackPauseMs: ttsPlaybackProfile.pauseMs,
-        adaptiveController: getAdaptiveController('browser-tts', ttsLanguage),
-        historyProfile,
         sourceWordCount: sourceWords.length,
-        estimatedSpokenWordIndex: estimateTtsSpokenWordIndex(),
         chunkIndex,
         unsafeChunkCount: ttsUnsafeChunkCountRef.current,
         accuracyWindow: ttsChunkAccuracyWindowRef.current,
         lastAccuracySnapshot: ttsLastAccuracySnapshotRef.current,
-        navigatorInfo,
       });
 
       if (!playbackPlan) {
