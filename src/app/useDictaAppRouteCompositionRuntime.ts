@@ -1,6 +1,6 @@
 import { useAdaptiveWorkspaceRouteRuntime } from './useAdaptiveWorkspaceRouteRuntime';
 import { useAppPresentationRuntime } from './useAppPresentationRuntime';
-import { mapSessionInputMode } from './appRuntimeHelpers';
+import { buildAdaptiveWorkspaceRouteRuntimeInput } from './adaptiveWorkspaceRouteRuntimeInput';
 
 type AdaptiveWorkspaceRouteRuntimeArgs = Parameters<typeof useAdaptiveWorkspaceRouteRuntime>[0];
 type AppPresentationRuntimeArgs = Parameters<typeof useAppPresentationRuntime>[0];
@@ -34,7 +34,7 @@ type RouteDerivedLiveMetricsDockKey =
   | 'copyInsightsDiagnosticPackage'
   | 'selectInsightsDiagnosticFallbackReport';
 
-type DictaAppRouteCompositionRuntimeParams =
+export type DictaAppRouteCompositionRuntimeParams =
   Omit<FlatAdaptiveWorkspaceRouteRuntimeArgs, 'mapSessionInputMode'> &
   Omit<
     FlatAppPresentationRuntimeArgs,
@@ -207,57 +207,7 @@ export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteComposit
     copyBenchmarkFeedbackPromptWithHumanFeedback,
     adaptiveAdvancedDiagnosticsProps,
     adaptiveBenchmarkSectionProps,
-  } = useAdaptiveWorkspaceRouteRuntime({
-    presentation: {
-      adaptiveBenchmarksByInputLanguage,
-      adaptiveSessionFeedbackByInputLanguage,
-      selectedBenchmarkInputMode,
-      selectedBenchmarkLanguage,
-      insightsDiagnosticInputMode,
-      metricsLanguageView,
-      latestSession,
-    },
-    exportActions: {
-      sessions,
-      activeSession,
-      activeSessionFinished,
-      sessionStatus,
-      getActiveTypingLanguage,
-      insightsDiagnosticInputMode,
-      metricsLanguageView,
-      setBenchmarkExportMessage,
-      setExportMessage,
-      setSessionFeedbackMessage,
-      setInsightsDiagnosticFallbackReport,
-      setInsightsDiagnosticMessage,
-    },
-    diagnostics: {
-      adaptiveSectionExpanded,
-      latestSession,
-      selectedBenchmarkInputMode,
-      adaptiveSemanticDebug,
-      mapSessionInputMode,
-      setAdaptiveSectionExpanded,
-      setSelectedBenchmarkInputMode,
-      setBenchmarkExportMessage,
-      setSessionFeedbackMessage,
-    },
-    benchmark: {
-      adaptiveBenchmarksByInputLanguage,
-      adaptiveSectionExpanded,
-      adaptiveBenchmarksFocusAnchor,
-      selectedBenchmarkInputMode,
-      selectedBenchmarkLanguage,
-      benchmarkExportMessage,
-      sessionFeedbackMessage,
-      formatSessionDate,
-      setAdaptiveSectionExpanded,
-      setSelectedBenchmarkInputMode,
-      setSelectedBenchmarkLanguage,
-      setBenchmarkExportMessage,
-      setSessionFeedbackMessage,
-    },
-  });
+  } = useAdaptiveWorkspaceRouteRuntime(buildAdaptiveWorkspaceRouteRuntimeInput(params));
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
 
   void openAdaptiveExportsForActiveInput;
