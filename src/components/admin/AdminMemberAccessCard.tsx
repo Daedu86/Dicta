@@ -1,16 +1,11 @@
 import type { DictaAppProfile } from '../../core/appProfiles';
 import type { OpenRouterModelSummary } from '../openrouter/types';
-
-type AccessDraft = {
-  canAccessOpenRouter: boolean;
-  assignedOpenRouterModel: string;
-  sessionLimit: string;
-};
+import type { AdminAccessDraft } from './AdminWorkspaceTypes';
 
 type AdminMemberAccessCardProps = {
   memberProfiles: DictaAppProfile[];
   profileSessionCounts: Record<string, number>;
-  accessDrafts: Record<string, AccessDraft>;
+  accessDrafts: Record<string, AdminAccessDraft>;
   accessBusyProfileId: string;
   accessMessage: string;
   memberModelOptions: OpenRouterModelSummary[];
@@ -18,7 +13,7 @@ type AdminMemberAccessCardProps = {
   openRouterModelStatus: 'idle' | 'loading' | 'ready' | 'error';
   openRouterModelError: string;
   onRefreshOpenRouterModels: () => Promise<void>;
-  onChangeAccessDraft: (profileId: string, draft: AccessDraft) => void;
+  onChangeAccessDraft: (profileId: string, draft: AdminAccessDraft) => void;
   onSaveProfileAccess: (profile: DictaAppProfile) => void;
   onResetSessionLimit: (profile: DictaAppProfile) => void;
 };
