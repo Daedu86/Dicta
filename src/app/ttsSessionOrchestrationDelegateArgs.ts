@@ -1,61 +1,19 @@
-import { useBrowserTtsPlaybackLoop } from './useBrowserTtsPlaybackLoop';
-import { useKeyboardRemapRuntime } from './useKeyboardRemapRuntime';
-import { useResetSessionRuntime } from './useResetSessionRuntime';
-import { useTtsPlaybackControls } from './useTtsPlaybackControls';
-import { useTtsPlaybackMetricsRuntime } from './useTtsPlaybackMetricsRuntime';
-import { useTtsPracticeInputRuntime } from './useTtsPracticeInputRuntime';
-import { useTtsSessionSubmitAction } from './useTtsSessionSubmitAction';
+import type {
+  BuildSemanticPhrasesForCurrentSession,
+  TtsSessionOrchestrationDelegateArgs,
+  UseTtsSessionOrchestrationRuntimeArgs,
+} from './ttsSessionOrchestrationDelegateTypes';
+
+export type {
+  TtsSessionOrchestrationDelegateArgs,
+  UseTtsSessionOrchestrationRuntimeArgs,
+} from './ttsSessionOrchestrationDelegateTypes';
 
 const TTS_BASE_WORDS_PER_SECOND = 2.6;
 
-type KeyboardArgs = Parameters<typeof useKeyboardRemapRuntime>[0];
-type PracticeInputArgs = Parameters<typeof useTtsPracticeInputRuntime>[0];
-type PlaybackMetricsArgs = Parameters<typeof useTtsPlaybackMetricsRuntime>[0];
-type BrowserPlaybackArgs = Parameters<typeof useBrowserTtsPlaybackLoop>[0];
-type PlaybackControlsArgs = Parameters<typeof useTtsPlaybackControls>[0];
-type ResetSessionArgs = Parameters<typeof useResetSessionRuntime>[0];
-type SubmitSessionArgs = Parameters<typeof useTtsSessionSubmitAction>[0];
-
-type PracticeInputDelegateArgs = Omit<PracticeInputArgs, 'handleEsKeyboardRemapKeyDown'>;
-type BrowserPlaybackDelegateArgs = Omit<
-  BrowserPlaybackArgs,
-  | 'estimateTtsSpokenWordIndex'
-  | 'ensureAttemptTelemetry'
-  | 'recordTtsTelemetryAction'
-  | 'recordTtsChunkTelemetry'
-  | 'applyTtsPerformanceSample'
->;
-type PlaybackControlsDelegateArgs = Omit<
-  PlaybackControlsArgs,
-  | 'estimateTtsSpokenWordIndex'
-  | 'playTtsFromWord'
-  | 'recordTtsTelemetryAction'
->;
-type ResetSessionDelegateArgs = Omit<ResetSessionArgs, 'stopTtsPlayback'>;
-type SubmitSessionDelegateArgs = Omit<SubmitSessionArgs, 'applyTtsPerformanceSample' | 'stopTtsPlayback'>;
-
-export type UseTtsSessionOrchestrationRuntimeArgs =
-  KeyboardArgs &
-  PracticeInputDelegateArgs &
-  Omit<PlaybackMetricsArgs, 'baseWordsPerSecond'> &
-  Omit<BrowserPlaybackDelegateArgs, 'buildSemanticPhrasesForCurrentSession'> &
-  Omit<PlaybackControlsDelegateArgs, 'ttsTranscriptWordCount'> &
-  ResetSessionDelegateArgs &
-  SubmitSessionDelegateArgs;
-
-export type TtsSessionOrchestrationDelegateArgs = {
-  keyboardRemap: KeyboardArgs;
-  practiceInput: PracticeInputDelegateArgs;
-  playbackMetrics: PlaybackMetricsArgs;
-  browserPlayback: BrowserPlaybackDelegateArgs;
-  playbackControls: PlaybackControlsDelegateArgs;
-  resetSession: ResetSessionDelegateArgs;
-  submitSession: SubmitSessionDelegateArgs;
-};
-
 export function buildTtsSessionOrchestrationDelegateArgs(
   args: UseTtsSessionOrchestrationRuntimeArgs,
-  buildSemanticPhrasesForCurrentSession: BrowserPlaybackArgs['buildSemanticPhrasesForCurrentSession'],
+  buildSemanticPhrasesForCurrentSession: BuildSemanticPhrasesForCurrentSession,
 ): TtsSessionOrchestrationDelegateArgs {
   return {
     keyboardRemap: {
