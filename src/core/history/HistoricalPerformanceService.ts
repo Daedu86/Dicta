@@ -1,3 +1,4 @@
+import { buildAdaptivePlaybackComfortProfile } from '../adaptive/adaptivePlaybackComfortProfile';
 import type {
   InputMode,
   ImprovementTrend,
@@ -51,16 +52,16 @@ export class HistoricalPerformanceService {
     const improvementTrend = majorityTrend(filtered.map((record) => record.improvementTrend));
     const profileConfidence = computeConfidence(count);
 
-    return {
+    const profile: HistoricalPerformanceProfile = {
       language,
       inputMode,
-      comfortablePlaybackRate: clamp(averageRate || 1, 0.75, 1.15),
+      comfortablePlaybackRate: clamp(averageRate || 0.82, 0.6, 1.15),
       averageWpm: Number((averageWpm || 0).toFixed(1)),
       averageAccuracy: Number((averageAccuracy || 0).toFixed(2)),
       averageLagSec: Number((averageLagSec || 0).toFixed(2)),
-      averagePauseMs: Number((averagePauseMs || 0).toFixed(0)),
+      averagePauseMs: Number((averagePauseMs || 1200).toFixed(0)),
       preferredPhraseSize: preferredSize,
-      preferredPauseAfterPhraseMs: Number((preferredPauseAfterPhraseMs || 700).toFixed(0)),
+      preferredPauseAfterPhraseMs: Number((preferredPauseAfterPhraseMs || 1200).toFixed(0)),
       typicalBackspaceRate: Number((typicalBackspaceRate || 0).toFixed(3)),
       typicalCorrectionRate: Number((typicalCorrectionRate || 0).toFixed(3)),
       strugglesWithLongPhrases: records.some((record) => record.phraseCount > 0 && record.averageWpm < 40),
@@ -70,6 +71,11 @@ export class HistoricalPerformanceService {
       improvementTrend,
       sessionsCount: count,
       profileConfidence,
+    };
+
+    return {
+      ...profile,
+      adaptivePlaybackComfortProfile: buildAdaptivePlaybackComfortProfile({ history: profile }),
     };
   }
 
