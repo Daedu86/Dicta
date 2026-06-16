@@ -231,7 +231,6 @@ export class AdaptiveDictationController {
       comfortRateMax,
     });
 
-    playbackRate = ratePolicy.playbackRate;
     const finalPlaybackRate = ratePolicy.finalPlaybackRate;
     replayRate = ratePolicy.replayRate;
     this.previousRate = finalPlaybackRate;
