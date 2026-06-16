@@ -1,0 +1,122 @@
+.adaptive-selected-profile-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.adaptive-profile-matrix {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.adaptive-profile-matrix-header,
+.adaptive-profile-matrix-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.25fr) repeat(4, minmax(96px, 1fr));
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.adaptive-profile-matrix-header {
+  color: #6b7a90;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.adaptive-profile-matrix-input {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem;
+  border: 1px solid #d7e2ee;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.adaptive-profile-matrix-input strong {
+  color: #102f63;
+}
+
+.adaptive-profile-matrix-input span {
+  color: #5f7086;
+  font-size: 0.78rem;
+}
+
+.adaptive-profile-cell {
+  display: grid;
+  gap: 0.15rem;
+  min-height: 74px;
+  padding: 0.65rem;
+  border-radius: 12px;
+  text-align: left;
+  border: 1px solid #d7e2ee;
+  background: #ffffff;
+}
+
+.adaptive-profile-cell span {
+  color: #102f63;
+  font-size: 1.15rem;
+  font-weight: 950;
+}
+
+.adaptive-profile-cell strong,
+.adaptive-profile-cell small {
+  color: #5f7086;
+}
+
+.adaptive-profile-cell-strong {
+  border-color: #2fb579;
+  background: linear-gradient(180deg, #f0fdf4, #ffffff);
+}
+
+.adaptive-profile-cell-watch {
+  border-color: #f59e0b;
+  background: linear-gradient(180deg, #fff7ed, #ffffff);
+}
+
+.adaptive-profile-cell-empty {
+  border-color: #cbd5e1;
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+}
+
+.adaptive-profile-cell-selected {
+  box-shadow: 0 0 0 3px rgba(90, 148, 232, 0.28);
+}
+
+.adaptive-profile-cell-selected::after {
+  content: 'Open cockpit';
+  color: #0f4f8f;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.adaptive-profile-matrix-legend {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  color: #5f7086;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.adaptive-health-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-right: 0.25rem;
+  border-radius: 999px;
+  vertical-align: -0.05rem;
+}
+
+.adaptive-health-strong {
+  background: #2fb579;
+}
+
+.adaptive-health-watch {
+  background: #f59e0b;
+}
+
+.adaptive-health-empty {
+  background: #94a3b8;
+}
