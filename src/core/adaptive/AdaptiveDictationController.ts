@@ -7,7 +7,6 @@ import {
   MAX_PLAYBACK_RATE,
   MIN_PLAYBACK_RATE,
   clamp,
-  idealPauseByMode,
   smoothRate,
 } from './adaptiveDictationControllerMath';
 import { chooseAdaptivePacingMode } from './adaptiveDictationControllerMode';
@@ -21,6 +20,10 @@ import {
   shouldForceAdaptiveSessionWarmup,
 } from './adaptiveDictationControllerWarmup';
 import { transitionAdaptiveControllerFrames } from './adaptiveDictationControllerFrames';
+import {
+  applyUnsupportedPhraseReplayFallback,
+  resolveAdaptivePauseReplayPolicy,
+} from './adaptiveDictationControllerPlaybackPolicy';
 import { resolveListeningPrecisionRateCeiling } from './adaptiveDictationControllerPrecision';
 import { resolveAdaptiveNextPhraseSize } from './adaptiveDictationControllerPhrase';
 import { applyAdaptivePausePolicy, buildAdaptivePacingReasonArtifacts } from './adaptiveDictationControllerReasons';
@@ -79,10 +82,8 @@ export class AdaptiveDictationController {
       return warmupDecision;
     }
 
-    const canPauseAfter = live.canPauseAfter ?? true;
     const canReplayIndependently = live.canReplayIndependently ?? true;
     const semanticCompleteness = live.semanticCompleteness ?? 1;
-    const boundaryType = live.phraseBoundaryType ?? 'sentence';
     const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
     const phraseOverload = longPhrase && (rollingAccuracyLast3 < 0.88 || live.lagSec > 1.5 || live.correctionRate > 0.08);
     const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
@@ -118,21 +119,25 @@ export class AdaptiveDictationController {
       stableRecoveryConfirmed,
     } = frameTransition;
 
-    const isSupportLikeMode = mode === 'support' || mode === 'recovery';
-    const boundaryStrictness: 'sentence' | 'clause' | 'phrase' = isSupportLikeMode ? 'clause' : mode === 'flow' ? 'phrase' : 'sentence';
-    const allowMidPhrasePause = isSupportLikeMode && boundaryType === 'minor';
-
-    const hysteresisStruggling = userIsStruggling || this.struggleFrames >= 2 || mode === 'recovery';
-    const shouldPauseNow = hysteresisStruggling && canPauseAfter;
-    const deferPauseUntilSafeBoundary = userIsStruggling && !canPauseAfter;
-    const lagReplayWanted = live.lagSec > 2.5 && rollingAccuracyLast3 < 0.82 && canReplayIndependently && semanticCompleteness >= 0.65;
-    const catchUpReplayWanted = mode === 'recovery' && rollingAccuracyLast3 < 0.86 && canReplayIndependently && semanticCompleteness >= 0.65;
-    const replayWanted = lagReplayWanted || catchUpReplayWanted;
-    const shouldReplayPhrase = supportsPhraseReplay && replayWanted;
-    const comfortPauseForMode = adaptiveComfort?.statePauseMs[mode];
-    let pauseAfterPhraseMs = shouldReplayPhrase
-      ? Math.max(1200, comfortPauseForMode ?? idealPauseByMode[mode])
-      : comfortPauseForMode ?? idealPauseByMode[mode];
+    const {
+      isSupportLikeMode,
+      boundaryStrictness,
+      allowMidPhrasePause,
+      shouldPauseNow,
+      deferPauseUntilSafeBoundary,
+      replayWanted,
+      shouldReplayPhrase,
+      pauseAfterPhraseMs: initialPauseAfterPhraseMs,
+    } = resolveAdaptivePauseReplayPolicy({
+      mode,
+      live,
+      rollingAccuracyLast3,
+      userIsStruggling,
+      struggleFrames: this.struggleFrames,
+      supportsPhraseReplay,
+      adaptiveComfort,
+    });
+    let pauseAfterPhraseMs = initialPauseAfterPhraseMs;
 
     let nextPhraseSize = resolveAdaptiveNextPhraseSize({
       mode,
@@ -157,13 +162,18 @@ export class AdaptiveDictationController {
       nextPhraseSize = 'long';
     }
 
-    // When replay is not supported, convert "replay wanted" into stronger recovery.
-    if (!supportsPhraseReplay && replayWanted) {
-      nextPhraseSize = 'short';
-      const provisional = Number((playbackRate - 0.06).toFixed(2));
-      playbackRate = Math.max(supportRateFloor, provisional);
-      pauseAfterPhraseMs = Math.max(pauseAfterPhraseMs, adaptiveComfort?.statePauseMs.recovery ?? idealPauseByMode.recovery);
-    }
+    const replayFallback = applyUnsupportedPhraseReplayFallback({
+      supportsPhraseReplay,
+      replayWanted,
+      nextPhraseSize,
+      playbackRate,
+      pauseAfterPhraseMs,
+      supportRateFloor,
+      adaptiveComfort,
+    });
+    nextPhraseSize = replayFallback.nextPhraseSize;
+    playbackRate = replayFallback.playbackRate;
+    pauseAfterPhraseMs = replayFallback.pauseAfterPhraseMs;
 
     let replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, comfortRateMax);
 
