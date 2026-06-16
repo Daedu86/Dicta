@@ -42,7 +42,11 @@ Visible training modes are only `Precision`, `Stabilize`, and `Challenge`. Legac
 Browser app:
 
 - `src/App.tsx`: shell-only React entrypoint. It imports `App.css` and renders `DictaAppRuntime`; it should stay small and must not regain runtime ownership.
-- `src/app/DictaAppRuntime.tsx`: main browser composition root. It wires auth/profile, sync, workspace routing, OpenRouter, focused training, presentation props, and route rendering while delegating behavior to narrower owner hooks.
+- `src/app/DictaAppRuntime.tsx`: runtime export shim. It re-exports `DictaAppRuntime` from `DictaAppRuntimeRoot` and should not regain runtime behavior.
+- `src/app/DictaAppRuntimeRoot.tsx`: main browser composition root. It wires auth/profile, sync, workspace routing, root OpenRouter, focused training, presentation props, and route rendering while delegating behavior to narrower owner hooks.
+- `src/app/useDictaAppBootRuntime.ts`: root boot-state boundary for perf diagnostics, session state, training state, routing, theme, Browser TTS, and root refs.
+- `src/app/useDictaRootOpenRouterRuntime.ts`: root OpenRouter adapter that maps active input mode to OpenRouter fallback input mode and delegates to `useDictaOpenRouterRuntime`.
+- `src/app/useDictaRootRouteCompositionRuntime.ts`: root route-composition adapter that delegates to `useDictaAppRouteCompositionRuntime`.
 - `src/app/AppRouteRenderer.tsx`: route-level render branching for auth, focused training, workspace, dashboard, adaptive, OpenRouter, Admin, Leaderboard, and fallbacks.
 - `src/app/useSupabaseAuthActions.ts`: browser-side Supabase sign-in, password reset/update, and sign-out action handlers. Password recovery redirects use `VITE_DICTA_AUTH_REDIRECT_ORIGIN` when configured, with a local/dev fallback to the current browser origin, so hosted member recovery does not depend on protected Vercel preview URLs.
 - `src/app/useAuthProfileRuntime.ts`: auth/profile composition boundary over auth state, profile resolution, Supabase auth actions, and auth header construction.
@@ -178,14 +182,3 @@ Primary browser storage keys:
 - `dicta.openrouterActiveJobs.v1`
 
 Supabase sync stores JSON rows in `dicta_sync_items` with item types `session`, `benchmark`, and `feedback`.
-
-Session deletes are tombstones, not hard deletes. The tombstone payload must contain JSON boolean `deleted: true`.
-
-Authenticated profile UI waits for the initial Supabase pull/merge before rendering profile-scoped sessions, so a hard refresh does not briefly expose stale localStorage rows. Remote session tombstones are sticky against local `ready`/pending copies; only a newer locally submitted finished session may repair an older tombstone.
-Completed feedback rows are also completion evidence for their session id. During merge and push filtering, they repair stale `ready` session rows and block local pending copies from overwriting a practiced session.
-
-## OpenRouter Architecture
-
-OpenRouter is for structured dictation script generation. It is not a playback engine and it must not expose secrets to the browser.
-
-Routes:
