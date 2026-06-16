@@ -2,16 +2,11 @@ import { useCallback } from 'react';
 import type {
   AdaptiveSessionFeedback,
   InputLanguageBenchmarkMetrics,
-  InputMode,
 } from '../core/adaptive/types';
-import { normalizeBenchmarkLanguage } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildBenchmarkFilename, buildSelectedBenchmarkExportPayload } from '../core/adaptive/benchmarkJson';
 import { buildDictationScriptPrompt, buildDictationScriptTemplate } from '../core/adaptive/dictationScriptPrompt';
-import type { MetricsLanguageView } from '../core/liveMetrics';
 import { writeTextToClipboard } from './clipboardText';
-import { mapSessionInputMode, resolveStoredSessionLanguage } from './appRuntimeHelpers';
 import { formatInputModeLabel } from './sessionDisplayFormatters';
-import type { SessionStatus, StoredSession, TypingLanguage } from './sessionTypes';
 import {
   buildAdaptiveBenchmarkFeedbackExportPayload,
   buildAdaptiveBenchmarkFeedbackPromptExportText,
@@ -19,23 +14,10 @@ import {
   buildAdaptiveSessionFeedbackExportPayload,
   buildInsightsDiagnosticReportExport,
 } from './adaptiveExportPackages';
+import { getAdaptiveBenchmarkActiveSessionStatus } from './adaptiveExportActiveSessionStatus';
+import type { UseAdaptiveExportActionsOptions } from './useAdaptiveExportActionsTypes';
 
-type UseAdaptiveExportActionsOptions = {
-  sessions: StoredSession[];
-  activeSession: StoredSession | null;
-  activeSessionFinished: boolean;
-  sessionStatus: SessionStatus;
-  getActiveTypingLanguage: () => TypingLanguage | null;
-  insightsDiagnosticProfile: InputLanguageBenchmarkMetrics;
-  insightsDiagnosticFeedback: AdaptiveSessionFeedback | null;
-  insightsDiagnosticInputMode: InputMode;
-  metricsLanguageView: MetricsLanguageView;
-  setBenchmarkExportMessage: (message: string) => void;
-  setExportMessage: (message: string) => void;
-  setSessionFeedbackMessage: (message: string) => void;
-  setInsightsDiagnosticFallbackReport: (report: string) => void;
-  setInsightsDiagnosticMessage: (message: string) => void;
-};
+export type { UseAdaptiveExportActionsOptions } from './useAdaptiveExportActionsTypes';
 
 export function useAdaptiveExportActions({
   sessions,
@@ -54,11 +36,13 @@ export function useAdaptiveExportActions({
   setInsightsDiagnosticMessage,
 }: UseAdaptiveExportActionsOptions) {
   const getBenchmarkActiveSessionStatus = useCallback((profile: InputLanguageBenchmarkMetrics): string | undefined => {
-    if (!activeSession || activeSessionFinished) return undefined;
-    const activeInputMode = mapSessionInputMode(activeSession.inputMode);
-    const activeLanguage = normalizeBenchmarkLanguage(getActiveTypingLanguage() ?? resolveStoredSessionLanguage(activeSession));
-    if (profile.inputMode !== activeInputMode || profile.language !== activeLanguage) return undefined;
-    return sessionStatus;
+    return getAdaptiveBenchmarkActiveSessionStatus({
+      activeSession,
+      activeSessionFinished,
+      sessionStatus,
+      getActiveTypingLanguage,
+      profile,
+    });
   }, [activeSession, activeSessionFinished, getActiveTypingLanguage, sessionStatus]);
 
   const copySelectedBenchmarkJson = useCallback(async (profile: InputLanguageBenchmarkMetrics): Promise<void> => {
