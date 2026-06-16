@@ -1,3 +1,4 @@
+import type { InputMode } from '../../core/adaptive/types';
 import { AdaptiveAdapterCard } from './AdaptiveBenchmarkWorkspace';
 import type { AdaptiveAdapterCardConfig } from './types';
 import type { AdaptiveLatestSession } from './AdaptiveAdvancedDiagnosticsTypes';
@@ -15,8 +16,8 @@ export function AdaptiveAdvancedAdaptersPanel({
   expanded: boolean;
   adaptiveAdapters: AdaptiveAdapterCardConfig[];
   latestSession: AdaptiveLatestSession | null;
-  selected: string;
-  mapSessionInputMode: (mode: AdaptiveAdapterCardConfig['inputMode']) => string;
+  selected: InputMode;
+  mapSessionInputMode: (mode: AdaptiveAdapterCardConfig['inputMode']) => InputMode;
   onToggle: () => void;
   onOpenAdapter: (inputMode: AdaptiveAdapterCardConfig['inputMode']) => void;
 }) {
