@@ -17,7 +17,7 @@ import { buildBrowserTtsPlaybackStartPlan } from './browserTtsPlaybackStartPlan'
 import { configureBrowserTtsUtterance } from './browserTtsUtteranceConfiguration';
 import { buildBrowserTtsUtterancePerfMetadata } from './browserTtsUtterancePerfMetadata';
 import { scheduleBrowserTtsNextChunk } from './browserTtsNextChunkScheduler';
-import { buildBrowserTtsUnexpectedErrorPlan } from './browserTtsUnexpectedErrorPlan';
+import { handleBrowserTtsPlaybackLoopError } from './browserTtsPlaybackLoopErrorHandler';
 import { resolveBrowserTtsPlaybackStartError } from './browserTtsPlaybackLoopGuards';
 import { collectBrowserTtsNavigatorInfo } from './browserTtsPlaybackLoopNavigator';
 import { resetBrowserTtsPlaybackLoopRefs } from './browserTtsPlaybackLoopRefs';
@@ -379,18 +379,18 @@ export function useBrowserTtsPlaybackLoop({
       };
 
       utterance.onerror = (event) => {
-        const errorPlan = buildBrowserTtsUnexpectedErrorPlan({
+        handleBrowserTtsPlaybackLoopError({
           error: event.error,
           cancelled,
+          perfDiagnostics,
+          perfUtteranceId,
+          ttsUtteranceRef,
+          setTtsStatus,
+          setError,
+          setCancelled: (nextCancelled) => {
+            cancelled = nextCancelled;
+          },
         });
-
-        perfDiagnostics.recordTtsError(perfUtteranceId, errorPlan.recordedError);
-        if (!errorPlan.shouldApplyState) return;
-
-        cancelled = errorPlan.nextCancelled;
-        ttsUtteranceRef.current = null;
-        setTtsStatus('paused');
-        setError(errorPlan.userErrorMessage);
       };
 
       perfDiagnostics.recordTtsSpeak(perfUtteranceId);

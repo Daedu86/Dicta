@@ -6,6 +6,10 @@ import { configureBrowserTtsUtterance } from '../src/app/browserTtsUtteranceConf
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
+const playbackLoopErrorHandlerSource = readFileSync(
+  resolve(repoRoot, 'src/app/browserTtsPlaybackLoopErrorHandler.ts'),
+  'utf-8',
+);
 
 function getPlayTtsFromWordSection(): string {
   const start = playbackLoopSource.indexOf('function playTtsFromWord(');
@@ -155,13 +159,26 @@ describe('Browser TTS utterance configuration contract', () => {
     const onError = getErrorHandlerSection(getPlayTtsFromWordSection());
 
     expectInOrder(onError, [
-      'const errorPlan = buildBrowserTtsUnexpectedErrorPlan({',
+      'handleBrowserTtsPlaybackLoopError({',
       'error: event.error,',
+      'cancelled,',
+      'perfDiagnostics,',
+      'perfUtteranceId,',
+      'ttsUtteranceRef,',
+      'setTtsStatus,',
+      'setError,',
+      'setCancelled: (nextCancelled) => {',
+      'cancelled = nextCancelled;',
+    ]);
+
+    expectInOrder(playbackLoopErrorHandlerSource, [
+      'const errorPlan = buildBrowserTtsUnexpectedErrorPlan({',
+      'error,',
       'cancelled,',
       '});',
       'perfDiagnostics.recordTtsError(perfUtteranceId, errorPlan.recordedError);',
       'if (!errorPlan.shouldApplyState) return;',
-      'cancelled = errorPlan.nextCancelled;',
+      'setCancelled(errorPlan.nextCancelled);',
       'ttsUtteranceRef.current = null;',
       "setTtsStatus('paused');",
       'setError(errorPlan.userErrorMessage);',
