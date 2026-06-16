@@ -2,10 +2,10 @@ Repo-wide modularization ROI decisions live in `docs/modularization-roi.md`. Use
 
 # App shell modularization map
 
-Updated: 2026-06-15 after repo KB ownership refresh.  
+Updated: 2026-06-16 after runtime root boundary refresh.  
 Status: ACTIVE REFERENCE  
 Verified against branch: `product/input-2`  
-Verified against code baseline: post archive compaction and repo KB refresh.  
+Verified against code baseline: `ca74560` plus repo KB refresh.  
 Test map checked: `docs/module-test-map.md`
 
 ## Current baseline
@@ -17,15 +17,18 @@ This is the current App-shell checkpoint and candidate queue. Refresh source anc
 | Branch | `product/input-2` |
 | Current `src/App.tsx` role | Shell-only React entrypoint. It imports `App.css` and renders `DictaAppRuntime`; it should stay small and must not regain runtime ownership. |
 | Current `src/App.tsx` size anchor | 8 lines at the inspected baseline. |
-| Current runtime composition root | `src/app/DictaAppRuntime.tsx` wires auth/profile, sync, workspace routing, OpenRouter wiring, focused training, presentation props, and route rendering. |
-| Current `src/app/DictaAppRuntime.tsx` size anchor | About 866 lines at the inspected baseline; do not use this alone as a success metric. |
+| Current runtime export shim | `src/app/DictaAppRuntime.tsx` re-exports `DictaAppRuntime` from `DictaAppRuntimeRoot`; it should stay behavior-free. |
+| Current runtime composition root | `src/app/DictaAppRuntimeRoot.tsx` wires auth/profile, sync, workspace routing, root OpenRouter wiring, focused training, presentation props, and route rendering. |
+| Current `src/app/DictaAppRuntimeRoot.tsx` size anchor | About 667 lines at the inspected baseline; do not use this alone as a success metric. |
+| Current boot-state owner | `src/app/useDictaAppBootRuntime.ts` owns initial sessions/training/routing/theme/Browser TTS state and root refs. |
 | Current persistence/sync hotspot | `src/app/useSessionPersistenceSync.ts`, about 847 lines, protected by `tests/useSessionPersistenceSync.test.ts`. |
 | Current OpenRouter workspace hotspot | `src/components/openrouter/OpenRouterWorkspace.tsx`, about 780 lines, with runtime state already separated in `useOpenRouterWorkspaceRuntime.ts`. |
 | Current adaptive cockpit hotspot | `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx`, about 779 lines, with runtime state already separated in `useAdaptiveBenchmarkCockpitRuntime.ts`. |
-| Focused training runtime owner | `src/app/useFocusedTrainingRuntime.ts` |
+| Focused training runtime owner | `src/app/useFocusedTrainingRuntime.ts`, reached through `useDictaRootFocusedTrainingRuntime`. |
 | TTS session orchestration owner | `src/app/useTtsSessionOrchestrationRuntime.ts` |
 | Browser TTS playback-loop owner | `src/app/useBrowserTtsPlaybackLoop.ts` |
 | Reset-session owner | `src/app/useResetSessionRuntime.ts` |
+| Root OpenRouter adapter owner | `src/app/useDictaRootOpenRouterRuntime.ts` |
 | OpenRouter generation entry owner | `src/app/useOpenRouterGenerationRuntime.ts` |
 | OpenRouter direct generation lifecycle owner | `src/app/useOpenRouterDirectGenerationRuntime.ts` |
 | OpenRouter job polling owner | `src/app/useOpenRouterJobPollingRuntime.ts` |
@@ -35,6 +38,7 @@ This is the current App-shell checkpoint and candidate queue. Refresh source anc
 | Adaptive benchmark cockpit runtime owner | `src/components/adaptive-workspace/useAdaptiveBenchmarkCockpitRuntime.ts` |
 | Adaptive benchmark cockpit component owner | `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` |
 | Browser TTS DE benchmark policy owner | `src/core/adaptive/browserTtsDeBenchmarkPolicy.ts` |
+| Root route composition adapter owner | `src/app/useDictaRootRouteCompositionRuntime.ts` |
 | App route composition runtime owner | `src/app/useDictaAppRouteCompositionRuntime.ts` |
 | OpenRouter model owner | `src/app/useOpenRouterModelRuntime.ts` |
 | App route renderer owner | `src/app/AppRouteRenderer.tsx` |
@@ -59,11 +63,15 @@ Implemented boundaries; do not re-select them as pending App-shell extractions.
 - `useWorkspaceSessionRuntime` owns workspace-level derived session collections and workspace actions.
 - `useAppPresentationRuntime` owns App-level presentation prop composition.
 - `AppRouteRenderer` owns route-level render branching.
-- Browser TTS playback remains owned by `useBrowserTtsPlaybackLoop`, with the contract path `DictaAppRuntime -> useFocusedTrainingRuntime -> useTtsSessionOrchestrationRuntime -> useBrowserTtsPlaybackLoop`.
+- `useDictaAppBootRuntime` owns root boot-state buckets and refs.
+- `useDictaRootOpenRouterRuntime` owns root-level OpenRouter adaptation before `useDictaOpenRouterRuntime`.
+- `useDictaRootRouteCompositionRuntime` owns root-level route-composition handoff before `useDictaAppRouteCompositionRuntime`.
+- Browser TTS playback remains owned by `useBrowserTtsPlaybackLoop`, with the contract path `DictaAppRuntimeRoot -> useDictaRootFocusedTrainingRuntime -> useFocusedTrainingRuntime -> useTtsSessionOrchestrationRuntime -> useBrowserTtsPlaybackLoop`.
 
 ## Current recommendation
 
-- Keep `src/App.tsx` shell-only and keep `DictaAppRuntime` as the browser composition root unless a new extraction creates a real owner/test seam.
+- Keep `src/App.tsx` shell-only and keep `src/app/DictaAppRuntime.tsx` as an export shim.
+- Treat `src/app/DictaAppRuntimeRoot.tsx` as the browser composition root unless a new extraction creates a real owner/test seam.
 - Do not keep grouping contracts just for LOC reduction.
 - Treat OpenRouter lifecycle ownership as mostly extracted; future OpenRouter work should be product-driven: UX, access messaging, quotas, route contracts, or error behavior.
 - Treat session persistence/sync as the best current modularization candidate only if the next task is explicitly refactor/modularization work and the patch starts with characterization or pure planning seams.
@@ -74,20 +82,23 @@ Implemented boundaries; do not re-select them as pending App-shell extractions.
 
 | Area | Current owner / anchor |
 | --- | --- |
-| Focused training composition | `src/app/useFocusedTrainingRuntime.ts` called by `src/app/DictaAppRuntime.tsx` |
+| Runtime root | `src/app/DictaAppRuntimeRoot.tsx`; `src/app/DictaAppRuntime.tsx` is only the export shim |
+| Boot state | `src/app/useDictaAppBootRuntime.ts` |
+| Focused training composition | `src/app/useFocusedTrainingRuntime.ts` called through `useDictaRootFocusedTrainingRuntime` |
 | TTS session orchestration | `src/app/useTtsSessionOrchestrationRuntime.ts` called by `useFocusedTrainingRuntime` |
 | Browser TTS playback loop | `src/app/useBrowserTtsPlaybackLoop.ts` called by `useTtsSessionOrchestrationRuntime` |
 | Browser TTS playback controls | `src/app/useTtsPlaybackControls.ts` called by `useTtsSessionOrchestrationRuntime` |
 | Reset session side effects | `src/app/useResetSessionRuntime.ts` called by `useTtsSessionOrchestrationRuntime` |
 | TTS session submit | `src/app/useTtsSessionSubmitAction.ts` called by `useTtsSessionOrchestrationRuntime` |
-| OpenRouter generation entry | `src/app/useOpenRouterGenerationRuntime.ts` called by `src/app/DictaAppRuntime.tsx` |
+| Root OpenRouter adaptation | `src/app/useDictaRootOpenRouterRuntime.ts` calls `useDictaOpenRouterRuntime` |
+| OpenRouter generation entry | `src/app/useOpenRouterGenerationRuntime.ts` called by `useDictaOpenRouterRuntime` |
 | OpenRouter direct generation | `src/app/useOpenRouterDirectGenerationRuntime.ts` |
 | OpenRouter job polling | `src/app/useOpenRouterJobPollingRuntime.ts` called by `useOpenRouterJobsRuntime` |
 | OpenRouter failure policy | `src/app/openRouterGenerationFailurePolicy.ts` |
 | OpenRouter model selection/refresh | `src/app/useOpenRouterModelRuntime.ts` and `src/app/useWorkspaceModelRefreshRuntime.ts` |
 | Auth/profile boundary | `src/app/useAuthProfileRuntime.ts`, Supabase routes, profile-scoped storage, and profile access actions |
 | Session persistence/sync | `src/app/useSessionPersistenceRuntime.ts`, `useSessionPersistenceSync`, Supabase sync helpers, and profile-scoped storage |
-| Route rendering | `src/app/AppRouteRenderer.tsx` and workspace route helpers |
+| Route composition/rendering | `src/app/useDictaRootRouteCompositionRuntime.ts`, `src/app/useDictaAppRouteCompositionRuntime.ts`, `src/app/AppRouteRenderer.tsx`, and workspace route helpers |
 
 ## Active candidate queue
 
@@ -126,7 +137,8 @@ Scores use `docs/modularization-roi.md`: ROI is 0-100 where higher is better; ri
 | Browser TTS DE benchmark policy | `src/core/adaptive/browserTtsDeBenchmarkPolicy.ts` | German Browser TTS scoring filters, diagnostics, timeline pressure fallback, rejection tokens, semantic counters, and recommendation clamp | Extracted from `AdaptiveInputLanguageBenchmarkService.ts`; the main service remains the generic benchmark update orchestrator. |
 | App route composition runtime | `src/app/useDictaAppRouteCompositionRuntime.ts` | Adaptive route prop composition and app presentation prop composition for `AppRouteRenderer` | Extracted from `DictaAppRuntime.tsx`; the root runtime remains responsible for initializing stateful runtimes. |
 | OpenRouter generation/model runtimes | `useOpenRouterGenerationRuntime`, `useOpenRouterModelRuntime`, `useWorkspaceModelRefreshRuntime` | Generation/model/default resolution | Product/runtime reliability is now higher ROI than another OpenRouter extraction. |
-| App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | `DictaAppRuntime` remains the browser composition root; `src/App.tsx` remains a shell-only entrypoint. |
+| App presentation and route rendering | `useAppPresentationRuntime`, `AppRouteRenderer` | Presentation prop composition and route render branching | `DictaAppRuntimeRoot` remains the browser composition root; `src/App.tsx` remains a shell-only entrypoint. |
+| Root boot and adapter boundaries | `useDictaAppBootRuntime`, `useDictaRootOpenRouterRuntime`, `useDictaRootRouteCompositionRuntime` | Root state buckets, root OpenRouter input-mode adaptation, and root route-composition handoff | `DictaAppRuntime.tsx` is now an export shim; boundary tests protect the root wiring. |
 | Auth/profile, session persistence, session creation, and workspace session runtimes | `useAuthProfileRuntime`, `useSessionPersistenceRuntime`, `useSessionCreationRuntime`, `useWorkspaceSessionRuntime` | Auth/profile access, persistence/sync/quota, session creation, workspace summaries/actions | Existing owner boundaries; `useSessionPersistenceSync` remains a large internal hotspot. |
 
 ## Freshness and update rules
