@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-import type { DictationScript } from '../core/adaptive/dictationScriptValidation';
 import {
   extractOpenRouterJobText,
   isOpenRouterJobTerminal,
@@ -14,33 +12,20 @@ import {
   stripJsonFence,
   validateGeneratedScriptForTarget,
 } from '../components/openrouter/openRouterViewHelpers';
-import type {
-  BenchmarkLanguageButton,
-  OpenRouterJobNotification,
-  TrainingGenerationNotice,
-} from '../components/openrouter/types';
+import type { BenchmarkLanguageButton, OpenRouterJobNotification } from '../components/openrouter/types';
 import {
   buildTrackedOpenRouterGenerationFailureNotice,
   formatOpenRouterGenerationDisplayLabel,
 } from './openRouterGenerationFailurePolicy';
+import type {
+  OpenRouterJobPollingRuntime,
+  OpenRouterJobPollingRuntimeOptions,
+} from './useOpenRouterJobPollingRuntimeTypes';
 
-type OpenRouterJobPollingRuntimeOptions = {
-  activeOpenRouterJobs: ActiveOpenRouterJob[];
-  localStorageReady: boolean;
-  openRouterAccessAllowed: boolean;
-  getAuthHeaders: () => Record<string, string>;
-  onOpenRouterError: (message: string) => void;
-  onCreateGenerationErrorSession: (trackedJob: ActiveOpenRouterJob, message: string) => void;
-  onGeneratedScript: (script: DictationScript, trackedJob: ActiveOpenRouterJob) => void;
-  setActiveOpenRouterJobs: Dispatch<SetStateAction<ActiveOpenRouterJob[]>>;
-  setOpenRouterJobNotifications: Dispatch<SetStateAction<Record<string, OpenRouterJobNotification>>>;
-  setOpenRouterJobStatus: Dispatch<SetStateAction<string>>;
-  setTrainingGenerationNotices: Dispatch<SetStateAction<Record<string, TrainingGenerationNotice>>>;
-};
-
-type OpenRouterJobPollingRuntime = {
-  resetOpenRouterJobPollingRuntime: () => void;
-};
+export type {
+  OpenRouterJobPollingRuntime,
+  OpenRouterJobPollingRuntimeOptions,
+} from './useOpenRouterJobPollingRuntimeTypes';
 
 export function useOpenRouterJobPollingRuntime({
   activeOpenRouterJobs,
