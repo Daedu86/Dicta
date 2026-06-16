@@ -11,7 +11,7 @@ Dicta runtime CSS is fully modularized.
 - Do not add component or feature CSS back into `src/App.css`.
 - Preserve import order deliberately. Many modules were extracted from the former monolithic `App.css`; order is part of the UI contract.
 
-For the extraction history and follow-up guardrails, see `docs/next-modularization-plan.md`.
+For the extraction history and follow-up guardrails, see `docs/modularization-roi.md` and `docs/app-shell-modularization-map.md`.
 
 
 Real-time, adaptive dictation trainer. Dicta runs locally (Vite + React) and adapts pace, chunking, and recovery behavior based on how you type, what language you are practicing, and what the current input mode can actually execute.
@@ -28,6 +28,13 @@ Before proposing or making code changes, read these files in order:
 After reading them, propose changes from the architecture. Do not start from an isolated file edit. A proposal should identify the affected boundary: browser, core TypeScript domain, input adapter, Vercel/server route, Supabase/RLS, or local-only sidecar. If the change touches adaptive behavior, it must also identify the affected `(inputMode, language)` profile and explain how neighboring profiles stay unchanged.
 
 If a change updates behavior, keep `AGENTS.md`, `README.md`, and `docs/architecture.md` aligned.
+
+## Modular Docs
+
+- [Documentation index](docs/README.md)
+- [Architecture map](docs/architecture.md)
+- [Listening-first architecture](docs/listening-first-architecture.md)
+- [Adaptive listening brain](docs/adaptive-listening-brain.md)
 
 ## Product Overview
 

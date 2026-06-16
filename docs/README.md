@@ -20,10 +20,18 @@ Agents should use this index to decide which documents are current sources of tr
 | --- | --- | --- |
 | `architecture.md` | Active | Current architecture map. |
 | `listening-first-architecture.md` | Active | Listening-first product and learning architecture. |
+| `listening-first-product-language.md` | Active | Product labels and legacy mapping. |
+| `listening-first-precision-signals.md` | Active | Listening metrics. |
+| `listening-first-policy-guardrails.md` | Active | Policy constraints. |
+| `listening-first-compatibility-matrix.md` | Active | Visible vs legacy value map. |
 | `runtime-access-boundary.md` | Active reference | Auth/profile/OpenRouter access runtime boundary. |
 | `supabase-multiuser-auth.md` | Reference | Supabase auth, sync, RLS, and service-role context. |
 | `android-pwa-performance-debugging.md` | Reference | Android/PWA performance investigation notes. |
 | `../src/styles/README.md` | Reference | CSS and styling organization guidance. |
+| `adaptive-listening-brain.md` | Active | Adaptive listening brain index. |
+| `adaptive-listening-brain-runtime.md` | Active | Adaptive runtime behavior. |
+| `adaptive-listening-brain-boundaries.md` | Active | Adaptive guardrails and gaps. |
+| `adaptive-listening-brain-implementation-map.md` | Active | Adaptive implementation index. |
 
 ## Agent onboarding and repository navigation
 

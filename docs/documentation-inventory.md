@@ -21,7 +21,11 @@ Current baseline: post OpenRouter workspace runtime and jobs route modularizatio
 | `README.md` | ACTIVE | Product overview/setup. |
 | `ARCHITECTURE.md` | ACTIVE | Root architecture pointer. |
 | `docs/architecture.md` | ACTIVE | Current architecture map. |
-| `docs/listening-first-architecture.md` | ACTIVE | Product/learning architecture. |
+| `docs/listening-first-architecture.md` | ACTIVE | Product/learning architecture index. |
+| `docs/listening-first-product-language.md` | ACTIVE | Product labels and legacy mapping. |
+| `docs/listening-first-precision-signals.md` | ACTIVE | Listening metrics. |
+| `docs/listening-first-policy-guardrails.md` | ACTIVE | Policy constraints. |
+| `docs/listening-first-compatibility-matrix.md` | ACTIVE | Visible vs legacy value map. |
 | `docs/README.md` | ACTIVE | Documentation index. |
 | `docs/agent-onboarding.md` | ACTIVE | Agent entry flow. |
 | `docs/repo-map.md` | ACTIVE | Compact repository owner map. |
@@ -34,7 +38,10 @@ Current baseline: post OpenRouter workspace runtime and jobs route modularizatio
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization. |
 | `docs/android-pwa-performance-debugging.md` | REFERENCE | Android/PWA performance context. |
 | `docs/app-shell-modularization-map.md` | ACTIVE REFERENCE | Compact current owner map and candidate queue. |
-| `docs/adaptive-listening-brain.md` | ACTIVE | Adaptive listening brain KB. |
+| `docs/adaptive-listening-brain.md` | ACTIVE | Adaptive listening brain index. |
+| `docs/adaptive-listening-brain-runtime.md` | ACTIVE | Adaptive runtime behavior. |
+| `docs/adaptive-listening-brain-boundaries.md` | ACTIVE | Adaptive guardrails and gaps. |
+| `docs/adaptive-listening-brain-implementation-map.md` | ACTIVE | Adaptive implementation index. |
 | `docs/archive/app-shell-modularization-checkpoint.md` | HISTORICAL, ARCHIVED | Historical App-shell checkpoint. |
 | `docs/archive/legacy-multi-input-2026-06-05.md` | HISTORICAL, ARCHIVED | Legacy multi-input snapshot. |
 | `docs/next-modularization-plan.md` | HISTORICAL | Former near-term plan. |

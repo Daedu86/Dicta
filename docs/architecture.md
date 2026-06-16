@@ -26,12 +26,12 @@ After reading them, propose changes from the architecture rather than from an is
 
 ## Related adaptive docs
 
-Start adaptive iteration from [Adaptive Training Cycle](./adaptive-training-cycle.md). It connects this repo-wide architecture to the listening-first product policy and the runtime adaptive brain.
+Start adaptive iteration from [Adaptive Training Cycle](./adaptive-training-cycle.md).
 
 Layer-specific references:
 
-- [Listening-First Architecture](./listening-first-architecture.md) — product labels, listening precision metrics, and policy guardrails.
-- [Adaptive Listening Brain](./adaptive-listening-brain.md) — runtime controller, Browser TTS pacing, scoped controller state, language profiles, and reason codes.
+- [Listening-First Architecture](./listening-first-architecture.md)
+- [Adaptive Listening Brain](./adaptive-listening-brain.md)
 
 ## Product Matrix
 
@@ -132,7 +132,9 @@ Local-only services:
 
 ## Adaptive Brain Loop
 
-For the full adaptive iteration map, start with [Adaptive Training Cycle](./adaptive-training-cycle.md). The short loop below remains the repo-wide runtime summary.
+See [Adaptive Listening Brain](./adaptive-listening-brain.md) and [Adaptive Training Cycle](./adaptive-training-cycle.md) for the full adaptive docs.
+
+Short runtime loop:
 
 1. A session source provides typed text or an OpenRouter script.
 2. `SemanticPhrasePlanner` produces phrase boundaries and difficulty.
@@ -147,15 +149,11 @@ For the full adaptive iteration map, start with [Adaptive Training Cycle](./adap
 Important implementation details:
 
 - The adaptive benchmark rolling window is 30 days.
-- Timeline storage is capped and pruned by timestamp.
-- Browser TTS German has extra recovery, lag, and unsafe-boundary filtering. Keep changes narrowly guarded.
+- Browser TTS German has extra recovery, lag, and unsafe-boundary filtering.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior.
-- `ListeningTrainerPolicy` is the main future iteration point for listening-training quality. It preserves benchmark separation per `(inputMode, language)` and does not read localStorage, call network APIs, mutate benchmark data, or average across languages/inputs.
-- OpenRouter and other LLM paths generate structured training material only. The trainer prescription is the pedagogical source of truth for generation, while the runtime/adaptive pace layer controls actual playback, rate, pauses, chunking, recovery, and Browser TTS execution.
-- Direct mobile generation buttons represent user intent (`recover`, `progress`, `challenge`) rather than absolute difficulty commands; the policy can downgrade an unsafe challenge to stabilize or recover. The direct buttons create standard two-minute jobs only; one-minute express job payloads remain route-compatible for legacy/custom compatibility but are not a separate visible mode.
-- Browser TTS benchmark samples and completed session feedback are tagged with a structured `ttsEnvironment` fingerprint (hashed user agent, platform/PWA mode, selected voice metadata, and voice counts) so benchmark/report analysis can separate learner progress from browser, OS, voice, or speechSynthesis changes without storing the raw user agent.
-- Training text input is intentionally low-latency and uncontrolled.
-- Low-latency typing is covered by contract/regression tests plus the Playwright mobile guard for the dedicated training harness.
+- `ListeningTrainerPolicy` stays pure and profile-scoped.
+- OpenRouter and other LLM paths generate structured training material only.
+- Browser TTS benchmark samples and completed session feedback include a structured `ttsEnvironment` fingerprint.
 
 ## Account And Access Model
 
