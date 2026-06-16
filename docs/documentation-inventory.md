@@ -4,7 +4,7 @@ This document is the current inventory of Markdown documentation in the Dicta re
 
 Status as of: 2026-06-16  
 Current branch: `product/input-2`  
-Current baseline observed before this inventory refresh: `10be9fe`
+Current baseline observed before this inventory refresh: `91ff8ac`
 
 ## Status legend
 
@@ -31,6 +31,7 @@ Current baseline observed before this inventory refresh: `10be9fe`
 | `docs/module-test-map.md` | ACTIVE | Module-to-test validation map. | Refreshed on 2026-06-16 with root runtime, boot, OpenRouter adapter, and route-composition boundary tests. |
 | `docs/high-risk-runtime-boundaries.md` | ACTIVE | Centralized high-risk runtime safety rules. | Refreshed on 2026-06-16 for runtime root ownership and root OpenRouter validation. |
 | `docs/modularization-roi.md` | ACTIVE | Repo-wide modularization ROI scoring framework. | Refreshed on 2026-06-15 with current hotspot guidance and `useSessionPersistenceSync` as the best modularization candidate when explicitly refactoring. |
+| `docs/runtime-access-boundary.md` | ACTIVE REFERENCE | Access runtime boundary for Supabase/auth/profile/OpenRouter model/admin inventory wiring. | Refreshed on 2026-06-16 to point at `DictaAppRuntimeRoot` instead of the export shim. |
 | `docs/session-persistence-sync-kb.md` | ACTIVE REFERENCE | Concise owner map for session persistence sync modules. | Persistence sync is no longer a pending monolith extraction; future work should be narrow and characterized. |
 | `docs/supabase-multiuser-auth.md` | REFERENCE | Supabase multi-user auth, sync, and policy context. | Important for auth/RLS/service-role boundaries. |
 | `src/styles/README.md` | REFERENCE | Styling and CSS organization guidance. | Important for CSS cascade/import-order safety. |
@@ -92,6 +93,7 @@ This pass aligned the repo KB with the current shell/runtime ownership:
 This pass aligned the active KB with the final runtime-root boundary commits:
 
 - `docs/architecture.md`, `docs/repo-map.md`, and `docs/high-risk-runtime-boundaries.md` now treat `src/app/DictaAppRuntime.tsx` as an export shim and `src/app/DictaAppRuntimeRoot.tsx` as the browser composition root.
+- `docs/runtime-access-boundary.md` now points access-runtime context at `DictaAppRuntimeRoot` instead of the export shim.
 - `docs/module-test-map.md` now includes `useDictaAppBootRuntime`, `useDictaRootOpenRouterRuntime`, `useDictaRootRouteCompositionRuntime`, and their focused boundary tests.
 - `docs/app-shell-modularization-map.md` now records the root boot/adapter boundaries as completed and keeps session persistence as the only strong current refactor candidate.
 
@@ -110,7 +112,7 @@ These commit baselines appear in historical modularization docs and should not b
 
 Current observed baseline for this inventory pass before updating this file:
 
-- `10be9fe`
+- `91ff8ac`
 
 ## Proposed next documentation stages
 
