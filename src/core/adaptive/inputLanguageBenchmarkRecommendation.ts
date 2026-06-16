@@ -33,7 +33,7 @@ export function computeBenchmarkRecommendation(metrics: InputLanguageBenchmarkMe
   return {
     targetRateRange,
     targetPhraseSize,
-    targetPauseMs: Math.round(metrics.preferredPauseAfterPhraseMs || 700),
+    targetPauseMs: Math.round(Math.max(1200, metrics.preferredPauseAfterPhraseMs || 1200)),
     nextTrainingFocus: focus,
     confidence,
     summary:
@@ -44,12 +44,14 @@ export function computeBenchmarkRecommendation(metrics: InputLanguageBenchmarkMe
 }
 
 export function pickBestRateRange(rateAccuracyBuckets: RateAccuracyBucket[]): [number, number] {
-  if (rateAccuracyBuckets.length === 0) return [0.9, 1];
+  if (rateAccuracyBuckets.length === 0) return [0.6, 1.15];
   const scored = [...rateAccuracyBuckets].sort((a, b) => rateBucketScore(b) - rateBucketScore(a));
   const best = scored[0];
   const nearby = scored.filter((bucket) => Math.abs(bucket.rate - best.rate) <= 0.05 && rateBucketScore(bucket) >= rateBucketScore(best) * 0.85);
   const rates = nearby.length > 0 ? nearby.map((bucket) => bucket.rate) : [best.rate];
-  return [Math.min(...rates), Math.max(...rates)];
+  const lower = Math.min(...rates);
+  const upper = Math.max(...rates);
+  return [Math.max(0.6, lower - 0.04), Math.min(1.15, upper + 0.04)];
 }
 
 export function deriveWeakAreas(metrics: InputLanguageBenchmarkMetrics): AdaptiveWeakArea[] {
