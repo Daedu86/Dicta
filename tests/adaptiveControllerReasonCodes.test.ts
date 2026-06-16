@@ -69,7 +69,7 @@ describe('AdaptiveDictationController reasonCodes', () => {
     expect(decision.reasonCodes).toContain('low-history-confidence');
   });
 
-  it('emits structured reason codes for Browser TTS warmup', () => {
+  it('does not emit Browser TTS warmup reason codes after warmup removal', () => {
     const controller = new AdaptiveDictationController();
     const decision = controller.decide(input({
       live: {
@@ -93,11 +93,8 @@ describe('AdaptiveDictationController reasonCodes', () => {
       },
     }));
 
-    expect(decision.reason).toContain('session-warmup-calibration');
-    expect(decision.reasonCodes).toEqual([
-      'mode-support',
-      'session-warmup-calibration',
-      'support-needed',
-    ]);
+    expect(decision.reason).not.toContain('session-warmup-calibration');
+    expect(decision.reasonCodes).not.toContain('session-warmup-calibration');
+    expect(decision.reasonCodes).toContain('mode-balanced');
   });
 });
