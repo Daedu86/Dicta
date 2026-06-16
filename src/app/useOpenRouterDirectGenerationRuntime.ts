@@ -10,8 +10,8 @@ import type {
   AdaptiveSessionFeedbackByInputLanguage,
   BenchmarkLanguageButton,
 } from '../components/openrouter/types';
-import { mapSessionInputMode } from './appRuntimeHelpers';
 import { buildOpenRouterDirectGenerationJobPlan } from './openRouterDirectGenerationJobPlan';
+import { buildOpenRouterDirectGenerationStartPlan } from './openRouterDirectGenerationStartPlan';
 import {
   OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
   type OpenRouterDirectGenerationPreset,
@@ -122,18 +122,21 @@ export function useOpenRouterDirectGenerationRuntime({
       return;
     }
     if (!ensureCanCreateDictationSession('openrouter')) return;
-    if (!isOnline) {
-      setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
-      return;
-    }
-    const model = effectiveOpenRouterDefaultModel.trim();
-    const inputMode = activeSession ? mapSessionInputMode(activeSession.inputMode) : fallbackInputMode;
-    const language: BenchmarkLanguageButton = dictaLanguageView;
 
-    if (!model) {
-      setOpenRouterError('Set a default OpenRouter model before generating the next session.');
+    const startPlan = buildOpenRouterDirectGenerationStartPlan({
+      activeSessionInputMode: activeSession?.inputMode ?? null,
+      fallbackInputMode,
+      dictaLanguageView,
+      effectiveOpenRouterDefaultModel,
+      isOnline,
+    });
+
+    if (startPlan.status === 'error') {
+      setOpenRouterError(startPlan.message);
       return;
     }
+
+    const { model, inputMode, language } = startPlan;
 
     void requestTrainingNotificationPermission();
 
