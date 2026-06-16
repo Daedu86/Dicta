@@ -12,6 +12,10 @@ const playbackLoopErrorHandlerSource = readFileSync(
   resolve(repoRoot, 'src/app/browserTtsPlaybackLoopErrorHandler.ts'),
   'utf-8',
 );
+const playbackLoopUtteranceLifecycleSource = readFileSync(
+  resolve(repoRoot, 'src/app/browserTtsUtteranceLifecycle.ts'),
+  'utf-8',
+);
 
 function getPlayTtsFromWordSection(): string {
   const start = playbackLoopSource.indexOf('function playTtsFromWord(');
@@ -24,11 +28,11 @@ function getPlayTtsFromWordSection(): string {
 }
 
 function getErrorHandlerSection(playbackLoop: string): string {
-  const start = playbackLoop.indexOf('utterance.onerror = (event) => {');
-  if (start < 0) throw new Error('Could not find utterance.onerror in playTtsFromWord.');
+  const start = playbackLoop.indexOf('onError: (event) => {');
+  if (start < 0) throw new Error('Could not find onError lifecycle callback in playTtsFromWord.');
 
   const end = playbackLoop.indexOf('      perfDiagnostics.recordTtsSpeak(perfUtteranceId);', start);
-  if (end < 0) throw new Error('Could not find end of utterance.onerror section.');
+  if (end < 0) throw new Error('Could not find end of onError lifecycle callback section.');
 
   return playbackLoop.slice(start, end);
 }
@@ -177,6 +181,12 @@ describe('Browser TTS utterance configuration contract', () => {
       'ttsUtteranceRef.current = null;',
       "setTtsStatus('paused');",
       'setError(errorPlan.userErrorMessage);',
+    ]);
+
+    expectInOrder(playbackLoopUtteranceLifecycleSource, [
+      'utterance.onstart = onStart;',
+      'utterance.onend = onEnd;',
+      'utterance.onerror = onError;',
     ]);
   });
 });

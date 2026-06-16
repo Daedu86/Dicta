@@ -14,6 +14,7 @@ import {
 import { commitBrowserTtsPlaybackLoopChunk } from './browserTtsPlaybackLoopChunkCommit';
 import { createBrowserTtsPlaybackUtterance } from './browserTtsPlaybackLoopUtterance';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
+import { attachBrowserTtsUtteranceLifecycle } from './browserTtsUtteranceLifecycle';
 
 export type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 
@@ -251,14 +252,16 @@ export function useBrowserTtsPlaybackLoop({
         setTtsSpeechRate,
       });
 
-      utterance.onstart = () => {
+      attachBrowserTtsUtteranceLifecycle({
+        utterance,
+        onStart: () => {
         handleBrowserTtsPlaybackLoopChunkStart({
           perfDiagnostics,
           perfUtteranceId,
         });
-      };
-
-      utterance.onend = () => {
+      
+        },
+        onEnd: () => {
         handleBrowserTtsPlaybackLoopChunkEnd({
           perfDiagnostics,
           perfUtteranceId,
@@ -292,9 +295,9 @@ export function useBrowserTtsPlaybackLoop({
             macroWordOffset = nextCursor.macroWordOffset;
           },
         });
-      };
-
-      utterance.onerror = (event) => {
+      
+        },
+        onError: (event) => {
         handleBrowserTtsPlaybackLoopError({
           error: event.error,
           cancelled,
@@ -307,7 +310,9 @@ export function useBrowserTtsPlaybackLoop({
             cancelled = nextCancelled;
           },
         });
-      };
+      
+        },
+      });
 
       perfDiagnostics.recordTtsSpeak(perfUtteranceId);
       speakBrowserTts(utterance);
