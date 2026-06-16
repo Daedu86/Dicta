@@ -28,12 +28,15 @@ describe('TrainingInputCard', () => {
         showReview: true,
         review: {
           targetWords: [
-            { id: 'target-0', text: 'Der', state: 'matched', exact: true },
-            { id: 'target-1', text: 'Bäcker', state: 'missing', exact: false },
+            { id: 'target-0', text: 'Der', displayText: 'Der', state: 'matched', exact: true },
+            { id: 'target-1', text: 'Bäcker', displayText: 'Bäcker', state: 'missing', exact: false },
           ],
           typedWords: [
-            { id: 'typed-0', text: 'Der', state: 'matched', exact: true },
-            { id: 'typed-1', text: 'backer', state: 'extra', exact: false },
+            { id: 'typed-0', text: 'Der', displayText: 'Der', state: 'matched', exact: true },
+            { id: 'typed-1', text: 'backer', displayText: 'backer', state: 'extra', exact: false },
+          ],
+          extraTypedWords: [
+            { id: 'typed-1', text: 'backer', displayText: 'backer', state: 'extra', exact: false },
           ],
           matchedCount: 1,
           missedCount: 1,
@@ -44,8 +47,7 @@ describe('TrainingInputCard', () => {
     );
 
     expect(markup).toContain('Submitted answer review');
-    expect(markup).toContain('Original text');
-    expect(markup).toContain('Your answer');
+    expect(markup).toContain('Sentence review with highlighted words');
     expect(markup).toContain('training-review-word-matched');
     expect(markup).toContain('training-review-word-missing');
     expect(markup).toContain('training-review-word-extra');

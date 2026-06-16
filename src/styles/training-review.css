@@ -49,26 +49,10 @@
   color: #92400e;
 }
 
-.training-review-columns {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.training-review-column {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.training-review-column-label {
-  width: fit-content;
-  border: 1px solid #c9d9e9;
-  background: #f4f8fd;
-  color: #4e6076;
-}
-
-.training-review-line {
+.training-review-inline {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.45rem;
   margin: 0;
   padding: 0.85rem;
@@ -81,7 +65,8 @@
 
 .training-review-word {
   display: inline-flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   min-height: 34px;
   padding: 0.18rem 0.52rem;
   border: 1px solid #d7e2ee;
@@ -89,6 +74,7 @@
   background: #fff;
   font-weight: 700;
   word-break: break-word;
+  line-height: 1.1;
 }
 
 .training-review-word-matched {
@@ -97,23 +83,56 @@
   color: #0d6a2f;
 }
 
+.training-review-word-typo {
+  border-color: #fca5a5;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
 .training-review-word-missing {
   text-decoration: line-through;
   text-decoration-thickness: 2px;
+  border-color: #d1d5db;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.training-review-word-delete {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: currentColor;
 }
 
 .training-review-word-extra {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
+  border-color: #fbbf24;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.training-review-word-main {
+  display: block;
+}
+
+.training-review-word-hint {
+  display: block;
+  margin-top: 0.18rem;
+  color: #6b7280;
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.training-review-extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.training-review-summary span:last-child {
+  min-width: fit-content;
 }
 
 .training-review-empty {
   color: #6e8199;
   font-style: italic;
-}
-
-@media (min-width: 900px) {
-  .training-review-columns {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }

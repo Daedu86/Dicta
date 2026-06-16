@@ -1,4 +1,4 @@
-import type { TrainingReviewModel } from '../../app/focusedTrainingReview';
+import type { TrainingReviewModel, TrainingReviewWord } from '../../app/focusedTrainingReview';
 
 export type TrainingReviewPanelProps = {
   review: TrainingReviewModel;
@@ -10,6 +10,7 @@ export function TrainingReviewPanel({ review }: TrainingReviewPanelProps) {
       <div className="training-review-legend" aria-label="Review legend">
         <span className="training-review-legend-item training-review-legend-matched">Matched</span>
         <span className="training-review-legend-item training-review-legend-missing">Missing</span>
+        <span className="training-review-legend-item training-review-legend-typo">Wrong typed</span>
         <span className="training-review-legend-item training-review-legend-extra">Extra</span>
       </div>
 
@@ -17,52 +18,54 @@ export function TrainingReviewPanel({ review }: TrainingReviewPanelProps) {
         <span>Accuracy {review.accuracy.toFixed(1)}%</span>
         <span>Matched {review.matchedCount}</span>
         <span>Missing {review.missedCount}</span>
-        <span>Extra {review.extraCount}</span>
+        <span>Wrong {review.extraCount + countTypos(review.targetWords)}</span>
       </div>
 
-      <div className="training-review-columns">
-        <section className="training-review-column" aria-label="Target text review">
-          <p className="training-review-column-label">Original text</p>
-          <p className="training-review-line" aria-label="Original text with matches and misses">
-            {review.targetWords.map((word) => (
+      <p className="training-review-inline" aria-label="Sentence review with highlighted words">
+        {review.targetWords.map((word) => renderTargetWord(word))}
+        {review.typedWords.filter((word) => word.state === 'extra').length > 0 ? (
+          <span className="training-review-extras" aria-label="Extra typed words">
+            {review.typedWords.filter((word) => word.state === 'extra').map((word) => (
               <span
                 key={word.id}
-                className={`training-review-word training-review-word-${word.state}`}
-                aria-label={
-                  word.state === 'matched'
-                    ? `Matched word ${word.text}`
-                    : `Missing word ${word.text}`
-                }
+                className="training-review-word training-review-word-extra"
+                aria-label={`Extra word ${word.displayText}`}
               >
-                {word.text}
+                {word.displayText}
               </span>
             ))}
-          </p>
-        </section>
-
-        <section className="training-review-column" aria-label="Your answer review">
-          <p className="training-review-column-label">Your answer</p>
-          <p className="training-review-line" aria-label="Typed text with matches and extras">
-            {review.typedWords.length > 0 ? (
-              review.typedWords.map((word) => (
-                <span
-                  key={word.id}
-                  className={`training-review-word training-review-word-${word.state}`}
-                  aria-label={
-                    word.state === 'matched'
-                      ? `Matched word ${word.text}`
-                      : `Extra word ${word.text}`
-                  }
-                >
-                  {word.text}
-                </span>
-              ))
-            ) : (
-              <span className="training-review-empty">No typed words.</span>
-            )}
-          </p>
-        </section>
-      </div>
+          </span>
+        ) : null}
+      </p>
     </div>
   );
+}
+
+function renderTargetWord(word: TrainingReviewWord) {
+  if (word.state === 'matched') {
+    return (
+      <span key={word.id} className="training-review-word training-review-word-matched" aria-label={`Matched word ${word.displayText}`}>
+        {word.displayText}
+      </span>
+    );
+  }
+
+  if (word.state === 'typo') {
+    return (
+      <span key={word.id} className="training-review-word training-review-word-typo" aria-label={`Wrong typed word ${word.displayText}`}>
+        <span className="training-review-word-main">{word.displayText}</span>
+        <small className="training-review-word-hint">{word.hintText ?? 'correct word'}</small>
+      </span>
+    );
+  }
+
+  return (
+    <span key={word.id} className="training-review-word training-review-word-missing" aria-label={`Missing word ${word.displayText}`}>
+      <del className="training-review-word-delete">{word.displayText}</del>
+    </span>
+  );
+}
+
+function countTypos(words: TrainingReviewWord[]): number {
+  return words.filter((word) => word.state === 'typo').length;
 }

@@ -1,18 +1,21 @@
 import { evaluateTranscriptAttempt, type WordAlignmentPair } from '../core/evaluation';
 import { normalizeWord } from '../core/normalization';
 
-export type TrainingReviewWordState = 'matched' | 'missing' | 'extra';
+export type TrainingReviewWordState = 'matched' | 'missing' | 'extra' | 'typo';
 
 export type TrainingReviewWord = {
   id: string;
   text: string;
+  displayText: string;
   state: TrainingReviewWordState;
   exact: boolean;
+  hintText?: string;
 };
 
 export type TrainingReviewModel = {
   targetWords: TrainingReviewWord[];
   typedWords: TrainingReviewWord[];
+  extraTypedWords: TrainingReviewWord[];
   matchedCount: number;
   missedCount: number;
   extraCount: number;
@@ -20,13 +23,20 @@ export type TrainingReviewModel = {
 };
 
 export function buildFocusedTrainingReview(targetText: string, typedText: string): TrainingReviewModel {
-  const evaluation = evaluateTranscriptAttempt(typedText, buildTranscriptLikeTarget(targetText));
-  const targetWords = buildTargetWords(evaluation.alignedPairs, evaluation.targetWords);
-  const typedWords = buildTypedWords(evaluation.alignedPairs, evaluation.typedWords);
+  const targetTokens = buildTokenizedWords(targetText);
+  const typedTokens = buildTokenizedWords(typedText);
+  const evaluation = evaluateTranscriptAttempt(
+    typedText,
+    targetTokens.length > 0 ? { words: targetTokens.map((token, index) => ({ word: token.normalized, start: index, end: index + 1 })) } : null,
+  );
+  const targetWords = buildTargetWords(evaluation.alignedPairs, targetTokens, typedTokens);
+  const typedWords = buildTypedWords(evaluation.alignedPairs, typedTokens, targetTokens);
+  const extraTypedWords = typedWords.filter((word) => word.state === 'extra');
 
   return {
     targetWords,
     typedWords,
+    extraTypedWords,
     matchedCount: evaluation.matchedWords,
     missedCount: evaluation.missedWords,
     extraCount: evaluation.extraWords,
@@ -34,48 +44,64 @@ export function buildFocusedTrainingReview(targetText: string, typedText: string
   };
 }
 
-function buildTranscriptLikeTarget(text: string): { words: Array<{ word: string; start: number; end: number }> } | null {
-  const words = text
-    .split(/\s+/)
-    .map((word, index) => {
-      const normalized = normalizeWord(word);
-      return normalized ? { word: normalized, start: index, end: index + 1 } : null;
-    })
-    .filter((word): word is { word: string; start: number; end: number } => Boolean(word));
+type TrainingReviewToken = {
+  text: string;
+  normalized: string;
+};
 
-  return words.length > 0 ? { words } : null;
+function buildTokenizedWords(text: string): TrainingReviewToken[] {
+  return text
+    .split(/\s+/)
+    .map((word) => {
+      const normalized = normalizeWord(word);
+      return normalized ? { text: word, normalized } : null;
+    })
+    .filter((word): word is TrainingReviewToken => Boolean(word));
 }
 
-function buildTargetWords(alignedPairs: WordAlignmentPair[], targetWords: string[]): TrainingReviewWord[] {
+function buildTargetWords(
+  alignedPairs: WordAlignmentPair[],
+  targetWords: TrainingReviewToken[],
+  typedWords: TrainingReviewToken[],
+): TrainingReviewWord[] {
   const matchedByTargetIndex = new Map<number, WordAlignmentPair>();
   for (const pair of alignedPairs) {
     matchedByTargetIndex.set(pair.targetIndex, pair);
   }
 
-  return targetWords.map((text, index) => {
+  return targetWords.map((token, index) => {
     const pair = matchedByTargetIndex.get(index);
+    const typedToken = pair ? typedWords[pair.typedIndex] : undefined;
     return {
       id: `target-${index}`,
-      text,
-      state: pair ? 'matched' : 'missing',
+      text: token.normalized,
+      displayText: pair && !pair.exact && typedToken ? typedToken.text : token.text,
+      state: pair ? (pair.exact ? 'matched' : 'typo') : 'missing',
       exact: pair?.exact ?? false,
+      hintText: pair && !pair.exact ? token.text : undefined,
     };
   });
 }
 
-function buildTypedWords(alignedPairs: WordAlignmentPair[], typedWords: string[]): TrainingReviewWord[] {
+function buildTypedWords(
+  alignedPairs: WordAlignmentPair[],
+  typedWords: TrainingReviewToken[],
+  targetWords: TrainingReviewToken[],
+): TrainingReviewWord[] {
   const matchedByTypedIndex = new Map<number, WordAlignmentPair>();
   for (const pair of alignedPairs) {
     matchedByTypedIndex.set(pair.typedIndex, pair);
   }
 
-  return typedWords.map((text, index) => {
+  return typedWords.map((token, index) => {
     const pair = matchedByTypedIndex.get(index);
     return {
       id: `typed-${index}`,
-      text,
-      state: pair ? 'matched' : 'extra',
+      text: token.normalized,
+      displayText: token.text,
+      state: pair ? (pair.exact ? 'matched' : 'typo') : 'extra',
       exact: pair?.exact ?? false,
+      hintText: pair && !pair.exact ? targetWords[pair.targetIndex]?.text ?? undefined : undefined,
     };
   });
 }
