@@ -1,0 +1,39 @@
+@media (max-width: 640px) {
+  .tts-media-controls {
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    border-radius: 18px;
+  }
+
+  .tts-media-seek {
+    min-width: 0;
+  }
+
+  .live-metrics-language-tabs,
+  .leaderboard-language-tabs,
+  .admin-language-tabs,
+  .sidebar-language-tabs {
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-left: 0;
+  }
+
+  .live-metrics-language-tab {
+    min-width: 0;
+    width: 100%;
+    padding-inline: 0.35rem;
+  }
+
+  .leaderboard-table-header,
+  .leaderboard-table-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bottom-metrics-top {
+    grid-template-columns: 1fr;
+  }
+
+  .transcript-review-header,
+  .transcript-review-stats {
+    grid-template-columns: 1fr;
+  }
+}
