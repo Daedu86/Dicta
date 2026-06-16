@@ -15,6 +15,7 @@ type BuildHardRulesPromptArgs = {
   normalizedProfile: InputLanguageBenchmarkMetrics;
   outputTemplate: string;
   durationMinutes: OpenRouterDurationMinutes;
+  trainingPrescription: ListeningTrainingPrescription;
   targetDifficulty?: DictationScriptDifficulty;
   difficultyInstruction?: string;
   diversificationHints?: string[];
@@ -29,6 +30,7 @@ export function buildOpenRouterHardRulesPrompt({
   normalizedProfile,
   outputTemplate,
   durationMinutes,
+  trainingPrescription,
   targetDifficulty,
   difficultyInstruction,
   diversificationHints,
@@ -49,6 +51,7 @@ export function buildOpenRouterHardRulesPrompt({
     '"estimatedDurationSec" means the expected time the learner hears the voice/audio, not total attempt or typing time.',
     'The JSON must validate against the DictationScript output template.',
     ...buildDiversificationPromptLines(diversificationHints),
+    ...buildAdaptivePolicyConstraintsSection(trainingPrescription),
     '',
     'Output template:',
     outputTemplate,
@@ -90,6 +93,7 @@ export function buildCompactAdaptiveV2Prompt({
     'Generate semantic phrases compatible with trainingPrescription.',
     'Use safe semantic boundaries, replayable phrases when possible, the prescribed phrase difficulty range, content guidance, and pacing-compatible phrase lengths.',
     'Do not satisfy duration by changing only "estimatedDurationSec"; generate enough phrase text.',
+    ...buildAdaptivePolicyConstraintsSection(trainingPrescription),
     ...buildDiversificationPromptLines(diversificationHints),
     '',
     'Required output JSON schema/template:',
@@ -136,4 +140,18 @@ function buildTrainingPrescriptionRequestNotes(
     notes.push(`Original difficulty note is secondary to trainingPrescription: ${difficultyInstruction}`);
   }
   return notes;
+}
+
+function buildAdaptivePolicyConstraintsSection(trainingPrescription: ListeningTrainingPrescription): string[] {
+  const { runtimePolicy, learningPolicy } = trainingPrescription;
+  const contentGuidance = learningPolicy.contentGuidance.length > 0 ? learningPolicy.contentGuidance.join('; ') : 'n/a';
+
+  return [
+    '',
+    'Adaptive policy constraints:',
+    `Runtime policy: target rate range ${JSON.stringify(runtimePolicy.targetRateRange)}, pause ${runtimePolicy.targetPauseMs}ms, phrase size ${runtimePolicy.targetPhraseSize}, boundary policy ${runtimePolicy.boundaryPolicy}.`,
+    `Learning policy: difficulty ${learningPolicy.difficulty}, phrase difficulty range ${learningPolicy.phraseDifficultyRange[0].toFixed(2)}-${learningPolicy.phraseDifficultyRange[1].toFixed(2)}, phrase policy ${learningPolicy.phrasePolicy}, content guidance ${contentGuidance}.`,
+    'Generation rule: follow the learning policy for content complexity. Do not compensate for runtime instability by generating harder content.',
+    'If runtime policy is recovery or stabilization, prefer short safe semantic phrases, everyday vocabulary, and avoid dense sentence nesting.',
+  ];
 }

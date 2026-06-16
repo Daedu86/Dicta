@@ -140,6 +140,11 @@ export function useWorkspaceSessionSummaries({
     [sessionsWithVoiceDuration, metricsLanguageView, metricsRangeView],
   );
 
+  const leaderboardMonthSessionCount = useMemo(
+    () => buildRangeSummaryForLanguage(sessionsWithVoiceDuration, leaderboardLanguageView, 'month').sessionsInRange.length,
+    [sessionsWithVoiceDuration, leaderboardLanguageView],
+  );
+
   return {
     latestSession,
     activeTrainingSubmissionMeta,
@@ -149,6 +154,7 @@ export function useWorkspaceSessionSummaries({
     sessionsWithVoiceDuration,
     leaderboard,
     leaderboardSections,
+    leaderboardMonthSessionCount,
     adminSessions,
     adminStorageSummary,
     lastSessionForLanguage,

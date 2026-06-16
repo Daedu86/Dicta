@@ -16,6 +16,7 @@ type UseLeaderboardWorkspacePropsArgs = Omit<
 export function useLeaderboardWorkspaceProps({
   leaderboard,
   leaderboardSections,
+  leaderboardMonthSessionCount,
   leaderboardLanguageView,
   leaderboardExpanded,
   leaderboardSectionExpanded,
@@ -45,6 +46,7 @@ export function useLeaderboardWorkspaceProps({
   return useMemo(() => ({
     leaderboard,
     leaderboardSections,
+    leaderboardMonthSessionCount,
     leaderboardLanguageView,
     leaderboardExpanded,
     leaderboardSectionExpanded,
@@ -77,6 +79,7 @@ export function useLeaderboardWorkspaceProps({
   }), [
     leaderboard,
     leaderboardSections,
+    leaderboardMonthSessionCount,
     leaderboardLanguageView,
     leaderboardExpanded,
     leaderboardSectionExpanded,

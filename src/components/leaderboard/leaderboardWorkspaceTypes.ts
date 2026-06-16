@@ -60,6 +60,7 @@ export type SessionDeviceIconComponentType<TSession extends LeaderboardSession =
 export type LeaderboardWorkspaceProps<TSession extends LeaderboardSession = LeaderboardSession> = {
   leaderboard: Array<LeaderboardEntry<TSession>>;
   leaderboardSections: Array<LeaderboardSection<TSession>>;
+  leaderboardMonthSessionCount: number;
   leaderboardLanguageView: LeaderboardLanguageCode;
   leaderboardExpanded: boolean;
   leaderboardSectionExpanded: Record<LeaderboardSectionId, boolean>;

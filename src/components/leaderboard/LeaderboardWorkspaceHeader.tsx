@@ -2,6 +2,7 @@ import type { LeaderboardLanguageCode } from './leaderboardWorkspaceTypes';
 
 type LeaderboardWorkspaceHeaderProps = {
   sessionCount: number;
+  sessionRangeLabel?: string;
   leaderboardLanguageView: LeaderboardLanguageCode;
   leaderboardExpanded: boolean;
   supportedLanguages: readonly LeaderboardLanguageCode[];
@@ -13,6 +14,7 @@ type LeaderboardWorkspaceHeaderProps = {
 
 export function LeaderboardWorkspaceHeader({
   sessionCount,
+  sessionRangeLabel = 'Month',
   leaderboardLanguageView,
   leaderboardExpanded,
   supportedLanguages,
@@ -26,7 +28,7 @@ export function LeaderboardWorkspaceHeader({
       <div>
         <h2>Leaderboard</h2>
         <p className="dashboard-meta">
-          {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'} for {leaderboardLanguageView.toUpperCase()}.
+          {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'} for {leaderboardLanguageView.toUpperCase()} in {sessionRangeLabel}.
         </p>
       </div>
       <div className="live-metrics-language-tabs leaderboard-language-tabs" role="tablist" aria-label="Leaderboard language">

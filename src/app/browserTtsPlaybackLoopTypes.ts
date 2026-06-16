@@ -8,6 +8,7 @@ import type {
 import type { PerfDiagnostics } from '../core/perfDiagnostics';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 import type { AdaptiveRuntime } from './useAdaptiveRuntime';
+import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlanTypes';
 import type {
   AdaptiveSemanticDebug,
   SessionStatus,
@@ -80,4 +81,81 @@ export type BrowserTtsPlaybackLoopOptions = {
   setRunning: Dispatch<SetStateAction<boolean>>;
   setSessionStatus: Dispatch<SetStateAction<SessionStatus>>;
   setError: Dispatch<SetStateAction<string>>;
+};
+
+export type BrowserTtsPlaybackCursorPosition = {
+  chunkIndex: number;
+  macroPhraseIndex: number;
+  macroWordOffset: number;
+};
+
+export type BrowserTtsPlaybackCursorSnapshot = BrowserTtsPlaybackCursorPosition & {
+  lastPhraseSize: BrowserTtsPlaybackPlan['nextLastPhraseSize'];
+  lastBoundaryStrictness: BrowserTtsPlaybackPlan['nextLastBoundaryStrictness'];
+};
+
+export type BrowserTtsPlaybackRunContext = {
+  activeSession: StoredSession | null;
+  ttsLanguage: TtsLanguage;
+  ttsTranscript: Transcript | null;
+  ttsSpeechRate: number;
+  ttsPlaybackProfile: TtsPlaybackProfile;
+  browserTtsVoices: SpeechSynthesisVoice[];
+  browserTtsVoice: SpeechSynthesisVoice | null;
+  browserTtsEnvironment: ReturnType<BrowserTtsPlaybackLoopOptions['collectBrowserTtsEnvironmentForSession']>;
+  perfDiagnostics: PerfDiagnostics;
+  perfPlayId: number;
+  speakBrowserTts: BrowserTtsPlaybackLoopOptions['speakBrowserTts'];
+  ttsUtteranceRef: BrowserTtsPlaybackLoopOptions['ttsUtteranceRef'];
+};
+
+export type BrowserTtsPlaybackMacroPhraseContext = {
+  semanticPhrase: SemanticPhrase;
+  semanticPhrases: SemanticPhrase[];
+  macroWords: string[];
+  macroStartWordIndex: number;
+  sourceWordCount: number;
+  macroPhraseIndex: number;
+  macroWordOffset: number;
+};
+
+export type BrowserTtsPlaybackProgressContext = {
+  ttsCompletedSourceWordsRef: BrowserTtsPlaybackLoopOptions['ttsCompletedSourceWordsRef'];
+  ttsChunkStartMsRef: BrowserTtsPlaybackLoopOptions['ttsChunkStartMsRef'];
+  ttsChunkStartWordIndexRef: BrowserTtsPlaybackLoopOptions['ttsChunkStartWordIndexRef'];
+  ttsChunkWordCountRef: BrowserTtsPlaybackLoopOptions['ttsChunkWordCountRef'];
+};
+
+export type BrowserTtsPlaybackAdaptiveContext = {
+  ttsChunkAccuracyWindowRef: BrowserTtsPlaybackLoopOptions['ttsChunkAccuracyWindowRef'];
+  ttsLastAccuracySnapshotRef: BrowserTtsPlaybackLoopOptions['ttsLastAccuracySnapshotRef'];
+  ttsUnsafeChunkCountRef: BrowserTtsPlaybackLoopOptions['ttsUnsafeChunkCountRef'];
+  ttsSemanticPhraseAdvanceCountRef: BrowserTtsPlaybackLoopOptions['ttsSemanticPhraseAdvanceCountRef'];
+  ttsSemanticPhraseReplayCountRef: BrowserTtsPlaybackLoopOptions['ttsSemanticPhraseReplayCountRef'];
+  ttsLiveSignalRef: BrowserTtsPlaybackLoopOptions['ttsLiveSignalRef'];
+  setAdaptiveSemanticDebug: BrowserTtsPlaybackLoopOptions['setAdaptiveSemanticDebug'];
+};
+
+export type BrowserTtsPlaybackTelemetryContext = {
+  perfDiagnostics: PerfDiagnostics;
+  recordTtsChunkTelemetry: BrowserTtsPlaybackLoopOptions['recordTtsChunkTelemetry'];
+  recordAdaptiveBenchmark: BrowserTtsPlaybackLoopOptions['recordAdaptiveBenchmark'];
+  recordPhrasePlaybackEvent: BrowserTtsPlaybackLoopOptions['recordPhrasePlaybackEvent'];
+  applyTtsPerformanceSample: BrowserTtsPlaybackLoopOptions['applyTtsPerformanceSample'];
+};
+
+export type BrowserTtsPlaybackUiContext = {
+  setTtsCurrentChunk: BrowserTtsPlaybackLoopOptions['setTtsCurrentChunk'];
+  setTtsPacingMode: BrowserTtsPlaybackLoopOptions['setTtsPacingMode'];
+  setTtsSpeechRate: BrowserTtsPlaybackLoopOptions['setTtsSpeechRate'];
+  setTtsStatus: BrowserTtsPlaybackLoopOptions['setTtsStatus'];
+  setError: BrowserTtsPlaybackLoopOptions['setError'];
+  setRunning: BrowserTtsPlaybackLoopOptions['setRunning'];
+  setSessionStatus: BrowserTtsPlaybackLoopOptions['setSessionStatus'];
+};
+
+export type BrowserTtsPlaybackChunkCallbacks = {
+  speakNext: () => void;
+  updatePlaybackCursor: (cursor: BrowserTtsPlaybackCursorPosition) => void;
+  setCancelled: (cancelled: boolean) => void;
 };

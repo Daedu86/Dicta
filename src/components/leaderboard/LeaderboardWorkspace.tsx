@@ -7,6 +7,7 @@ export type { LeaderboardWorkspaceProps } from './leaderboardWorkspaceTypes';
 export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
   leaderboard,
   leaderboardSections,
+  leaderboardMonthSessionCount,
   leaderboardLanguageView,
   leaderboardExpanded,
   leaderboardSectionExpanded,
@@ -36,7 +37,8 @@ export function LeaderboardWorkspace<TSession extends LeaderboardSession>({
   return (
     <section className="panel workspace-panel leaderboard-workspace">
       <LeaderboardWorkspaceHeader
-        sessionCount={leaderboard.length}
+        sessionCount={leaderboardMonthSessionCount}
+        sessionRangeLabel="Month"
         leaderboardLanguageView={leaderboardLanguageView}
         leaderboardExpanded={leaderboardExpanded}
         supportedLanguages={supportedLanguages}

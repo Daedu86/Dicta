@@ -10,6 +10,8 @@ const dictaFocusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useDi
 const focusedTrainingSource = readFileSync(resolve(repoRoot, 'src/app/useFocusedTrainingRuntime.ts'), 'utf-8');
 const orchestrationSource = readFileSync(resolve(repoRoot, 'src/app/useTtsSessionOrchestrationRuntime.ts'), 'utf-8');
 const playbackLoopSource = readFileSync(resolve(repoRoot, 'src/app/useBrowserTtsPlaybackLoop.ts'), 'utf-8');
+const playbackLoopRunnerSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopRunner.ts'), 'utf-8');
+const playbackLoopChunkSpeakerSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopChunkSpeaker.ts'), 'utf-8');
 const playbackLoopUtteranceHandlersSource = readFileSync(
   resolve(repoRoot, 'src/app/browserTtsPlaybackLoopUtteranceHandlers.ts'),
   'utf-8',
@@ -47,6 +49,14 @@ describe('Browser TTS playback loop contract', () => {
     expect(playbackLoopSource).toContain('function playTtsFromWord(');
     expect(playbackLoopSource).toContain('commitBrowserTtsPlaybackLoopChunk({');
     expect(playbackLoopSource).toContain('attachBrowserTtsPlaybackLoopUtteranceHandlers({');
+    expect(playbackLoopRunnerSource).toContain('speakBrowserTtsPlaybackLoopChunk({');
+    expect(playbackLoopRunnerSource).not.toContain('any');
+    expect(playbackLoopChunkSpeakerSource).toContain('buildBrowserTtsPlaybackLoopChunkPlan(');
+    expect(playbackLoopChunkSpeakerSource).toContain('createBrowserTtsPlaybackUtterance({');
+    expect(playbackLoopChunkSpeakerSource).toContain('commitBrowserTtsPlaybackLoopChunk({');
+    expect(playbackLoopChunkSpeakerSource).toContain('attachBrowserTtsPlaybackLoopUtteranceHandlers({');
+    expect(playbackLoopChunkSpeakerSource).toContain('speakBrowserTts(utterance);');
+    expect(playbackLoopChunkSpeakerSource).not.toContain('any');
     expect(playbackLoopUtteranceHandlersSource).toContain('handleBrowserTtsPlaybackLoopChunkEnd(end());');
     expect(playbackLoopSource).toContain('speakBrowserTts(utterance);');
     expect(playbackLoopChunkCommitSource).toContain('recordTtsChunkTelemetry({');

@@ -6,7 +6,7 @@ import {
 import { buildBrowserTtsPlaybackRuntimeSnapshot } from './browserTtsPlaybackLoopRuntimeSnapshot';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 
-type BrowserTtsPlaybackLoopChunkPlanInput = Pick<
+export type BrowserTtsPlaybackLoopChunkPlanInput = Pick<
   BrowserTtsPlaybackLoopOptions,
   | 'ttsLanguage'
   | 'ttsTranscript'

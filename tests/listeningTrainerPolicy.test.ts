@@ -78,6 +78,18 @@ describe('ListeningTrainerPolicy', () => {
     expect(prescription.targetAccuracyBand).toEqual([0.82, 0.88]);
     expect(prescription.phraseDifficultyRange[1]).toBeLessThan(0.9);
     expect(prescription.boundaryPolicy).toBe('normal_semantic');
+    expect(prescription.runtimePolicy).toEqual({
+      targetRateRange: prescription.targetRateRange,
+      targetPauseMs: prescription.targetPauseMs,
+      targetPhraseSize: prescription.targetPhraseSize,
+      boundaryPolicy: prescription.boundaryPolicy,
+    });
+    expect(prescription.learningPolicy).toEqual({
+      difficulty: prescription.difficulty,
+      phraseDifficultyRange: prescription.phraseDifficultyRange,
+      phrasePolicy: prescription.phrasePolicy,
+      contentGuidance: prescription.contentGuidance,
+    });
     expect(profile).toEqual(before);
   });
 
@@ -98,6 +110,18 @@ describe('ListeningTrainerPolicy', () => {
     expect(prescription.phrasePolicy).toBe('short_safe_semantic');
     expect(prescription.boundaryPolicy).toBe('strict_semantic');
     expect(prescription.targetRateRange[1]).toBeLessThanOrEqual(0.95);
+    expect(prescription.runtimePolicy).toEqual({
+      targetRateRange: prescription.targetRateRange,
+      targetPauseMs: prescription.targetPauseMs,
+      targetPhraseSize: prescription.targetPhraseSize,
+      boundaryPolicy: prescription.boundaryPolicy,
+    });
+    expect(prescription.learningPolicy).toEqual({
+      difficulty: prescription.difficulty,
+      phraseDifficultyRange: prescription.phraseDifficultyRange,
+      phrasePolicy: prescription.phrasePolicy,
+      contentGuidance: prescription.contentGuidance,
+    });
     expect(prescription.rationale.join(' ')).toContain('Requested hard difficulty was adjusted to easy');
     expect(prescription.rationale.join(' ')).toContain('Challenge intent was gated');
   });

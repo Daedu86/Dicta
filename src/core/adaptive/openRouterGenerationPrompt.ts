@@ -137,6 +137,7 @@ export function buildOpenRouterGenerationPrompt({
       normalizedProfile,
       outputTemplate,
       durationMinutes,
+      trainingPrescription,
       targetDifficulty,
       difficultyInstruction,
       diversificationHints,

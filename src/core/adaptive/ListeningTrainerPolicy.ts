@@ -5,6 +5,7 @@ import type {
   ListeningTrainingIntent,
   ListeningTrainingPrescription,
 } from './types';
+import type { LearningPolicy, RuntimePolicy } from './adaptivePolicyLayers';
 import {
   BOUNDARY_SUPPORT_WEAK_AREAS,
   CHALLENGE_BLOCKING_WEAK_AREAS,
@@ -126,6 +127,18 @@ export function buildListeningTrainingPrescription(args: {
   const boundaryPolicy = mode === 'recover' || hasBoundarySupportInstability || precisionPressure.requiresStrictBoundary
     ? 'strict_semantic'
     : 'normal_semantic';
+  const runtimePolicy: RuntimePolicy = {
+    targetRateRange,
+    targetPauseMs,
+    targetPhraseSize,
+    boundaryPolicy,
+  };
+  const learningPolicy: LearningPolicy = {
+    difficulty,
+    phraseDifficultyRange,
+    phrasePolicy: phrasePolicyForMode(mode),
+    contentGuidance: buildContentGuidance(weakAreas, mode, precisionPressure),
+  };
 
   return {
     goal: 'listening_comprehension',
@@ -138,20 +151,22 @@ export function buildListeningTrainingPrescription(args: {
     durationMinutes: args.durationMinutes ?? defaultDurationForMode(mode),
     targetAccuracyBand: targetAccuracyBandForMode(mode),
     targetLagMaxSec: targetLagMaxSecForMode(mode),
-    targetRateRange,
-    targetPauseMs,
-    targetPhraseSize,
-    phraseDifficultyRange,
-    phrasePolicy: phrasePolicyForMode(mode),
-    boundaryPolicy,
-    contentGuidance: buildContentGuidance(weakAreas, mode, precisionPressure),
+    targetRateRange: runtimePolicy.targetRateRange,
+    targetPauseMs: runtimePolicy.targetPauseMs,
+    targetPhraseSize: runtimePolicy.targetPhraseSize,
+    phraseDifficultyRange: learningPolicy.phraseDifficultyRange,
+    phrasePolicy: learningPolicy.phrasePolicy,
+    boundaryPolicy: runtimePolicy.boundaryPolicy,
+    contentGuidance: learningPolicy.contentGuidance,
+    runtimePolicy,
+    learningPolicy,
     pacingGuidance: buildPacingGuidance({
       mode,
-      targetRateRange,
-      targetPauseMs,
-      targetPhraseSize,
-      phraseDifficultyRange,
-      boundaryPolicy,
+      targetRateRange: runtimePolicy.targetRateRange,
+      targetPauseMs: runtimePolicy.targetPauseMs,
+      targetPhraseSize: runtimePolicy.targetPhraseSize,
+      phraseDifficultyRange: learningPolicy.phraseDifficultyRange,
+      boundaryPolicy: runtimePolicy.boundaryPolicy,
       precisionPressure,
     }),
     rationale: buildRationale({

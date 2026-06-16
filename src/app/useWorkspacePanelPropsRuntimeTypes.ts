@@ -64,6 +64,7 @@ export type UseWorkspacePanelPropsRuntimeArgs = {
 
   leaderboard: LeaderboardWorkspacePropsArgs['leaderboard'];
   leaderboardSections: LeaderboardWorkspacePropsArgs['leaderboardSections'];
+  leaderboardMonthSessionCount: LeaderboardWorkspacePropsArgs['leaderboardMonthSessionCount'];
   leaderboardLanguageView: LeaderboardWorkspacePropsArgs['leaderboardLanguageView'];
   leaderboardExpanded: LeaderboardWorkspacePropsArgs['leaderboardExpanded'];
   leaderboardSectionExpanded: LeaderboardWorkspacePropsArgs['leaderboardSectionExpanded'];

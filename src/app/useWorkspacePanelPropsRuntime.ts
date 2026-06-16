@@ -81,6 +81,7 @@ export function useWorkspacePanelPropsRuntime({
 
   leaderboard,
   leaderboardSections,
+  leaderboardMonthSessionCount,
   leaderboardLanguageView,
   leaderboardExpanded,
   leaderboardSectionExpanded,
@@ -160,6 +161,7 @@ export function useWorkspacePanelPropsRuntime({
   const leaderboardWorkspaceProps = useLeaderboardWorkspaceProps({
     leaderboard,
     leaderboardSections,
+    leaderboardMonthSessionCount,
     leaderboardLanguageView,
     leaderboardExpanded,
     leaderboardSectionExpanded,
