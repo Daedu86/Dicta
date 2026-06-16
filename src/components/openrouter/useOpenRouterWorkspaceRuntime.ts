@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { InputMode } from '../../core/adaptive/types';
 import { createEmptyInputLanguageBenchmark } from '../../core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import { buildSelectedBenchmarkExportPayload } from '../../core/adaptive/benchmarkJson';
-import { buildDictationScriptPrompt, buildDictationScriptTemplate } from '../../core/adaptive/dictationScriptPrompt';
 import {
   buildOpenRouterGenerationPrompt,
   estimateOpenRouterPromptSize,
@@ -11,15 +9,9 @@ import {
 } from '../../core/adaptive/openRouterGenerationPrompt';
 import { isTransientOpenRouterGenerationError } from '../../core/adaptive/openRouterFallbackScript';
 import type { DictationScriptValidationResult } from '../../core/adaptive/dictationScriptValidation';
-import {
-  buildBenchmarkFeedbackPackage,
-  buildBenchmarkFeedbackPromptPackage,
-  buildSessionFeedbackJsonPayload,
-  derivePlaybackDiagnosticsFromTimeline,
-  selectLatestAdaptiveSessionFeedback,
-} from '../../core/adaptive/sessionFeedback';
+import { selectLatestAdaptiveSessionFeedback } from '../../core/adaptive/sessionFeedback';
 import type { ActiveOpenRouterJob, OpenRouterJobResponse } from '../../core/openRouterJobs';
-import { SUPPORTED_LANGUAGES, isSupportedLanguage } from '../../core/languages';
+import { isSupportedLanguage } from '../../core/languages';
 import { requestTrainingNotificationPermission } from '../../core/trainingNotifications';
 import {
   buildOpenRouterModelOptions,
@@ -36,6 +28,15 @@ import {
   shouldCreatePersistentGenerationErrorSession,
   validateGeneratedScriptForTarget,
 } from './openRouterViewHelpers';
+import {
+  OPEN_ROUTER_GENERATE_DURATION_OPTIONS,
+  OPEN_ROUTER_GENERATE_PROMPT_SOURCE_OPTIONS,
+  OPEN_ROUTER_PROFILE_INPUT_MODE_OPTIONS,
+  OPEN_ROUTER_PROFILE_LANGUAGE_OPTIONS,
+  buildOpenRouterWorkspaceExportPayloads,
+  buildOpenRouterWorkspaceVariantPrompt,
+  formatOpenRouterPromptSizeHint,
+} from './openRouterWorkspaceRuntimeHelpers';
 import type {
   BenchmarkLanguageButton,
   OpenRouterGenerationSlotId,
@@ -113,15 +114,6 @@ export function useOpenRouterWorkspaceRuntime({
     }
   };
 
-  const formatPromptSizeHint = (value: string): string => {
-    const normalized = value.trim();
-    if (!normalized) return 'Words: 0 · Tokens: ~0';
-    const words = normalized.split(/\s+/).filter(Boolean).length;
-    const chars = normalized.length;
-    const estimatedTokens = Math.max(1, Math.round(chars / 4));
-    return `Words: ${words} · Tokens: ~${estimatedTokens}`;
-  };
-
   function updateGenerationSlots(updater: (current: OpenRouterGenerationSlots) => OpenRouterGenerationSlots): void {
     setGenerationSlots((current) => {
       const next = updater(current);
@@ -147,19 +139,6 @@ export function useOpenRouterWorkspaceRuntime({
     }));
   }
 
-  function buildVariantPrompt(slotId: OpenRouterGenerationSlotId, basePrompt: string, slot: OpenRouterGenerationSlotState, modelId: string): string {
-    const slotLabel = getOpenRouterSlotLabel(slotId);
-    const notes = slot.notes.trim() || 'No additional variant notes.';
-    return [
-      basePrompt,
-      '',
-      `Variant-specific notes for ${slotLabel}:`,
-      `Selected model: ${modelId || 'not selected'}.`,
-      'Use these notes to make this variant meaningfully different from the other prompt while still obeying the required schema, inputMode, language, and duration.',
-      notes,
-    ].join('\n');
-  }
-
   async function generateOpenRouterSlot(slotId: OpenRouterGenerationSlotId): Promise<void> {
     const slot = generationSlots[slotId];
     const slotModel = defaultModel;
@@ -183,7 +162,7 @@ export function useOpenRouterWorkspaceRuntime({
 
     setGenerateBusySlots((current) => ({ ...current, [slotId]: true }));
     updateGenerationSlot(slotId, { error: '' });
-    const slotPrompt = buildVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
+    const slotPrompt = buildOpenRouterWorkspaceVariantPrompt(slotId, generatePayloads.prompt, slot, slotModel);
     const slotMaxTokens = getOpenRouterGenerationMaxTokens(generateDurationMinutes);
     const generationStartedAt = new Date().toISOString();
     const promptSize = estimateOpenRouterPromptSize(slotPrompt, {
@@ -279,106 +258,16 @@ export function useOpenRouterWorkspaceRuntime({
     }
   }
 
-  const exportPayloads = useMemo(() => {
-    const activeSessionStatus = exportActiveSessionStatus;
-    const benchmarkJson = JSON.stringify(buildSelectedBenchmarkExportPayload(exportProfile), null, 2);
-    const llmPrompt = buildDictationScriptPrompt(exportProfile);
-    const outputTemplate = buildDictationScriptTemplate(exportProfile.inputMode, exportProfile.language);
-    const benchmarkOnlyPackage = `Benchmark JSON context:\n${benchmarkJson}\n\nLLM prompt:\n${llmPrompt}`;
-    const benchmarkFeedbackPackage = buildBenchmarkFeedbackPackage(exportProfile, exportSessionFeedback, { activeSessionStatus }) as Record<
-      string,
-      unknown
-    >;
-    const diagnosticPackage = JSON.stringify(benchmarkFeedbackPackage, null, 2);
-    const promptPackage = buildBenchmarkFeedbackPromptPackage(exportProfile, exportSessionFeedback, llmPrompt, { activeSessionStatus });
-    const sessionFeedbackJson = JSON.stringify(
-      buildSessionFeedbackJsonPayload(exportProfile.inputMode, exportProfile.language, exportSessionFeedback, {
-        activeSessionStatus,
-        fallbackDiagnostics: derivePlaybackDiagnosticsFromTimeline(exportProfile.timeline.slice(-60)),
+  const exportPayloads = useMemo(
+    () =>
+      buildOpenRouterWorkspaceExportPayloads({
+        exportActiveSessionStatus,
+        exportProfile,
+        exportSessionFeedback,
+        humanFeedbackDraft,
       }),
-      null,
-      2,
-    );
-    const humanNotesPackage = JSON.stringify(
-      {
-        ...benchmarkFeedbackPackage,
-        llmPrompt,
-        humanFeedback: humanFeedbackDraft.trim(),
-      },
-      null,
-      2,
-    );
-
-    const compactBenchmark = JSON.stringify(
-      {
-        profileKey: `${exportProfile.inputMode}/${exportProfile.language}`,
-        sessionCount: exportProfile.sessionCount,
-        sampleCount: exportProfile.sampleCount,
-        lastUpdatedAt: exportProfile.lastUpdatedAt ?? null,
-        recommendation: exportProfile.recommendation,
-        weakAreas: exportProfile.weakAreas,
-        kpis: {
-          sweetSpotScore: exportProfile.sweetSpotScore,
-          semanticFidelityScore: exportProfile.semanticFidelityScore,
-          controlFidelityScore: exportProfile.controlFidelityScore,
-          learningEffectivenessScore: exportProfile.learningEffectivenessScore,
-          flowStabilityScore: exportProfile.flowStabilityScore,
-          averageAccuracy: exportProfile.averageAccuracy,
-          averageWpm: exportProfile.averageWpm,
-          averageLagSec: exportProfile.averageLagSec,
-          preferredPlaybackRate: exportProfile.preferredPlaybackRate,
-          preferredPhraseSize: exportProfile.preferredPhraseSize,
-        },
-      },
-      null,
-      2,
-    );
-
-    const compactSessionFeedback = JSON.stringify(
-      exportSessionFeedback
-        ? {
-            verdict: exportSessionFeedback.verdict,
-            improvementDelta: exportSessionFeedback.improvementDelta,
-            playbackIssues: {
-              repeatedPhraseCount: exportSessionFeedback.playbackIssues.repeatedPhraseCount,
-              maxRepeatCountForSinglePhrase: exportSessionFeedback.playbackIssues.maxRepeatCountForSinglePhrase,
-              skippedPhraseCount: exportSessionFeedback.playbackIssues.skippedPhraseCount,
-              outOfOrderAdvanceCount: exportSessionFeedback.playbackIssues.outOfOrderAdvanceCount,
-              replayAdvancedPhraseCount: exportSessionFeedback.playbackIssues.replayAdvancedPhraseCount,
-              phraseIndexJumpCount: exportSessionFeedback.playbackIssues.phraseIndexJumpCount,
-            },
-            phraseStats: exportSessionFeedback.phraseStats,
-            notes: exportSessionFeedback.notes.slice(0, 8),
-          }
-        : { verdict: 'n/a' },
-      null,
-      2,
-    );
-
-    const compactPromptPackage = JSON.stringify(
-      {
-        benchmark: JSON.parse(compactBenchmark) as Record<string, unknown>,
-        latestSessionFeedback: JSON.parse(compactSessionFeedback) as Record<string, unknown>,
-        llmPrompt,
-      },
-      null,
-      2,
-    );
-
-    return {
-      benchmarkJson,
-      llmPrompt,
-      outputTemplate,
-      benchmarkOnlyPackage,
-      diagnosticPackage,
-      promptPackage,
-      sessionFeedbackJson,
-      humanNotesPackage,
-      compactBenchmark,
-      compactSessionFeedback,
-      compactPromptPackage,
-    };
-  }, [exportActiveSessionStatus, exportProfile, exportSessionFeedback, humanFeedbackDraft]);
+    [exportActiveSessionStatus, exportProfile, exportSessionFeedback, humanFeedbackDraft],
+  );
 
   const generateProfile =
     benchmarks[generateInputMode]?.[generateLanguage] ?? createEmptyInputLanguageBenchmark(generateInputMode, generateLanguage);
@@ -403,7 +292,7 @@ export function useOpenRouterWorkspaceRuntime({
   const activeGenerateSlot = generationSlots[activeGenerateSlotId];
   const activeGenerateSlotModel = defaultModel;
   const activeGenerateSlotPrompt = useMemo(
-    () => buildVariantPrompt(activeGenerateSlotId, generatePayloads.prompt, activeGenerateSlot, activeGenerateSlotModel),
+    () => buildOpenRouterWorkspaceVariantPrompt(activeGenerateSlotId, generatePayloads.prompt, activeGenerateSlot, activeGenerateSlotModel),
     [activeGenerateSlotId, activeGenerateSlot, activeGenerateSlotModel, generatePayloads.prompt],
   );
   const activeGenerateSlotValidation = useMemo<DictationScriptValidationResult | null>(() => {
@@ -419,13 +308,16 @@ export function useOpenRouterWorkspaceRuntime({
   );
   const activeGenerateSlotJobNotice = useMemo<TrainingGenerationNoticeView | null>(() => {
     if (activeGenerateSlotJob) {
-      return formatTrainingGenerationNotice({
-        slotLabel: activeGenerateSlotJob.slotLabel,
-        displayLabel: activeGenerateSlotJob.slotLabel,
-        model: activeGenerateSlotJob.model,
-        startedAt: activeGenerateSlotJob.startedAt,
-        status: 'running',
-      }, generationNowMs);
+      return formatTrainingGenerationNotice(
+        {
+          slotLabel: activeGenerateSlotJob.slotLabel,
+          displayLabel: activeGenerateSlotJob.slotLabel,
+          model: activeGenerateSlotJob.model,
+          startedAt: activeGenerateSlotJob.startedAt,
+          status: 'running',
+        },
+        generationNowMs,
+      );
     }
 
     const latestNotification =
@@ -434,15 +326,18 @@ export function useOpenRouterWorkspaceRuntime({
         .sort((a, b) => parseTimestampMs(b.startedAt, generationNowMs) - parseTimestampMs(a.startedAt, generationNowMs))[0] ?? null;
     if (!latestNotification) return null;
 
-    return formatTrainingGenerationNotice({
-      slotLabel: latestNotification.slotLabel,
-      displayLabel: latestNotification.slotLabel,
-      model: latestNotification.model,
-      startedAt: latestNotification.startedAt,
-      status: latestNotification.status,
-      completedAt: latestNotification.completedAt,
-      error: latestNotification.error,
-    }, generationNowMs);
+    return formatTrainingGenerationNotice(
+      {
+        slotLabel: latestNotification.slotLabel,
+        displayLabel: latestNotification.slotLabel,
+        model: latestNotification.model,
+        startedAt: latestNotification.startedAt,
+        status: latestNotification.status,
+        completedAt: latestNotification.completedAt,
+        error: latestNotification.error,
+      },
+      generationNowMs,
+    );
   }, [activeGenerateSlotId, activeGenerateSlotJob, generationNowMs, jobNotifications]);
   const activeGenerateSlotBusy = generateBusySlots[activeGenerateSlotId] || Boolean(activeGenerateSlotJob);
 
@@ -493,26 +388,14 @@ export function useOpenRouterWorkspaceRuntime({
   const exportHasBenchmarkData = exportProfile.sampleCount > 0 || exportProfile.sessionCount > 0;
   const exportHasSessionFeedback = Boolean(exportSessionFeedback);
   const exportLanguage: BenchmarkLanguageButton = isSupportedLanguage(exportProfile.language) ? exportProfile.language : 'en';
-  const profileInputModeOptions: Array<{ value: InputMode; label: string; description: string }> = [
-    { value: 'browser-tts', label: 'Browser TTS', description: 'Browser SpeechSynthesis' },
-  ];
+  const profileInputModeOptions = OPEN_ROUTER_PROFILE_INPUT_MODE_OPTIONS;
   const generateInputModeOptions = LOCAL_DEV_FEATURES_AVAILABLE
     ? profileInputModeOptions
     : profileInputModeOptions.filter((option) => option.value === 'browser-tts');
-  const profileLanguageOptions: Array<{ value: BenchmarkLanguageButton; label: string }> = SUPPORTED_LANGUAGES.map((language) => ({
-    value: language,
-    label: language.toUpperCase(),
-  }));
-  const generatePromptSourceOptions: Array<{ value: OpenRouterGeneratePromptSource; label: string; description: string }> = [
-    { value: 'compact-adaptive-v2', label: 'Compact adaptive v2', description: 'Reduced-duplication benchmark + feedback prompt.' },
-    { value: 'compact-adaptive', label: 'Compact adaptive', description: 'Compact benchmark + compact feedback when available.' },
-    { value: 'compact-benchmark-only', label: 'Compact benchmark', description: 'Compact benchmark only; skips latest feedback.' },
-    { value: 'compact-base', label: 'Compact base', description: 'Base prompt only; smallest prompt.' },
-    { value: 'original-adaptive', label: 'Original adaptive', description: 'Full benchmark + full feedback when available.' },
-    { value: 'original-benchmark-only', label: 'Original benchmark', description: 'Full benchmark only; skips latest feedback.' },
-    { value: 'original-base', label: 'Original base', description: 'Original base prompt only.' },
-  ];
-  const generateDurationOptions: Array<2 | 3 | 4> = [2, 3, 4];
+  const profileLanguageOptions = OPEN_ROUTER_PROFILE_LANGUAGE_OPTIONS;
+  const generatePromptSourceOptions = OPEN_ROUTER_GENERATE_PROMPT_SOURCE_OPTIONS;
+  const generateDurationOptions = OPEN_ROUTER_GENERATE_DURATION_OPTIONS;
+
   return {
     apiKeyDraft,
     setApiKeyDraft,
@@ -559,7 +442,7 @@ export function useOpenRouterWorkspaceRuntime({
     modelSelectionLocked,
     modelOptions,
     copyToClipboard,
-    formatPromptSizeHint,
+    formatPromptSizeHint: formatOpenRouterPromptSizeHint,
     clearGeneratedScriptDraft,
     generateOpenRouterSlot,
     exportPayloads,
