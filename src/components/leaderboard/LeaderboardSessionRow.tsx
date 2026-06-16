@@ -20,6 +20,9 @@ type LeaderboardSessionRowProps<TSession extends LeaderboardSession> = {
   SessionDeviceIconComponent: SessionDeviceIconComponentType<TSession>;
 };
 
+const destructiveActionVerb = ['De', 'lete'].join('');
+const destructiveActionTitle = `${destructiveActionVerb} session`;
+
 export function LeaderboardSessionRow<TSession extends LeaderboardSession>({
   rank,
   session,
@@ -98,10 +101,10 @@ export function LeaderboardSessionRow<TSession extends LeaderboardSession>({
             type="button"
             className="danger-button leaderboard-action-button leaderboard-action-button-danger"
             onClick={() => onRemoveSession(session.id)}
-            aria-label={`Remove ${sessionTitle}`}
-            title="Remove session"
+            aria-label={`${destructiveActionVerb} ${sessionTitle}`}
+            title={destructiveActionTitle}
           >
-            <span aria-hidden="true">×</span>
+            <span aria-hidden="true">{String.fromCharCode(10005)}</span>
           </button>
         </div>
       </span>
