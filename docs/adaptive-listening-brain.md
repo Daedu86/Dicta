@@ -6,6 +6,15 @@ This document is the canonical KB entry for Dicta's adaptive listening brain: th
 
 The adaptive brain should be treated as one integrated block, not as isolated features. Its job is to keep the session in a productive listening zone: slow enough to recover from overload, stable enough to avoid noise, and explicit enough to explain why pacing changed.
 
+## Related adaptive docs
+
+Start adaptive iteration from [Adaptive Training Cycle](./adaptive-training-cycle.md). This document owns the runtime brain details; the cycle doc connects this controller layer to LLM generation, prescription, planner/chunking, Browser TTS execution, benchmark/feedback, and insight reporting.
+
+Related references:
+
+- [Dicta Architecture](./architecture.md) — repo-wide ownership and runtime boundaries.
+- [Listening-First Architecture](./listening-first-architecture.md) — product labels, listening precision metrics, and policy guardrails.
+
 ## Current milestone: Browser TTS adaptive brain hardening
 
 This milestone hardened the Browser TTS adaptive path without changing the product surface. The work focused on better telemetry, cleaner state boundaries, explicit language coverage, and safer decision reasons.
