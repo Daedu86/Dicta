@@ -9,11 +9,19 @@ import {
   MIN_PLAYBACK_RATE,
   clamp,
   computeProgressGap,
-  computeScore,
   idealPauseByMode,
   smoothRate,
 } from './adaptiveDictationControllerMath';
 import { chooseAdaptivePacingMode } from './adaptiveDictationControllerMode';
+import {
+  computeAdaptivePacingScores,
+  resolveAdaptivePacingTelemetry,
+} from './adaptiveDictationControllerTelemetry';
+import {
+  buildAdaptiveSessionWarmupDecision,
+  resolveAdaptiveSessionChunkIndex,
+  shouldForceAdaptiveSessionWarmup,
+} from './adaptiveDictationControllerWarmup';
 import { resolveListeningPrecisionRateCeiling } from './adaptiveDictationControllerPrecision';
 import { resolveAdaptiveNextPhraseSize } from './adaptiveDictationControllerPhrase';
 import { applyAdaptivePausePolicy, buildAdaptivePacingReasonArtifacts } from './adaptiveDictationControllerReasons';
@@ -39,10 +47,7 @@ export class AdaptiveDictationController {
     const extremeSupportRateFloor = Math.min(browserTtsProfile?.extremeSupportRateFloor ?? 0.78, supportRateFloor);
     const supportRateCeiling = Math.min(browserTtsProfile?.supportRateCeiling ?? 0.92, comfortRateMax);
     const balancedFlowFloor = Math.min(browserTtsProfile?.balancedFlowFloor ?? MIN_PLAYBACK_RATE, comfortRateMin);
-    const sessionAccuracy = live.sessionAccuracy ?? live.accuracy;
-    const chunkAccuracy = live.chunkAccuracy ?? sessionAccuracy;
-    const rollingAccuracyLast3 = live.rollingAccuracyLast3 ?? chunkAccuracy;
-    const rollingAccuracyLast5 = live.rollingAccuracyLast5 ?? rollingAccuracyLast3;
+    const { rollingAccuracyLast3, rollingAccuracyLast5 } = resolveAdaptivePacingTelemetry(input);
     const supportsPhraseReplay = input.capabilities?.supportsPhraseReplay ?? true;
     const chosenMode = chooseAdaptivePacingMode(input);
     const preferredRate = adaptiveComfort?.preferredRate ?? (history.comfortablePlaybackRate || 1);
@@ -52,47 +57,27 @@ export class AdaptiveDictationController {
     let playbackRate = Number(clamp(smoothRate(this.previousRate, targetRate, balancedFlowFloor), balancedFlowFloor, comfortRateMax).toFixed(2));
     this.previousRate = playbackRate;
 
-    const lagScore = computeScore(2.5 - live.lagSec, 0, 2.5);
-    const accuracyScore = computeScore(rollingAccuracyLast3, 0.6, 1);
-    const hesitationScore = computeScore(1 - live.pauseMs / 2000, 0, 1);
-    const confidenceScore = clamp(history.profileConfidence, 0, 1);
+    const scores = computeAdaptivePacingScores({ live, history, rollingAccuracyLast3 });
+    const { lagScore, accuracyScore, hesitationScore, confidenceScore } = scores;
 
     const sessionWarmup = browserTtsProfile?.sessionWarmup;
-    const sessionChunkIndex = typeof live.sessionChunkIndex === 'number' && Number.isFinite(live.sessionChunkIndex)
-      ? live.sessionChunkIndex
-      : null;
-    const shouldForceSessionWarmup = Boolean(
-      sessionWarmup?.enabled &&
-      sessionChunkIndex !== null &&
-      sessionChunkIndex < sessionWarmup.chunkCount,
-    );
+    const sessionChunkIndex = resolveAdaptiveSessionChunkIndex(live.sessionChunkIndex);
 
-    if (shouldForceSessionWarmup && sessionWarmup) {
-      const warmupRate = Number(clamp(sessionWarmup.playbackRate, extremeSupportRateFloor, supportRateCeiling).toFixed(2));
-      this.previousRate = warmupRate;
+    if (sessionWarmup && shouldForceAdaptiveSessionWarmup({ sessionWarmup, sessionChunkIndex })) {
+      const warmupDecision = buildAdaptiveSessionWarmupDecision({
+        sessionWarmup,
+        extremeSupportRateFloor,
+        supportRateCeiling,
+        scores,
+      });
+
+      this.previousRate = warmupDecision.playbackRate;
       this.struggleFrames = Math.max(this.struggleFrames, 1);
       this.recoveryFrames = 0;
       this.supportFrames += 1;
       this.balancedFrames = 0;
 
-      return {
-        mode: 'support',
-        playbackRate: warmupRate,
-        pauseAfterPhraseMs: sessionWarmup.pauseMs,
-        shouldPauseNow: true,
-        shouldReplayPhrase: false,
-        boundaryStrictness: 'clause',
-        allowMidPhrasePause: false,
-        deferPauseUntilSafeBoundary: false,
-        replayRate: Number(clamp(warmupRate - 0.08, extremeSupportRateFloor, supportRateCeiling).toFixed(2)),
-        nextPhraseSize: sessionWarmup.phraseSize,
-        reason: 'mode=support, session-warmup-calibration, support-needed',
-        reasonCodes: ['mode-support', 'session-warmup-calibration', 'support-needed'],
-        lagScore,
-        accuracyScore,
-        hesitationScore,
-        confidenceScore,
-      };
+      return warmupDecision;
     }
 
     const canPauseAfter = live.canPauseAfter ?? true;
