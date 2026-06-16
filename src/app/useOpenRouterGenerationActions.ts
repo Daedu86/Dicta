@@ -4,7 +4,7 @@ import {
   type OpenRouterGenerationBusyControls,
   type UseOpenRouterDirectGenerationRuntimeOptions,
 } from './useOpenRouterDirectGenerationRuntime';
-import { mapSessionInputMode } from './appRuntimeHelpers';
+import { buildOpenRouterGenerateWorkspacePlan } from './openRouterGenerateWorkspacePlan';
 
 export type { OpenRouterGenerationBusyControls } from './useOpenRouterDirectGenerationRuntime';
 
@@ -23,7 +23,6 @@ export function useOpenRouterGenerationActions(options: UseOpenRouterGenerationA
     openRouterAccessAllowed,
     openRouterAccessMessage,
     isOnline,
-    fallbackInputMode,
     dictaLanguageView,
     ensureCanCreateDictationSession,
     showOpenRouterWorkspace,
@@ -38,24 +37,29 @@ export function useOpenRouterGenerationActions(options: UseOpenRouterGenerationA
   const directGenerationActions = useOpenRouterDirectGenerationRuntime(options);
 
   const openOpenRouterGenerateForActiveInput = useCallback((): void => {
-    if (!activeSession) return;
-    if (!allowCustomSessionGeneration) {
-      setOpenRouterError('Custom session generation is available to admins only.');
+    const plan = buildOpenRouterGenerateWorkspacePlan({
+      activeSessionInputMode: activeSession?.inputMode ?? null,
+      allowCustomSessionGeneration,
+      openRouterAccessAllowed,
+      openRouterAccessMessage,
+      isOnline,
+      dictaLanguageView,
+    });
+
+    if (plan.status === 'noop') return;
+    if (plan.status === 'error') {
+      setOpenRouterError(plan.message);
       return;
     }
-    if (!openRouterAccessAllowed) {
-      setOpenRouterError(openRouterAccessMessage);
-      return;
-    }
+
     if (!ensureCanCreateDictationSession('openrouter')) return;
-    if (!isOnline) {
-      setOpenRouterError('OpenRouter needs internet. You can keep practicing offline; results are saved on this device and will sync when the connection returns.');
+    if (plan.offlineErrorMessage) {
+      setOpenRouterError(plan.offlineErrorMessage);
       return;
     }
-    const inputMode = activeSession ? mapSessionInputMode(activeSession.inputMode) : fallbackInputMode;
-    const language = dictaLanguageView;
-    setSelectedBenchmarkInputMode(inputMode);
-    setSelectedBenchmarkLanguage(language);
+
+    setSelectedBenchmarkInputMode(plan.inputMode);
+    setSelectedBenchmarkLanguage(plan.language);
     setBenchmarkExportMessage('');
     setSessionFeedbackMessage('');
     showOpenRouterWorkspace();
@@ -65,7 +69,6 @@ export function useOpenRouterGenerationActions(options: UseOpenRouterGenerationA
     allowCustomSessionGeneration,
     dictaLanguageView,
     ensureCanCreateDictationSession,
-    fallbackInputMode,
     isOnline,
     openRouterAccessAllowed,
     openRouterAccessMessage,
