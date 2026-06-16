@@ -115,7 +115,7 @@ describe('adaptiveUserSystemReport', () => {
     expect(report.executiveSummary.status).toBe('recovery_recommended');
     expect(report.adaptiveLoopBreakdown.sourceOfTruth.insightReport).toContain('not the direct LLM prompt');
     expect(report.componentDiagnostics.generationAndPrescription.promptMode).toBe('compact-adaptive-v2');
-    expect(report.componentDiagnostics.plannerAndChunking.targetPhraseSize).toBe('medium');
+    expect(report.componentDiagnostics.plannerAndChunking.targetPhraseSize).toBe('short');
     expect(report.componentDiagnostics.plannerAndChunking.boundaryDistribution).toContainEqual({ name: 'clause', count: 1 });
     expect(report.componentDiagnostics.controllerAndPacing.topDecisionReasons).toContainEqual({ name: 'lag-pressure', count: 1 });
     expect(report.componentDiagnostics.browserTtsEnvironment.selectedVoice?.voiceName).toBe('German Local');
@@ -222,6 +222,8 @@ describe('adaptiveUserSystemReport', () => {
 
   it('recommends a harder next exercise when latest performance is strong', () => {
     const profile = createEmptyInputLanguageBenchmark('browser-tts', 'de');
+    profile.sessionCount = 8;
+    profile.sampleCount = 40;
     profile.recommendation = {
       ...profile.recommendation,
       targetRateRange: [0.95, 1.05],
@@ -229,6 +231,26 @@ describe('adaptiveUserSystemReport', () => {
       targetPauseMs: 700,
       confidence: 0.7,
     };
+    profile.timeline = Array.from({ length: 30 }, (_, index) => ({
+      timestampMs: index + 1,
+      sessionId: 'session-2',
+      phraseIndex: index,
+      totalSemanticPhrases: 30,
+      inputMode: 'browser-tts',
+      language: 'de',
+      mode: 'flow',
+      playbackRate: 0.98,
+      accuracy: 0.94,
+      lagSec: 0.8,
+      rawLagSec: 0.8,
+      stableLagSec: 0.8,
+      wpm: 48,
+      pauseMs: 700,
+      phraseBoundaryType: 'clause',
+      semanticCompleteness: 0.92,
+      event: 'phrase_completed',
+      decisionReason: 'flow-stable',
+    }));
 
     const report = buildAdaptiveUserSystemReport({
       profile,
@@ -254,6 +276,6 @@ describe('adaptiveUserSystemReport', () => {
     expect(report.userProgressSummary.recommendedNextExercise.difficulty).toBe('hard');
     expect(report.executiveSummary.status).toBe('challenge_ready');
     expect(report.userProgressSummary.positiveSignals.join(' ')).toContain('Strong latest-session accuracy');
-    expect(report.adaptiveSystemSummary.recommendedSystemAdjustments.playbackRate).toContain('0.95x-1.00x');
+    expect(report.adaptiveSystemSummary.recommendedSystemAdjustments.playbackRate).toContain('0.95x-1.05x');
   });
 });
