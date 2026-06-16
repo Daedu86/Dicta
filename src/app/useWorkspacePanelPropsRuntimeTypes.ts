@@ -1,0 +1,77 @@
+import type { useAdminWorkspaceProps } from './useAdminWorkspaceProps';
+import type { useLeaderboardWorkspaceProps } from './useLeaderboardWorkspaceProps';
+import type { useOpenRouterWorkspaceProps } from './useOpenRouterWorkspaceProps';
+
+export type OpenRouterWorkspacePropsArgs = Parameters<typeof useOpenRouterWorkspaceProps>[0];
+export type AdminWorkspacePropsArgs = Parameters<typeof useAdminWorkspaceProps>[0];
+export type LeaderboardWorkspacePropsArgs = Parameters<typeof useLeaderboardWorkspaceProps>[0];
+
+export type UseWorkspacePanelPropsRuntimeArgs = {
+  effectiveOpenRouterDefaultModel: OpenRouterWorkspacePropsArgs['defaultModel'];
+  assignedOpenRouterModel: OpenRouterWorkspacePropsArgs['assignedModel'];
+  getAuthHeaders: OpenRouterWorkspacePropsArgs['getAuthHeaders'];
+  setOpenRouterDefaultModel: OpenRouterWorkspacePropsArgs['setOpenRouterDefaultModel'];
+  openRouterModels: OpenRouterWorkspacePropsArgs['models'];
+  openRouterStatus: OpenRouterWorkspacePropsArgs['status'];
+  openRouterError: OpenRouterWorkspacePropsArgs['error'];
+  refreshOpenRouterModels: OpenRouterWorkspacePropsArgs['onRefreshModels'];
+  showLeaderboardWorkspace: OpenRouterWorkspacePropsArgs['onBackToTraining'];
+
+  selectedBenchmarkProfile: OpenRouterWorkspacePropsArgs['exportProfile'];
+  selectedSessionFeedback: OpenRouterWorkspacePropsArgs['exportSessionFeedback'];
+  getBenchmarkActiveSessionStatus: OpenRouterWorkspacePropsArgs['getBenchmarkActiveSessionStatus'];
+  adaptiveBenchmarksByInputLanguage: OpenRouterWorkspacePropsArgs['benchmarks'];
+  adaptiveSessionFeedbackByInputLanguage: OpenRouterWorkspacePropsArgs['sessionFeedbackByInputLanguage'];
+  setSelectedBenchmarkInputMode: OpenRouterWorkspacePropsArgs['setSelectedBenchmarkInputMode'];
+  setSelectedBenchmarkLanguage: OpenRouterWorkspacePropsArgs['setSelectedBenchmarkLanguage'];
+  setBenchmarkExportMessage: OpenRouterWorkspacePropsArgs['setBenchmarkExportMessage'];
+  setSessionFeedbackMessage: OpenRouterWorkspacePropsArgs['setSessionFeedbackMessage'];
+  selectedBenchmarkInputMode: OpenRouterWorkspacePropsArgs['defaultGenerateInputMode'];
+  selectedBenchmarkLanguage: OpenRouterWorkspacePropsArgs['defaultGenerateLanguage'];
+  openRouterGenerateFocusRequest: OpenRouterWorkspacePropsArgs['focusGenerateRequest'];
+  activeOpenRouterJobs: OpenRouterWorkspacePropsArgs['activeJobs'];
+  openRouterJobNotifications: OpenRouterWorkspacePropsArgs['jobNotifications'];
+  trainingGenerationNowMs: OpenRouterWorkspacePropsArgs['generationNowMs'];
+  trackOpenRouterJob: OpenRouterWorkspacePropsArgs['onTrackJob'];
+  createOpenRouterErrorSession: OpenRouterWorkspacePropsArgs['onCreateGenerationErrorSession'];
+  copySelectedBenchmarkJson: OpenRouterWorkspacePropsArgs['onCopyBenchmark'];
+  downloadSelectedBenchmarkJson: OpenRouterWorkspacePropsArgs['onExportBenchmark'];
+  copyBenchmarkWithDictationScriptPrompt: OpenRouterWorkspacePropsArgs['onCopyBenchmarkWithScriptPrompt'];
+  copyBenchmarkFeedbackPrompt: OpenRouterWorkspacePropsArgs['onCopyBenchmarkFeedbackPrompt'];
+  copyBenchmarkFeedbackJson: OpenRouterWorkspacePropsArgs['onCopyBenchmarkFeedback'];
+  copySessionFeedbackJson: OpenRouterWorkspacePropsArgs['onCopySessionFeedback'];
+  copyDictationScriptPrompt: OpenRouterWorkspacePropsArgs['onCopyScriptPrompt'];
+  copyDictationScriptTemplate: OpenRouterWorkspacePropsArgs['onCopyScriptTemplate'];
+  copyBenchmarkFeedbackPromptWithHumanFeedback: OpenRouterWorkspacePropsArgs['onCopyBenchmarkFeedbackPromptWithHumanFeedback'];
+
+  adminSessions: AdminWorkspacePropsArgs['sessions'];
+  adminStorageSummary: AdminWorkspacePropsArgs['summary'];
+  adminFileInventory: AdminWorkspacePropsArgs['fileInventory'];
+  adminFileInventoryError: AdminWorkspacePropsArgs['fileInventoryError'];
+  exportMessage: AdminWorkspacePropsArgs['exportMessage'];
+  supabaseSyncStatus: AdminWorkspacePropsArgs['syncStatus'];
+  adminLanguageView: AdminWorkspacePropsArgs['languageView'];
+  setAdminLanguageView: AdminWorkspacePropsArgs['onChangeLanguage'];
+  importDictaLocalStorageSnapshot: AdminWorkspacePropsArgs['onImportLocalStorage'];
+  appProfile: AdminWorkspacePropsArgs['appProfile'];
+  visibleProfiles: AdminWorkspacePropsArgs['visibleProfiles'];
+  adminProfileSessionCounts: AdminWorkspacePropsArgs['profileSessionCounts'];
+  adminProfileFilter: AdminWorkspacePropsArgs['selectedProfileFilter'];
+  setAdminProfileFilter: AdminWorkspacePropsArgs['onChangeProfileFilter'];
+  updateAdminProfileAccess: AdminWorkspacePropsArgs['onUpdateProfileAccess'];
+  adminRemoteStatus: AdminWorkspacePropsArgs['remoteAdminStatus'];
+  setExportMessage: AdminWorkspacePropsArgs['setExportMessage'];
+
+  leaderboard: LeaderboardWorkspacePropsArgs['leaderboard'];
+  leaderboardSections: LeaderboardWorkspacePropsArgs['leaderboardSections'];
+  leaderboardLanguageView: LeaderboardWorkspacePropsArgs['leaderboardLanguageView'];
+  leaderboardExpanded: LeaderboardWorkspacePropsArgs['leaderboardExpanded'];
+  leaderboardSectionExpanded: LeaderboardWorkspacePropsArgs['leaderboardSectionExpanded'];
+  activeSessionId: LeaderboardWorkspacePropsArgs['activeSessionId'];
+  setLeaderboardLanguageView: LeaderboardWorkspacePropsArgs['onChangeLeaderboardLanguageView'];
+  setLeaderboardExpanded: LeaderboardWorkspacePropsArgs['setLeaderboardExpanded'];
+  setLeaderboardSectionExpanded: LeaderboardWorkspacePropsArgs['setLeaderboardSectionExpanded'];
+  openWorkspaceForSession: LeaderboardWorkspacePropsArgs['onOpenWorkspaceForSession'];
+  openDashboardForSession: LeaderboardWorkspacePropsArgs['onOpenDashboardForSession'];
+  deleteSession: LeaderboardWorkspacePropsArgs['onDeleteSession'];
+};
