@@ -30,7 +30,9 @@ Use this as a navigation guide before changing code. It is not a replacement for
 | Path | Responsibility | Notes |
 | --- | --- | --- |
 | `src/App.tsx` | Shell-only React entrypoint. | Imports `App.css` and renders `DictaAppRuntime`; it must not regain runtime ownership. |
-| `src/app/DictaAppRuntime.tsx` | Main browser composition root. | Wires auth/profile, sync, workspace routing, OpenRouter, focused training, presentation props, and route rendering. This is the current App-runtime hotspot. |
+| `src/app/DictaAppRuntime.tsx` | Runtime export shim. | Re-exports `DictaAppRuntime` from `DictaAppRuntimeRoot`; do not add runtime behavior here. |
+| `src/app/DictaAppRuntimeRoot.tsx` | Main browser composition root. | Wires auth/profile, sync, workspace routing, root OpenRouter, focused training, presentation props, and route rendering. This is the current App-runtime hotspot. |
+| `src/app/useDictaAppBootRuntime.ts` | Root boot-state boundary. | Owns app boot state buckets: perf diagnostics, sessions, training state, routing, theme, Browser TTS, and root refs. |
 | `src/app/` | App-level hooks, runtimes, workspace orchestration, and feature composition. | Inspect owner hooks and tests before editing. |
 | `src/components/` | React UI components. | Preserve props and user-visible behavior. |
 | `src/core/` | Core TypeScript domain logic. | Prefer pure helpers and direct unit tests. |
