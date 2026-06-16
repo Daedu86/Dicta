@@ -2,56 +2,10 @@ import { useAdaptiveWorkspaceRouteRuntime } from './useAdaptiveWorkspaceRouteRun
 import { useAppPresentationRuntime } from './useAppPresentationRuntime';
 import { buildAdaptiveWorkspaceRouteRuntimeInput } from './adaptiveWorkspaceRouteRuntimeInput';
 import { buildAppPresentationRuntimeInput } from './appPresentationRuntimeInput';
-
-type AdaptiveWorkspaceRouteRuntimeArgs = Parameters<typeof useAdaptiveWorkspaceRouteRuntime>[0];
-type AppPresentationRuntimeArgs = Parameters<typeof useAppPresentationRuntime>[0];
-
-type FlatAdaptiveWorkspaceRouteRuntimeArgs = Exclude<
-  AdaptiveWorkspaceRouteRuntimeArgs,
-  { presentation: unknown }
->;
-
-type FlatAppPresentationRuntimeArgs = Exclude<
-  AppPresentationRuntimeArgs,
-  { workspacePanels: unknown }
->;
-
-type RouteDerivedWorkspacePanelKey =
-  | 'selectedBenchmarkProfile'
-  | 'selectedSessionFeedback'
-  | 'getBenchmarkActiveSessionStatus'
-  | 'copySelectedBenchmarkJson'
-  | 'downloadSelectedBenchmarkJson'
-  | 'copyBenchmarkWithDictationScriptPrompt'
-  | 'copyBenchmarkFeedbackPrompt'
-  | 'copyBenchmarkFeedbackJson'
-  | 'copySessionFeedbackJson'
-  | 'copyDictationScriptPrompt'
-  | 'copyDictationScriptTemplate'
-  | 'copyBenchmarkFeedbackPromptWithHumanFeedback';
-
-type RouteDerivedLiveMetricsDockKey =
-  | 'insightsDiagnosticInputOptions'
-  | 'copyInsightsDiagnosticPackage'
-  | 'selectInsightsDiagnosticFallbackReport';
-
-export type DictaAppRouteCompositionRuntimeParams =
-  Omit<FlatAdaptiveWorkspaceRouteRuntimeArgs, 'mapSessionInputMode'> &
-  Omit<
-    FlatAppPresentationRuntimeArgs,
-    | RouteDerivedWorkspacePanelKey
-    | RouteDerivedLiveMetricsDockKey
-    | 'authRequired'
-    | 'allowDictationScriptCreation'
-  > & {
-    currentPath: string;
-    openAdaptiveExportsForActiveInput: unknown;
-    syncConfig: { authRequired: boolean };
-    localDevFeaturesAvailable: boolean;
-  };
+import type { DictaAppRouteCompositionRuntimeParams } from './dictaAppRouteCompositionTypes';
 
 export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteCompositionRuntimeParams) {
-  const { currentPath, openAdaptiveExportsForActiveInput } = params;
+  const { currentPath } = params;
 
   const {
     selectedBenchmarkProfile,
@@ -73,8 +27,6 @@ export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteComposit
     adaptiveBenchmarkSectionProps,
   } = useAdaptiveWorkspaceRouteRuntime(buildAdaptiveWorkspaceRouteRuntimeInput(params));
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
-
-  void openAdaptiveExportsForActiveInput;
 
   const {
     openRouterWorkspaceProps,

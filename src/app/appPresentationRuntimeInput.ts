@@ -1,5 +1,5 @@
 import type { useAppPresentationRuntime } from './useAppPresentationRuntime';
-import type { DictaAppRouteCompositionRuntimeParams } from './useDictaAppRouteCompositionRuntime';
+import type { DictaAppRouteCompositionRuntimeParams } from './dictaAppRouteCompositionTypes';
 
 type AppPresentationRuntimeInput = Parameters<typeof useAppPresentationRuntime>[0];
 type GroupedAppPresentationRuntimeInput = Extract<

@@ -1,6 +1,6 @@
 import { mapSessionInputMode } from './appRuntimeHelpers';
 import type { useAdaptiveWorkspaceRouteRuntime } from './useAdaptiveWorkspaceRouteRuntime';
-import type { DictaAppRouteCompositionRuntimeParams } from './useDictaAppRouteCompositionRuntime';
+import type { DictaAppRouteCompositionRuntimeParams } from './dictaAppRouteCompositionTypes';
 
 type AdaptiveWorkspaceRouteRuntimeInput = Parameters<typeof useAdaptiveWorkspaceRouteRuntime>[0];
 
