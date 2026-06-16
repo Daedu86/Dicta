@@ -4,7 +4,7 @@ This document maps important Dicta modules and runtime areas to the tests that p
 
 Use this before changing code so validation starts with the narrowest relevant tests.
 
-Updated: 2026-06-15 after pending critical rows keepalive-plan extraction.  
+Updated: 2026-06-16 after OpenRouter direct generation runtime extraction.  
 Verified against branch: `product/input-2`.
 
 ## Validation scripts
@@ -56,9 +56,15 @@ Verified against branch: `product/input-2`.
 | Area / module | Responsibility | Relevant tests |
 | --- | --- | --- |
 | `src/app/useOpenRouterModelRuntime.ts` | OpenRouter model assignment/default resolution and refresh wiring. | `tests/workspaceModelRefreshRuntime.test.ts`, `tests/config.test.ts` |
-| `src/app/useOpenRouterGenerationRuntime.ts` | OpenRouter generation entry wiring. | OpenRouter tests below. |
-| `src/app/useOpenRouterGenerationActions.ts` | Opens generation UI and delegates direct generation actions. | `tests/openRouterGenerationJobRequest.test.ts`, `tests/openRouterDirectGenerationJobPlan.test.ts`, `tests/openRouterDirectGenerationPresets.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts` |
-| `src/app/useOpenRouterDirectGenerationRuntime.ts` | Direct generation lifecycle: guards, job request, tracking, busy state, and direct failure handling. | `tests/openRouterGenerationJobRequest.test.ts`, `tests/openRouterDirectGenerationJobPlan.test.ts`, `tests/openRouterDirectGenerationPresets.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts` |
+| `src/app/useDictaOpenRouterRuntime.ts` | Dicta-level OpenRouter composition: online status, jobs boundary, generation runtime handoff, and public runtime surface. | `tests/dictaOpenRouterRuntimeBoundary.test.ts` |
+| `src/app/useDictaOpenRouterJobsRuntime.ts` | Dicta-level OpenRouter jobs composition: error-session actions, generated-script settlement, job runtime wiring, and reset ref ownership. | `tests/dictaOpenRouterRuntimeBoundary.test.ts`, `tests/useOpenRouterJobsRuntime.test.ts`, `tests/openRouterGeneratedScriptSettlement.test.ts` |
+| `src/app/useOpenRouterGenerationRuntime.ts` | OpenRouter generation entry wiring. | `tests/dictaOpenRouterRuntimeBoundary.test.ts`, OpenRouter tests below. |
+| `src/app/useOpenRouterGenerationActions.ts` | Opens generation UI using a pure workspace plan and delegates direct generation actions. | `tests/openRouterGenerateWorkspacePlan.test.ts`, `tests/openRouterGenerationJobRequest.test.ts`, `tests/openRouterDirectGenerationJobPlan.test.ts`, `tests/openRouterDirectGenerationPresets.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts` |
+| `src/app/openRouterGenerateWorkspacePlan.ts` | Pure plan for opening the OpenRouter generation workspace from the active session: missing session, admin access, OpenRouter access, input mode, language, and offline message handoff. | `tests/openRouterGenerateWorkspacePlan.test.ts` |
+| `src/app/useOpenRouterDirectGenerationRuntime.ts` | Direct generation composer that wires the direct-generation runner to easy/medium/hard preset actions and busy controls. | `tests/openRouterDirectGenerationRuntimeBoundary.test.ts`, `tests/openRouterDirectGenerationPresetActionsBoundary.test.ts` |
+| `src/app/useOpenRouterDirectGenerationRunner.ts` | Direct generation lifecycle runner: guards, start plan, notification permission, perf span, job request, tracking, failure policy, and persistent error-session creation. | `tests/openRouterDirectGenerationRuntimeBoundary.test.ts`, `tests/openRouterGenerationJobRequest.test.ts`, `tests/openRouterDirectGenerationJobPlan.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts` |
+| `src/app/useOpenRouterDirectGenerationPresetActions.ts` | Direct generation preset action wiring for easy, medium, and hard generation buttons with matching busy state controls. | `tests/openRouterDirectGenerationPresetActionsBoundary.test.ts`, `tests/openRouterDirectGenerationPresets.test.ts` |
+| `src/app/openRouterDirectGenerationStartPlan.ts` | Pure start plan for direct generation: offline error, default model trimming/validation, input mode resolution, and selected language handoff. | `tests/openRouterDirectGenerationStartPlan.test.ts` |
 | `src/app/useOpenRouterJobsRuntime.ts` | Public OpenRouter job runtime state, tracking, manual failure recording, and reset. | `tests/useOpenRouterJobsRuntime.test.ts`, `tests/openRouterJobs.test.ts` |
 | `src/app/useOpenRouterJobPollingRuntime.ts` | OpenRouter job polling, settlement, generated-script validation, notices, error-session creation, and cleanup. | `tests/useOpenRouterJobsRuntime.test.ts`, `tests/openRouterJobs.test.ts`, `tests/openRouterJobRoute.test.ts` |
 | `src/app/useOpenRouterGeneratedScriptSettlement.ts` | Creates the generated session and ready notification after an OpenRouter job completes. | `tests/openRouterGeneratedScriptSettlement.test.ts`, `tests/trainingNotifications.test.ts` |
@@ -145,13 +151,14 @@ Use the smallest relevant validation first.
 Examples:
 
 1. If changing `src/app/useWorkspaceModelRefreshRuntime.ts`, run `npx vitest run tests/workspaceModelRefreshRuntime.test.ts`.
-2. If changing OpenRouter direct generation, run `npx vitest run tests/openRouterGenerationJobRequest.test.ts tests/openRouterDirectGenerationJobPlan.test.ts tests/openRouterDirectGenerationPresets.test.ts tests/trainingOpenRouterLanguageContract.test.ts`.
-3. If changing OpenRouter job polling or failure policy, run `npx vitest run tests/openRouterJobs.test.ts tests/useOpenRouterJobsRuntime.test.ts tests/openRouterJobRoute.test.ts tests/openRouterGenerationJobRequest.test.ts`.
-4. If changing Browser TTS policy modules, run the matching `browserTts*.test.ts` file first.
-5. If changing `src/app/useBrowserTtsPlaybackLoop.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/browserTtsUtteranceConfigurationContract.test.ts tests/mockSpeechSynthesisHarness.test.ts tests/useTtsPlaybackControls.test.ts tests/browserTtsPlaybackPlan.test.ts tests/browserTtsPlaybackStartPlan.test.ts tests/browserTtsUnexpectedErrorPlan.test.ts`.
-6. If changing `src/app/useTtsSessionOrchestrationRuntime.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/useResetSessionRuntime.test.ts tests/useTtsSessionSubmitAction.test.ts tests/useTtsPlaybackControls.test.ts tests/useTtsPerformanceSampler.test.ts`.
-7. If changing Supabase sync or session persistence, run `npx vitest run tests/supabaseSync.test.ts tests/useSessionPersistenceSync.test.ts tests/profileScopedStorage.test.ts`.
-8. If changing mobile/PWA flow behavior, run focused unit tests first, then `npm run test:e2e:mobile`.
+2. If changing OpenRouter generation workspace opening, run `npx vitest run tests/openRouterGenerateWorkspacePlan.test.ts tests/openRouterDirectGenerationRuntimeBoundary.test.ts`.
+3. If changing OpenRouter direct generation execution, run `npx vitest run tests/openRouterDirectGenerationStartPlan.test.ts tests/openRouterDirectGenerationRuntimeBoundary.test.ts tests/openRouterDirectGenerationPresetActionsBoundary.test.ts tests/openRouterGenerationJobRequest.test.ts tests/openRouterDirectGenerationJobPlan.test.ts tests/openRouterDirectGenerationPresets.test.ts tests/trainingOpenRouterLanguageContract.test.ts`.
+4. If changing OpenRouter job polling or failure policy, run `npx vitest run tests/openRouterJobs.test.ts tests/useOpenRouterJobsRuntime.test.ts tests/openRouterJobRoute.test.ts tests/openRouterGenerationJobRequest.test.ts`.
+5. If changing Browser TTS policy modules, run the matching `browserTts*.test.ts` file first.
+6. If changing `src/app/useBrowserTtsPlaybackLoop.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/browserTtsUtteranceConfigurationContract.test.ts tests/mockSpeechSynthesisHarness.test.ts tests/useTtsPlaybackControls.test.ts tests/browserTtsPlaybackPlan.test.ts tests/browserTtsPlaybackStartPlan.test.ts tests/browserTtsUnexpectedErrorPlan.test.ts`.
+7. If changing `src/app/useTtsSessionOrchestrationRuntime.ts`, run `npx vitest run tests/browserTtsPlaybackLoopContract.test.ts tests/useResetSessionRuntime.test.ts tests/useTtsSessionSubmitAction.test.ts tests/useTtsPlaybackControls.test.ts tests/useTtsPerformanceSampler.test.ts`.
+8. If changing Supabase sync or session persistence, run `npx vitest run tests/supabaseSync.test.ts tests/useSessionPersistenceSync.test.ts tests/profileScopedStorage.test.ts`.
+9. If changing mobile/PWA flow behavior, run focused unit tests first, then `npm run test:e2e:mobile`.
 
 ## Gaps and maintenance
 
