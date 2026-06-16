@@ -8,7 +8,7 @@ import { buildBrowserTtsUtterancePerfMetadata } from './browserTtsUtterancePerfM
 type CreateBrowserTtsPlaybackUtteranceArgs = {
   chunk: BrowserTtsPlaybackPlan['chunk'];
   perfDiagnostics: PerfDiagnostics;
-  perfPlayId: string;
+  perfPlayId: number;
   chunkIndex: number;
   ttsLanguage: TtsLanguage;
   pacingMode: TtsPacingMode;
@@ -31,7 +31,7 @@ export function createBrowserTtsPlaybackUtterance({
   browserTtsVoices,
 }: CreateBrowserTtsPlaybackUtteranceArgs): {
   utterance: SpeechSynthesisUtterance;
-  perfUtteranceId: string;
+  perfUtteranceId: number;
 } {
   const utterance = new SpeechSynthesisUtterance(chunk.text);
   const perfUtteranceId = perfDiagnostics.beginTtsUtterance(
