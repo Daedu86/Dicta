@@ -13,6 +13,7 @@ import { TrainingGenerationCard, type TrainingGenerationButton } from './trainin
 import { TrainingInputCard } from './training/TrainingInputCard';
 import { TrainingSessionCard, type TrainingSessionSubmissionMeta } from './training/TrainingSessionCard';
 import { TrainingSubmitCard } from './training/TrainingSubmitCard';
+import { buildFocusedTrainingReview } from '../app/focusedTrainingReview';
 
 type SessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 type SessionInputMode = string;
@@ -36,6 +37,7 @@ type TrainingViewSession = {
   name: string;
   inputMode: SessionInputMode;
   inputSettingsLocked: boolean;
+  ttsText?: string;
   ttsLanguage: LanguageCode | null;
   difficulty: Difficulty;
   status: SessionStatus;
@@ -193,6 +195,7 @@ export function TrainingView<Session extends TrainingViewSession>({
 
   const textAreaId = 'training-dictation-input';
   const activeDifficultyLabel = activeSession ? formatDifficultyLabel(activeSession.difficulty) : '—';
+  const review = activeSession ? buildFocusedTrainingReview(activeSession.ttsText ?? '', currentTextValue) : null;
 
   return (
     <section className="training-view" aria-label="Focused training view">
@@ -250,6 +253,8 @@ export function TrainingView<Session extends TrainingViewSession>({
         liveAccuracyHelpText={liveAccuracyHelpText}
         liveLagLabel={liveLagLabel}
         liveLagHelpText={liveLagHelpText}
+        showReview={Boolean(activeSession && sessionStatus === 'finished')}
+        review={review}
       />
 
       <TrainingSubmitCard

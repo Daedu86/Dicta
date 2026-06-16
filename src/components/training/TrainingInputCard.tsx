@@ -1,5 +1,7 @@
 import type { KeyboardEvent, RefObject } from 'react';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from '../LowLatencyTextarea';
+import { TrainingReviewPanel } from './TrainingReviewPanel';
+import type { TrainingReviewModel } from '../../app/focusedTrainingReview';
 
 export type TrainingInputCardProps = {
   textAreaId: string;
@@ -20,6 +22,8 @@ export type TrainingInputCardProps = {
   liveAccuracyHelpText: string;
   liveLagLabel: string;
   liveLagHelpText: string;
+  showReview: boolean;
+  review: TrainingReviewModel | null;
 };
 
 export function TrainingInputCard({
@@ -41,6 +45,8 @@ export function TrainingInputCard({
   liveAccuracyHelpText,
   liveLagLabel,
   liveLagHelpText,
+  showReview,
+  review,
 }: TrainingInputCardProps) {
   return (
     <section className="training-card training-input-card" aria-label="Dictation input">
@@ -65,20 +71,24 @@ export function TrainingInputCard({
           </span>
         </div>
       </div>
-      <LowLatencyTextarea
-        id={textAreaId}
-        ref={textInputRef}
-        value={currentTextValue}
-        onValueChange={onTextChange}
-        onImmediateValueChange={onImmediateTextChange}
-        onKeyDown={onTextKeyDown}
-        placeholder={textPlaceholder}
-        readOnly={readOnly}
-        rows={10}
-        commitDelayMs={textCommitDelayMs}
-        maxCommitDelayMs={Math.max(textCommitDelayMs * 3, 240)}
-        syncKey={syncKey}
-      />
+      {showReview && review ? (
+        <TrainingReviewPanel review={review} />
+      ) : (
+        <LowLatencyTextarea
+          id={textAreaId}
+          ref={textInputRef}
+          value={currentTextValue}
+          onValueChange={onTextChange}
+          onImmediateValueChange={onImmediateTextChange}
+          onKeyDown={onTextKeyDown}
+          placeholder={textPlaceholder}
+          readOnly={readOnly}
+          rows={10}
+          commitDelayMs={textCommitDelayMs}
+          maxCommitDelayMs={Math.max(textCommitDelayMs * 3, 240)}
+          syncKey={syncKey}
+        />
+      )}
     </section>
   );
 }
