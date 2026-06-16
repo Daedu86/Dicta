@@ -6,9 +6,9 @@ import { buildBrowserTtsTelemetryFrame } from '../src/inputs/browserTts/browserT
 import { input } from './helpers/adaptiveControllerFixtures';
 
 describe('AdaptiveDictationController profile guardrails', () => {
-  it('starts Browser TTS English in conservative session warmup before adapting upward', () => {
+  it('does not force Browser TTS English warmup before adapting upward', () => {
     const controller = new AdaptiveDictationController();
-    const warmupDecision = controller.decide(
+    const decision = controller.decide(
       input({
         phraseId: 'tts-0',
         sessionChunkIndex: 0,
@@ -23,30 +23,11 @@ describe('AdaptiveDictationController profile guardrails', () => {
       }),
     );
 
-    expect(warmupDecision.mode).toBe('support');
-    expect(warmupDecision.playbackRate).toBe(0.78);
-    expect(warmupDecision.pauseAfterPhraseMs).toBe(1800);
-    expect(warmupDecision.nextPhraseSize).toBe('short');
-    expect(warmupDecision.reason).toContain('session-warmup-calibration');
-
-    const postWarmupDecision = controller.decide(
-      input({
-        phraseId: 'tts-3',
-        sessionChunkIndex: 3,
-        language: 'en',
-        lagSec: 0.1,
-        accuracy: 0.98,
-        chunkAccuracy: 0.98,
-        rollingAccuracyLast3: 0.98,
-        rollingAccuracyLast5: 0.98,
-        correctionRate: 0.01,
-        phraseDifficulty: 0.2,
-        wpm: 60,
-      }),
-    );
-
-    expect(postWarmupDecision.reason).not.toContain('session-warmup-calibration');
-    expect(postWarmupDecision.playbackRate).toBeGreaterThan(warmupDecision.playbackRate);
+    expect(decision.reason).not.toContain('session-warmup-calibration');
+    expect(decision.mode).toBe('flow');
+    expect(decision.reason).toContain('high-accuracy-low-lag');
+    expect(decision.playbackRate).toBeGreaterThanOrEqual(0.95);
+    expect(decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(1200);
   });
 
   it('extends Browser TTS English pause when current chunk accuracy is low', () => {
@@ -318,7 +299,8 @@ describe('AdaptiveDictationController profile guardrails', () => {
     expect(decision.nextPhraseSize).toBe('medium');
     expect(decision.reason).toContain('high-accuracy-low-lag');
   });
-it('enters recovery mode when Browser TTS user falls far behind', () => {
+
+  it('enters recovery mode when Browser TTS user falls far behind', () => {
     const controller = new AdaptiveDictationController();
     const decision = controller.decide(
       input({
@@ -341,7 +323,7 @@ it('enters recovery mode when Browser TTS user falls far behind', () => {
     expect(decision.mode).toBe('recovery');
     expect(decision.nextPhraseSize).toBe('short');
     expect(decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2200);
-    expect(decision.playbackRate).toBeLessThanOrEqual(0.92);
+    expect(decision.playbackRate).toBeLessThanOrEqual(1.0);
     expect(decision.reasonCodes).toContain('mode-recovery');
     expect(decision.reasonCodes).toContain('recovery-needed');
     expect(decision.reasonCodes).toContain('extended-catch-up-window');
@@ -391,5 +373,4 @@ it('enters recovery mode when Browser TTS user falls far behind', () => {
     expect(decision.nextPhraseSize).not.toBe('long');
     expect(decision.reasonCodes).toContain('flow-blocked-after-recovery');
   });
-
 });
