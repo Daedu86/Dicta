@@ -45,6 +45,7 @@ import type {
   OpenRouterWorkspaceProps,
   TrainingGenerationNoticeView,
 } from './types';
+import { useOpenRouterApiKeyStatus } from './useOpenRouterApiKeyStatus';
 
 const LOCAL_DEV_FEATURES_AVAILABLE = import.meta.env.DEV;
 
@@ -68,12 +69,19 @@ export function useOpenRouterWorkspaceRuntime({
   onCreateGenerationErrorSession,
 }: OpenRouterWorkspaceProps) {
   const persistedGenerationSlotsRef = useRef<OpenRouterGenerationSlots | null>(loadPersistedOpenRouterGenerationVariants(defaultModel));
-  const [apiKeyDraft, setApiKeyDraft] = useState('');
-  const [apiKeyVisible, setApiKeyVisible] = useState(false);
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
-  const [apiKeySuffix, setApiKeySuffix] = useState('');
-  const [apiKeyMessage, setApiKeyMessage] = useState('');
-  const [apiKeyBusy, setApiKeyBusy] = useState(false);
+  const {
+    apiKeyDraft,
+    setApiKeyDraft,
+    apiKeyVisible,
+    setApiKeyVisible,
+    apiKeyConfigured,
+    apiKeySuffix,
+    apiKeyMessage,
+    setApiKeyMessage,
+    apiKeyBusy,
+    setApiKeyBusy,
+    refreshApiKeyStatus,
+  } = useOpenRouterApiKeyStatus(LOCAL_DEV_FEATURES_AVAILABLE);
   const [selectedModel, setSelectedModel] = useState(defaultModel);
   const [testPrompt, setTestPrompt] = useState('');
   const [testResponse, setTestResponse] = useState('');
@@ -340,33 +348,6 @@ export function useOpenRouterWorkspaceRuntime({
     );
   }, [activeGenerateSlotId, activeGenerateSlotJob, generationNowMs, jobNotifications]);
   const activeGenerateSlotBusy = generateBusySlots[activeGenerateSlotId] || Boolean(activeGenerateSlotJob);
-
-  const refreshApiKeyStatus = async (): Promise<void> => {
-    if (!LOCAL_DEV_FEATURES_AVAILABLE) {
-      setApiKeyConfigured(false);
-      setApiKeySuffix('');
-      setApiKeyMessage('Hosted builds read OPENROUTER_API_KEY from Vercel environment variables.');
-      return;
-    }
-    try {
-      const response = await fetch('/api/openrouter/key/status');
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Status request failed (${response.status}).`);
-      }
-      const payload = (await response.json()) as { configured?: boolean; suffix?: string };
-      setApiKeyConfigured(Boolean(payload.configured));
-      setApiKeySuffix(typeof payload.suffix === 'string' ? payload.suffix : '');
-    } catch (err) {
-      setApiKeyConfigured(false);
-      setApiKeySuffix('');
-      setApiKeyMessage(err instanceof Error ? err.message : 'Failed to read key status.');
-    }
-  };
-
-  useEffect(() => {
-    void refreshApiKeyStatus();
-  }, []);
 
   useEffect(() => {
     setSelectedModel(defaultModel);
