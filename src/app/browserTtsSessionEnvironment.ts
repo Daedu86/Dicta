@@ -1,30 +1,29 @@
 import type { BrowserTtsEnvironmentFingerprint } from '../types/dictation';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../core/sessionInputModes';
-import {
-  collectBrowserTtsEnvironmentFingerprint,
-  type BrowserTtsEnvironmentMatchMedia,
-  type BrowserTtsEnvironmentNavigatorLike,
-} from '../inputs/browserTts/browserTtsEnvironment';
+import { collectBrowserTtsEnvironmentFingerprint } from '../inputs/browserTts/browserTtsEnvironment';
 import { sameBrowserTtsEnvironment } from '../inputs/browserTts/browserTtsEnvironmentComparison';
 import {
   chooseDiverseBrowserTtsVoiceURIForSession,
   resolveBrowserTtsSessionVoice,
   type BrowserTtsVoiceLike,
 } from '../inputs/browserTts/browserTtsVoices';
-import type { StoredSession, TtsLanguage } from './sessionTypes';
+import type { StoredSession } from './sessionTypes';
+import type {
+  AssignMissingBrowserTtsVoiceEnvironmentsOptions,
+  AttachBrowserTtsSessionEnvironmentOptions,
+  CollectBrowserTtsSessionEnvironmentOptions,
+  ResolveBrowserTtsVoiceForSessionOptions,
+  ResolveBrowserTtsVoiceSessionUpdateOptions,
+} from './browserTtsSessionEnvironmentTypes';
 
-type BrowserTtsEnvironmentRuntimeOptions<TVoice extends BrowserTtsVoiceLike> = {
-  browserTtsVoices: readonly TVoice[];
-  navigatorRef?: BrowserTtsEnvironmentNavigatorLike | null;
-  matchMedia?: BrowserTtsEnvironmentMatchMedia | null;
-};
-
-export type CollectBrowserTtsSessionEnvironmentOptions<TVoice extends BrowserTtsVoiceLike> =
-  BrowserTtsEnvironmentRuntimeOptions<TVoice> & {
-    session: StoredSession | null | undefined;
-    selectedVoice?: TVoice | null;
-    selectedVoiceURI?: string | null;
-  };
+export type {
+  AssignMissingBrowserTtsVoiceEnvironmentsOptions,
+  AttachBrowserTtsSessionEnvironmentOptions,
+  BrowserTtsEnvironmentRuntimeOptions,
+  CollectBrowserTtsSessionEnvironmentOptions,
+  ResolveBrowserTtsVoiceForSessionOptions,
+  ResolveBrowserTtsVoiceSessionUpdateOptions,
+} from './browserTtsSessionEnvironmentTypes';
 
 export function collectBrowserTtsEnvironmentForSession<TVoice extends BrowserTtsVoiceLike>({
   session,
@@ -46,13 +45,6 @@ export function collectBrowserTtsEnvironmentForSession<TVoice extends BrowserTts
     matchMedia,
   });
 }
-
-export type AttachBrowserTtsSessionEnvironmentOptions<TVoice extends BrowserTtsVoiceLike> =
-  BrowserTtsEnvironmentRuntimeOptions<TVoice> & {
-    session: StoredSession;
-    selectedVoice?: TVoice | null;
-    selectedVoiceURI?: string | null;
-  };
 
 export function attachBrowserTtsEnvironment<TVoice extends BrowserTtsVoiceLike>({
   session,
@@ -77,12 +69,6 @@ export function attachBrowserTtsEnvironment<TVoice extends BrowserTtsVoiceLike>(
 
   return { ...session, ttsEnvironment };
 }
-
-export type AssignMissingBrowserTtsVoiceEnvironmentsOptions<TVoice extends BrowserTtsVoiceLike> =
-  BrowserTtsEnvironmentRuntimeOptions<TVoice> & {
-    sessions: readonly StoredSession[];
-    random?: () => number;
-  };
 
 export function assignMissingBrowserTtsVoiceEnvironments<TVoice extends BrowserTtsVoiceLike>({
   sessions,
@@ -137,13 +123,6 @@ export function assignMissingBrowserTtsVoiceEnvironments<TVoice extends BrowserT
   return changed ? next : sessions as StoredSession[];
 }
 
-export type ResolveBrowserTtsVoiceForSessionOptions<TVoice extends BrowserTtsVoiceLike> = {
-  session: StoredSession | null | undefined;
-  browserTtsVoices: readonly TVoice[];
-  language: TtsLanguage;
-  random?: () => number;
-};
-
 export function resolveBrowserTtsVoiceForSession<TVoice extends BrowserTtsVoiceLike>({
   session,
   browserTtsVoices,
@@ -156,14 +135,6 @@ export function resolveBrowserTtsVoiceForSession<TVoice extends BrowserTtsVoiceL
 
   return resolveBrowserTtsSessionVoice(browserTtsVoices, language, session.ttsVoiceURI, random);
 }
-
-export type ResolveBrowserTtsVoiceSessionUpdateOptions<TVoice extends BrowserTtsVoiceLike> =
-  BrowserTtsEnvironmentRuntimeOptions<TVoice> & {
-    session: StoredSession;
-    language: TtsLanguage;
-    nowIso?: () => string;
-    random?: () => number;
-  };
 
 export function resolveBrowserTtsVoiceSessionUpdate<TVoice extends BrowserTtsVoiceLike>({
   session,
