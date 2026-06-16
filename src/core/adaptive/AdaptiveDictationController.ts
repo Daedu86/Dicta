@@ -27,15 +27,10 @@ import {
 import { resolveAdaptiveControllerRatePolicy } from './adaptiveDictationControllerRatePolicy';
 import { resolveAdaptiveNextPhraseSize } from './adaptiveDictationControllerPhrase';
 import { applyAdaptivePausePolicy, buildAdaptivePacingReasonArtifacts } from './adaptiveDictationControllerReasons';
+import { AdaptiveDictationControllerState } from './adaptiveDictationControllerState';
 
 export class AdaptiveDictationController {
-  private previousRate = 1;
-  private struggleFrames = 0;
-  private recoveryFrames = 0;
-  private supportFrames = 0;
-  private balancedFrames = 0;
-  private catchUpFrames = 0;
-  private flowLockFrames = 0;
+  private readonly state = new AdaptiveDictationControllerState();
 
   decide(input: AdaptivePacingInput): PacingDecision {
     const { live, history } = input;
@@ -56,8 +51,8 @@ export class AdaptiveDictationController {
     const baselineRate = clamp(preferredRate, comfortRateMin, comfortRateMax);
     const rateBias = (rollingAccuracyLast3 - history.averageAccuracy) * 0.2 - live.lagSec * 0.05;
     const targetRate = clamp(baselineRate + rateBias, comfortRateMin, comfortRateMax);
-    let playbackRate = Number(clamp(smoothRate(this.previousRate, targetRate, balancedFlowFloor), balancedFlowFloor, comfortRateMax).toFixed(2));
-    this.previousRate = playbackRate;
+    let playbackRate = Number(clamp(smoothRate(this.state.getPreviousRate(), targetRate, balancedFlowFloor), balancedFlowFloor, comfortRateMax).toFixed(2));
+    this.state.setPreviousRate(playbackRate);
 
     const scores = computeAdaptivePacingScores({ live, history, rollingAccuracyLast3 });
     const { lagScore, accuracyScore, hesitationScore, confidenceScore } = scores;
@@ -73,11 +68,7 @@ export class AdaptiveDictationController {
         scores,
       });
 
-      this.previousRate = warmupDecision.playbackRate;
-      this.struggleFrames = Math.max(this.struggleFrames, 1);
-      this.recoveryFrames = 0;
-      this.supportFrames += 1;
-      this.balancedFrames = 0;
+      this.state.applyWarmupSupportFrame(warmupDecision.playbackRate);
 
       return warmupDecision;
     }
@@ -94,22 +85,10 @@ export class AdaptiveDictationController {
       chosenMode,
       phraseOverload,
       longPhraseSensitive,
-      frameState: {
-        struggleFrames: this.struggleFrames,
-        recoveryFrames: this.recoveryFrames,
-        supportFrames: this.supportFrames,
-        balancedFrames: this.balancedFrames,
-        catchUpFrames: this.catchUpFrames,
-        flowLockFrames: this.flowLockFrames,
-      },
+      frameState: this.state.getFrameState(),
     });
-
-    this.struggleFrames = frameTransition.frameState.struggleFrames;
-    this.recoveryFrames = frameTransition.frameState.recoveryFrames;
-    this.supportFrames = frameTransition.frameState.supportFrames;
-    this.balancedFrames = frameTransition.frameState.balancedFrames;
-    this.catchUpFrames = frameTransition.frameState.catchUpFrames;
-    this.flowLockFrames = frameTransition.frameState.flowLockFrames;
+    this.state.applyFrameState(frameTransition.frameState);
+    const frameState = frameTransition.frameState;
 
     const {
       mode,
@@ -133,7 +112,7 @@ export class AdaptiveDictationController {
       live,
       rollingAccuracyLast3,
       userIsStruggling,
-      struggleFrames: this.struggleFrames,
+      struggleFrames: frameState.struggleFrames,
       supportsPhraseReplay,
       adaptiveComfort,
     });
@@ -147,8 +126,8 @@ export class AdaptiveDictationController {
       longPhraseSensitive,
       semanticCompleteness,
       rollingAccuracyLast3,
-      recoveryFrames: this.recoveryFrames,
-      flowLockFrames: this.flowLockFrames,
+      recoveryFrames: frameState.recoveryFrames,
+      flowLockFrames: frameState.flowLockFrames,
     });
 
     if (adaptiveComfort?.preferredPhraseSize === 'short' && mode !== 'flow') {
@@ -201,7 +180,7 @@ export class AdaptiveDictationController {
       mode,
       rollingAccuracyLast3,
       progressGap,
-      struggleFrames: this.struggleFrames,
+      struggleFrames: frameState.struggleFrames,
       pauseAfterPhraseMs,
       reason,
       reasonCodes,
@@ -233,7 +212,7 @@ export class AdaptiveDictationController {
 
     const finalPlaybackRate = ratePolicy.finalPlaybackRate;
     replayRate = ratePolicy.replayRate;
-    this.previousRate = finalPlaybackRate;
+    this.state.setPreviousRate(finalPlaybackRate);
 
     return {
       mode,
