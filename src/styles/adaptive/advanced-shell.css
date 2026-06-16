@@ -1,0 +1,58 @@
+.adaptive-advanced-shell {
+  grid-column: 1 / -1;
+  border: 1px solid #d5dfeb;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.adaptive-advanced-shell summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  color: #102f63;
+  cursor: pointer;
+  list-style: none;
+}
+
+.adaptive-advanced-shell summary::-webkit-details-marker {
+  display: none;
+}
+
+.adaptive-advanced-shell summary::after {
+  content: 'Show';
+  flex: 0 0 auto;
+  border: 1px solid #bfd2ee;
+  border-radius: 999px;
+  padding: 0.24rem 0.55rem;
+  background: #ffffff;
+  color: #385273;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.adaptive-advanced-shell[open] summary::after {
+  content: 'Hide';
+}
+
+.adaptive-advanced-shell summary span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.adaptive-advanced-shell summary strong {
+  font-size: 0.95rem;
+}
+
+.adaptive-advanced-shell summary small {
+  color: #687b93;
+  font-size: 0.78rem;
+}
+
+.adaptive-advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  padding: 0 0.75rem 0.75rem;
+}
