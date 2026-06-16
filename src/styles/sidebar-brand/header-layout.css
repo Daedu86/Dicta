@@ -1,0 +1,72 @@
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.brand-header-panel {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 0.95rem;
+  border: 1px solid #295a95;
+  border-radius: 16px;
+  background:
+    linear-gradient(165deg, rgba(24, 59, 105, 0.96), rgba(17, 46, 82, 0.93));
+  box-shadow:
+    0 14px 36px -30px rgba(8, 20, 42, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  align-items: flex-start;
+}
+
+.app-main-header {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
+}
+
+.workspace-main-header {
+  grid-column: 1 / -1;
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.9rem;
+}
+
+.workspace-main-header .brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.workspace-main-header .brand-copy h1 {
+  font-size: 1rem;
+}
+
+.workspace-main-header .brand-copy p {
+  font-size: 0.78rem;
+}
+
+.workspace-main-header .brand-header-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.workspace-main-header .theme-toggle-button {
+  min-width: 108px;
+}
+
+.sessions-collapse-button {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0.2rem 0.5rem;
+}
+
+.brand-header-main {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
