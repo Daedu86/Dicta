@@ -1,0 +1,139 @@
+import type { DictationScriptDifficulty } from './dictationScriptValidation';
+import type { OpenRouterDurationMinutes } from './openRouterGenerationPrompt';
+import type { InputLanguageBenchmarkMetrics, ListeningTrainingPrescription } from './types';
+import { formatSupportedLanguage } from '../languages';
+
+type DurationTargets = {
+  durationLabel: string;
+  targetSpokenWords: number;
+  minSpokenWords: number;
+  maxSpokenWords: number;
+  minimumPhraseCount: number;
+};
+
+type BuildHardRulesPromptArgs = {
+  normalizedProfile: InputLanguageBenchmarkMetrics;
+  outputTemplate: string;
+  durationMinutes: OpenRouterDurationMinutes;
+  targetDifficulty?: DictationScriptDifficulty;
+  difficultyInstruction?: string;
+  diversificationHints?: string[];
+};
+
+type BuildCompactAdaptiveV2PromptArgs = BuildHardRulesPromptArgs & {
+  trainingPrescription: ListeningTrainingPrescription;
+  compactAdaptiveV2Context: string;
+};
+
+export function buildOpenRouterHardRulesPrompt({
+  normalizedProfile,
+  outputTemplate,
+  durationMinutes,
+  targetDifficulty,
+  difficultyInstruction,
+  diversificationHints,
+}: BuildHardRulesPromptArgs): string {
+  const { durationLabel, targetSpokenWords, minSpokenWords, maxSpokenWords, minimumPhraseCount } =
+    getDurationTargets(durationMinutes);
+
+  return [
+    'Return only a single JSON object. Do not wrap it in Markdown.',
+    `The returned JSON field "inputMode" must be exactly "${normalizedProfile.inputMode}".`,
+    `The returned JSON field "language" must be exactly "${normalizedProfile.language}".`,
+    ...(targetDifficulty ? [`The returned JSON field "difficulty" must be exactly "${targetDifficulty}".`] : []),
+    ...(difficultyInstruction ? [difficultyInstruction] : []),
+    `Generate a training script with voice playback duration of ${durationLabel} and set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
+    `The combined spoken text across all phrases should be ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total, so the actual dictation lasts about ${durationLabel}.`,
+    `Create at least ${minimumPhraseCount} phrases unless the phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
+    'If unsure, prefer a slightly longer script over a short one. Do not satisfy the duration by changing only "estimatedDurationSec"; generate enough phrase text to match the requested audio length.',
+    '"estimatedDurationSec" means the expected time the learner hears the voice/audio, not total attempt or typing time.',
+    'The JSON must validate against the DictationScript output template.',
+    ...buildDiversificationPromptLines(diversificationHints),
+    '',
+    'Output template:',
+    outputTemplate,
+  ].join('\n');
+}
+
+export function buildCompactAdaptiveV2Prompt({
+  normalizedProfile,
+  trainingPrescription,
+  outputTemplate,
+  durationMinutes,
+  targetDifficulty,
+  difficultyInstruction,
+  diversificationHints,
+  compactAdaptiveV2Context,
+}: BuildCompactAdaptiveV2PromptArgs): string {
+  const { durationLabel, targetSpokenWords, minSpokenWords, maxSpokenWords, minimumPhraseCount } =
+    getDurationTargets(durationMinutes);
+  const languageName = formatSupportedLanguage(normalizedProfile.language);
+
+  return [
+    'Generate the next Dicta dictation training session.',
+    'Return only valid JSON. Do not use Markdown or code fences.',
+    `Use exactly inputMode "${normalizedProfile.inputMode}" and language "${normalizedProfile.language}".`,
+    `Write all phrase text naturally in ${languageName}.`,
+    'The LLM generates structured training material only.',
+    'Dicta runtime and the Adaptive Pace Layer control playback, pacing, recovery, rate, pauses, chunking, and Browser TTS execution.',
+    'Follow trainingPrescription as the pedagogical source of truth.',
+    'Use benchmark and latest feedback as context, but do not override trainingPrescription.',
+    `Set "difficulty" exactly to "${trainingPrescription.difficulty}".`,
+    `Set "recommendedRateRange" to ${JSON.stringify(trainingPrescription.targetRateRange)}.`,
+    `Set "recommendedPhraseSize" to "${trainingPrescription.targetPhraseSize}".`,
+    `Set "recommendedPauseMs" close to ${trainingPrescription.targetPauseMs}.`,
+    `Keep phrase-level "difficulty" values in ${trainingPrescription.phraseDifficultyRange[0].toFixed(2)}-${trainingPrescription.phraseDifficultyRange[1].toFixed(2)}.`,
+    ...buildTrainingPrescriptionRequestNotes(trainingPrescription, targetDifficulty, difficultyInstruction),
+    `Target voice playback duration: ${durationLabel}; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
+    `Combined spoken phrase text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
+    `Create at least ${minimumPhraseCount} phrases unless phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
+    'Generate semantic phrases compatible with trainingPrescription.',
+    'Use safe semantic boundaries, replayable phrases when possible, the prescribed phrase difficulty range, content guidance, and pacing-compatible phrase lengths.',
+    'Do not satisfy duration by changing only "estimatedDurationSec"; generate enough phrase text.',
+    ...buildDiversificationPromptLines(diversificationHints),
+    '',
+    'Required output JSON schema/template:',
+    outputTemplate,
+    '',
+    'Compact adaptive context:',
+    compactAdaptiveV2Context,
+  ].join('\n');
+}
+
+function getDurationTargets(durationMinutes: OpenRouterDurationMinutes): DurationTargets {
+  const targetSpokenWords = Math.round(durationMinutes * 60 * 2.6);
+  return {
+    durationLabel: formatDurationMinutes(durationMinutes),
+    targetSpokenWords,
+    minSpokenWords: Math.round(targetSpokenWords * 0.85),
+    maxSpokenWords: Math.round(targetSpokenWords * 1.1),
+    minimumPhraseCount: durationMinutes * 10,
+  };
+}
+
+function formatDurationMinutes(minutes: OpenRouterDurationMinutes): string {
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
+function buildDiversificationPromptLines(diversificationHints?: string[]): string[] {
+  if (!diversificationHints || diversificationHints.length === 0) return [];
+
+  return ['Diversification constraints:', ...diversificationHints.map((hint, index) => `${index + 1}. ${hint}`)];
+}
+
+function buildTrainingPrescriptionRequestNotes(
+  trainingPrescription: ListeningTrainingPrescription,
+  targetDifficulty?: DictationScriptDifficulty,
+  difficultyInstruction?: string,
+): string[] {
+  const notes: string[] = [];
+  if (targetDifficulty) {
+    notes.push(
+      `User requested difficulty "${targetDifficulty}", resolved trainer difficulty "${trainingPrescription.difficulty}". Use the resolved trainer difficulty.`,
+    );
+  }
+  if (difficultyInstruction) {
+    notes.push(`Original difficulty note is secondary to trainingPrescription: ${difficultyInstruction}`);
+  }
+  return notes;
+}
