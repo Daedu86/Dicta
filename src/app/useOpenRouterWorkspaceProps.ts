@@ -46,44 +46,29 @@ type UseOpenRouterWorkspacePropsArgs = {
   onCopyBenchmarkFeedbackPromptWithHumanFeedback: OpenRouterWorkspaceProps['onCopyBenchmarkFeedbackPromptWithHumanFeedback'];
 };
 
-export function useOpenRouterWorkspaceProps({
+type OpenRouterWorkspaceSelectionArgs = Pick<
+  UseOpenRouterWorkspacePropsArgs,
+  | 'setSelectedBenchmarkInputMode'
+  | 'setSelectedBenchmarkLanguage'
+  | 'setBenchmarkExportMessage'
+  | 'setSessionFeedbackMessage'
+>;
+
+type OpenRouterWorkspaceModelArgs = Pick<
+  UseOpenRouterWorkspacePropsArgs,
+  'defaultModel' | 'assignedModel' | 'getAuthHeaders' | 'setOpenRouterDefaultModel'
+>;
+
+function buildOpenRouterWorkspaceModelProps({
   defaultModel,
   assignedModel,
   getAuthHeaders,
   setOpenRouterDefaultModel,
-  models,
-  status,
-  error,
-  onRefreshModels,
-  onBackToTraining,
-  exportProfile,
-  exportSessionFeedback,
-  getBenchmarkActiveSessionStatus,
-  benchmarks,
-  sessionFeedbackByInputLanguage,
-  setSelectedBenchmarkInputMode,
-  setSelectedBenchmarkLanguage,
-  setBenchmarkExportMessage,
-  setSessionFeedbackMessage,
-  defaultGenerateInputMode,
-  defaultGenerateLanguage,
-  focusGenerateRequest,
-  activeJobs,
-  jobNotifications,
-  generationNowMs,
-  onTrackJob,
-  onCreateGenerationErrorSession,
-  onCopyBenchmark,
-  onExportBenchmark,
-  onCopyBenchmarkWithScriptPrompt,
-  onCopyBenchmarkFeedbackPrompt,
-  onCopyBenchmarkFeedback,
-  onCopySessionFeedback,
-  onCopyScriptPrompt,
-  onCopyScriptTemplate,
-  onCopyBenchmarkFeedbackPromptWithHumanFeedback,
-}: UseOpenRouterWorkspacePropsArgs): OpenRouterWorkspaceProps {
-  return useMemo(() => ({
+}: OpenRouterWorkspaceModelArgs): Pick<
+  OpenRouterWorkspaceProps,
+  'defaultModel' | 'assignedModel' | 'authHeaders' | 'onSetDefaultModel'
+> {
+  return {
     defaultModel,
     assignedModel: assignedModel || null,
     authHeaders: getAuthHeaders(),
@@ -91,6 +76,25 @@ export function useOpenRouterWorkspaceProps({
       setOpenRouterDefaultModel(value);
       persistOpenRouterDefaultModel(value);
     },
+  };
+}
+
+function buildOpenRouterExportProfileSelector({
+  setSelectedBenchmarkInputMode,
+  setSelectedBenchmarkLanguage,
+  setBenchmarkExportMessage,
+  setSessionFeedbackMessage,
+}: OpenRouterWorkspaceSelectionArgs): OpenRouterWorkspaceProps['onSelectExportProfile'] {
+  return (inputMode, language) => {
+    setSelectedBenchmarkInputMode(inputMode);
+    setSelectedBenchmarkLanguage(language);
+    setBenchmarkExportMessage('');
+    setSessionFeedbackMessage('');
+  };
+}
+
+function buildOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArgs): OpenRouterWorkspaceProps {
+  const {
     models,
     status,
     error,
@@ -98,15 +102,9 @@ export function useOpenRouterWorkspaceProps({
     onBackToTraining,
     exportProfile,
     exportSessionFeedback,
-    exportActiveSessionStatus: getBenchmarkActiveSessionStatus(exportProfile),
+    getBenchmarkActiveSessionStatus,
     benchmarks,
     sessionFeedbackByInputLanguage,
-    onSelectExportProfile: (inputMode, language) => {
-      setSelectedBenchmarkInputMode(inputMode);
-      setSelectedBenchmarkLanguage(language);
-      setBenchmarkExportMessage('');
-      setSessionFeedbackMessage('');
-    },
     defaultGenerateInputMode,
     defaultGenerateLanguage,
     focusGenerateRequest,
@@ -124,7 +122,81 @@ export function useOpenRouterWorkspaceProps({
     onCopyScriptPrompt,
     onCopyScriptTemplate,
     onCopyBenchmarkFeedbackPromptWithHumanFeedback,
-  }), [
+  } = args;
+
+  return {
+    ...buildOpenRouterWorkspaceModelProps(args),
+    models,
+    status,
+    error,
+    onRefreshModels,
+    onBackToTraining,
+    exportProfile,
+    exportSessionFeedback,
+    exportActiveSessionStatus: getBenchmarkActiveSessionStatus(exportProfile),
+    benchmarks,
+    sessionFeedbackByInputLanguage,
+    onSelectExportProfile: buildOpenRouterExportProfileSelector(args),
+    defaultGenerateInputMode,
+    defaultGenerateLanguage,
+    focusGenerateRequest,
+    activeJobs,
+    jobNotifications,
+    generationNowMs,
+    onTrackJob,
+    onCreateGenerationErrorSession,
+    onCopyBenchmark,
+    onExportBenchmark,
+    onCopyBenchmarkWithScriptPrompt,
+    onCopyBenchmarkFeedbackPrompt,
+    onCopyBenchmarkFeedback,
+    onCopySessionFeedback,
+    onCopyScriptPrompt,
+    onCopyScriptTemplate,
+    onCopyBenchmarkFeedbackPromptWithHumanFeedback,
+  };
+}
+
+export function useOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArgs): OpenRouterWorkspaceProps {
+  const {
+    defaultModel,
+    assignedModel,
+    getAuthHeaders,
+    setOpenRouterDefaultModel,
+    models,
+    status,
+    error,
+    onRefreshModels,
+    onBackToTraining,
+    exportProfile,
+    exportSessionFeedback,
+    getBenchmarkActiveSessionStatus,
+    benchmarks,
+    sessionFeedbackByInputLanguage,
+    setSelectedBenchmarkInputMode,
+    setSelectedBenchmarkLanguage,
+    setBenchmarkExportMessage,
+    setSessionFeedbackMessage,
+    defaultGenerateInputMode,
+    defaultGenerateLanguage,
+    focusGenerateRequest,
+    activeJobs,
+    jobNotifications,
+    generationNowMs,
+    onTrackJob,
+    onCreateGenerationErrorSession,
+    onCopyBenchmark,
+    onExportBenchmark,
+    onCopyBenchmarkWithScriptPrompt,
+    onCopyBenchmarkFeedbackPrompt,
+    onCopyBenchmarkFeedback,
+    onCopySessionFeedback,
+    onCopyScriptPrompt,
+    onCopyScriptTemplate,
+    onCopyBenchmarkFeedbackPromptWithHumanFeedback,
+  } = args;
+
+  return useMemo(() => buildOpenRouterWorkspaceProps(args), [
     defaultModel,
     assignedModel,
     getAuthHeaders,
