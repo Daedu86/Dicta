@@ -74,7 +74,7 @@
 
 .training-eyebrow {
   margin: 0;
-  color: #6e8199;
+  color: #4e6076;
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0;
@@ -112,7 +112,7 @@
 .training-session-submission-meta span + span::before {
   content: '·';
   margin-right: 0.5rem;
-  color: #6e8199;
+  color: #4e6076;
 }
 
 .training-session-meta span,
