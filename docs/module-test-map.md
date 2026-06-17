@@ -1,6 +1,6 @@
 # Module Test Map
 
-Updated: 2026-06-16 after OpenRouter workspace/jobs split.  
+Updated: 2026-06-17 after OpenRouter job route test split and runtime modularization.  
 Verified branch: `product/input-2`.
 
 Use the narrowest relevant validation before broad validation.
@@ -32,7 +32,7 @@ Use the narrowest relevant validation before broad validation.
 | Direct generation | `tests/openRouterDirectGenerationRuntimeBoundary.test.ts`, `tests/openRouterDirectGenerationPresetActionsBoundary.test.ts`, `tests/openRouterDirectGenerationStartPlan.test.ts`, `tests/openRouterDirectGenerationJobPlan.test.ts`, `tests/openRouterDirectGenerationPresets.test.ts` |
 | Jobs polling/settlement | `tests/useOpenRouterJobsRuntime.test.ts`, `tests/openRouterJobs.test.ts`, `tests/openRouterGeneratedScriptSettlement.test.ts` |
 | Workspace runtime helpers | `tests/openRouterJobs.test.ts`, `tests/openRouterGenerationJobRequest.test.ts`, `tests/openRouterGenerationPrompt.test.ts`, `tests/trainingOpenRouterLanguageContract.test.ts`, `tests/openRouterViewHelpers.test.ts` |
-| Jobs route helpers | `tests/openRouterJobRoute.test.ts`, `tests/openRouterJobs.test.ts`, `tests/openRouterGenerationJobRequest.test.ts` |
+| Jobs route helpers | `tests/openRouterJobRoutePayload.test.ts`, `tests/openRouterJobRouteModels.test.ts`, `tests/openRouterJobRouteSessionJson.test.ts`, `tests/openRouterJobRouteProviderErrors.test.ts`, `tests/openRouterJobs.test.ts`, `tests/openRouterGenerationJobRequest.test.ts` |
 
 ## Browser TTS
 
