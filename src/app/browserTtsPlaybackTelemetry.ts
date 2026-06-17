@@ -1,3 +1,4 @@
+import { buildListenerStateV3 } from '../core/adaptive/listenerStateV3';
 import type {
   ListeningPrecisionMetrics,
   LiveTelemetryFrame,
@@ -35,6 +36,22 @@ export function buildBrowserTtsTelemetry(params: {
   language: SupportedLanguage;
   chunk: PlannedBrowserTtsChunk;
 }): LiveTelemetryFrame {
+  const listenerStateV3 = buildListenerStateV3({
+    lagSec: params.liveSignal.lagSec,
+    lagOutlierCount: params.liveSignal.lagOutlierCount,
+    accuracy: params.sessionAccuracy,
+    chunkAccuracy: params.chunkAccuracy,
+    rollingAccuracyLast3: params.rollingAccuracyLast3,
+    wpm: params.liveSignal.wpm,
+    backspaceRate: params.correctionPressure.backspaceRate,
+    correctionRate: params.correctionPressure.correctionRate,
+    phraseBoundaryType: params.chunk.phraseBoundaryType,
+    semanticCompleteness: params.chunk.semanticCompleteness,
+    syntaxComplexity: params.chunk.syntaxComplexity,
+    currentPlaybackRate: params.currentPlaybackRate,
+    currentPauseAfterPhraseMs: params.pauseMs,
+  });
+
   return buildBrowserTtsTelemetryFrame({
     inputMode: 'browser-tts',
     phraseId: params.phraseId,
@@ -58,6 +75,7 @@ export function buildBrowserTtsTelemetry(params: {
     sessionAccuracy: params.sessionAccuracy,
     errorRate: clamp01(1 - params.liveSignal.accuracy / 100),
     listeningPrecision: params.listeningPrecision,
+    listenerStateV3,
     wpm: params.liveSignal.wpm,
     charsPerMinute: 0,
     pauseMs: params.pauseMs,
