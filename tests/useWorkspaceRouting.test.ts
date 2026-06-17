@@ -82,15 +82,15 @@ afterEach(async () => {
 });
 
 describe('useWorkspaceRouting', () => {
-  it('starts on the leaderboard and exposes the current window path', async () => {
+  it('starts on the training workspace and exposes the current window path', async () => {
     window.history.replaceState(null, '', '/training');
 
     const { getRouting } = await renderWorkspaceRouting();
 
-    expect(getRouting().workspaceMode).toBe('leaderboard');
+    expect(getRouting().workspaceMode).toBe('training');
     expect(getRouting().currentPath).toBe('/training');
     expect(getRouting().dashboardSessionId).toBeNull();
-    expect(window.localStorage.getItem(WORKSPACE_MODE_KEY)).toBe('leaderboard');
+    expect(window.localStorage.getItem(WORKSPACE_MODE_KEY)).toBe('training');
   });
 
   it('opens a dashboard workspace for the selected session', async () => {
@@ -120,7 +120,7 @@ describe('useWorkspaceRouting', () => {
   });
 
   it.each<{ action: keyof WorkspaceRoutingState; mode: WorkspaceMode }>([
-    { action: 'showLeaderboardWorkspace', mode: 'leaderboard' },
+    { action: 'showLeaderboardWorkspace', mode: 'training' },
     { action: 'showAdminWorkspace', mode: 'admin' },
     { action: 'showOpenRouterWorkspace', mode: 'openrouter' },
     { action: 'showAdaptiveWorkspace', mode: 'adaptive' },
