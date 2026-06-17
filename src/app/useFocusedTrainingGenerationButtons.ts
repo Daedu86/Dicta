@@ -198,7 +198,7 @@ function buildDirectGenerationButtonRuntimes({
 
   return DIRECT_GENERATION_BUTTON_DEFINITIONS.map((definition, index) => ({
     ...definition,
-    ...runtimes[index],
+    ...runtimes[index]!,
   }));
 }
 
