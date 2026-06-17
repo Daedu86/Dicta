@@ -9,24 +9,31 @@ import {
   getStandaloneMode,
   getUserAgent,
   isPerfDiagnosticsEnabled,
-  now,
   roundMs,
 } from './perfDiagnosticsUtils';
-import {
-  buildPerfInputEvent,
-  recordPerfInputCommit,
-  recordPerfInputPaint,
-} from './perfDiagnosticsInputEvents';
 import { createPerfLongTaskObserver } from './perfDiagnosticsLongTaskObserver';
 import { PerfDiagnosticsState } from './perfDiagnosticsState';
+import type { PerfTtsUtteranceArgs } from './perfDiagnosticsTtsEvents';
+import { installPerfDiagnosticsGlobal } from './perfDiagnosticsGlobalRuntime';
 import {
-  buildPerfTtsUtterance,
-  recordPerfTtsEnd,
-  recordPerfTtsError,
-  recordPerfTtsSpeak,
-  recordPerfTtsStart,
-  type PerfTtsUtteranceArgs,
-} from './perfDiagnosticsTtsEvents';
+  createPerfInputSample,
+  markPerfInputCommit,
+  markPerfInputPaint,
+} from './perfDiagnosticsInputRuntime';
+import {
+  recordPerfDiagnosticsSlowSpan,
+  runWithPerfDiagnosticsSpan,
+  startPerfDiagnosticsSpan,
+} from './perfDiagnosticsSpanRuntime';
+import {
+  beginPerfDiagnosticsTtsPlay,
+  beginPerfDiagnosticsTtsUtterance,
+  recordPerfDiagnosticsTtsEnd,
+  recordPerfDiagnosticsTtsError,
+  recordPerfDiagnosticsTtsSpeak,
+  recordPerfDiagnosticsTtsStart,
+  recordPerfDiagnosticsTtsVoices,
+} from './perfDiagnosticsTtsRuntime';
 
 export class PerfDiagnostics {
   private enabled = false;
@@ -71,75 +78,54 @@ export class PerfDiagnostics {
     valueLength: number;
     renderCount: number;
   }): number {
-    if (!this.enabled) return 0;
-    const id = this.state.nextInputEventId();
-    const event = buildPerfInputEvent(id, args);
-    this.state.addInputEvent(event);
-    return id;
+    return createPerfInputSample(this.enabled, this.state, args);
   }
 
   recordInputPaint(id: number, paintAt: number): void {
-    if (!this.enabled || id <= 0) return;
-    const event = this.state.getInputEvent(id);
-    if (!event) return;
-    recordPerfInputPaint(event, paintAt);
+    markPerfInputPaint(this.enabled, this.state, id, paintAt);
   }
 
   recordInputCommit(id: number, commitAt: number): void {
-    if (!this.enabled || id <= 0) return;
-    const event = this.state.getInputEvent(id);
-    if (!event) return;
-    recordPerfInputCommit(event, commitAt);
+    markPerfInputCommit(this.enabled, this.state, id, commitAt);
   }
 
   beginTtsPlay(source: string): number {
-    if (!this.enabled) return 0;
-    const id = this.state.nextTtsPlayIdentifier();
-    this.state.setTtsPlay({ id, clickedAt: now(), source });
-    return id;
+    return beginPerfDiagnosticsTtsPlay(this.enabled, this.state, source);
   }
 
   beginTtsUtterance(args: PerfTtsUtteranceArgs): number {
-    if (!this.enabled) return 0;
-    const play = this.state.getTtsPlay(args.playId);
-    const id = this.state.nextTtsUtteranceIdentifier();
-    const utterance = buildPerfTtsUtterance(id, args, play?.clickedAt ?? now());
-    this.state.addTtsUtterance(utterance);
-    return id;
+    return beginPerfDiagnosticsTtsUtterance(this.enabled, this.state, args);
   }
 
   recordTtsVoices(voices: PerfTtsVoice[]): void {
-    this.state.setTtsVoices(voices);
-    if (!this.enabled) return;
-    this.log('tts-voices', {
-      count: voices.length,
-      voices: voices.map((voice) => `${voice.lang} ${voice.name} (${voice.voiceURI})`),
+    recordPerfDiagnosticsTtsVoices({
+      state: this.state,
+      enabled: this.enabled,
+      voices,
+      log: (event, payload) => this.log(event, payload),
     });
   }
 
   recordTtsSpeak(utteranceId: number): void {
-    const utterance = this.state.getTtsUtterance(utteranceId);
-    if (!this.enabled || !utterance) return;
-    recordPerfTtsSpeak(utterance);
+    recordPerfDiagnosticsTtsSpeak(this.enabled, this.state, utteranceId);
   }
 
   recordTtsStart(utteranceId: number): void {
-    const utterance = this.state.getTtsUtterance(utteranceId);
-    if (!this.enabled || !utterance) return;
-    recordPerfTtsStart(utterance);
+    recordPerfDiagnosticsTtsStart(this.enabled, this.state, utteranceId);
   }
 
   recordTtsEnd(utteranceId: number): void {
-    const utterance = this.state.getTtsUtterance(utteranceId);
-    if (!this.enabled || !utterance) return;
-    recordPerfTtsEnd(utterance);
+    recordPerfDiagnosticsTtsEnd(this.enabled, this.state, utteranceId);
   }
 
   recordTtsError(utteranceId: number, error: string): void {
-    const utterance = this.state.getTtsUtterance(utteranceId);
-    if (!this.enabled || !utterance) return;
-    recordPerfTtsError(utterance, error);
-    this.log('tts-error', utterance);
+    recordPerfDiagnosticsTtsError({
+      enabled: this.enabled,
+      state: this.state,
+      utteranceId,
+      error,
+      log: (event, payload) => this.log(event, payload),
+    });
   }
 
   recordLongTask(task: PerfLongTask): void {
@@ -152,33 +138,34 @@ export class PerfDiagnostics {
   }
 
   recordSpan(name: string, startedAt: number, context?: Record<string, unknown>): void {
-    if (!this.enabled) return;
-    const duration = now() - startedAt;
-    if (duration < this.slowSpanThresholdMs) return;
-    const span = {
+    recordPerfDiagnosticsSlowSpan({
+      enabled: this.enabled,
+      state: this.state,
+      slowSpanThresholdMs: this.slowSpanThresholdMs,
       name,
-      startedAt: roundMs(startedAt),
-      duration: roundMs(duration),
+      startedAt,
       context,
-    };
-    this.state.addSlowSpan(span);
-    this.log('slow-span', span);
+      log: (event, payload) => this.log(event, payload),
+    });
   }
 
   withSpan<T>(name: string, fn: () => T, context?: Record<string, unknown>): T {
-    if (!this.enabled) return fn();
-    const startedAt = now();
-    try {
-      return fn();
-    } finally {
-      this.recordSpan(name, startedAt, context);
-    }
+    return runWithPerfDiagnosticsSpan({
+      enabled: this.enabled,
+      name,
+      fn,
+      context,
+      recordSpan: (spanName, startedAt, spanContext) => this.recordSpan(spanName, startedAt, spanContext),
+    });
   }
 
   startSpan(name: string, context?: Record<string, unknown>): () => void {
-    if (!this.enabled) return () => undefined;
-    const startedAt = now();
-    return () => this.recordSpan(name, startedAt, context);
+    return startPerfDiagnosticsSpan({
+      enabled: this.enabled,
+      name,
+      context,
+      recordSpan: (spanName, startedAt, spanContext) => this.recordSpan(spanName, startedAt, spanContext),
+    });
   }
 
   snapshot(): PerfDiagnosticsSnapshot {
@@ -196,12 +183,11 @@ export class PerfDiagnostics {
   }
 
   private installGlobal(): void {
-    if (typeof window === 'undefined') return;
-    window.__DICTA_PERF__ = {
+    installPerfDiagnosticsGlobal({
       snapshot: () => this.snapshot(),
       reset: () => this.reset(),
       enabled: () => this.enabled,
-    };
+    });
   }
 }
 
