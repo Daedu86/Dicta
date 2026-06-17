@@ -48,6 +48,8 @@ export function TrainingInputCard({
   showReview,
   review,
 }: TrainingInputCardProps) {
+  const effectiveTextCommitDelayMs = Math.min(textCommitDelayMs, 80);
+
   return (
     <section className="training-card training-input-card" aria-label="Dictation input">
       <div className="training-input-header">
@@ -84,8 +86,8 @@ export function TrainingInputCard({
           placeholder={textPlaceholder}
           readOnly={readOnly}
           rows={10}
-          commitDelayMs={textCommitDelayMs}
-          maxCommitDelayMs={Math.max(textCommitDelayMs * 2, 160)}
+          commitDelayMs={effectiveTextCommitDelayMs}
+          maxCommitDelayMs={Math.max(effectiveTextCommitDelayMs * 2, 160)}
           syncKey={syncKey}
         />
       )}
