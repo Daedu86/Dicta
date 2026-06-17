@@ -96,7 +96,7 @@ export function sampleTtsPerformance(
     elapsedSeconds,
     options,
     previousControllerAction: ttsLastControllerActionRef.current,
-    finishedAtIso: nowIso ? nowIso() : new Date().toISOString(),
+    finishedAtIso: options.finalize ? (nowIso ? nowIso() : new Date().toISOString()) : undefined,
   });
   ttsLastControllerActionRef.current = telemetryUpdate.nextControllerAction;
   telemetryRef.current = telemetryUpdate.telemetry;
