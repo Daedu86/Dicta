@@ -1,0 +1,18 @@
+.adaptive-rate-strip,
+.adaptive-lag-distribution {
+  width: 100%;
+  min-width: 0;
+  height: 190px;
+  min-height: 180px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.55rem;
+}
+
+.adaptive-chart-empty {
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+  color: rgba(226, 232, 240, 0.72);
+  font-weight: 800;
+}
