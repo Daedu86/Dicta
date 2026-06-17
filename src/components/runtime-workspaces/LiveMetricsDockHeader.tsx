@@ -36,7 +36,7 @@ export function LiveMetricsDockHeader({
   return (
     <div className="metrics-header bottom-metrics-header live-metrics-section live-metrics-section-header">
       <h2>Insights</h2>
-      <div className="live-metrics-language-tabs" role="tablist" aria-label="Live metrics language">
+      <div className="live-metrics-language-tabs" role="group" aria-label="Live metrics language">
         {SUPPORTED_LANGUAGES.map((code) => (
           <button
             key={code}
@@ -51,7 +51,7 @@ export function LiveMetricsDockHeader({
         ))}
       </div>
       <span className={`trend trend-${trend}`}>{formatTrendLabel(trend)}</span>
-      <div className="live-metrics-input-tabs" role="tablist" aria-label="Adaptive report input">
+      <div className="live-metrics-input-tabs" role="group" aria-label="Adaptive report input">
         {insightsDiagnosticInputOptions.map((option) => (
           <button
             key={option.inputMode}

@@ -15,7 +15,7 @@ type LiveMetricsRangeTabsProps = {
 
 export function LiveMetricsRangeTabs({ metricsRangeView, onChangeMetricsRangeView }: LiveMetricsRangeTabsProps) {
   return (
-    <div className="live-metrics-range-tabs" role="tablist" aria-label="Live metrics range">
+    <div className="live-metrics-range-tabs" role="group" aria-label="Live metrics range">
       {RANGE_TABS.map(([code, label]) => (
         <button
           key={code}
