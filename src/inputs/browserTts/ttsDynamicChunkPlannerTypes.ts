@@ -20,7 +20,7 @@ export type BrowserTtsV3ProsodyMetadata = {
   pauseClass: BrowserTtsV3PauseClass;
   semanticCompletenessClass: BrowserTtsV3SemanticCompletenessClass;
   syntacticRisk: BrowserTtsV3SyntacticRisk;
-  edgeWordRisk: boolean;
+  edgeWordFlag: boolean;
   replayStrategy: BrowserTtsV3ReplayStrategy;
   breathGroup: BrowserTtsV3BreathGroup;
 };
