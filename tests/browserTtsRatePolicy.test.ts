@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { PacingDecision } from '../src/core/adaptive/types';
 import {
   ANDROID_SAMSUNG_S22_CHROME_RUNTIME,
   BASE_BROWSER_TTS_PACING_DECISION,
   DE_BROWSER_TTS_PROFILE,
   EN_BROWSER_TTS_PROFILE,
+  WINDOWS_DESKTOP_CHROME_RUNTIME,
   applyBrowserTtsMobileFallbackCase,
   expectAndroidSpeechSynthesisRuntime,
   expectBrowserTtsControlLagSample,
@@ -144,6 +144,7 @@ describe('applyBrowserTtsMobilePacingFallback', () => {
     const result = applyBrowserTtsMobileFallbackCase({
       lagSec: 2.1,
       accuracy: 0.86,
+      ...WINDOWS_DESKTOP_CHROME_RUNTIME,
     });
 
     expect(result.mobileFallbackApplied).toBe(false);
@@ -165,7 +166,3 @@ describe('applyBrowserTtsMobilePacingFallback', () => {
     expect(result.decision.reason).toContain('android-speech-rate-fallback');
   });
 });
-
-function desktopDecision(result: { decision: PacingDecision }) {
-  return result.decision;
-}
