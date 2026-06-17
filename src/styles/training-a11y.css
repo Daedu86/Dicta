@@ -26,3 +26,96 @@
 .training-review-word-hint {
   color: #374151;
 }
+
+/* Brand button WCAG AA contrast hardening.
+   This file is intentionally last in src/styles/index.css, so these rules
+   override earlier brand/sidebar button colors. */
+
+.brand-training-mode-button,
+.brand-adaptive-button,
+.brand-admin-button,
+.brand-openrouter-button,
+.theme-toggle-button,
+.brand-signout-button {
+  color: #ffffff;
+  border: 1px solid transparent;
+  text-shadow: none;
+  background-image: none;
+}
+
+.brand-training-mode-button {
+  background-color: #6d28d9;
+}
+
+.brand-adaptive-button {
+  background-color: #047857;
+}
+
+.brand-admin-button {
+  background-color: #9a3412;
+}
+
+.brand-openrouter-button {
+  background-color: #1d4ed8;
+}
+
+.theme-toggle-button {
+  background-color: #374151;
+}
+
+.brand-signout-button {
+  background-color: #b91c1c;
+}
+
+.brand-training-mode-button:hover,
+.brand-training-mode-button:focus-visible {
+  background-color: #5b21b6;
+}
+
+.brand-adaptive-button:hover,
+.brand-adaptive-button:focus-visible {
+  background-color: #065f46;
+}
+
+.brand-admin-button:hover,
+.brand-admin-button:focus-visible {
+  background-color: #7c2d12;
+}
+
+.brand-openrouter-button:hover,
+.brand-openrouter-button:focus-visible {
+  background-color: #1e40af;
+}
+
+.theme-toggle-button:hover,
+.theme-toggle-button:focus-visible {
+  background-color: #1f2937;
+}
+
+.brand-signout-button:hover,
+.brand-signout-button:focus-visible {
+  background-color: #991b1b;
+}
+
+.brand-training-mode-button:focus-visible,
+.brand-adaptive-button:focus-visible,
+.brand-admin-button:focus-visible,
+.brand-openrouter-button:focus-visible,
+.theme-toggle-button:focus-visible,
+.brand-signout-button:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .brand-training-mode-button,
+  .brand-adaptive-button,
+  .brand-admin-button,
+  .brand-openrouter-button,
+  .theme-toggle-button,
+  .brand-signout-button {
+    color: ButtonText;
+    background-color: ButtonFace;
+    border-color: ButtonText;
+  }
+}
