@@ -1,0 +1,16 @@
+.adaptive-coach-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1rem;
+  align-items: stretch;
+  margin-top: 1rem;
+}
+
+.adaptive-coach-card {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 16px 44px -36px rgba(0, 0, 0, 0.85);
+}
