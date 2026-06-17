@@ -1,0 +1,94 @@
+import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from '../../core/languages';
+import type { LiveMetricsDockProps } from './liveMetricsDockTypes';
+
+type LiveMetricsDockHeaderProps = Pick<
+  LiveMetricsDockProps,
+  | 'insightsCollapsed'
+  | 'metricsLanguageView'
+  | 'trend'
+  | 'insightsDiagnosticInputOptions'
+  | 'insightsDiagnosticInputMode'
+  | 'onChangeMetricsLanguageView'
+  | 'onChangeInsightsDiagnosticInputMode'
+  | 'onCopyInsightsDiagnosticPackage'
+  | 'onToggleInsightsCollapsed'
+  | 'formatInputModeLabel'
+>;
+
+function formatTrendLabel(trend: LiveMetricsDockProps['trend']): string {
+  if (trend === 'improving') return 'Improving';
+  if (trend === 'declining') return 'Needs adjustment';
+  return 'Stable';
+}
+
+export function LiveMetricsDockHeader({
+  insightsCollapsed,
+  metricsLanguageView,
+  trend,
+  insightsDiagnosticInputOptions,
+  insightsDiagnosticInputMode,
+  onChangeMetricsLanguageView,
+  onChangeInsightsDiagnosticInputMode,
+  onCopyInsightsDiagnosticPackage,
+  onToggleInsightsCollapsed,
+  formatInputModeLabel,
+}: LiveMetricsDockHeaderProps) {
+  return (
+    <div className="metrics-header bottom-metrics-header live-metrics-section live-metrics-section-header">
+      <h2>Insights</h2>
+      <div className="live-metrics-language-tabs" role="tablist" aria-label="Live metrics language">
+        {SUPPORTED_LANGUAGES.map((code) => (
+          <button
+            key={code}
+            type="button"
+            className={`live-metrics-language-tab ${metricsLanguageView === code ? 'live-metrics-language-tab-active' : ''}`}
+            onClick={() => onChangeMetricsLanguageView(code)}
+            aria-pressed={metricsLanguageView === code}
+            title={`Live Metrics for ${LANGUAGE_LABELS[code]}`}
+          >
+            {code.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      <span className={`trend trend-${trend}`}>{formatTrendLabel(trend)}</span>
+      <div className="live-metrics-input-tabs" role="tablist" aria-label="Adaptive report input">
+        {insightsDiagnosticInputOptions.map((option) => (
+          <button
+            key={option.inputMode}
+            type="button"
+            className={`live-metrics-input-tab ${insightsDiagnosticInputMode === option.inputMode ? 'live-metrics-input-tab-active' : ''}`}
+            onClick={() => onChangeInsightsDiagnosticInputMode(option.inputMode)}
+            aria-pressed={insightsDiagnosticInputMode === option.inputMode}
+            title={`${formatInputModeLabel(option.inputMode)} report`}
+          >
+            <span>{option.label}</span>
+            <small>{formatInputModeLabel(option.inputMode)}</small>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="secondary-button live-metrics-report-button"
+        onClick={() => void onCopyInsightsDiagnosticPackage()}
+        title={`Copy one structured adaptive report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
+      >
+        Copy adaptive report
+      </button>
+      <button
+        type="button"
+        className="secondary-button live-metrics-collapse-button"
+        onClick={onToggleInsightsCollapsed}
+        aria-expanded={!insightsCollapsed}
+        aria-label={insightsCollapsed ? 'Expand insights panel' : 'Minimize insights panel'}
+        title={insightsCollapsed ? 'Expand' : 'Minimize'}
+      >
+        <span
+          className={`live-metrics-collapse-icon ${insightsCollapsed ? 'live-metrics-collapse-icon-collapsed' : ''}`}
+          aria-hidden="true"
+        >
+          ⌃
+        </span>
+      </button>
+    </div>
+  );
+}
