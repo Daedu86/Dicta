@@ -17,7 +17,7 @@ type UpdateTtsPerformanceSampleTelemetryInput = {
   elapsedSeconds: number;
   options: TtsPerformanceSampleOptions;
   previousControllerAction: ControlAction;
-  finishedAtIso: string;
+  finishedAtIso?: string;
 };
 
 export function updateTtsPerformanceSampleTelemetry({
@@ -40,7 +40,7 @@ export function updateTtsPerformanceSampleTelemetry({
     trackAction(nextTelemetry, elapsedSeconds, snapshot.controllerAction, snapshot.rate);
   }
 
-  if (options.finalize) {
+  if (options.finalize && finishedAtIso) {
     nextTelemetry.finishedAt = finishedAtIso;
   }
 
