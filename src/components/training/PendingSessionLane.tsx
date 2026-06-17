@@ -44,7 +44,7 @@ export function PendingSessionLane<Session extends PendingSessionLaneSession>({
       <div className="pending-session-lane-header">
         <div>
           <p className="dashboard-eyebrow">Pending sessions</p>
-          <h3>Ready to perform</h3>
+          <h2>Ready to perform</h2>
         </div>
         <span className="pending-session-count">{sessions.length}</span>
       </div>
