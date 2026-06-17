@@ -33,21 +33,27 @@ export function AuthWorkspaceContent({
   onAuthNewPasswordChange,
   onAuthNewPasswordConfirmChange,
 }: AuthWorkspaceContentProps) {
-  const sessionGate = (
-    <AuthSessionGate
-      authLoading={authLoading}
-      authSession={authSession}
-      appProfile={appProfile}
-      appProfileError={appProfileError}
-      localStorageReadyForEffectiveProfile={localStorageReadyForEffectiveProfile}
-      supabaseInitialSyncPending={supabaseInitialSyncPending}
-      effectiveProfileId={effectiveProfileId}
-      onSignOut={onSignOut}
-    />
+  const shouldShowSessionGate = Boolean(
+    authLoading ||
+      (authSession && !appProfile && !appProfileError) ||
+      (authSession && appProfile && !localStorageReadyForEffectiveProfile) ||
+      (authSession && appProfile && supabaseInitialSyncPending) ||
+      (authSession && appProfileError),
   );
 
-  if (authLoading || authSession) {
-    return sessionGate;
+  if (shouldShowSessionGate) {
+    return (
+      <AuthSessionGate
+        authLoading={authLoading}
+        authSession={authSession}
+        appProfile={appProfile}
+        appProfileError={appProfileError}
+        localStorageReadyForEffectiveProfile={localStorageReadyForEffectiveProfile}
+        supabaseInitialSyncPending={supabaseInitialSyncPending}
+        effectiveProfileId={effectiveProfileId}
+        onSignOut={onSignOut}
+      />
+    );
   }
 
   if (authView === 'updatePassword') {
