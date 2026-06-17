@@ -14,6 +14,7 @@ import type {
 import { buildBrowserTtsRuntimeDecisionPipeline } from './browserTtsPlaybackDecisionPipeline';
 import { resolveBrowserTtsCandidateDecision } from './browserTtsPlaybackPlanCandidateDecision';
 import { buildBrowserTtsPlanChunkTelemetry } from './browserTtsPlaybackPlanChunkTelemetry';
+import { planBrowserTtsSurgicalReplay } from './browserTtsSurgicalReplayPlan';
 
 export type {
   BrowserTtsBoundaryStrictness,
@@ -96,10 +97,16 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     rate,
     nextUnsafeChunkCount,
   });
+  const surgicalReplayPlan = planBrowserTtsSurgicalReplay({
+    chunk,
+    macroWords: input.macroWords,
+    macroStartWordIndex: input.macroStartWordIndex,
+  });
 
   return {
     candidateChunk,
     chunk,
+    surgicalReplayPlan,
     rawDecision,
     decision,
     runtimeDecision,
