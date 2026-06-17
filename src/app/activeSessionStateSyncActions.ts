@@ -1,12 +1,12 @@
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../core/sessionInputModes';
 import { cloneTelemetry } from '../core/sessionNormalization';
+import { normalizeLiveSessionStatusForPersistence } from '../core/sessionStatusNormalization';
+import { telemetryEquals } from '../core/sessionTelemetryEquality';
 import { buildTrainingSubmitMessage } from '../core/trainingSubmitMessage';
 import { buildActiveSessionHydrationState } from './activeSessionHydration';
-import {
-  buildPersistedActiveSession,
-  resetActiveSessionRuntimeRefs,
-} from './activeSessionPersistenceState';
+import { resetActiveSessionRuntimeRefs } from './activeSessionPersistenceState';
 import type { UseActiveSessionStateSyncParams } from './activeSessionStateSyncTypes';
+import type { StoredSession } from './sessionTypes';
 
 export function hydrateActiveSessionState(params: UseActiveSessionStateSyncParams): void {
   const { activeSession } = params;
@@ -73,4 +73,76 @@ export function persistActiveSessionState(params: UseActiveSessionStateSyncParam
   }
 
   params.setSessions((prev) => prev.map((session) => buildPersistedActiveSession(session, params)));
+}
+
+function buildPersistedActiveSession(session: StoredSession, params: UseActiveSessionStateSyncParams): StoredSession {
+  const { activeSession } = params;
+  if (!activeSession || session.id !== activeSession.id) return session;
+
+  const nextTelemetry = cloneTelemetry(params.telemetryRef.current);
+  const nextStatus = normalizeLiveSessionStatusForPersistence(params.sessionStatus, nextTelemetry, params.running);
+  const isExplicitFinishedReset = params.allowFinishedSessionResetRef.current === session.id && nextStatus !== 'finished';
+
+  if (session.status === 'finished' && nextStatus !== 'finished' && !isExplicitFinishedReset) {
+    return session;
+  }
+  if (isExplicitFinishedReset) {
+    params.allowFinishedSessionResetRef.current = null;
+  }
+  if (session.status === 'finished' && nextStatus === 'finished') {
+    return session;
+  }
+
+  if (!hasActiveSessionStateChanged(session, nextTelemetry, nextStatus, params)) {
+    return session;
+  }
+
+  return {
+    ...session,
+    inputSettingsLocked: params.inputSettingsLocked,
+    ttsText: params.ttsText,
+    ttsLanguage: params.ttsLanguage,
+    ttsPracticeText: params.ttsPracticeText,
+    difficulty: params.difficulty,
+    status: nextStatus,
+    metrics: {
+      controllerState: params.controllerState,
+      rate: params.rate,
+      lagSec: params.lagSec,
+      lagWords: params.lagWords,
+      wpm: params.wpm,
+      accuracy: params.activeVisibleAccuracy,
+      trend: params.trend,
+      score: params.activeVisibleScore,
+      points: params.activePoints,
+    },
+    telemetry: nextTelemetry,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function hasActiveSessionStateChanged(
+  session: StoredSession,
+  nextTelemetry: StoredSession['telemetry'],
+  nextStatus: StoredSession['status'],
+  params: UseActiveSessionStateSyncParams,
+): boolean {
+  return (
+    session.inputSettingsLocked !== params.inputSettingsLocked ||
+    session.ttsText !== params.ttsText ||
+    session.ttsLanguage !== params.ttsLanguage ||
+    session.ttsPracticeText !== params.ttsPracticeText ||
+    session.difficulty !== params.difficulty ||
+    session.status !== nextStatus ||
+    session.metrics.controllerState !== params.controllerState ||
+    session.metrics.rate !== params.rate ||
+    session.metrics.lagSec !== params.lagSec ||
+    session.metrics.lagWords !== params.lagWords ||
+    session.metrics.wpm !== params.wpm ||
+    session.metrics.accuracy !== params.activeVisibleAccuracy ||
+    session.metrics.trend !== params.trend ||
+    session.metrics.score !== params.activeVisibleScore ||
+    session.metrics.points !== params.activePoints ||
+    !telemetryEquals(session.telemetry, nextTelemetry)
+  );
 }

@@ -13,7 +13,20 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { ControlAction, SessionTelemetry } from '../types/dictation';
+import type { SessionTelemetry } from '../types/dictation';
+import {
+  ACTION_COLORS,
+  ACTION_LABELS,
+  AXIS_TICK,
+  GRID_DASH,
+  GRID_STROKE,
+  TOOLTIP_CURSOR,
+  TOOLTIP_STYLE,
+  buildActionTimelineData,
+  buildLineChartData,
+  buildRateDistributionBars,
+  formatActionTimelineTooltipLabel,
+} from './dashboardChartHelpers';
 
 type DashboardLineChartProps = {
   series: number[];
@@ -29,41 +42,6 @@ type DashboardRateBarsProps = {
 type DashboardActionTimelineProps = {
   actions: SessionTelemetry['actions'];
 };
-
-type DashboardActionTimelinePoint = {
-  time: number;
-  action: ControlAction;
-  actionLabel: string;
-  level: number;
-};
-
-const ACTION_LABELS = ['Slow', 'Hold', 'Fast', 'Repeat'];
-const ACTION_ORDER: Partial<Record<ControlAction, number>> = {
-  speed_down: 0,
-  hold: 1,
-  speed_up: 2,
-  pause_repeat: 3,
-  manual_slow: 0,
-  manual_fast: 2,
-  replay_phrase: 3,
-  rewind_phrase: 3,
-};
-const ACTION_COLORS: Partial<Record<ControlAction, string>> = {
-  speed_down: '#e6a23c',
-  hold: '#102f63',
-  speed_up: '#17825c',
-  pause_repeat: '#c44545',
-  manual_slow: '#e6a23c',
-  manual_fast: '#17825c',
-  replay_phrase: '#c44545',
-  rewind_phrase: '#c44545',
-};
-
-const GRID_STROKE = '#d7e2ee';
-const GRID_DASH = '4 6';
-const AXIS_TICK = { fill: '#4e6076', fontSize: 11 };
-const TOOLTIP_STYLE = { borderRadius: 10, borderColor: '#bfd2e8', color: '#102f63' };
-const TOOLTIP_CURSOR = { stroke: '#7aa9df', strokeWidth: 1 };
 
 export function DashboardLineChart({ series, min, max, suffix = '' }: DashboardLineChartProps) {
   const data = buildLineChartData(series);
@@ -181,35 +159,4 @@ export function DashboardActionTimeline({ actions }: DashboardActionTimelineProp
       </ResponsiveContainer>
     </div>
   );
-}
-
-function buildLineChartData(series: number[]): Array<{ index: number; label: string; value: number }> {
-  return series.map((value, index) => ({
-    index: index + 1,
-    label: `Sample ${index + 1}`,
-    value,
-  }));
-}
-
-function buildRateDistributionBars(rateDistribution: DashboardRateBarsProps['rateDistribution']): Array<{ rate: string; seconds: number }> {
-  return rateDistribution.map((entry) => ({
-    rate: `${entry.rate.toFixed(2)}x`,
-    seconds: entry.seconds,
-  }));
-}
-
-function buildActionTimelineData(actions: SessionTelemetry['actions']): DashboardActionTimelinePoint[] {
-  return actions.slice(-80).map((action) => {
-    const level = ACTION_ORDER[action.action] ?? 1;
-    return {
-      time: action.t,
-      action: action.action,
-      actionLabel: ACTION_LABELS[level],
-      level,
-    };
-  });
-}
-
-function formatActionTimelineTooltipLabel(payload: { time?: number } | undefined): string {
-  return payload?.time !== undefined ? `${payload.time.toFixed(1)}s` : 'Action';
 }
