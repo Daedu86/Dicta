@@ -1,44 +1,59 @@
 .training-audio-card,
 .training-input-card,
 .training-submit-card,
-.training-generation-card {
+.training-generation-card,
+.training-generation-action {
   display: grid;
+}
+
+.training-audio-card,
+.training-input-card,
+.training-submit-card,
+.training-generation-card {
   gap: 0.85rem;
 }
 
-.training-audio-status {
+.training-audio-status,
+.training-generation-button-row,
+.training-live-metrics {
   display: flex;
   align-items: center;
+}
+
+.training-audio-status {
   justify-content: space-between;
   gap: 0.75rem;
   color: #60758d;
   font-weight: 800;
 }
 
-.training-native-audio {
+.training-native-audio,
+.training-input-card textarea,
+.training-submit-button,
+.training-generation-button {
   width: 100%;
 }
 
-.training-control-grid {
+.training-control-grid,
+.training-generation-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.7rem;
+}
+
+.training-control-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .training-generation-grid {
-  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.7rem;
 }
 
 .training-generation-action {
-  display: grid;
   gap: 0.45rem;
   align-content: start;
 }
 
 .training-generation-button-row {
-  display: flex;
   align-items: stretch;
   gap: 0.45rem;
   min-width: 0;
@@ -92,8 +107,6 @@
 }
 
 .training-live-metrics {
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
   gap: 0.45rem;
   flex-wrap: wrap;
@@ -126,18 +139,12 @@
 }
 
 .training-input-card textarea {
-  width: 100%;
   min-height: min(42vh, 340px);
   box-sizing: border-box;
   font-size: 1.08rem;
   line-height: 1.55;
   border-radius: 14px;
   resize: vertical;
-}
-
-.training-submit-button,
-.training-generation-button {
-  width: 100%;
 }
 
 .training-generation-notice {
