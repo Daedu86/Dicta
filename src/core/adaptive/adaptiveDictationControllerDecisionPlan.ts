@@ -1,29 +1,9 @@
-import type { AdaptivePacingInput, PacingDecision } from './types';
-import { clamp } from './adaptiveDictationControllerMath';
-import type { computeAdaptivePacingScores } from './adaptiveDictationControllerTelemetry';
-import { transitionAdaptiveControllerFrames } from './adaptiveDictationControllerFrames';
-import {
-  applyUnsupportedPhraseReplayFallback,
-  resolveAdaptivePauseReplayPolicy,
-} from './adaptiveDictationControllerPlaybackPolicy';
-import { resolveAdaptiveControllerRatePolicy } from './adaptiveDictationControllerRatePolicy';
-import { applyAdaptivePausePolicy, buildAdaptivePacingReasonArtifacts } from './adaptiveDictationControllerReasons';
-import type { AdaptiveDictationControllerState } from './adaptiveDictationControllerState';
-import type { resolveAdaptiveControllerRuntimeContext } from './adaptiveDictationControllerRuntimeContext';
-import { resolveAdaptiveControllerPhraseContext } from './adaptiveDictationControllerPhraseContext';
-import { resolveAdaptiveControllerPhraseSize } from './adaptiveDictationControllerPhraseSize';
+import type { PacingDecision } from './types';
 import { buildAdaptiveDictationDecisionResult } from './adaptiveDictationControllerDecisionResult';
-
-type AdaptiveControllerRuntime = ReturnType<typeof resolveAdaptiveControllerRuntimeContext>;
-type AdaptivePacingScores = ReturnType<typeof computeAdaptivePacingScores>;
-
-interface BuildAdaptiveDictationDecisionPlanInput {
-  input: AdaptivePacingInput;
-  state: AdaptiveDictationControllerState;
-  runtime: AdaptiveControllerRuntime;
-  scores: AdaptivePacingScores;
-  initialPlaybackRate: number;
-}
+import { buildAdaptiveDecisionFramePlan } from './adaptiveDictationControllerDecisionPlanFrame';
+import { resolveAdaptiveDecisionPausePlan } from './adaptiveDictationControllerDecisionPlanPause';
+import { resolveAdaptiveDecisionRatePlan } from './adaptiveDictationControllerDecisionPlanRate';
+import type { BuildAdaptiveDictationDecisionPlanInput } from './adaptiveDictationControllerDecisionPlanTypes';
 
 export function buildAdaptiveDictationDecisionPlan({
   input,
@@ -32,171 +12,32 @@ export function buildAdaptiveDictationDecisionPlan({
   scores,
   initialPlaybackRate,
 }: BuildAdaptiveDictationDecisionPlanInput): PacingDecision {
-  const {
-    live,
-    history,
-    browserTtsProfile,
-    adaptiveComfort,
-    comfortRateMax,
-    supportRateFloor,
-    extremeSupportRateFloor,
-    supportRateCeiling,
-    balancedFlowFloor,
-    rollingAccuracyLast3,
-    rollingAccuracyLast5,
-    supportsPhraseReplay,
-    chosenMode,
-    baselineRate,
-  } = runtime;
-  const { lagScore, accuracyScore, hesitationScore, confidenceScore } = scores;
-  let playbackRate = initialPlaybackRate;
-
-  const {
-    canReplayIndependently,
-    semanticCompleteness,
-    phraseOverload,
-    longPhraseSensitive,
-  } = resolveAdaptiveControllerPhraseContext(live, history, rollingAccuracyLast3);
-  const frameTransition = transitionAdaptiveControllerFrames({
-    live,
-    rollingAccuracyLast3,
-    rollingAccuracyLast5,
-    chosenMode,
-    phraseOverload,
-    longPhraseSensitive,
-    frameState: state.getFrameState(),
-  });
-  state.applyFrameState(frameTransition.frameState);
-  const frameState = frameTransition.frameState;
-
-  const {
-    mode,
-    progressGap,
-    userIsStruggling,
-    flowBlockedAfterRecovery,
-    stableRecoveryConfirmed,
-  } = frameTransition;
-
-  const {
-    isSupportLikeMode,
-    boundaryStrictness,
-    allowMidPhrasePause,
-    shouldPauseNow,
-    deferPauseUntilSafeBoundary,
-    replayWanted,
-    shouldReplayPhrase,
-    pauseAfterPhraseMs: initialPauseAfterPhraseMs,
-  } = resolveAdaptivePauseReplayPolicy({
-    mode,
-    live,
-    rollingAccuracyLast3,
-    userIsStruggling,
-    struggleFrames: frameState.struggleFrames,
-    supportsPhraseReplay,
-    adaptiveComfort,
-  });
-  let pauseAfterPhraseMs = initialPauseAfterPhraseMs;
-
-  let nextPhraseSize = resolveAdaptiveControllerPhraseSize({
-    mode,
+  const framePlan = buildAdaptiveDecisionFramePlan({
     input,
-    phraseOverload,
-    longPhraseSensitive,
-    semanticCompleteness,
-    rollingAccuracyLast3,
-    recoveryFrames: frameState.recoveryFrames,
-    flowLockFrames: frameState.flowLockFrames,
+    state,
+    runtime,
+    playbackRate: initialPlaybackRate,
   });
-
-  const replayFallback = applyUnsupportedPhraseReplayFallback({
-    supportsPhraseReplay,
-    replayWanted,
-    nextPhraseSize,
-    playbackRate,
-    pauseAfterPhraseMs,
-    supportRateFloor,
-    adaptiveComfort,
-  });
-  nextPhraseSize = replayFallback.nextPhraseSize;
-  playbackRate = replayFallback.playbackRate;
-  pauseAfterPhraseMs = replayFallback.pauseAfterPhraseMs;
-
-  let replayRate = clamp(playbackRate - 0.10, balancedFlowFloor, comfortRateMax);
-
-  const { reason, reasonCodes } = buildAdaptivePacingReasonArtifacts({
-    mode,
-    history,
-    live,
-    phraseOverload,
-    longPhraseSensitive,
-    shouldReplayPhrase,
-    supportsPhraseReplay,
-    replayWanted,
-    canReplayIndependently,
-    semanticCompleteness,
-    rollingAccuracyLast3,
-    deferPauseUntilSafeBoundary,
-    flowBlockedAfterRecovery,
-    stableRecoveryConfirmed,
-  });
-
-  const adaptivePauseResult = applyAdaptivePausePolicy({
-    adaptivePause: browserTtsProfile?.adaptivePause,
-    history,
-    live,
-    mode,
-    rollingAccuracyLast3,
-    progressGap,
-    struggleFrames: frameState.struggleFrames,
-    pauseAfterPhraseMs,
-    reason,
-    reasonCodes,
-  });
-  pauseAfterPhraseMs = adaptivePauseResult.pauseAfterPhraseMs;
-  if (adaptiveComfort) {
-    pauseAfterPhraseMs = Math.round(clamp(pauseAfterPhraseMs, adaptiveComfort.pauseRangeMs[0], adaptiveComfort.pauseRangeMs[1]));
-    reason.push(`adaptive-playback-comfort-profile:${adaptiveComfort.source}`);
-    reasonCodes.push('adaptive-playback-comfort-profile');
-  }
-
-  const ratePolicy = resolveAdaptiveControllerRatePolicy({
-    live,
-    mode,
-    isSupportLikeMode,
-    playbackRate,
-    replayRate,
-    deferPauseUntilSafeBoundary,
-    rollingAccuracyLast3,
-    reason,
-    reasonCodes,
-    extremeSupportRateFloor,
-    supportRateFloor,
-    supportRateCeiling,
-    balancedFlowFloor,
-    baselineRate,
-    comfortRateMax,
-  });
-
-  const finalPlaybackRate = ratePolicy.finalPlaybackRate;
-  replayRate = ratePolicy.replayRate;
-  state.setPreviousRate(finalPlaybackRate);
+  const pausePlan = resolveAdaptiveDecisionPausePlan({ runtime, framePlan });
+  const ratePlan = resolveAdaptiveDecisionRatePlan({ runtime, framePlan, pausePlan });
+  state.setPreviousRate(ratePlan.finalPlaybackRate);
 
   return buildAdaptiveDictationDecisionResult({
-    mode,
-    playbackRate: finalPlaybackRate,
-    pauseAfterPhraseMs,
-    shouldPauseNow,
-    shouldReplayPhrase,
-    boundaryStrictness,
-    allowMidPhrasePause,
-    deferPauseUntilSafeBoundary,
-    replayRate,
-    nextPhraseSize,
-    reason,
-    reasonCodes,
-    lagScore,
-    accuracyScore,
-    hesitationScore,
-    confidenceScore,
+    mode: framePlan.mode,
+    playbackRate: ratePlan.finalPlaybackRate,
+    pauseAfterPhraseMs: pausePlan.pauseAfterPhraseMs,
+    shouldPauseNow: framePlan.shouldPauseNow,
+    shouldReplayPhrase: framePlan.shouldReplayPhrase,
+    boundaryStrictness: framePlan.boundaryStrictness,
+    allowMidPhrasePause: framePlan.allowMidPhrasePause,
+    deferPauseUntilSafeBoundary: framePlan.deferPauseUntilSafeBoundary,
+    replayRate: ratePlan.replayRate,
+    nextPhraseSize: framePlan.nextPhraseSize,
+    reason: pausePlan.reason,
+    reasonCodes: pausePlan.reasonCodes,
+    lagScore: scores.lagScore,
+    accuracyScore: scores.accuracyScore,
+    hesitationScore: scores.hesitationScore,
+    confidenceScore: scores.confidenceScore,
   });
 }
