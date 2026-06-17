@@ -1,5 +1,5 @@
-import type { ListenerStateV3, ListenerStateV3Axis, ListenerStateV3ReasonCode } from './listenerStateV3';
-import type { LiveTelemetryFrame, PhraseBoundaryType } from './types';
+import type { ListenerStateV3, ListenerStateV3Axis } from './listenerStateV3';
+import type { LiveTelemetryFrame, PhraseBoundaryType } from './types/pacing';
 
 export type ListeningCycleInsightReportV3ReplayStrategy =
   | 'none'
@@ -75,7 +75,14 @@ export interface ListeningCycleInsightReportV3 {
   version: 3;
   primaryConstraint: ListenerStateV3['primaryConstraint'];
   confidence: number;
-  axes: Record<ListenerStateV3Axis, { averageScore: number; peakScore: number; level: ListenerStateV3['axes'][ListenerStateV3Axis]['level'] }>;
+  axes: Record<
+    ListenerStateV3Axis,
+    {
+      averageScore: number;
+      peakScore: number;
+      level: ListenerStateV3['axes'][ListenerStateV3Axis]['level'];
+    }
+  >;
   evidence: ListeningCycleInsightReportV3Evidence;
   reasonCodes: string[];
   headline: string;
