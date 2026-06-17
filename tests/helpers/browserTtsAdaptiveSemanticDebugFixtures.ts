@@ -1,0 +1,30 @@
+export const baseBrowserTtsAdaptiveSemanticDebugState = {
+  semanticCutPenalty: 0,
+  unsafePauseCount: 0,
+  safePauseCount: 0,
+  deferredPauseCount: 0,
+  replayDeniedByBoundaryCount: 0,
+  averageSemanticCompleteness: 0,
+  averagePhraseDifficulty: 0,
+  inputExecutionFidelityScore: 1,
+  currentPhraseIndex: 0,
+  currentPhraseId: '',
+  currentPhraseTextPreview: '',
+  totalSemanticPhrases: 0,
+  phraseAdvanceCount: 0,
+  phraseReplayCount: 0,
+  lastPhraseAdvanceReason: '',
+};
+
+export const browserTtsAdaptiveSemanticDebugChunk = {
+  text: 'Dies ist ein kurzer Testabschnitt für Browser TTS.',
+  wordCount: 8,
+  startWordIndex: 0,
+  phraseDifficulty: 0.7,
+  phraseBoundaryType: 'sentence' as const,
+  canPauseAfter: true,
+  semanticCompleteness: 0.9,
+  punctuationLoad: 0.1,
+  rareWordLoad: 0.2,
+  syntaxComplexity: 0.3,
+};
