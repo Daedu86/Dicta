@@ -3,18 +3,17 @@ import {
   createTtsTelemetryRecorder,
 } from './useTtsTelemetryRecorder';
 import {
-  estimateTtsSpokenWordIndex as estimateTtsSpokenWordIndexForState,
-} from './useTtsPlaybackProgressEstimator';
-import {
   createTtsUiPublisher,
 } from './useTtsUiPublisher';
 import {
-  sampleTtsPerformance,
-  type TtsPerformanceSampleOptions,
-} from './useTtsPerformanceSampler';
-import type {
-  TtsPerformanceSampleResult,
-} from './sessionTypes';
+  createTtsPlaybackMetricsRuntimeMemoDeps,
+} from './ttsPlaybackMetricsRuntimeMemoDeps';
+import {
+  createTtsPerformanceSampleRuntime,
+} from './ttsPlaybackPerformanceSampleRuntime';
+import {
+  createTtsSpokenWordEstimator,
+} from './ttsPlaybackSpokenWordEstimator';
 import type {
   TtsPlaybackMetricsRuntime,
   TtsPlaybackMetricsRuntimeOptions,
@@ -25,120 +24,78 @@ export type {
   TtsPlaybackMetricsRuntimeOptions,
 } from './useTtsPlaybackMetricsRuntimeTypes';
 
-export function createTtsPlaybackMetricsRuntime({
-  ttsTranscript,
-  ttsStatus,
-  ttsSpeechRate,
-  ttsLanguage,
-  controllerState,
-  rate,
-  lagSec,
-  lagWords,
-  wpm,
-  accuracy,
-  trend,
-  telemetryRef,
-  ttsStartedAtMsRef,
-  ttsPracticeLiveTextRef,
-  ttsChunkStartMsRef,
-  ttsChunkWordCountRef,
-  ttsChunkStartWordIndexRef,
-  ttsCompletedSourceWordsRef,
-  ttsLastValidControlLagSecRef,
-  ttsLagOutlierCountRef,
-  ttsLiveSignalRef,
-  previousLagRef,
-  previousAccuracyRef,
-  ttsLastControllerActionRef,
-  ttsPublishedUiRef,
-  ttsUiLastPublishedAtRef,
-  applyTtsPerformanceSampleRef,
-  setControllerState,
-  setRate,
-  setLagSec,
-  setLagWords,
-  setWpm,
-  setAccuracy,
-  setTrend,
-  baseWordsPerSecond,
-  minPublishIntervalMs,
-  nowMs = () => performance.now(),
-  nowIso,
-}: TtsPlaybackMetricsRuntimeOptions): TtsPlaybackMetricsRuntime {
+export function createTtsPlaybackMetricsRuntime(
+  options: TtsPlaybackMetricsRuntimeOptions,
+): TtsPlaybackMetricsRuntime {
+  const nowMs = options.nowMs ?? (() => performance.now());
+
   const {
     ensureAttemptTelemetry,
     getTtsElapsedSeconds,
     recordTtsTelemetryAction,
     recordTtsChunkTelemetry,
   } = createTtsTelemetryRecorder({
-    telemetryRef,
-    ttsStartedAtMsRef,
-    ttsSpeechRate,
+    telemetryRef: options.telemetryRef,
+    ttsStartedAtMsRef: options.ttsStartedAtMsRef,
+    ttsSpeechRate: options.ttsSpeechRate,
     nowMs,
-    nowIso,
+    nowIso: options.nowIso,
   });
 
-  function estimateTtsSpokenWordIndex(now = nowMs()): number {
-    return estimateTtsSpokenWordIndexForState({
-      sourceWordCount: ttsTranscript?.words.length ?? 0,
-      ttsStatus,
-      now,
-      ttsChunkStartMs: ttsChunkStartMsRef.current,
-      ttsSpeechRate,
-      ttsChunkWordCount: ttsChunkWordCountRef.current,
-      ttsChunkStartWordIndex: ttsChunkStartWordIndexRef.current,
-      ttsCompletedSourceWords: ttsCompletedSourceWordsRef.current,
-      baseWordsPerSecond,
-    });
-  }
+  const estimateTtsSpokenWordIndex = createTtsSpokenWordEstimator({
+    ttsTranscript: options.ttsTranscript,
+    ttsStatus: options.ttsStatus,
+    ttsSpeechRate: options.ttsSpeechRate,
+    ttsChunkStartMsRef: options.ttsChunkStartMsRef,
+    ttsChunkWordCountRef: options.ttsChunkWordCountRef,
+    ttsChunkStartWordIndexRef: options.ttsChunkStartWordIndexRef,
+    ttsCompletedSourceWordsRef: options.ttsCompletedSourceWordsRef,
+    baseWordsPerSecond: options.baseWordsPerSecond,
+    nowMs,
+  });
 
   const publishTtsUiState = createTtsUiPublisher({
-    ttsPublishedUiRef,
-    ttsUiLastPublishedAtRef,
-    controllerState,
-    rate,
-    lagSec,
-    lagWords,
-    wpm,
-    accuracy,
-    trend,
-    setControllerState,
-    setRate,
-    setLagSec,
-    setLagWords,
-    setWpm,
-    setAccuracy,
-    setTrend,
-    minPublishIntervalMs,
+    ttsPublishedUiRef: options.ttsPublishedUiRef,
+    ttsUiLastPublishedAtRef: options.ttsUiLastPublishedAtRef,
+    controllerState: options.controllerState,
+    rate: options.rate,
+    lagSec: options.lagSec,
+    lagWords: options.lagWords,
+    wpm: options.wpm,
+    accuracy: options.accuracy,
+    trend: options.trend,
+    setControllerState: options.setControllerState,
+    setRate: options.setRate,
+    setLagSec: options.setLagSec,
+    setLagWords: options.setLagWords,
+    setWpm: options.setWpm,
+    setAccuracy: options.setAccuracy,
+    setTrend: options.setTrend,
+    minPublishIntervalMs: options.minPublishIntervalMs,
   });
 
-  function applyTtsPerformanceSample(options: TtsPerformanceSampleOptions = {}): TtsPerformanceSampleResult {
-    return sampleTtsPerformance(
-      {
-        ttsStartedAtMsRef,
-        ttsPracticeLiveTextRef,
-        ttsTranscript,
-        ttsSpeechRate,
-        ttsLanguage,
-        ttsLastValidControlLagSecRef,
-        ttsLagOutlierCountRef,
-        ttsLiveSignalRef,
-        previousLagRef,
-        previousAccuracyRef,
-        telemetryRef,
-        ttsLastControllerActionRef,
-        estimateTtsSpokenWordIndex,
-        getTtsElapsedSeconds,
-        ensureAttemptTelemetry,
-        publishTtsUiState,
-        nowMs,
-        nowIso,
-      },
-      options,
-    );
-  }
+  const applyTtsPerformanceSample = createTtsPerformanceSampleRuntime({
+    ttsStartedAtMsRef: options.ttsStartedAtMsRef,
+    ttsPracticeLiveTextRef: options.ttsPracticeLiveTextRef,
+    ttsTranscript: options.ttsTranscript,
+    ttsSpeechRate: options.ttsSpeechRate,
+    ttsLanguage: options.ttsLanguage,
+    ttsLastValidControlLagSecRef: options.ttsLastValidControlLagSecRef,
+    ttsLagOutlierCountRef: options.ttsLagOutlierCountRef,
+    ttsLiveSignalRef: options.ttsLiveSignalRef,
+    previousLagRef: options.previousLagRef,
+    previousAccuracyRef: options.previousAccuracyRef,
+    telemetryRef: options.telemetryRef,
+    ttsLastControllerActionRef: options.ttsLastControllerActionRef,
+    estimateTtsSpokenWordIndex,
+    getTtsElapsedSeconds,
+    ensureAttemptTelemetry,
+    publishTtsUiState,
+    nowMs,
+    nowIso: options.nowIso,
+  });
 
-  applyTtsPerformanceSampleRef.current = applyTtsPerformanceSample;
+  options.applyTtsPerformanceSampleRef.current = applyTtsPerformanceSample;
 
   return {
     ensureAttemptTelemetry,
@@ -155,45 +112,6 @@ export function useTtsPlaybackMetricsRuntime(
 ): TtsPlaybackMetricsRuntime {
   return useMemo(
     () => createTtsPlaybackMetricsRuntime(options),
-    [
-      options.accuracy,
-      options.applyTtsPerformanceSampleRef,
-      options.baseWordsPerSecond,
-      options.controllerState,
-      options.lagSec,
-      options.lagWords,
-      options.minPublishIntervalMs,
-      options.nowIso,
-      options.nowMs,
-      options.previousAccuracyRef,
-      options.previousLagRef,
-      options.rate,
-      options.setAccuracy,
-      options.setControllerState,
-      options.setLagSec,
-      options.setLagWords,
-      options.setRate,
-      options.setTrend,
-      options.setWpm,
-      options.telemetryRef,
-      options.trend,
-      options.ttsChunkStartMsRef,
-      options.ttsChunkStartWordIndexRef,
-      options.ttsChunkWordCountRef,
-      options.ttsCompletedSourceWordsRef,
-      options.ttsLagOutlierCountRef,
-      options.ttsLanguage,
-      options.ttsLastControllerActionRef,
-      options.ttsLastValidControlLagSecRef,
-      options.ttsLiveSignalRef,
-      options.ttsPracticeLiveTextRef,
-      options.ttsPublishedUiRef,
-      options.ttsSpeechRate,
-      options.ttsStartedAtMsRef,
-      options.ttsStatus,
-      options.ttsTranscript,
-      options.ttsUiLastPublishedAtRef,
-      options.wpm,
-    ],
+    createTtsPlaybackMetricsRuntimeMemoDeps(options),
   );
 }
