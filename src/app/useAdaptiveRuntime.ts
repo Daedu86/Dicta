@@ -1,9 +1,4 @@
-import type {
-  AdaptiveRuntime,
-  AdaptiveRuntimeOptions,
-  AdaptiveRuntimeRecordBenchmarkOptions,
-  AdaptiveRuntimeSessionInput,
-} from './adaptiveRuntimeTypes';
+import type { AdaptiveRuntime, AdaptiveRuntimeOptions } from './adaptiveRuntimeTypes';
 import { useAdaptiveRuntimeBenchmarkCallbacks } from './useAdaptiveRuntimeBenchmarkCallbacks';
 import { useAdaptiveRuntimeFeedbackCallbacks } from './useAdaptiveRuntimeFeedbackCallbacks';
 import { useAdaptiveRuntimeSelectors } from './useAdaptiveRuntimeSelectors';
