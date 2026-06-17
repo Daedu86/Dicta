@@ -34,7 +34,6 @@ export function buildAdaptiveDecisionFramePlan({
   } = runtime;
   const phraseContext = resolveAdaptiveControllerPhraseContext(live, history, rollingAccuracyLast3);
   const {
-    canReplayIndependently,
     semanticCompleteness,
     phraseOverload,
     longPhraseSensitive,
