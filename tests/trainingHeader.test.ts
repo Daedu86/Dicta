@@ -14,6 +14,7 @@ function languageButtons(): HTMLButtonElement[] {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers();
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -21,13 +22,15 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => {
+    vi.runOnlyPendingTimers();
     root.unmount();
   });
   host.remove();
+  vi.useRealTimers();
 });
 
 describe('TrainingHeader', () => {
-  it('renders the five global language buttons and reports selections', () => {
+  it('renders the five global language buttons and reports selections after the next task', () => {
     const changes = vi.fn();
 
     act(() => {
@@ -44,6 +47,13 @@ describe('TrainingHeader', () => {
 
     act(() => {
       buttons[3].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(buttons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'false', 'true', 'false']);
+    expect(changes).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.runOnlyPendingTimers();
     });
 
     expect(changes).toHaveBeenCalledWith('fr');
