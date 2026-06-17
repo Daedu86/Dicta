@@ -1,0 +1,32 @@
+.tts-paste-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 94px;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.tts-paste-pill-empty {
+  color: #4e6076;
+  border: 1px solid #c9d8ea;
+  background: #eef3f8;
+}
+
+.tts-paste-pill-ready {
+  color: #0d6a2f;
+  border: 1px solid #9ad8b3;
+  background: #e8f7ed;
+}
+
+.sidebar-chevron {
+  display: inline-flex;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-chevron-open {
+  transform: rotate(180deg);
+}
