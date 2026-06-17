@@ -1,4 +1,8 @@
 import type { Transcript } from '../../types/dictation';
+import {
+  buildListeningCycleInsightReportV3,
+  type ListeningCycleInsightReportV3Frame,
+} from '../../core/adaptive/types';
 import { alignWordPairs } from '../../core/evaluation';
 import { normalizeWord } from '../../core/normalization';
 import type { DashboardGoals, SessionDashboardSession, TranscriptReview } from './sessionDashboardTypes';
@@ -101,6 +105,8 @@ export function buildCoachingInsights(session: SessionDashboardSession, goals: D
   const insights: string[] = [];
   const { metrics, telemetry } = session;
 
+  insights.push(...buildListeningCycleV3DashboardInsights(session));
+
   if (metrics.lagSec > goals.lagMax && metrics.rate <= 0.82) {
     insights.push('Audio slowed down often; practice shorter phrase chunks before increasing speed.');
   }
@@ -126,6 +132,33 @@ export function buildCoachingInsights(session: SessionDashboardSession, goals: D
   }
 
   return insights.slice(0, 5);
+}
+
+export function buildListeningCycleV3DashboardInsights(session: SessionDashboardSession): string[] {
+  const telemetryWithLiveFrames = session.telemetry as SessionDashboardSession['telemetry'] & { liveFrames?: unknown[] };
+  const frames = Array.isArray(telemetryWithLiveFrames.liveFrames)
+    ? telemetryWithLiveFrames.liveFrames.filter(isListeningCycleInsightFrame)
+    : [];
+
+  if (frames.length === 0) return [];
+
+  const report = buildListeningCycleInsightReportV3(frames);
+  if (report.evidence.totalFrames === 0 || report.confidence < 0.45) return [];
+
+  const bullets = report.summaryBullets.slice(0, 3);
+  const reasonCodeSummary = report.reasonCodes.length > 0
+    ? `Reason codes: ${report.reasonCodes.slice(0, 4).join(', ')}.`
+    : '';
+
+  return [
+    `Listening Cycle V3: ${report.headline}`,
+    ...bullets,
+    reasonCodeSummary,
+  ].filter(Boolean).slice(0, 5);
+}
+
+function isListeningCycleInsightFrame(value: unknown): value is ListeningCycleInsightReportV3Frame {
+  return Boolean(value && typeof value === 'object');
 }
 
 function buildTextTranscript(text: string): Transcript | null {
