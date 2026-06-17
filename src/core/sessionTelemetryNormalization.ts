@@ -45,6 +45,7 @@ export function cloneTelemetry(telemetry: unknown): SessionTelemetry {
 
   const input = asRecord(telemetry);
   const normalizedRateDistribution = normalizeRateDistribution(input.rateDistribution ?? input.timeAtRate ?? {});
+  const liveFrames = Array.isArray(input.liveFrames) ? input.liveFrames : undefined;
 
   return {
     startedAt: typeof input.startedAt === 'string' ? input.startedAt : '',
@@ -58,7 +59,8 @@ export function cloneTelemetry(telemetry: unknown): SessionTelemetry {
     ttsChunks: Array.isArray(input.ttsChunks) ? (input.ttsChunks as SessionTelemetry['ttsChunks']) : [],
     repeatCount: numberOr(input.repeatCount, 0),
     rateDistribution: normalizedRateDistribution,
-  };
+    ...(liveFrames ? { liveFrames } : {}),
+  } as SessionTelemetry;
 }
 
 export function hasFinalizedAttemptTelemetry(telemetry: unknown): boolean {
