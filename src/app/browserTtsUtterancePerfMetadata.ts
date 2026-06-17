@@ -1,5 +1,6 @@
 import type { TtsPacingMode } from '../types/dictation';
 import type { TtsLanguage } from './sessionTypes';
+import type { BrowserTtsVoiceCalibrationResult } from './browserTtsVoiceCalibration';
 
 export interface BrowserTtsPerfVoiceInfo {
   lang: string;
@@ -17,6 +18,7 @@ export interface BrowserTtsUtterancePerfMetadataInput {
   voice: BrowserTtsPerfVoiceInfo | null;
   sessionVoiceURI: string | null;
   availableVoices: Array<Pick<BrowserTtsPerfVoiceInfo, 'lang'>>;
+  voiceCalibration?: BrowserTtsVoiceCalibrationResult;
 }
 
 export interface BrowserTtsUtterancePerfMetadata {
@@ -32,6 +34,12 @@ export interface BrowserTtsUtterancePerfMetadata {
   voiceResolved: boolean;
   availableVoiceCount: number;
   matchingVoiceCount: number;
+  requestedRate?: number;
+  effectiveRate?: number;
+  estimatedWordsPerMinute?: number;
+  voiceCalibrationStatus?: BrowserTtsVoiceCalibrationResult['calibrationStatus'];
+  voiceRateLimited?: boolean;
+  voiceCalibrationReasonCodes?: string[];
 }
 
 export function buildBrowserTtsUtterancePerfMetadata({
@@ -44,6 +52,7 @@ export function buildBrowserTtsUtterancePerfMetadata({
   voice,
   sessionVoiceURI,
   availableVoices,
+  voiceCalibration,
 }: BrowserTtsUtterancePerfMetadataInput): BrowserTtsUtterancePerfMetadata {
   return {
     playId,
@@ -52,13 +61,19 @@ export function buildBrowserTtsUtterancePerfMetadata({
     phraseLengthChars,
     language,
     pacingMode,
-    voiceName: voice?.name,
-    voiceURI: voice?.voiceURI ?? sessionVoiceURI,
-    voiceLang: voice?.lang,
+    voiceName: voiceCalibration?.voiceName ?? voice?.name,
+    voiceURI: voiceCalibration?.voiceURI ?? voice?.voiceURI ?? sessionVoiceURI,
+    voiceLang: voiceCalibration?.voiceLang ?? voice?.lang,
     voiceResolved: Boolean(voice),
     availableVoiceCount: availableVoices.length,
     matchingVoiceCount: availableVoices.filter((availableVoice) =>
       availableVoice.lang.toLowerCase().startsWith(language),
     ).length,
+    requestedRate: voiceCalibration?.requestedRate,
+    effectiveRate: voiceCalibration?.effectiveRate,
+    estimatedWordsPerMinute: voiceCalibration?.estimatedWordsPerMinute,
+    voiceCalibrationStatus: voiceCalibration?.calibrationStatus,
+    voiceRateLimited: voiceCalibration?.rateLimited,
+    voiceCalibrationReasonCodes: voiceCalibration?.reasonCodes,
   };
 }
