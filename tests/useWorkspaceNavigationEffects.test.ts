@@ -60,7 +60,7 @@ function createDefaultProps(overrides: Partial<HookProps> = {}): HookProps {
     activeSession,
     activeSessionId: activeSession.id,
     activeInputWorkspaceMode: 'tts',
-    workspaceMode: 'leaderboard',
+    workspaceMode: 'dashboard',
     openRouterAccessState: 'allowed',
     openRouterAccessMessage: '',
     suppressSidebarAutoSelectRef: { current: false },
@@ -104,7 +104,6 @@ describe('useWorkspaceNavigationEffects', () => {
       sessions: [],
       activeSession: null,
       activeSessionId: 'missing-session',
-      workspaceMode: 'leaderboard',
     });
 
     await renderNavigationEffects(props);
@@ -119,7 +118,6 @@ describe('useWorkspaceNavigationEffects', () => {
       sessions: [firstSession, secondSession],
       activeSession: firstSession,
       activeSessionId: 'deleted-session',
-      workspaceMode: 'leaderboard',
     });
 
     await renderNavigationEffects(props);
@@ -133,7 +131,6 @@ describe('useWorkspaceNavigationEffects', () => {
       sessions: [createSession('other-session'), activeSession],
       activeSession,
       activeSessionId: activeSession.id,
-      workspaceMode: 'leaderboard',
     });
 
     await renderNavigationEffects(props);
@@ -165,7 +162,7 @@ describe('useWorkspaceNavigationEffects', () => {
     expect(props.showWorkspaceMode).not.toHaveBeenCalled();
   });
 
-  it.each<WorkspaceMode>(['leaderboard', 'dashboard', 'adaptive', 'admin', 'openrouter'])(
+  it.each<WorkspaceMode>(['dashboard', 'adaptive', 'admin', 'openrouter'])(
     'does not auto-select the active input workspace while viewing %s',
     async (workspaceMode) => {
       const props = createDefaultProps({
