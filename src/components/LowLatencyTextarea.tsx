@@ -2,6 +2,7 @@ import {
   forwardRef,
   memo,
   type KeyboardEvent,
+  type MutableRefObject,
   type TextareaHTMLAttributes,
   useEffect,
   useImperativeHandle,
@@ -25,6 +26,10 @@ type LowLatencyTextareaProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>,
   syncKey?: string | number;
 };
 
+type TimerRef = MutableRefObject<number | null>;
+
+const LOW_LATENCY_COMPONENT_NAME = 'LowLatencyTextarea';
+
 const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLatencyTextareaProps>(function LowLatencyTextarea(
   {
     value,
@@ -42,8 +47,8 @@ const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLate
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const localValueRef = useRef(value);
   const lastCommittedValueRef = useRef(value);
-  const onValueChangeRef = useRef(onValueChange);
-  const onImmediateValueChangeRef = useRef(onImmediateValueChange);
+  const onValueChangeRef = useLatestRef(onValueChange);
+  const onImmediateValueChangeRef = useLatestRef(onImmediateValueChange);
   const keydownAtRef = useRef<number | undefined>(undefined);
   const latestInputEventIdRef = useRef(0);
   const renderCountRef = useRef(0);
@@ -53,26 +58,12 @@ const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLate
   renderCountRef.current += 1;
 
   useEffect(() => {
-    onValueChangeRef.current = onValueChange;
-  }, [onValueChange]);
-
-  useEffect(() => {
-    onImmediateValueChangeRef.current = onImmediateValueChange;
-  }, [onImmediateValueChange]);
-
-  useEffect(() => {
-    perfDiagnostics.recordRender('LowLatencyTextarea', renderCountRef.current);
+    perfDiagnostics.recordRender(LOW_LATENCY_COMPONENT_NAME, renderCountRef.current);
   });
 
   function clearTimers(): void {
-    if (delayTimerRef.current !== null) {
-      window.clearTimeout(delayTimerRef.current);
-      delayTimerRef.current = null;
-    }
-    if (maxDelayTimerRef.current !== null) {
-      window.clearTimeout(maxDelayTimerRef.current);
-      maxDelayTimerRef.current = null;
-    }
+    clearLowLatencyTimer(delayTimerRef);
+    clearLowLatencyTimer(maxDelayTimerRef);
   }
 
   function readVisibleValue(): string {
@@ -93,51 +84,30 @@ const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLate
   }
 
   function scheduleCommit(): void {
-    if (delayTimerRef.current !== null) {
-      window.clearTimeout(delayTimerRef.current);
-    }
-    delayTimerRef.current = window.setTimeout(() => {
-      commitNow();
-    }, commitDelayMs);
-
-    if (maxDelayTimerRef.current === null) {
-      maxDelayTimerRef.current = window.setTimeout(() => {
-        commitNow();
-      }, maxCommitDelayMs);
-    }
+    restartDelayCommitTimer(delayTimerRef, commitDelayMs, commitNow);
+    startMaxDelayCommitTimer(maxDelayTimerRef, maxCommitDelayMs, commitNow);
   }
 
   function setLocalAndSchedule(nextValue: string): void {
-    const inputAt = performance.now();
-    localValueRef.current = nextValue;
-    onImmediateValueChangeRef.current?.(nextValue);
-    const localSetAt = performance.now();
-    const inputEventId = perfDiagnostics.recordInputChange({
-      component: 'LowLatencyTextarea',
+    const inputEventId = recordInputChange({
+      nextValue,
       keydownAt: keydownAtRef.current,
-      inputAt,
-      localSetAt,
-      valueLength: nextValue.length,
       renderCount: renderCountRef.current,
+      onImmediateValueChange: onImmediateValueChangeRef.current,
     });
+    localValueRef.current = nextValue;
     latestInputEventIdRef.current = inputEventId;
-    window.requestAnimationFrame(() => {
-      perfDiagnostics.recordInputPaint(inputEventId, performance.now());
-    });
     scheduleCommit();
   }
 
-  useImperativeHandle(ref, () => ({
-    flush: commitNow,
-    focus: () => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const end = textarea.value.length;
-      textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      textarea.focus({ preventScroll: true });
-      textarea.setSelectionRange(end, end);
-    },
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      flush: commitNow,
+      focus: () => focusTextareaAtEnd(textareaRef.current),
+    }),
+    [],
+  );
 
   useLayoutEffect(() => {
     const syncKeyChanged = syncKey !== lastSyncKeyRef.current;
@@ -156,9 +126,12 @@ const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLate
     }
   }, [syncKey, value]);
 
-  useEffect(() => () => {
-    commitNow();
-  }, []);
+  useEffect(
+    () => () => {
+      commitNow();
+    },
+    [],
+  );
 
   return (
     <textarea
@@ -180,5 +153,69 @@ const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLate
     />
   );
 });
+
+function useLatestRef<T>(value: T): MutableRefObject<T> {
+  const ref = useRef(value);
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref;
+}
+
+function clearLowLatencyTimer(timerRef: TimerRef): void {
+  if (timerRef.current === null) return;
+  window.clearTimeout(timerRef.current);
+  timerRef.current = null;
+}
+
+function restartDelayCommitTimer(timerRef: TimerRef, delayMs: number, commitNow: () => string): void {
+  clearLowLatencyTimer(timerRef);
+  timerRef.current = window.setTimeout(() => {
+    commitNow();
+  }, delayMs);
+}
+
+function startMaxDelayCommitTimer(timerRef: TimerRef, delayMs: number, commitNow: () => string): void {
+  if (timerRef.current !== null) return;
+  timerRef.current = window.setTimeout(() => {
+    commitNow();
+  }, delayMs);
+}
+
+function recordInputChange({
+  nextValue,
+  keydownAt,
+  renderCount,
+  onImmediateValueChange,
+}: {
+  nextValue: string;
+  keydownAt: number | undefined;
+  renderCount: number;
+  onImmediateValueChange: ((value: string) => void) | undefined;
+}): number {
+  const inputAt = performance.now();
+  onImmediateValueChange?.(nextValue);
+  const localSetAt = performance.now();
+  const inputEventId = perfDiagnostics.recordInputChange({
+    component: LOW_LATENCY_COMPONENT_NAME,
+    keydownAt,
+    inputAt,
+    localSetAt,
+    valueLength: nextValue.length,
+    renderCount,
+  });
+  window.requestAnimationFrame(() => {
+    perfDiagnostics.recordInputPaint(inputEventId, performance.now());
+  });
+  return inputEventId;
+}
+
+function focusTextareaAtEnd(textarea: HTMLTextAreaElement | null): void {
+  if (!textarea) return;
+  const end = textarea.value.length;
+  textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  textarea.focus({ preventScroll: true });
+  textarea.setSelectionRange(end, end);
+}
 
 export const LowLatencyTextarea = memo(LowLatencyTextareaComponent);
