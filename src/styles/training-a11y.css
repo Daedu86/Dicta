@@ -1,0 +1,28 @@
+.training-header .training-header-button,
+.training-control-grid .secondary-button,
+.training-generation-grid .secondary-button,
+.training-reset-button {
+  border-color: #8fa5bc;
+  background: #f4f8fc;
+  color: #102033;
+  font-weight: 850;
+}
+
+.training-control-grid .secondary-button:disabled,
+.training-generation-grid .secondary-button:disabled,
+.training-reset-button:disabled {
+  opacity: 1;
+  border-color: #a8b9cc;
+  background: #eef3f8;
+  color: #40546b;
+}
+
+.training-live-metrics small {
+  color: #40546b;
+}
+
+.training-review-word-missing,
+.training-review-word-missing del,
+.training-review-word-hint {
+  color: #374151;
+}
