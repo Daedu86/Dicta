@@ -89,13 +89,17 @@ const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLate
   }
 
   function setLocalAndSchedule(nextValue: string): void {
+    const inputAt = performance.now();
+    localValueRef.current = nextValue;
+    onImmediateValueChangeRef.current?.(nextValue);
+    const localSetAt = performance.now();
     const inputEventId = recordInputChange({
       nextValue,
       keydownAt: keydownAtRef.current,
+      inputAt,
+      localSetAt,
       renderCount: renderCountRef.current,
-      onImmediateValueChange: onImmediateValueChangeRef.current,
     });
-    localValueRef.current = nextValue;
     latestInputEventIdRef.current = inputEventId;
     scheduleCommit();
   }
@@ -185,17 +189,16 @@ function startMaxDelayCommitTimer(timerRef: TimerRef, delayMs: number, commitNow
 function recordInputChange({
   nextValue,
   keydownAt,
+  inputAt,
+  localSetAt,
   renderCount,
-  onImmediateValueChange,
 }: {
   nextValue: string;
   keydownAt: number | undefined;
+  inputAt: number;
+  localSetAt: number;
   renderCount: number;
-  onImmediateValueChange: ((value: string) => void) | undefined;
 }): number {
-  const inputAt = performance.now();
-  onImmediateValueChange?.(nextValue);
-  const localSetAt = performance.now();
   const inputEventId = perfDiagnostics.recordInputChange({
     component: LOW_LATENCY_COMPONENT_NAME,
     keydownAt,
