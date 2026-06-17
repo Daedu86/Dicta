@@ -1,16 +1,16 @@
-import { useEffect } from 'react';
 import { useSupabaseBackgroundPush } from './sessionPersistenceSupabasePush';
-import {
-  useDebouncedSessionLocalPersistence,
-  useSessionLocalPersistence,
-} from './sessionPersistenceLocalStorage';
+import { useSessionLocalPersistence } from './sessionPersistenceLocalStorage';
 import { usePendingCriticalSessionRowsRuntime } from './sessionPersistencePendingCriticalRuntime';
 import { useProfileScopedSessionStorageSwitch } from './sessionPersistenceProfileSwitch';
-import { useSessionPersistenceExitFlush } from './sessionPersistenceLifecycle';
 import { useSupabaseSessionPullRuntime } from './sessionPersistenceSupabasePull';
 import { useSupabaseSyncIdentityReset } from './sessionPersistenceSupabaseReset';
 import { useSessionPersistenceRuntimeState } from './sessionPersistenceSyncRuntimeState';
 import { useSessionPersistenceSyncActions } from './sessionPersistenceSyncActions';
+import { useSessionPersistenceLocalLifecycleEffects } from './sessionPersistenceLocalLifecycleEffects';
+import {
+  useSessionPersistenceSyncStateRef,
+  useSupabaseInitialSyncPendingRef,
+} from './sessionPersistenceRuntimeSyncStateEffects';
 import type {
   PersistableSession,
   UseSessionPersistenceSyncOptions,
@@ -75,9 +75,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     buildSyncState,
   });
 
-  useEffect(() => {
-    supabaseInitialSyncPendingRef.current = supabaseInitialSyncPending;
-  }, [supabaseInitialSyncPending, supabaseInitialSyncPendingRef]);
+  useSupabaseInitialSyncPendingRef(supabaseInitialSyncPending, supabaseInitialSyncPendingRef);
 
   const {
     clearScheduledSessionPersist,
@@ -179,7 +177,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     setSupabaseSyncStatus,
   });
 
-  useDebouncedSessionLocalPersistence({
+  useSessionPersistenceLocalLifecycleEffects({
     sessions,
     localStorageReadyForEffectiveProfile,
     supabaseInitialSyncPending,
@@ -187,16 +185,17 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
     sessionPersistTimerRef,
     clearScheduledSessionPersist,
     persistSessionsToLocalStorage,
-  });
-
-  useSessionPersistenceExitFlush({
     flushScheduledSessionPersist,
     flushPendingCriticalSessionRowsKeepalive,
   });
 
-  useEffect(() => {
-    syncStateRef.current = buildSyncState(sessions, adaptiveBenchmarks, adaptiveSessionFeedback);
-  }, [adaptiveBenchmarks, adaptiveSessionFeedback, buildSyncState, sessions, syncStateRef]);
+  useSessionPersistenceSyncStateRef({
+    sessions,
+    adaptiveBenchmarks,
+    adaptiveSessionFeedback,
+    buildSyncState,
+    syncStateRef,
+  });
 
   useSupabaseSessionPullRuntime({
     supabaseClient,
