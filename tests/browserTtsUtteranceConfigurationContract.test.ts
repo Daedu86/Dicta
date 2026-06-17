@@ -1,58 +1,22 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { configureBrowserTtsUtterance } from '../src/app/browserTtsUtteranceConfiguration';
+import {
+  createUtterance,
+  createVoice,
+} from './helpers/browserTtsUtteranceConfigurationFixtures';
+import {
+  expectInOrder,
+  readRepoSource,
+} from './helpers/sourceOrderExpectations';
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const playbackLoopActionsSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopActions.ts'), 'utf-8');
-const playbackLoopRunnerSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopRunner.ts'), 'utf-8');
-const playbackLoopChunkSpeakerSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopChunkSpeaker.ts'), 'utf-8');
-const playbackLoopUtteranceSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopUtterance.ts'), 'utf-8');
-const playbackLoopChunkCommitSource = readFileSync(resolve(repoRoot, 'src/app/browserTtsPlaybackLoopChunkCommit.ts'), 'utf-8');
-const playbackLoopErrorHandlerSource = readFileSync(
-  resolve(repoRoot, 'src/app/browserTtsPlaybackLoopErrorHandler.ts'),
-  'utf-8',
-);
-const playbackLoopUtteranceLifecycleSource = readFileSync(
-  resolve(repoRoot, 'src/app/browserTtsUtteranceLifecycle.ts'),
-  'utf-8',
-);
-const playbackLoopUtteranceHandlersSource = readFileSync(
-  resolve(repoRoot, 'src/app/browserTtsPlaybackLoopUtteranceHandlers.ts'),
-  'utf-8',
-);
-
-
-function expectInOrder(source: string, labels: string[]): void {
-  let cursor = 0;
-
-  for (const label of labels) {
-    const index = source.indexOf(label, cursor);
-    expect(index, `Expected "${label}" after offset ${cursor}`).toBeGreaterThanOrEqual(0);
-    cursor = index + label.length;
-  }
-}
-
-function createUtterance(): SpeechSynthesisUtterance {
-  return {
-    rate: 0,
-    pitch: 0,
-    volume: 0,
-    lang: '',
-  } as SpeechSynthesisUtterance;
-}
-
-function createVoice(overrides: Partial<SpeechSynthesisVoice> = {}): SpeechSynthesisVoice {
-  return {
-    default: false,
-    lang: 'de-DE',
-    localService: true,
-    name: 'Anna',
-    voiceURI: 'voice-de',
-    ...overrides,
-  } as SpeechSynthesisVoice;
-}
+const playbackLoopActionsSource = readRepoSource('src/app/browserTtsPlaybackLoopActions.ts');
+const playbackLoopRunnerSource = readRepoSource('src/app/browserTtsPlaybackLoopRunner.ts');
+const playbackLoopChunkSpeakerSource = readRepoSource('src/app/browserTtsPlaybackLoopChunkSpeaker.ts');
+const playbackLoopUtteranceSource = readRepoSource('src/app/browserTtsPlaybackLoopUtterance.ts');
+const playbackLoopChunkCommitSource = readRepoSource('src/app/browserTtsPlaybackLoopChunkCommit.ts');
+const playbackLoopErrorHandlerSource = readRepoSource('src/app/browserTtsPlaybackLoopErrorHandler.ts');
+const playbackLoopUtteranceLifecycleSource = readRepoSource('src/app/browserTtsUtteranceLifecycle.ts');
+const playbackLoopUtteranceHandlersSource = readRepoSource('src/app/browserTtsPlaybackLoopUtteranceHandlers.ts');
 
 describe('configureBrowserTtsUtterance', () => {
   it('sets playback parameters, resolved language, and resolved voice on the utterance', () => {
@@ -183,5 +147,4 @@ describe('Browser TTS utterance configuration contract', () => {
       'utterance.onerror = onError;',
     ]);
   });
-
 });
