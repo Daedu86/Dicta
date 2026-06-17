@@ -1,0 +1,41 @@
+.sidebar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.sidebar-actions-single {
+  grid-template-columns: 1fr;
+}
+
+.session-create-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.session-create-card label {
+  display: grid;
+  gap: 0.35rem;
+  color: #173d71;
+  font-weight: 700;
+}
+
+.session-create-hint {
+  margin: 0;
+  color: #5d7083;
+  font-size: 0.82rem;
+}
+
+.session-create-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.text-button {
+  border: 0;
+  background: transparent;
+  color: #1d4f97;
+  font-weight: 700;
+  padding: 0.1rem 0;
+  justify-self: start;
+}
