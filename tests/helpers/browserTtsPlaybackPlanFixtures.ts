@@ -1,6 +1,5 @@
 import type { BrowserTtsPlaybackPlanInput } from '../../src/app/browserTtsPlaybackPlan';
 import { resolveBrowserTtsAdaptiveProfile } from '../../src/inputs/browserTts/browserTtsAdaptiveProfiles';
-import { chunk } from './browserTtsPlaybackPlanChunkFixtures';
 import {
   attempt,
   benchmark,
