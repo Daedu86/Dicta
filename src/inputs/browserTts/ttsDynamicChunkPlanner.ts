@@ -1,4 +1,5 @@
 import type { PhraseBoundaryType } from '../../core/adaptive/types';
+import { buildBrowserTtsV3ProsodyMetadata } from './ttsChunkProsodyMetadata';
 import {
   boundaryFromToken,
   boundaryScore,
@@ -8,10 +9,20 @@ import {
   scoreChunk,
   targetWordsForSize,
 } from './ttsDynamicChunkPlannerScoring';
-import type { PlanBrowserTtsChunkInput, PlannedBrowserTtsChunk } from './ttsDynamicChunkPlannerTypes';
+import type {
+  BrowserTtsV3PauseClass,
+  PlanBrowserTtsChunkInput,
+  PlannedBrowserTtsChunk,
+} from './ttsDynamicChunkPlannerTypes';
 
 export type {
   BoundaryStrictness,
+  BrowserTtsV3BreathGroup,
+  BrowserTtsV3PauseClass,
+  BrowserTtsV3ProsodyMetadata,
+  BrowserTtsV3ReplayStrategy,
+  BrowserTtsV3SemanticCompletenessClass,
+  BrowserTtsV3SyntacticRisk,
   PlanBrowserTtsChunkInput,
   PlannedBrowserTtsChunk,
   SupportedLanguage,
@@ -82,10 +93,14 @@ export function planBrowserTtsAdaptiveChunk(input: PlanBrowserTtsChunkInput): Pl
   const words = input.macroWords.slice(input.macroWordOffset, endIndex);
   const scored = scoreChunk(words, input.language, bestBoundary);
   const canPauseAfter = bestBoundary === 'sentence' || bestBoundary === 'clause';
+  const startWordIndex = input.globalStartWordIndex + input.macroWordOffset;
+  const tailWord = normalizeWord(words[words.length - 1] ?? '');
+  const nextWord = normalizeWord(input.macroWords[endIndex] ?? '');
+  const edgeWordFlag = bestBoundary === 'unsafe' || isUnsafePair(tailWord, nextWord, input.language);
 
   return {
     text: words.join(' '),
-    startWordIndex: input.globalStartWordIndex + input.macroWordOffset,
+    startWordIndex,
     wordCount: words.length,
     phraseBoundaryType: bestBoundary,
     canPauseAfter,
@@ -95,5 +110,26 @@ export function planBrowserTtsAdaptiveChunk(input: PlanBrowserTtsChunkInput): Pl
     rareWordLoad: scored.rareWordLoad,
     syntaxComplexity: scored.syntaxComplexity,
     phraseDifficulty: scored.phraseDifficulty,
+    v3Prosody: buildBrowserTtsV3ProsodyMetadata({
+      boundaryType: bestBoundary,
+      edgeWordFlag,
+      pauseClass: classifyBrowserTtsV3PauseClass(bestBoundary, recoverySafeBoundary),
+      phraseDifficulty: scored.phraseDifficulty,
+      semanticCompleteness: scored.semanticCompleteness,
+      startWordIndex,
+      syntaxComplexity: scored.syntaxComplexity,
+      wordCount: words.length,
+    }),
   };
+}
+
+function classifyBrowserTtsV3PauseClass(
+  boundaryType: PhraseBoundaryType,
+  recoverySafeBoundary: boolean,
+): BrowserTtsV3PauseClass {
+  if (recoverySafeBoundary && (boundaryType === 'sentence' || boundaryType === 'clause')) return 'recovery';
+  if (boundaryType === 'sentence') return 'sentence';
+  if (boundaryType === 'clause') return 'boundary';
+  if (boundaryType === 'minor') return 'micro';
+  return 'none';
 }
