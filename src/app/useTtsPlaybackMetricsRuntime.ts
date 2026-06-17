@@ -6,7 +6,7 @@ import {
   createTtsUiPublisher,
 } from './useTtsUiPublisher';
 import {
-  createTtsPlaybackMetricsRuntimeMemoDeps,
+  getTtsPlaybackMetricsRuntimeMemoDeps,
 } from './ttsPlaybackMetricsRuntimeMemoDeps';
 import {
   createTtsPerformanceSampleRuntime,
@@ -112,6 +112,6 @@ export function useTtsPlaybackMetricsRuntime(
 ): TtsPlaybackMetricsRuntime {
   return useMemo(
     () => createTtsPlaybackMetricsRuntime(options),
-    createTtsPlaybackMetricsRuntimeMemoDeps(options),
+    getTtsPlaybackMetricsRuntimeMemoDeps(options),
   );
 }
