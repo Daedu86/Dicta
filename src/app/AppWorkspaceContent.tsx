@@ -106,11 +106,7 @@ export function AppWorkspaceContent({
               <p className="error">Admin access required.</p>
             </section>
           )
-        ) : (
-          <section className="panel workspace-panel">
-            <p className="hint">Choose Browser TTS to train.</p>
-          </section>
-        )}
+        ) : null}
       </section>
     </section>
   );
