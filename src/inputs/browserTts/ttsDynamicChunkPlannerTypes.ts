@@ -49,5 +49,5 @@ export type PlannedBrowserTtsChunk = {
   rareWordLoad: number;
   syntaxComplexity: number;
   phraseDifficulty: number;
-  v3Prosody: BrowserTtsV3ProsodyMetadata;
+  v3Prosody?: BrowserTtsV3ProsodyMetadata;
 };
