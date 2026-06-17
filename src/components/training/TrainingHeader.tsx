@@ -16,7 +16,7 @@ export function TrainingHeader({ selectedLanguage, onChangeLanguage, onBackToApp
           <p>Training Mode</p>
         </div>
       </div>
-      <div className="training-header-language-tabs" role="tablist" aria-label="Training language">
+      <div className="training-header-language-tabs" role="group" aria-label="Training language selector">
         {SUPPORTED_LANGUAGES.map((code) => (
           <button
             key={code}
@@ -24,6 +24,7 @@ export function TrainingHeader({ selectedLanguage, onChangeLanguage, onBackToApp
             className={`training-header-language-tab ${selectedLanguage === code ? 'training-header-language-tab-active' : ''}`}
             onClick={() => onChangeLanguage(code)}
             aria-pressed={selectedLanguage === code}
+            aria-label={`Use ${LANGUAGE_LABELS[code]} for training`}
             title={`Use ${LANGUAGE_LABELS[code]} for Dicta training views and new generated sessions`}
           >
             {LANGUAGE_TAB_LABELS[code]}
