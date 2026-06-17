@@ -15,6 +15,7 @@ import type {
   SupportedLanguage,
 } from '../inputs/browserTts/ttsDynamicChunkPlanner';
 import type { TtsPacingMode } from '../types/dictation';
+import type { BrowserTtsSurgicalReplayPlan } from './browserTtsSurgicalReplayPlan';
 import type { TtsLiveSignal } from './ttsPlaybackProfile';
 
 export type BrowserTtsBoundaryStrictness = 'sentence' | 'clause' | 'phrase';
@@ -59,6 +60,7 @@ export type BrowserTtsPlaybackPlanInput = {
 export type BrowserTtsPlaybackPlan = {
   candidateChunk: PlannedBrowserTtsChunk;
   chunk: PlannedBrowserTtsChunk;
+  surgicalReplayPlan: BrowserTtsSurgicalReplayPlan;
   rawDecision: PacingDecision;
   decision: PacingDecision;
   runtimeDecision: PacingDecision;
