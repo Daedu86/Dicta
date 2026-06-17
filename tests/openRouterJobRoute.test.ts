@@ -7,32 +7,7 @@ import {
   resolveCreateJobPayloadForRequester,
   resolveOpenRouterJobModelCandidates,
 } from '../api/openrouter/jobs.js';
-
-const validScript = {
-  title: 'Ein ruhiger Morgen',
-  language: 'de',
-  inputMode: 'browser-tts',
-  difficulty: 'easy',
-  estimatedDurationSec: 60,
-  targetSkills: [],
-  recommendedRateRange: [0.8, 0.85],
-  recommendedPhraseSize: 'short',
-  recommendedPauseMs: 1200,
-  phrases: [
-    {
-      id: 'p01',
-      text: 'Heute bereite ich das Frühstück langsam und aufmerksam vor.',
-      boundaryType: 'clause',
-      pauseAfterMs: 1200,
-      canReplayIndependently: true,
-      requiresContinuation: false,
-      semanticCompleteness: 0.9,
-      difficulty: 0.35,
-      emphasisWords: [],
-      intonationHint: 'neutral',
-    },
-  ],
-};
+import { directMobileButtonPayloads, validScript } from './helpers/openRouterJobFixtures';
 
 describe('OpenRouter jobs route payload validation', () => {
   it('accepts French durable session generation jobs', () => {
@@ -97,13 +72,7 @@ describe('OpenRouter jobs route payload validation', () => {
   });
 
   it('accepts all three direct mobile generation button job payloads', () => {
-    const buttonPayloads = [
-      { slotLabel: 'Easy direct session', durationMinutes: 2, targetDifficulty: 'easy' },
-      { slotLabel: 'Intermediate direct session', durationMinutes: 2, targetDifficulty: 'normal' },
-      { slotLabel: 'Advanced direct session', durationMinutes: 2, targetDifficulty: 'hard' },
-    ] as const;
-
-    for (const payload of buttonPayloads) {
+    for (const payload of directMobileButtonPayloads) {
       expect(
         readCreateJobPayload({
           model: 'openrouter/free',
