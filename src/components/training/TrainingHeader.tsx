@@ -1,13 +1,21 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
 import { LANGUAGE_LABELS, LANGUAGE_TAB_LABELS, SUPPORTED_LANGUAGES, type SupportedLanguage } from '../../core/languages';
+import { TrainingGenerationCard } from './TrainingGenerationCard';
+import type { TrainingGenerationButton } from './trainingGenerationDisplay';
 
 export type TrainingHeaderProps = {
   selectedLanguage: SupportedLanguage;
   onChangeLanguage: (language: SupportedLanguage) => void;
   onBackToApp: () => void;
+  generationButtons?: TrainingGenerationButton[];
 };
 
-export function TrainingHeader({ selectedLanguage, onChangeLanguage, onBackToApp }: TrainingHeaderProps) {
+export function TrainingHeader({
+  selectedLanguage,
+  onChangeLanguage,
+  onBackToApp,
+  generationButtons = [],
+}: TrainingHeaderProps) {
   const [optimisticLanguage, setOptimisticLanguage] = useState(selectedLanguage);
   const deferredLanguageChangeTimeoutRef = useRef<number | null>(null);
 
@@ -71,6 +79,10 @@ export function TrainingHeader({ selectedLanguage, onChangeLanguage, onBackToApp
       <button type="button" className="secondary-button training-header-button" onClick={onBackToApp}>
         Full app
       </button>
+      <TrainingGenerationCard
+        generationButtons={generationButtons}
+        className="training-header-generation-card"
+      />
     </header>
   );
 }

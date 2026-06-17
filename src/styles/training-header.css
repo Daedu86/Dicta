@@ -82,6 +82,52 @@
   color: #121826;
 }
 
+.training-header .training-header-generation-card {
+  grid-column: 1 / -1;
+  gap: 0.55rem;
+  padding: 0.65rem 0 0;
+  border: 0;
+  border-top: 1px solid rgba(168, 189, 215, 0.28);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.training-header-generation-card .training-generation-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.training-header-generation-card .training-generation-action {
+  min-width: 0;
+}
+
+.training-header-generation-card .training-generation-button-row {
+  gap: 0.35rem;
+}
+
+.training-header-generation-card .training-generation-button,
+.training-header-generation-card .training-generation-button-row .help-icon {
+  min-height: 42px;
+  border-radius: 10px;
+}
+
+.training-header-generation-card .training-generation-button {
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.training-header-generation-card .training-generation-button-row .help-icon {
+  width: 38px;
+  flex-basis: 38px;
+}
+
+.training-header-generation-card .training-generation-notice {
+  border-color: rgba(168, 189, 215, 0.42);
+  background: rgba(244, 248, 253, 0.92);
+  font-size: 0.74rem;
+}
+
 @media (max-width: 560px) {
   .training-header {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -106,5 +152,9 @@
   .training-header-language-tab {
     flex: 1 1 0;
     width: auto;
+  }
+
+  .training-header-generation-card .training-generation-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -101,6 +101,10 @@
   backdrop-filter: blur(10px);
 }
 
+.training-route-app-with-generation .training-input-header {
+  top: 10.25rem;
+}
+
 .training-input-heading {
   color: #24415f;
   font-weight: 800;

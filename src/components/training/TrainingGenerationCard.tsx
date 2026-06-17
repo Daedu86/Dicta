@@ -4,13 +4,14 @@ export type { TrainingGenerationButton } from './trainingGenerationDisplay';
 
 export type TrainingGenerationCardProps = {
   generationButtons: TrainingGenerationButton[];
+  className?: string;
 };
 
-export function TrainingGenerationCard({ generationButtons }: TrainingGenerationCardProps) {
+export function TrainingGenerationCard({ generationButtons, className = '' }: TrainingGenerationCardProps) {
   if (generationButtons.length === 0) return null;
 
   return (
-    <section className="training-card training-generation-card" aria-label="Generate new sessions">
+    <section className={`training-card training-generation-card ${className}`.trim()} aria-label="Generate new sessions">
       <div className="training-generation-grid">
         {generationButtons.map((button) => {
           const display = buildTrainingGenerationButtonDisplay(button);

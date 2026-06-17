@@ -2,7 +2,6 @@ import { formatDifficultyLabel } from '../core/config';
 import { PendingSessionLane } from './training/PendingSessionLane';
 import { SyncStatusBanner } from './training/SyncStatusBanner';
 import { TrainingAudioCard } from './training/TrainingAudioCard';
-import { TrainingGenerationCard } from './training/TrainingGenerationCard';
 import { TrainingInputCard } from './training/TrainingInputCard';
 import { TrainingSessionCard } from './training/TrainingSessionCard';
 import { TrainingSubmitCard } from './training/TrainingSubmitCard';
@@ -58,7 +57,6 @@ export function TrainingView<Session extends TrainingViewSession>({
   submitLabel,
   message,
   messageTone,
-  generationButtons,
   textCommitDelayMs,
   pendingSessions,
   activeSessionId,
@@ -151,8 +149,6 @@ export function TrainingView<Session extends TrainingViewSession>({
         message={message}
         messageTone={messageTone}
       />
-
-      <TrainingGenerationCard generationButtons={generationButtons} />
     </section>
   );
 }

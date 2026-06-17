@@ -3,6 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrainingHeader } from '../src/components/training/TrainingHeader';
+import type { TrainingGenerationButton } from '../src/components/training/TrainingGenerationCard';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -58,4 +59,42 @@ describe('TrainingHeader', () => {
 
     expect(changes).toHaveBeenCalledWith('fr');
   });
+
+  it('renders generation actions inside the floating language header', () => {
+    const generatePrecision = vi.fn();
+
+    act(() => {
+      root.render(createElement(TrainingHeader, {
+        selectedLanguage: 'de',
+        onChangeLanguage: vi.fn(),
+        onBackToApp: vi.fn(),
+        generationButtons: [
+          generationButton({ id: 'easy', label: 'New Easy Session', onClick: generatePrecision }),
+          generationButton({ id: 'medium', label: 'New Medium Session' }),
+          generationButton({ id: 'hard', label: 'New Hard Session' }),
+        ],
+      }));
+    });
+
+    const generationCard = host.querySelector('.training-header .training-header-generation-card');
+    const generationButtons = Array.from(generationCard?.querySelectorAll<HTMLButtonElement>('.training-generation-button') ?? []);
+
+    expect(generationCard).not.toBeNull();
+    expect(generationButtons.map((button) => button.textContent)).toEqual(['Precision', 'Stabilize', 'Challenge']);
+
+    act(() => {
+      generationButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(generatePrecision).toHaveBeenCalledTimes(1);
+  });
 });
+
+function generationButton(overrides: Partial<TrainingGenerationButton> & Pick<TrainingGenerationButton, 'id' | 'label'>): TrainingGenerationButton {
+  return {
+    title: 'Generate a session',
+    disabled: false,
+    onClick: () => undefined,
+    ...overrides,
+  };
+}

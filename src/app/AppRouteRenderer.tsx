@@ -110,12 +110,17 @@ export function AppRouteRenderer({
   }
 
   if (isFocusedTrainingRoute) {
+    const trainingRouteGenerationClass = focusedTrainingProps.generationButtons.length > 0
+      ? ' training-route-app-with-generation'
+      : '';
+
     return (
-      <main className={`app training-route-app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
+      <main className={`app training-route-app${trainingRouteGenerationClass} ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
         <TrainingHeader
           selectedLanguage={dictaLanguageView}
           onChangeLanguage={setDictaLanguageView}
           onBackToApp={onBackToApp}
+          generationButtons={focusedTrainingProps.generationButtons}
         />
         <TrainingView {...focusedTrainingProps} />
         <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />
