@@ -9,7 +9,7 @@ import {
   cleanupTrainingSessionLifecycleHarness,
   createDefaultState,
   renderTrainingSessionLifecycle,
-} from './helpers/trainingSessionLifecycleHarness';
+} from './helpers/trainingSessionLifecycleHarnessUtils';
 
 afterEach(async () => {
   await cleanupTrainingSessionLifecycleHarness();

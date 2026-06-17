@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cleanupFocusedTrainingRouteRuntimeHarness,
   renderFocusedTrainingRouteRuntime,
-} from './helpers/focusedTrainingRouteRuntimeHarness';
+} from './helpers/focusedTrainingRouteRuntimeHarnessUtils';
 
 afterEach(async () => {
   await cleanupFocusedTrainingRouteRuntimeHarness();
