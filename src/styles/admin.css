@@ -16,8 +16,14 @@
   gap: 0.85rem;
 }
 
-.admin-card {
+.admin-card,
+.admin-table,
+.admin-session-list,
+.admin-access-table {
   display: grid;
+}
+
+.admin-card {
   gap: 0.85rem;
 }
 
@@ -34,13 +40,15 @@
 }
 
 .admin-card-header h3,
-.admin-session-card h4 {
+.admin-session-card h4,
+.admin-card-header p,
+.admin-session-card p {
   margin: 0;
 }
 
 .admin-card-header p,
 .admin-session-card p {
-  margin: 0.25rem 0 0;
+  margin-top: 0.25rem;
   color: #4e6076;
 }
 
@@ -52,22 +60,32 @@
 }
 
 .admin-table,
-.admin-session-list {
-  display: grid;
+.admin-session-list,
+.admin-access-table {
   gap: 0.55rem;
 }
 
-.admin-table-row {
+.admin-table-row,
+.admin-access-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(80px, 0.4fr) minmax(0, 1.35fr) minmax(100px, 0.45fr);
   gap: 0.65rem;
-  align-items: start;
   min-width: 0;
   padding: 0.65rem 0.75rem;
   border: 1px solid #d7e2ee;
-  border-radius: 12px;
   background: #f8fbff;
   color: #24384f;
+}
+
+.admin-table-row {
+  grid-template-columns: minmax(0, 1.05fr) minmax(80px, 0.4fr) minmax(0, 1.35fr) minmax(100px, 0.45fr);
+  align-items: start;
+  border-radius: 12px;
+}
+
+.admin-access-row {
+  grid-template-columns: minmax(0, 1fr) minmax(115px, 0.55fr) minmax(170px, 1fr) minmax(100px, 0.45fr) minmax(105px, 0.45fr) minmax(150px, 0.7fr);
+  align-items: center;
+  border-radius: 8px;
 }
 
 .admin-table-header {
@@ -79,7 +97,9 @@
   background: transparent;
 }
 
-.admin-table-row span {
+.admin-table-row span,
+.admin-access-row span,
+.admin-access-row small {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -89,30 +109,6 @@
   margin-top: 0.25rem;
   color: #5d7083;
   font-size: 0.75rem;
-}
-
-.admin-access-table {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.admin-access-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(115px, 0.55fr) minmax(170px, 1fr) minmax(100px, 0.45fr) minmax(105px, 0.45fr) minmax(150px, 0.7fr);
-  gap: 0.65rem;
-  align-items: center;
-  min-width: 0;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid #d7e2ee;
-  border-radius: 8px;
-  background: #f8fbff;
-  color: #24384f;
-}
-
-.admin-access-row span,
-.admin-access-row small {
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .admin-access-toggle {
@@ -146,7 +142,6 @@
 .admin-language-tabs {
   margin-top: 0.55rem;
 }
-
 
 @media (max-width: 900px) {
   .admin-table-row,
