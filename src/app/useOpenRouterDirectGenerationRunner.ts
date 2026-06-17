@@ -1,68 +1,21 @@
 import { useCallback } from 'react';
-import type { InputMode } from '../core/adaptive/types';
-import type { ActiveOpenRouterJob } from '../core/openRouterJobs';
-import { requestTrainingNotificationPermission } from '../core/trainingNotifications';
-import { perfDiagnostics } from '../core/perfDiagnostics';
-import type {
-  AdaptiveBenchmarksByInputLanguage,
-  AdaptiveSessionFeedbackByInputLanguage,
-  BenchmarkLanguageButton,
-} from '../components/openrouter/types';
-import { buildOpenRouterDirectGenerationJobPlan } from './openRouterDirectGenerationJobPlan';
 import { buildOpenRouterDirectGenerationStartPlan } from './openRouterDirectGenerationStartPlan';
-import type { OpenRouterDirectGenerationPreset } from './openRouterDirectGenerationPresets';
-import { requestOpenRouterGenerationJob } from './openRouterGenerationJobRequest';
-import { resolveOpenRouterDirectGenerationFailure } from './openRouterGenerationFailurePolicy';
-import type { StoredSession } from './sessionTypes';
+import { handleOpenRouterDirectGenerationFailure } from './openRouterDirectGenerationFailureHandler';
+import { runOpenRouterDirectGenerationJobRequest } from './openRouterDirectGenerationJobRunner';
+import {
+  finishOpenRouterDirectGenerationRun,
+  startOpenRouterDirectGenerationRun,
+} from './openRouterDirectGenerationRunLifecycle';
+import type {
+  GenerateOpenRouterDirectSessionOptions,
+  UseOpenRouterDirectGenerationRunnerOptions,
+} from './openRouterDirectGenerationRunnerTypes';
 
-type RecentDictationSessionHint = {
-  title: string;
-  opener: string;
-};
-
-export type CreateGenerationErrorSessionArgs = {
-  slotLabel: string;
-  inputMode: InputMode;
-  language: BenchmarkLanguageButton;
-  message: string;
-};
-
-export type UseOpenRouterDirectGenerationRunnerOptions = {
-  sessions: StoredSession[];
-  activeSession: StoredSession | null;
-  openRouterAccessAllowed: boolean;
-  openRouterAccessMessage: string;
-  isOnline: boolean;
-  effectiveOpenRouterDefaultModel: string;
-  fallbackInputMode: InputMode;
-  dictaLanguageView: BenchmarkLanguageButton;
-  adaptiveBenchmarksByInputLanguage: AdaptiveBenchmarksByInputLanguage;
-  adaptiveSessionFeedbackByInputLanguage: AdaptiveSessionFeedbackByInputLanguage;
-  recentDictationSessionHints: RecentDictationSessionHint[];
-  getAuthHeaders: () => Record<string, string>;
-  ensureCanCreateDictationSession: (messageTarget: 'error' | 'openrouter' | 'export') => boolean;
-  setOpenRouterError: (message: string) => void;
-  setSelectedBenchmarkInputMode: (inputMode: InputMode) => void;
-  setSelectedBenchmarkLanguage: (language: BenchmarkLanguageButton) => void;
-  trackOpenRouterJob: (activeJob: ActiveOpenRouterJob) => void;
-  recordOpenRouterGenerationFailure: (notice: {
-    slotLabel: string;
-    displayLabel: string;
-    model: string;
-    startedAt: string;
-    error: string;
-    completedAt?: string;
-  }) => void;
-  createOpenRouterErrorSession: (
-    args: CreateGenerationErrorSessionArgs,
-    options?: { navigateToLeaderboard?: boolean },
-  ) => void;
-};
-
-export type GenerateOpenRouterDirectSessionOptions = OpenRouterDirectGenerationPreset & {
-  isBusy: boolean;
-  setBusy: (value: boolean) => void;
-};
+export type {
+  CreateGenerationErrorSessionArgs,
+  GenerateOpenRouterDirectSessionOptions,
+  UseOpenRouterDirectGenerationRunnerOptions,
+} from './openRouterDirectGenerationRunnerTypes';
 
 export function useOpenRouterDirectGenerationRunner({
   sessions,
@@ -117,17 +70,20 @@ export function useOpenRouterDirectGenerationRunner({
     }
 
     const { model, inputMode, language } = startPlan;
+    const { generationStartedAt, endPerfSpan } = startOpenRouterDirectGenerationRun({
+      userIntent,
+      targetDifficulty,
+      durationMinutes,
+      inputMode,
+      language,
+      setBusy,
+      setOpenRouterError,
+      setSelectedBenchmarkInputMode,
+      setSelectedBenchmarkLanguage,
+    });
 
-    void requestTrainingNotificationPermission();
-
-    const endPerfSpan = perfDiagnostics.startSpan('openrouter.generateDirectSession', { userIntent, targetDifficulty, durationMinutes });
-    const generationStartedAt = new Date().toISOString();
-    setBusy(true);
-    setOpenRouterError('');
-    setSelectedBenchmarkInputMode(inputMode);
-    setSelectedBenchmarkLanguage(language);
     try {
-      const jobPlan = buildOpenRouterDirectGenerationJobPlan({
+      const activeJob = await runOpenRouterDirectGenerationJobRequest({
         model,
         preset: {
           id,
@@ -145,40 +101,24 @@ export function useOpenRouterDirectGenerationRunner({
         adaptiveSessionFeedbackByInputLanguage,
         recentDictationSessionHints,
         generationStartedAt,
-      });
-      const activeJob = await requestOpenRouterGenerationJob({
-        jobPlan,
-        requestHeaders: getAuthHeaders(),
+        getAuthHeaders,
       });
       trackOpenRouterJob(activeJob);
     } catch (err) {
-      const message =
-        err instanceof TypeError
-          ? 'Failed to reach OpenRouter endpoint. Refresh the page and try a free model such as openrouter/free.'
-          : err instanceof Error
-            ? err.message
-            : 'OpenRouter generation failed.';
-      const failure = resolveOpenRouterDirectGenerationFailure({
+      handleOpenRouterDirectGenerationFailure({
+        err,
         slotLabel,
         displayLabel,
         model,
-        startedAt: generationStartedAt,
-        message,
+        inputMode,
+        language,
+        generationStartedAt,
+        recordOpenRouterGenerationFailure,
+        createOpenRouterErrorSession,
+        setOpenRouterError,
       });
-      recordOpenRouterGenerationFailure(failure.notice);
-      if (failure.createPersistentErrorSession) {
-        createOpenRouterErrorSession({
-          slotLabel,
-          inputMode,
-          language,
-          message,
-        }, { navigateToLeaderboard: false });
-      } else if (failure.openRouterErrorMessage) {
-        setOpenRouterError(failure.openRouterErrorMessage);
-      }
     } finally {
-      setBusy(false);
-      endPerfSpan();
+      finishOpenRouterDirectGenerationRun({ setBusy, endPerfSpan });
     }
   }, [
     activeSession,
