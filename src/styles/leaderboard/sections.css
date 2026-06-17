@@ -1,0 +1,61 @@
+.leaderboard-difficulty-section {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+  border: 1px solid #d7e2ee;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fcfdff, #f6f9fc);
+  padding: 0.55rem;
+}
+
+.leaderboard-section-header {
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 9px;
+  text-align: left;
+}
+
+.leaderboard-section-header > span:first-child {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.leaderboard-section-header strong,
+.leaderboard-section-header small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-section-header small {
+  color: #60758d;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.leaderboard-section-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  transition: transform 0.16s ease;
+}
+
+.leaderboard-section-chevron-open {
+  transform: rotate(180deg);
+}
+
+.leaderboard-section-body {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
