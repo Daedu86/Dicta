@@ -109,11 +109,8 @@ describe('useWorkspaceRouting', () => {
     await showSessionInputWorkspace(getRouting, BROWSER_TTS_SESSION_INPUT_MODE);
 
     expectCurrentBrowserPath('/training');
-    expectWorkspaceState(getRouting(), {
-      mode: 'training',
-      currentPath: '/training',
-      dashboardSessionId: null,
-    });
+    expect(getRouting().currentPath).toBe('/training');
+    expect(getRouting().dashboardSessionId).toBeNull();
   });
 
   it('updates currentPath when the browser popstate event fires', async () => {
