@@ -1,4 +1,7 @@
-import type { InputLanguageBenchmarkMetrics } from './types';
+import type {
+  InputLanguageBenchmarkMetrics,
+  ListeningTrainingMode,
+} from './types';
 import type { RuntimePolicy } from './adaptivePolicyLayers';
 import {
   adjustPauseForMode,
@@ -14,7 +17,7 @@ import { finitePositiveOr } from './listeningTrainerPolicySignals';
 
 export function buildListeningTrainingRuntimePolicy(args: {
   profile: InputLanguageBenchmarkMetrics;
-  mode: RuntimePolicy['mode'] extends never ? never : Parameters<typeof adjustRateRangeForMode>[1];
+  mode: ListeningTrainingMode;
   hasBoundarySupportInstability: boolean;
   precisionPressure: ReturnType<typeof assessListeningTrainingPolicy>['precisionPressure'];
 }): RuntimePolicy {
