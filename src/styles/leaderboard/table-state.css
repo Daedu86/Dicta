@@ -1,0 +1,38 @@
+.leaderboard-table-row-active {
+  border-color: #5a94e8;
+  box-shadow: 0 0 0 2px rgba(90, 148, 232, 0.12);
+}
+
+.leaderboard-table-row-not-ready,
+.leaderboard-table-row-open {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.16);
+}
+
+.leaderboard-table-row-ready,
+.leaderboard-table-row-finished {
+  border-color: #1a94ff;
+  box-shadow: 0 0 0 2px rgba(26, 148, 255, 0.14);
+}
+
+.leaderboard-table-row-error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+}
+
+.leaderboard-table-row-active.leaderboard-table-row-not-ready,
+.leaderboard-table-row-active.leaderboard-table-row-open {
+  border-color: #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.28);
+}
+
+.leaderboard-table-row-active.leaderboard-table-row-ready,
+.leaderboard-table-row-active.leaderboard-table-row-finished {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.24);
+}
+
+.leaderboard-table-row-active.leaderboard-table-row-error {
+  border-color: #f87171;
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.28);
+}
