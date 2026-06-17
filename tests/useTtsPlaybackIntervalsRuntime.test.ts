@@ -8,46 +8,9 @@ import {
   shouldRunTtsPerformanceSampling,
   startTtsPerformanceSamplingInterval,
   startTtsPlayerProgressInterval,
-  type IntervalScheduler,
 } from '../src/app/useTtsPlaybackIntervalsRuntime';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../src/core/sessionInputModes';
-
-type ScheduledInterval = {
-  id: number;
-  callback: () => void;
-  delayMs: number;
-  cleared: boolean;
-};
-
-function createFakeIntervalScheduler() {
-  const intervals: ScheduledInterval[] = [];
-  let nextId = 1;
-
-  const scheduler: IntervalScheduler = {
-    setInterval: vi.fn((callback, delayMs) => {
-      const id = nextId;
-      nextId += 1;
-      intervals.push({
-        id,
-        callback,
-        delayMs,
-        cleared: false,
-      });
-      return id;
-    }),
-    clearInterval: vi.fn((intervalId) => {
-      const interval = intervals.find((item) => item.id === intervalId);
-      if (interval) {
-        interval.cleared = true;
-      }
-    }),
-  };
-
-  return {
-    scheduler,
-    intervals,
-  };
-}
+import { createFakeIntervalScheduler } from './helpers/ttsIntervalSchedulerFixtures';
 
 describe('TTS playback intervals runtime', () => {
   it('only samples TTS performance while browser TTS is actively playing text', () => {
@@ -58,33 +21,20 @@ describe('TTS playback intervals runtime', () => {
       ttsStatus: 'playing',
     })).toBe(true);
 
-    expect(shouldRunTtsPerformanceSampling({
-      activeInputMode: 'keyboard',
-      activeSessionFinished: false,
-      ttsHasText: true,
-      ttsStatus: 'playing',
-    })).toBe(false);
-
-    expect(shouldRunTtsPerformanceSampling({
-      activeInputMode: BROWSER_TTS_SESSION_INPUT_MODE,
-      activeSessionFinished: true,
-      ttsHasText: true,
-      ttsStatus: 'playing',
-    })).toBe(false);
-
-    expect(shouldRunTtsPerformanceSampling({
-      activeInputMode: BROWSER_TTS_SESSION_INPUT_MODE,
-      activeSessionFinished: false,
-      ttsHasText: false,
-      ttsStatus: 'playing',
-    })).toBe(false);
-
-    expect(shouldRunTtsPerformanceSampling({
-      activeInputMode: BROWSER_TTS_SESSION_INPUT_MODE,
-      activeSessionFinished: false,
-      ttsHasText: true,
-      ttsStatus: 'paused',
-    })).toBe(false);
+    for (const inactiveCase of [
+      { activeInputMode: 'keyboard' as const },
+      { activeSessionFinished: true },
+      { ttsHasText: false },
+      { ttsStatus: 'paused' as const },
+    ]) {
+      expect(shouldRunTtsPerformanceSampling({
+        activeInputMode: BROWSER_TTS_SESSION_INPUT_MODE,
+        activeSessionFinished: false,
+        ttsHasText: true,
+        ttsStatus: 'playing',
+        ...inactiveCase,
+      })).toBe(false);
+    }
   });
 
   it('starts and cleans up the performance sampling interval', () => {
