@@ -4,6 +4,7 @@ import type { TtsPacingMode } from '../types/dictation';
 import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlan';
 import { configureBrowserTtsUtterance } from './browserTtsUtteranceConfiguration';
 import { buildBrowserTtsUtterancePerfMetadata } from './browserTtsUtterancePerfMetadata';
+import { calibrateBrowserTtsVoiceRate } from './browserTtsVoiceCalibration';
 
 type CreateBrowserTtsPlaybackUtteranceArgs = {
   chunk: BrowserTtsPlaybackPlan['chunk'];
@@ -34,6 +35,11 @@ export function createBrowserTtsPlaybackUtterance({
   perfUtteranceId: number;
 } {
   const utterance = new SpeechSynthesisUtterance(chunk.text);
+  const voiceCalibration = calibrateBrowserTtsVoiceRate({
+    requestedRate: rate,
+    voice: browserTtsVoice,
+    environment: activeSession?.ttsEnvironment ?? null,
+  });
   const perfUtteranceId = perfDiagnostics.beginTtsUtterance(
     buildBrowserTtsUtterancePerfMetadata({
       playId: perfPlayId,
@@ -45,11 +51,12 @@ export function createBrowserTtsPlaybackUtterance({
       voice: browserTtsVoice,
       sessionVoiceURI: activeSession?.ttsVoiceURI ?? null,
       availableVoices: browserTtsVoices,
+      voiceCalibration,
     }),
   );
   configureBrowserTtsUtterance({
     utterance,
-    rate,
+    rate: voiceCalibration.effectiveRate,
     language: ttsLanguage,
     voice: browserTtsVoice,
   });
