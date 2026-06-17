@@ -1,4 +1,5 @@
 import type { InputMode } from '../inputModes';
+import type { ListenerStateV3 } from '../listenerStateV3';
 import type { ListeningPrecisionMetrics } from '../listeningPrecisionMetrics';
 
 export type PhraseSize = 'short' | 'medium' | 'long';
@@ -69,6 +70,7 @@ export interface LiveTelemetryFrame {
   sessionAccuracy?: number;
   errorRate: number;
   listeningPrecision?: ListeningPrecisionMetrics;
+  listenerStateV3?: ListenerStateV3;
 
   wpm: number;
   charsPerMinute: number;
