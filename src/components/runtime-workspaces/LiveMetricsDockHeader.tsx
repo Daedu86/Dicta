@@ -35,60 +35,71 @@ export function LiveMetricsDockHeader({
 }: LiveMetricsDockHeaderProps) {
   return (
     <div className="metrics-header bottom-metrics-header live-metrics-section live-metrics-section-header">
-      <h2>Insights</h2>
-      <div className="live-metrics-language-tabs" role="group" aria-label="Live metrics language">
-        {SUPPORTED_LANGUAGES.map((code) => (
-          <button
-            key={code}
-            type="button"
-            className={`live-metrics-language-tab ${metricsLanguageView === code ? 'live-metrics-language-tab-active' : ''}`}
-            onClick={() => onChangeMetricsLanguageView(code)}
-            aria-pressed={metricsLanguageView === code}
-            title={`Live Metrics for ${LANGUAGE_LABELS[code]}`}
-          >
-            {code.toUpperCase()}
-          </button>
-        ))}
+      <div className="live-metrics-heading-row">
+        <div className="live-metrics-title-group">
+          <h2>Insights</h2>
+          <span className={`trend trend-${trend}`}>{formatTrendLabel(trend)}</span>
+        </div>
+        <div className="live-metrics-language-tabs" role="group" aria-label="Live metrics language">
+          {SUPPORTED_LANGUAGES.map((code) => (
+            <button
+              key={code}
+              type="button"
+              className={`live-metrics-language-tab ${metricsLanguageView === code ? 'live-metrics-language-tab-active' : ''}`}
+              onClick={() => onChangeMetricsLanguageView(code)}
+              aria-pressed={metricsLanguageView === code}
+              title={`Live Metrics for ${LANGUAGE_LABELS[code]}`}
+            >
+              {code.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </div>
-      <span className={`trend trend-${trend}`}>{formatTrendLabel(trend)}</span>
-      <div className="live-metrics-input-tabs" role="group" aria-label="Adaptive report input">
-        {insightsDiagnosticInputOptions.map((option) => (
+      <div className="live-metrics-control-row">
+        <div className="live-metrics-input-tabs" role="group" aria-label="Adaptive report input">
+          {insightsDiagnosticInputOptions.map((option) => {
+            const inputModeLabel = formatInputModeLabel(option.inputMode);
+            return (
+              <button
+                key={option.inputMode}
+                type="button"
+                className={`live-metrics-input-tab ${insightsDiagnosticInputMode === option.inputMode ? 'live-metrics-input-tab-active' : ''}`}
+                onClick={() => onChangeInsightsDiagnosticInputMode(option.inputMode)}
+                aria-pressed={insightsDiagnosticInputMode === option.inputMode}
+                title={`${inputModeLabel} report`}
+              >
+                <span>{option.label}</span>
+                {option.label !== inputModeLabel ? <small>{inputModeLabel}</small> : null}
+              </button>
+            );
+          })}
+        </div>
+        <div className="live-metrics-action-group">
           <button
-            key={option.inputMode}
             type="button"
-            className={`live-metrics-input-tab ${insightsDiagnosticInputMode === option.inputMode ? 'live-metrics-input-tab-active' : ''}`}
-            onClick={() => onChangeInsightsDiagnosticInputMode(option.inputMode)}
-            aria-pressed={insightsDiagnosticInputMode === option.inputMode}
-            title={`${formatInputModeLabel(option.inputMode)} report`}
+            className="secondary-button live-metrics-report-button"
+            onClick={() => void onCopyInsightsDiagnosticPackage()}
+            title={`Copy one structured adaptive report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
           >
-            <span>{option.label}</span>
-            <small>{formatInputModeLabel(option.inputMode)}</small>
+            Copy adaptive report
           </button>
-        ))}
+          <button
+            type="button"
+            className="secondary-button live-metrics-collapse-button"
+            onClick={onToggleInsightsCollapsed}
+            aria-expanded={!insightsCollapsed}
+            aria-label={insightsCollapsed ? 'Expand insights panel' : 'Minimize insights panel'}
+            title={insightsCollapsed ? 'Expand' : 'Minimize'}
+          >
+            <span
+              className={`live-metrics-collapse-icon ${insightsCollapsed ? 'live-metrics-collapse-icon-collapsed' : ''}`}
+              aria-hidden="true"
+            >
+              ⌃
+            </span>
+          </button>
+        </div>
       </div>
-      <button
-        type="button"
-        className="secondary-button live-metrics-report-button"
-        onClick={() => void onCopyInsightsDiagnosticPackage()}
-        title={`Copy one structured adaptive report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
-      >
-        Copy adaptive report
-      </button>
-      <button
-        type="button"
-        className="secondary-button live-metrics-collapse-button"
-        onClick={onToggleInsightsCollapsed}
-        aria-expanded={!insightsCollapsed}
-        aria-label={insightsCollapsed ? 'Expand insights panel' : 'Minimize insights panel'}
-        title={insightsCollapsed ? 'Expand' : 'Minimize'}
-      >
-        <span
-          className={`live-metrics-collapse-icon ${insightsCollapsed ? 'live-metrics-collapse-icon-collapsed' : ''}`}
-          aria-hidden="true"
-        >
-          ⌃
-        </span>
-      </button>
     </div>
   );
 }

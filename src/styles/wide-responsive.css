@@ -97,13 +97,17 @@
     margin-left: 0;
   }
 
+  .bottom-metrics-header .live-metrics-language-tabs {
+    justify-self: start;
+  }
+
   .live-metrics-range-tabs {
     grid-template-columns: repeat(3, minmax(0, auto));
   }
 
   .live-metrics-input-tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
+    width: min(100%, 320px);
   }
 
   .runtime-metrics-grid {

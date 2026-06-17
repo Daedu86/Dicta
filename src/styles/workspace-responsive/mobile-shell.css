@@ -63,6 +63,26 @@
     flex-direction: column;
   }
 
+  .bottom-metrics-header {
+    display: grid;
+  }
+
+  .live-metrics-heading-row,
+  .live-metrics-control-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .live-metrics-title-group {
+    justify-content: space-between;
+  }
+
+  .live-metrics-action-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+  }
+
   .brand-llm-status,
   .brand-build-status {
     width: 100%;

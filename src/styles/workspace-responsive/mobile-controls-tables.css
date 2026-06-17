@@ -17,10 +17,19 @@
     margin-left: 0;
   }
 
+  .bottom-metrics-header .live-metrics-language-tabs {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
   .live-metrics-language-tab {
     min-width: 0;
     width: 100%;
     padding-inline: 0.35rem;
+  }
+
+  .live-metrics-input-tabs,
+  .live-metrics-report-button {
+    width: 100%;
   }
 
   .leaderboard-table-header,

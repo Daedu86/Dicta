@@ -5,7 +5,6 @@ import {
 } from './sessionDisplayFormatters';
 import { formatSessionDate } from './sessionDateFormatters';
 import { formatDuration } from './sessionPlaybackDuration';
-import { formatTtsPacingMode } from './ttsPacingHelpers';
 
 type LiveMetricsDockPropsArgs = Parameters<typeof useLiveMetricsDockProps>[0];
 
@@ -18,10 +17,6 @@ type UseLiveMetricsDockRuntimeArgs = {
   insightsDiagnosticInputMode: LiveMetricsDockPropsArgs['insightsDiagnosticInputMode'];
   insightsDiagnosticMessage: LiveMetricsDockPropsArgs['insightsDiagnosticMessage'];
   insightsDiagnosticFallbackReport: LiveMetricsDockPropsArgs['insightsDiagnosticFallbackReport'];
-  workspaceMode: LiveMetricsDockPropsArgs['workspaceMode'];
-  ttsCurrentChunk: LiveMetricsDockPropsArgs['ttsCurrentChunk'];
-  ttsPacingMode: LiveMetricsDockPropsArgs['ttsPacingMode'];
-  ttsStatus: LiveMetricsDockPropsArgs['ttsStatus'];
   lastSessionForLanguage: LiveMetricsDockPropsArgs['lastSessionForLanguage'];
   lastSessionScoreHelpText: LiveMetricsDockPropsArgs['lastSessionScoreHelpText'];
   languageTodaySummary: LiveMetricsDockPropsArgs['languageTodaySummary'];
@@ -42,10 +37,6 @@ export function useLiveMetricsDockRuntime({
   insightsDiagnosticInputMode,
   insightsDiagnosticMessage,
   insightsDiagnosticFallbackReport,
-  workspaceMode,
-  ttsCurrentChunk,
-  ttsPacingMode,
-  ttsStatus,
   lastSessionForLanguage,
   lastSessionScoreHelpText,
   languageTodaySummary,
@@ -65,10 +56,6 @@ export function useLiveMetricsDockRuntime({
     insightsDiagnosticInputMode,
     insightsDiagnosticMessage,
     insightsDiagnosticFallbackReport,
-    workspaceMode,
-    ttsCurrentChunk,
-    ttsPacingMode,
-    ttsStatus,
     lastSessionForLanguage,
     lastSessionScoreHelpText,
     languageTodaySummary,
@@ -82,7 +69,6 @@ export function useLiveMetricsDockRuntime({
     formatSessionInputMode,
     formatDuration,
     formatSessionDate,
-    formatTtsPacingMode,
   });
 
   return {

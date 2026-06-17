@@ -5,7 +5,6 @@ type LiveMetricsDockProps = ComponentProps<typeof LiveMetricsDock>;
 
 type UseLiveMetricsDockPropsArgs = Omit<
   LiveMetricsDockProps,
-  | 'hasTtsCurrentChunk'
   | 'onChangeMetricsLanguageView'
   | 'onChangeMetricsRangeView'
   | 'onChangeInsightsDiagnosticInputMode'
@@ -13,7 +12,6 @@ type UseLiveMetricsDockPropsArgs = Omit<
   | 'onToggleInsightsCollapsed'
   | 'onSelectInsightsDiagnosticFallbackReport'
 > & {
-  ttsCurrentChunk: unknown;
   setMetricsLanguageView: LiveMetricsDockProps['onChangeMetricsLanguageView'];
   setMetricsRangeView: LiveMetricsDockProps['onChangeMetricsRangeView'];
   setInsightsDiagnosticInputMode: LiveMetricsDockProps['onChangeInsightsDiagnosticInputMode'];
@@ -31,10 +29,6 @@ export function useLiveMetricsDockProps({
   insightsDiagnosticInputMode,
   insightsDiagnosticMessage,
   insightsDiagnosticFallbackReport,
-  workspaceMode,
-  ttsCurrentChunk,
-  ttsPacingMode,
-  ttsStatus,
   lastSessionForLanguage,
   lastSessionScoreHelpText,
   languageTodaySummary,
@@ -48,7 +42,6 @@ export function useLiveMetricsDockProps({
   formatSessionInputMode,
   formatDuration,
   formatSessionDate,
-  formatTtsPacingMode,
 }: UseLiveMetricsDockPropsArgs): LiveMetricsDockProps {
   return useMemo(
     () => ({
@@ -60,10 +53,6 @@ export function useLiveMetricsDockProps({
       insightsDiagnosticInputMode,
       insightsDiagnosticMessage,
       insightsDiagnosticFallbackReport,
-      workspaceMode,
-      hasTtsCurrentChunk: Boolean(ttsCurrentChunk),
-      ttsPacingMode,
-      ttsStatus,
       lastSessionForLanguage,
       lastSessionScoreHelpText,
       languageTodaySummary,
@@ -77,7 +66,6 @@ export function useLiveMetricsDockProps({
       formatSessionInputMode,
       formatDuration,
       formatSessionDate,
-      formatTtsPacingMode,
     }),
     [
       insightsCollapsed,
@@ -88,10 +76,6 @@ export function useLiveMetricsDockProps({
       insightsDiagnosticInputMode,
       insightsDiagnosticMessage,
       insightsDiagnosticFallbackReport,
-      workspaceMode,
-      ttsCurrentChunk,
-      ttsPacingMode,
-      ttsStatus,
       lastSessionForLanguage,
       lastSessionScoreHelpText,
       languageTodaySummary,
@@ -105,7 +89,6 @@ export function useLiveMetricsDockProps({
       formatSessionInputMode,
       formatDuration,
       formatSessionDate,
-      formatTtsPacingMode,
     ],
   );
 }

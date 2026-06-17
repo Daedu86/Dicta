@@ -34,17 +34,6 @@
   transform: rotate(180deg);
 }
 
-.bottom-metrics-player {
-  display: grid;
-  gap: 0.4rem;
-}
-
-.bottom-metrics-player-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #425466;
-}
-
 .source-media-player {
   display: grid;
   gap: 0.35rem;

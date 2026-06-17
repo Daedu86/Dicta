@@ -15,10 +15,6 @@ export function LiveMetricsDock({
   insightsDiagnosticInputMode,
   insightsDiagnosticMessage,
   insightsDiagnosticFallbackReport,
-  workspaceMode,
-  hasTtsCurrentChunk,
-  ttsPacingMode,
-  ttsStatus,
   lastSessionForLanguage,
   lastSessionScoreHelpText,
   languageTodaySummary,
@@ -32,10 +28,7 @@ export function LiveMetricsDock({
   formatSessionInputMode,
   formatDuration,
   formatSessionDate,
-  formatTtsPacingMode,
 }: LiveMetricsDockProps) {
-  const playerStatus = hasTtsCurrentChunk ? formatTtsPacingMode(ttsPacingMode) : ttsStatus;
-
   return (
     <section className="bottom-metrics-dock">
       <div className="bottom-metrics-inner">
@@ -57,12 +50,6 @@ export function LiveMetricsDock({
             report={insightsDiagnosticFallbackReport}
             onSelectReport={onSelectInsightsDiagnosticFallbackReport}
           />
-          {!insightsCollapsed && workspaceMode === 'tts' ? (
-            <div className="bottom-metrics-player tts-bottom-player live-metrics-section live-metrics-section-player">
-              <span className="bottom-metrics-player-label">Browser TTS</span>
-              <span>{playerStatus}</span>
-            </div>
-          ) : null}
         </div>
 
         {!insightsCollapsed ? (
