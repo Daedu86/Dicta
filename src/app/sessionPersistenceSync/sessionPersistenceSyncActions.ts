@@ -35,6 +35,9 @@ export function useSessionPersistenceSyncActions<TSession extends PersistableSes
     clearPendingCriticalSessionRows,
   } = options;
 
+  const persistAndPushAdaptiveSessionFeedbackNow = useSessionPersistenceFeedbackAction(options);
+  const deleteSessionAndSync = useSessionPersistenceDeleteAction(options);
+
   const persistAndPushSessionsNow = useCallback((nextSessions: TSession[], options: ImmediateSessionSyncOptions = {}): void => {
     const {
       localStorageSpanName = 'session.persistNow.localStorage',
@@ -104,7 +107,7 @@ export function useSessionPersistenceSyncActions<TSession extends PersistableSes
   return {
     persistAndPushSessionsNow,
     prependSessionAndPersistNow,
-    persistAndPushAdaptiveSessionFeedbackNow: useSessionPersistenceFeedbackAction(options),
-    deleteSessionAndSync: useSessionPersistenceDeleteAction(options),
+    persistAndPushAdaptiveSessionFeedbackNow,
+    deleteSessionAndSync,
   };
 }
