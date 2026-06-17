@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { buildBrowserTtsUtterancePerfMetadata } from '../src/app/browserTtsUtterancePerfMetadata';
 
+const expectedBaseCalibrationFields = {
+  requestedRate: undefined,
+  effectiveRate: undefined,
+  estimatedWordsPerMinute: undefined,
+  voiceCalibrationStatus: undefined,
+  voiceRateLimited: undefined,
+  voiceCalibrationReasonCodes: undefined,
+};
+
 describe('buildBrowserTtsUtterancePerfMetadata', () => {
   it('captures resolved voice metadata and counts matching voices for the active language', () => {
     const metadata = buildBrowserTtsUtterancePerfMetadata({
@@ -37,6 +46,7 @@ describe('buildBrowserTtsUtterancePerfMetadata', () => {
       voiceResolved: true,
       availableVoiceCount: 4,
       matchingVoiceCount: 3,
+      ...expectedBaseCalibrationFields,
     });
   });
 
@@ -78,5 +88,45 @@ describe('buildBrowserTtsUtterancePerfMetadata', () => {
     expect(metadata.voiceResolved).toBe(false);
     expect(metadata.availableVoiceCount).toBe(0);
     expect(metadata.matchingVoiceCount).toBe(0);
+  });
+
+  it('records calibrated Browser TTS rate metadata when provided by the runtime', () => {
+    const metadata = buildBrowserTtsUtterancePerfMetadata({
+      playId: 2,
+      chunkIndex: 1,
+      phraseLengthWords: 8,
+      phraseLengthChars: 42,
+      language: 'de',
+      pacingMode: 'flow',
+      voice: null,
+      sessionVoiceURI: 'stored-de',
+      availableVoices: [{ lang: 'de-DE' }],
+      voiceCalibration: {
+        voiceURI: 'calibrated-de',
+        voiceName: 'Calibrated German',
+        voiceLang: 'de-DE',
+        localService: true,
+        platform: 'Win32',
+        requestedRate: 1.45,
+        effectiveRate: 1.15,
+        estimatedWordsPerMinute: 178,
+        calibrationStatus: 'rate-capped',
+        rateLimited: true,
+        reasonCodes: ['pace-unmeasured', 'rate-capped-to-safe-envelope'],
+      },
+    });
+
+    expect(metadata.voiceURI).toBe('calibrated-de');
+    expect(metadata.voiceName).toBe('Calibrated German');
+    expect(metadata.voiceLang).toBe('de-DE');
+    expect(metadata.requestedRate).toBe(1.45);
+    expect(metadata.effectiveRate).toBe(1.15);
+    expect(metadata.estimatedWordsPerMinute).toBe(178);
+    expect(metadata.voiceCalibrationStatus).toBe('rate-capped');
+    expect(metadata.voiceRateLimited).toBe(true);
+    expect(metadata.voiceCalibrationReasonCodes).toEqual([
+      'pace-unmeasured',
+      'rate-capped-to-safe-envelope',
+    ]);
   });
 });
