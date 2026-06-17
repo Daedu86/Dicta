@@ -1,12 +1,4 @@
-import {
-  clampBrowserTtsDeDecisionToRecommendation,
-} from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import { buildAdaptiveBrowserTtsInput } from '../inputs/browserTts/browserTtsTelemetryAdapter';
 import { buildBrowserTtsChunkAccuracySnapshot } from './browserTtsChunkAccuracy';
-import {
-  computeBrowserTtsChunkCorrectionPressure,
-  computeBrowserTtsChunkListeningPrecision,
-} from './browserTtsChunkListeningMetrics';
 import {
   selectBrowserTtsCandidateChunk,
   selectBrowserTtsDecisionChunk,
@@ -18,8 +10,8 @@ import type {
   BrowserTtsPlaybackPlanInput,
 } from './browserTtsPlaybackPlanTypes';
 import { buildBrowserTtsRuntimeDecisionPipeline } from './browserTtsPlaybackDecisionPipeline';
-import { buildBrowserTtsTelemetry } from './browserTtsPlaybackTelemetry';
-import { mapAdaptivePacingMode } from './ttsPacingHelpers';
+import { resolveBrowserTtsCandidateDecision } from './browserTtsPlaybackPlanCandidateDecision';
+import { buildBrowserTtsPlanChunkTelemetry } from './browserTtsPlaybackPlanChunkTelemetry';
 
 export type {
   BrowserTtsBoundaryStrictness,
@@ -37,17 +29,10 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     lastPhraseSize,
     lastBoundaryStrictness,
     liveSignal,
-    livePracticeEvaluation,
     browserTtsProfile,
     browserTtsBenchmark,
     browserTtsRecovery,
     ttsSpeechRate,
-    ttsPlaybackPauseMs,
-    adaptiveController,
-    historyProfile,
-    sourceWordCount,
-    estimatedSpokenWordIndex,
-    chunkIndex,
     unsafeChunkCount,
     accuracyWindow,
     lastAccuracySnapshot,
@@ -66,10 +51,16 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     matchedWordsNow,
   } = buildBrowserTtsChunkAccuracySnapshot({
     liveSignal,
-    livePracticeEvaluation,
+    livePracticeEvaluation: input.livePracticeEvaluation,
     accuracyWindow,
     lastAccuracySnapshot,
   });
+  const accuracy = {
+    sessionAccuracy,
+    chunkAccuracy,
+    rollingAccuracyLast3,
+    rollingAccuracyLast5,
+  };
   const germanShortBias = shouldApplyGermanShortBias(liveSignal, browserTtsProfile);
 
   const candidateChunk = selectBrowserTtsCandidateChunk({
@@ -89,33 +80,16 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     return null;
   }
 
-  const browserTelemetry = buildBrowserTtsTelemetry({
-    phraseId: `tts-${chunkIndex}`,
-    sourceWordCount,
-    estimatedSpokenWordIndex,
-    livePracticeEvaluation,
-    liveSignal,
-    sessionAccuracy,
-    chunkAccuracy,
-    rollingAccuracyLast3,
-    rollingAccuracyLast5,
-    listeningPrecision: computeBrowserTtsChunkListeningPrecision({
-      livePracticeEvaluation,
-      language,
-      chunk: candidateChunk,
-    }),
-    correctionPressure: computeBrowserTtsChunkCorrectionPressure(livePracticeEvaluation, candidateChunk),
-    pauseMs: ttsPlaybackPauseMs,
-    phraseDifficulty: candidateChunk.phraseDifficulty,
-    phraseLengthWords: candidateChunk.wordCount,
-    phraseLengthChars: candidateChunk.text.length,
-    currentPlaybackRate: ttsSpeechRate,
-    language,
-    chunk: candidateChunk,
+  const {
+    browserTelemetry,
+    rawDecision,
+    decision,
+    pacingMode,
+  } = resolveBrowserTtsCandidateDecision({
+    input,
+    candidateChunk,
+    accuracy,
   });
-  const rawDecision = adaptiveController.decide(buildAdaptiveBrowserTtsInput(browserTelemetry, historyProfile));
-  const decision = clampBrowserTtsDeDecisionToRecommendation(rawDecision, browserTtsBenchmark);
-  const pacingMode = mapAdaptivePacingMode(decision.mode);
   const chunk = selectBrowserTtsDecisionChunk({
     macroWords,
     macroWordOffset,
@@ -150,30 +124,12 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
   const nextUnsafeChunkCount = unsafeChunkCount + (unsafeBoundaryApplied ? 1 : 0);
   const rate = runtimeDecision.playbackRate;
   const effectivePauseNow = runtimeDecision.shouldPauseNow && pauseAtBoundary;
-  const chunkTelemetry = buildBrowserTtsTelemetry({
-    phraseId: `tts-${chunkIndex}-chunk`,
-    sourceWordCount,
-    estimatedSpokenWordIndex: chunk.startWordIndex,
-    livePracticeEvaluation,
-    liveSignal,
-    unsafeChunkCount: nextUnsafeChunkCount,
-    sessionAccuracy,
-    chunkAccuracy,
-    rollingAccuracyLast3,
-    rollingAccuracyLast5,
-    listeningPrecision: computeBrowserTtsChunkListeningPrecision({
-      livePracticeEvaluation,
-      language,
-      chunk,
-    }),
-    correctionPressure: computeBrowserTtsChunkCorrectionPressure(livePracticeEvaluation, chunk),
-    pauseMs: ttsPlaybackPauseMs,
-    phraseDifficulty: chunk.phraseDifficulty ?? 0.5,
-    phraseLengthWords: chunk.wordCount,
-    phraseLengthChars: chunk.text.length,
-    currentPlaybackRate: rate,
-    language,
+  const chunkTelemetry = buildBrowserTtsPlanChunkTelemetry({
+    input,
     chunk,
+    accuracy,
+    rate,
+    nextUnsafeChunkCount,
   });
 
   return {
