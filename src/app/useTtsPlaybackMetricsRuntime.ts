@@ -6,9 +6,6 @@ import {
   createTtsUiPublisher,
 } from './useTtsUiPublisher';
 import {
-  getTtsPlaybackMetricsRuntimeMemoDeps,
-} from './ttsPlaybackMetricsRuntimeMemoDeps';
-import {
   createTtsPerformanceSampleRuntime,
 } from './ttsPlaybackPerformanceSampleRuntime';
 import {
@@ -112,6 +109,45 @@ export function useTtsPlaybackMetricsRuntime(
 ): TtsPlaybackMetricsRuntime {
   return useMemo(
     () => createTtsPlaybackMetricsRuntime(options),
-    getTtsPlaybackMetricsRuntimeMemoDeps(options),
+    [
+      options.accuracy,
+      options.applyTtsPerformanceSampleRef,
+      options.baseWordsPerSecond,
+      options.controllerState,
+      options.lagSec,
+      options.lagWords,
+      options.minPublishIntervalMs,
+      options.nowIso,
+      options.nowMs,
+      options.previousAccuracyRef,
+      options.previousLagRef,
+      options.rate,
+      options.setAccuracy,
+      options.setControllerState,
+      options.setLagSec,
+      options.setLagWords,
+      options.setRate,
+      options.setTrend,
+      options.setWpm,
+      options.telemetryRef,
+      options.trend,
+      options.ttsChunkStartMsRef,
+      options.ttsChunkStartWordIndexRef,
+      options.ttsChunkWordCountRef,
+      options.ttsCompletedSourceWordsRef,
+      options.ttsLagOutlierCountRef,
+      options.ttsLanguage,
+      options.ttsLastControllerActionRef,
+      options.ttsLastValidControlLagSecRef,
+      options.ttsLiveSignalRef,
+      options.ttsPracticeLiveTextRef,
+      options.ttsPublishedUiRef,
+      options.ttsSpeechRate,
+      options.ttsStartedAtMsRef,
+      options.ttsStatus,
+      options.ttsTranscript,
+      options.ttsUiLastPublishedAtRef,
+      options.wpm,
+    ],
   );
 }
