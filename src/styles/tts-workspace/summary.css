@@ -1,0 +1,23 @@
+.tts-practice-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.tts-bottom-inner {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.tts-bottom-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tts-bottom-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: #4e6076;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
