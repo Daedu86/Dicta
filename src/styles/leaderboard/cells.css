@@ -1,0 +1,55 @@
+.leaderboard-cell {
+  min-width: 0;
+  color: #24384f;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-cell-rank {
+  color: #173d71;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.leaderboard-cell-name,
+.leaderboard-cell-date,
+.leaderboard-cell-status,
+.leaderboard-cell-duration,
+.leaderboard-cell-action {
+  min-width: 0;
+}
+
+.leaderboard-cell-action {
+  overflow: visible;
+  white-space: normal;
+}
+
+.leaderboard-cell-name,
+.leaderboard-cell-date {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-cell-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.leaderboard-cell-status {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.leaderboard-cell-status small {
+  min-width: 0;
+  overflow: hidden;
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

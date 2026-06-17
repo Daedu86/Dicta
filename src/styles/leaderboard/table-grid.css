@@ -1,0 +1,52 @@
+.leaderboard-table {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.leaderboard-table-header,
+.leaderboard-table-row {
+  display: grid;
+  grid-template-columns:
+    40px
+    minmax(150px, 1.55fr)
+    minmax(46px, 0.56fr)
+    minmax(46px, 0.56fr)
+    minmax(56px, 0.66fr)
+    minmax(48px, 0.54fr)
+    minmax(52px, 0.6fr)
+    minmax(54px, 0.62fr)
+    minmax(62px, 0.72fr)
+    minmax(60px, 0.62fr)
+    minmax(96px, 0.94fr)
+    136px;
+  gap: 0.65rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.leaderboard-table-header > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-table-header {
+  padding: 0 0.5rem 0.35rem;
+  color: #4e6076;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.leaderboard-table-row {
+  border: 1px solid #d7e2ee;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fcfdff, #f6f9fc);
+  padding: 0.9rem 0.5rem;
+  overflow: visible;
+}

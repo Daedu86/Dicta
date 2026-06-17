@@ -1,0 +1,14 @@
+.leaderboard-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.leaderboard-list-full {
+  margin-top: 0.5rem;
+}
+
+.leaderboard-sections {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+}

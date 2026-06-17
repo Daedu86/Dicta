@@ -1,0 +1,37 @@
+.leaderboard-range-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.leaderboard-range-panel {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.leaderboard-range-panel h4 {
+  margin: 0;
+  color: #173d71;
+  font-size: 0.84rem;
+}
+
+.leaderboard-range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.leaderboard-range-grid .metric {
+  min-width: 0;
+  padding: 0.5rem;
+  border-radius: 8px;
+}
+
+.leaderboard-range-grid .metric span {
+  font-size: 0.72rem;
+}
+
+.leaderboard-range-grid .metric strong {
+  font-size: 0.9rem;
+}
