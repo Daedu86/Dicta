@@ -85,7 +85,7 @@ export function TrainingInputCard({
           readOnly={readOnly}
           rows={10}
           commitDelayMs={textCommitDelayMs}
-          maxCommitDelayMs={Math.max(textCommitDelayMs * 3, 240)}
+          maxCommitDelayMs={Math.max(textCommitDelayMs * 2, 160)}
           syncKey={syncKey}
         />
       )}
