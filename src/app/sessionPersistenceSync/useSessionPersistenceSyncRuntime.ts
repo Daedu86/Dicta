@@ -1,7 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { readActiveSyncStorageProfileId } from '../../core/profileScopedStorage';
-import type { DictaSyncRow, DictaSyncState } from '../../core/supabaseSync';
-import { loadDeletedSessionIds } from '../sessionPersistenceDeletedIds';
+import { useEffect } from 'react';
 import { useSupabaseBackgroundPush } from './sessionPersistenceSupabasePush';
 import {
   useDebouncedSessionLocalPersistence,
@@ -10,16 +7,9 @@ import {
 import { usePendingCriticalSessionRowsRuntime } from './sessionPersistencePendingCriticalRuntime';
 import { useProfileScopedSessionStorageSwitch } from './sessionPersistenceProfileSwitch';
 import { useSessionPersistenceExitFlush } from './sessionPersistenceLifecycle';
-import { useSupabaseAccessTokenRef } from './sessionPersistenceSupabaseAccessToken';
 import { useSupabaseSessionPullRuntime } from './sessionPersistenceSupabasePull';
 import { useSupabaseSyncIdentityReset } from './sessionPersistenceSupabaseReset';
-import {
-  buildEffectiveSyncConfig,
-  createSupabaseInitialPullState,
-  createSupabaseSyncStatus,
-  isLocalStorageReadyForEffectiveProfile,
-  isSupabaseInitialSyncComplete,
-} from './sessionPersistenceSyncReadiness';
+import { useSessionPersistenceRuntimeState } from './sessionPersistenceSyncRuntimeState';
 import { useSessionPersistenceSyncActions } from './sessionPersistenceSyncActions';
 import type {
   PersistableSession,
@@ -51,56 +41,43 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
   onQuotaRecovered,
   onProfileStorageSwitched,
 }: UseSessionPersistenceSyncOptions<TSession, TBenchmarks, TFeedback>): UseSessionPersistenceSyncResult<TSession, TFeedback> {
-  const [activeLocalSyncProfileId, setActiveLocalSyncProfileId] = useState(() =>
-    readActiveSyncStorageProfileId(window.localStorage),
-  );
-  const localStorageReadyForEffectiveProfile = isLocalStorageReadyForEffectiveProfile(
-    syncConfig,
-    effectiveProfileId,
+  const {
     activeLocalSyncProfileId,
-  );
-  const effectiveSyncConfig = useMemo(
-    () => buildEffectiveSyncConfig(syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile),
-    [syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile],
-  );
-  const [supabaseSyncStatus, setSupabaseSyncStatus] = useState(() =>
-    createSupabaseSyncStatus(effectiveSyncConfig.enabled),
-  );
-  const supabaseSyncIdentity = effectiveSyncConfig.enabled ? effectiveSyncConfig.profileId : '';
-  const [supabaseInitialPullState, setSupabaseInitialPullState] = useState(() =>
-    createSupabaseInitialPullState(supabaseSyncIdentity, effectiveSyncConfig.enabled),
-  );
-  const supabaseInitialSyncComplete = isSupabaseInitialSyncComplete(
-    effectiveSyncConfig.enabled,
-    supabaseInitialPullState,
+    setActiveLocalSyncProfileId,
+    localStorageReadyForEffectiveProfile,
+    effectiveSyncConfig,
+    supabaseSyncStatus,
+    setSupabaseSyncStatus,
     supabaseSyncIdentity,
-  );
-  const supabaseInitialSyncPending = effectiveSyncConfig.enabled && !supabaseInitialSyncComplete;
-
-  const supabaseInitialPullCompleteRef = useRef(!effectiveSyncConfig.enabled);
-  const supabaseApplyingRemoteRef = useRef(false);
-  const latestSessionsForPersistenceRef = useRef<TSession[]>(sessions);
-  const sessionPersistTimerRef = useRef<number | null>(null);
-  const lastPersistedSessionsJsonRef = useRef<string | null>(null);
-  const syncStateRef = useRef<DictaSyncState>(
-    buildSyncState(sessions, adaptiveBenchmarks, adaptiveSessionFeedback),
-  );
-  const supabasePullInFlightRef = useRef(false);
-  const supabaseKnownRemoteRowsRef = useRef<DictaSyncRow[]>([]);
-  const supabaseLastRemoteUpdatedAtRef = useRef<string | null>(null);
-  const supabaseLastFullPullAtMsRef = useRef(0);
-  const deletedSessionIdsRef = useRef<Set<string>>(loadDeletedSessionIds());
-  const supabaseInitialSyncPendingRef = useRef(supabaseInitialSyncPending);
-  const pendingCriticalSessionRowsRef = useRef<DictaSyncRow[]>([]);
-  const supabaseAccessTokenRef = useSupabaseAccessTokenRef(
+    setSupabaseInitialPullState,
+    supabaseInitialSyncPending,
+    supabaseInitialPullCompleteRef,
+    supabaseApplyingRemoteRef,
+    latestSessionsForPersistenceRef,
+    sessionPersistTimerRef,
+    lastPersistedSessionsJsonRef,
+    syncStateRef,
+    supabasePullInFlightRef,
+    supabaseKnownRemoteRowsRef,
+    supabaseLastRemoteUpdatedAtRef,
+    supabaseLastFullPullAtMsRef,
+    deletedSessionIdsRef,
+    supabaseInitialSyncPendingRef,
+    pendingCriticalSessionRowsRef,
+    supabaseAccessTokenRef,
+  } = useSessionPersistenceRuntimeState({
+    sessions,
+    syncConfig,
     supabaseClient,
-    effectiveSyncConfig.enabled,
-    supabaseSyncIdentity,
-  );
+    effectiveProfileId,
+    adaptiveBenchmarks,
+    adaptiveSessionFeedback,
+    buildSyncState,
+  });
 
   useEffect(() => {
     supabaseInitialSyncPendingRef.current = supabaseInitialSyncPending;
-  }, [supabaseInitialSyncPending]);
+  }, [supabaseInitialSyncPending, supabaseInitialSyncPendingRef]);
 
   const {
     clearScheduledSessionPersist,
@@ -219,7 +196,7 @@ export function useSessionPersistenceSync<TSession extends PersistableSession, T
 
   useEffect(() => {
     syncStateRef.current = buildSyncState(sessions, adaptiveBenchmarks, adaptiveSessionFeedback);
-  }, [adaptiveBenchmarks, adaptiveSessionFeedback, buildSyncState, sessions]);
+  }, [adaptiveBenchmarks, adaptiveSessionFeedback, buildSyncState, sessions, syncStateRef]);
 
   useSupabaseSessionPullRuntime({
     supabaseClient,
