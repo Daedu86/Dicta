@@ -4,13 +4,12 @@ import {
   type DictationScript,
 } from '../core/adaptive/dictationScriptValidation';
 import type { SessionInputMode } from '../core/sessionInputModes';
-import { createStoredSession, getNextSessionIndex } from './sessionFactory';
-import { createSessionFromScript } from './sessionFromDictationScript';
-import {
-  mapDictationScriptInputModeToSession,
-  scriptLanguageToTtsLanguage,
-} from './sessionRestoreGuards';
 import { createSessionCreationFormResetAction } from './sessionCreationFormResetAction';
+import {
+  createSessionFromDictationScriptAction,
+  createSessionFromModeAction,
+  createSessionFromOpenRouterScriptAction,
+} from './sessionCreationActionRunners';
 import type {
   OpenRouterScriptCreationOptions,
   UseSessionCreationActionsOptions,
@@ -60,23 +59,16 @@ export function useSessionCreationActions({
   ]);
 
   const createSessionWithMode = useCallback((inputMode: SessionInputMode): void => {
-    if (!ensureCanCreateDictationSession('error')) return;
-    const name = sessionCreationName.trim();
-    if (!name) {
-      setError('Enter a session name before creating the session.');
-      return;
-    }
-    suppressSidebarAutoSelectRef.current = true;
-    const nextSession = prependSessionAndPersistNow((prev) =>
-      createStoredSession(
-        getNextSessionIndex(prev),
-        inputMode,
-        name,
-      ),
-    );
-    setActiveSessionId(nextSession.id);
-    showSessionInputWorkspace(inputMode);
-    resetSessionCreationForm();
+    createSessionFromModeAction(inputMode, {
+      sessionCreationName,
+      suppressSidebarAutoSelectRef,
+      ensureCanCreateDictationSession,
+      prependSessionAndPersistNow,
+      showSessionInputWorkspace,
+      setActiveSessionId,
+      setError,
+      resetSessionCreationForm,
+    });
   }, [
     ensureCanCreateDictationSession,
     prependSessionAndPersistNow,
@@ -93,32 +85,20 @@ export function useSessionCreationActions({
   }, [dictationScriptJson, setDictationScriptValidation]);
 
   const createSessionFromDictationScript = useCallback((): void => {
-    if (!ensureCanCreateDictationSession('error')) return;
-    const result = dictationScriptValidation?.ok ? dictationScriptValidation : parseDictationScriptJson(dictationScriptJson);
-    setDictationScriptValidation(result);
-    if (!result.ok) {
-      return;
-    }
-
-    const inputMode = mapDictationScriptInputModeToSession(result.script.inputMode);
-    if (!inputMode) {
-      setDictationScriptValidation({
-        ok: false,
-        script: null,
-        errors: ['inputMode must be browser-tts.'],
-      });
-      return;
-    }
-
-    suppressSidebarAutoSelectRef.current = true;
-    const nextSession = prependSessionAndPersistNow((prev) =>
-      createSessionFromScript(result.script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
-    );
-    setActiveSessionId(nextSession.id);
-    showSessionInputWorkspace(inputMode);
-    resetSessionCreationForm();
-    setError('');
-    setExportMessage('DictationScript session created and locked.');
+    createSessionFromDictationScriptAction({
+      dictationScriptJson,
+      dictationScriptValidation,
+      browserTtsVoices,
+      suppressSidebarAutoSelectRef,
+      ensureCanCreateDictationSession,
+      prependSessionAndPersistNow,
+      showSessionInputWorkspace,
+      setActiveSessionId,
+      setDictationScriptValidation,
+      setError,
+      setExportMessage,
+      resetSessionCreationForm,
+    });
   }, [
     browserTtsVoices,
     dictationScriptJson,
@@ -138,29 +118,19 @@ export function useSessionCreationActions({
     script: DictationScript,
     options: OpenRouterScriptCreationOptions = {},
   ): void => {
-    if (!ensureCanCreateDictationSession('openrouter')) return;
-    const navigateToLeaderboard = options.navigateToLeaderboard ?? true;
-    const generationOrigin = options.generationOrigin ?? 'openrouter';
-    const inputMode = mapDictationScriptInputModeToSession(script.inputMode);
-    if (!inputMode) {
-      setOpenRouterError('Generated script inputMode must be browser-tts.');
-      return;
-    }
-
-    suppressSidebarAutoSelectRef.current = true;
-    const nextSession = prependSessionAndPersistNow((prev) => ({
-      ...createSessionFromScript(script, getNextSessionIndex(prev), inputMode, { browserTtsVoices }),
-      generationOrigin,
-    }));
-    setLeaderboardLanguageView(scriptLanguageToTtsLanguage(script.language));
-    if (navigateToLeaderboard) {
-      setActiveSessionId(nextSession.id);
-      showLeaderboardWorkspace();
-    }
-    resetSessionCreationForm();
-    setError('');
-    setOpenRouterError('');
-    setExportMessage('OpenRouter DictationScript session created and locked.');
+    createSessionFromOpenRouterScriptAction(script, options, {
+      browserTtsVoices,
+      suppressSidebarAutoSelectRef,
+      ensureCanCreateDictationSession,
+      prependSessionAndPersistNow,
+      showLeaderboardWorkspace,
+      setActiveSessionId,
+      setLeaderboardLanguageView,
+      setOpenRouterError,
+      setError,
+      setExportMessage,
+      resetSessionCreationForm,
+    });
   }, [
     browserTtsVoices,
     ensureCanCreateDictationSession,
