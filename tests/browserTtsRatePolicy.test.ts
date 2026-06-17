@@ -3,6 +3,7 @@ import {
   ANDROID_SAMSUNG_S22_CHROME_RUNTIME,
   BASE_BROWSER_TTS_PACING_DECISION,
   DE_BROWSER_TTS_PROFILE,
+  EN_BROWSER_TTS_PROFILE,
   WINDOWS_DESKTOP_CHROME_RUNTIME,
   applyBrowserTtsMobileFallbackCase,
   expectAndroidSpeechSynthesisRuntime,
@@ -166,7 +167,7 @@ describe('applyBrowserTtsMobilePacingFallback', () => {
     expect(result.decision.nextPhraseSize).toBe('short');
     expect(result.decision.shouldPauseNow).toBe(true);
     expect(result.decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(1600);
-    expect(result.decision.playbackRate).toBeLessThanOrEqual(DE_BROWSER_TTS_PROFILE.supportRateCeiling);
+    expect(result.decision.playbackRate).toBeLessThanOrEqual(EN_BROWSER_TTS_PROFILE.supportRateCeiling);
     expect(result.decision.reason).toContain('android-speech-rate-fallback');
   });
 });
