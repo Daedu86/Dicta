@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import type { SessionInputMode } from '../core/sessionInputModes';
 
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
@@ -34,12 +34,19 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   const [dashboardSessionId, setDashboardSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    setWorkspaceMode('training');
-    setDashboardSessionId(null);
+    startTransition(() => {
+      setWorkspaceMode('training');
+      setDashboardSessionId(null);
+    });
   }, []);
 
   useEffect(() => {
-    const onRouteChange = () => setCurrentPath(window.location.pathname);
+    const onRouteChange = () => {
+      startTransition(() => {
+        setCurrentPath(window.location.pathname);
+      });
+    };
+
     window.addEventListener('popstate', onRouteChange);
     return () => window.removeEventListener('popstate', onRouteChange);
   }, []);
@@ -49,23 +56,32 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   }, [workspaceMode]);
 
   const clearDashboardSession = useCallback(() => {
-    setDashboardSessionId(null);
+    startTransition(() => {
+      setDashboardSessionId(null);
+    });
   }, []);
 
   const navigateAppRoute = useCallback((path: AppRoutePath) => {
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
     }
-    setCurrentPath(path);
+
+    startTransition(() => {
+      setCurrentPath(path);
+    });
   }, []);
 
   const showWorkspaceMode = useCallback((mode: WorkspaceMode) => {
-    setWorkspaceMode(mode);
+    startTransition(() => {
+      setWorkspaceMode(mode);
+    });
   }, []);
 
   const showWorkspace = useCallback((mode: WorkspaceMode) => {
-    setWorkspaceMode(mode);
-    setDashboardSessionId(null);
+    startTransition(() => {
+      setWorkspaceMode(mode);
+      setDashboardSessionId(null);
+    });
   }, []);
 
   const showLeaderboardWorkspace = useCallback(() => showWorkspace('training'), [showWorkspace]);
@@ -74,17 +90,22 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   const showAdaptiveWorkspace = useCallback(() => showWorkspace('adaptive'), [showWorkspace]);
 
   const showDashboardWorkspace = useCallback((sessionId: string) => {
-    setDashboardSessionId(sessionId);
-    setWorkspaceMode('dashboard');
+    startTransition(() => {
+      setDashboardSessionId(sessionId);
+      setWorkspaceMode('dashboard');
+    });
   }, []);
 
   const showSessionInputWorkspace = useCallback((inputMode: SessionInputMode) => {
     void inputMode;
-    setDashboardSessionId(null);
     if (window.location.pathname !== '/training') {
       window.history.pushState(null, '', '/training');
     }
-    setCurrentPath('/training');
+
+    startTransition(() => {
+      setDashboardSessionId(null);
+      setCurrentPath('/training');
+    });
   }, []);
 
   return {
