@@ -23,6 +23,8 @@ export type WorkspaceRoutingActionName = keyof Pick<
   | 'showOpenRouterWorkspace'
   | 'showAdaptiveWorkspace'
 >;
+type AppRoutePath = Parameters<WorkspaceRoutingState['navigateAppRoute']>[0];
+type SessionInputWorkspaceMode = Parameters<WorkspaceRoutingState['showSessionInputWorkspace']>[0];
 
 const reactActGlobal = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
@@ -126,14 +128,14 @@ export async function switchFromDashboardWorkspace(
 
 export async function navigateAppRoute(
   getRouting: () => WorkspaceRoutingState,
-  route: string,
+  route: AppRoutePath,
 ) {
   await updateWorkspaceRouting((routing) => routing.navigateAppRoute(route), getRouting);
 }
 
 export async function showSessionInputWorkspace(
   getRouting: () => WorkspaceRoutingState,
-  inputMode: string,
+  inputMode: SessionInputWorkspaceMode,
 ) {
   await updateWorkspaceRouting(
     (routing) => routing.showSessionInputWorkspace(inputMode),
