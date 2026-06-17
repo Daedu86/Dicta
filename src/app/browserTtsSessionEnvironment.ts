@@ -8,6 +8,11 @@ import {
   type BrowserTtsVoiceLike,
 } from '../inputs/browserTts/browserTtsVoices';
 import type { StoredSession } from './sessionTypes';
+import {
+  collectUsedBrowserTtsVoiceURIs,
+  findBrowserTtsVoiceByURI,
+  shouldAssignMissingBrowserTtsVoiceEnvironment,
+} from './browserTtsSessionEnvironmentAssignment';
 import type {
   AssignMissingBrowserTtsVoiceEnvironmentsOptions,
   AttachBrowserTtsSessionEnvironmentOptions,
@@ -80,21 +85,9 @@ export function assignMissingBrowserTtsVoiceEnvironments<TVoice extends BrowserT
   if (browserTtsVoices.length === 0) return sessions as StoredSession[];
 
   let changed = false;
-  const usedVoiceURIs = sessions
-    .filter((session) => session.inputMode === BROWSER_TTS_SESSION_INPUT_MODE && session.ttsLanguage)
-    .map((session) => session.ttsVoiceURI)
-    .filter((voiceURI): voiceURI is string => Boolean(voiceURI));
-
+  const usedVoiceURIs = collectUsedBrowserTtsVoiceURIs(sessions);
   const next = sessions.map((session) => {
-    if (
-      session.inputMode !== BROWSER_TTS_SESSION_INPUT_MODE ||
-      !session.inputSettingsLocked ||
-      !session.ttsLanguage ||
-      session.ttsVoiceURI ||
-      !session.ttsText.trim()
-    ) {
-      return session;
-    }
+    if (!shouldAssignMissingBrowserTtsVoiceEnvironment(session)) return session;
 
     const ttsVoiceURI = chooseDiverseBrowserTtsVoiceURIForSession(
       session.inputMode,
@@ -107,12 +100,11 @@ export function assignMissingBrowserTtsVoiceEnvironments<TVoice extends BrowserT
     if (!ttsVoiceURI) return session;
 
     usedVoiceURIs.push(ttsVoiceURI);
-    const selectedVoice = browserTtsVoices.find((voice) => voice.voiceURI === ttsVoiceURI) ?? null;
     changed = true;
 
     return attachBrowserTtsEnvironment({
       session: { ...session, ttsVoiceURI },
-      selectedVoice,
+      selectedVoice: findBrowserTtsVoiceByURI(browserTtsVoices, ttsVoiceURI),
       selectedVoiceURI: ttsVoiceURI,
       browserTtsVoices,
       navigatorRef,
