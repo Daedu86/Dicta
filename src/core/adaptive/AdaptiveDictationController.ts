@@ -15,11 +15,11 @@ import {
   resolveAdaptivePauseReplayPolicy,
 } from './adaptiveDictationControllerPlaybackPolicy';
 import { resolveAdaptiveControllerRatePolicy } from './adaptiveDictationControllerRatePolicy';
-import { resolveAdaptiveNextPhraseSize } from './adaptiveDictationControllerPhrase';
 import { applyAdaptivePausePolicy, buildAdaptivePacingReasonArtifacts } from './adaptiveDictationControllerReasons';
 import { AdaptiveDictationControllerState } from './adaptiveDictationControllerState';
 import { resolveAdaptiveControllerRuntimeContext } from './adaptiveDictationControllerRuntimeContext';
 import { resolveAdaptiveControllerPhraseContext } from './adaptiveDictationControllerPhraseContext';
+import { resolveAdaptiveControllerPhraseSize } from './adaptiveDictationControllerPhraseSize';
 
 export class AdaptiveDictationController {
   private readonly state = new AdaptiveDictationControllerState();
@@ -110,10 +110,9 @@ export class AdaptiveDictationController {
     });
     let pauseAfterPhraseMs = initialPauseAfterPhraseMs;
 
-    let nextPhraseSize = resolveAdaptiveNextPhraseSize({
+    let nextPhraseSize = resolveAdaptiveControllerPhraseSize({
       mode,
-      live,
-      history,
+      input,
       phraseOverload,
       longPhraseSensitive,
       semanticCompleteness,
@@ -121,17 +120,6 @@ export class AdaptiveDictationController {
       recoveryFrames: frameState.recoveryFrames,
       flowLockFrames: frameState.flowLockFrames,
     });
-
-    if (adaptiveComfort?.preferredPhraseSize === 'short' && mode !== 'flow') {
-      nextPhraseSize = 'short';
-    } else if (
-      adaptiveComfort?.preferredPhraseSize === 'long' &&
-      mode === 'flow' &&
-      !phraseOverload &&
-      !longPhraseSensitive
-    ) {
-      nextPhraseSize = 'long';
-    }
 
     const replayFallback = applyUnsupportedPhraseReplayFallback({
       supportsPhraseReplay,
