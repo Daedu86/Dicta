@@ -11,31 +11,49 @@ export type {
   UseOpenRouterDirectGenerationRunnerOptions,
 } from './openRouterDirectGenerationRunnerTypes';
 
-export function useOpenRouterDirectGenerationRunner(options: UseOpenRouterDirectGenerationRunnerOptions) {
-  const {
-    sessions,
-    activeSession,
-    openRouterAccessAllowed,
-    openRouterAccessMessage,
-    isOnline,
-    effectiveOpenRouterDefaultModel,
-    fallbackInputMode,
-    dictaLanguageView,
-    adaptiveBenchmarksByInputLanguage,
-    adaptiveSessionFeedbackByInputLanguage,
-    recentDictationSessionHints,
-    getAuthHeaders,
-    ensureCanCreateDictationSession,
-    setOpenRouterError,
-    setSelectedBenchmarkInputMode,
-    setSelectedBenchmarkLanguage,
-    trackOpenRouterJob,
-    recordOpenRouterGenerationFailure,
-    createOpenRouterErrorSession,
-  } = options;
-
+export function useOpenRouterDirectGenerationRunner({
+  sessions,
+  activeSession,
+  openRouterAccessAllowed,
+  openRouterAccessMessage,
+  isOnline,
+  effectiveOpenRouterDefaultModel,
+  fallbackInputMode,
+  dictaLanguageView,
+  adaptiveBenchmarksByInputLanguage,
+  adaptiveSessionFeedbackByInputLanguage,
+  recentDictationSessionHints,
+  getAuthHeaders,
+  ensureCanCreateDictationSession,
+  setOpenRouterError,
+  setSelectedBenchmarkInputMode,
+  setSelectedBenchmarkLanguage,
+  trackOpenRouterJob,
+  recordOpenRouterGenerationFailure,
+  createOpenRouterErrorSession,
+}: UseOpenRouterDirectGenerationRunnerOptions) {
   return useCallback((generationOptions: GenerateOpenRouterDirectSessionOptions): Promise<void> => (
-    runOpenRouterDirectGeneration(options, generationOptions)
+    runOpenRouterDirectGeneration({
+      sessions,
+      activeSession,
+      openRouterAccessAllowed,
+      openRouterAccessMessage,
+      isOnline,
+      effectiveOpenRouterDefaultModel,
+      fallbackInputMode,
+      dictaLanguageView,
+      adaptiveBenchmarksByInputLanguage,
+      adaptiveSessionFeedbackByInputLanguage,
+      recentDictationSessionHints,
+      getAuthHeaders,
+      ensureCanCreateDictationSession,
+      setOpenRouterError,
+      setSelectedBenchmarkInputMode,
+      setSelectedBenchmarkLanguage,
+      trackOpenRouterJob,
+      recordOpenRouterGenerationFailure,
+      createOpenRouterErrorSession,
+    }, generationOptions)
   ), [
     activeSession,
     adaptiveBenchmarksByInputLanguage,
