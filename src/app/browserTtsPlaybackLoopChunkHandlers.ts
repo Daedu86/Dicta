@@ -1,11 +1,12 @@
 import { attachBrowserTtsPlaybackLoopUtteranceHandlers } from './browserTtsPlaybackLoopUtteranceHandlers';
 import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlanTypes';
 import type { SpeakBrowserTtsPlaybackLoopChunkInput } from './browserTtsPlaybackLoopChunkSpeakerTypes';
+import type { BrowserTtsPlaybackLoopOptions } from './useBrowserTtsPlaybackLoop';
 
 export interface AttachBrowserTtsPlaybackLoopChunkHandlersInput {
   input: SpeakBrowserTtsPlaybackLoopChunkInput;
   playbackPlan: BrowserTtsPlaybackPlan;
-  perfUtteranceId: string;
+  perfUtteranceId: ReturnType<BrowserTtsPlaybackLoopOptions['perfDiagnostics']['beginTtsUtterance']>;
   utterance: SpeechSynthesisUtterance;
 }
 
