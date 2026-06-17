@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Session as SupabaseAuthSession, SupabaseClient } from '@supabase/supabase-js';
-import { DICTA_SYNC_TABLE, type DictaSyncConfig } from '../core/supabaseSync';
+import type { DictaSyncConfig } from '../core/supabaseSync';
 import {
   isDictaAdmin,
-  loadDictaAppProfile,
-  loadVisibleDictaAppProfiles,
   resolveEffectiveSyncProfileId,
   resolveOpenRouterAccessState,
   type DictaAppProfile,
 } from '../core/appProfiles';
-import { asAdminRemoteStoredSession } from './sessionStorage';
+import { useDictaAdminProfileSessionCounts } from './useDictaAdminProfileSessionCounts';
+import { useDictaAdminRemoteSessions } from './useDictaAdminRemoteSessions';
+import { useDictaAppProfileLoader } from './useDictaAppProfileLoader';
+import { useDictaAppProfileReset } from './useDictaAppProfileReset';
+import { useVisibleDictaAppProfiles } from './useVisibleDictaAppProfiles';
 import type { StoredSession } from './sessionTypes';
 
 type UseDictaAppProfileRuntimeOptions = {
@@ -33,17 +35,6 @@ export function useDictaAppProfileRuntime({
   const [adminProfileSessionCounts, setAdminProfileSessionCounts] = useState<Record<string, number>>({});
   const [adminRemoteStatus, setAdminRemoteStatus] = useState('');
 
-  useEffect(() => {
-    if (authSession) return;
-    setAppProfile(null);
-    setAppProfileError('');
-    setVisibleProfiles([]);
-    setAdminProfileFilter('self');
-    setAdminRemoteSessions([]);
-    setAdminProfileSessionCounts({});
-    setAdminRemoteStatus('');
-  }, [authSession]);
-
   const openRouterAccessState = resolveOpenRouterAccessState({
     authRequired: syncConfig.authRequired,
     authLoading,
@@ -60,129 +51,43 @@ export function useDictaAppProfileRuntime({
   });
   const isCurrentProfileAdmin = isDictaAdmin(appProfile);
 
-  useEffect(() => {
-    if (!supabaseClient || !syncConfig.authRequired || !authSession?.user) return;
-    let cancelled = false;
-
-    setAppProfileError('');
-    loadDictaAppProfile(supabaseClient, authSession.user)
-      .then((profile) => {
-        if (cancelled) return;
-        setAppProfile(profile);
-        if (!profile) {
-          setAppProfileError('Your Dicta account exists, but no app profile is mapped yet. Create a dicta_app_profiles row for this user.');
-        } else if (!profile.active) {
-          setAppProfileError('This Dicta profile is inactive.');
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setAppProfile(null);
-          setAppProfileError(error instanceof Error ? error.message : 'Failed to load Dicta profile.');
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authSession?.user, supabaseClient, syncConfig.authRequired]);
-
-  useEffect(() => {
-    if (!supabaseClient || !isCurrentProfileAdmin) {
-      setVisibleProfiles(appProfile ? [appProfile] : []);
-      return;
-    }
-    let cancelled = false;
-    loadVisibleDictaAppProfiles(supabaseClient)
-      .then((profiles) => {
-        if (!cancelled) setVisibleProfiles(profiles);
-      })
-      .catch(() => {
-        if (!cancelled) setVisibleProfiles(appProfile ? [appProfile] : []);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [appProfile, isCurrentProfileAdmin, supabaseClient]);
-
-  useEffect(() => {
-    if (adminProfileFilter === 'self') {
-      setAdminRemoteSessions([]);
-      setAdminRemoteStatus('');
-      return;
-    }
-    if (!supabaseClient || !isCurrentProfileAdmin) return;
-    let cancelled = false;
-
-    setAdminRemoteStatus('Loading remote admin sessions...');
-    let query = supabaseClient
-      .from(DICTA_SYNC_TABLE)
-      .select('profile_id,item_key,payload,updated_at')
-      .eq('item_type', 'session')
-      .order('updated_at', { ascending: false });
-    if (adminProfileFilter !== 'all') {
-      query = query.eq('profile_id', adminProfileFilter);
-    }
-    void (async () => {
-      try {
-        const { data, error } = await query;
-        if (cancelled) return;
-        if (error) throw error;
-        const nextSessions = (data ?? [])
-          .map((row: { payload: unknown }) => asAdminRemoteStoredSession(row.payload))
-          .filter((session): session is StoredSession => Boolean(session));
-        setAdminRemoteSessions(nextSessions);
-        setAdminRemoteStatus(`Loaded ${nextSessions.length} remote session${nextSessions.length === 1 ? '' : 's'} for admin view.`);
-      } catch (error) {
-        if (!cancelled) {
-          setAdminRemoteSessions([]);
-          setAdminRemoteStatus(error instanceof Error ? error.message : 'Failed to load remote admin sessions.');
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [adminProfileFilter, appProfile, isCurrentProfileAdmin, supabaseClient]);
-
-  useEffect(() => {
-    if (!supabaseClient || !isCurrentProfileAdmin) {
-      setAdminProfileSessionCounts(appProfile ? { [appProfile.profileId]: 0 } : {});
-      return;
-    }
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        const { data, error } = await supabaseClient
-          .from(DICTA_SYNC_TABLE)
-          .select('profile_id')
-          .eq('item_type', 'session');
-        if (cancelled) return;
-        if (error) throw error;
-        const nextCounts: Record<string, number> = {};
-        for (const row of data ?? []) {
-          const profileId = typeof row.profile_id === 'string' ? row.profile_id.trim() : '';
-          if (!profileId) continue;
-          nextCounts[profileId] = (nextCounts[profileId] ?? 0) + 1;
-        }
-        setAdminProfileSessionCounts(nextCounts);
-      } catch (error) {
-        if (!cancelled) {
-          setAdminProfileSessionCounts(appProfile ? { [appProfile.profileId]: 0 } : {});
-          setAdminRemoteStatus(
-            error instanceof Error
-              ? `Failed to load admin session counts: ${error.message}`
-              : 'Failed to load admin session counts.',
-          );
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [appProfile, isCurrentProfileAdmin, supabaseClient]);
+  useDictaAppProfileReset({
+    authSession,
+    setAppProfile,
+    setAppProfileError,
+    setVisibleProfiles,
+    setAdminProfileFilter,
+    setAdminRemoteSessions,
+    setAdminProfileSessionCounts,
+    setAdminRemoteStatus,
+  });
+  useDictaAppProfileLoader({
+    supabaseClient,
+    authSession,
+    authRequired: syncConfig.authRequired,
+    setAppProfile,
+    setAppProfileError,
+  });
+  useVisibleDictaAppProfiles({
+    supabaseClient,
+    appProfile,
+    isCurrentProfileAdmin,
+    setVisibleProfiles,
+  });
+  useDictaAdminRemoteSessions({
+    adminProfileFilter,
+    supabaseClient,
+    isCurrentProfileAdmin,
+    setAdminRemoteSessions,
+    setAdminRemoteStatus,
+  });
+  useDictaAdminProfileSessionCounts({
+    appProfile,
+    supabaseClient,
+    isCurrentProfileAdmin,
+    setAdminProfileSessionCounts,
+    setAdminRemoteStatus,
+  });
 
   return {
     appProfile,
