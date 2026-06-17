@@ -1,88 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import type { TtsPublishedUiState } from '../src/app/sessionTypes';
-import {
-  createTtsUiPublisher,
-  hasTtsUiStateChanged,
-  type TtsUiPublisherOptions,
-} from '../src/app/useTtsUiPublisher';
-
-type Ref<T> = {
-  current: T;
-};
-
-function ref<T>(current: T): Ref<T> {
-  return { current };
-}
-
-function baseUiState(overrides: Partial<TtsPublishedUiState> = {}): TtsPublishedUiState {
-  return {
-    controllerState: 'hold',
-    rate: 1,
-    lagSec: 0,
-    lagWords: 0,
-    wpm: 0,
-    accuracy: 100,
-    trend: 'stable',
-    ...overrides,
-  };
-}
-
-function createHarness(overrides: Partial<TtsUiPublisherOptions> = {}) {
-  const state = baseUiState();
-  const calls = {
-    setAccuracy: vi.fn((value: number) => {
-      state.accuracy = value;
-    }),
-    setControllerState: vi.fn((value: TtsPublishedUiState['controllerState']) => {
-      state.controllerState = value;
-    }),
-    setLagSec: vi.fn((value: number) => {
-      state.lagSec = value;
-    }),
-    setLagWords: vi.fn((value: number) => {
-      state.lagWords = value;
-    }),
-    setRate: vi.fn((value: number) => {
-      state.rate = value;
-    }),
-    setTrend: vi.fn((value: TtsPublishedUiState['trend']) => {
-      state.trend = value;
-    }),
-    setWpm: vi.fn((value: number) => {
-      state.wpm = value;
-    }),
-  };
-  const refs = {
-    published: ref(baseUiState()),
-    publishedAt: ref(0),
-  };
-  const options: TtsUiPublisherOptions = {
-    ttsPublishedUiRef: refs.published,
-    ttsUiLastPublishedAtRef: refs.publishedAt,
-    controllerState: state.controllerState,
-    rate: state.rate,
-    lagSec: state.lagSec,
-    lagWords: state.lagWords,
-    wpm: state.wpm,
-    accuracy: state.accuracy,
-    trend: state.trend,
-    setControllerState: calls.setControllerState,
-    setRate: calls.setRate,
-    setLagSec: calls.setLagSec,
-    setLagWords: calls.setLagWords,
-    setWpm: calls.setWpm,
-    setAccuracy: calls.setAccuracy,
-    setTrend: calls.setTrend,
-    ...overrides,
-  };
-
-  return {
-    calls,
-    publisher: createTtsUiPublisher(options),
-    refs,
-    state,
-  };
-}
+import { describe, expect, it } from 'vitest';
+import { hasTtsUiStateChanged } from '../src/app/useTtsUiPublisher';
+import { baseUiState, createHarness } from './helpers/ttsUiPublisherFixtures';
 
 describe('hasTtsUiStateChanged', () => {
   it('uses the same threshold semantics as the App shell publisher', () => {
@@ -93,7 +11,6 @@ describe('hasTtsUiStateChanged', () => {
     expect(hasTtsUiStateChanged(previous, baseUiState({ lagSec: 0.04 }))).toBe(false);
     expect(hasTtsUiStateChanged(previous, baseUiState({ wpm: 0.4 }))).toBe(false);
     expect(hasTtsUiStateChanged(previous, baseUiState({ accuracy: 99.95 }))).toBe(false);
-
     expect(hasTtsUiStateChanged(previous, baseUiState({ controllerState: 'speed_up' }))).toBe(true);
     expect(hasTtsUiStateChanged(previous, baseUiState({ rate: 1.006 }))).toBe(true);
     expect(hasTtsUiStateChanged(previous, baseUiState({ lagSec: 0.06 }))).toBe(true);
@@ -133,11 +50,7 @@ describe('createTtsUiPublisher', () => {
 
   it('publishes changed state after the interval and only updates changed visible metrics', () => {
     const { calls, publisher, refs, state } = createHarness();
-    const next = baseUiState({
-      controllerState: 'speed_up',
-      lagWords: 3,
-      wpm: 42,
-    });
+    const next = baseUiState({ controllerState: 'speed_up', lagWords: 3, wpm: 42 });
 
     publisher(next, 600);
 
@@ -150,14 +63,10 @@ describe('createTtsUiPublisher', () => {
     expect(calls.setLagSec).not.toHaveBeenCalled();
     expect(calls.setAccuracy).not.toHaveBeenCalled();
     expect(calls.setTrend).not.toHaveBeenCalled();
-    expect(state).toMatchObject({
-      controllerState: 'speed_up',
-      lagWords: 3,
-      wpm: 42,
-    });
+    expect(state).toMatchObject({ controllerState: 'speed_up', lagWords: 3, wpm: 42 });
   });
 
-  it('force-publishes unchanged state and refreshes all visible metric setters', () => {
+  it('publishes unchanged state when requested explicitly', () => {
     const { calls, publisher, refs } = createHarness();
     const next = baseUiState();
 
