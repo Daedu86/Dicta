@@ -1,7 +1,6 @@
 import { act, createElement, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { vi } from 'vitest';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
   ADAPTIVE_SESSION_FEEDBACK_KEY,
@@ -9,8 +8,13 @@ import {
   useSessionPersistenceSync,
   type UseSessionPersistenceSyncResult,
 } from '../../src/app/useSessionPersistenceSync';
-import type { DictaSyncConfig, DictaSyncRow, DictaSyncState } from '../../src/core/supabaseSync';
+import type { DictaSyncConfig, DictaSyncState } from '../../src/core/supabaseSync';
 import type { SessionTelemetry } from '../../src/types/dictation';
+
+export {
+  createDeferredSupabaseClient,
+  createKeepaliveSupabaseClient,
+} from './sessionPersistenceSupabaseClients';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -200,58 +204,4 @@ export function renderHarness({
     getSessions: () => latestSessions,
     getActiveSessionId: () => latestActiveSessionId,
   };
-}
-
-export function createDeferredSupabaseClient(remoteRows: DictaSyncRow[]): {
-  client: SupabaseClient;
-  resolvePull: () => void;
-} {
-  let resolvePull: (value: { data: DictaSyncRow[]; error: null }) => void = () => undefined;
-  const pullResult = new Promise<{ data: DictaSyncRow[]; error: null }>((resolve) => {
-    resolvePull = resolve;
-  });
-  const query = {
-    select: () => query,
-    eq: () => query,
-    gt: () => query,
-    order: () => pullResult,
-    upsert: async () => ({ error: null }),
-  };
-  return {
-    client: {
-      from: () => query,
-    } as unknown as SupabaseClient,
-    resolvePull: () => resolvePull({ data: remoteRows, error: null }),
-  };
-}
-
-export function createKeepaliveSupabaseClient(): SupabaseClient {
-  const pullResult = Promise.resolve<{ data: DictaSyncRow[]; error: null }>({ data: [], error: null });
-  const query = {
-    select: () => query,
-    eq: () => query,
-    gt: () => query,
-    order: () => pullResult,
-    upsert: () => new Promise<{ error: null }>(() => undefined),
-  };
-  return {
-    from: () => query,
-    auth: {
-      getSession: async () => ({
-        data: {
-          session: {
-            access_token: 'access-token',
-          },
-        },
-        error: null,
-      }),
-      onAuthStateChange: () => ({
-        data: {
-          subscription: {
-            unsubscribe: vi.fn(),
-          },
-        },
-      }),
-    },
-  } as unknown as SupabaseClient;
 }
