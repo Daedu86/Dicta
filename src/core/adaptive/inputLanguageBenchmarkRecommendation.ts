@@ -2,19 +2,24 @@ import type {
   AdaptiveWeakArea,
   InputLanguageBenchmarkMetrics,
   InputLanguageBenchmarkRecommendation,
-  RateAccuracyBucket,
 } from './types';
-import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browserTtsAdaptiveProfiles';
+import { applyBrowserTtsDeTimelinePressureFallback } from './browserTtsDeBenchmarkPolicy';
+import { clamp01 } from './inputLanguageBenchmarkMath';
 import {
-  analyzeBrowserTtsDeTimelinePressure,
-  applyBrowserTtsDeTimelinePressureFallback,
-  deriveBrowserTtsDeTimelineWeakAreas,
-  isBrowserTtsDe,
-} from './browserTtsDeBenchmarkPolicy';
+  calibrateTargetRateRangeForProfile,
+  pickBestRateRange,
+} from './inputLanguageBenchmarkRateRange';
 import {
-  clamp01,
-  normalizeAccuracy,
-} from './inputLanguageBenchmarkMath';
+  clampPhraseSizeAtMost,
+  movePhraseSizeBySteps,
+} from './inputLanguageBenchmarkPhraseSize';
+import {
+  deriveWeakAreas,
+  hasSensitiveBenchmarkWeakAreas,
+} from './inputLanguageBenchmarkWeakAreas';
+
+export { pickBestRateRange } from './inputLanguageBenchmarkRateRange';
+export { deriveWeakAreas } from './inputLanguageBenchmarkWeakAreas';
 
 export function normalizeInputLanguageBenchmarkForRecommendation(
   metrics: InputLanguageBenchmarkMetrics,
@@ -52,7 +57,7 @@ export function applyRecommendationHysteresis(
   let targetPhraseSize = recommendation.targetPhraseSize;
   let targetPauseMs = recommendation.targetPauseMs;
   const preferredPhraseSize = metrics.preferredPhraseSize ?? recommendation.targetPhraseSize;
-  const sensitiveWeakAreas = hasSensitiveWeakAreas(metrics.weakAreas);
+  const sensitiveWeakAreas = hasSensitiveBenchmarkWeakAreas(metrics.weakAreas);
   const unstableBrowserTtsDe = metrics.inputMode === 'browser-tts' && metrics.language === 'de';
   if (confidence < 0.4) {
     targetRateRange[1] = Math.min(targetRateRange[1], metrics.preferredPlaybackRate, unstableBrowserTtsDe ? 0.95 : metrics.preferredPlaybackRate);
@@ -73,116 +78,6 @@ export function applyRecommendationHysteresis(
   return { ...recommendation, targetRateRange, targetPhraseSize, targetPauseMs };
 }
 
-export function pickBestRateRange(rateAccuracyBuckets: RateAccuracyBucket[]): [number, number] {
-  if (rateAccuracyBuckets.length === 0) return [0.6, 1.15];
-  const scored = [...rateAccuracyBuckets].sort((a, b) => rateBucketScore(b) - rateBucketScore(a));
-  const best = scored[0];
-  const nearby = scored.filter((bucket) => Math.abs(bucket.rate - best.rate) <= 0.05 && rateBucketScore(bucket) >= rateBucketScore(best) * 0.85);
-  const rates = nearby.length > 0 ? nearby.map((bucket) => bucket.rate) : [best.rate];
-  const lower = Math.min(...rates);
-  const upper = Math.max(...rates);
-  return [Math.max(0.6, lower - 0.04), Math.min(1.15, upper + 0.04)];
-}
-
-export function deriveWeakAreas(metrics: InputLanguageBenchmarkMetrics): AdaptiveWeakArea[] {
-  const weakAreas: AdaptiveWeakArea[] = [];
-  if (metrics.averagePhraseDifficulty > 0.65) weakAreas.push('long_phrases');
-  if (metrics.averageSemanticCompleteness < 0.7) weakAreas.push('low_semantic_completeness');
-  if (metrics.unsafePauseCount > Math.max(2, metrics.sampleCount * 0.08)) weakAreas.push('unsafe_boundaries');
-  if (metrics.replayDeniedByBoundaryCount > Math.max(2, metrics.sampleCount * 0.08)) weakAreas.push('replay');
-  if (Math.abs(metrics.stableAverageLagSec) > 2 || metrics.p90AbsLagSec > 3) weakAreas.push('lag');
-  if (metrics.averageCorrectionRate > 0.12) weakAreas.push('corrections');
-  if (metrics.averageAccuracy < 0.82) weakAreas.push('low_accuracy');
-  if (metrics.modeSwitchFrequency > 0.25 || metrics.rateVariance > 0.03) weakAreas.push('flow_instability');
-  if (metrics.rateAccuracyBuckets.some((bucket) => bucket.rate >= 1.05 && bucket.averageAccuracy < 0.82)) weakAreas.push('high_rate');
-  if (isBrowserTtsDe(metrics.inputMode, metrics.language)) {
-    weakAreas.push(...deriveBrowserTtsDeTimelineWeakAreas(analyzeBrowserTtsDeTimelinePressure(metrics)));
-  }
-  return [...new Set(weakAreas)];
-}
-
-function rateBucketScore(bucket: RateAccuracyBucket): number {
-  const accuracy = normalizeAccuracy(bucket.averageAccuracy);
-  const lagScore = clamp01(1 - Math.abs(bucket.averageLagSec) / 4);
-  const sampleScore = clamp01(bucket.sampleCount / 8);
-  return accuracy * 0.6 + lagScore * 0.3 + sampleScore * 0.1;
-}
-
 function formatWeakArea(value: AdaptiveWeakArea): string {
   return value.replace(/_/g, ' ');
-}
-
-function hasSensitiveWeakAreas(weakAreas: AdaptiveWeakArea[]): boolean {
-  const sensitive = new Set<AdaptiveWeakArea>([
-    'lag',
-    'low_accuracy',
-    'unsafe_boundary_pressure',
-    'flow_instability',
-    'support_dependency',
-  ]);
-  return weakAreas.some((weakArea) => sensitive.has(weakArea));
-}
-
-function clampPhraseSizeAtMost(value: InputLanguageBenchmarkRecommendation['targetPhraseSize'], maximum: InputLanguageBenchmarkRecommendation['targetPhraseSize']): InputLanguageBenchmarkRecommendation['targetPhraseSize'] {
-  return comparePhraseSize(value, maximum) <= 0 ? value : maximum;
-}
-
-function movePhraseSizeBySteps(
-  anchor: InputLanguageBenchmarkRecommendation['targetPhraseSize'],
-  desired: InputLanguageBenchmarkRecommendation['targetPhraseSize'],
-  maxSteps: number,
-): InputLanguageBenchmarkRecommendation['targetPhraseSize'] {
-  const anchorRank = phraseSizeRank(anchor);
-  const desiredRank = phraseSizeRank(desired);
-  const delta = Math.max(-maxSteps, Math.min(maxSteps, desiredRank - anchorRank));
-  return phraseSizeFromRank(anchorRank + delta);
-}
-
-function comparePhraseSize(
-  left: InputLanguageBenchmarkRecommendation['targetPhraseSize'],
-  right: InputLanguageBenchmarkRecommendation['targetPhraseSize'],
-): number {
-  return phraseSizeRank(left) - phraseSizeRank(right);
-}
-
-function phraseSizeRank(size: InputLanguageBenchmarkRecommendation['targetPhraseSize']): number {
-  switch (size) {
-    case 'short':
-      return 0;
-    case 'medium':
-      return 1;
-    case 'long':
-      return 2;
-  }
-}
-
-function phraseSizeFromRank(rank: number): InputLanguageBenchmarkRecommendation['targetPhraseSize'] {
-  if (rank <= 0) return 'short';
-  if (rank === 1) return 'medium';
-  return 'long';
-}
-
-function calibrateTargetRateRangeForProfile(
-  metrics: InputLanguageBenchmarkMetrics,
-  base: [number, number],
-): [number, number] {
-  const inputMode = String(metrics.inputMode).toLowerCase();
-  if (inputMode !== 'browser-tts') {
-    return base;
-  }
-  const profile = resolveBrowserTtsAdaptiveProfile(String(metrics.language).toLowerCase());
-  if (!profile.recommendationCalibrationEnabled) {
-    return base;
-  }
-  const gate = profile.recommendationCalibrationGate;
-  if (!gate) return base;
-  const [lower, upper] = base;
-  const highAccuracy = normalizeAccuracy(metrics.averageAccuracy) >= gate.minAccuracy;
-  const stableLagNearZero = Math.abs(metrics.stableAverageLagSec) <= gate.maxStableLagSecAbs && metrics.p90AbsLagSec <= gate.maxP90AbsLagSec;
-  if (!highAccuracy || !stableLagNearZero || lower >= profile.minRecommendedRate) {
-    return base;
-  }
-  const adjustedLower = profile.minRecommendedRate;
-  const adjustedUpper = Math.max(upper, adjustedLower + 0.04);
-  return [adjustedLower, adjustedUpper];
 }
