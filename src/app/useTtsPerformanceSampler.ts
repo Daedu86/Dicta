@@ -1,26 +1,17 @@
 import { useCallback } from 'react';
-import { evaluateTranscriptAttempt } from '../core/evaluation';
-import { computeSessionScore } from '../core/sessionScore';
-import { buildBrowserTtsControlLagSample } from '../inputs/browserTts/browserTtsRatePolicy';
-import { trackAction, trackSample } from '../core/telemetry';
-import { cloneTelemetry } from '../core/sessionNormalization';
-import {
-  derivePerformanceTrend,
-  deriveTtsControlAction,
-} from './appRuntimeHelpers';
 import type { TtsPerformanceSampleResult } from './sessionTypes';
 import type {
   TtsPerformanceSampleOptions,
   TtsPerformanceSamplerDependencies,
 } from './ttsPerformanceSamplerTypes';
+import { buildTtsPerformanceMetricSnapshot } from './ttsPerformanceSampleMetrics';
+import { updateTtsPerformanceSampleTelemetry } from './ttsPerformanceSampleTelemetry';
 
 export type {
   TtsPerformanceSampleOptions,
   TtsPerformanceSamplerDependencies,
   WritableRef,
 } from './ttsPerformanceSamplerTypes';
-
-const TTS_BASE_WORDS_PER_SECOND = 2.6;
 
 export function sampleTtsPerformance(
   {
@@ -51,105 +42,78 @@ export function sampleTtsPerformance(
   }
 
   const practiceTextForEvaluation = options.practiceTextOverride ?? ttsPracticeLiveTextRef.current;
-  const evaluation = evaluateTranscriptAttempt(practiceTextForEvaluation, ttsTranscript);
-  const practiceWords = evaluation.typedWords;
-  const sourceWordCount = ttsTranscript?.words.length ?? 0;
-  const visibleAccuracy = practiceWords.length > 0 && sourceWordCount > 0 ? evaluation.accuracy : 0;
-  const typedProgress = Math.max(0, evaluation.lastMatchedTargetIndex + 1);
   const spokenPosition = estimateTtsSpokenWordIndex(now);
-  const nextLagWords = sourceWordCount > 0 ? spokenPosition - typedProgress : 0;
-  const wordsPerSecond = Math.max(1, TTS_BASE_WORDS_PER_SECOND * ttsSpeechRate);
-  const nextRawLagSec = nextLagWords / wordsPerSecond;
-  const lagSample = buildBrowserTtsControlLagSample({
-    rawLagSec: nextRawLagSec,
-    language: ttsLanguage,
+  const elapsedSeconds = getTtsElapsedSeconds(now);
+  const metricSnapshot = buildTtsPerformanceMetricSnapshot({
+    practiceTextForEvaluation,
+    ttsTranscript,
+    ttsSpeechRate,
+    ttsLanguage,
     previousValidControlLagSec: ttsLastValidControlLagSecRef.current,
+    previousLagSec: previousLagRef.current,
+    previousAccuracy: previousAccuracyRef.current,
+    spokenPosition,
+    elapsedSeconds,
   });
-  if (lagSample.isOutlier) {
+
+  if (metricSnapshot.lagSample.isOutlier) {
     ttsLagOutlierCountRef.current += 1;
   }
-  const nextLagSec = lagSample.stableLagSec;
-  if (!lagSample.usedFallbackControlLag && Number.isFinite(nextLagSec)) {
-    ttsLastValidControlLagSecRef.current = nextLagSec;
+  if (!metricSnapshot.lagSample.usedFallbackControlLag && Number.isFinite(metricSnapshot.lagSec)) {
+    ttsLastValidControlLagSecRef.current = metricSnapshot.lagSec;
   }
-  const elapsedMinutes = Math.max(getTtsElapsedSeconds(now) / 60, 1 / 60);
-  const nextWpm = practiceWords.length > 0 ? practiceWords.length / elapsedMinutes : 0;
-  const nextAccuracy = practiceWords.length > 0 ? visibleAccuracy : 100;
-  const nextControllerAction = deriveTtsControlAction({
-    accuracy: nextAccuracy,
-    lagSec: nextLagSec,
-    wpm: nextWpm,
-    typedWords: practiceWords.length,
-  });
-  const nextTrend = derivePerformanceTrend(nextLagSec, nextAccuracy, previousLagRef.current, previousAccuracyRef.current);
-  const nextRate = ttsSpeechRate;
-  const nextScore =
-    practiceWords.length > 0 && sourceWordCount > 0
-      ? computeSessionScore({
-          accuracy: nextAccuracy,
-          lagSec: nextLagSec,
-          wpm: nextWpm,
-          rate: nextRate,
-          points: evaluation.points,
-        })
-      : 0;
 
   ttsLiveSignalRef.current = {
-    accuracy: nextAccuracy,
-    lagSec: nextLagSec,
-    rawLagSec: lagSample.rawLagSec,
-    stableLagSec: lagSample.stableLagSec,
+    accuracy: metricSnapshot.accuracy,
+    lagSec: metricSnapshot.lagSec,
+    rawLagSec: metricSnapshot.lagSample.rawLagSec,
+    stableLagSec: metricSnapshot.lagSample.stableLagSec,
     lagOutlierCount: ttsLagOutlierCountRef.current,
-    wpm: nextWpm,
-    trend: nextTrend,
-    controllerState: nextControllerAction,
+    wpm: metricSnapshot.wpm,
+    trend: metricSnapshot.trend,
+    controllerState: metricSnapshot.controllerAction,
   };
 
   publishTtsUiState(
     {
-      controllerState: nextControllerAction,
-      rate: nextRate,
-      lagSec: nextLagSec,
-      lagWords: nextLagWords,
-      wpm: nextWpm,
-      accuracy: nextAccuracy,
-      trend: nextTrend,
+      controllerState: metricSnapshot.controllerAction,
+      rate: metricSnapshot.rate,
+      lagSec: metricSnapshot.lagSec,
+      lagWords: metricSnapshot.lagWords,
+      wpm: metricSnapshot.wpm,
+      accuracy: metricSnapshot.accuracy,
+      trend: metricSnapshot.trend,
     },
     now,
     Boolean(options.forcePublishUi || options.finalize || options.action),
   );
-  previousLagRef.current = nextLagSec;
-  previousAccuracyRef.current = nextAccuracy;
+  previousLagRef.current = metricSnapshot.lagSec;
+  previousAccuracyRef.current = metricSnapshot.accuracy;
 
-  const telemetry = ensureAttemptTelemetry();
-  const nextTelemetry = cloneTelemetry(telemetry);
-  trackSample(nextTelemetry, nextLagSec, nextWpm, nextAccuracy, nextRate);
+  const telemetryUpdate = updateTtsPerformanceSampleTelemetry({
+    telemetry: ensureAttemptTelemetry(),
+    snapshot: metricSnapshot,
+    elapsedSeconds,
+    options,
+    previousControllerAction: ttsLastControllerActionRef.current,
+    finishedAtIso: nowIso ? nowIso() : new Date().toISOString(),
+  });
+  ttsLastControllerActionRef.current = telemetryUpdate.nextControllerAction;
+  telemetryRef.current = telemetryUpdate.telemetry;
 
-  if (options.action) {
-    trackAction(nextTelemetry, getTtsElapsedSeconds(now), options.action, nextRate);
-  } else if (nextControllerAction !== ttsLastControllerActionRef.current) {
-    trackAction(nextTelemetry, getTtsElapsedSeconds(now), nextControllerAction, nextRate);
-    ttsLastControllerActionRef.current = nextControllerAction;
-  }
-
-  if (options.finalize) {
-    nextTelemetry.finishedAt = nowIso ? nowIso() : new Date().toISOString();
-  }
-
-  telemetryRef.current = nextTelemetry;
   return {
     metrics: {
-      controllerState: nextControllerAction,
-      rate: nextRate,
-      lagSec: nextLagSec,
-      lagWords: nextLagWords,
-      wpm: nextWpm,
-      accuracy: nextAccuracy,
-      trend: nextTrend,
-      score: nextScore,
-      points: evaluation.points,
+      controllerState: metricSnapshot.controllerAction,
+      rate: metricSnapshot.rate,
+      lagSec: metricSnapshot.lagSec,
+      lagWords: metricSnapshot.lagWords,
+      wpm: metricSnapshot.wpm,
+      accuracy: metricSnapshot.accuracy,
+      trend: metricSnapshot.trend,
+      score: metricSnapshot.score,
+      points: metricSnapshot.evaluation.points,
     },
-    telemetry: nextTelemetry,
+    telemetry: telemetryUpdate.telemetry,
   };
 }
 
