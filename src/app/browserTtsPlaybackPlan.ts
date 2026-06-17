@@ -1,10 +1,12 @@
-import { buildBrowserTtsChunkAccuracySnapshot } from './browserTtsChunkAccuracy';
 import {
-  selectBrowserTtsCandidateChunk,
-  selectBrowserTtsDecisionChunk,
+  buildBrowserTtsPlaybackPlanAccuracyState,
+} from './browserTtsPlaybackPlanAccuracyState';
+import {
+  planBrowserTtsPlaybackCandidateChunk,
+  planBrowserTtsPlaybackDecisionChunk,
   shouldApplyGermanShortBias,
   shouldUseBrowserTtsRecoverySafeChunks,
-} from './browserTtsPlaybackPlanChunkSelection';
+} from './browserTtsPlaybackPlanChunkPlanning';
 import type {
   BrowserTtsPlaybackPlan,
   BrowserTtsPlaybackPlanInput,
@@ -22,63 +24,32 @@ export type {
 
 export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput): BrowserTtsPlaybackPlan | null {
   const {
-    macroWords,
-    macroWordOffset,
-    macroStartWordIndex,
-    language,
-    lastPhraseSize,
-    lastBoundaryStrictness,
     liveSignal,
     browserTtsProfile,
     browserTtsBenchmark,
     browserTtsRecovery,
     ttsSpeechRate,
     unsafeChunkCount,
-    accuracyWindow,
-    lastAccuracySnapshot,
     navigatorInfo,
-    chunkPlanner,
   } = input;
 
-  const useBrowserTtsDeRecoverySafeChunks = shouldUseBrowserTtsRecoverySafeChunks(language, browserTtsRecovery);
+  const recoverySafeBoundary = shouldUseBrowserTtsRecoverySafeChunks(input.language, browserTtsRecovery);
   const {
-    sessionAccuracy,
-    chunkAccuracy,
+    accuracy,
     rollingAccuracyLast3,
     rollingAccuracyLast5,
     nextAccuracyWindow,
     typedWordsNow,
     matchedWordsNow,
-  } = buildBrowserTtsChunkAccuracySnapshot({
-    liveSignal,
-    livePracticeEvaluation: input.livePracticeEvaluation,
-    accuracyWindow,
-    lastAccuracySnapshot,
-  });
-  const accuracy = {
-    sessionAccuracy,
-    chunkAccuracy,
-    rollingAccuracyLast3,
-    rollingAccuracyLast5,
-  };
+  } = buildBrowserTtsPlaybackPlanAccuracyState(input);
   const germanShortBias = shouldApplyGermanShortBias(liveSignal, browserTtsProfile);
-
-  const candidateChunk = selectBrowserTtsCandidateChunk({
-    macroWords,
-    macroWordOffset,
-    macroStartWordIndex,
-    language,
-    phraseSize: lastPhraseSize,
-    boundaryStrictness: lastBoundaryStrictness,
+  const candidateChunk = planBrowserTtsPlaybackCandidateChunk(
+    input,
     germanShortBias,
-    recovery: browserTtsRecovery,
-    recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
-    chunkPlanner,
-  });
+    recoverySafeBoundary,
+  );
 
-  if (!candidateChunk) {
-    return null;
-  }
+  if (!candidateChunk) return null;
 
   const {
     browserTelemetry,
@@ -90,17 +61,11 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     candidateChunk,
     accuracy,
   });
-  const chunk = selectBrowserTtsDecisionChunk({
-    macroWords,
-    macroWordOffset,
-    macroStartWordIndex,
-    language,
-    phraseSize: decision.nextPhraseSize,
-    boundaryStrictness: decision.boundaryStrictness,
+  const chunk = planBrowserTtsPlaybackDecisionChunk({
+    input,
+    decision,
     germanShortBias,
-    recovery: browserTtsRecovery,
-    recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
-    chunkPlanner,
+    recoverySafeBoundary,
     fallbackChunk: candidateChunk,
   });
 
@@ -157,6 +122,6 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     unsafeChunkCount: nextUnsafeChunkCount,
     mobileFallbackApplied,
     germanShortBias,
-    recoverySafeBoundary: useBrowserTtsDeRecoverySafeChunks,
+    recoverySafeBoundary,
   };
 }
