@@ -27,6 +27,41 @@ describe('planBrowserTtsAdaptiveChunk', () => {
     expect((chunk?.wordCount ?? 0)).toBeGreaterThan(0);
   });
 
+  it('adds V3 prosody metadata for sentence chunks', () => {
+    const chunk = planChunk({
+      text: 'We listen carefully. Then we type slowly.',
+      boundaryStrictness: 'sentence',
+    });
+
+    expect(chunk).not.toBeNull();
+    expect(chunk?.v3Prosody?.boundaryStrength).toBe('sentence');
+    expect(chunk?.v3Prosody?.pauseClass).toBe('sentence');
+    expect(chunk?.v3Prosody?.semanticCompletenessClass).toBe('complete');
+    expect(chunk?.v3Prosody?.breathGroup.isComplete).toBe(true);
+  });
+
+  it('marks fragile V3 chunks that end on an unsafe edge', () => {
+    const chunk = planChunk({
+      text: 'We wait for the next phrase before typing',
+      boundaryStrictness: 'sentence',
+      maxWordsOverride: 4,
+    });
+
+    expect(chunk).not.toBeNull();
+    expect(chunk?.phraseBoundaryType).toBe('unsafe');
+    expect(chunk?.v3Prosody?.edgeWordFlag).toBe(true);
+    expect(chunk?.v3Prosody?.pauseClass).toBe('none');
+    expect(chunk?.v3Prosody?.replayStrategy).toBe('repeat-with-preroll');
+  });
+
+  it('uses recovery pause class for German recovery-safe chunks', () => {
+    const chunk = planGermanRecoveryChunk({ recoverySafeBoundary: true });
+
+    expect(chunk).not.toBeNull();
+    expect(chunk?.v3Prosody?.pauseClass).toBe('recovery');
+    expect(chunk?.v3Prosody?.breathGroup.isComplete).toBe(true);
+  });
+
   it('allows clause boundary when strictness is clause', () => {
     const chunk = planChunk({
       text: 'First we listen, then we type, and we recover.',
