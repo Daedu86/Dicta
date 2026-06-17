@@ -1,0 +1,38 @@
+.sidebar-copy {
+  margin: 0;
+  color: #5d7083;
+  font-size: 0.84rem;
+}
+
+input,
+select,
+textarea,
+button {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  border: 1px solid #b8c7d8;
+  background: #fff;
+  font-size: 0.95rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+.secondary-button,
+.danger-button {
+  width: auto;
+  margin-top: 0;
+}
+
+.secondary-button {
+  background: #f4f8fc;
+}
+
+.danger-button {
+  color: #8a2323;
+  background: #fff5f5;
+  border-color: #efb7b7;
+}
