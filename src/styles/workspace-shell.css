@@ -30,9 +30,10 @@
   gap: 1rem;
 }
 
-.pending-session-lane-header h3 {
+.pending-session-lane-header h2 {
   margin: 0.15rem 0 0;
   color: #7c2d12;
+  font-size: 1.17rem;
 }
 
 .pending-session-count {
@@ -87,7 +88,7 @@
   margin: 0;
   border: 0;
   border-radius: 12px;
-  padding: 0.75rem 2.4rem 0.75rem 0.85rem;
+  padding: 0.75rem 3.7rem 0.75rem 0.85rem;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -95,16 +96,17 @@
 
 .pending-session-delete-button {
   position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  width: 1.6rem;
-  height: 1.6rem;
-  min-height: 1.6rem;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0;
   border-radius: 999px;
   display: inline-grid;
   place-items: center;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   line-height: 1;
 }
 
