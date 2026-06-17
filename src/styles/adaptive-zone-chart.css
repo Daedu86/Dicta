@@ -1,0 +1,45 @@
+.adaptive-zone-chart {
+  width: 100%;
+  min-width: 0;
+  height: 340px;
+  min-height: 260px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.6rem;
+}
+
+.adaptive-zone-chart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.adaptive-zone-chart-header span {
+  display: block;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.82rem;
+}
+
+.adaptive-zone-chart-header strong {
+  display: block;
+  color: rgba(226, 232, 240, 0.96);
+  font-size: 0.96rem;
+}
+
+.adaptive-zone-kpis {
+  display: flex;
+  gap: 1rem;
+}
+
+.adaptive-zone-kpis span {
+  display: block;
+  color: rgba(226, 232, 240, 0.66);
+  font-size: 0.75rem;
+}
+
+.adaptive-zone-kpis strong {
+  display: block;
+  color: rgba(226, 232, 240, 0.92);
+  font-size: 0.9rem;
+}
