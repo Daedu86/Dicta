@@ -1,4 +1,5 @@
 export type { InputMode, StoredInputMode } from './inputModes';
+export type { ListenerStateV3 } from './listenerStateV3';
 export type { ListeningPrecisionMetrics } from './listeningPrecisionMetrics';
 
 export type * from './types/pacing';
