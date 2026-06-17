@@ -1,198 +1,172 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyBrowserTtsMobilePacingFallback,
-  applyBrowserTtsRuntimeRateFloor,
-  buildBrowserTtsControlLagSample,
-  isLikelyAndroidSpeechSynthesisRuntime,
-} from '../src/inputs/browserTts/browserTtsRatePolicy';
-import { resolveBrowserTtsAdaptiveProfile } from '../src/inputs/browserTts/browserTtsAdaptiveProfiles';
-import type { PacingDecision } from '../src/core/adaptive/types';
+  ANDROID_SAMSUNG_S22_CHROME_RUNTIME,
+  BASE_BROWSER_TTS_PACING_DECISION,
+  DE_BROWSER_TTS_PROFILE,
+  WINDOWS_DESKTOP_CHROME_RUNTIME,
+  applyBrowserTtsMobileFallbackCase,
+  expectAndroidSpeechSynthesisRuntime,
+  expectBrowserTtsControlLagSample,
+  expectBrowserTtsRuntimeRateFloor,
+} from './browserTtsRatePolicyTestUtils';
 
 describe('applyBrowserTtsRuntimeRateFloor', () => {
-  const enProfile = resolveBrowserTtsAdaptiveProfile('en');
-  const deProfile = resolveBrowserTtsAdaptiveProfile('de');
-
   it('enforces EN balanced and flow floor at 0.80', () => {
-    expect(applyBrowserTtsRuntimeRateFloor({
+    expectBrowserTtsRuntimeRateFloor({
       mode: 'balanced',
       requestedRate: 0.78,
       lagSec: 1.2,
       accuracy: 0.9,
-      profile: enProfile,
-    })).toBe(0.8);
-    expect(applyBrowserTtsRuntimeRateFloor({
+      expectedRate: 0.8,
+    });
+    expectBrowserTtsRuntimeRateFloor({
       mode: 'flow',
       requestedRate: 0.78,
       lagSec: 0.2,
       accuracy: 0.97,
-      profile: enProfile,
-    })).toBe(0.8);
+      expectedRate: 0.8,
+    });
   });
 
   it('enforces EN support floor at 0.78 for normal support', () => {
-    expect(applyBrowserTtsRuntimeRateFloor({
+    expectBrowserTtsRuntimeRateFloor({
       mode: 'support',
       requestedRate: 0.76,
       lagSec: 2.8,
       accuracy: 0.84,
-      profile: enProfile,
-    })).toBe(0.78);
+      expectedRate: 0.78,
+    });
   });
 
   it('enforces EN extreme support floor at 0.74', () => {
-    expect(applyBrowserTtsRuntimeRateFloor({
+    expectBrowserTtsRuntimeRateFloor({
       mode: 'support',
       requestedRate: 0.72,
       lagSec: 4.4,
       accuracy: 0.72,
-      profile: enProfile,
-    })).toBe(0.74);
+      expectedRate: 0.74,
+    });
   });
 
   it('caps EN support-needed rate at 0.88', () => {
-    expect(applyBrowserTtsRuntimeRateFloor({
+    expectBrowserTtsRuntimeRateFloor({
       mode: 'support',
       requestedRate: 1.0,
       lagSec: 2.3,
       accuracy: 0.83,
       supportNeeded: true,
-      profile: enProfile,
-    })).toBe(0.88);
+      expectedRate: 0.88,
+    });
   });
 
   it('uses conservative DE profile values', () => {
-    expect(applyBrowserTtsRuntimeRateFloor({
+    expectBrowserTtsRuntimeRateFloor({
       mode: 'balanced',
       requestedRate: 0.8,
       lagSec: 0.4,
       accuracy: 0.95,
-      profile: deProfile,
-    })).toBe(0.82);
-    expect(applyBrowserTtsRuntimeRateFloor({
+      profile: DE_BROWSER_TTS_PROFILE,
+      expectedRate: 0.82,
+    });
+    expectBrowserTtsRuntimeRateFloor({
       mode: 'support',
       requestedRate: 1.0,
       lagSec: 2.5,
       accuracy: 0.8,
       supportNeeded: true,
-      profile: deProfile,
-    })).toBe(0.9);
+      profile: DE_BROWSER_TTS_PROFILE,
+      expectedRate: 0.9,
+    });
   });
 });
 
 describe('buildBrowserTtsControlLagSample', () => {
   it('keeps raw DE lag around 5 seconds diagnostic but avoids sentinel control lag', () => {
-    const sample = buildBrowserTtsControlLagSample({
+    expectBrowserTtsControlLagSample({
       rawLagSec: 5.3,
       language: 'de',
       previousValidControlLagSec: 1.2,
+      expected: {
+        rawLagSec: 5.3,
+        stableLagSec: 4.99,
+        isOutlier: true,
+        usedFallbackControlLag: false,
+      },
     });
-
-    expect(sample.rawLagSec).toBe(5.3);
-    expect(sample.stableLagSec).toBe(4.99);
-    expect(sample.isOutlier).toBe(true);
-    expect(sample.usedFallbackControlLag).toBe(false);
   });
 
   it('falls back for extreme DE raw lag while preserving the diagnostic raw value', () => {
-    const sample = buildBrowserTtsControlLagSample({
+    expectBrowserTtsControlLagSample({
       rawLagSec: -36.48,
       language: 'de',
       previousValidControlLagSec: 1.4,
+      expected: {
+        rawLagSec: -36.48,
+        stableLagSec: 1.4,
+        isOutlier: true,
+        usedFallbackControlLag: true,
+      },
     });
-
-    expect(sample.rawLagSec).toBe(-36.48);
-    expect(sample.stableLagSec).toBe(1.4);
-    expect(sample.isOutlier).toBe(true);
-    expect(sample.usedFallbackControlLag).toBe(true);
   });
 
   it('uses neutral DE fallback when there is no prior valid control lag', () => {
-    const sample = buildBrowserTtsControlLagSample({
+    expectBrowserTtsControlLagSample({
       rawLagSec: 12.8,
       language: 'de',
+      expected: {
+        rawLagSec: 12.8,
+        stableLagSec: 0,
+        isOutlier: true,
+        usedFallbackControlLag: true,
+      },
     });
-
-    expect(sample.rawLagSec).toBe(12.8);
-    expect(sample.stableLagSec).toBe(0);
-    expect(sample.isOutlier).toBe(true);
-    expect(sample.usedFallbackControlLag).toBe(true);
   });
 
   it('leaves non-DE lag stabilization unchanged', () => {
     for (const language of ['en', 'es', 'fr', 'pt'] as const) {
-      const sample = buildBrowserTtsControlLagSample({
+      expectBrowserTtsControlLagSample({
         rawLagSec: 24.16,
         language,
         previousValidControlLagSec: 1.4,
+        expected: {
+          rawLagSec: 24.16,
+          stableLagSec: 5,
+          isOutlier: true,
+          usedFallbackControlLag: false,
+        },
       });
-
-      expect(sample.rawLagSec).toBeCloseTo(24.16, 2);
-      expect(sample.stableLagSec).toBe(5);
-      expect(sample.isOutlier).toBe(true);
-      expect(sample.usedFallbackControlLag).toBe(false);
     }
   });
 });
 
 describe('applyBrowserTtsMobilePacingFallback', () => {
-  const enProfile = resolveBrowserTtsAdaptiveProfile('en');
-  const baseDecision: PacingDecision = {
-    mode: 'balanced',
-    playbackRate: 1,
-    pauseAfterPhraseMs: 750,
-    shouldPauseNow: false,
-    shouldReplayPhrase: false,
-    boundaryStrictness: 'sentence',
-    allowMidPhrasePause: false,
-    deferPauseUntilSafeBoundary: false,
-    replayRate: 0.9,
-    nextPhraseSize: 'medium',
-    reason: 'mode=balanced',
-    lagScore: 0.5,
-    accuracyScore: 0.8,
-    hesitationScore: 0.8,
-    confidenceScore: 0.5,
-  };
-
   it('detects Android mobile speech synthesis runtimes such as Samsung S22 Chrome', () => {
-    expect(isLikelyAndroidSpeechSynthesisRuntime({
-      userAgent: 'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S901B) AppleWebKit/537.36 Chrome/123.0 Mobile Safari/537.36',
-      platform: 'Linux armv8l',
-      maxTouchPoints: 5,
-    })).toBe(true);
+    expectAndroidSpeechSynthesisRuntime(ANDROID_SAMSUNG_S22_CHROME_RUNTIME, true);
   });
 
   it('leaves desktop browser TTS decisions unchanged', () => {
-    const result = applyBrowserTtsMobilePacingFallback({
-      decision: baseDecision,
+    const result = applyBrowserTtsMobileFallbackCase({
       lagSec: 2.1,
       accuracy: 0.86,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123.0 Safari/537.36',
-      platform: 'Win32',
-      maxTouchPoints: 0,
-      profile: enProfile,
+      ...WINDOWS_DESKTOP_CHROME_RUNTIME,
     });
 
     expect(result.mobileFallbackApplied).toBe(false);
-    expect(result.decision).toBe(baseDecision);
+    expect(result.decision).toBe(BASE_BROWSER_TTS_PACING_DECISION);
   });
 
   it('converts Android lag pressure into short chunks and audible pauses when speech rate may be ignored', () => {
-    const result = applyBrowserTtsMobilePacingFallback({
-      decision: baseDecision,
+    const result = applyBrowserTtsMobileFallbackCase({
       lagSec: 2.1,
       accuracy: 0.86,
-      userAgent: 'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S901B) AppleWebKit/537.36 Chrome/123.0 Mobile Safari/537.36',
-      platform: 'Linux armv8l',
-      maxTouchPoints: 5,
-      profile: enProfile,
+      ...ANDROID_SAMSUNG_S22_CHROME_RUNTIME,
     });
 
     expect(result.mobileFallbackApplied).toBe(true);
     expect(result.decision.nextPhraseSize).toBe('short');
     expect(result.decision.shouldPauseNow).toBe(true);
     expect(result.decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(1600);
-    expect(result.decision.playbackRate).toBeLessThanOrEqual(enProfile.supportRateCeiling);
+    expect(result.decision.playbackRate).toBeLessThanOrEqual(DE_BROWSER_TTS_PROFILE.supportRateCeiling);
     expect(result.decision.reason).toContain('android-speech-rate-fallback');
   });
 });
