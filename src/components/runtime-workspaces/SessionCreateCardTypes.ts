@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import type { BrowserTtsSessionInputMode as SupportedCreationInputMode } from '../../core/sessionInputModes';
 
 export type SessionSource = 'plainText' | 'dictationScript';
 
@@ -36,3 +37,23 @@ export type DictationScriptValidation =
     };
 
 export type MetricComponentType = (props: { label: string; value: string; title?: string }) => ReactElement;
+
+export type SessionCreateCardProps = {
+  sessionCreationSource: SessionSource;
+  sessionCreationName: string;
+  sessionQuotaStatus: SessionQuotaStatus;
+  canCreateSessionFromDialog: boolean;
+  localDevFeaturesAvailable: boolean;
+  allowDictationScriptCreation: boolean;
+  dictationScriptJson: string;
+  dictationScriptValidation: DictationScriptValidation | null;
+  validatedDictationScript: DictationScriptPreview | null;
+  onSessionCreationSourceChange: (value: SessionSource) => void;
+  onSessionCreationNameChange: (value: string) => void;
+  onCreateSessionWithMode: (inputMode: SupportedCreationInputMode) => void;
+  onDictationScriptJsonChange: (value: string) => void;
+  onValidateScriptImport: () => void;
+  onCreateSessionFromDictationScript: () => void;
+  onCancel: () => void;
+  MetricComponent: MetricComponentType;
+};
