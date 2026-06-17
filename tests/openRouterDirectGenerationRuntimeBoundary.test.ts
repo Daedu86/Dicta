@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const runtime = readFileSync('src/app/useOpenRouterDirectGenerationRuntime.ts', 'utf8');
 const runner = readFileSync('src/app/useOpenRouterDirectGenerationRunner.ts', 'utf8');
+const executor = readFileSync('src/app/openRouterDirectGenerationRunExecutor.ts', 'utf8');
 const lifecycle = readFileSync('src/app/openRouterDirectGenerationRunLifecycle.ts', 'utf8');
 const jobRunner = readFileSync('src/app/openRouterDirectGenerationJobRunner.ts', 'utf8');
 const failureHandler = readFileSync('src/app/openRouterDirectGenerationFailureHandler.ts', 'utf8');
@@ -19,11 +20,19 @@ describe('OpenRouter direct generation runtime boundary', () => {
     expect(runtime).not.toContain('resolveOpenRouterDirectGenerationFailure');
 
     expect(runner).toContain('export function useOpenRouterDirectGenerationRunner');
-    expect(runner).toContain('buildOpenRouterDirectGenerationStartPlan');
-    expect(runner).toContain('startOpenRouterDirectGenerationRun');
-    expect(runner).toContain('runOpenRouterDirectGenerationJobRequest');
-    expect(runner).toContain('handleOpenRouterDirectGenerationFailure');
-    expect(runner).toContain('createOpenRouterErrorSession');
+    expect(runner).toContain("from './openRouterDirectGenerationRunExecutor';");
+    expect(runner).toContain('runOpenRouterDirectGeneration({');
+    expect(runner).not.toContain('buildOpenRouterDirectGenerationStartPlan');
+    expect(runner).not.toContain('startOpenRouterDirectGenerationRun');
+    expect(runner).not.toContain('runOpenRouterDirectGenerationJobRequest');
+    expect(runner).not.toContain('handleOpenRouterDirectGenerationFailure');
+
+    expect(executor).toContain('export async function runOpenRouterDirectGeneration');
+    expect(executor).toContain('buildOpenRouterDirectGenerationStartPlan');
+    expect(executor).toContain('startOpenRouterDirectGenerationRun');
+    expect(executor).toContain('runOpenRouterDirectGenerationJobRequest');
+    expect(executor).toContain('handleOpenRouterDirectGenerationFailure');
+    expect(executor).toContain('createOpenRouterErrorSession');
   });
 
   it('keeps OpenRouter direct generation side effects inside focused seams', () => {
