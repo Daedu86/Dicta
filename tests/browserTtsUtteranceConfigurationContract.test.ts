@@ -12,6 +12,8 @@ import {
 const playbackLoopActionsSource = readRepoSource('src/app/browserTtsPlaybackLoopActions.ts');
 const playbackLoopRunnerSource = readRepoSource('src/app/browserTtsPlaybackLoopRunner.ts');
 const playbackLoopChunkSpeakerSource = readRepoSource('src/app/browserTtsPlaybackLoopChunkSpeaker.ts');
+const playbackLoopChunkHandlersSource = readRepoSource('src/app/browserTtsPlaybackLoopChunkHandlers.ts');
+const playbackLoopChunkUtteranceRuntimeSource = readRepoSource('src/app/browserTtsPlaybackLoopChunkUtteranceRuntime.ts');
 const playbackLoopUtteranceSource = readRepoSource('src/app/browserTtsPlaybackLoopUtterance.ts');
 const playbackLoopChunkCommitSource = readRepoSource('src/app/browserTtsPlaybackLoopChunkCommit.ts');
 const playbackLoopErrorHandlerSource = readRepoSource('src/app/browserTtsPlaybackLoopErrorHandler.ts');
@@ -63,12 +65,17 @@ describe('Browser TTS utterance configuration contract', () => {
     expect(playbackLoopRunnerSource).toContain('speakBrowserTtsPlaybackLoopChunk(');
 
     expectInOrder(playbackLoopChunkSpeakerSource, [
-      'const { utterance, perfUtteranceId } = createBrowserTtsPlaybackUtterance({',
-      'input.playbackRuntime.ttsUtteranceRef.current = utterance;',
-      'commitBrowserTtsPlaybackLoopChunk({',
-      'attachBrowserTtsPlaybackLoopUtteranceHandlers({',
+      'const { utterance, perfUtteranceId } = createBrowserTtsPlaybackLoopChunkUtterance(input, playbackPlan);',
+      'commitBrowserTtsPlaybackLoopRuntimeChunk(input, playbackPlan);',
+      'attachBrowserTtsPlaybackLoopChunkHandlers({ input, playbackPlan, perfUtteranceId, utterance });',
       'input.telemetryContext.perfDiagnostics.recordTtsSpeak(perfUtteranceId);',
       'input.playbackRuntime.speakBrowserTts(utterance);',
+    ]);
+
+    expectInOrder(playbackLoopChunkUtteranceRuntimeSource, [
+      'const utteranceRuntime = createBrowserTtsPlaybackUtterance({',
+      'input.playbackRuntime.ttsUtteranceRef.current = utteranceRuntime.utterance;',
+      'return utteranceRuntime;',
     ]);
 
     expectInOrder(playbackLoopUtteranceSource, [
@@ -111,14 +118,14 @@ describe('Browser TTS utterance configuration contract', () => {
   });
 
   it('keeps unexpected SpeechSynthesis errors paused, detached from the active utterance, and user-visible', () => {
-    expectInOrder(playbackLoopChunkSpeakerSource, [
+    expectInOrder(playbackLoopChunkHandlersSource, [
       'attachBrowserTtsPlaybackLoopUtteranceHandlers({',
       'error: (event) => ({',
       'error: event.error,',
       'cancelled,',
-      'ttsUtteranceRef',
-      'setTtsStatus',
-      'setError',
+      'ttsUtteranceRef: input.playbackRuntime.ttsUtteranceRef,',
+      'setTtsStatus: input.uiContext.setTtsStatus,',
+      'setError: input.uiContext.setError,',
       'setCancelled: (nextCancelled: boolean) => {',
       'cancelled = nextCancelled;',
     ]);
