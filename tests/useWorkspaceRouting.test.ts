@@ -2,124 +2,76 @@
  * @vitest-environment jsdom
  */
 
-import { act, createElement, useEffect } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../src/core/sessionInputModes';
-import { useWorkspaceRouting, type WorkspaceMode } from '../src/app/useWorkspaceRouting';
-
-const reactActGlobal = globalThis as typeof globalThis & {
-  IS_REACT_ACT_ENVIRONMENT?: boolean;
-};
-
-reactActGlobal.IS_REACT_ACT_ENVIRONMENT = true;
-
-const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
-
-type WorkspaceRoutingState = ReturnType<typeof useWorkspaceRouting>;
-
-type TestHarnessProps = {
-  onRouting: (routing: WorkspaceRoutingState) => void;
-};
-
-let root: Root | null = null;
-let container: HTMLDivElement | null = null;
-
-function TestHarness({ onRouting }: TestHarnessProps) {
-  const routing = useWorkspaceRouting();
-
-  useEffect(() => {
-    onRouting(routing);
-  }, [onRouting, routing]);
-
-  return null;
-}
-
-async function renderWorkspaceRouting(): Promise<{
-  getRouting: () => WorkspaceRoutingState;
-}> {
-  let renderedRouting: WorkspaceRoutingState | null = null;
-  const onRouting = (routing: WorkspaceRoutingState) => {
-    renderedRouting = routing;
-  };
-
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
-
-  await act(async () => {
-    root?.render(createElement(TestHarness, { onRouting }));
-  });
-
-  return {
-    getRouting: () => {
-      if (!renderedRouting) {
-        throw new Error('useWorkspaceRouting did not render routing state.');
-      }
-
-      return renderedRouting;
-    },
-  };
-}
+import {
+  cleanupWorkspaceRoutingRender,
+  clearDashboardSession,
+  dispatchPopState,
+  expectCurrentBrowserPath,
+  expectStoredWorkspaceMode,
+  expectWorkspaceState,
+  navigateAppRoute,
+  renderWorkspaceRouting,
+  resetWorkspaceRoutingEnvironment,
+  showDashboardWorkspace,
+  showSessionInputWorkspace,
+  switchFromDashboardWorkspace,
+  type WorkspaceRoutingActionName,
+} from './useWorkspaceRoutingTestUtils';
+import type { WorkspaceMode } from '../src/app/useWorkspaceRouting';
 
 beforeEach(() => {
-  window.localStorage.clear();
-  window.history.replaceState(null, '', '/');
+  resetWorkspaceRoutingEnvironment();
 });
 
 afterEach(async () => {
-  if (root) {
-    await act(async () => {
-      root?.unmount();
-    });
-  }
-
-  root = null;
-  container?.remove();
-  container = null;
-  window.localStorage.clear();
-  window.history.replaceState(null, '', '/');
+  await cleanupWorkspaceRoutingRender();
 });
 
 describe('useWorkspaceRouting', () => {
   it('starts on the training workspace and exposes the current window path', async () => {
-    window.history.replaceState(null, '', '/training');
+    const { getRouting } = await renderWorkspaceRouting('/training');
 
-    const { getRouting } = await renderWorkspaceRouting();
-
-    expect(getRouting().workspaceMode).toBe('training');
-    expect(getRouting().currentPath).toBe('/training');
-    expect(getRouting().dashboardSessionId).toBeNull();
-    expect(window.localStorage.getItem(WORKSPACE_MODE_KEY)).toBe('training');
+    expectWorkspaceState(getRouting(), {
+      mode: 'training',
+      currentPath: '/training',
+      dashboardSessionId: null,
+    });
+    expectStoredWorkspaceMode('training');
   });
 
   it('opens a dashboard workspace for the selected session', async () => {
     const { getRouting } = await renderWorkspaceRouting();
 
-    await act(async () => {
-      getRouting().showDashboardWorkspace('session-1');
-    });
+    await showDashboardWorkspace(getRouting, 'session-1');
 
-    expect(getRouting().workspaceMode).toBe('dashboard');
-    expect(getRouting().dashboardSessionId).toBe('session-1');
-    expect(window.localStorage.getItem(WORKSPACE_MODE_KEY)).toBe('dashboard');
+    expectWorkspaceState(getRouting(), {
+      mode: 'dashboard',
+      dashboardSessionId: 'session-1',
+    });
+    expectStoredWorkspaceMode('dashboard');
   });
 
   it('clears only the dashboard session id when requested', async () => {
     const { getRouting } = await renderWorkspaceRouting();
 
-    await act(async () => {
-      getRouting().showDashboardWorkspace('session-1');
-    });
-    await act(async () => {
-      getRouting().clearDashboardSession();
-    });
+    await showDashboardWorkspace(getRouting, 'session-1');
+    await clearDashboardSession(getRouting);
 
-    expect(getRouting().workspaceMode).toBe('dashboard');
-    expect(getRouting().dashboardSessionId).toBeNull();
+    expectWorkspaceState(getRouting(), {
+      mode: 'dashboard',
+      dashboardSessionId: null,
+    });
   });
 
-  it.each<{ action: keyof WorkspaceRoutingState; mode: WorkspaceMode }>([
+  it.each<{ action: WorkspaceRoutingActionName; mode: WorkspaceMode }>([
     { action: 'showLeaderboardWorkspace', mode: 'training' },
     { action: 'showAdminWorkspace', mode: 'admin' },
     { action: 'showOpenRouterWorkspace', mode: 'openrouter' },
@@ -127,55 +79,41 @@ describe('useWorkspaceRouting', () => {
   ])('switches to $mode and clears the dashboard session id', async ({ action, mode }) => {
     const { getRouting } = await renderWorkspaceRouting();
 
-    await act(async () => {
-      getRouting().showDashboardWorkspace('session-1');
+    await switchFromDashboardWorkspace(getRouting, action);
+
+    expectWorkspaceState(getRouting(), {
+      mode,
+      dashboardSessionId: null,
     });
-    await act(async () => {
-      const routeAction = getRouting()[action];
-
-      if (typeof routeAction !== 'function') {
-        throw new Error(`${action} is not callable.`);
-      }
-
-      routeAction();
-    });
-
-    expect(getRouting().workspaceMode).toBe(mode);
-    expect(getRouting().dashboardSessionId).toBeNull();
-    expect(window.localStorage.getItem(WORKSPACE_MODE_KEY)).toBe(mode);
+    expectStoredWorkspaceMode(mode);
   });
 
   it('navigates app routes through history and currentPath state', async () => {
     const { getRouting } = await renderWorkspaceRouting();
 
-    await act(async () => {
-      getRouting().navigateAppRoute('/training');
-    });
+    await navigateAppRoute(getRouting, '/training');
 
-    expect(window.location.pathname).toBe('/training');
+    expectCurrentBrowserPath('/training');
     expect(getRouting().currentPath).toBe('/training');
 
-    await act(async () => {
-      getRouting().navigateAppRoute('/');
-    });
+    await navigateAppRoute(getRouting, '/');
 
-    expect(window.location.pathname).toBe('/');
+    expectCurrentBrowserPath('/');
     expect(getRouting().currentPath).toBe('/');
   });
 
   it('routes session input workspaces to /training and clears the dashboard session id', async () => {
     const { getRouting } = await renderWorkspaceRouting();
 
-    await act(async () => {
-      getRouting().showDashboardWorkspace('session-1');
-    });
-    await act(async () => {
-      getRouting().showSessionInputWorkspace(BROWSER_TTS_SESSION_INPUT_MODE);
-    });
+    await showDashboardWorkspace(getRouting, 'session-1');
+    await showSessionInputWorkspace(getRouting, BROWSER_TTS_SESSION_INPUT_MODE);
 
-    expect(window.location.pathname).toBe('/training');
-    expect(getRouting().currentPath).toBe('/training');
-    expect(getRouting().dashboardSessionId).toBeNull();
+    expectCurrentBrowserPath('/training');
+    expectWorkspaceState(getRouting(), {
+      mode: 'training',
+      currentPath: '/training',
+      dashboardSessionId: null,
+    });
   });
 
   it('updates currentPath when the browser popstate event fires', async () => {
@@ -183,10 +121,7 @@ describe('useWorkspaceRouting', () => {
 
     expect(getRouting().currentPath).toBe('/');
 
-    await act(async () => {
-      window.history.pushState(null, '', '/training');
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    });
+    await dispatchPopState('/training');
 
     expect(getRouting().currentPath).toBe('/training');
   });
