@@ -1,46 +1,29 @@
 import type {
   AdaptiveSessionFeedback,
-  AdaptiveWeakArea,
   InputLanguageBenchmarkMetrics,
   ListeningPrecisionMetrics,
 } from './types';
+import { clamp01 } from './listeningTrainerPolicyMath';
 
-export const RECOVERY_WEAK_AREAS = new Set<AdaptiveWeakArea>([
-  'lag',
-  'lag_instability',
-  'low_accuracy',
-  'accuracy_instability',
-  'flow_instability',
-  'support_dependency',
-  'unsafe_boundary_pressure',
-]);
-
-export const CHALLENGE_BLOCKING_WEAK_AREAS = new Set<AdaptiveWeakArea>([
-  'low_accuracy',
-  'accuracy_instability',
-  'lag',
-  'lag_instability',
-  'flow_instability',
-  'support_dependency',
-  'unsafe_boundaries',
-  'unsafe_boundary_pressure',
-  'low_semantic_completeness',
-  'replay',
-]);
-
-export const BOUNDARY_SUPPORT_WEAK_AREAS = new Set<AdaptiveWeakArea>([
-  'unsafe_boundaries',
-  'unsafe_boundary_pressure',
-  'low_semantic_completeness',
-  'support_dependency',
-  'replay',
-]);
-
-export type FeedbackPressure = {
-  isAnyPressure: boolean;
-  isRecoveryPressure: boolean;
-  reasons: string[];
-};
+export {
+  BOUNDARY_SUPPORT_WEAK_AREAS,
+  CHALLENGE_BLOCKING_WEAK_AREAS,
+  RECOVERY_WEAK_AREAS,
+  hasAny,
+} from './listeningTrainerWeakAreaSets';
+export {
+  assessFeedbackPressure,
+} from './listeningTrainerFeedbackPressure';
+export type {
+  FeedbackPressure,
+} from './listeningTrainerFeedbackPressure';
+export {
+  clamp,
+  clamp01,
+  finiteOr,
+  finitePositiveOr,
+  round2,
+} from './listeningTrainerPolicyMath';
 
 export type ListeningPrecisionPressure = {
   isAnyPressure: boolean;
@@ -50,32 +33,6 @@ export type ListeningPrecisionPressure = {
   score: number;
   reasons: string[];
 };
-
-export function assessFeedbackPressure(feedback: AdaptiveSessionFeedback | null): FeedbackPressure {
-  if (!feedback) return { isAnyPressure: false, isRecoveryPressure: false, reasons: [] };
-  const reasons: string[] = [];
-  const issues = feedback.playbackIssues;
-  if (feedback.verdict === 'regressed') reasons.push('latest session regressed');
-  if (issues.repeatedPhraseCount >= 3 || issues.maxRepeatCountForSinglePhrase >= 3) reasons.push('repeat pressure');
-  if (issues.skippedPhraseCount > 0) reasons.push('skipped phrases');
-  if (issues.outOfOrderAdvanceCount > 0 || issues.replayAdvancedPhraseCount > 0 || issues.phraseIndexJumpCount > 0) {
-    reasons.push('phrase order instability');
-  }
-  if (feedback.phraseStats.totalPhrases > 0) {
-    const completionRatio = feedback.phraseStats.completedPhrases / feedback.phraseStats.totalPhrases;
-    if (completionRatio < 0.75) reasons.push('low phrase completion');
-  }
-  const isRecoveryPressure = reasons.some((reason) =>
-    reason === 'latest session regressed' ||
-    reason === 'phrase order instability' ||
-    reason === 'low phrase completion'
-  );
-  return {
-    isAnyPressure: reasons.length > 0,
-    isRecoveryPressure,
-    reasons,
-  };
-}
 
 export function assessListeningPrecisionPressure(
   profile: InputLanguageBenchmarkMetrics,
@@ -125,34 +82,6 @@ export function assessListeningPrecisionPressure(
     score,
     reasons: mergedReasons,
   };
-}
-
-export function hasAny(values: Set<AdaptiveWeakArea>, targets: Set<AdaptiveWeakArea>): boolean {
-  for (const value of values) {
-    if (targets.has(value)) return true;
-  }
-  return false;
-}
-
-export function finiteOr(value: number | null | undefined, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-export function finitePositiveOr(value: number | null | undefined, fallback: number): number {
-  const next = finiteOr(value, fallback);
-  return next > 0 ? next : fallback;
-}
-
-export function clamp01(value: number): number {
-  return clamp(finiteOr(value, 0), 0, 1);
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-export function round2(value: number): number {
-  return Number(value.toFixed(2));
 }
 
 function computeListeningPrecisionPolicyScore(metrics: ListeningPrecisionMetrics): number {
