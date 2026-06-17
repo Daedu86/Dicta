@@ -1,27 +1,16 @@
 import { useMemo } from 'react';
 import type { InputMode } from '../../core/adaptive/types';
-import { createEmptyInputLanguageBenchmark } from '../../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import {
-  buildOpenRouterGenerationPrompt,
   type OpenRouterGeneratePromptSource,
 } from '../../core/adaptive/openRouterGenerationPrompt';
-import type { DictationScriptValidationResult } from '../../core/adaptive/dictationScriptValidation';
-import { selectLatestAdaptiveSessionFeedback } from '../../core/adaptive/sessionFeedback';
 import { isSupportedLanguage } from '../../core/languages';
-import {
-  buildOpenRouterModelOptions,
-  formatTrainingGenerationNotice,
-  getOpenRouterSlotLabel,
-  parseTimestampMs,
-  validateGeneratedScriptForTarget,
-} from './openRouterViewHelpers';
+import { buildOpenRouterModelOptions } from './openRouterViewHelpers';
 import {
   OPEN_ROUTER_GENERATE_DURATION_OPTIONS,
   OPEN_ROUTER_GENERATE_PROMPT_SOURCE_OPTIONS,
   OPEN_ROUTER_PROFILE_INPUT_MODE_OPTIONS,
   OPEN_ROUTER_PROFILE_LANGUAGE_OPTIONS,
   buildOpenRouterWorkspaceExportPayloads,
-  buildOpenRouterWorkspaceVariantPrompt,
 } from './openRouterWorkspaceRuntimeHelpers';
 import type {
   BenchmarkLanguageButton,
@@ -29,10 +18,11 @@ import type {
   OpenRouterGenerationSlots,
   OpenRouterModelSummary,
   OpenRouterWorkspaceProps,
-  TrainingGenerationNoticeView,
 } from './types';
 import type { ActiveOpenRouterJob } from '../../core/openRouterJobs';
 import { LOCAL_DEV_FEATURES_AVAILABLE } from './openRouterWorkspaceRuntimeConfig';
+import { useOpenRouterGeneratePromptDerivations } from './useOpenRouterGeneratePromptDerivations';
+import { useOpenRouterGenerateSlotDerivations } from './useOpenRouterGenerateSlotDerivations';
 
 type UseOpenRouterWorkspaceDerivationsArgs = Pick<
   OpenRouterWorkspaceProps,
@@ -96,80 +86,38 @@ export function useOpenRouterWorkspaceDerivations({
     [exportActiveSessionStatus, exportProfile, exportSessionFeedback, humanFeedbackDraft],
   );
 
-  const generateProfile =
-    benchmarks[generateInputMode]?.[generateLanguage] ?? createEmptyInputLanguageBenchmark(generateInputMode, generateLanguage);
-  const generateSessionFeedback = selectLatestAdaptiveSessionFeedback(
-    sessionFeedbackByInputLanguage[generateInputMode]?.[generateLanguage],
+  const {
+    generatePayloads,
+    generateHasBenchmarkData,
+    generateHasSessionFeedback,
+  } = useOpenRouterGeneratePromptDerivations({
+    benchmarks,
+    sessionFeedbackByInputLanguage,
     generateInputMode,
     generateLanguage,
-  );
-  const generateHasBenchmarkData = generateProfile.sampleCount > 0 || generateProfile.sessionCount > 0;
-  const generateHasSessionFeedback = Boolean(generateSessionFeedback);
-  const generatePayloads = useMemo(
-    () =>
-      buildOpenRouterGenerationPrompt({
-        profile: generateProfile,
-        sessionFeedback: generateSessionFeedback,
-        promptSource: generatePromptSource,
-        durationMinutes: generateDurationMinutes,
-        userIntent: 'auto',
-      }),
-    [generateDurationMinutes, generateProfile, generatePromptSource, generateSessionFeedback],
-  );
+    generatePromptSource,
+    generateDurationMinutes,
+  });
 
-  const activeGenerateSlot = generationSlots[activeGenerateSlotId];
   const activeGenerateSlotModel = defaultModel;
-  const activeGenerateSlotPrompt = useMemo(
-    () => buildOpenRouterWorkspaceVariantPrompt(activeGenerateSlotId, generatePayloads.prompt, activeGenerateSlot, activeGenerateSlotModel),
-    [activeGenerateSlotId, activeGenerateSlot, activeGenerateSlotModel, generatePayloads.prompt],
-  );
-  const activeGenerateSlotValidation = useMemo<DictationScriptValidationResult | null>(() => {
-    if (!activeGenerateSlot.json || !activeGenerateSlot.inputMode || !activeGenerateSlot.language) return null;
-    return validateGeneratedScriptForTarget(activeGenerateSlot.json, activeGenerateSlot.inputMode, activeGenerateSlot.language);
-  }, [activeGenerateSlot.inputMode, activeGenerateSlot.json, activeGenerateSlot.language]);
+  const {
+    activeGenerateSlot,
+    activeGenerateSlotPrompt,
+    activeGenerateSlotValidation,
+    activeGenerateSlotJob,
+    activeGenerateSlotJobNotice,
+    activeGenerateSlotBusy,
+  } = useOpenRouterGenerateSlotDerivations({
+    activeJobs,
+    jobNotifications,
+    generationNowMs,
+    generationSlots,
+    generateBusySlots,
+    activeGenerateSlotId,
+    activeGenerateSlotModel,
+    generatePrompt: generatePayloads.prompt,
+  });
 
-  const activeGenerateSlotJob = useMemo(
-    () =>
-      [...activeJobs]
-        .filter((job) => job.origin === 'custom-workspace' && job.customSlotId === activeGenerateSlotId)
-        .sort((a, b) => parseTimestampMs(b.startedAt, generationNowMs) - parseTimestampMs(a.startedAt, generationNowMs))[0] ?? null,
-    [activeGenerateSlotId, activeJobs, generationNowMs],
-  );
-  const activeGenerateSlotJobNotice = useMemo<TrainingGenerationNoticeView | null>(() => {
-    if (activeGenerateSlotJob) {
-      return formatTrainingGenerationNotice(
-        {
-          slotLabel: activeGenerateSlotJob.slotLabel,
-          displayLabel: activeGenerateSlotJob.slotLabel,
-          model: activeGenerateSlotJob.model,
-          startedAt: activeGenerateSlotJob.startedAt,
-          status: 'running',
-        },
-        generationNowMs,
-      );
-    }
-
-    const latestNotification =
-      Object.values(jobNotifications)
-        .filter((notification) => notification.slotLabel === getOpenRouterSlotLabel(activeGenerateSlotId))
-        .sort((a, b) => parseTimestampMs(b.startedAt, generationNowMs) - parseTimestampMs(a.startedAt, generationNowMs))[0] ?? null;
-    if (!latestNotification) return null;
-
-    return formatTrainingGenerationNotice(
-      {
-        slotLabel: latestNotification.slotLabel,
-        displayLabel: latestNotification.slotLabel,
-        model: latestNotification.model,
-        startedAt: latestNotification.startedAt,
-        status: latestNotification.status,
-        completedAt: latestNotification.completedAt,
-        error: latestNotification.error,
-      },
-      generationNowMs,
-    );
-  }, [activeGenerateSlotId, activeGenerateSlotJob, generationNowMs, jobNotifications]);
-
-  const activeGenerateSlotBusy = generateBusySlots[activeGenerateSlotId] || Boolean(activeGenerateSlotJob);
   const exportHasBenchmarkData = exportProfile.sampleCount > 0 || exportProfile.sessionCount > 0;
   const exportHasSessionFeedback = Boolean(exportSessionFeedback);
   const exportLanguage: BenchmarkLanguageButton = isSupportedLanguage(exportProfile.language) ? exportProfile.language : 'en';
