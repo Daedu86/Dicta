@@ -2,6 +2,7 @@ import { normalizeBenchmarkLanguage } from '../core/adaptive/AdaptiveInputLangua
 import { buildBrowserTtsChunkCompletionDebugUpdate } from './browserTtsAdaptiveSemanticDebug';
 import { completeBrowserTtsChunk } from './browserTtsChunkCompletion';
 import { scheduleBrowserTtsNextChunk } from './browserTtsNextChunkScheduler';
+import { resolveBrowserTtsPlaybackPauseMs } from './browserTtsPlaybackLoopPauseModel';
 import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlan';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 import { buildBrowserTtsPhraseCompletionTelemetry } from './browserTtsPhraseCompletionTelemetry';
@@ -74,14 +75,21 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   perfDiagnostics.recordTtsEnd(perfUtteranceId);
   if (cancelled) return;
 
+  const pauseResolution = resolveBrowserTtsPlaybackPauseMs({
+    pauseClass: chunk.v3Prosody?.pauseClass,
+    fallbackPauseMs: runtimeDecision.pauseAfterPhraseMs,
+  });
+  const effectiveV3PauseNow =
+    pauseResolution.source === 'v3-prosody' ? pauseResolution.pauseMs > 0 : effectivePauseNow;
+
   const chunkCompletion = completeBrowserTtsChunk({
     macroPhraseIndex,
     macroWordOffset,
     macroWordsLength,
     chunkStartWordIndex: chunk.startWordIndex,
     chunkWordCount: chunk.wordCount,
-    effectivePauseNow,
-    pauseAfterPhraseMs: runtimeDecision.pauseAfterPhraseMs,
+    effectivePauseNow: effectiveV3PauseNow,
+    pauseAfterPhraseMs: pauseResolution.pauseMs,
   });
 
   const { completesMacroPhrase } = chunkCompletion;
@@ -103,7 +111,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
 
       recordAdaptiveBenchmark(completionTelemetry, runtimeDecision, {
         actualPlaybackRate: rate,
-        actualPauseMs: 0,
+        actualPauseMs: chunkCompletion.pauseBeforeNextChunkMs,
         replayExecuted: false,
         actualBoundaryType: chunk.phraseBoundaryType,
         ttsEnvironment: browserTtsEnvironment,
