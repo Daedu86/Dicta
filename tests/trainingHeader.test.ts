@@ -31,6 +31,29 @@ afterEach(() => {
 });
 
 describe('TrainingHeader', () => {
+  it('renders the Home button and reports app return clicks', () => {
+    const backToApp = vi.fn();
+
+    act(() => {
+      root.render(createElement(TrainingHeader, {
+        selectedLanguage: 'de',
+        onChangeLanguage: vi.fn(),
+        onBackToApp: backToApp,
+      }));
+    });
+
+    const homeButton = host.querySelector<HTMLButtonElement>('.training-header-button');
+    expect(homeButton?.textContent).toBe('Home');
+    expect(homeButton?.getAttribute('aria-label')).toBe('Return to Dicta home');
+    expect(homeButton?.getAttribute('title')).toBe('Return to Dicta home');
+
+    act(() => {
+      homeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(backToApp).toHaveBeenCalledTimes(1);
+  });
+
   it('renders the five global language buttons and reports selections after the next task', () => {
     const changes = vi.fn();
 

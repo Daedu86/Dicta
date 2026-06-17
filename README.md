@@ -129,7 +129,7 @@ Set `VITE_DICTA_AUTH_REDIRECT_ORIGIN` to the public canonical Dicta app origin i
 
 Set `VITE_DICTA_APP_ORIGIN` to the public canonical Dicta app origin in production so in-app navigation from preview deployments returns to production instead of staying on the preview host.
 
-Set `VITE_DICTA_APP_ORIGIN` to the public canonical Dicta app origin in production so in-app training navigation such as the `Full app` button returns users to production instead of the current preview deployment.
+Set `VITE_DICTA_APP_ORIGIN` to the public canonical Dicta app origin in production so in-app training navigation such as the `Home` button returns users to production instead of the current preview deployment.
 
 Optional local-only verification vars:
 

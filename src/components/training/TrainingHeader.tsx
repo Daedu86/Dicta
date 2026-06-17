@@ -76,8 +76,14 @@ export function TrainingHeader({
           );
         })}
       </div>
-      <button type="button" className="secondary-button training-header-button" onClick={onBackToApp}>
-        Full app
+      <button
+        type="button"
+        className="secondary-button training-header-button"
+        onClick={onBackToApp}
+        aria-label="Return to Dicta home"
+        title="Return to Dicta home"
+      >
+        Home
       </button>
       <TrainingGenerationCard
         generationButtons={generationButtons}

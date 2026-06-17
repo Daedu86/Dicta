@@ -78,5 +78,10 @@ export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
   return {
     focusedTrainingProps,
     getActiveTypingLanguage,
+    stopFocusedTrainingPlayback: () => {
+      if (args.ttsStatus === 'playing') {
+        stopTtsPlayback();
+      }
+    },
   };
 }

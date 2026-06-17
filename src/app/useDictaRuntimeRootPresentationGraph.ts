@@ -1,5 +1,5 @@
 import { useDictaLocalStorageImportRuntime } from './useDictaLocalStorageImportRuntime';
-import { buildAppUrl } from './appOrigin';
+import { navigateAppHome } from './appOrigin';
 import { useDictaRootRouteCompositionRuntime } from './useDictaRootRouteCompositionRuntime';
 import { buildDictaRuntimeRootRouteCompositionInput } from './dictaRuntimeRootRouteCompositionInput';
 import type { DictaRuntimeRootAdaptiveWorkspaceGraph } from './useDictaRuntimeRootAdaptiveWorkspaceGraph';
@@ -40,12 +40,8 @@ export function useDictaRuntimeRootPresentationGraph({
   } = environment;
 
   const { sessions, setSessions, activeSessionId, setActiveSessionId } = sessionsState;
-  const { workspaceMode, showLeaderboardWorkspace, clearDashboardSession } = routing;
+  const { workspaceMode, navigateAppRoute, showLeaderboardWorkspace, clearDashboardSession } = routing;
   const { themeMode } = theme;
-  const onBackToApp = () => window.location.assign(buildAppUrl('/', {
-    configuredOrigin: import.meta.env.VITE_DICTA_APP_ORIGIN,
-    currentOrigin: window.location.origin,
-  }));
 
   const {
     syncConfig,
@@ -74,7 +70,20 @@ export function useDictaRuntimeRootPresentationGraph({
   const { workspaceSessionRuntime } = adaptiveWorkspaceGraph;
   const { pendingSessions, deleteSession, openWorkspaceForSession } = workspaceSessionRuntime;
 
-  const { focusedTrainingProps } = focusedTrainingGraph;
+  const { focusedTrainingProps, stopFocusedTrainingPlayback } = focusedTrainingGraph;
+
+  const onBackToApp = () => navigateAppHome(
+    {
+      configuredOrigin: import.meta.env.VITE_DICTA_APP_ORIGIN,
+      currentOrigin: window.location.origin,
+    },
+    {
+      assignLocation: (href) => window.location.assign(href),
+      navigateAppRoute,
+      showLeaderboardWorkspace,
+      stopFocusedTrainingPlayback,
+    },
+  );
 
   const { importDictaLocalStorageSnapshot } = useDictaLocalStorageImportRuntime({
     setSessions,
