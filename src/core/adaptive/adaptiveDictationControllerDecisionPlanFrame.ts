@@ -100,6 +100,7 @@ export function buildAdaptiveDecisionFramePlan({
     playbackRate: replayFallback.playbackRate,
     progressGap,
     stableRecoveryConfirmed,
+    supportsPhraseReplay,
   };
 }
 
