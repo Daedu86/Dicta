@@ -1,27 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createEmptyInputLanguageBenchmark,
   getBrowserTtsDeBenchmarkRejectionReason,
   isValidBrowserTtsDeBenchmarkSample,
-  updateInputLanguageBenchmark,
 } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import {
-  decision,
-  environmentA,
-  environmentB,
-  live,
-} from './helpers/adaptiveBenchmarkFixtures';
+  BENCHMARK_LATER_TIMESTAMP_MS,
+  BENCHMARK_TIMESTAMP_MS,
+  emptyBrowserTtsBenchmark,
+  expectEnvironmentHistorySummary,
+  expectLatestRejectionReason,
+  expectLatestSampleUnflagged,
+  updateBenchmark,
+  updateEnglishBrowserTtsBenchmark,
+  updateGermanBrowserTtsBenchmark,
+  updateWithEnvironmentHistory,
+} from './adaptiveBenchmarkServiceTestUtils';
 
 describe('AdaptiveInputLanguageBenchmarkService', () => {
   it('resets profile state when inputMode/language changes', () => {
-    const current = createEmptyInputLanguageBenchmark('browser-tts', 'de');
-    const updated = updateInputLanguageBenchmark({
-      current,
-      live: live({ inputMode: 'browser-tts', language: 'en' }),
-      decision: decision(),
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+    const updated = updateBenchmark({
+      current: emptyBrowserTtsBenchmark('de'),
+      liveOverrides: { inputMode: 'browser-tts', language: 'en' },
       sessionId: 's1',
-      event: 'phrase_completed',
     });
 
     expect(updated.inputMode).toBe('browser-tts');
@@ -32,25 +32,23 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
   });
 
   it('filters unsafe Browser TTS German samples without blocking neighboring languages', () => {
-    const unsafeGerman = updateInputLanguageBenchmark({
-      current: createEmptyInputLanguageBenchmark('browser-tts', 'de'),
-      live: live({ language: 'de', phraseBoundaryType: 'unsafe', semanticCompleteness: 0.4 }),
-      decision: decision(),
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+    const unsafeGerman = updateGermanBrowserTtsBenchmark({
+      liveOverrides: {
+        phraseBoundaryType: 'unsafe',
+        semanticCompleteness: 0.4,
+      },
       sessionId: 's-de',
       phraseIndex: 0,
       totalSemanticPhrases: 2,
-      event: 'phrase_completed',
     });
-    const unsafeEnglish = updateInputLanguageBenchmark({
-      current: createEmptyInputLanguageBenchmark('browser-tts', 'en'),
-      live: live({ language: 'en', phraseBoundaryType: 'unsafe', semanticCompleteness: 0.4 }),
-      decision: decision(),
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+    const unsafeEnglish = updateEnglishBrowserTtsBenchmark({
+      liveOverrides: {
+        phraseBoundaryType: 'unsafe',
+        semanticCompleteness: 0.4,
+      },
       sessionId: 's-en',
       phraseIndex: 0,
       totalSemanticPhrases: 2,
-      event: 'phrase_completed',
     });
 
     expect(unsafeGerman.sampleCount).toBe(0);
@@ -60,15 +58,14 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
   });
 
   it('reports Browser TTS German rejection reasons for stale or unsafe samples', () => {
-    const profile = updateInputLanguageBenchmark({
-      current: createEmptyInputLanguageBenchmark('browser-tts', 'de'),
-      live: live({ language: 'de', phraseBoundaryType: 'unsafe', semanticCompleteness: 0.4 }),
-      decision: decision(),
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+    const profile = updateGermanBrowserTtsBenchmark({
+      liveOverrides: {
+        phraseBoundaryType: 'unsafe',
+        semanticCompleteness: 0.4,
+      },
       sessionId: 's-de',
       phraseIndex: 0,
       totalSemanticPhrases: 2,
-      event: 'phrase_completed',
     });
     const point = profile.timeline[0];
 
@@ -78,119 +75,77 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
   });
 
   it('keeps accepted browser-tts/de phrase_completed samples unflagged', () => {
-    const profile = updateInputLanguageBenchmark({
-      current: createEmptyInputLanguageBenchmark('browser-tts', 'de'),
-      live: live({
-        language: 'de',
+    const profile = updateGermanBrowserTtsBenchmark({
+      liveOverrides: {
         phraseBoundaryType: 'sentence',
         semanticCompleteness: 0.92,
-      }),
-      decision: decision(),
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+      },
       sessionId: 's-de-accepted',
       phraseIndex: 1,
       totalSemanticPhrases: 3,
-      event: 'phrase_completed',
     });
 
-    expect(profile.timeline.at(-1)?.benchmarkRejectionReason).toBeUndefined();
+    expectLatestSampleUnflagged(profile);
   });
 
   it('flags non-scoring browser-tts/de pause events and unsafe boundaries', () => {
-    const pauseProfile = updateInputLanguageBenchmark({
-      current: createEmptyInputLanguageBenchmark('browser-tts', 'de'),
-      live: live({
-        language: 'de',
+    const pauseProfile = updateGermanBrowserTtsBenchmark({
+      liveOverrides: {
         phraseBoundaryType: 'sentence',
         semanticCompleteness: 0.92,
-      }),
-      decision: decision({ shouldPauseNow: true }),
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+      },
+      decisionOverrides: { shouldPauseNow: true },
       sessionId: 's-de-pause',
       phraseIndex: 1,
       totalSemanticPhrases: 3,
       event: 'pause',
     });
-    const unsafeProfile = updateInputLanguageBenchmark({
+    const unsafeProfile = updateGermanBrowserTtsBenchmark({
       current: pauseProfile,
-      live: live({
-        language: 'de',
+      liveOverrides: {
         phraseBoundaryType: 'unsafe',
         semanticCompleteness: 0.9,
-      }),
-      decision: decision(),
-      timestampMs: Date.parse('2026-06-01T12:05:00Z'),
+      },
+      timestampMs: BENCHMARK_LATER_TIMESTAMP_MS,
       sessionId: 's-de-unsafe',
       phraseIndex: 1,
       totalSemanticPhrases: 3,
-      event: 'phrase_completed',
     });
 
-    expect(pauseProfile.timeline.at(-1)?.benchmarkRejectionReason).toBe('event_not_scoring');
-    expect(unsafeProfile.timeline.at(-1)?.benchmarkRejectionReason).toBe('unsafe_phrase_boundary');
+    expectLatestRejectionReason(pauseProfile, 'event_not_scoring');
+    expectLatestRejectionReason(unsafeProfile, 'unsafe_phrase_boundary');
   });
 
   it('flags browser-tts/de raw lag out-of-range samples and leaves browser-tts/en unaffected', () => {
-    const outOfRangeProfile = updateInputLanguageBenchmark({
-      current: createEmptyInputLanguageBenchmark('browser-tts', 'de'),
-      live: live({
-        language: 'de',
+    const outOfRangeProfile = updateGermanBrowserTtsBenchmark({
+      liveOverrides: {
         rawLagSec: 9.5,
         lagSec: 9.5,
         stableLagSec: 9.5,
         phraseBoundaryType: 'sentence',
         semanticCompleteness: 0.92,
-      }),
-      decision: decision(),
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+      },
       sessionId: 's-de-range',
       phraseIndex: 1,
       totalSemanticPhrases: 3,
-      event: 'phrase_completed',
     });
-    const englishProfile = updateInputLanguageBenchmark({
-      current: createEmptyInputLanguageBenchmark('browser-tts', 'en'),
-      live: live({
-        language: 'en',
+    const englishProfile = updateEnglishBrowserTtsBenchmark({
+      liveOverrides: {
         phraseBoundaryType: 'sentence',
         semanticCompleteness: 0.92,
-      }),
-      decision: decision(),
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
+      },
+      timestampMs: BENCHMARK_TIMESTAMP_MS,
       sessionId: 's-en-pause',
       phraseIndex: 1,
       totalSemanticPhrases: 3,
       event: 'pause',
     });
 
-    expect(outOfRangeProfile.timeline.at(-1)?.benchmarkRejectionReason).toBe('rawLagSec_out_of_range');
-    expect(englishProfile.timeline.at(-1)?.benchmarkRejectionReason).toBeUndefined();
+    expectLatestRejectionReason(outOfRangeProfile, 'rawLagSec_out_of_range');
+    expectLatestSampleUnflagged(englishProfile);
   });
 
   it('tracks Browser TTS environment ids on timeline samples and summarizes environment history', () => {
-    const first = updateInputLanguageBenchmark({
-      current: createEmptyInputLanguageBenchmark('browser-tts', 'en'),
-      live: live({ language: 'en', phraseId: 'phrase-1' }),
-      decision: decision(),
-      ttsEnvironment: environmentA,
-      timestampMs: Date.parse('2026-06-01T12:00:00Z'),
-      sessionId: 's-a',
-      event: 'phrase_completed',
-    });
-    const second = updateInputLanguageBenchmark({
-      current: first,
-      live: live({ language: 'en', phraseId: 'phrase-2' }),
-      decision: decision(),
-      ttsEnvironment: environmentB,
-      timestampMs: Date.parse('2026-06-01T12:05:00Z'),
-      sessionId: 's-b',
-      event: 'phrase_completed',
-    });
-
-    expect(second.ttsEnvironment).toEqual(environmentB);
-    expect(second.environmentChanged).toBe(true);
-    expect(second.ttsEnvironmentHistory).toHaveLength(2);
-    expect(second.timeline.every((point) => typeof point.ttsEnvironmentId === 'string')).toBe(true);
-    expect(second.ttsEnvironmentHistory?.map((entry) => entry.sampleCount)).toEqual([1, 1]);
+    expectEnvironmentHistorySummary(updateWithEnvironmentHistory());
   });
 });
