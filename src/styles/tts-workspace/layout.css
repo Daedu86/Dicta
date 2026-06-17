@@ -1,0 +1,40 @@
+.workspace-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: stretch;
+}
+
+.workspace-column {
+  min-width: 0;
+  width: auto;
+  display: grid;
+}
+
+.workspace-column-primary {
+  width: auto;
+}
+
+.workspace-panel {
+  height: 100%;
+}
+
+.tts-workspace {
+  display: grid;
+  gap: 1rem;
+  min-height: 640px;
+}
+
+.tts-workspace-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.tts-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 0.85rem;
+  align-items: stretch;
+}
