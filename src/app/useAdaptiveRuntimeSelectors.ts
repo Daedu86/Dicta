@@ -1,8 +1,8 @@
 import { useCallback, type MutableRefObject } from 'react';
-import { AdaptiveDictationController } from '../core/adaptive/AdaptiveDictationController';
+import type { AdaptiveDictationController } from '../core/adaptive/AdaptiveDictationController';
 import { createEmptyInputLanguageBenchmark } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import type { InputLanguageBenchmarkMetrics, InputMode, LanguageCode } from '../core/adaptive/types';
-import { HistoricalPerformanceService } from '../core/history/HistoricalPerformanceService';
+import type { HistoricalPerformanceService } from '../core/history/HistoricalPerformanceService';
 import type { AdaptiveBenchmarksByInputLanguage } from '../components/openrouter/types';
 import {
   getAdaptiveControllerForScope,
