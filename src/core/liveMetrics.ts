@@ -82,9 +82,14 @@ export function buildRangeSummaryForLanguage(
     next.setHours(23, 59, 59, 999);
     return next;
   };
-  const rangeStart = startOfDay(new Date(today));
-  rangeStart.setDate(rangeStart.getDate() - (windowDays - 1));
-  const rangeEnd = endOfDay(today);
+  const isRollingRange = range === 'month';
+  const rangeStart = isRollingRange ? new Date(today) : startOfDay(new Date(today));
+  if (isRollingRange) {
+    rangeStart.setDate(rangeStart.getDate() - windowDays);
+  } else {
+    rangeStart.setDate(rangeStart.getDate() - (windowDays - 1));
+  }
+  const rangeEnd = isRollingRange ? new Date(today) : endOfDay(today);
   const isWithinRange = (value: string): boolean => {
     const at = new Date(value).getTime();
     return at >= rangeStart.getTime() && at <= rangeEnd.getTime();
@@ -105,9 +110,16 @@ export function buildRangeSummaryForLanguage(
     .filter((value): value is number => value !== null)
     .reduce((sum, value) => sum + value, 0);
 
-  const days = Array.from({ length: windowDays }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - (windowDays - 1 - index));
+  const chartStart = isRollingRange ? startOfDay(rangeStart) : startOfDay(new Date(today));
+  if (!isRollingRange) {
+    chartStart.setDate(chartStart.getDate() - (windowDays - 1));
+  }
+  const chartEnd = isRollingRange ? startOfDay(rangeEnd) : startOfDay(today);
+  const chartDays = Math.max(1, Math.round((chartEnd.getTime() - chartStart.getTime()) / 86_400_000) + 1);
+
+  const days = Array.from({ length: chartDays }, (_, index) => {
+    const date = new Date(chartStart);
+    date.setDate(chartStart.getDate() + index);
     return {
       label: windowDays <= 7 ? date.toLocaleDateString(undefined, { weekday: 'short' }) : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       count: sessionsInRange.filter((session) => isSameDay(session.updatedAt, date)).length,
