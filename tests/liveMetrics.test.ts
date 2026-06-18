@@ -27,6 +27,26 @@ function makeSession(id: string, updatedAt: string, ttsLanguage: SessionForMetri
 }
 
 describe('buildRangeSummaryForLanguage', () => {
+  it('uses a rolling 10-day window for mid-range metrics', () => {
+    const today = new Date('2026-06-18T15:34:00.000Z');
+
+    const summary = buildRangeSummaryForLanguage(
+      [
+        makeSession('inside-ten-days', '2026-06-08T16:31:26.471Z'),
+        makeSession('outside-ten-days', '2026-06-08T15:33:59.000Z'),
+        makeSession('today-session', '2026-06-18T14:33:56.527Z'),
+      ],
+      'de',
+      'tenDays',
+      today,
+    );
+
+    expect(summary.sessionsInRange.map((session) => session.id).sort()).toEqual([
+      'inside-ten-days',
+      'today-session',
+    ]);
+  });
+
   it('uses a rolling 20-day window for recent metrics', () => {
     const today = new Date('2026-06-18T15:34:00.000Z');
 
@@ -38,7 +58,7 @@ describe('buildRangeSummaryForLanguage', () => {
         makeSession('wrong-language', '2026-06-18T14:33:56.527Z', 'es'),
       ],
       'de',
-      'month',
+      'twentyDays',
       today,
     );
 
@@ -48,7 +68,8 @@ describe('buildRangeSummaryForLanguage', () => {
     ]);
   });
 
-  it('labels the compatibility month range as 20 days', () => {
+  it('labels the current and compatibility 20-day ranges consistently', () => {
+    expect(rangeLabel('twentyDays')).toBe('20 days');
     expect(rangeLabel('month')).toBe('20 days');
   });
 });

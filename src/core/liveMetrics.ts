@@ -3,9 +3,10 @@ import type { SupportedLanguage } from './languages';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from './sessionInputModes';
 
 export type MetricsLanguageView = SupportedLanguage;
-export type MetricsRangeView = 'today' | 'week' | 'twoWeeks' | 'threeWeeks' | 'month';
+export type MetricsRangeView = 'today' | 'tenDays' | 'twentyDays' | 'week' | 'twoWeeks' | 'threeWeeks' | 'month';
 export type SessionInputMode = string;
 export const LIVE_METRICS_RECENT_WINDOW_DAYS = 20 as const;
+export const LIVE_METRICS_MID_WINDOW_DAYS = 10 as const;
 
 export type SessionLanguageLike = {
   inputMode: SessionInputMode;
@@ -83,7 +84,7 @@ export function buildRangeSummaryForLanguage(
     next.setHours(23, 59, 59, 999);
     return next;
   };
-  const isRollingRange = range === 'month';
+  const isRollingRange = range === 'tenDays' || range === 'twentyDays' || range === 'month';
   const rangeStart = isRollingRange ? new Date(today) : startOfDay(new Date(today));
   if (isRollingRange) {
     rangeStart.setDate(rangeStart.getDate() - windowDays);
@@ -141,6 +142,8 @@ export function buildRangeSummaryForLanguage(
 
 export function rangeLabel(range: MetricsRangeView): string {
   if (range === 'today') return 'Today';
+  if (range === 'tenDays') return '10 days';
+  if (range === 'twentyDays') return '20 days';
   if (range === 'week') return 'Week';
   if (range === 'twoWeeks') return '2 Weeks';
   if (range === 'threeWeeks') return '3 Weeks';
@@ -149,6 +152,8 @@ export function rangeLabel(range: MetricsRangeView): string {
 
 function rangeWindowDays(range: MetricsRangeView): number {
   if (range === 'today') return 1;
+  if (range === 'tenDays') return LIVE_METRICS_MID_WINDOW_DAYS;
+  if (range === 'twentyDays') return LIVE_METRICS_RECENT_WINDOW_DAYS;
   if (range === 'week') return 7;
   if (range === 'twoWeeks') return 14;
   if (range === 'threeWeeks') return 21;

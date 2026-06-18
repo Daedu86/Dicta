@@ -117,7 +117,7 @@ Core TypeScript domain:
 - `sessionFeedback` and `benchmarkJson`: exports and diagnostics.
 - `HistoricalPerformanceService`: prior-session profile input.
 - `supabaseSync` and `profileScopedStorage`: profile-aware persistence.
-- `liveMetrics`: today, week, two-week, three-week, and 20-day recent views.
+- `liveMetrics`: today, 10-day, and 20-day recent views.
 
 Server routes:
 

@@ -60,6 +60,18 @@ describe('LiveMetricsDock', () => {
     expect(headingRow?.querySelector('.live-metrics-input-tab')).toBeNull();
     expect(headingRow?.querySelector('.live-metrics-report-button')).toBeNull();
   });
+
+  it('renders only the three current live metrics range buttons', () => {
+    act(() => {
+      root.render(createElement(LiveMetricsDock, createProps({ metricsRangeView: 'twentyDays' })));
+    });
+
+    const rangeButtons = Array.from(host.querySelectorAll('.live-metrics-range-tab'));
+
+    expect(rangeButtons).toHaveLength(3);
+    expect(rangeButtons.map((button) => button.textContent)).toEqual(['Today', '10 days', '20 days']);
+    expect(rangeButtons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true']);
+  });
 });
 
 function createProps(overrides: Partial<LiveMetricsDockProps> = {}): LiveMetricsDockProps {

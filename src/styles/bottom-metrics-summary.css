@@ -47,8 +47,9 @@
 }
 
 .live-metrics-range-tabs {
-  display: inline-grid;
-  grid-template-columns: repeat(5, minmax(0, auto));
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: 0.35rem;
   margin-bottom: 0.45rem;
 }
@@ -64,6 +65,7 @@
   border: 1px solid #bfd2e8;
   background: #eef4fb;
   color: #274767;
+  white-space: nowrap;
 }
 
 .live-metrics-range-tab-active {

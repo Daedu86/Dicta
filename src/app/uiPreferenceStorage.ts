@@ -7,7 +7,7 @@ const INSIGHTS_COLLAPSED_KEY = 'dicta.insightsCollapsed.v1';
 const LEADERBOARD_LANGUAGE_KEY = 'dicta.leaderboardLanguage.v1';
 const ADMIN_LANGUAGE_KEY = 'dicta.adminLanguage.v1';
 
-const METRICS_RANGE_VALUES: MetricsRangeView[] = ['today', 'week', 'twoWeeks', 'threeWeeks', 'month'];
+const METRICS_RANGE_VALUES: MetricsRangeView[] = ['today', 'tenDays', 'twentyDays'];
 
 function canUseLocalStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -43,7 +43,10 @@ export function loadMetricsRangeView(): MetricsRangeView {
   }
 
   const saved = window.localStorage.getItem(LIVE_METRICS_RANGE_KEY);
-  return METRICS_RANGE_VALUES.includes(saved as MetricsRangeView) ? (saved as MetricsRangeView) : 'today';
+  if (METRICS_RANGE_VALUES.includes(saved as MetricsRangeView)) return saved as MetricsRangeView;
+  if (saved === 'week' || saved === 'twoWeeks') return 'tenDays';
+  if (saved === 'threeWeeks' || saved === 'month') return 'twentyDays';
+  return 'today';
 }
 
 export function persistMetricsRangeView(metricsRangeView: MetricsRangeView): void {

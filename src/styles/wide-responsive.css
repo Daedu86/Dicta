@@ -101,10 +101,6 @@
     justify-self: start;
   }
 
-  .live-metrics-range-tabs {
-    grid-template-columns: repeat(3, minmax(0, auto));
-  }
-
   .live-metrics-input-tabs {
     grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
     width: min(100%, 320px);
