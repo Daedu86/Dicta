@@ -9,7 +9,6 @@ export type AppShellHeaderProps = {
   showOpenRouterStatus: boolean;
   openRouterModelIsSet: boolean;
   openRouterModelTitle: string;
-  openRouterModelLabel: string;
   buildInfoTitle: string;
   buildInfoLabel: string;
   showAdminButton: boolean;
@@ -35,7 +34,6 @@ export function AppShellHeader({
   showOpenRouterStatus,
   openRouterModelIsSet,
   openRouterModelTitle,
-  openRouterModelLabel,
   buildInfoTitle,
   buildInfoLabel,
   showAdminButton,
@@ -82,10 +80,11 @@ export function AppShellHeader({
             <div className="brand-status-row">
               <span
                 className={`brand-llm-status ${openRouterModelIsSet ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
+                aria-label={openRouterModelTitle}
                 title={openRouterModelTitle}
               >
-                <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
-                <span className="brand-llm-status-text">{openRouterModelLabel}</span>
+                <span className="brand-llm-status-label">LLM</span>
+                <span className="brand-llm-status-led" aria-hidden="true" />
               </span>
             </div>
           ) : null}

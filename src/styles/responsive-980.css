@@ -30,7 +30,6 @@
     max-width: 100%;
   }
 
-  .brand-llm-status-text,
   .brand-build-status-text {
     white-space: normal;
     overflow-wrap: anywhere;

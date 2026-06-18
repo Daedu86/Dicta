@@ -16,47 +16,52 @@
 .brand-llm-status {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  min-height: 34px;
+  gap: 0.5rem;
+  min-height: 28px;
   width: fit-content;
-  max-width: min(520px, 100%);
-  padding: 0.25rem 0.65rem 0.25rem 0.35rem;
+  max-width: 100%;
+  padding: 0.22rem 0.55rem 0.22rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid #2d4f74;
-  background: rgba(7, 20, 35, 0.88);
-  color: #a7c3e6;
-  font-size: 0.78rem;
+  border: 1px solid rgba(77, 99, 125, 0.48);
+  background: rgba(7, 20, 35, 0.72);
+  color: #d8e6f7;
+  font-size: 0.72rem;
+  font-weight: 900;
   line-height: 1.2;
+  text-transform: uppercase;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .brand-llm-status-set {
-  border-color: #275a3f;
-  color: #a9efc7;
+  border-color: rgba(43, 186, 109, 0.56);
 }
 
 .brand-llm-status-unset {
-  border-color: #71553a;
-  color: #f4c28b;
+  border-color: rgba(232, 79, 79, 0.62);
 }
 
-.brand-llm-status-icon {
+.brand-llm-status-label {
   display: inline-grid;
   place-items: center;
-  min-width: 30px;
-  min-height: 24px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: 0.65rem;
-  font-weight: 900;
-  letter-spacing: 0;
+  min-width: 2rem;
 }
 
-.brand-llm-status-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.brand-llm-status-led {
+  width: 0.62rem;
+  height: 0.62rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #e84f4f;
+  box-shadow:
+    0 0 0 2px rgba(232, 79, 79, 0.18),
+    0 0 10px rgba(232, 79, 79, 0.56);
+}
+
+.brand-llm-status-set .brand-llm-status-led {
+  background: #2bba6d;
+  box-shadow:
+    0 0 0 2px rgba(43, 186, 109, 0.18),
+    0 0 10px rgba(43, 186, 109, 0.62);
 }
 
 .brand-build-status {

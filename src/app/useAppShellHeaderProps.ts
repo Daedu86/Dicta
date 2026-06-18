@@ -45,14 +45,16 @@ export function useAppShellHeaderProps({
   onSignOut,
 }: UseAppShellHeaderPropsArgs): AppShellHeaderProps {
   return useMemo(() => {
-    const openRouterModel = effectiveOpenRouterDefaultModel.trim();
+    const assignedOpenRouterModel = appProfile?.role === 'member'
+      ? appProfile.assignedOpenRouterModel?.trim() ?? ''
+      : '';
+    const openRouterModel = assignedOpenRouterModel || (appProfile?.role === 'member' ? '' : effectiveOpenRouterDefaultModel.trim());
 
     return {
       themeMode,
       showOpenRouterStatus,
       openRouterModelIsSet: Boolean(openRouterModel),
-      openRouterModelTitle: openRouterModel ? `Selected OpenRouter model: ${openRouterModel}` : 'No OpenRouter model selected',
-      openRouterModelLabel: openRouterModel ? `Model set: ${openRouterModel}` : 'No model set',
+      openRouterModelTitle: openRouterModel ? `LLM assigned: ${openRouterModel}` : 'LLM not assigned',
       buildInfoTitle,
       buildInfoLabel,
       showAdminButton,

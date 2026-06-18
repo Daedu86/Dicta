@@ -25,7 +25,6 @@ type ThemeMode = AppShellHeaderPropsArgs['themeMode'];
 type UseAppShellHeaderRuntimeArgs = {
   themeMode: ThemeMode;
   isOnline: boolean;
-  openRouterAccessAllowed: boolean;
   effectiveOpenRouterDefaultModel: AppShellHeaderPropsArgs['effectiveOpenRouterDefaultModel'];
   isCurrentProfileAdmin: boolean;
   authRequired: boolean;
@@ -44,7 +43,6 @@ type UseAppShellHeaderRuntimeArgs = {
 export function useAppShellHeaderRuntime({
   themeMode,
   isOnline,
-  openRouterAccessAllowed,
   effectiveOpenRouterDefaultModel,
   isCurrentProfileAdmin,
   authRequired,
@@ -71,7 +69,7 @@ export function useAppShellHeaderRuntime({
 
   const appShellHeaderProps = useAppShellHeaderProps({
     themeMode,
-    showOpenRouterStatus: openRouterAccessAllowed,
+    showOpenRouterStatus: !authRequired || Boolean(appProfile),
     effectiveOpenRouterDefaultModel,
     buildInfoTitle: DICTA_BUILD_INFO_TITLE,
     buildInfoLabel: DICTA_BUILD_INFO_LABEL,
