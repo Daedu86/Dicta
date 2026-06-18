@@ -1,7 +1,4 @@
 .training-header {
-  position: sticky;
-  top: 0.5rem;
-  z-index: 30;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
