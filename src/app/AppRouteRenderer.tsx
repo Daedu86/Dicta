@@ -200,6 +200,7 @@ export function AppRouteRenderer({
             openRouterAccessMessage={openRouterAccessMessage}
             openRouterWorkspaceProps={openRouterWorkspaceProps}
             canAccessAdminWorkspace={canAccessAdminWorkspace}
+            adaptiveReportButtonProps={liveMetricsDockProps}
             adminWorkspaceProps={adminWorkspaceProps}
           />
         </section>

@@ -6,11 +6,8 @@ type LiveMetricsDockHeaderProps = Pick<
   | 'insightsCollapsed'
   | 'metricsLanguageView'
   | 'trend'
-  | 'insightsDiagnosticInputMode'
   | 'onChangeMetricsLanguageView'
-  | 'onCopyInsightsDiagnosticPackage'
   | 'onToggleInsightsCollapsed'
-  | 'formatInputModeLabel'
 >;
 
 function formatTrendLabel(trend: LiveMetricsDockProps['trend']): string {
@@ -23,11 +20,8 @@ export function LiveMetricsDockHeader({
   insightsCollapsed,
   metricsLanguageView,
   trend,
-  insightsDiagnosticInputMode,
   onChangeMetricsLanguageView,
-  onCopyInsightsDiagnosticPackage,
   onToggleInsightsCollapsed,
-  formatInputModeLabel,
 }: LiveMetricsDockHeaderProps) {
   return (
     <div className="metrics-header bottom-metrics-header live-metrics-section live-metrics-section-header">
@@ -51,14 +45,6 @@ export function LiveMetricsDockHeader({
           ))}
         </div>
         <div className="live-metrics-action-group">
-          <button
-            type="button"
-            className="secondary-button live-metrics-report-button"
-            onClick={() => void onCopyInsightsDiagnosticPackage()}
-            title={`Copy one structured adaptive report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
-          >
-            Copy full adaptive report
-          </button>
           <button
             type="button"
             className="secondary-button live-metrics-collapse-button"

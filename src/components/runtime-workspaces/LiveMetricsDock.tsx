@@ -11,7 +11,6 @@ export function LiveMetricsDock({
   metricsLanguageView,
   metricsRangeView,
   trend,
-  insightsDiagnosticInputMode,
   insightsDiagnosticMessage,
   insightsDiagnosticFallbackReport,
   lastSessionForLanguage,
@@ -19,10 +18,8 @@ export function LiveMetricsDock({
   languageTodaySummary,
   onChangeMetricsLanguageView,
   onChangeMetricsRangeView,
-  onCopyInsightsDiagnosticPackage,
   onToggleInsightsCollapsed,
   onSelectInsightsDiagnosticFallbackReport,
-  formatInputModeLabel,
   formatSessionInputMode,
   formatDuration,
   formatSessionDate,
@@ -35,11 +32,8 @@ export function LiveMetricsDock({
             insightsCollapsed={insightsCollapsed}
             metricsLanguageView={metricsLanguageView}
             trend={trend}
-            insightsDiagnosticInputMode={insightsDiagnosticInputMode}
             onChangeMetricsLanguageView={onChangeMetricsLanguageView}
-            onCopyInsightsDiagnosticPackage={onCopyInsightsDiagnosticPackage}
             onToggleInsightsCollapsed={onToggleInsightsCollapsed}
-            formatInputModeLabel={formatInputModeLabel}
           />
           <LiveMetricsDiagnosticMessage message={insightsDiagnosticMessage} />
           <LiveMetricsDiagnosticFallback

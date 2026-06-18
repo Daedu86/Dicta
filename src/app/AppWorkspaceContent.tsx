@@ -5,9 +5,18 @@ import { OpenRouterWorkspace } from '../components/openrouter/OpenRouterWorkspac
 import { SessionDashboard } from '../components/session-dashboard/SessionDashboard';
 import { AdaptiveBenchmarkSection } from '../components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
 import { AdaptiveAdvancedDiagnostics } from '../components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
+import type { LiveMetricsDockProps } from '../components/runtime-workspaces/LiveMetricsDock';
 import { AdminWorkspace, type AdminWorkspaceProps } from '../components/admin/AdminWorkspace';
 import type { StoredSession } from './sessionTypes';
 import type { WorkspaceMode } from './useWorkspaceRouting';
+
+type AdaptiveReportButtonProps = Pick<
+  LiveMetricsDockProps,
+  | 'metricsLanguageView'
+  | 'insightsDiagnosticInputMode'
+  | 'onCopyInsightsDiagnosticPackage'
+  | 'formatInputModeLabel'
+>;
 
 type AppWorkspaceContentProps = {
   pendingSessions: StoredSession[];
@@ -23,6 +32,7 @@ type AppWorkspaceContentProps = {
   onBackToTraining: () => void;
   adaptiveAdvancedDiagnosticsProps: ComponentProps<typeof AdaptiveAdvancedDiagnostics>;
   adaptiveBenchmarkSectionProps: ComponentProps<typeof AdaptiveBenchmarkSection>;
+  adaptiveReportButtonProps: AdaptiveReportButtonProps;
   openRouterAccessState: OpenRouterAccessState;
   openRouterAccessMessage: string;
   openRouterWorkspaceProps: ComponentProps<typeof OpenRouterWorkspace>;
@@ -44,6 +54,7 @@ export function AppWorkspaceContent({
   onBackToTraining,
   adaptiveAdvancedDiagnosticsProps,
   adaptiveBenchmarkSectionProps,
+  adaptiveReportButtonProps,
   openRouterAccessState,
   openRouterAccessMessage,
   openRouterWorkspaceProps,
@@ -76,6 +87,14 @@ export function AppWorkspaceContent({
                 <h2>Adaptive Pace Layer</h2>
               </div>
               <div className="dashboard-header-actions">
+                <button
+                  type="button"
+                  className="secondary-button live-metrics-report-button"
+                  onClick={() => void adaptiveReportButtonProps.onCopyInsightsDiagnosticPackage()}
+                  title={`Copy one structured adaptive report for ${adaptiveReportButtonProps.formatInputModeLabel(adaptiveReportButtonProps.insightsDiagnosticInputMode)} / ${adaptiveReportButtonProps.metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
+                >
+                  Copy full adaptive report
+                </button>
                 <button
                   type="button"
                   className="secondary-button"
