@@ -76,18 +76,6 @@ export function AppShellHeader({
               {sessionQuotaBlocked ? ' · contact admin' : ''}
             </p>
           ) : null}
-          {showOpenRouterStatus ? (
-            <div className="brand-status-row">
-              <span
-                className={`brand-llm-status ${openRouterModelIsSet ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
-                aria-label={openRouterModelTitle}
-                title={openRouterModelTitle}
-              >
-                <span className="brand-llm-status-label">LLM</span>
-                <span className="brand-llm-status-led" aria-hidden="true" />
-              </span>
-            </div>
-          ) : null}
         </div>
       </div>
       <div className="brand-header-actions">
@@ -144,6 +132,16 @@ export function AppShellHeader({
         >
           Sign out
         </button>
+        {showOpenRouterStatus ? (
+          <span
+            className={`brand-llm-status ${openRouterModelIsSet ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
+            aria-label={openRouterModelTitle}
+            title={openRouterModelTitle}
+          >
+            <span className="brand-llm-status-label">LLM</span>
+            <span className="brand-llm-status-led" aria-hidden="true" />
+          </span>
+        ) : null}
         <span className={`brand-sync-status brand-sync-status-${syncStatusState}`}>
           {syncStatusText}
         </span>

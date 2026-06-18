@@ -41,12 +41,23 @@ describe('AppShellHeader', () => {
     });
 
     const badge = host.querySelector<HTMLElement>('.brand-llm-status');
+    const actions = host.querySelector<HTMLElement>('.brand-header-actions');
 
     expect(badge?.textContent).toBe('LLM');
     expect(badge?.getAttribute('title')).toBe('LLM assigned: openai/gpt-oss-120b:free');
     expect(badge?.classList.contains('brand-llm-status-set')).toBe(true);
     expect(badge?.querySelector('.brand-llm-status-led')).not.toBeNull();
     expect(badge?.textContent).not.toContain('Model set');
+    expect(actions?.contains(badge)).toBe(true);
+
+    const actionChildren = Array.from(actions?.children ?? []);
+    const signOutIndex = actionChildren.findIndex((element) => element.classList.contains('brand-signout-button'));
+    const badgeIndex = actionChildren.indexOf(badge as HTMLElement);
+    const syncIndex = actionChildren.findIndex((element) => element.classList.contains('brand-sync-status'));
+
+    expect(signOutIndex).toBeGreaterThanOrEqual(0);
+    expect(badgeIndex).toBeGreaterThan(signOutIndex);
+    expect(syncIndex).toBeGreaterThan(badgeIndex);
   });
 
   it('uses the red LED state when no LLM is assigned', () => {
