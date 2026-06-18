@@ -33,6 +33,7 @@ If a change updates behavior, keep `AGENTS.md`, `README.md`, and `docs/architect
 
 - [Documentation index](docs/README.md)
 - [Architecture map](docs/architecture.md)
+- [Storage architecture](docs/storage-architecture.md)
 - [Listening-first architecture](docs/listening-first-architecture.md)
 - [Adaptive listening brain](docs/adaptive-listening-brain.md)
 
@@ -54,8 +55,10 @@ Input modes:
 
 The Adaptive Pace Layer is the shared brain. Every benchmark, telemetry stream, recommendation, and session feedback package is scoped by `(inputMode, language)`, so `browser-tts/de` and `browser-tts/en` are different adaptive profiles. The adaptive benchmark rolling window is **20 days** (`rollingWindowDays: 20`), and dashboard/leaderboard 20-day views also mean the last 20 days.
 
-Saved completed/error sessions also have a **20-day retention window** based on last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`). Dicta prunes older completed/error session payloads from localStorage and syncs Supabase tombstones so other devices do not restore them. Pending or active `ready`, `running`, and `paused` sessions are preserved. This saved-session retention is separate from the benchmark timeline: the benchmark remains a rolling 20-day adaptive telemetry profile, not a complete saved-session history.
+Saved completed/error sessions also have a **20-day retention window** based on last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`). Dicta prunes older completed/error session payloads from IndexedDB active storage and syncs Supabase tombstones so other devices do not restore them. Pending or active `ready`, `running`, and `paused` sessions are preserved. This saved-session retention is separate from the benchmark timeline: the benchmark remains a rolling 20-day adaptive telemetry profile, not a complete saved-session history.
 Supabase tombstones are kept for **30 days**. A client whose last successful sync is older than that tombstone window must full-refresh before it can push local rows, which prevents old local payloads from resurrecting deleted or expired records.
+
+Large local working-copy payloads live in IndexedDB, not `localStorage`. `localStorage` is reserved for small manifests, profile pointers, and preferences. See [Storage architecture](docs/storage-architecture.md).
 
 `ListeningTrainerPolicy` is the central pedagogical layer for next-session generation. It takes the current profile-specific benchmark, latest matching feedback, and user intent, then produces a `ListeningTrainingPrescription` for listening comprehension. User-facing training intents are `Precision`, `Stabilize`, and `Challenge`; internal storage and job contracts still use historical values like `easy`, `normal`, `hard`, and legacy slot labels. Legacy one-minute express jobs and sessions remain readable, but express is no longer a separate visible mode: Training Mode buttons, leaderboard sections, OpenRouter notices, and notifications group them into `Precision`, `Stabilize`, or `Challenge`. See `docs/listening-first-architecture.md` before changing this mapping. This is the main future iteration point for training quality; it must not mix benchmarks across inputs or languages.
 

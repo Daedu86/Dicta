@@ -28,6 +28,8 @@ After reading them, propose changes from the architecture rather than from an is
 
 Start adaptive iteration from [Adaptive Training Cycle](./adaptive-training-cycle.md).
 
+Storage ownership and migration details live in [Storage Architecture](./storage-architecture.md).
+
 Layer-specific references:
 
 - [Listening-First Architecture](./listening-first-architecture.md)
@@ -96,8 +98,9 @@ Browser app:
 - Adaptive Pace Layer cockpit: benchmark and feedback diagnostics.
 - OpenRouter workspace: structured dictation script generation slots.
 - Admin workspace: members, remote sessions, and local diagnostics.
-- `localStorage`: sessions, tombstones, benchmarks, feedback, OpenRouter drafts/jobs, and default OpenRouter model.
-- Saved `finished` and `error` sessions are retained for 20 days by last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`); older completed/error sessions are removed from localStorage and synced as Supabase tombstones. `ready`, `running`, and `paused` sessions are preserved regardless of age.
+- `localStorage`: small profile/sync/migration manifests, preferences, and small OpenRouter pointers only.
+- `IndexedDB`: local working-copy sessions, tombstones, adaptive benchmarks, and adaptive feedback.
+- Saved `finished` and `error` sessions are retained for 20 days by last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`); older completed/error sessions are removed from IndexedDB active payloads and synced as Supabase tombstones. `ready`, `running`, and `paused` sessions are preserved regardless of age.
 - Finalized session rows are buffered for critical Supabase sync and sent with a best-effort `keepalive` flush during page exit, which reduces mobile/PWA cases where a submitted session remains a remote `ready` row.
 - PWA shell: manifest and service worker.
 
@@ -154,7 +157,7 @@ Short runtime loop:
 7. `HistoricalPerformanceService` and the 20-day benchmark provide profile context.
 8. `AdaptiveDictationController` emits a `PacingDecision`.
 9. The input engine applies supported controls.
-10. Benchmarks, feedback, and session data persist to localStorage and optionally Supabase.
+10. Benchmarks, feedback, and session data persist to IndexedDB and optionally Supabase; localStorage keeps only small manifests/preferences.
 
 Important implementation details:
 
@@ -200,11 +203,13 @@ Verification test account:
 
 ## Persistence And Sync
 
-Primary browser storage keys:
+Primary browser storage owners:
 
-- `dicta.sessions.v1`
-- `dicta.deletedSessionIds.v1`
-- `dicta.adaptiveBenchmarks.v1`
-- `dicta.adaptiveSessionFeedback.v1`
+- IndexedDB `dicta-local.sessions`
+- IndexedDB `dicta-local.syncTombstones`
+- IndexedDB `dicta-local.adaptiveBenchmarks`
+- IndexedDB `dicta-local.adaptiveSessionFeedback`
+- localStorage `dicta.supabaseSyncManifest.v1`
+- localStorage `dicta.indexedDbMigration.v1`
 - `dicta.perfDiagnostics.v1`
 - `dicta.openrouterDefaultModel.v1`

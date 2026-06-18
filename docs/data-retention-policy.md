@@ -2,6 +2,8 @@
 
 This document records the current data-retention policy for Dicta production data.
 
+For the local/remote storage ownership model that enforces this policy, see [Dicta Storage Architecture](./storage-architecture.md).
+
 ## Retention summary
 
 | Data category | Retention period | Storage behavior | Purpose |

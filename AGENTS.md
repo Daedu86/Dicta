@@ -12,6 +12,10 @@ Runtime CSS is modularized.
 - Do not reorder CSS imports casually. Cascade order is intentional and part of the visual contract.
 - Keep CSS-only commits focused. Do not mix stylesheet modularization with React, TypeScript, Supabase, Vercel, or adaptive policy changes unless the task explicitly requires that larger boundary.
 
+## Browser Storage Rules
+
+Do not store large runtime payloads in `localStorage`. Sessions, telemetry, adaptive benchmarks, adaptive feedback, and tombstones belong in IndexedDB (`dicta-local`) with Supabase as the remote sync ledger. `localStorage` is for small manifests, active profile pointers, preferences, and migration flags only. See `docs/storage-architecture.md`.
+
 
 This is the first file an agent should read before touching Dicta. Dicta is a Vite/React dictation trainer with a shared adaptive "brain" called the Adaptive Pace Layer.
 
