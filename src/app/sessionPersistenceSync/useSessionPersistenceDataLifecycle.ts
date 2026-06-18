@@ -1,4 +1,5 @@
 import { useSupabaseBackgroundPush } from './sessionPersistenceSupabasePush';
+import { useSessionLocalPayloadHydration } from './sessionPersistenceLocalPayloadHydration';
 import { useSessionPersistenceLocalLifecycleEffects } from './sessionPersistenceLocalLifecycleEffects';
 import { useSessionRetentionPruning } from './sessionPersistenceRetentionPruning';
 import { useSupabaseSessionPullRuntime } from './sessionPersistenceSupabasePull';
@@ -17,11 +18,39 @@ export function useSessionPersistenceDataLifecycle<TSession extends PersistableS
 }: UseSessionPersistenceDataLifecycleOptions<TSession, TBenchmarks, TFeedback>): void {
   const { state, local, pending, syncEnabled, profileId } = core;
 
+  useSessionLocalPayloadHydration({
+    localPayloadStore: options.localPayloadStore,
+    profileStorageReadyForEffectiveProfile: state.profileStorageReadyForEffectiveProfile,
+    localPayloadProfileId: state.localPayloadProfileId,
+    localPayloadReadyForEffectiveProfile: state.localPayloadReadyForEffectiveProfile,
+    setLocalPayloadReadyProfileId: state.setLocalPayloadReadyProfileId,
+    setSessions: options.setSessions,
+    setActiveSessionId: options.setActiveSessionId,
+    setAdaptiveBenchmarks: options.setAdaptiveBenchmarks,
+    adaptiveBenchmarksRef: options.adaptiveBenchmarksRef,
+    setAdaptiveSessionFeedback: options.setAdaptiveSessionFeedback,
+    adaptiveSessionFeedbackRef: options.adaptiveSessionFeedbackRef,
+    deletedSessionIdsRef: state.deletedSessionIdsRef,
+    syncStateRef: state.syncStateRef,
+    latestSessionsForPersistenceRef: state.latestSessionsForPersistenceRef,
+    pendingHydratedSessionsRef: state.pendingHydratedSessionsRef,
+    lastPersistedSessionsJsonRef: state.lastPersistedSessionsJsonRef,
+    supabaseApplyingRemoteRef: state.supabaseApplyingRemoteRef,
+    supabaseInitialPullCompleteRef: state.supabaseInitialPullCompleteRef,
+    setSupabaseInitialPullState: state.setSupabaseInitialPullState,
+    buildSyncState: options.buildSyncState,
+    normalizeRestoredSession: options.normalizeRestoredSession,
+    loadSessionsFallback: options.loadSessions,
+    loadAdaptiveBenchmarksFallback: options.loadAdaptiveBenchmarks,
+    loadAdaptiveSessionFeedbackFallback: options.loadAdaptiveSessionFeedback,
+  });
+
   useSessionPersistenceLocalLifecycleEffects({
     sessions: options.sessions,
     localStorageReadyForEffectiveProfile: state.localStorageReadyForEffectiveProfile,
     supabaseInitialSyncPending: state.supabaseInitialSyncPending,
     latestSessionsForPersistenceRef: state.latestSessionsForPersistenceRef,
+    pendingHydratedSessionsRef: state.pendingHydratedSessionsRef,
     sessionPersistTimerRef: state.sessionPersistTimerRef,
     clearScheduledSessionPersist: local.clearScheduledSessionPersist,
     persistSessionsToLocalStorage: local.persistSessionsToLocalStorage,
@@ -41,6 +70,8 @@ export function useSessionPersistenceDataLifecycle<TSession extends PersistableS
     supabaseClient: options.supabaseClient,
     syncEnabled,
     profileId,
+    localPayloadProfileId: state.localPayloadProfileId,
+    localPayloadStore: options.localPayloadStore,
     supabaseSyncIdentity: state.supabaseSyncIdentity,
     normalizeRestoredSession: options.normalizeRestoredSession,
     setSessions: options.setSessions,
@@ -83,6 +114,8 @@ export function useSessionPersistenceDataLifecycle<TSession extends PersistableS
     supabaseLastRemoteUpdatedAtRef: state.supabaseLastRemoteUpdatedAtRef,
     clearScheduledSessionPersist: local.clearScheduledSessionPersist,
     persistSessionsToLocalStorage: local.persistSessionsToLocalStorage,
+    localPayloadProfileId: state.localPayloadProfileId,
+    localPayloadStore: options.localPayloadStore,
     setSupabaseSyncStatus: state.setSupabaseSyncStatus,
   });
 

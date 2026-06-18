@@ -1,4 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import { useMemo } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   AdaptiveBenchmarksByInputLanguage,
@@ -18,6 +19,7 @@ import {
   loadSessions,
   normalizeRestoredStoredSession,
 } from './sessionStorage';
+import { createIndexedDbLocalPayloadStore } from './sessionPersistenceSync/sessionPersistenceLocalPayloadStore';
 import { useSessionPersistenceSync } from './useSessionPersistenceSync';
 import { useSessionQuotaActions } from './useSessionQuotaActions';
 
@@ -66,6 +68,15 @@ export function useSessionPersistenceRuntime({
   clearDashboardSession,
   resetOpenRouterJobsRuntime,
 }: UseSessionPersistenceRuntimeOptions) {
+  const localPayloadStore = useMemo(
+    () => createIndexedDbLocalPayloadStore<
+      StoredSession,
+      AdaptiveBenchmarksByInputLanguage,
+      AdaptiveSessionFeedbackByInputLanguage
+    >(),
+    [],
+  );
+
   const persistenceRuntime = useSessionPersistenceSync<
     StoredSession,
     AdaptiveBenchmarksByInputLanguage,
@@ -88,6 +99,7 @@ export function useSessionPersistenceRuntime({
     loadSessions,
     loadAdaptiveBenchmarks,
     loadAdaptiveSessionFeedback,
+    localPayloadStore,
     normalizeSessionForPersistence,
     normalizeRestoredSession: normalizeRestoredStoredSession,
     buildSyncState: buildCurrentSyncState,

@@ -2,6 +2,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SessionTelemetry } from '../../types/dictation';
 import type { DictaSyncConfig, DictaSyncState } from '../../core/supabaseSync';
+import type { SessionPersistenceLocalPayloadStore } from './sessionPersistenceLocalPayloadStore';
 
 export type SupabaseSyncStatus = {
   enabled: boolean;
@@ -52,6 +53,7 @@ export type UseSessionPersistenceSyncOptions<TSession extends PersistableSession
   loadSessions: () => TSession[];
   loadAdaptiveBenchmarks: () => TBenchmarks;
   loadAdaptiveSessionFeedback: () => TFeedback;
+  localPayloadStore?: SessionPersistenceLocalPayloadStore<TSession, TBenchmarks, TFeedback>;
   normalizeSessionForPersistence: (session: TSession) => TSession;
   normalizeRestoredSession: (session: TSession) => TSession;
   buildSyncState: (sessions: TSession[], benchmarks: TBenchmarks, feedback: TFeedback) => DictaSyncState;

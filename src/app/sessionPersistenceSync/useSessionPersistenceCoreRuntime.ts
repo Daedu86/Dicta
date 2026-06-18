@@ -16,6 +16,7 @@ export function useSessionPersistenceCoreRuntime<TSession extends PersistableSes
     adaptiveBenchmarks: options.adaptiveBenchmarks,
     adaptiveSessionFeedback: options.adaptiveSessionFeedback,
     buildSyncState: options.buildSyncState,
+    localPayloadStore: options.localPayloadStore,
   });
   const syncEnabled = state.effectiveSyncConfig.enabled;
   const profileId = state.effectiveSyncConfig.profileId;
@@ -28,6 +29,8 @@ export function useSessionPersistenceCoreRuntime<TSession extends PersistableSes
     sessionPersistTimerRef: state.sessionPersistTimerRef,
     lastPersistedSessionsJsonRef: state.lastPersistedSessionsJsonRef,
     supabaseInitialSyncPendingRef: state.supabaseInitialSyncPendingRef,
+    localPayloadProfileId: state.localPayloadProfileId,
+    localPayloadStore: options.localPayloadStore,
     normalizeSessionForPersistence: options.normalizeSessionForPersistence,
     onQuotaRecovered: options.onQuotaRecovered,
   });
@@ -52,6 +55,8 @@ export function useSessionPersistenceCoreRuntime<TSession extends PersistableSes
     latestSessionsForPersistenceRef: state.latestSessionsForPersistenceRef,
     clearScheduledSessionPersist: local.clearScheduledSessionPersist,
     persistSessionsToLocalStorage: local.persistSessionsToLocalStorage,
+    localPayloadProfileId: state.localPayloadProfileId,
+    localPayloadStore: options.localPayloadStore,
     syncStateRef: state.syncStateRef,
     supabaseInitialPullCompleteRef: state.supabaseInitialPullCompleteRef,
     supabaseApplyingRemoteRef: state.supabaseApplyingRemoteRef,

@@ -8,6 +8,7 @@ export function useSessionPersistenceLocalLifecycleEffects<TSession extends Pers
   localStorageReadyForEffectiveProfile,
   supabaseInitialSyncPending,
   latestSessionsForPersistenceRef,
+  pendingHydratedSessionsRef,
   sessionPersistTimerRef,
   clearScheduledSessionPersist,
   persistSessionsToLocalStorage,
@@ -18,6 +19,7 @@ export function useSessionPersistenceLocalLifecycleEffects<TSession extends Pers
   localStorageReadyForEffectiveProfile: boolean;
   supabaseInitialSyncPending: boolean;
   latestSessionsForPersistenceRef: MutableRefObject<TSession[]>;
+  pendingHydratedSessionsRef: MutableRefObject<TSession[] | null>;
   sessionPersistTimerRef: MutableRefObject<number | null>;
   clearScheduledSessionPersist: () => void;
   persistSessionsToLocalStorage: (nextSessions: TSession[], spanName?: string) => void;
@@ -29,6 +31,7 @@ export function useSessionPersistenceLocalLifecycleEffects<TSession extends Pers
     localStorageReadyForEffectiveProfile,
     supabaseInitialSyncPending,
     latestSessionsForPersistenceRef,
+    pendingHydratedSessionsRef,
     sessionPersistTimerRef,
     clearScheduledSessionPersist,
     persistSessionsToLocalStorage,

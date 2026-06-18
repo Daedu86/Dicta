@@ -10,6 +10,10 @@ import {
   type DictaSyncState,
 } from '../../core/supabaseSync';
 import { isSyncClientStale } from '../../core/supabaseSync/syncRetentionPolicy';
+import {
+  safeGetLocalStorageItem,
+  safeSetLocalStorageItem,
+} from '../../core/storage/safeLocalStorage';
 import { persistDeletedSessionIds } from '../sessionPersistenceDeletedIds';
 import {
   collectTransientErrorSessionIds,
@@ -46,6 +50,8 @@ type SupabaseSyncManifest = {
 export function createSupabasePullSync<TSession extends PersistableSession, TBenchmarks, TFeedback>({
   client,
   profileId,
+  localPayloadProfileId,
+  localPayloadStore,
   supabaseSyncIdentity,
   normalizeRestoredSession,
   setSessions,
@@ -96,12 +102,21 @@ export function createSupabasePullSync<TSession extends PersistableSession, TBen
       supabaseLastRemoteUpdatedAtRef.current =
         latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
 
-      deleteTransientErrorRows(rows, client, profileId, deletedSessionIdsRef.current);
+      deleteTransientErrorRows(rows, client, profileId, deletedSessionIdsRef.current, {
+        localPayloadProfileId,
+        localPayloadStore,
+      });
       const mergeBaseState = staleClientMustFullRefresh ? createEmptyDictaSyncState() : syncStateRef.current;
       const merged = mergeSyncRows(mergeBaseState, rows);
       if (merged.deletedSessionIds.length > 0) {
         merged.deletedSessionIds.forEach((sessionId) => deletedSessionIdsRef.current.add(sessionId));
-        persistDeletedSessionIds(deletedSessionIdsRef.current);
+        if (localPayloadStore) {
+          void localPayloadStore.saveDeletedSessionIds(localPayloadProfileId, deletedSessionIdsRef.current).catch((error: unknown) => {
+            console.warn('[DictaStorage] IndexedDB remote tombstone write failed.', error);
+          });
+        } else {
+          persistDeletedSessionIds(deletedSessionIdsRef.current);
+        }
       }
 
       const filteredMergedSessions = (merged.sessions as TSession[])
@@ -170,11 +185,21 @@ function deleteTransientErrorRows<TSession extends PersistableSession, TBenchmar
   client: SupabaseClientForPull<TSession, TBenchmarks, TFeedback>,
   profileId: string,
   deletedSessionIds: Set<string>,
+  {
+    localPayloadProfileId,
+    localPayloadStore,
+  }: Pick<CreateSupabasePullSyncArgs<TSession, TBenchmarks, TFeedback>, 'localPayloadProfileId' | 'localPayloadStore'>,
 ): void {
   const transientErrorSessionIds = collectTransientErrorSessionIds(rows);
   if (transientErrorSessionIds.length === 0) return;
   transientErrorSessionIds.forEach((sessionId) => deletedSessionIds.add(sessionId));
-  persistDeletedSessionIds(deletedSessionIds);
+  if (localPayloadStore) {
+    void localPayloadStore.saveDeletedSessionIds(localPayloadProfileId, deletedSessionIds).catch((error: unknown) => {
+      console.warn('[DictaStorage] IndexedDB transient-error tombstone write failed.', error);
+    });
+  } else {
+    persistDeletedSessionIds(deletedSessionIds);
+  }
   void Promise.allSettled(transientErrorSessionIds.map((sessionId) => deleteSessionSyncRow(client, profileId, sessionId)));
 }
 
@@ -241,7 +266,7 @@ function writeSupabaseSyncManifestEntry(profileId: string, patch: Partial<Supaba
       ...current,
       ...patch,
     });
-    window.localStorage.setItem(SUPABASE_SYNC_MANIFEST_KEY, JSON.stringify(manifest));
+    safeSetLocalStorageItem(SUPABASE_SYNC_MANIFEST_KEY, JSON.stringify(manifest));
   } catch (error) {
     console.warn('[supabaseSync] Failed to persist sync manifest.', error);
   }
@@ -249,7 +274,7 @@ function writeSupabaseSyncManifestEntry(profileId: string, patch: Partial<Supaba
 
 function readSupabaseSyncManifest(): SupabaseSyncManifest {
   try {
-    const raw = window.localStorage.getItem(SUPABASE_SYNC_MANIFEST_KEY);
+    const raw = safeGetLocalStorageItem(SUPABASE_SYNC_MANIFEST_KEY);
     if (!raw) return { byProfileId: {} };
 
     const parsed = JSON.parse(raw);

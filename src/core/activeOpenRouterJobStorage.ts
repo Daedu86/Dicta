@@ -1,5 +1,10 @@
 import { normalizeActiveOpenRouterJob } from './activeOpenRouterJobNormalization';
 import {
+  safeGetLocalStorageItem,
+  safeRemoveLocalStorageItem,
+  safeSetLocalStorageItem,
+} from './storage/safeLocalStorage';
+import {
   OPENROUTER_ACTIVE_JOB_STORAGE_KEY,
   OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
   type ActiveOpenRouterJob,
@@ -13,7 +18,7 @@ export function loadActiveOpenRouterJobs(): ActiveOpenRouterJob[] {
   if (typeof window === 'undefined') return [];
 
   try {
-    const rawJobs = window.localStorage.getItem(OPENROUTER_ACTIVE_JOBS_STORAGE_KEY);
+    const rawJobs = safeGetLocalStorageItem(OPENROUTER_ACTIVE_JOBS_STORAGE_KEY);
     if (rawJobs) {
       const parsed = JSON.parse(rawJobs);
       if (Array.isArray(parsed)) {
@@ -22,7 +27,7 @@ export function loadActiveOpenRouterJobs(): ActiveOpenRouterJob[] {
     }
 
     const legacyJob = normalizeActiveOpenRouterJob(
-      JSON.parse(window.localStorage.getItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY) ?? 'null'),
+      JSON.parse(safeGetLocalStorageItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY) ?? 'null'),
     );
     return legacyJob ? [legacyJob] : [];
   } catch {
@@ -35,8 +40,8 @@ export function persistActiveOpenRouterJob(job: ActiveOpenRouterJob): void {
 }
 
 export function persistActiveOpenRouterJobs(jobs: ActiveOpenRouterJob[]): void {
-  window.localStorage.setItem(OPENROUTER_ACTIVE_JOBS_STORAGE_KEY, JSON.stringify(jobs));
-  window.localStorage.removeItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY);
+  safeSetLocalStorageItem(OPENROUTER_ACTIVE_JOBS_STORAGE_KEY, JSON.stringify(jobs));
+  safeRemoveLocalStorageItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY);
 }
 
 export function addActiveOpenRouterJob(
@@ -62,6 +67,6 @@ export function removeActiveOpenRouterJob(
 }
 
 export function clearActiveOpenRouterJob(): void {
-  window.localStorage.removeItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY);
-  window.localStorage.removeItem(OPENROUTER_ACTIVE_JOBS_STORAGE_KEY);
+  safeRemoveLocalStorageItem(OPENROUTER_ACTIVE_JOB_STORAGE_KEY);
+  safeRemoveLocalStorageItem(OPENROUTER_ACTIVE_JOBS_STORAGE_KEY);
 }

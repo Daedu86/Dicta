@@ -13,10 +13,21 @@ export function useSessionPersistenceDeleteAction<TSession extends PersistableSe
   supabaseKnownRemoteRowsRef,
   supabaseLastRemoteUpdatedAtRef,
   setSupabaseSyncStatus,
+  localPayloadProfileId,
+  localPayloadStore,
 }: UseSessionPersistenceSyncActionsOptions<TSession, TBenchmarks, TFeedback>) {
   return useCallback((sessionId: string): void => {
     deletedSessionIdsRef.current.add(sessionId);
-    persistDeletedSessionIds(deletedSessionIdsRef.current);
+    if (localPayloadStore) {
+      void Promise.all([
+        localPayloadStore.deleteSession(localPayloadProfileId, sessionId),
+        localPayloadStore.saveDeletedSessionIds(localPayloadProfileId, deletedSessionIdsRef.current),
+      ]).catch((error: unknown) => {
+        console.warn('[DictaStorage] IndexedDB tombstone write failed.', error);
+      });
+    } else {
+      persistDeletedSessionIds(deletedSessionIdsRef.current);
+    }
     setSessions((prev) => prev.filter((session) => session.id !== sessionId));
     if (supabaseClient && syncEnabled) {
       deleteSessionSyncFromSupabase({
@@ -30,6 +41,8 @@ export function useSessionPersistenceDeleteAction<TSession extends PersistableSe
     }
   }, [
     deletedSessionIdsRef,
+    localPayloadProfileId,
+    localPayloadStore,
     profileId,
     setSessions,
     setSupabaseSyncStatus,

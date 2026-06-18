@@ -1,3 +1,5 @@
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../core/storage/safeLocalStorage';
+
 export type ThemeMode = 'light' | 'dark';
 
 const THEME_MODE_KEY = 'dicta.themeMode.v1';
@@ -7,7 +9,7 @@ export function loadThemeMode(): ThemeMode {
     return 'light';
   }
 
-  const saved = window.localStorage.getItem(THEME_MODE_KEY);
+  const saved = safeGetLocalStorageItem(THEME_MODE_KEY);
   if (saved === 'light' || saved === 'dark') {
     return saved;
   }
@@ -20,5 +22,5 @@ export function persistThemeMode(themeMode: ThemeMode): void {
     return;
   }
 
-  window.localStorage.setItem(THEME_MODE_KEY, themeMode);
+  safeSetLocalStorageItem(THEME_MODE_KEY, themeMode);
 }

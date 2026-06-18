@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { readActiveSyncStorageProfileId } from '../../core/profileScopedStorage';
 import type { DictaSyncRow, DictaSyncState } from '../../core/supabaseSync';
 import { loadDeletedSessionIds } from '../sessionPersistenceDeletedIds';
+import { resolveLocalPayloadProfileId } from './sessionPersistenceLocalPayloadStore';
 import { useSupabaseAccessTokenRef } from './sessionPersistenceSupabaseAccessToken';
 import {
   buildEffectiveSyncConfig,
@@ -20,6 +21,7 @@ export function useSessionPersistenceRuntimeState<TSession extends PersistableSe
   adaptiveBenchmarks,
   adaptiveSessionFeedback,
   buildSyncState,
+  localPayloadStore,
 }: Pick<
   UseSessionPersistenceSyncOptions<TSession, TBenchmarks, TFeedback>,
   | 'sessions'
@@ -29,15 +31,24 @@ export function useSessionPersistenceRuntimeState<TSession extends PersistableSe
   | 'adaptiveBenchmarks'
   | 'adaptiveSessionFeedback'
   | 'buildSyncState'
+  | 'localPayloadStore'
 >) {
   const [activeLocalSyncProfileId, setActiveLocalSyncProfileId] = useState(() =>
     readActiveSyncStorageProfileId(window.localStorage),
   );
-  const localStorageReadyForEffectiveProfile = isLocalStorageReadyForEffectiveProfile(
+  const profileStorageReadyForEffectiveProfile = isLocalStorageReadyForEffectiveProfile(
     syncConfig,
     effectiveProfileId,
     activeLocalSyncProfileId,
   );
+  const localPayloadProfileId = resolveLocalPayloadProfileId(effectiveProfileId || activeLocalSyncProfileId);
+  const [localPayloadReadyProfileId, setLocalPayloadReadyProfileId] = useState(() =>
+    localPayloadStore ? '' : localPayloadProfileId,
+  );
+  const localPayloadReadyForEffectiveProfile =
+    !localPayloadStore || localPayloadReadyProfileId === localPayloadProfileId;
+  const localStorageReadyForEffectiveProfile =
+    profileStorageReadyForEffectiveProfile && localPayloadReadyForEffectiveProfile;
   const effectiveSyncConfig = useMemo(
     () => buildEffectiveSyncConfig(syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile),
     [syncConfig, effectiveProfileId, localStorageReadyForEffectiveProfile],
@@ -59,6 +70,7 @@ export function useSessionPersistenceRuntimeState<TSession extends PersistableSe
   const supabaseInitialPullCompleteRef = useRef(!effectiveSyncConfig.enabled);
   const supabaseApplyingRemoteRef = useRef(false);
   const latestSessionsForPersistenceRef = useRef<TSession[]>(sessions);
+  const pendingHydratedSessionsRef = useRef<TSession[] | null>(null);
   const sessionPersistTimerRef = useRef<number | null>(null);
   const lastPersistedSessionsJsonRef = useRef<string | null>(null);
   const syncStateRef = useRef<DictaSyncState>(
@@ -80,6 +92,10 @@ export function useSessionPersistenceRuntimeState<TSession extends PersistableSe
   return {
     activeLocalSyncProfileId,
     setActiveLocalSyncProfileId,
+    profileStorageReadyForEffectiveProfile,
+    localPayloadProfileId,
+    localPayloadReadyForEffectiveProfile,
+    setLocalPayloadReadyProfileId,
     localStorageReadyForEffectiveProfile,
     effectiveSyncConfig,
     supabaseSyncStatus,
@@ -91,6 +107,7 @@ export function useSessionPersistenceRuntimeState<TSession extends PersistableSe
     supabaseInitialPullCompleteRef,
     supabaseApplyingRemoteRef,
     latestSessionsForPersistenceRef,
+    pendingHydratedSessionsRef,
     sessionPersistTimerRef,
     lastPersistedSessionsJsonRef,
     syncStateRef,

@@ -5,6 +5,10 @@ import { loadOpenRouterDefaultModel } from './modelPreferenceStorage';
 import { loadSessions } from './sessionStorage';
 import { loadPersistedDictaLanguageView } from './uiPreferenceStorage';
 import { SESSION_STORAGE_KEY } from './useSessionPersistenceSync';
+import {
+  safeRemoveLocalStorageItem,
+  safeSetLocalStorageItem,
+} from '../core/storage/safeLocalStorage';
 
 type DictaLocalStorageImportRuntimeOptions = {
   setSessions: (sessions: ReturnType<typeof loadSessions>) => void;
@@ -57,10 +61,13 @@ export function useDictaLocalStorageImportRuntime({
       if (!confirmed) return;
 
       for (const key of Object.keys(getDictaLocalStorageSnapshot())) {
-        window.localStorage.removeItem(key);
+        safeRemoveLocalStorageItem(key);
       }
       for (const [key, value] of incoming) {
-        window.localStorage.setItem(key, value);
+        const result = safeSetLocalStorageItem(key, value);
+        if (!result.ok) {
+          throw new Error(`Could not import ${key}; browser localStorage rejected the write.`);
+        }
       }
 
       const importedSessions = loadSessions();

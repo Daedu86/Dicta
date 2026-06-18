@@ -4,6 +4,7 @@ import type {
   OpenRouterGenerationSlotState,
   PersistedOpenRouterGeneration,
 } from './types';
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../../core/storage/safeLocalStorage';
 
 export const OPENROUTER_GENERATED_SCRIPT_KEY = 'dicta.openrouterGeneratedScript.v1';
 export const OPENROUTER_GENERATED_VARIANTS_KEY = 'dicta.openrouterGeneratedVariants.v1';
@@ -33,7 +34,7 @@ export function createEmptyOpenRouterGenerationSlots(defaultModel = ''): OpenRou
 
 export function loadPersistedOpenRouterGenerationVariants(defaultModel = ''): OpenRouterGenerationSlots | null {
   try {
-    const raw = window.localStorage.getItem(OPENROUTER_GENERATED_VARIANTS_KEY);
+    const raw = safeGetLocalStorageItem(OPENROUTER_GENERATED_VARIANTS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<OpenRouterGenerationSlots>;
     return {
@@ -46,12 +47,12 @@ export function loadPersistedOpenRouterGenerationVariants(defaultModel = ''): Op
 }
 
 export function persistOpenRouterGenerationVariants(slots: OpenRouterGenerationSlots): void {
-  window.localStorage.setItem(OPENROUTER_GENERATED_VARIANTS_KEY, JSON.stringify(slots));
+  safeSetLocalStorageItem(OPENROUTER_GENERATED_VARIANTS_KEY, JSON.stringify(slots));
 }
 
 export function loadPersistedOpenRouterGeneration(): PersistedOpenRouterGeneration | null {
   try {
-    const raw = window.localStorage.getItem(OPENROUTER_GENERATED_SCRIPT_KEY);
+    const raw = safeGetLocalStorageItem(OPENROUTER_GENERATED_SCRIPT_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as PersistedOpenRouterGeneration;
   } catch {
@@ -60,5 +61,5 @@ export function loadPersistedOpenRouterGeneration(): PersistedOpenRouterGenerati
 }
 
 export function persistOpenRouterGeneration(payload: PersistedOpenRouterGeneration): void {
-  window.localStorage.setItem(OPENROUTER_GENERATED_SCRIPT_KEY, JSON.stringify(payload));
+  safeSetLocalStorageItem(OPENROUTER_GENERATED_SCRIPT_KEY, JSON.stringify(payload));
 }

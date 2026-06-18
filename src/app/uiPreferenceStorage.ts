@@ -1,5 +1,6 @@
 import { isSupportedLanguage } from '../core/languages';
 import type { MetricsLanguageView, MetricsRangeView } from '../core/liveMetrics';
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../core/storage/safeLocalStorage';
 
 const LIVE_METRICS_LANGUAGE_KEY = 'dicta.liveMetricsLanguage.v1';
 const LIVE_METRICS_RANGE_KEY = 'dicta.liveMetricsRange.v1';
@@ -19,9 +20,9 @@ export function loadPersistedDictaLanguageView(): MetricsLanguageView {
   }
 
   const savedValues = [
-    window.localStorage.getItem(LIVE_METRICS_LANGUAGE_KEY),
-    window.localStorage.getItem(LEADERBOARD_LANGUAGE_KEY),
-    window.localStorage.getItem(ADMIN_LANGUAGE_KEY),
+    safeGetLocalStorageItem(LIVE_METRICS_LANGUAGE_KEY),
+    safeGetLocalStorageItem(LEADERBOARD_LANGUAGE_KEY),
+    safeGetLocalStorageItem(ADMIN_LANGUAGE_KEY),
   ];
 
   return savedValues.find(isSupportedLanguage) ?? 'de';
@@ -32,9 +33,9 @@ export function persistDictaLanguageView(languageView: MetricsLanguageView): voi
     return;
   }
 
-  window.localStorage.setItem(LIVE_METRICS_LANGUAGE_KEY, languageView);
-  window.localStorage.setItem(LEADERBOARD_LANGUAGE_KEY, languageView);
-  window.localStorage.setItem(ADMIN_LANGUAGE_KEY, languageView);
+  safeSetLocalStorageItem(LIVE_METRICS_LANGUAGE_KEY, languageView);
+  safeSetLocalStorageItem(LEADERBOARD_LANGUAGE_KEY, languageView);
+  safeSetLocalStorageItem(ADMIN_LANGUAGE_KEY, languageView);
 }
 
 export function loadMetricsRangeView(): MetricsRangeView {
@@ -42,7 +43,7 @@ export function loadMetricsRangeView(): MetricsRangeView {
     return 'today';
   }
 
-  const saved = window.localStorage.getItem(LIVE_METRICS_RANGE_KEY);
+  const saved = safeGetLocalStorageItem(LIVE_METRICS_RANGE_KEY);
   if (METRICS_RANGE_VALUES.includes(saved as MetricsRangeView)) return saved as MetricsRangeView;
   if (saved === 'week' || saved === 'twoWeeks') return 'tenDays';
   if (saved === 'threeWeeks' || saved === 'month') return 'twentyDays';
@@ -54,7 +55,7 @@ export function persistMetricsRangeView(metricsRangeView: MetricsRangeView): voi
     return;
   }
 
-  window.localStorage.setItem(LIVE_METRICS_RANGE_KEY, metricsRangeView);
+  safeSetLocalStorageItem(LIVE_METRICS_RANGE_KEY, metricsRangeView);
 }
 
 export function loadInsightsCollapsed(): boolean {
@@ -62,7 +63,7 @@ export function loadInsightsCollapsed(): boolean {
     return false;
   }
 
-  return window.localStorage.getItem(INSIGHTS_COLLAPSED_KEY) === 'true';
+  return safeGetLocalStorageItem(INSIGHTS_COLLAPSED_KEY) === 'true';
 }
 
 export function persistInsightsCollapsed(insightsCollapsed: boolean): void {
@@ -70,5 +71,5 @@ export function persistInsightsCollapsed(insightsCollapsed: boolean): void {
     return;
   }
 
-  window.localStorage.setItem(INSIGHTS_COLLAPSED_KEY, String(insightsCollapsed));
+  safeSetLocalStorageItem(INSIGHTS_COLLAPSED_KEY, String(insightsCollapsed));
 }

@@ -1,3 +1,5 @@
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../core/storage/safeLocalStorage';
+
 const OPENROUTER_DEFAULT_MODEL_STORAGE_KEY = 'dicta.openrouterDefaultModel.v1';
 
 function canUseLocalStorage(): boolean {
@@ -22,7 +24,7 @@ export function loadOpenRouterDefaultModel(): string {
     return '';
   }
 
-  return parseStoredString(window.localStorage.getItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY));
+  return parseStoredString(safeGetLocalStorageItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY));
 }
 
 export function persistOpenRouterDefaultModel(model: string): void {
@@ -30,5 +32,5 @@ export function persistOpenRouterDefaultModel(model: string): void {
     return;
   }
 
-  window.localStorage.setItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(model));
+  safeSetLocalStorageItem(OPENROUTER_DEFAULT_MODEL_STORAGE_KEY, JSON.stringify(model));
 }

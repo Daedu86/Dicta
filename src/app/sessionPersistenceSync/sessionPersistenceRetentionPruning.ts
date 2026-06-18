@@ -3,6 +3,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { deleteSessionSyncRow, type DictaSyncRow, type DictaSyncState } from '../../core/supabaseSync';
 import { persistDeletedSessionIds } from '../sessionPersistenceDeletedIds';
+import { trySetLocalStorageItem } from '../localStorageQuota';
 import {
   partitionSessionsByRetention,
   pickNewestRetainedSessionId,
@@ -13,6 +14,7 @@ import type {
   PersistableSession,
   SupabaseSyncStatus,
 } from './sessionPersistenceSyncTypes';
+import type { SessionPersistenceLocalPayloadStore } from './sessionPersistenceLocalPayloadStore';
 
 type UseSessionRetentionPruningOptions<TSession extends PersistableSession, TBenchmarks, TFeedback> = {
   sessions: TSession[];
@@ -40,6 +42,8 @@ type UseSessionRetentionPruningOptions<TSession extends PersistableSession, TBen
   supabaseLastRemoteUpdatedAtRef: MutableRefObject<string | null>;
   clearScheduledSessionPersist: () => void;
   persistSessionsToLocalStorage: (nextSessions: TSession[], spanName?: string) => void;
+  localPayloadProfileId: string;
+  localPayloadStore?: SessionPersistenceLocalPayloadStore<TSession, TBenchmarks, TFeedback>;
   setSupabaseSyncStatus: Dispatch<SetStateAction<SupabaseSyncStatus>>;
 };
 
@@ -66,6 +70,8 @@ export function useSessionRetentionPruning<TSession extends PersistableSession, 
   supabaseLastRemoteUpdatedAtRef,
   clearScheduledSessionPersist,
   persistSessionsToLocalStorage,
+  localPayloadProfileId,
+  localPayloadStore,
   setSupabaseSyncStatus,
 }: UseSessionRetentionPruningOptions<TSession, TBenchmarks, TFeedback>): void {
   useEffect(() => {
@@ -81,7 +87,13 @@ export function useSessionRetentionPruning<TSession extends PersistableSession, 
     for (const sessionId of expiredSessionIds) {
       deletedSessionIdsRef.current.add(sessionId);
     }
-    persistDeletedSessionIds(deletedSessionIdsRef.current);
+    if (localPayloadStore) {
+      void localPayloadStore.saveDeletedSessionIds(localPayloadProfileId, deletedSessionIdsRef.current).catch((error: unknown) => {
+        console.warn('[DictaStorage] IndexedDB retention tombstone write failed.', error);
+      });
+    } else {
+      persistDeletedSessionIds(deletedSessionIdsRef.current);
+    }
 
     const nextFeedback = pruneAdaptiveSessionFeedbackForDeletedSessions
       ? pruneAdaptiveSessionFeedbackForDeletedSessions(adaptiveSessionFeedback, expiredSessionIds)
@@ -94,7 +106,13 @@ export function useSessionRetentionPruning<TSession extends PersistableSession, 
 
     if (nextFeedback !== adaptiveSessionFeedback) {
       adaptiveSessionFeedbackRef.current = nextFeedback;
-      window.localStorage.setItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(nextFeedback));
+      if (localPayloadStore) {
+        void localPayloadStore.saveAdaptiveSessionFeedback(localPayloadProfileId, nextFeedback).catch((error: unknown) => {
+          console.warn('[DictaStorage] IndexedDB adaptive feedback prune write failed.', error);
+        });
+      } else {
+        trySetLocalStorageItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(nextFeedback));
+      }
       setAdaptiveSessionFeedback(nextFeedback);
     }
 
@@ -123,6 +141,8 @@ export function useSessionRetentionPruning<TSession extends PersistableSession, 
     deletedSessionIdsRef,
     latestSessionsForPersistenceRef,
     localStorageReadyForEffectiveProfile,
+    localPayloadProfileId,
+    localPayloadStore,
     persistSessionsToLocalStorage,
     profileId,
     pruneAdaptiveSessionFeedbackForDeletedSessions,

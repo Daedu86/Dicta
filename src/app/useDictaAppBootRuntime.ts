@@ -52,7 +52,6 @@ export function useDictaAppBootRuntime() {
 
     setSessions([demoSession]);
     setActiveSessionId(demoSession.id);
-    window.localStorage.setItem('dicta.sessions.v1', JSON.stringify([demoSession]));
   }, [sessions.length]);
 
   return {

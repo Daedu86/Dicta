@@ -1,5 +1,6 @@
 import { startTransition, useCallback, useEffect, useState } from 'react';
 import type { SessionInputMode } from '../core/sessionInputModes';
+import { safeSetLocalStorageItem } from '../core/storage/safeLocalStorage';
 
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 
@@ -52,7 +53,7 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(WORKSPACE_MODE_KEY, workspaceMode);
+    safeSetLocalStorageItem(WORKSPACE_MODE_KEY, workspaceMode);
   }, [workspaceMode]);
 
   const clearDashboardSession = useCallback(() => {

@@ -6,11 +6,14 @@ import type {
   SupabaseInitialPullState,
   SupabaseSyncStatus,
 } from './sessionPersistenceSyncTypes';
+import type { SessionPersistenceLocalPayloadStore } from './sessionPersistenceLocalPayloadStore';
 
 export type UseSupabaseSessionPullRuntimeOptions<TSession extends PersistableSession, TBenchmarks, TFeedback> = {
   supabaseClient: SupabaseClient | null;
   syncEnabled: boolean;
   profileId: string;
+  localPayloadProfileId: string;
+  localPayloadStore?: SessionPersistenceLocalPayloadStore<TSession, TBenchmarks, TFeedback>;
   supabaseSyncIdentity: string;
   normalizeRestoredSession: (session: TSession) => TSession;
   setSessions: Dispatch<SetStateAction<TSession[]>>;

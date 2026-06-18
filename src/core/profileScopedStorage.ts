@@ -1,3 +1,9 @@
+import {
+  safeGetLocalStorageItem,
+  safeRemoveLocalStorageItem,
+  safeSetLocalStorageItem,
+} from './storage/safeLocalStorage';
+
 export const PROFILE_SCOPED_STORAGE_MARKER_KEY = 'dicta.activeSyncProfileId.v1';
 export const PROFILE_SCOPED_STORAGE_PREFIX = 'dicta.profileStorage.v1.';
 export const LEGACY_PROFILE_SCOPED_STORAGE_ID = 'legacy-local';
@@ -9,7 +15,7 @@ export type ProfileScopedStorageSwitchResult = {
 };
 
 export function readActiveSyncStorageProfileId(storage: Storage): string {
-  return storage.getItem(PROFILE_SCOPED_STORAGE_MARKER_KEY)?.trim() ?? '';
+  return safeGetLocalStorageItem(PROFILE_SCOPED_STORAGE_MARKER_KEY, storage)?.trim() ?? '';
 }
 
 export function switchProfileScopedStorage(
@@ -29,11 +35,11 @@ export function switchProfileScopedStorage(
 
   const previousSnapshot = captureProfileScopedStorage(storage, keys);
   if (previousProfileId) {
-    storage.setItem(profileScopedStorageKey(previousProfileId), JSON.stringify(previousSnapshot));
+    safeSetLocalStorageItem(profileScopedStorageKey(previousProfileId), JSON.stringify(previousSnapshot), storage);
   } else if (normalizedNextProfileId && Object.keys(previousSnapshot).length > 0) {
     const legacyStorageKey = profileScopedStorageKey(LEGACY_PROFILE_SCOPED_STORAGE_ID);
-    if (!storage.getItem(legacyStorageKey)) {
-      storage.setItem(legacyStorageKey, JSON.stringify(previousSnapshot));
+    if (!safeGetLocalStorageItem(legacyStorageKey, storage)) {
+      safeSetLocalStorageItem(legacyStorageKey, JSON.stringify(previousSnapshot), storage);
     }
   }
 
@@ -41,9 +47,9 @@ export function switchProfileScopedStorage(
   restoreProfileScopedStorage(storage, keys, nextSnapshot);
 
   if (normalizedNextProfileId) {
-    storage.setItem(PROFILE_SCOPED_STORAGE_MARKER_KEY, normalizedNextProfileId);
+    safeSetLocalStorageItem(PROFILE_SCOPED_STORAGE_MARKER_KEY, normalizedNextProfileId, storage);
   } else {
-    storage.removeItem(PROFILE_SCOPED_STORAGE_MARKER_KEY);
+    safeRemoveLocalStorageItem(PROFILE_SCOPED_STORAGE_MARKER_KEY, storage);
   }
 
   return {
@@ -60,7 +66,7 @@ export function profileScopedStorageKey(profileId: string): string {
 function captureProfileScopedStorage(storage: Storage, keys: readonly string[]): Record<string, string> {
   const snapshot: Record<string, string> = {};
   for (const key of keys) {
-    const value = storage.getItem(key);
+    const value = safeGetLocalStorageItem(key, storage);
     if (value !== null) snapshot[key] = value;
   }
   return snapshot;
@@ -69,15 +75,15 @@ function captureProfileScopedStorage(storage: Storage, keys: readonly string[]):
 function restoreProfileScopedStorage(storage: Storage, keys: readonly string[], snapshot: Record<string, string>): void {
   for (const key of keys) {
     if (Object.prototype.hasOwnProperty.call(snapshot, key)) {
-      storage.setItem(key, snapshot[key]);
+      safeSetLocalStorageItem(key, snapshot[key], storage);
     } else {
-      storage.removeItem(key);
+      safeRemoveLocalStorageItem(key, storage);
     }
   }
 }
 
 function readProfileScopedStorage(storage: Storage, profileId: string): Record<string, string> {
-  const raw = storage.getItem(profileScopedStorageKey(profileId));
+  const raw = safeGetLocalStorageItem(profileScopedStorageKey(profileId), storage);
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw) as unknown;

@@ -6,6 +6,7 @@ import type {
   SupabaseSyncStatus,
   UseSessionPersistenceSyncResult,
 } from './sessionPersistenceSyncTypes';
+import type { SessionPersistenceLocalPayloadStore } from './sessionPersistenceLocalPayloadStore';
 
 export type SessionPersistenceSyncActions<TSession extends PersistableSession, TFeedback> = Pick<
   UseSessionPersistenceSyncResult<TSession, TFeedback>,
@@ -25,6 +26,8 @@ export type UseSessionPersistenceSyncActionsOptions<TSession extends Persistable
   latestSessionsForPersistenceRef: MutableRefObject<TSession[]>;
   clearScheduledSessionPersist: () => void;
   persistSessionsToLocalStorage: (nextSessions: TSession[], spanName?: string) => void;
+  localPayloadProfileId: string;
+  localPayloadStore?: SessionPersistenceLocalPayloadStore<TSession, TBenchmarks, TFeedback>;
   syncStateRef: MutableRefObject<DictaSyncState>;
   supabaseInitialPullCompleteRef: MutableRefObject<boolean>;
   supabaseApplyingRemoteRef: MutableRefObject<boolean>;

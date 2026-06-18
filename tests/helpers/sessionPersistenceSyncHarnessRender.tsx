@@ -2,6 +2,7 @@ import { act, createElement, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { pruneAdaptiveSessionFeedbackBySessionIds } from '../../src/app/adaptiveSessionFeedbackRetention';
 import { useSessionPersistenceSync } from '../../src/app/useSessionPersistenceSync';
+import type { SessionPersistenceLocalPayloadStore } from '../../src/app/sessionPersistenceSync/sessionPersistenceLocalPayloadStore';
 import type { DictaSyncConfig } from '../../src/core/supabaseSync';
 import { disabledSyncConfig } from './sessionPersistenceSyncHarnessConfig';
 import {
@@ -24,12 +25,14 @@ export function renderHarness({
   syncConfig = disabledSyncConfig,
   effectiveProfileId = '',
   supabaseClient = null,
+  localPayloadStore,
   onProfileStorageSwitched = () => undefined,
 }: {
   initialSessions: TestSession[];
   syncConfig?: DictaSyncConfig;
   effectiveProfileId?: string;
   supabaseClient?: SupabaseClient | null;
+  localPayloadStore?: SessionPersistenceLocalPayloadStore<TestSession, TestBenchmarks, TestFeedback>;
   onProfileStorageSwitched?: () => void;
 }): {
   getRuntime: () => RuntimeSnapshot;
@@ -72,6 +75,7 @@ export function renderHarness({
       loadSessions: loadTestSessions,
       loadAdaptiveBenchmarks: loadTestBenchmarks,
       loadAdaptiveSessionFeedback: loadTestFeedback,
+      localPayloadStore,
       normalizeSessionForPersistence: normalizeTestSession,
       normalizeRestoredSession: normalizeTestSession,
       buildSyncState: buildTestSyncState,
