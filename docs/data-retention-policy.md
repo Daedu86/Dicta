@@ -33,7 +33,7 @@ Tombstones are intentionally lightweight. They do not preserve the full session,
 
 ## Supabase migration application
 
-The local migration `supabase/migrations/20260618160000_dicta_sync_retention_20_30.sql` defines the retention sync changes: `server_version`, the insert/update trigger, the tombstone expiry index, active payload expiry into tombstones after 20 days, and tombstone cleanup after 30 days.
+The local migration `supabase/migrations/20260618182042_dicta_sync_retention_20_30.sql` defines the retention sync changes: `server_version`, the insert/update trigger, the tombstone expiry index, active payload expiry into tombstones after 20 days, and tombstone cleanup after 30 days.
 
 Do not assume production has this migration until Supabase migration history confirms it. From an authenticated and linked Supabase CLI checkout, preview and apply with:
 
