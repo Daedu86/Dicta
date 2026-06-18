@@ -97,6 +97,8 @@ Languages:
 
 The rolling adaptive benchmark window is 30 days (`rollingWindowDays: 30`). Dashboard and leaderboard "Month" views also mean 30 days.
 
+Saved `finished` and `error` sessions are retained for 30 days based on last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`). Older completed/error sessions are automatically pruned from localStorage and synced as Supabase tombstones; pending or active `ready`/`running`/`paused` sessions are preserved. This saved-session retention is separate from the Adaptive Pace Layer benchmark timeline, which remains a 30-day rolling telemetry profile.
+
 `src/core/adaptive/ListeningTrainerPolicy.ts` is the central pedagogical policy layer for next-session generation. It converts one profile-specific benchmark, latest matching feedback, and user intent into a `ListeningTrainingPrescription`. Keep this policy pure and deterministic: no localStorage, no network calls, no Supabase access, and no cross-language or cross-input averaging.
 
 OpenRouter and other LLM paths generate structured training material only. The Dicta runtime and Adaptive Pace Layer still control actual playback, rate, pauses, chunking, recovery, and Browser TTS execution. Direct mobile generation buttons represent user intent (`recover`, `progress`, `challenge`), not unconditional difficulty commands; the policy may downgrade difficulty when the active `(inputMode, language)` profile is unstable.

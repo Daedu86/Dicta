@@ -96,6 +96,7 @@ Browser app:
 - OpenRouter workspace: structured dictation script generation slots.
 - Admin workspace: members, remote sessions, and local diagnostics.
 - `localStorage`: sessions, tombstones, benchmarks, feedback, OpenRouter drafts/jobs, and default OpenRouter model.
+- Saved `finished` and `error` sessions are retained for 30 days by last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`); older completed/error sessions are removed from localStorage and synced as Supabase tombstones. `ready`, `running`, and `paused` sessions are preserved regardless of age.
 - Finalized session rows are buffered for critical Supabase sync and sent with a best-effort `keepalive` flush during page exit, which reduces mobile/PWA cases where a submitted session remains a remote `ready` row.
 - PWA shell: manifest and service worker.
 
@@ -154,6 +155,7 @@ Short runtime loop:
 Important implementation details:
 
 - The adaptive benchmark rolling window is 30 days.
+- Saved-session retention is also 30 days for completed/error sessions, but it is a separate persistence policy from the benchmark timeline.
 - Browser TTS German has extra recovery, lag, and unsafe-boundary filtering.
 - Browser TTS does not execute phrase replay; replay intent becomes recovery behavior.
 - `ListeningTrainerPolicy` stays pure and profile-scoped.
