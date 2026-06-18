@@ -1,10 +1,10 @@
-type FooProps = {
+type VersionPromptProps = {
   compact?: boolean;
   className?: string;
   onActivate: () => void;
 };
 
-export function Foo({ compact = false, className = '', onActivate }: FooProps) {
+export function VersionPrompt({ compact = false, className = '', onActivate }: VersionPromptProps) {
   const classes = ['app-update-banner', compact ? 'app-update-banner-compact' : '', className]
     .filter(Boolean)
     .join(' ');
