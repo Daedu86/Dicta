@@ -5,7 +5,7 @@ const RANGE_TABS: Array<[MetricsRangeView, string]> = [
   ['week', 'Week'],
   ['twoWeeks', '2 Weeks'],
   ['threeWeeks', '3 Weeks'],
-  ['month', 'Month'],
+  ['month', '20 days'],
 ];
 
 type LiveMetricsRangeTabsProps = {

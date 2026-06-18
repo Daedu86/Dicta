@@ -40,7 +40,7 @@ Do not start implementation by guessing at a file. First map the request to the 
 
 ## Project Snapshot
 
-Dicta trains listening and typing with one canonical Browser TTS input across 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 30 days.
+Dicta trains listening and typing with one canonical Browser TTS input across 5 languages. The shared adaptive state is scoped per `(inputMode, language)`, and the benchmark learning window is 20 rolling days.
 
 Inputs:
 
@@ -95,9 +95,10 @@ Languages:
 - `fr`
 - `pt`
 
-The rolling adaptive benchmark window is 30 days (`rollingWindowDays: 20`). Dashboard and leaderboard "Month" views also mean the last 20 days.
+The rolling adaptive benchmark window is 20 days (`rollingWindowDays: 20`). Dashboard and leaderboard 20-day views also mean the last 20 days.
 
 Saved `finished` and `error` sessions are retained for 20 days based on last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`). Older completed/error sessions are automatically pruned from localStorage and synced as Supabase tombstones; pending or active `ready`/`running`/`paused` sessions are preserved. This saved-session retention is separate from the Adaptive Pace Layer benchmark timeline, which remains a 20-day rolling telemetry profile.
+Supabase tombstones are retained for 30 days. Clients whose last successful sync is older than that tombstone window must full-refresh before pushing local rows.
 
 `src/core/adaptive/ListeningTrainerPolicy.ts` is the central pedagogical policy layer for next-session generation. It converts one profile-specific benchmark, latest matching feedback, and user intent into a `ListeningTrainingPrescription`. Keep this policy pure and deterministic: no localStorage, no network calls, no Supabase access, and no cross-language or cross-input averaging.
 

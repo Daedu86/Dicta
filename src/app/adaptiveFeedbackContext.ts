@@ -7,6 +7,7 @@ import {
   buildBenchmarkActivityScope,
   buildRecentSessionsForInputLanguage,
   findLatestFinishedSessionForProfile,
+  RECENT_ACTIVITY_WINDOW_DAYS,
 } from './adaptiveFeedbackSessionActivity';
 
 export { findLatestFinishedSessionForProfile } from './adaptiveFeedbackSessionActivity';
@@ -23,15 +24,15 @@ export function buildOpenRouterActivityHints({
   benchmarkSessionCount: number;
 }): string[] {
   const activity = buildBenchmarkActivityScope({ sessions, inputMode, language });
-  const avgAccuracy = averageSessionMetric(activity.finishedMonthProfileSessions, 'accuracy');
-  const avgWpm = averageSessionMetric(activity.finishedMonthProfileSessions, 'wpm');
+  const avgAccuracy = averageSessionMetric(activity.finishedRecentProfileSessions, 'accuracy');
+  const avgWpm = averageSessionMetric(activity.finishedRecentProfileSessions, 'wpm');
   const hints = [
-    `User activity context: ${activity.monthLanguageSessions.length} ${language.toUpperCase()} session(s) in the last 20 days; ${activity.monthProfileSessions.length} match ${inputMode}/${language}.`,
+    `User activity context: ${activity.recentLanguageSessions.length} ${language.toUpperCase()} session(s) in the last ${RECENT_ACTIVITY_WINDOW_DAYS} days; ${activity.recentProfileSessions.length} match ${inputMode}/${language}.`,
   ];
 
-  if (benchmarkSessionCount !== activity.monthProfileSessions.length) {
+  if (benchmarkSessionCount !== activity.recentProfileSessions.length) {
     hints.push(
-      `Adaptive benchmark sessionCount is ${benchmarkSessionCount} because it counts accepted ${inputMode}/${language} telemetry samples, not every saved monthly session.`,
+      `Adaptive benchmark sessionCount is ${benchmarkSessionCount} because it counts accepted ${inputMode}/${language} telemetry samples, not every saved recent session.`,
     );
   }
   if (avgAccuracy !== null || avgWpm !== null) {
@@ -48,21 +49,21 @@ export function buildBenchmarkActivitySummary(sessions: StoredSession[], profile
     inputMode: profile.inputMode,
     language: String(profile.language),
   });
-  const averageAccuracy = averageSessionMetric(activity.finishedMonthProfileSessions, 'accuracy');
-  const averageWpm = averageSessionMetric(activity.finishedMonthProfileSessions, 'wpm');
+  const averageAccuracy = averageSessionMetric(activity.finishedRecentProfileSessions, 'accuracy');
+  const averageWpm = averageSessionMetric(activity.finishedRecentProfileSessions, 'wpm');
 
   return {
     scope: {
       inputMode: profile.inputMode,
       language: activity.language,
-      rangeDays: 30,
+      rangeDays: RECENT_ACTIVITY_WINDOW_DAYS,
     },
     savedSessionCounts: {
       allTimeForLanguage: activity.languageSessions.length,
       allTimeForInputLanguage: activity.profileSessions.length,
-      last30DaysForLanguage: activity.monthLanguageSessions.length,
-      last30DaysForInputLanguage: activity.monthProfileSessions.length,
-      finishedLast30DaysForInputLanguage: activity.finishedMonthProfileSessions.length,
+      last20DaysForLanguage: activity.recentLanguageSessions.length,
+      last20DaysForInputLanguage: activity.recentProfileSessions.length,
+      finishedLast20DaysForInputLanguage: activity.finishedRecentProfileSessions.length,
     },
     recentFinishedAverages:
       averageAccuracy === null && averageWpm === null

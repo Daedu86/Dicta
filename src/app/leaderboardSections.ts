@@ -40,7 +40,7 @@ export const LEADERBOARD_RANGE_DEFINITIONS: Array<{ range: MetricsRangeView; lab
   { range: 'week', label: 'Week' },
   { range: 'twoWeeks', label: '2 Weeks' },
   { range: 'threeWeeks', label: '3 Weeks' },
-  { range: 'month', label: 'Month' },
+  { range: 'month', label: '20 days' },
 ];
 
 export const DEFAULT_LEADERBOARD_SECTION_EXPANDED: Record<LeaderboardSectionId, boolean> = {

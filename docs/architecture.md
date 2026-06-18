@@ -117,7 +117,7 @@ Core TypeScript domain:
 - `sessionFeedback` and `benchmarkJson`: exports and diagnostics.
 - `HistoricalPerformanceService`: prior-session profile input.
 - `supabaseSync` and `profileScopedStorage`: profile-aware persistence.
-- `liveMetrics`: today, week, two-week, three-week, and 20-day month views.
+- `liveMetrics`: today, week, two-week, three-week, and 20-day recent views.
 
 Server routes:
 
@@ -158,8 +158,9 @@ Short runtime loop:
 
 Important implementation details:
 
-- The adaptive benchmark rolling window is 30 days.
-- Saved-session retention is also 30 days for completed/error sessions, but it is a separate persistence policy from the benchmark timeline.
+- The adaptive benchmark rolling window is 20 days.
+- Saved-session retention is also 20 days for completed/error sessions, but it is a separate persistence policy from the 30-day tombstone window.
+- Clients whose last successful Supabase sync is older than the 30-day tombstone window must full-refresh before pushing local rows.
 - Browser TTS uses one conceptual adaptive cycle for all supported languages. Language differences are expressed as `LanguageAdaptiveCalibration`, not separate runtime pipelines.
 - Runtime sample quality is universal: strict benchmark acceptance, looser session insight, telemetry learning, runtime pressure, and debug/explanation use are decided by the same gate for `en`, `es`, `de`, `fr`, and `pt`.
 - Legacy `support`, `recovery`, `balanced`, and `flow` values can still appear in old data, report compatibility, and derived labels. They must not be used as the primary motor for rate, pause, chunk, boundary, or replay output.

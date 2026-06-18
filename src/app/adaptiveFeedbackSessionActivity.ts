@@ -1,5 +1,9 @@
 import type { InputLanguageBenchmarkMetrics, InputMode } from '../core/adaptive/types';
 import type { StoredSession } from './sessionTypes';
+import { SESSION_RETENTION_DAYS, SESSION_RETENTION_MS } from './sessionRetentionPolicy';
+
+export const RECENT_ACTIVITY_WINDOW_DAYS = SESSION_RETENTION_DAYS;
+export const RECENT_ACTIVITY_WINDOW_MS = SESSION_RETENTION_MS;
 
 export type BenchmarkActivityScope = {
   language: string;
@@ -7,9 +11,9 @@ export type BenchmarkActivityScope = {
   cutoffMs: number;
   languageSessions: StoredSession[];
   profileSessions: StoredSession[];
-  monthLanguageSessions: StoredSession[];
-  monthProfileSessions: StoredSession[];
-  finishedMonthProfileSessions: StoredSession[];
+  recentLanguageSessions: StoredSession[];
+  recentProfileSessions: StoredSession[];
+  finishedRecentProfileSessions: StoredSession[];
 };
 
 export function buildBenchmarkActivityScope({
@@ -22,12 +26,12 @@ export function buildBenchmarkActivityScope({
   language: string;
 }): BenchmarkActivityScope {
   const nowMs = Date.now();
-  const cutoffMs = nowMs - 30 * 24 * 60 * 60 * 1000;
+  const cutoffMs = nowMs - RECENT_ACTIVITY_WINDOW_MS;
   const languageSessions = sessions.filter((session) => resolveStoredSessionLanguage(session) === language);
   const profileSessions = languageSessions.filter((session) => mapSessionInputMode(session.inputMode) === inputMode);
-  const monthLanguageSessions = languageSessions.filter((session) => isSessionUpdatedWithinWindow(session, cutoffMs, nowMs));
-  const monthProfileSessions = profileSessions.filter((session) => isSessionUpdatedWithinWindow(session, cutoffMs, nowMs));
-  const finishedMonthProfileSessions = monthProfileSessions.filter((session) => session.status === 'finished');
+  const recentLanguageSessions = languageSessions.filter((session) => isSessionUpdatedWithinWindow(session, cutoffMs, nowMs));
+  const recentProfileSessions = profileSessions.filter((session) => isSessionUpdatedWithinWindow(session, cutoffMs, nowMs));
+  const finishedRecentProfileSessions = recentProfileSessions.filter((session) => session.status === 'finished');
 
   return {
     language,
@@ -35,9 +39,9 @@ export function buildBenchmarkActivityScope({
     cutoffMs,
     languageSessions,
     profileSessions,
-    monthLanguageSessions,
-    monthProfileSessions,
-    finishedMonthProfileSessions,
+    recentLanguageSessions,
+    recentProfileSessions,
+    finishedRecentProfileSessions,
   };
 }
 

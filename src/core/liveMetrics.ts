@@ -5,6 +5,7 @@ import { BROWSER_TTS_SESSION_INPUT_MODE } from './sessionInputModes';
 export type MetricsLanguageView = SupportedLanguage;
 export type MetricsRangeView = 'today' | 'week' | 'twoWeeks' | 'threeWeeks' | 'month';
 export type SessionInputMode = string;
+export const LIVE_METRICS_RECENT_WINDOW_DAYS = 20 as const;
 
 export type SessionLanguageLike = {
   inputMode: SessionInputMode;
@@ -143,7 +144,7 @@ export function rangeLabel(range: MetricsRangeView): string {
   if (range === 'week') return 'Week';
   if (range === 'twoWeeks') return '2 Weeks';
   if (range === 'threeWeeks') return '3 Weeks';
-  return 'Month';
+  return '20 days';
 }
 
 function rangeWindowDays(range: MetricsRangeView): number {
@@ -151,5 +152,5 @@ function rangeWindowDays(range: MetricsRangeView): number {
   if (range === 'week') return 7;
   if (range === 'twoWeeks') return 14;
   if (range === 'threeWeeks') return 21;
-  return 30;
+  return LIVE_METRICS_RECENT_WINDOW_DAYS;
 }

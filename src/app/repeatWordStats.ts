@@ -7,6 +7,7 @@ import { evaluateTranscriptAttempt } from '../core/evaluation';
 import { normalizeWord } from '../core/normalization';
 import { resolveSessionLanguage } from '../core/liveMetrics';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../core/sessionInputModes';
+import { SESSION_RETENTION_MS } from './sessionRetentionPolicy';
 
 function mapSessionInputMode(mode: string): InputMode {
   if (mode === BROWSER_TTS_SESSION_INPUT_MODE) return 'browser-tts';
@@ -38,7 +39,7 @@ export function buildRepeatWordStats({
   language: BenchmarkLanguageButton;
   now: Date;
 }): RepeatWordStat[] {
-  const cutoffMs = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+  const cutoffMs = now.getTime() - SESSION_RETENTION_MS;
   const withinWindow = sessions.filter((session) => {
     if (session.status !== 'finished') return false;
     if (mapSessionInputMode(session.inputMode) !== inputMode) return false;

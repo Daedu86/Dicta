@@ -19,6 +19,7 @@ This document records the current data-retention policy for Dicta production dat
 - **20 days** is the retention window for application activity data: sessions, session telemetry, adaptive feedback, tuning, and benchmark sync items.
 - **30 days** is the retention window for tombstones, which are deletion markers used by the sync layer.
 - **Indefinite retention** only applies to user/account identity data and minimal required settings/configuration.
+- Clients whose last successful sync is older than the 30-day tombstone window must full-refresh before pushing local rows.
 
 ## Tombstone payloads
 
@@ -26,6 +27,19 @@ Tombstones are intentionally lightweight. They do not preserve the full session,
 
 ## Operational notes
 
-- The dashboard `Month` metric is a rolling 30-day view, not a calendar-month total.
+- Dashboard and leaderboard 20-day counts are derived from current local/Supabase data and active filters. They are not hard-coded quotas, monthly limits, or calendar-month totals.
 - Activity data older than 20 days is not kept as active payload.
 - Tombstones are metadata only and are expected to remain small.
+
+## Supabase migration application
+
+The local migration `supabase/migrations/20260618160000_dicta_sync_retention_20_30.sql` defines the retention sync changes: `server_version`, the insert/update trigger, the tombstone expiry index, active payload expiry into tombstones after 20 days, and tombstone cleanup after 30 days.
+
+Do not assume production has this migration until Supabase migration history confirms it. From an authenticated and linked Supabase CLI checkout, preview and apply with:
+
+```bash
+supabase db push --dry-run
+supabase db push
+```
+
+Use the project's normal secure Supabase credentials flow. Do not hardcode project secrets or database passwords in docs, source, or committed scripts.
