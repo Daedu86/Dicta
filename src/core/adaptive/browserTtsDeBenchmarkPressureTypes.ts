@@ -1,5 +1,7 @@
 export type BrowserTtsDeTimelinePressure = {
   validScoringSampleCount: number;
+  sessionInsightSampleCount: number;
+  sessionInsightFallbackSampleCount: number;
   supportRatio: number;
   unsafeBoundaryRatio: number;
   severeRawLagOutlierCount: number;
@@ -9,6 +11,7 @@ export type BrowserTtsDeTimelinePressure = {
   lowAccuracyRatio: number;
   technicalTimingIssueCount: number;
   hasRecentCleanCompletedSamples: boolean;
+  hasRecentCleanSessionInsightSamples: boolean;
   hasLearnerRecoveryPressure: boolean;
   shouldUseConservativeRecommendation: boolean;
 };

@@ -69,6 +69,8 @@ export type AdaptiveUserSystemReportComponentDiagnostics = {
     rateVariance: number;
     pauseVariance: number;
     modeDistribution: AdaptiveReportCount[];
+    modeDistributionAcceptedForBenchmark: AdaptiveReportCount[];
+    modeDistributionAcceptedForSessionInsight: AdaptiveReportCount[];
     eventDistribution: AdaptiveReportCount[];
     topDecisionReasons: AdaptiveReportCount[];
     expectedControllerBehavior: string[];

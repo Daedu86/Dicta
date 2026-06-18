@@ -36,6 +36,7 @@ export function useTtsRuntimeRefs({ ttsPracticeText }: UseTtsRuntimeRefsArgs) {
     rawLagSec: 0,
     stableLagSec: 0,
     lagOutlierCount: 0,
+    lagFallbackUsed: false,
     wpm: 0,
     trend: 'stable',
     controllerState: 'hold',

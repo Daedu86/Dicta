@@ -42,6 +42,7 @@ export type BrowserTtsDecisionTrace = {
   ttsEnvironment?: BrowserTtsEnvironmentFingerprint | null;
   rawLagSec?: number;
   stableLagSec?: number;
+  lagFallbackUsed?: boolean;
   lagSec?: number;
   accuracy?: number;
   wpm?: number;
@@ -105,6 +106,7 @@ export function buildBrowserTtsDecisionTrace(args: {
     ttsEnvironment: args.ttsEnvironment ?? null,
     rawLagSec: playbackPlan.chunkTelemetry.rawLagSec,
     stableLagSec: playbackPlan.chunkTelemetry.stableLagSec,
+    lagFallbackUsed: playbackPlan.chunkTelemetry.lagFallbackUsed,
     lagSec: playbackPlan.chunkTelemetry.lagSec,
     accuracy: playbackPlan.chunkTelemetry.accuracy,
     wpm: playbackPlan.chunkTelemetry.wpm,

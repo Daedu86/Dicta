@@ -9,6 +9,7 @@ import {
 import {
   getBrowserTtsDeBenchmarkRejectionReason,
   includesDiagnosticReason,
+  isValidBrowserTtsDeSessionInsightSample,
 } from './browserTtsDeBenchmarkSamples';
 import type { BrowserTtsDeTimelinePressure } from './browserTtsDeBenchmarkPressureTypes';
 
@@ -50,6 +51,22 @@ export function hasCleanRecentBrowserTtsDeCompletedSamples(validCompletedSamples
   return cleanSampleCount >= BROWSER_TTS_DE_CLEAN_RECENT_MIN_COUNT;
 }
 
+export function hasCleanRecentBrowserTtsDeSessionInsightSamples(sessionInsightCompletedSamples: AdaptiveTimelinePoint[]): boolean {
+  const recentCompletedSamples = sessionInsightCompletedSamples.slice(-BROWSER_TTS_DE_RECENT_PRESSURE_SAMPLE_COUNT);
+  const cleanSampleCount = recentCompletedSamples.filter((point) => {
+    if (!isValidBrowserTtsDeSessionInsightSample(point)) return false;
+    const lagSec = typeof point.stableLagSec === 'number' ? point.stableLagSec : point.lagSec;
+    const hasCurrentLagEvidence = !point.lagFallbackUsed || point.trend === 'improving';
+    return (
+      hasCurrentLagEvidence &&
+      normalizeAccuracy(point.accuracy) >= BROWSER_TTS_DE_CLEAN_RECENT_MIN_ACCURACY &&
+      Number.isFinite(lagSec) &&
+      Math.abs(lagSec) <= BROWSER_TTS_DE_CLEAN_RECENT_MAX_ABS_LAG_SEC
+    );
+  }).length;
+  return cleanSampleCount >= BROWSER_TTS_DE_CLEAN_RECENT_MIN_COUNT;
+}
+
 export function deriveBrowserTtsDeTimelineWeakAreas(pressure: BrowserTtsDeTimelinePressure): AdaptiveWeakArea[] {
   const weakAreas: AdaptiveWeakArea[] = [];
   const hasCurrentLearnerPressure =
@@ -57,7 +74,7 @@ export function deriveBrowserTtsDeTimelineWeakAreas(pressure: BrowserTtsDeTimeli
     pressure.lowAccuracyRatio > 0.2 ||
     pressure.severeRecoveryRatio > 0;
   if (pressure.supportRatio > 0.5 && hasCurrentLearnerPressure) weakAreas.push('support_dependency');
-  if (!pressure.hasRecentCleanCompletedSamples && (pressure.unsafeBoundaryRatio > 0.1 || pressure.unsafeChunkRatio > 0.15)) {
+  if (!pressure.hasRecentCleanCompletedSamples && !pressure.hasRecentCleanSessionInsightSamples && (pressure.unsafeBoundaryRatio > 0.1 || pressure.unsafeChunkRatio > 0.15)) {
     weakAreas.push('unsafe_boundary_pressure');
   }
   if (pressure.highLagRatio > 0.15 || pressure.severeRecoveryRatio > 0) weakAreas.push('lag_instability');
@@ -69,7 +86,7 @@ export function buildBrowserTtsDePressureSummary(pressure: BrowserTtsDeTimelineP
   if (pressure.severeRecoveryRatio > 0) {
     return 'Browser TTS DE is in severe recovery pressure.';
   }
-  if (!pressure.hasRecentCleanCompletedSamples && (pressure.technicalTimingIssueCount > 0 || pressure.severeRawLagOutlierCount > 0)) {
+  if (!pressure.hasRecentCleanCompletedSamples && !pressure.hasRecentCleanSessionInsightSamples && (pressure.technicalTimingIssueCount > 0 || pressure.severeRawLagOutlierCount > 0)) {
     return 'Browser TTS DE has lag alignment diagnostics, so benchmark confidence is low.';
   }
   if (pressure.supportRatio > 0.5 && (pressure.highLagRatio > 0.15 || pressure.lowAccuracyRatio > 0.2 || pressure.severeRecoveryRatio > 0)) {

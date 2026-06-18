@@ -6,6 +6,7 @@ import {
 import {
   getBrowserTtsDeBenchmarkRejectionReason,
   includesDiagnosticReason,
+  isValidBrowserTtsDeSessionInsightSample,
   type BrowserTtsDeBenchmarkRejectionReason,
 } from './browserTtsDeBenchmarkSamples';
 
@@ -14,6 +15,9 @@ export type BrowserTtsDeDiagnostics = {
   runtimeRecoveryPauseMs: number | null;
   pauseGapMs: number;
   acceptedRecentTimelineSamples: number;
+  acceptedRecentSessionInsightSamples: number;
+  sessionInsightOnlyRecentTimelineSamples: number;
+  lagFallbackRecentTimelineSamples: number;
   rejectedRecentTimelineSamples: number;
   rejectionReasonCounts: Partial<Record<BrowserTtsDeBenchmarkRejectionReason, number>>;
   note: string;
@@ -40,14 +44,27 @@ export function buildBrowserTtsDeDiagnostics(
   const pauseGapMs = runtimeRecoveryPauseMs === null ? 0 : Math.max(0, runtimeRecoveryPauseMs - targetPauseMs);
   const rejectionReasonCounts: Partial<Record<BrowserTtsDeBenchmarkRejectionReason, number>> = {};
   let acceptedRecentTimelineSamples = 0;
+  let acceptedRecentSessionInsightSamples = 0;
+  let sessionInsightOnlyRecentTimelineSamples = 0;
+  let lagFallbackRecentTimelineSamples = 0;
   let rejectedRecentTimelineSamples = 0;
 
   for (const point of recentTimeline) {
     const reason = getBrowserTtsDeBenchmarkRejectionReason(point);
+    const acceptedForSessionInsight = isValidBrowserTtsDeSessionInsightSample(point);
+    if (acceptedForSessionInsight) {
+      acceptedRecentSessionInsightSamples += 1;
+    }
+    if (point.lagFallbackUsed) {
+      lagFallbackRecentTimelineSamples += 1;
+    }
     if (reason === null) {
       acceptedRecentTimelineSamples += 1;
     } else {
       rejectedRecentTimelineSamples += 1;
+      if (acceptedForSessionInsight) {
+        sessionInsightOnlyRecentTimelineSamples += 1;
+      }
       rejectionReasonCounts[reason] = (rejectionReasonCounts[reason] ?? 0) + 1;
     }
   }
@@ -62,6 +79,9 @@ export function buildBrowserTtsDeDiagnostics(
     runtimeRecoveryPauseMs,
     pauseGapMs,
     acceptedRecentTimelineSamples,
+    acceptedRecentSessionInsightSamples,
+    sessionInsightOnlyRecentTimelineSamples,
+    lagFallbackRecentTimelineSamples,
     rejectedRecentTimelineSamples,
     rejectionReasonCounts,
     note:

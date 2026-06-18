@@ -10,6 +10,7 @@ import {
 } from './browserTtsDeBenchmarkCore';
 import {
   includesDiagnosticReason,
+  isValidBrowserTtsDeSessionInsightSample,
   isValidBrowserTtsDeBenchmarkSample,
 } from './browserTtsDeBenchmarkSamples';
 import {
@@ -22,6 +23,7 @@ import {
   hasBrowserTtsDeLearnerPressure,
   hasBrowserTtsDeLowAccuracyPressure,
   hasCleanRecentBrowserTtsDeCompletedSamples,
+  hasCleanRecentBrowserTtsDeSessionInsightSamples,
   isBrowserTtsDeTechnicalTimingIssue,
 } from './browserTtsDeBenchmarkPressureSignals';
 import type { BrowserTtsDeTimelinePressure } from './browserTtsDeBenchmarkPressureTypes';
@@ -37,6 +39,7 @@ export {
   hasBrowserTtsDeLearnerPressure,
   hasBrowserTtsDeLowAccuracyPressure,
   hasCleanRecentBrowserTtsDeCompletedSamples,
+  hasCleanRecentBrowserTtsDeSessionInsightSamples,
   isBrowserTtsDeTechnicalTimingIssue,
   scoreBrowserTtsDeScoringEvent,
 } from './browserTtsDeBenchmarkPressureSignals';
@@ -81,6 +84,8 @@ export function analyzeBrowserTtsDeTimelinePressure(metrics: InputLanguageBenchm
   if (!isBrowserTtsDe(metrics.inputMode, metrics.language)) {
     return {
       validScoringSampleCount: metrics.sampleCount,
+      sessionInsightSampleCount: metrics.sampleCount,
+      sessionInsightFallbackSampleCount: 0,
       supportRatio: 0,
       unsafeBoundaryRatio: 0,
       severeRawLagOutlierCount: 0,
@@ -90,6 +95,7 @@ export function analyzeBrowserTtsDeTimelinePressure(metrics: InputLanguageBenchm
       lowAccuracyRatio: 0,
       technicalTimingIssueCount: 0,
       hasRecentCleanCompletedSamples: false,
+      hasRecentCleanSessionInsightSamples: false,
       hasLearnerRecoveryPressure: false,
       shouldUseConservativeRecommendation: false,
     };
@@ -97,11 +103,18 @@ export function analyzeBrowserTtsDeTimelinePressure(metrics: InputLanguageBenchm
   const timeline = metrics.timeline.filter((point) => isBrowserTtsDe(point.inputMode, point.language));
   const validScoringSampleCount = timeline.filter(isValidBrowserTtsDeBenchmarkSample).length;
   const validScoringSamples = dedupeBrowserTtsDeScoringTimeline(timeline.filter(isValidBrowserTtsDeBenchmarkSample));
+  const sessionInsightSamples = dedupeBrowserTtsDeScoringTimeline(timeline.filter(isValidBrowserTtsDeSessionInsightSample));
+  const sessionInsightSampleCount = sessionInsightSamples.length;
+  const sessionInsightFallbackSampleCount = sessionInsightSamples.filter((point) => Boolean(point.lagFallbackUsed)).length;
   const validCompletedSamples = validScoringSamples.filter((point) => point.event === 'phrase_completed');
+  const sessionInsightCompletedSamples = sessionInsightSamples.filter((point) => point.event === 'phrase_completed');
   const recentValidCompletedSamples = validCompletedSamples.slice(-BROWSER_TTS_DE_RECENT_PRESSURE_SAMPLE_COUNT);
+  const recentSessionInsightCompletedSamples = sessionInsightCompletedSamples.slice(-BROWSER_TTS_DE_RECENT_PRESSURE_SAMPLE_COUNT);
   const learnerPressurePoints = (recentValidCompletedSamples.length > 0
     ? recentValidCompletedSamples
-    : validScoringSamples.slice(-BROWSER_TTS_DE_RECENT_PRESSURE_SAMPLE_COUNT));
+    : recentSessionInsightCompletedSamples.length > 0
+      ? recentSessionInsightCompletedSamples
+      : sessionInsightSamples.slice(-BROWSER_TTS_DE_RECENT_PRESSURE_SAMPLE_COUNT));
   const recentTimeline = timeline.slice(-BROWSER_TTS_DE_PRESSURE_TIMELINE_WINDOW);
   const pressurePoints = recentTimeline.filter((point) => point.event !== 'defer_pause');
   const learnerDenominator = Math.max(1, learnerPressurePoints.length);
@@ -124,15 +137,19 @@ export function analyzeBrowserTtsDeTimelinePressure(metrics: InputLanguageBenchm
   const highLagRatio = highLagCount / learnerDenominator;
   const lowAccuracyRatio = lowAccuracyCount / learnerDenominator;
   const hasRecentCleanCompletedSamples = hasCleanRecentBrowserTtsDeCompletedSamples(validCompletedSamples);
-  const semanticBoundaryPressure = !hasRecentCleanCompletedSamples && (unsafeBoundaryRatio > 0.1 || unsafeChunkRatio > 0.15);
+  const hasRecentCleanSessionInsightSamples = hasCleanRecentBrowserTtsDeSessionInsightSamples(sessionInsightCompletedSamples);
+  const hasRecentCleanEvidence = hasRecentCleanCompletedSamples || hasRecentCleanSessionInsightSamples;
+  const semanticBoundaryPressure = !hasRecentCleanEvidence && (unsafeBoundaryRatio > 0.1 || unsafeChunkRatio > 0.15);
   const hasCurrentLearnerPressure =
     severeRecoveryRatio > 0 ||
     highLagRatio > 0.15 ||
     lowAccuracyRatio > 0.2;
   const learnerPerformancePressure = hasCurrentLearnerPressure;
-  const hasLearnerRecoveryPressure = !hasRecentCleanCompletedSamples && (semanticBoundaryPressure || learnerPerformancePressure);
+  const hasLearnerRecoveryPressure = !hasRecentCleanEvidence && (semanticBoundaryPressure || learnerPerformancePressure);
   return {
     validScoringSampleCount,
+    sessionInsightSampleCount,
+    sessionInsightFallbackSampleCount,
     supportRatio,
     unsafeBoundaryRatio,
     severeRawLagOutlierCount,
@@ -142,6 +159,7 @@ export function analyzeBrowserTtsDeTimelinePressure(metrics: InputLanguageBenchm
     lowAccuracyRatio,
     technicalTimingIssueCount,
     hasRecentCleanCompletedSamples,
+    hasRecentCleanSessionInsightSamples,
     hasLearnerRecoveryPressure,
     shouldUseConservativeRecommendation:
       metrics.sampleCount < BROWSER_TTS_DE_MIN_CONFIDENT_SAMPLES ||

@@ -62,6 +62,7 @@ export function sampleTtsPerformance(
     lagSec: metricSnapshot.lagSec,
     rawLagSec: metricSnapshot.lagSample.rawLagSec,
     stableLagSec: metricSnapshot.lagSample.stableLagSec,
+    lagFallbackUsed: metricSnapshot.lagSample.usedFallbackControlLag,
     lagOutlierCount: ttsLagOutlierCountRef.current,
     wpm: metricSnapshot.wpm,
     trend: metricSnapshot.trend,

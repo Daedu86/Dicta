@@ -28,6 +28,7 @@ export interface BrowserTtsTelemetryParams {
   lagChars: number;
   rawLagSec?: number;
   stableLagSec?: number;
+  lagFallbackUsed?: boolean;
   lagOutlierCount?: number;
   unsafeChunkCount?: number;
   accuracy: number;
@@ -72,6 +73,7 @@ export function buildBrowserTtsTelemetryFrame(params: BrowserTtsTelemetryParams)
     lagChars: params.lagChars,
     rawLagSec: params.rawLagSec,
     stableLagSec: params.stableLagSec,
+    lagFallbackUsed: params.lagFallbackUsed,
     lagOutlierCount: params.lagOutlierCount,
     unsafeChunkCount: params.unsafeChunkCount,
     accuracy: clamp(params.accuracy, 0, 1),

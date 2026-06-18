@@ -6,6 +6,10 @@ import {
   applyBrowserTtsDeTimelinePressureFallback,
   deriveBrowserTtsDeTimelineWeakAreas,
 } from '../src/core/adaptive/browserTtsDeBenchmarkPressure';
+import {
+  isValidBrowserTtsDeBenchmarkSample,
+  isValidBrowserTtsDeSessionInsightSample,
+} from '../src/core/adaptive/browserTtsDeBenchmarkSamples';
 import type { AdaptiveTimelinePoint, InputLanguageBenchmarkMetrics, PacingDecision } from '../src/core/adaptive/types';
 
 function createProfile(): InputLanguageBenchmarkMetrics {
@@ -121,5 +125,37 @@ describe('Browser TTS DE benchmark tolerance', () => {
     const unclamped = decision({ playbackRate: 1, replayRate: 0.95 });
 
     expect(clampBrowserTtsDeDecisionToRecommendation(unclamped, profile)).toEqual(unclamped);
+  });
+
+  it('uses stable fallback DE samples for session insight without admitting them to benchmark scoring', () => {
+    const profile = createProfile();
+    profile.sampleCount = 5;
+    profile.timeline = Array.from({ length: 5 }, (_, index) =>
+      point(index, {
+        mode: 'support',
+        rawLagSec: 12 + index,
+        stableLagSec: 0.42,
+        lagSec: 0.42,
+        lagFallbackUsed: true,
+        trend: 'improving',
+        event: 'phrase_completed',
+        decisionReason: 'support-needed, invalid-lag-alignment',
+      }),
+    );
+    const sample = profile.timeline[0];
+
+    expect(isValidBrowserTtsDeBenchmarkSample(sample)).toBe(false);
+    expect(isValidBrowserTtsDeSessionInsightSample(sample)).toBe(true);
+
+    const pressure = analyzeBrowserTtsDeTimelinePressure(profile);
+    const adjusted = applyBrowserTtsDeTimelinePressureFallback(profile);
+
+    expect(pressure.validScoringSampleCount).toBe(0);
+    expect(pressure.sessionInsightSampleCount).toBe(5);
+    expect(pressure.sessionInsightFallbackSampleCount).toBe(5);
+    expect(pressure.hasRecentCleanSessionInsightSamples).toBe(true);
+    expect(pressure.hasLearnerRecoveryPressure).toBe(false);
+    expect(adjusted.recommendation.targetRateRange).toEqual([0.95, 1]);
+    expect(adjusted.recommendation.targetPauseMs).toBe(900);
   });
 });

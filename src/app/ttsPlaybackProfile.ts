@@ -16,6 +16,7 @@ export type TtsLiveSignal = {
   lagSec: number;
   rawLagSec: number;
   stableLagSec: number;
+  lagFallbackUsed: boolean;
   lagOutlierCount: number;
   wpm: number;
   trend: PerformanceTrend;

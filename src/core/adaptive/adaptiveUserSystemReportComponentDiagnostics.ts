@@ -67,6 +67,14 @@ export function buildComponentDiagnostics({
       rateVariance: profile.rateVariance,
       pauseVariance: profile.pauseVariance,
       modeDistribution: topCounts(countBy(recentTimeline, (point) => point.mode), 8),
+      modeDistributionAcceptedForBenchmark: topCounts(
+        countBy(recentTimeline.filter((point) => point.acceptedForBenchmark !== false), (point) => point.mode),
+        8,
+      ),
+      modeDistributionAcceptedForSessionInsight: topCounts(
+        countBy(recentTimeline.filter((point) => point.acceptedForSessionInsight !== false), (point) => point.mode),
+        8,
+      ),
       eventDistribution: topCounts(countBy(recentTimeline, (point) => point.event ?? 'sample'), 8),
       topDecisionReasons: topCounts(countBy(recentTimeline, (point) => point.decisionReason ?? 'not_recorded'), 8),
       expectedControllerBehavior: buildExpectedControllerBehavior(profile),

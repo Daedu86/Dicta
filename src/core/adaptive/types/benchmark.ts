@@ -1,7 +1,7 @@
 import type { InputMode, StoredInputMode } from '../inputModes';
 import type { ListeningPrecisionMetrics } from '../listeningPrecisionMetrics';
 import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../../types/dictation';
-import type { LanguageCode, PacingMode, PhraseBoundaryType, PhraseSize } from './pacing';
+import type { ImprovementTrend, LanguageCode, PacingMode, PhraseBoundaryType, PhraseSize } from './pacing';
 
 export interface RateAccuracyBucket {
   rate: number;
@@ -22,8 +22,11 @@ export interface AdaptiveTimelinePoint {
   lagSec: number;
   rawLagSec?: number;
   stableLagSec?: number;
+  lagFallbackUsed?: boolean;
   lagOutlierCount?: number;
   unsafeChunkCount?: number;
+  acceptedForBenchmark?: boolean;
+  acceptedForSessionInsight?: boolean;
   wpm: number;
   pauseMs: number;
   correctionRate?: number;
@@ -46,6 +49,7 @@ export interface AdaptiveTimelinePoint {
   mobileFallbackApplied?: boolean;
   recoverySafeBoundary?: boolean;
   germanShortBias?: boolean;
+  trend?: ImprovementTrend;
   decisionReason?: string;
   executionHint?: string;
   event?:

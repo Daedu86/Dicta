@@ -28,6 +28,7 @@ export function buildBrowserTtsPhraseCompletionTelemetry({
     lagSec: liveSignal.lagSec,
     rawLagSec: liveSignal.rawLagSec,
     stableLagSec: liveSignal.stableLagSec,
+    lagFallbackUsed: liveSignal.lagFallbackUsed,
     lagOutlierCount: liveSignal.lagOutlierCount,
     unsafeChunkCount,
     trend: liveSignal.trend,

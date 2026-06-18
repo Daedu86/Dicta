@@ -60,6 +60,7 @@ export interface LiveTelemetryFrame {
   lagChars: number;
   rawLagSec?: number;
   stableLagSec?: number;
+  lagFallbackUsed?: boolean;
   lagOutlierCount?: number;
   unsafeChunkCount?: number;
 

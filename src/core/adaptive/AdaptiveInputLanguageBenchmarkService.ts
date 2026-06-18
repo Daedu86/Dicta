@@ -14,7 +14,11 @@ import {
   buildInputLanguageBenchmarkTimelinePoint,
   pruneTimelineToRollingWindow,
 } from './inputLanguageBenchmarkTimeline';
-import { getBrowserTtsDeBenchmarkRejectionReason, isValidBrowserTtsDeBenchmarkSample } from './browserTtsDeBenchmarkPolicy';
+import {
+  getBrowserTtsDeBenchmarkRejectionReason,
+  isValidBrowserTtsDeBenchmarkSample,
+  isValidBrowserTtsDeSessionInsightSample,
+} from './browserTtsDeBenchmarkPolicy';
 import { normalizeInputLanguageBenchmarkForRecommendation } from './inputLanguageBenchmarkRecommendation';
 
 export type { InputLanguageBenchmarkUpdateArgs } from './inputLanguageBenchmarkUpdateTypes';
@@ -92,6 +96,11 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     recoverySafeBoundary: args.decision.deferPauseUntilSafeBoundary,
     germanShortBias: language === 'de' && args.live.inputMode === 'browser-tts',
   });
+  const usesBrowserTtsDeScoring = args.live.inputMode === 'browser-tts' && language === 'de';
+  const acceptedForBenchmark = !usesBrowserTtsDeScoring || isValidBrowserTtsDeBenchmarkSample(timelinePoint);
+  const acceptedForSessionInsight = !usesBrowserTtsDeScoring || isValidBrowserTtsDeSessionInsightSample(timelinePoint);
+  timelinePoint.acceptedForBenchmark = acceptedForBenchmark;
+  timelinePoint.acceptedForSessionInsight = acceptedForSessionInsight;
   const timeline = pruneTimelineToRollingWindow([...current.timeline, timelinePoint], ROLLING_WINDOW_DAYS);
   const environmentState = buildBrowserTtsEnvironmentBenchmarkState({
     current,
@@ -111,7 +120,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     replayDenied,
   });
   const resolvedBenchmarkRejectionReason =
-    args.live.inputMode === 'browser-tts' && language === 'de' && !isValidBrowserTtsDeBenchmarkSample(timelinePoint)
+    usesBrowserTtsDeScoring && !acceptedForBenchmark
       ? getBrowserTtsDeBenchmarkRejectionReason(timelinePoint)
       : benchmarkRejectionReason;
   timelinePoint.benchmarkRejectionReason = resolvedBenchmarkRejectionReason ?? undefined;

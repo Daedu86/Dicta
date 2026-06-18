@@ -46,6 +46,28 @@ export function isValidBrowserTtsDeBenchmarkSample(point: AdaptiveTimelinePoint)
   );
 }
 
+export function isValidBrowserTtsDeSessionInsightSample(point: AdaptiveTimelinePoint): boolean {
+  if (!isBrowserTtsDe(point.inputMode, point.language)) return true;
+  const lagSec = point.lagSec;
+  const stableLagSec = point.stableLagSec ?? point.lagSec;
+  const semanticCompleteness = point.semanticCompleteness ?? 1;
+  const hasValidPhrasePosition = hasValidBrowserTtsDePhrasePosition(point);
+  return (
+    hasValidPhrasePosition &&
+    Number.isFinite(lagSec) &&
+    typeof stableLagSec === 'number' &&
+    Number.isFinite(stableLagSec) &&
+    lagSec !== -5 &&
+    lagSec !== 5 &&
+    stableLagSec !== -5 &&
+    stableLagSec !== 5 &&
+    point.wpm > 0 &&
+    point.phraseBoundaryType !== 'unsafe' &&
+    semanticCompleteness >= 0.7 &&
+    isScoringTimelineEvent(point.event)
+  );
+}
+
 export function getBrowserTtsDeBenchmarkRejectionReason(
   point: AdaptiveTimelinePoint,
 ): BrowserTtsDeBenchmarkRejectionReason | null {
@@ -107,6 +129,9 @@ export function getBrowserTtsDeBenchmarkRejectionTokens(point: AdaptiveTimelineP
   }
   if (tokens.length > 0 || point.wpm <= 0 || point.phraseBoundaryType === 'unsafe' || (point.semanticCompleteness ?? 1) < 0.7 || !isScoringTimelineEvent(point.event)) {
     tokens.push('rejected-benchmark-sample');
+  }
+  if (!isValidBrowserTtsDeBenchmarkSample(point) && isValidBrowserTtsDeSessionInsightSample(point)) {
+    tokens.push('accepted-session-insight');
   }
   return [...new Set(tokens)];
 }
