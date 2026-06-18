@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
 import { LANGUAGE_LABELS, LANGUAGE_TAB_LABELS, SUPPORTED_LANGUAGES, type SupportedLanguage } from '../../core/languages';
+import { useAppUpdateAvailable } from '../../app/useAppUpdateAvailable';
 import { TrainingGenerationCard } from './TrainingGenerationCard';
 import type { TrainingGenerationButton } from './trainingGenerationDisplay';
 
@@ -18,6 +19,7 @@ export function TrainingHeader({
 }: TrainingHeaderProps) {
   const [optimisticLanguage, setOptimisticLanguage] = useState(selectedLanguage);
   const deferredLanguageChangeTimeoutRef = useRef<number | null>(null);
+  const hasUpdate = useAppUpdateAvailable();
 
   useEffect(() => {
     setOptimisticLanguage(selectedLanguage);
@@ -76,6 +78,20 @@ export function TrainingHeader({
           );
         })}
       </div>
+      {hasUpdate && (
+        <div className="training-header-update-banner" role="status" aria-live="polite">
+          <span className="training-header-update-text">Nueva version disponible.</span>
+          <button
+            type="button"
+            className="training-header-update-button"
+            onClick={() => {
+              document.location.assign(document.location.href);
+            }}
+          >
+            Actualizar
+          </button>
+        </div>
+      )}
       <button
         type="button"
         className="secondary-button training-header-button"
