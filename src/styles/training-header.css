@@ -41,11 +41,6 @@
   background: #081c33;
 }
 
-.training-header-button {
-  min-height: 44px;
-  white-space: nowrap;
-}
-
 .training-header-language-tabs {
   display: flex;
   align-items: center;
@@ -125,44 +120,30 @@
   font-size: 0.74rem;
 }
 
-.training-header-update-banner {
-  grid-column: 1 / -1;
+.training-header-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
+  justify-content: flex-end;
+  gap: 0.45rem;
   min-width: 0;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid rgba(245, 158, 11, 0.42);
-  border-radius: 12px;
-  background: rgba(245, 158, 11, 0.14);
-  color: #fff7ed;
-  font-size: 0.82rem;
-  line-height: 1.2;
 }
 
-.training-header-update-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.training-header-button,
+.training-header-update-button {
+  flex: 0 0 auto;
+  min-height: 44px;
   white-space: nowrap;
 }
 
-.training-header-update-button {
-  flex: 0 0 auto;
-  min-height: 34px;
-  border: 1px solid rgba(255, 247, 237, 0.5);
-  border-radius: 999px;
-  padding: 0.35rem 0.7rem;
+.training-header .training-header-update-button {
+  border-color: rgba(245, 158, 11, 0.64);
   background: #f59e0b;
   color: #121826;
-  font: inherit;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 900;
-  cursor: pointer;
 }
 
-.training-header-update-button:hover {
+.training-header .training-header-update-button:hover {
   background: #fbbf24;
 }
 
@@ -176,7 +157,7 @@
     grid-row: 1;
   }
 
-  .training-header-button {
+  .training-header-actions {
     grid-column: 2;
     grid-row: 1;
   }
@@ -190,11 +171,6 @@
   .training-header-language-tab {
     flex: 1 1 0;
     width: auto;
-  }
-
-  .training-header-update-banner {
-    grid-column: 1 / -1;
-    grid-row: 3;
   }
 
   .training-header-generation-card .training-generation-grid {

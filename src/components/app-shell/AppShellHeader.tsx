@@ -78,7 +78,7 @@ export function AppShellHeader({
           ) : null}
         </div>
       </div>
-      <div className="brand-header-actions">
+      <div className={`brand-header-actions ${hasAppUpdate ? 'brand-header-actions-has-update' : ''}`}>
         <button
           type="button"
           className="secondary-button brand-training-mode-button"
@@ -145,17 +145,18 @@ export function AppShellHeader({
         <span className={`brand-sync-status brand-sync-status-${syncStatusState}`}>
           {syncStatusText}
         </span>
+        {hasAppUpdate ? (
+          <button
+            type="button"
+            className="secondary-button brand-update-button"
+            onClick={() => document.location.assign(document.location.href)}
+            aria-label="Update Dicta app to the latest version"
+            title="Update Dicta app to the latest version"
+          >
+            Update APP
+          </button>
+        ) : null}
       </div>
-      {hasAppUpdate ? (
-        <div className="brand-status-row brand-header-update-row" role="status" aria-live="polite">
-          <span className="brand-build-status">
-            <span className="brand-build-status-text">Hay una nueva version de Dicta disponible.</span>
-            <button type="button" className="secondary-button" onClick={() => document.location.assign(document.location.href)}>
-              Actualizar
-            </button>
-          </span>
-        </div>
-      ) : null}
       {children}
     </section>
   );

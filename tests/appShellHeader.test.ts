@@ -4,8 +4,10 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppShellHeaderProps } from '../src/components/app-shell/AppShellHeader';
 
+const appUpdateMock = vi.hoisted(() => ({ available: false }));
+
 vi.mock('../src/app/useAppUpdateAvailable', () => ({
-  useAppUpdateAvailable: () => false,
+  useAppUpdateAvailable: () => appUpdateMock.available,
 }));
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -19,6 +21,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  appUpdateMock.available = false;
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -73,6 +76,32 @@ describe('AppShellHeader', () => {
     expect(badge?.textContent).toBe('LLM');
     expect(badge?.getAttribute('aria-label')).toBe('LLM not assigned');
     expect(badge?.classList.contains('brand-llm-status-unset')).toBe(true);
+  });
+
+  it('renders the app update action after Sync in the header actions', () => {
+    appUpdateMock.available = true;
+
+    act(() => {
+      root.render(createElement(AppShellHeader, appShellHeaderProps({
+        syncStatusState: 'synced',
+        syncStatusText: 'Sync: synced',
+      })));
+    });
+
+    const actions = host.querySelector<HTMLElement>('.brand-header-actions');
+    const updateButton = host.querySelector<HTMLButtonElement>('.brand-update-button');
+
+    expect(host.querySelector('.brand-header-update-row')).toBeNull();
+    expect(updateButton?.textContent).toBe('Update APP');
+    expect(updateButton?.getAttribute('aria-label')).toBe('Update Dicta app to the latest version');
+    expect(actions?.classList.contains('brand-header-actions-has-update')).toBe(true);
+
+    const actionChildren = Array.from(actions?.children ?? []);
+    const syncIndex = actionChildren.findIndex((element) => element.classList.contains('brand-sync-status'));
+    const updateIndex = actionChildren.findIndex((element) => element.classList.contains('brand-update-button'));
+
+    expect(syncIndex).toBeGreaterThanOrEqual(0);
+    expect(updateIndex).toBe(syncIndex + 1);
   });
 });
 

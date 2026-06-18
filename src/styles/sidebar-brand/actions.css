@@ -45,6 +45,15 @@
   color: #b9d9ff;
 }
 
+.brand-update-button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .brand-session-create-card {
   flex: 1 1 100%;
   width: 100%;

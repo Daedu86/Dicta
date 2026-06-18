@@ -25,6 +25,15 @@
     white-space: normal;
   }
 
+  .workspace-main-header .brand-header-actions-has-update .brand-sync-status {
+    flex: 0 1 auto;
+  }
+
+  .workspace-main-header .brand-header-actions .brand-update-button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
   .brand-llm-status,
   .brand-build-status {
     max-width: 100%;

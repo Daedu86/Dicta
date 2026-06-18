@@ -5,6 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrainingHeader } from '../src/components/training/TrainingHeader';
 import type { TrainingGenerationButton } from '../src/components/training/TrainingGenerationCard';
 
+const appUpdateMock = vi.hoisted(() => ({ available: false }));
+
+vi.mock('../src/app/useAppUpdateAvailable', () => ({
+  useAppUpdateAvailable: () => appUpdateMock.available,
+}));
+
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 let host: HTMLDivElement;
@@ -16,6 +22,7 @@ function languageButtons(): HTMLButtonElement[] {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  appUpdateMock.available = false;
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -52,6 +59,26 @@ describe('TrainingHeader', () => {
     });
 
     expect(backToApp).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the app update action beside Home when an update is available', () => {
+    appUpdateMock.available = true;
+
+    act(() => {
+      root.render(createElement(TrainingHeader, {
+        selectedLanguage: 'de',
+        onChangeLanguage: vi.fn(),
+        onBackToApp: vi.fn(),
+      }));
+    });
+
+    const actions = host.querySelector<HTMLElement>('.training-header-actions');
+    const actionButtons = Array.from(actions?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+
+    expect(host.querySelector('.training-header-update-banner')).toBeNull();
+    expect(actionButtons.map((button) => button.textContent)).toEqual(['Update', 'Home']);
+    expect(actionButtons[0].classList.contains('training-header-update-button')).toBe(true);
+    expect(actionButtons[0].getAttribute('aria-label')).toBe('Update Dicta to the latest app version');
   });
 
   it('renders the five global language buttons and reports selections after the next task', () => {

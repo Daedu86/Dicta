@@ -78,29 +78,30 @@ export function TrainingHeader({
           );
         })}
       </div>
-      {hasUpdate && (
-        <div className="training-header-update-banner" role="status" aria-live="polite">
-          <span className="training-header-update-text">Nueva version disponible.</span>
+      <div className="training-header-actions" aria-live="polite">
+        {hasUpdate ? (
           <button
             type="button"
-            className="training-header-update-button"
+            className="secondary-button training-header-update-button"
             onClick={() => {
               document.location.assign(document.location.href);
             }}
+            aria-label="Update Dicta to the latest app version"
+            title="Update Dicta to the latest app version"
           >
-            Actualizar
+            Update
           </button>
-        </div>
-      )}
-      <button
-        type="button"
-        className="secondary-button training-header-button"
-        onClick={onBackToApp}
-        aria-label="Return to Dicta home"
-        title="Return to Dicta home"
-      >
-        Home
-      </button>
+        ) : null}
+        <button
+          type="button"
+          className="secondary-button training-header-button"
+          onClick={onBackToApp}
+          aria-label="Return to Dicta home"
+          title="Return to Dicta home"
+        >
+          Home
+        </button>
+      </div>
       <TrainingGenerationCard
         generationButtons={generationButtons}
         className="training-header-generation-card"
