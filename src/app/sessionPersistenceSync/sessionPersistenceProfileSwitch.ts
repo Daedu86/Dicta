@@ -25,6 +25,10 @@ type UseProfileScopedSessionStorageSwitchOptions<TSession extends PersistableSes
   deletedSessionIdsRef: MutableRefObject<Set<string>>;
   syncStateRef: MutableRefObject<DictaSyncState>;
   buildSyncState: (sessions: TSession[], benchmarks: TBenchmarks, feedback: TFeedback) => DictaSyncState;
+  pruneAdaptiveSessionFeedbackForDeletedSessions?: (
+    feedback: TFeedback,
+    sessionIds: ReadonlySet<string>,
+  ) => TFeedback;
   supabaseApplyingRemoteRef: MutableRefObject<boolean>;
   supabaseInitialPullCompleteRef: MutableRefObject<boolean>;
   setSupabaseInitialPullState: Dispatch<SetStateAction<SupabaseInitialPullState>>;
@@ -56,6 +60,7 @@ export function useProfileScopedSessionStorageSwitch<TSession extends Persistabl
   deletedSessionIdsRef,
   syncStateRef,
   buildSyncState,
+  pruneAdaptiveSessionFeedbackForDeletedSessions,
   supabaseApplyingRemoteRef,
   supabaseInitialPullCompleteRef,
   setSupabaseInitialPullState,
@@ -92,11 +97,14 @@ export function useProfileScopedSessionStorageSwitch<TSession extends Persistabl
     adaptiveBenchmarksRef.current = restoredBenchmarks;
     setAdaptiveBenchmarks(restoredBenchmarks);
 
-    const restoredFeedback = loadAdaptiveSessionFeedback();
+    deletedSessionIdsRef.current = loadDeletedSessionIds();
+    const loadedFeedback = loadAdaptiveSessionFeedback();
+    const restoredFeedback = pruneAdaptiveSessionFeedbackForDeletedSessions
+      ? pruneAdaptiveSessionFeedbackForDeletedSessions(loadedFeedback, deletedSessionIdsRef.current)
+      : loadedFeedback;
     adaptiveSessionFeedbackRef.current = restoredFeedback;
     setAdaptiveSessionFeedback(restoredFeedback);
 
-    deletedSessionIdsRef.current = loadDeletedSessionIds();
     syncStateRef.current = buildSyncState(restoredSessions, restoredBenchmarks, restoredFeedback);
     supabaseApplyingRemoteRef.current = false;
     supabaseInitialPullCompleteRef.current = !result.activeProfileId;
@@ -125,6 +133,7 @@ export function useProfileScopedSessionStorageSwitch<TSession extends Persistabl
     loadSessions,
     onProfileStorageSwitched,
     pendingCriticalSessionRowsRef,
+    pruneAdaptiveSessionFeedbackForDeletedSessions,
     setActiveLocalSyncProfileId,
     setActiveSessionId,
     setAdaptiveBenchmarks,

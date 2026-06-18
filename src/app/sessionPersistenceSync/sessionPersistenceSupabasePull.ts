@@ -29,6 +29,7 @@ export function useSupabaseSessionPullRuntime<TSession extends PersistableSessio
     supabaseApplyingRemoteRef,
     supabaseInitialPullCompleteRef,
     clearPendingCriticalSessionRows,
+    pruneAdaptiveSessionFeedbackForDeletedSessions,
   } = options;
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export function useSupabaseSessionPullRuntime<TSession extends PersistableSessio
       supabaseApplyingRemoteRef,
       supabaseInitialPullCompleteRef,
       clearPendingCriticalSessionRows,
+      pruneAdaptiveSessionFeedbackForDeletedSessions,
       isCancelled: () => cancelled,
     });
 
@@ -84,6 +86,7 @@ export function useSupabaseSessionPullRuntime<TSession extends PersistableSessio
     deletedSessionIdsRef,
     normalizeRestoredSession,
     profileId,
+    pruneAdaptiveSessionFeedbackForDeletedSessions,
     setAdaptiveBenchmarks,
     setAdaptiveSessionFeedback,
     setSessions,

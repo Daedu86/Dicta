@@ -6,6 +6,7 @@ import {
   mergeSyncRows,
   pullSyncRows,
   pushSyncRowsDetailed,
+  type DictaSyncState,
 } from '../../core/supabaseSync';
 import { persistDeletedSessionIds } from '../sessionPersistenceDeletedIds';
 import {
@@ -47,6 +48,7 @@ export function createSupabasePullSync<TSession extends PersistableSession, TBen
   supabaseApplyingRemoteRef,
   supabaseInitialPullCompleteRef,
   clearPendingCriticalSessionRows,
+  pruneAdaptiveSessionFeedbackForDeletedSessions,
   isCancelled,
 }: CreateSupabasePullSyncArgs<TSession, TBenchmarks, TFeedback>): (reason: PullReason) => Promise<void> {
   return async (reason) => {
@@ -81,8 +83,11 @@ export function createSupabasePullSync<TSession extends PersistableSession, TBen
       const filteredMergedSessions = (merged.sessions as TSession[])
         .map(normalizeRestoredSession)
         .filter((session) => !deletedSessionIdsRef.current.has(session.id) && !isTransientGenerationErrorSessionLike(session));
+      const filteredMergedFeedback = pruneAdaptiveSessionFeedbackForDeletedSessions
+        ? pruneAdaptiveSessionFeedbackForDeletedSessions(merged.feedback as TFeedback, deletedSessionIdsRef.current)
+        : merged.feedback as TFeedback;
       if (merged.changed || filteredMergedSessions.length !== (merged.sessions as TSession[]).length) {
-        applyRemoteSupabaseMerge(filteredMergedSessions, merged.benchmarks as TBenchmarks, merged.feedback as TFeedback, {
+        applyRemoteSupabaseMerge(filteredMergedSessions, merged.benchmarks as TBenchmarks, filteredMergedFeedback, {
           setSessions,
           setAdaptiveBenchmarks,
           setAdaptiveSessionFeedback,
@@ -91,7 +96,11 @@ export function createSupabasePullSync<TSession extends PersistableSession, TBen
       }
 
       markInitialPullComplete(supabaseInitialPullCompleteRef, setSupabaseInitialPullState, supabaseSyncIdentity);
-      const postMergeState = { ...merged, sessions: filteredMergedSessions };
+      const postMergeState: DictaSyncState = {
+        ...merged,
+        sessions: filteredMergedSessions,
+        feedback: filteredMergedFeedback as DictaSyncState['feedback'],
+      };
       const { pushed, pushedRows } = await pushSyncRowsDetailed(client, profileId, postMergeState, {
         existingRows: supabaseKnownRemoteRowsRef.current,
       });

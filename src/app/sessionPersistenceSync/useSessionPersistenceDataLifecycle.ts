@@ -1,5 +1,6 @@
 import { useSupabaseBackgroundPush } from './sessionPersistenceSupabasePush';
 import { useSessionPersistenceLocalLifecycleEffects } from './sessionPersistenceLocalLifecycleEffects';
+import { useSessionRetentionPruning } from './sessionPersistenceRetentionPruning';
 import { useSupabaseSessionPullRuntime } from './sessionPersistenceSupabasePull';
 import { useSessionPersistenceSyncStateRef } from './sessionPersistenceRuntimeSyncStateEffects';
 import type { PersistableSession, UseSessionPersistenceSyncOptions } from './sessionPersistenceSyncTypes';
@@ -56,6 +57,33 @@ export function useSessionPersistenceDataLifecycle<TSession extends PersistableS
     supabaseApplyingRemoteRef: state.supabaseApplyingRemoteRef,
     supabaseInitialPullCompleteRef: state.supabaseInitialPullCompleteRef,
     clearPendingCriticalSessionRows: pending.clearPendingCriticalSessionRows,
+    pruneAdaptiveSessionFeedbackForDeletedSessions: options.pruneAdaptiveSessionFeedbackForDeletedSessions,
+  });
+
+  useSessionRetentionPruning({
+    sessions: options.sessions,
+    setSessions: options.setSessions,
+    activeSessionId: options.activeSessionId,
+    setActiveSessionId: options.setActiveSessionId,
+    adaptiveBenchmarks: options.adaptiveBenchmarks,
+    adaptiveSessionFeedback: options.adaptiveSessionFeedback,
+    setAdaptiveSessionFeedback: options.setAdaptiveSessionFeedback,
+    adaptiveSessionFeedbackRef: options.adaptiveSessionFeedbackRef,
+    pruneAdaptiveSessionFeedbackForDeletedSessions: options.pruneAdaptiveSessionFeedbackForDeletedSessions,
+    buildSyncState: options.buildSyncState,
+    syncStateRef: state.syncStateRef,
+    latestSessionsForPersistenceRef: state.latestSessionsForPersistenceRef,
+    deletedSessionIdsRef: state.deletedSessionIdsRef,
+    localStorageReadyForEffectiveProfile: state.localStorageReadyForEffectiveProfile,
+    syncEnabled,
+    supabaseClient: options.supabaseClient,
+    profileId,
+    supabaseInitialPullCompleteRef: state.supabaseInitialPullCompleteRef,
+    supabaseKnownRemoteRowsRef: state.supabaseKnownRemoteRowsRef,
+    supabaseLastRemoteUpdatedAtRef: state.supabaseLastRemoteUpdatedAtRef,
+    clearScheduledSessionPersist: local.clearScheduledSessionPersist,
+    persistSessionsToLocalStorage: local.persistSessionsToLocalStorage,
+    setSupabaseSyncStatus: state.setSupabaseSyncStatus,
   });
 
   useSupabaseBackgroundPush({

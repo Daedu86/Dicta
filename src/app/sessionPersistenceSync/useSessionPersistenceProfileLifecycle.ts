@@ -33,6 +33,7 @@ export function useSessionPersistenceProfileLifecycle<TSession extends Persistab
     deletedSessionIdsRef: state.deletedSessionIdsRef,
     syncStateRef: state.syncStateRef,
     buildSyncState: options.buildSyncState,
+    pruneAdaptiveSessionFeedbackForDeletedSessions: options.pruneAdaptiveSessionFeedbackForDeletedSessions,
     supabaseApplyingRemoteRef: state.supabaseApplyingRemoteRef,
     supabaseInitialPullCompleteRef: state.supabaseInitialPullCompleteRef,
     setSupabaseInitialPullState: state.setSupabaseInitialPullState,

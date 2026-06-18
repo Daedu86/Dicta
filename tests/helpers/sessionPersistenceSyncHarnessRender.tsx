@@ -1,5 +1,6 @@
 import { act, createElement, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { pruneAdaptiveSessionFeedbackBySessionIds } from '../../src/app/adaptiveSessionFeedbackRetention';
 import { useSessionPersistenceSync } from '../../src/app/useSessionPersistenceSync';
 import type { DictaSyncConfig } from '../../src/core/supabaseSync';
 import { disabledSyncConfig } from './sessionPersistenceSyncHarnessConfig';
@@ -34,10 +35,12 @@ export function renderHarness({
   getRuntime: () => RuntimeSnapshot;
   getSessions: () => TestSession[];
   getActiveSessionId: () => string;
+  getFeedback: () => TestFeedback;
 } {
   let runtime: RuntimeSnapshot | null = null;
   let latestSessions: TestSession[] = [];
   let latestActiveSessionId = '';
+  let latestFeedback: TestFeedback = {};
 
   function Harness() {
     const [sessions, setSessions] = useState<TestSession[]>(initialSessions);
@@ -51,6 +54,7 @@ export function renderHarness({
 
     latestSessions = sessions;
     latestActiveSessionId = activeSessionId;
+    latestFeedback = feedback;
     runtime = useSessionPersistenceSync({
       sessions,
       setSessions,
@@ -71,6 +75,7 @@ export function renderHarness({
       normalizeSessionForPersistence: normalizeTestSession,
       normalizeRestoredSession: normalizeTestSession,
       buildSyncState: buildTestSyncState,
+      pruneAdaptiveSessionFeedbackForDeletedSessions: pruneAdaptiveSessionFeedbackBySessionIds,
       onQuotaRecovered: () => undefined,
       onProfileStorageSwitched,
     });
@@ -88,5 +93,6 @@ export function renderHarness({
     },
     getSessions: () => latestSessions,
     getActiveSessionId: () => latestActiveSessionId,
+    getFeedback: () => latestFeedback,
   };
 }

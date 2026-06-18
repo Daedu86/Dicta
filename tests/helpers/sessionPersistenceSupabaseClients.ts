@@ -5,23 +5,26 @@ import type { DictaSyncRow } from '../../src/core/supabaseSync';
 export function createDeferredSupabaseClient(remoteRows: DictaSyncRow[]): {
   client: SupabaseClient;
   resolvePull: () => void;
+  upsert: ReturnType<typeof vi.fn>;
 } {
   let resolvePull: (value: { data: DictaSyncRow[]; error: null }) => void = () => undefined;
   const pullResult = new Promise<{ data: DictaSyncRow[]; error: null }>((resolve) => {
     resolvePull = resolve;
   });
+  const upsert = vi.fn(async () => ({ error: null }));
   const query = {
     select: () => query,
     eq: () => query,
     gt: () => query,
     order: () => pullResult,
-    upsert: async () => ({ error: null }),
+    upsert,
   };
   return {
     client: {
       from: () => query,
     } as unknown as SupabaseClient,
     resolvePull: () => resolvePull({ data: remoteRows, error: null }),
+    upsert,
   };
 }
 

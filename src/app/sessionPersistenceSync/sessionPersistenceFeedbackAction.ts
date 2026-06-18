@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { perfDiagnostics } from '../../core/perfDiagnostics';
+import { filterSessionsByRetention } from '../sessionRetentionPolicy';
 import { ADAPTIVE_SESSION_FEEDBACK_KEY } from './sessionPersistenceSyncConstants';
 import { pushSyncStateToSupabase } from './sessionPersistenceSupabasePush';
 import type { PersistableSession } from './sessionPersistenceSyncTypes';
@@ -23,8 +24,9 @@ export function useSessionPersistenceFeedbackAction<TSession extends Persistable
   return useCallback((nextFeedback: TFeedback): void => {
     adaptiveSessionFeedbackRef.current = nextFeedback;
     window.localStorage.setItem(ADAPTIVE_SESSION_FEEDBACK_KEY, JSON.stringify(nextFeedback));
+    const retainedSessions = filterSessionsByRetention(latestSessionsForPersistenceRef.current);
     const syncState = perfDiagnostics.withSpan('supabase.buildSyncState.feedbackFinal', () =>
-      buildSyncState(latestSessionsForPersistenceRef.current, adaptiveBenchmarksRef.current, nextFeedback),
+      buildSyncState(retainedSessions, adaptiveBenchmarksRef.current, nextFeedback),
     );
     syncStateRef.current = syncState;
     if (!supabaseClient || !syncEnabled || !supabaseInitialPullCompleteRef.current || supabaseApplyingRemoteRef.current) return;

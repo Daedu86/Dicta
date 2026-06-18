@@ -27,4 +27,8 @@ export type UseSupabaseSessionPullRuntimeOptions<TSession extends PersistableSes
   supabaseApplyingRemoteRef: MutableRefObject<boolean>;
   supabaseInitialPullCompleteRef: MutableRefObject<boolean>;
   clearPendingCriticalSessionRows: (sessionIds: string[]) => void;
+  pruneAdaptiveSessionFeedbackForDeletedSessions?: (
+    feedback: TFeedback,
+    sessionIds: ReadonlySet<string>,
+  ) => TFeedback;
 };

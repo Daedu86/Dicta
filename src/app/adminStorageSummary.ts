@@ -7,6 +7,8 @@ import { BROWSER_TTS_SESSION_INPUT_MODE } from '../core/sessionInputModes';
 import type { SessionInputMode } from '../core/sessionInputModes';
 import { countTelemetrySamples } from '../core/sessionTelemetrySummary';
 import type { DictaSyncState } from '../core/supabaseSync';
+import { pruneAdaptiveSessionFeedbackBySessionIds } from './adaptiveSessionFeedbackRetention';
+import { partitionSessionsByRetention } from './sessionRetentionPolicy';
 
 export type AdminStorageSummary = {
   sessionCount: number;
@@ -22,8 +24,11 @@ export type AdminStorageSummary = {
 };
 
 type AdminStorageSession = Parameters<typeof normalizeSessionForPersistence>[0] & {
+  id: string;
   inputMode: SessionInputMode;
   status: string;
+  createdAt?: string;
+  updatedAt: string;
   ttsText: string;
   ttsPracticeText: string;
   telemetry: {
@@ -57,13 +62,16 @@ export function buildAdminStorageSummary(sessions: AdminStorageSession[]): Admin
 }
 
 export function buildCurrentSyncState(
-  sessions: Parameters<typeof normalizeSessionForPersistence>[0][],
+  sessions: AdminStorageSession[],
   benchmarks: DictaSyncState['benchmarks'],
   feedback: DictaSyncState['feedback'],
 ): DictaSyncState {
+  const normalizedSessions = sessions.map((session) => normalizeSessionForPersistence(session));
+  const { retainedSessions, expiredSessionIds } = partitionSessionsByRetention(normalizedSessions);
+
   return {
-    sessions: sessions.map((session) => normalizeSessionForPersistence(session)),
+    sessions: retainedSessions,
     benchmarks,
-    feedback,
+    feedback: pruneAdaptiveSessionFeedbackBySessionIds(feedback, expiredSessionIds),
   };
 }

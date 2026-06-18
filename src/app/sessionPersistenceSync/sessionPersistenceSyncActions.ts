@@ -3,6 +3,7 @@ import type { DictaSyncState } from '../../core/supabaseSync';
 import { perfDiagnostics } from '../../core/perfDiagnostics';
 import { SESSION_CREATE_SYNC_OPTIONS } from './sessionPersistenceSyncConstants';
 import { pushSyncStateToSupabase } from './sessionPersistenceSupabasePush';
+import { filterSessionsByRetention } from '../sessionRetentionPolicy';
 import type { ImmediateSessionSyncOptions, PersistableSession } from './sessionPersistenceSyncTypes';
 import type {
   SessionPersistenceSyncActions,
@@ -47,14 +48,15 @@ export function useSessionPersistenceSyncActions<TSession extends PersistableSes
       errorMessage = 'Supabase sync failed.',
       criticalSessionIds = [],
     } = options;
-    latestSessionsForPersistenceRef.current = nextSessions;
+    const retainedSessions = filterSessionsByRetention(nextSessions);
+    latestSessionsForPersistenceRef.current = retainedSessions;
     clearScheduledSessionPersist();
-    persistSessionsToLocalStorage(nextSessions, localStorageSpanName);
+    persistSessionsToLocalStorage(retainedSessions, localStorageSpanName);
 
     let syncState: DictaSyncState | null = null;
     if (supabaseClient && syncEnabled) {
       syncState = perfDiagnostics.withSpan(buildSpanName, () =>
-        buildSyncState(nextSessions, adaptiveBenchmarks, adaptiveSessionFeedback),
+        buildSyncState(retainedSessions, adaptiveBenchmarks, adaptiveSessionFeedback),
       );
       syncStateRef.current = syncState;
       rememberPendingCriticalSessionRows(syncState, criticalSessionIds);
@@ -96,7 +98,7 @@ export function useSessionPersistenceSyncActions<TSession extends PersistableSes
   ]);
 
   const prependSessionAndPersistNow = useCallback((createNextSession: (previousSessions: TSession[]) => TSession): TSession => {
-    const previousSessions = latestSessionsForPersistenceRef.current;
+    const previousSessions = filterSessionsByRetention(latestSessionsForPersistenceRef.current);
     const nextSession = createNextSession(previousSessions);
     const nextSessions = [nextSession, ...previousSessions];
     setSessions(nextSessions);

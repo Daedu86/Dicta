@@ -9,6 +9,7 @@ import {
   SESSION_PERSIST_DEBOUNCE_MS,
   SESSION_STORAGE_KEY,
 } from './sessionPersistenceSyncConstants';
+import { filterSessionsByRetention } from '../sessionRetentionPolicy';
 import type { PersistableSession } from './sessionPersistenceSyncTypes';
 
 export type SessionLocalPersistenceController<TSession extends PersistableSession> = {
@@ -46,8 +47,9 @@ export function useSessionLocalPersistence<TSession extends PersistableSession>(
 
   const persistSessionsToLocalStorage = useCallback((nextSessions: TSession[], spanName = 'session.localStorage.persist'): void => {
     perfDiagnostics.withSpan(spanName, () => {
+      const retainedSessions = filterSessionsByRetention(nextSessions);
       const json = JSON.stringify(buildSessionPersistenceStorageSessions({
-        sessions: nextSessions,
+        sessions: retainedSessions,
         activeSessionId,
         normalizeSessionForPersistence,
       }));
@@ -63,7 +65,7 @@ export function useSessionLocalPersistence<TSession extends PersistableSession>(
         }
 
         const recoveryJson = JSON.stringify(buildSessionPersistenceQuotaRecoverySessions({
-          sessions: nextSessions,
+          sessions: retainedSessions,
           activeSessionId,
           normalizeSessionForPersistence,
         }));

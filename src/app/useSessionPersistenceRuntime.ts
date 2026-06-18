@@ -8,6 +8,7 @@ import { getDictaSessionQuotaStatus } from '../core/appProfiles';
 import { normalizeSessionForPersistence } from '../core/sessionNormalization';
 import type { DictaSyncConfig } from '../core/supabaseSync';
 import { buildCurrentSyncState } from './adminStorageSummary';
+import { pruneAdaptiveSessionFeedbackBySessionIds } from './adaptiveSessionFeedbackRetention';
 import {
   loadAdaptiveBenchmarks,
   loadAdaptiveSessionFeedback,
@@ -90,6 +91,7 @@ export function useSessionPersistenceRuntime({
     normalizeSessionForPersistence,
     normalizeRestoredSession: normalizeRestoredStoredSession,
     buildSyncState: buildCurrentSyncState,
+    pruneAdaptiveSessionFeedbackForDeletedSessions: pruneAdaptiveSessionFeedbackBySessionIds,
     onQuotaRecovered: setError,
     onProfileStorageSwitched: () => {
       clearDashboardSession();

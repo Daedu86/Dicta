@@ -23,6 +23,7 @@ export type ImmediateSessionSyncOptions = {
 
 export type PersistableSession = {
   id: string;
+  createdAt?: string;
   updatedAt: string;
   status: string;
   telemetry: SessionTelemetry;
@@ -54,6 +55,10 @@ export type UseSessionPersistenceSyncOptions<TSession extends PersistableSession
   normalizeSessionForPersistence: (session: TSession) => TSession;
   normalizeRestoredSession: (session: TSession) => TSession;
   buildSyncState: (sessions: TSession[], benchmarks: TBenchmarks, feedback: TFeedback) => DictaSyncState;
+  pruneAdaptiveSessionFeedbackForDeletedSessions?: (
+    feedback: TFeedback,
+    sessionIds: ReadonlySet<string>,
+  ) => TFeedback;
   onQuotaRecovered: (message: string) => void;
   onProfileStorageSwitched: () => void;
 };
