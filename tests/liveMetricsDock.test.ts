@@ -58,7 +58,7 @@ describe('LiveMetricsDock', () => {
     expect(host.querySelector('.live-metrics-control-row')).toBeNull();
     expect(headingRow?.querySelector('.live-metrics-input-tabs')).toBeNull();
     expect(headingRow?.querySelector('.live-metrics-input-tab')).toBeNull();
-    expect(headingRow?.querySelector('.live-metrics-report-button')?.textContent).toBe('Copy full adaptive report');
+    expect(headingRow?.querySelector('.live-metrics-report-button')).toBeNull();
   });
 });
 
