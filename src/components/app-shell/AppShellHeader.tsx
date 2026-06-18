@@ -1,5 +1,6 @@
 import type { DictaAppProfile } from '../../core/appProfiles';
 import type { ReactNode } from 'react';
+import { useAppUpdateAvailable } from '../../app/useAppUpdateAvailable';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -54,10 +55,13 @@ export function AppShellHeader({
   onToggleTheme,
   onSignOut,
 }: AppShellHeaderProps) {
+  const hasAppUpdate = useAppUpdateAvailable();
+  const buildMarkTitle = buildInfoLabel.replace(/^.*commit: /, '') || buildInfoTitle;
+
   return (
     <section className="panel brand-block brand-header-panel workspace-main-header">
       <div className="brand-header-main">
-        <div className="brand-mark">
+        <div className="brand-mark" title={buildMarkTitle}>
           <span className="brand-mark-icon" aria-hidden="true">🪗</span>
         </div>
         <div className="brand-copy">
@@ -74,8 +78,8 @@ export function AppShellHeader({
               {sessionQuotaBlocked ? ' · contact admin' : ''}
             </p>
           ) : null}
-          <div className="brand-status-row">
-            {showOpenRouterStatus ? (
+          {showOpenRouterStatus ? (
+            <div className="brand-status-row">
               <span
                 className={`brand-llm-status ${openRouterModelIsSet ? 'brand-llm-status-set' : 'brand-llm-status-unset'}`}
                 title={openRouterModelTitle}
@@ -83,12 +87,8 @@ export function AppShellHeader({
                 <span className="brand-llm-status-icon" aria-hidden="true">LLM</span>
                 <span className="brand-llm-status-text">{openRouterModelLabel}</span>
               </span>
-            ) : null}
-            <span className="brand-build-status" title={buildInfoTitle}>
-              <span className="brand-build-status-icon" aria-hidden="true">Git</span>
-              <span className="brand-build-status-text">{buildInfoLabel}</span>
-            </span>
-          </div>
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="brand-header-actions">
@@ -149,6 +149,16 @@ export function AppShellHeader({
           {syncStatusText}
         </span>
       </div>
+      {hasAppUpdate ? (
+        <div className="brand-status-row brand-header-update-row" role="status" aria-live="polite">
+          <span className="brand-build-status">
+            <span className="brand-build-status-text">Hay una nueva version de Dicta disponible.</span>
+            <button type="button" className="secondary-button" onClick={() => document.location.assign(document.location.href)}>
+              Actualizar
+            </button>
+          </span>
+        </div>
+      ) : null}
       {children}
     </section>
   );
