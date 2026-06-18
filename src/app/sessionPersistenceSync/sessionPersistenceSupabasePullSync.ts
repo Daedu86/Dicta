@@ -6,8 +6,10 @@ import {
   mergeSyncRows,
   pullSyncRows,
   pushSyncRowsDetailed,
+  type DictaSyncRow,
   type DictaSyncState,
 } from '../../core/supabaseSync';
+import { isSyncClientStale } from '../../core/supabaseSync/syncRetentionPolicy';
 import { persistDeletedSessionIds } from '../sessionPersistenceDeletedIds';
 import {
   collectTransientErrorSessionIds,
@@ -15,6 +17,8 @@ import {
 } from '../sessionPersistenceSupabasePullPlan';
 import type { PersistableSession } from './sessionPersistenceSyncTypes';
 import type { UseSupabaseSessionPullRuntimeOptions } from './sessionPersistenceSupabasePullTypes';
+
+const SUPABASE_SYNC_MANIFEST_KEY = 'dicta.supabaseSyncManifest.v1';
 
 type PullReason = 'initial' | 'background';
 type SupabaseClientForPull<TSession extends PersistableSession, TBenchmarks, TFeedback> = NonNullable<
@@ -27,6 +31,16 @@ type CreateSupabasePullSyncArgs<TSession extends PersistableSession, TBenchmarks
 > & {
   client: SupabaseClientForPull<TSession, TBenchmarks, TFeedback>;
   isCancelled: () => boolean;
+};
+
+type SupabaseSyncManifestEntry = {
+  lastSuccessfulSyncAt: string | null;
+  lastServerVersion: number | null;
+  lastFullRefreshAt: string | null;
+};
+
+type SupabaseSyncManifest = {
+  byProfileId: Record<string, SupabaseSyncManifestEntry | undefined>;
 };
 
 export function createSupabasePullSync<TSession extends PersistableSession, TBenchmarks, TFeedback>({
@@ -61,9 +75,18 @@ export function createSupabasePullSync<TSession extends PersistableSession, TBen
     }));
     try {
       const nowMs = Date.now();
-      const shouldFullPull = shouldUseFullSupabasePull(reason, nowMs, supabaseLastFullPullAtMsRef.current);
+      const manifestEntry = readSupabaseSyncManifestEntry(profileId);
+      const staleClientMustFullRefresh = isSyncClientStale(manifestEntry.lastSuccessfulSyncAt, nowMs);
+      const shouldFullPull =
+        staleClientMustFullRefresh ||
+        manifestEntry.lastServerVersion === null ||
+        shouldUseFullSupabasePull(reason, nowMs, supabaseLastFullPullAtMsRef.current);
       const rows = await pullSyncRows(client, profileId, {
-        updatedAfter: shouldFullPull ? null : supabaseLastRemoteUpdatedAtRef.current,
+        updatedAfter:
+          shouldFullPull || manifestEntry.lastServerVersion !== null
+            ? null
+            : supabaseLastRemoteUpdatedAtRef.current,
+        serverVersionAfter: shouldFullPull ? null : manifestEntry.lastServerVersion,
       });
       if (isCancelled()) return;
       if (shouldFullPull) supabaseLastFullPullAtMsRef.current = nowMs;
@@ -74,7 +97,8 @@ export function createSupabasePullSync<TSession extends PersistableSession, TBen
         latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
 
       deleteTransientErrorRows(rows, client, profileId, deletedSessionIdsRef.current);
-      const merged = mergeSyncRows(syncStateRef.current, rows);
+      const mergeBaseState = staleClientMustFullRefresh ? createEmptyDictaSyncState() : syncStateRef.current;
+      const merged = mergeSyncRows(mergeBaseState, rows);
       if (merged.deletedSessionIds.length > 0) {
         merged.deletedSessionIds.forEach((sessionId) => deletedSessionIdsRef.current.add(sessionId));
         persistDeletedSessionIds(deletedSessionIdsRef.current);
@@ -86,7 +110,7 @@ export function createSupabasePullSync<TSession extends PersistableSession, TBen
       const filteredMergedFeedback = pruneAdaptiveSessionFeedbackForDeletedSessions
         ? pruneAdaptiveSessionFeedbackForDeletedSessions(merged.feedback as TFeedback, deletedSessionIdsRef.current)
         : merged.feedback as TFeedback;
-      if (merged.changed || filteredMergedSessions.length !== (merged.sessions as TSession[]).length) {
+      if (staleClientMustFullRefresh || merged.changed || filteredMergedSessions.length !== (merged.sessions as TSession[]).length) {
         applyRemoteSupabaseMerge(filteredMergedSessions, merged.benchmarks as TBenchmarks, filteredMergedFeedback, {
           setSessions,
           setAdaptiveBenchmarks,
@@ -101,19 +125,29 @@ export function createSupabasePullSync<TSession extends PersistableSession, TBen
         sessions: filteredMergedSessions,
         feedback: filteredMergedFeedback as DictaSyncState['feedback'],
       };
-      const { pushed, pushedRows } = await pushSyncRowsDetailed(client, profileId, postMergeState, {
-        existingRows: supabaseKnownRemoteRowsRef.current,
-      });
+      const pushResult = staleClientMustFullRefresh
+        ? { pushed: 0, pushedRows: [] }
+        : await pushSyncRowsDetailed(client, profileId, postMergeState, {
+            existingRows: supabaseKnownRemoteRowsRef.current,
+          });
+      const { pushed, pushedRows } = pushResult;
       supabaseKnownRemoteRowsRef.current = mergeSyncRowSnapshots(supabaseKnownRemoteRowsRef.current, pushedRows);
       supabaseLastRemoteUpdatedAtRef.current =
         latestSyncRowTimestamp(supabaseKnownRemoteRowsRef.current) ?? supabaseLastRemoteUpdatedAtRef.current;
       clearPendingCriticalSessionRows((postMergeState.sessions as TSession[]).map((session) => session.id));
       if (isCancelled()) return;
+
+      const syncCompletedAt = new Date().toISOString();
+      writeSupabaseSyncManifestEntry(profileId, {
+        lastSuccessfulSyncAt: syncCompletedAt,
+        lastServerVersion: getLatestSyncRowServerVersion(supabaseKnownRemoteRowsRef.current),
+        lastFullRefreshAt: shouldFullPull ? syncCompletedAt : manifestEntry.lastFullRefreshAt,
+      });
       setSupabaseSyncStatus({
         enabled: true,
         state: 'synced',
         message: merged.imported > 0 ? `Synced. Imported ${merged.imported} remote item${merged.imported === 1 ? '' : 's'}.` : 'Synced with Supabase.',
-        lastSyncedAt: new Date().toISOString(),
+        lastSyncedAt: syncCompletedAt,
         imported: merged.imported,
         pushed,
       });
@@ -185,4 +219,72 @@ function markInitialPullComplete<TSession extends PersistableSession, TBenchmark
     key: supabaseSyncIdentity,
     complete: true,
   });
+}
+
+function createEmptyDictaSyncState(): DictaSyncState {
+  return {
+    sessions: [],
+    benchmarks: {},
+    feedback: {},
+  };
+}
+
+function readSupabaseSyncManifestEntry(profileId: string): SupabaseSyncManifestEntry {
+  return normalizeSupabaseSyncManifestEntry(readSupabaseSyncManifest().byProfileId[profileId]);
+}
+
+function writeSupabaseSyncManifestEntry(profileId: string, patch: Partial<SupabaseSyncManifestEntry>): void {
+  try {
+    const manifest = readSupabaseSyncManifest();
+    const current = normalizeSupabaseSyncManifestEntry(manifest.byProfileId[profileId]);
+    manifest.byProfileId[profileId] = normalizeSupabaseSyncManifestEntry({
+      ...current,
+      ...patch,
+    });
+    window.localStorage.setItem(SUPABASE_SYNC_MANIFEST_KEY, JSON.stringify(manifest));
+  } catch (error) {
+    console.warn('[supabaseSync] Failed to persist sync manifest.', error);
+  }
+}
+
+function readSupabaseSyncManifest(): SupabaseSyncManifest {
+  try {
+    const raw = window.localStorage.getItem(SUPABASE_SYNC_MANIFEST_KEY);
+    if (!raw) return { byProfileId: {} };
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return { byProfileId: {} };
+
+    const byProfileId = (parsed as { byProfileId?: unknown }).byProfileId;
+    if (!byProfileId || typeof byProfileId !== 'object') return { byProfileId: {} };
+
+    return {
+      byProfileId: byProfileId as Record<string, SupabaseSyncManifestEntry | undefined>,
+    };
+  } catch {
+    return { byProfileId: {} };
+  }
+}
+
+function normalizeSupabaseSyncManifestEntry(value: Partial<SupabaseSyncManifestEntry> | undefined): SupabaseSyncManifestEntry {
+  return {
+    lastSuccessfulSyncAt: typeof value?.lastSuccessfulSyncAt === 'string' ? value.lastSuccessfulSyncAt : null,
+    lastServerVersion:
+      typeof value?.lastServerVersion === 'number' && Number.isFinite(value.lastServerVersion)
+        ? value.lastServerVersion
+        : null,
+    lastFullRefreshAt: typeof value?.lastFullRefreshAt === 'string' ? value.lastFullRefreshAt : null,
+  };
+}
+
+function getLatestSyncRowServerVersion(rows: readonly DictaSyncRow[]): number | null {
+  let latest: number | null = null;
+
+  for (const row of rows) {
+    const version = row.server_version;
+    if (typeof version !== 'number' || !Number.isFinite(version)) continue;
+    if (latest === null || version > latest) latest = version;
+  }
+
+  return latest;
 }
