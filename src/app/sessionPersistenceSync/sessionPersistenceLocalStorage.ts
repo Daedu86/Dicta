@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { MutableRefObject } from 'react';
 import { perfDiagnostics } from '../../core/perfDiagnostics';
+import { trySetLocalStorageItem } from '../localStorageQuota';
 import {
   buildSessionPersistenceQuotaRecoverySessions,
   buildSessionPersistenceStorageSessions,
@@ -55,26 +56,31 @@ export function useSessionLocalPersistence<TSession extends PersistableSession>(
       }));
       if (json === lastPersistedSessionsJsonRef.current) return;
 
-      try {
-        window.localStorage.setItem(SESSION_STORAGE_KEY, json);
+      const writeResult = trySetLocalStorageItem(SESSION_STORAGE_KEY, json);
+      if (writeResult.ok) {
         lastPersistedSessionsJsonRef.current = json;
         quotaRecoveryNoticeShownRef.current = false;
-      } catch (error) {
-        if (!isLocalStorageQuotaExceeded(error)) {
-          throw error;
-        }
+        return;
+      }
 
-        const recoveryJson = JSON.stringify(buildSessionPersistenceQuotaRecoverySessions({
-          sessions: retainedSessions,
-          activeSessionId,
-          normalizeSessionForPersistence,
-        }));
-        window.localStorage.setItem(SESSION_STORAGE_KEY, recoveryJson);
+      const recoveryJson = JSON.stringify(buildSessionPersistenceQuotaRecoverySessions({
+        sessions: retainedSessions,
+        activeSessionId,
+        normalizeSessionForPersistence,
+      }));
+      const recoveryWriteResult = trySetLocalStorageItem(SESSION_STORAGE_KEY, recoveryJson);
+      if (recoveryWriteResult.ok) {
         lastPersistedSessionsJsonRef.current = recoveryJson;
         if (!quotaRecoveryNoticeShownRef.current) {
           quotaRecoveryNoticeShownRef.current = true;
           onQuotaRecovered('Local session storage was full. Dicta compacted older session telemetry so the current session can keep saving.');
         }
+        return;
+      }
+
+      if (!quotaRecoveryNoticeShownRef.current) {
+        quotaRecoveryNoticeShownRef.current = true;
+        onQuotaRecovered('Local session storage is full. Dicta could not save the latest local session snapshot, but the app will keep running.');
       }
     }, { sessionCount: nextSessions.length });
   }, [activeSessionId, lastPersistedSessionsJsonRef, normalizeSessionForPersistence, onQuotaRecovered]);
@@ -131,15 +137,4 @@ export function useDebouncedSessionLocalPersistence<TSession extends Persistable
     sessions,
     supabaseInitialSyncPending,
   ]);
-}
-
-export function isLocalStorageQuotaExceeded(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const candidate = error as { name?: unknown; code?: unknown };
-  return (
-    candidate.name === 'QuotaExceededError' ||
-    candidate.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-    candidate.code === 22 ||
-    candidate.code === 1014
-  );
 }
