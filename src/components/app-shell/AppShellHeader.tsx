@@ -98,7 +98,7 @@ export function AppShellHeader({
           onClick={onOpenMobileTraining}
           title="Open the focused mobile training view"
         >
-          Training Mode (Mobile ver)
+          Training Mode
         </button>
         {showAdaptiveButton ? (
           <button
