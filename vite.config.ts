@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
     __DICTA_BUILD_INFO__: JSON.stringify(dictaBuildInfo),
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rolldownOptions: {
       output: {
         codeSplitting: {
