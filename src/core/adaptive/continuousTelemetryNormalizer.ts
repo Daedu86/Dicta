@@ -61,6 +61,7 @@ export function normalizeRuntimeTelemetry({
   const phraseBoundaryType = live.phraseBoundaryType;
   const semanticCompleteness = clamp01(live.semanticCompleteness ?? 1);
   const canPauseAfter = live.canPauseAfter ?? true;
+  const canReplayIndependently = live.canReplayIndependently ?? true;
   const pauseDeferred = Boolean(decision?.deferPauseUntilSafeBoundary || (event === 'defer_pause'));
 
   return {
@@ -86,6 +87,7 @@ export function normalizeRuntimeTelemetry({
     listeningPrecision: live.listeningPrecision,
     phraseBoundaryType,
     canPauseAfter,
+    canReplayIndependently,
     semanticCompleteness,
     phraseDifficulty: clamp01(live.phraseDifficulty),
     phraseLengthWords: Math.max(0, finiteOr(live.phraseLengthWords, 0)),

@@ -90,7 +90,14 @@ export function applyContinuousAdaptiveSnapshotToDecision(
   const reason = appendReasonTokens(decision.reason, snapshot.state.reasonCodes);
   const shouldPauseNow = snapshot.telemetry.canPauseAfter && snapshot.output.pauseMsTarget > 0;
   const deferPauseUntilSafeBoundary = !snapshot.telemetry.canPauseAfter && snapshot.output.pauseMsTarget > 0;
-  const shouldReplayPhrase = supportsPhraseReplay && snapshot.output.replaySupport >= 0.72;
+  const replayBoundaryIsSafe =
+    snapshot.telemetry.canReplayIndependently &&
+    snapshot.telemetry.semanticCompleteness >= 0.65 &&
+    snapshot.telemetry.phraseBoundaryType !== 'unsafe';
+  const shouldReplayPhrase =
+    supportsPhraseReplay &&
+    replayBoundaryIsSafe &&
+    (snapshot.output.replaySupport >= 0.25 || decision.shouldReplayPhrase);
   const playbackRate = snapshot.output.playbackRateTarget;
   const replayRate = Number(Math.min(playbackRate, Math.max(snapshot.languageCalibration.playbackRateFloor, playbackRate - 0.08)).toFixed(2));
 

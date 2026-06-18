@@ -31,7 +31,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expect(updated.timeline[0]?.inputMode).toBe('browser-tts');
   });
 
-  it('filters unsafe Browser TTS German samples without blocking neighboring languages', () => {
+  it('filters unsafe Browser TTS samples through the same universal gate for neighboring languages', () => {
     const unsafeGerman = updateGermanBrowserTtsBenchmark({
       liveOverrides: {
         phraseBoundaryType: 'unsafe',
@@ -53,8 +53,11 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
 
     expect(unsafeGerman.sampleCount).toBe(0);
     expect(unsafeGerman.timeline).toHaveLength(1);
-    expect(unsafeEnglish.sampleCount).toBe(1);
+    expect(unsafeGerman.timeline[0]?.sampleQuality?.acceptedForRuntimePressure).toBe(true);
+    expect(unsafeEnglish.sampleCount).toBe(0);
     expect(unsafeEnglish.timeline).toHaveLength(1);
+    expect(unsafeEnglish.timeline[0]?.benchmarkRejectionReason).toBe('unsafe_phrase_boundary');
+    expect(unsafeEnglish.timeline[0]?.sampleQuality?.acceptedForRuntimePressure).toBe(true);
   });
 
   it('reports Browser TTS German rejection reasons for stale or unsafe samples', () => {
@@ -116,7 +119,7 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     expectLatestRejectionReason(unsafeProfile, 'unsafe_phrase_boundary');
   });
 
-  it('flags browser-tts/de raw lag out-of-range samples and leaves browser-tts/en unaffected', () => {
+  it('flags raw lag out-of-range samples by quality instead of by language', () => {
     const outOfRangeProfile = updateGermanBrowserTtsBenchmark({
       liveOverrides: {
         rawLagSec: 9.5,
@@ -131,18 +134,21 @@ describe('AdaptiveInputLanguageBenchmarkService', () => {
     });
     const englishProfile = updateEnglishBrowserTtsBenchmark({
       liveOverrides: {
+        rawLagSec: 9.5,
+        lagSec: 9.5,
+        stableLagSec: 9.5,
         phraseBoundaryType: 'sentence',
         semanticCompleteness: 0.92,
       },
       timestampMs: BENCHMARK_TIMESTAMP_MS,
-      sessionId: 's-en-pause',
+      sessionId: 's-en-range',
       phraseIndex: 1,
       totalSemanticPhrases: 3,
-      event: 'pause',
     });
 
     expectLatestRejectionReason(outOfRangeProfile, 'rawLagSec_out_of_range');
-    expectLatestSampleUnflagged(englishProfile);
+    expectLatestRejectionReason(englishProfile, 'rawLagSec_out_of_range');
+    expect(englishProfile.sampleCount).toBe(0);
   });
 
   it('tracks Browser TTS environment ids on timeline samples and summarizes environment history', () => {

@@ -65,6 +65,7 @@ export type NormalizedRuntimeTelemetry = {
   listeningPrecision?: ListeningPrecisionMetrics;
   phraseBoundaryType?: PhraseBoundaryType;
   canPauseAfter: boolean;
+  canReplayIndependently: boolean;
   semanticCompleteness: number;
   phraseDifficulty: number;
   phraseLengthWords: number;

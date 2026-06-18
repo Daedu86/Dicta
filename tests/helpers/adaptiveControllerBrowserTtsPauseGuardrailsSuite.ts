@@ -44,8 +44,10 @@ export function runAdaptiveControllerBrowserTtsPauseGuardrailsSuite(): void {
       }),
     );
 
-    expect(decision.mode).toBe('support');
+    expect(decision.adaptiveLevel).toBeLessThan(0.85);
+    expect(decision.pressureVector?.accuracy).toBeGreaterThan(0.5);
     expect(decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2600);
+    expect(decision.pacingOutput?.pauseMsTarget).toBeGreaterThanOrEqual(2600);
     expect(decision.reason).toContain('adaptive-pause-very-low-accuracy');
   });
 

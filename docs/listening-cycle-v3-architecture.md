@@ -28,6 +28,10 @@ source phrase
   -> Browser TTS voice calibration
   -> utterance runtime
   -> live telemetry
+  -> normalized telemetry
+  -> universal sample quality gate
+  -> continuous pressure vector
+  -> adaptiveLevel + pacing output
   -> listenerStateV3
   -> surgicalReplayPlan
   -> insight report V3
@@ -84,7 +88,7 @@ Files:
 
 The runtime no longer assumes that `rate = 1.0` means the same thing across browsers, OSes, and voices. Recommendation and prescription code can represent the broad product envelope of 0.1-2.0, while Browser TTS execution still applies voice/runtime safety caps. The playback loop calculates an `effectiveRate`, applies safety caps, and records calibration metadata.
 
-German Browser TTS tolerance is DE-scoped. Clean or improving current samples are allowed out of the old 0.80-0.85 support band; repeated strong/severe learner pressure can still cap the upper recommendation and shift support toward shorter semantic chunks plus longer pauses.
+The continuous adaptive brain is shared across Browser TTS languages. Language tuning is represented by `LanguageAdaptiveCalibration`, while `support/recovery/balanced/flow` survive only as derived legacy/debug labels. Perceptual pause pressure can raise `pauseMsTarget` without lowering playback rate when rate is not the problem.
 
 ### 4. Listener state V3
 
@@ -135,8 +139,12 @@ The report summarizes observed evidence rather than inventing causal explanation
 - reason codes
 - summary bullets
 - next-session knobs
+- continuous adaptive summary
+- sample quality by use
+- pressure vector and pacing output
+- requested-vs-actual rate/pause
 
-The adaptive user/system report schema is now v3 and includes a top-level `listeningCycleV3` block. It records the primary constraint, axes, confidence, evidence counts, reason codes, next-session knobs, contradiction notes, and an accessibility note that real pauses and semantic chunks are intentional listening supports.
+The adaptive user/system report schema is now v3 and includes a top-level `listeningCycleV3` block. It records the primary constraint, axes, confidence, evidence counts, reason codes, next-session knobs, contradiction notes, continuous adaptive fields, sample quality, language calibration, requested-vs-actual execution, and an accessibility note that real pauses and semantic chunks are intentional listening supports.
 
 ## Allowed LLM responsibilities
 

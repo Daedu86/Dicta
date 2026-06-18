@@ -3,7 +3,7 @@ import { AdaptiveDictationController } from '../../src/core/adaptive/AdaptiveDic
 import { input } from '../helpers/adaptiveControllerFixtures';
 
 describe('AdaptiveDictationController recovery behavior', () => {
-  it('avoids long phrases during early recovery even when accuracy is high', () => {
+  it('allows challenge-level phrase growth when current pressure is clean', () => {
     const controller = new AdaptiveDictationController();
     const decision = controller.decide(
       input({
@@ -19,11 +19,13 @@ describe('AdaptiveDictationController recovery behavior', () => {
     );
 
     expect(decision.mode).toBe('flow');
-    expect(decision.nextPhraseSize).toBe('medium');
+    expect(decision.adaptiveLevel).toBeGreaterThan(0.85);
+    expect(decision.derivedAdaptiveLabel).toBe('legacy-flow');
+    expect(decision.nextPhraseSize).toBe('long');
     expect(decision.reason).toContain('high-accuracy-low-lag');
   });
 
-  it('enters recovery mode when Browser TTS user falls far behind', () => {
+  it('eases continuously when Browser TTS user falls far behind', () => {
     const controller = new AdaptiveDictationController();
     const decision = controller.decide(
       input({
@@ -43,13 +45,14 @@ describe('AdaptiveDictationController recovery behavior', () => {
       }),
     );
 
-    expect(decision.mode).toBe('recovery');
+    expect(decision.adaptiveLevel).toBeLessThan(0.45);
+    expect(decision.derivedAdaptiveLabel === 'legacy-support' || decision.derivedAdaptiveLabel === 'legacy-recovery').toBe(true);
     expect(decision.nextPhraseSize).toBe('short');
     expect(decision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2200);
     expect(decision.playbackRate).toBeLessThanOrEqual(1.0);
-    expect(decision.reasonCodes).toContain('mode-recovery');
-    expect(decision.reasonCodes).toContain('recovery-needed');
-    expect(decision.reasonCodes).toContain('extended-catch-up-window');
+    expect(decision.reasonCodes).toContain('continuous-easing');
+    expect(decision.reasonCodes).toContain('lag-pressure');
+    expect(decision.reasonCodes).toContain('perceptual-pause-pressure');
     expect(decision.reasonCodes).toContain('support-needed');
   });
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { AdaptiveDictationController } from '../../src/core/adaptive/AdaptiveDictationController';
-import { resolveBrowserTtsAdaptiveProfile } from '../../src/inputs/browserTts/browserTtsAdaptiveProfiles';
 import { buildHistory, buildLive } from '../helpers/adaptiveSemanticFixtures';
 
 describe('AdaptiveDictationController semantic recovery and profile policy', () => {
@@ -16,19 +15,19 @@ describe('AdaptiveDictationController semantic recovery and profile policy', () 
     });
 
     const recovered1 = controller.decide({
-      live: buildLive({ lagSec: 1.2, accuracy: 0.94, correctionRate: 0.03 }),
+      live: buildLive({ lagSec: 1.2, accuracy: 0.94, correctionRate: 0.03, spokenProgressRatio: 0.6, typedProgressRatio: 0.6 }),
       history: buildHistory(),
     });
     const recovered2 = controller.decide({
-      live: buildLive({ lagSec: 1.1, accuracy: 0.95, correctionRate: 0.03 }),
+      live: buildLive({ lagSec: 1.1, accuracy: 0.95, correctionRate: 0.03, spokenProgressRatio: 0.6, typedProgressRatio: 0.6 }),
       history: buildHistory(),
     });
     const recovered3 = controller.decide({
-      live: buildLive({ lagSec: 1.0, accuracy: 0.95, correctionRate: 0.03 }),
+      live: buildLive({ lagSec: 1.0, accuracy: 0.95, correctionRate: 0.03, spokenProgressRatio: 0.6, typedProgressRatio: 0.6 }),
       history: buildHistory(),
     });
-    expect(recovered1.mode).not.toBe('support');
-    expect(recovered2.mode).not.toBe('support');
+    expect(recovered1.adaptiveLevel).toBeGreaterThan(0.45);
+    expect(recovered2.adaptiveLevel).toBeGreaterThan(recovered1.adaptiveLevel ?? 0);
     expect(recovered3.mode).not.toBe('support');
   });
 
@@ -55,16 +54,17 @@ describe('AdaptiveDictationController semantic recovery and profile policy', () 
         rollingAccuracyLast3: 0.95,
         rollingAccuracyLast5: 0.94,
         correctionRate: 0.02,
+        spokenProgressRatio: 0.6,
+        typedProgressRatio: 0.6,
       }),
       history: buildHistory({ averageAccuracy: 0.9 }),
     });
+    expect(recoveredChunk.adaptiveLevel).toBeGreaterThan(badChunk.adaptiveLevel ?? 0);
     expect(recoveredChunk.mode === 'balanced' || recoveredChunk.mode === 'flow').toBe(true);
   });
 
-  it('keeps controller support floor/ceiling aligned with language profile', () => {
+  it('uses the shared continuous calibration instead of DE-specific rate ceilings', () => {
     const controller = new AdaptiveDictationController();
-    const enProfile = resolveBrowserTtsAdaptiveProfile('en');
-    const deProfile = resolveBrowserTtsAdaptiveProfile('de');
 
     const enDecision = controller.decide({
       live: buildLive({
@@ -77,8 +77,9 @@ describe('AdaptiveDictationController semantic recovery and profile policy', () 
       history: buildHistory({ comfortablePlaybackRate: 1.1, averageAccuracy: 0.8 }),
     });
     expect(enDecision.mode).toBe('support');
-    expect(enDecision.playbackRate).toBeGreaterThanOrEqual(enProfile.supportRateFloor);
-    expect(enDecision.playbackRate).toBeLessThanOrEqual(enProfile.supportRateCeiling);
+    expect(enDecision.languageCalibration?.language).toBe('en');
+    expect(enDecision.playbackRate).toBeGreaterThanOrEqual(enDecision.languageCalibration?.playbackRateFloor ?? 0.6);
+    expect(enDecision.playbackRate).toBeLessThanOrEqual(enDecision.languageCalibration?.playbackRateCeiling ?? 1.3);
 
     const deDecision = controller.decide({
       live: buildLive({
@@ -91,7 +92,8 @@ describe('AdaptiveDictationController semantic recovery and profile policy', () 
       history: buildHistory({ comfortablePlaybackRate: 1.1, averageAccuracy: 0.8 }),
     });
     expect(deDecision.mode).toBe('support');
-    expect(deDecision.playbackRate).toBeGreaterThanOrEqual(deProfile.supportRateFloor);
-    expect(deDecision.playbackRate).toBeLessThanOrEqual(deProfile.supportRateCeiling);
+    expect(deDecision.languageCalibration?.language).toBe('de');
+    expect(deDecision.languageCalibration?.playbackRateFloor).toBe(enDecision.languageCalibration?.playbackRateFloor);
+    expect(deDecision.languageCalibration?.playbackRateCeiling).toBe(enDecision.languageCalibration?.playbackRateCeiling);
   });
 });

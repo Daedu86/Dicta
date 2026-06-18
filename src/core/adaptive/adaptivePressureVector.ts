@@ -136,14 +136,18 @@ function computeReconstructionPressure(
   semanticLoadPressure: number,
 ): number {
   if (!precision) return clamp01(accuracyPressure * 0.72 + semanticLoadPressure * 0.28);
-  const recall = firstFinite([
+  const qualityScores = [
     precision.listeningRecallScore,
     precision.contentWordRecall,
     precision.detailPrecisionScore,
     precision.wordOrderAccuracy,
-  ], 1);
+    precision.functionWordAccuracy,
+    precision.completionWindowScore,
+  ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  const recall = qualityScores.length > 0 ? Math.min(...qualityScores) : 1;
   const omission = clamp01(precision.omissionRate ?? 0);
-  return clamp01((1 - recall) * 0.58 + omission * 0.24 + accuracyPressure * 0.18);
+  const lateCompletion = clamp01(precision.lateCompletionRate ?? 0);
+  return clamp01((1 - recall) * 0.52 + omission * 0.2 + lateCompletion * 0.22 + accuracyPressure * 0.06);
 }
 
 function computeTypingPressure(
@@ -177,11 +181,6 @@ function computeHistoryPressure(
   const correctionPressure = clamp01(history.typicalCorrectionRate / 0.16);
   const confidenceFactor = clamp01(history.profileConfidence);
   return clamp01((accuracyPressure * 0.38 + lagPressure * 0.38 + correctionPressure * 0.24) * confidenceFactor);
-}
-
-function firstFinite(values: Array<number | undefined>, fallback: number): number {
-  const match = values.find((value): value is number => typeof value === 'number' && Number.isFinite(value));
-  return match ?? fallback;
 }
 
 function clamp(value: number, min: number, max: number): number {

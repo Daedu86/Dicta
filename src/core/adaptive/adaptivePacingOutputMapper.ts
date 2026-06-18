@@ -26,13 +26,13 @@ export function mapAdaptiveStateToPacingOutput({
   ]);
   const ratePressure = Math.max(
     pressure.lag,
-    pressure.accuracy * 0.8,
-    pressure.reconstruction,
+    pressure.accuracy,
+    pressure.reconstruction * 1.6,
     pressure.environment,
     pressure.traceQuality * 0.4,
   );
   const challengeRateLift = (state.adaptiveLevel - 0.5) * 0.22;
-  const pressureRateDrop = ratePressure * 0.18;
+  const pressureRateDrop = ratePressure * 0.26;
   const playbackRateTarget = roundRate(clamp(
     preferredRate + challengeRateLift - pressureRateDrop,
     calibration.playbackRateFloor,

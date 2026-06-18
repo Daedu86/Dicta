@@ -65,9 +65,10 @@ describe('adaptiveUserSystemReport', () => {
     expect(report.listeningCycleV3.accessibilityNote).toContain('Real pauses and semantic chunks');
     expect(report.adaptiveLoopBreakdown.sourceOfTruth.insightReport).toContain('not the direct LLM prompt');
     expect(report.componentDiagnostics.generationAndPrescription.promptMode).toBe('compact-adaptive-v2');
-    expect(report.componentDiagnostics.plannerAndChunking.targetPhraseSize).toBe('short');
+    expect(report.componentDiagnostics.plannerAndChunking.targetPhraseSize).toBe('medium');
     expect(report.componentDiagnostics.plannerAndChunking.boundaryDistribution).toContainEqual({ name: 'clause', count: 1 });
     expect(report.componentDiagnostics.controllerAndPacing.topDecisionReasons).toContainEqual({ name: 'lag-pressure', count: 1 });
+    expect(report.componentDiagnostics.controllerAndPacing.latestAdaptiveLevel).toBeNull();
     expect(report.componentDiagnostics.browserTtsEnvironment.selectedVoice?.voiceName).toBe('German Local');
     expect(report.compactTechnicalDebugSummary.debugTopLevelKeys).toContain('benchmarkProfile');
     expect(report.userProgressSummary.latestSession?.points).toBe('3/4');
@@ -224,6 +225,7 @@ describe('adaptiveUserSystemReport', () => {
     expect(report.listeningCycleV3.contradictionNotes.join(' ')).toContain('Typing speed is usable');
     expect(report.listeningCycleV3.contradictionNotes.join(' ')).toContain('runtime recovery recently used');
     expect(report.listeningCycleV3.contradictionNotes.join(' ')).toContain('latest trend is improving');
+    expect(report.listeningCycleV3.contradictionNotes.join(' ')).toContain('continuous easing should taper');
     expect(report.listeningCycleV3.accessibilityNote).toContain('not treated as typing-speed failure');
   });
 });

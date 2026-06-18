@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildListenerStateV3 } from '../src/core/adaptive/listenerStateV3';
 import { buildListeningCycleInsightReportV3 } from '../src/core/adaptive/listeningCycleInsightReportV3';
+import { resolveLanguageAdaptiveCalibration } from '../src/core/adaptive/languageAdaptiveCalibration';
 
 function stableListenerState() {
   return buildListenerStateV3({
@@ -178,6 +179,81 @@ describe('buildListeningCycleInsightReportV3', () => {
     expect(report.nextSessionKnobs.shorterChunks).toBe(false);
     expect(report.nextSessionKnobs.lowerRate).toBe(false);
     expect(report.summaryBullets).toContain('Próxima sesión: preservar el rate actual.');
+  });
+
+  it('reports continuous adaptive fields and requested vs actual playback execution', () => {
+    const languageCalibration = resolveLanguageAdaptiveCalibration('es');
+    const pressureVector = {
+      accuracy: 0,
+      lag: 0,
+      correction: 0.05,
+      boundary: 0.1,
+      semanticLoad: 0.12,
+      reconstruction: 0.08,
+      typing: 0.04,
+      environment: 0.18,
+      history: 0.02,
+      currentSession: 0.08,
+      perceptualPause: 0.72,
+      traceQuality: 0.08,
+    };
+    const pacingOutput = {
+      playbackRateTarget: 1.04,
+      pauseMsTarget: 2400,
+      phraseSizeTarget: 'medium' as const,
+      boundaryStrictness: 0.48,
+      replaySupport: 0.12,
+      perceptualPauseLevel: 0.72,
+      perceptualRateLevel: 0.08,
+      targetWpmRange: languageCalibration.comfortableWpmRange,
+    };
+    const sampleQuality = {
+      acceptedForBenchmark: true,
+      acceptedForSessionInsight: true,
+      acceptedForTelemetryLearning: true,
+      acceptedForRuntimePressure: true,
+      confidenceWeight: 0.9,
+      lagReliability: 'raw' as const,
+    };
+
+    const report = buildListeningCycleInsightReportV3([
+      {
+        listenerStateV3: stableListenerState(),
+        phraseBoundaryType: 'sentence',
+        semanticCompleteness: 0.98,
+        wpm: 48,
+        accuracy: 0.98,
+        requestedPlaybackRate: 1.04,
+        actualPlaybackRate: 1.02,
+        requestedPauseMs: 2400,
+        actualPauseMs: 650,
+        adaptiveLevel: 0.82,
+        adaptiveDirection: 'holding',
+        pressureVector,
+        pacingOutput,
+        sampleQuality,
+        languageCalibration,
+        derivedAdaptiveLabel: 'legacy-balanced',
+        perceptualPauseLevel: 0.72,
+        perceptualPauseShortfallMs: 1750,
+        reasonCodes: ['continuous-adaptive-level', 'perceptual-pause-pressure'],
+      },
+    ]);
+
+    expect(report.continuousAdaptive.latestAdaptiveLevel).toBe(0.82);
+    expect(report.continuousAdaptive.latestDerivedLabel).toBe('legacy-balanced');
+    expect(report.continuousAdaptive.latestPressureVector).toEqual(pressureVector);
+    expect(report.continuousAdaptive.latestPacingOutput).toEqual(pacingOutput);
+    expect(report.continuousAdaptive.latestSampleQuality).toEqual(sampleQuality);
+    expect(report.continuousAdaptive.latestLanguageCalibration).toEqual(languageCalibration);
+    expect(report.continuousAdaptive.requestedVsActual).toEqual({
+      requestedPlaybackRate: 1.04,
+      actualPlaybackRate: 1.02,
+      requestedPauseMs: 2400,
+      actualPauseMs: 650,
+    });
+    expect(report.reasonCodes).toContain('perceptual-pause-pressure');
+    expect(report.nextSessionKnobs.longerPauses).toBe(true);
   });
 
   it('returns a low-confidence empty report when no frames are available', () => {

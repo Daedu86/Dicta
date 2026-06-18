@@ -16,10 +16,15 @@ export function buildAdaptiveListeningState({
 }): AdaptiveListeningState {
   const weightedPressure = computeWeightedPressure(pressure);
   const rawLevel = clamp01(1 - weightedPressure);
+  const nextLevelWeight = previousAdaptiveLevel === undefined
+    ? 1
+    : rawLevel > previousAdaptiveLevel
+      ? 0.8
+      : 0.45;
   const adaptiveLevel = round2(
     previousAdaptiveLevel === undefined
       ? rawLevel
-      : previousAdaptiveLevel * 0.65 + rawLevel * 0.35,
+      : previousAdaptiveLevel * (1 - nextLevelWeight) + rawLevel * nextLevelWeight,
   );
   const delta = previousAdaptiveLevel === undefined ? 0 : adaptiveLevel - previousAdaptiveLevel;
   const direction = delta < -0.04 ? 'easing' : delta > 0.04 ? 'challenging' : 'holding';
@@ -54,7 +59,7 @@ export function mapAdaptiveLevelToLegacyMode(level: number): 'recovery' | 'suppo
 }
 
 function computeWeightedPressure(pressure: AdaptivePressureVector): number {
-  return clamp01(
+  const weightedPressure = clamp01(
     pressure.accuracy * 0.13 +
       pressure.lag * 0.13 +
       pressure.correction * 0.08 +
@@ -68,6 +73,19 @@ function computeWeightedPressure(pressure: AdaptivePressureVector): number {
       pressure.perceptualPause * 0.14 +
       pressure.traceQuality * 0.05,
   );
+  const dominantRuntimePressure = Math.max(
+    pressure.accuracy,
+    pressure.lag,
+    pressure.correction,
+    pressure.boundary,
+    pressure.semanticLoad,
+    pressure.reconstruction,
+    pressure.typing,
+    pressure.environment,
+    pressure.history,
+    pressure.currentSession,
+  );
+  return clamp01(weightedPressure * 0.55 + dominantRuntimePressure * 0.45);
 }
 
 function buildContinuousReasonCodes(

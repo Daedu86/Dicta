@@ -71,7 +71,7 @@ export function planBrowserTtsAdaptiveChunk(input: PlanBrowserTtsChunkInput): Pl
       sizePenalty * 0.35;
 
     if (recoverySafeBoundary && effectiveBoundary !== 'unsafe' && boundaryScore(effectiveBoundary) >= boundaryScore('clause')) {
-      // During DE recovery, prefer the nearest safe boundary over a shorter unsafe cut.
+      // Legacy compatibility path: prefer a safe boundary over a shorter unsafe cut.
       bestCut = wordsToTake;
       bestBoundary = effectiveBoundary;
       break;

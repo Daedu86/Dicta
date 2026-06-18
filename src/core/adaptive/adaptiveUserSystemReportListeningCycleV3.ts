@@ -129,7 +129,7 @@ function buildContradictionNotes(
       profile.weakAreas.includes('accuracy_instability') ||
       profile.weakAreas.includes('lag_instability'))
   ) {
-    notes.push('The latest trend is improving, so support/recovery should taper unless current-session pressure returns.');
+    notes.push('The latest trend is improving, so continuous easing should taper unless current-session pressure returns.');
   }
 
   if (notes.length === 0 && report.evidence.totalFrames > 0) {

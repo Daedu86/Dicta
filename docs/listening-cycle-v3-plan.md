@@ -4,6 +4,8 @@ _Last updated: 2026-06-18_
 
 V3 keeps Dicta listening-first: the goal is not faster typing. The system should help the listener hear, segment, retain, reconstruct, and type what was heard.
 
+Reset note: the continuous adaptive reset in `docs/adaptive-listening-v3-normalization-plan.md` supersedes any older wording in this plan that treats `support/recovery/balanced/flow` or German Browser TTS recovery as the runtime contract. Those labels and DE helpers are historical compatibility/debug context, not the active motor.
+
 ## Product rule
 
 ```text
@@ -77,7 +79,7 @@ Current Browser TTS V3 buckets are:
 - `sentence`: 1400 ms
 - `recovery`: 2600 ms
 
-All nonzero chunk pauses resolve inside a 500-4000 ms envelope. The playback plan owns the resolved pause so completion, telemetry, benchmark records, and decision traces share the same `actualPauseMs`. When the controller asks for support or recovery, the scheduled pause is `max(v3Bucket, controllerPause)` capped at 4000 ms.
+Chunk pause buckets remain useful execution primitives, but the active controller maps continuous `pauseMsTarget` through the playback plan. The playback plan owns the resolved pause so completion, telemetry, benchmark records, and decision traces share the same `actualPauseMs`.
 
 Runtime rule:
 
@@ -89,7 +91,7 @@ slow rate is support, not the first response to every struggle.
 Validation:
 
 - Tests for pause class mapping.
-- Tests that support/recovery can extend pauses without permanently lowering flow pacing.
+- Tests that continuous perceptual-pause pressure can extend pauses without forcing playback rate down.
 - Tests that minor boundaries are pausable microchunks and unsafe edges remain unpaused until the next safe boundary.
 
 ## Phase 3 — Browser TTS voice calibration
@@ -113,7 +115,7 @@ Rules:
 - Do not expose 1.5x as normal dictation unless calibration and history show stable precision.
 - Prefer pause modulation before aggressive rate increases.
 
-German Browser TTS support/recovery should no longer lock clean or improving sessions into 0.80-0.85. Strong or severe recent learner pressure can still cap the upper executable recommendation, but support history alone is not sufficient.
+Language calibration, not German-specific recovery code, is the target tuning layer for rate and pause.
 
 Validation:
 
@@ -134,13 +136,13 @@ Model separate signals:
 Rules:
 
 - Low WPM alone does not mean failure.
-- High accuracy + high lag should prefer recovery/catch-up.
-- Low content-word recall should prefer support/shorter chunks.
+- High accuracy + high lag should raise catch-up and perceptual pause pressure.
+- Low content-word recall should raise reconstruction pressure and can shorten chunks.
 - Repeated function-word errors should change chunking/replay, not only speed.
 
 Validation:
 
-- Controller tests for support vs recovery vs balanced vs flow.
+- Controller tests for continuous `adaptiveLevel`, pressure vector, output mapper, and derived legacy labels as debug only.
 - Tests that typing speed cannot dominate listening precision.
 
 ## Phase 5 — surgical replay and recovery flow
@@ -160,7 +162,7 @@ Browser TTS limitation:
 Validation:
 
 - Replay planning tests.
-- Telemetry tests for replay reason and recovery transition.
+- Telemetry tests for replay reason, semantic safety, and continuous easing/challenge transitions.
 
 ## Phase 6 — telemetry and insight report v3
 

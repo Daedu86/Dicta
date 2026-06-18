@@ -11,7 +11,7 @@ import {
 } from '../helpers/browserTtsPlaybackPlanFixtures';
 
 describe('buildBrowserTtsPlaybackPlan recovery planning', () => {
-  it('uses German recovery-safe chunks when strong DE recovery is active', () => {
+  it('keeps legacy German recovery state out of normalized Browser TTS chunk planning', () => {
     const plan = buildBrowserTtsPlaybackPlan(input({
       language: 'de',
       macroWords: 'Wir hoeren den ersten Satz. Danach schreiben wir langsam weiter.'.split(' '),
@@ -24,10 +24,9 @@ describe('buildBrowserTtsPlaybackPlan recovery planning', () => {
       },
     }));
 
-    expect(plan?.recoverySafeBoundary).toBe(true);
-    expect(plan?.chunk.wordCount).toBe(5);
-    expect(plan?.chunk.phraseBoundaryType).toBe('sentence');
-    expect(plan?.runtimeDecision.reason).toContain('browser-tts-de-recovery-strong');
-    expect(plan?.runtimeDecision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2600);
+    expect(plan?.recoverySafeBoundary).toBe(false);
+    expect(plan?.germanShortBias).toBe(false);
+    expect(plan?.runtimeDecision.reason).not.toContain('browser-tts-de-recovery');
+    expect(plan?.runtimeDecision.pauseAfterPhraseMs).toBeLessThan(2600);
   });
 });

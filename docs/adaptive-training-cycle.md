@@ -31,9 +31,9 @@ Benchmark and feedback feed the training prescription. The prescription guides L
 
 ## Iteration rules
 
-1. Scope adaptive behavior by input mode and language.
-2. Do not leak Browser TTS German recovery behavior into other languages.
-3. Treat WPM as diagnostic.
+1. Scope saved adaptive memory by input mode and language.
+2. Keep the Browser TTS adaptive motor shared: language differences belong in calibration, not separate DE/ES runtime pipelines.
+3. Treat WPM and perceptual pause as dictation signals, not decorative metrics.
 4. Keep runtime pacing out of the LLM.
 5. Keep content generation out of the controller.
 6. Surface runtime modifications to controller decisions.

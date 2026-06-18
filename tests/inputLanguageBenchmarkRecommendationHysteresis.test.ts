@@ -33,7 +33,7 @@ function buildRecommendation(overrides: Partial<InputLanguageBenchmarkRecommenda
 }
 
 describe('applyRecommendationHysteresis', () => {
-  it('keeps low-confidence browser-tts/de recommendations from speeding up and pushes recovery-safe values', () => {
+  it('keeps low-confidence sensitive recommendations conservative without a DE-only cap', () => {
     const profile = buildProfile('browser-tts', 'de');
     profile.preferredPlaybackRate = 1.05;
     profile.preferredPhraseSize = 'medium';
@@ -49,7 +49,7 @@ describe('applyRecommendationHysteresis', () => {
       }),
     );
 
-    expect(recommendation.targetRateRange[1]).toBeLessThanOrEqual(0.95);
+    expect(recommendation.targetRateRange[1]).toBeLessThanOrEqual(profile.preferredPlaybackRate);
     expect(recommendation.targetPhraseSize).toBe('short');
     expect(recommendation.targetPauseMs).toBeGreaterThanOrEqual(900);
   });
