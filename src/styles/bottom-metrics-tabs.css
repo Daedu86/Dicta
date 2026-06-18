@@ -110,3 +110,39 @@
   gap: 0.45rem;
   min-width: 0;
 }
+
+/*
+ * Keep the Insights header aligned with the expanded summary sections.
+ * The outer header already belongs to the bottom metrics stack; this makes the
+ * inner heading row consume the same full width instead of shrink-wrapping.
+ */
+.bottom-metrics-header {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bottom-metrics-header .live-metrics-heading-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  width: 100%;
+}
+
+.bottom-metrics-header .live-metrics-language-tabs {
+  justify-self: end;
+}
+
+.bottom-metrics-header .live-metrics-action-group {
+  justify-self: end;
+}
+
+@media (max-width: 820px) {
+  .bottom-metrics-header .live-metrics-heading-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-metrics-header .live-metrics-language-tabs,
+  .bottom-metrics-header .live-metrics-action-group {
+    justify-self: start;
+  }
+}
