@@ -47,6 +47,7 @@ export function sampleTtsPerformance(
     previousAccuracy: previousAccuracyRef.current,
     spokenPosition,
     elapsedSeconds,
+    useExactEvaluation: Boolean(options.finalize),
   });
 
   if (metricSnapshot.lagSample.isOutlier) {

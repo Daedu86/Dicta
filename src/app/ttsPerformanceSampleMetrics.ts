@@ -1,6 +1,9 @@
 import { buildBrowserTtsControlLagSample } from '../inputs/browserTts/browserTtsRatePolicy';
 import { computeSessionScore } from '../core/sessionScore';
-import { evaluateTranscriptAttempt } from '../core/evaluation';
+import {
+  evaluateLiveTranscriptAttempt,
+  evaluateTranscriptAttempt,
+} from '../core/evaluation';
 import type { Transcript } from '../types/dictation';
 import type { TtsLanguage } from './sessionTypes';
 import {
@@ -20,6 +23,7 @@ type TtsPerformanceMetricSnapshotInput = {
   previousAccuracy: number;
   spokenPosition: number;
   elapsedSeconds: number;
+  useExactEvaluation?: boolean;
 };
 
 export function buildTtsPerformanceMetricSnapshot({
@@ -32,8 +36,11 @@ export function buildTtsPerformanceMetricSnapshot({
   previousAccuracy,
   spokenPosition,
   elapsedSeconds,
+  useExactEvaluation = false,
 }: TtsPerformanceMetricSnapshotInput) {
-  const evaluation = evaluateTranscriptAttempt(practiceTextForEvaluation, ttsTranscript);
+  const evaluation = useExactEvaluation
+    ? evaluateTranscriptAttempt(practiceTextForEvaluation, ttsTranscript)
+    : evaluateLiveTranscriptAttempt(practiceTextForEvaluation, ttsTranscript);
   const practiceWords = evaluation.typedWords;
   const sourceWordCount = ttsTranscript?.words.length ?? 0;
   const visibleAccuracy = practiceWords.length > 0 && sourceWordCount > 0 ? evaluation.accuracy : 0;

@@ -2,7 +2,7 @@ import { useDeferredValue, useMemo } from 'react';
 import {
   buildSessionPointsHelpText,
   computeSessionMaxPoints,
-  evaluateTranscriptAttempt,
+  evaluateLiveTranscriptAttempt,
   formatSessionPointsLabel,
 } from '../core/evaluation';
 import { buildSessionScoreHelpText, computeSessionScore } from '../core/sessionScore';
@@ -30,7 +30,7 @@ export function useFocusedTrainingLiveMetrics({
   const deferredTtsPracticeText = useDeferredValue(ttsPracticeText);
 
   const ttsPracticeEvaluation = useMemo(
-    () => evaluateTranscriptAttempt(deferredTtsPracticeText, ttsTranscript),
+    () => evaluateLiveTranscriptAttempt(deferredTtsPracticeText, ttsTranscript),
     [deferredTtsPracticeText, ttsTranscript],
   );
 

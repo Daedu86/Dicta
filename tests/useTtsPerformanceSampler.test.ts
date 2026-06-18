@@ -78,6 +78,34 @@ describe('sampleTtsPerformance', () => {
     expect(deps.publishedUi[0]?.force).toBe(true);
   });
 
+  it('keeps final submit scoring exact while live samples stay bounded', () => {
+    const transcript = transcriptFromWords([
+      'alpha',
+      ...Array.from({ length: 20 }, (_, index) => `filler${index}`),
+      'omega',
+    ]);
+    const liveDeps = createSamplerDependencies({
+      ttsTranscript: transcript,
+      estimateTtsSpokenWordIndex: () => 22,
+    });
+    const finalDeps = createSamplerDependencies({
+      ttsTranscript: transcript,
+      estimateTtsSpokenWordIndex: () => 22,
+    });
+
+    const liveResult = sampleTtsPerformance(liveDeps, {
+      practiceTextOverride: 'omega',
+    });
+    const finalResult = sampleTtsPerformance(finalDeps, {
+      action: 'submit',
+      finalize: true,
+      practiceTextOverride: 'omega',
+    });
+
+    expect(liveResult.metrics.points).toBe(0);
+    expect(finalResult.metrics.points).toBe(1);
+  });
+
   it('falls back to the previous valid German control lag for raw lag outliers', () => {
     const transcript = transcriptFromWords(Array.from({ length: 30 }, (_, index) => `wort${index}`));
     const deps = createSamplerDependencies({

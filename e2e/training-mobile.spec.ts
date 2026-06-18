@@ -36,7 +36,7 @@ test('mobile training typing stays local and batches commits', async ({ page }) 
   expect(beforeFinalWait.renders.LowLatencyTextarea ?? 0).toBeLessThanOrEqual(lowLatencyRendersBefore + earlyCommitDelta + 1);
   expect(beforeFinalWait.renders.TrainingView ?? 0).toBeLessThanOrEqual(trainingViewRendersBefore + earlyCommitDelta + 1);
 
-  await page.waitForTimeout(120);
+  await page.waitForTimeout(320);
 
   const afterFinalWait = await page.evaluate<DictaPerfSnapshot>(() => window.__DICTA_PERF__?.snapshot() as DictaPerfSnapshot);
   const commitDelta = afterFinalWait.input.inputToCommit.count - commitsBefore;

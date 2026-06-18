@@ -41,6 +41,42 @@ export function alignWordPairs(typedWords: string[], targetWords: string[]): Wor
   return pairs;
 }
 
+export function alignWordPairsGreedyWindow(
+  typedWords: string[],
+  targetWords: string[],
+  lookaheadWords = 12,
+): WordAlignmentPair[] {
+  const pairs: WordAlignmentPair[] = [];
+  let targetCursor = 0;
+  const boundedLookahead = Math.max(1, Math.floor(lookaheadWords));
+
+  for (let typedIndex = 0; typedIndex < typedWords.length && targetCursor < targetWords.length; typedIndex += 1) {
+    const typedWord = typedWords[typedIndex] ?? '';
+    const searchEnd = Math.min(targetWords.length, targetCursor + boundedLookahead);
+    let matchedTargetIndex = -1;
+
+    for (let targetIndex = targetCursor; targetIndex < searchEnd; targetIndex += 1) {
+      if (wordsMatch(typedWord, targetWords[targetIndex] ?? '')) {
+        matchedTargetIndex = targetIndex;
+        break;
+      }
+    }
+
+    if (matchedTargetIndex < 0) {
+      continue;
+    }
+
+    pairs.push({
+      typedIndex,
+      targetIndex: matchedTargetIndex,
+      exact: typedWord === targetWords[matchedTargetIndex],
+    });
+    targetCursor = matchedTargetIndex + 1;
+  }
+
+  return pairs;
+}
+
 function wordsMatch(a: string, b: string): boolean {
   if (!a || !b) return false;
   if (a === b) return true;

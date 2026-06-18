@@ -1,9 +1,13 @@
 import { normalizeWord } from './normalization';
 import type { Transcript } from '../types/dictation';
-import { alignWordPairs, type WordAlignmentPair } from './evaluationAlignment';
+import {
+  alignWordPairs,
+  alignWordPairsGreedyWindow,
+  type WordAlignmentPair,
+} from './evaluationAlignment';
 
 export type { WordAlignmentPair } from './evaluationAlignment';
-export { alignWordPairs } from './evaluationAlignment';
+export { alignWordPairs, alignWordPairsGreedyWindow } from './evaluationAlignment';
 export type { SessionPointsSource } from './sessionPoints';
 export {
   buildSessionPointsHelpText,
@@ -25,6 +29,26 @@ export interface AttemptEvaluation {
 }
 
 export function evaluateTranscriptAttempt(input: string, transcript: Transcript | null): AttemptEvaluation {
+  return evaluateTranscriptAttemptWithAligner(input, transcript, alignWordPairs);
+}
+
+export function evaluateLiveTranscriptAttempt(
+  input: string,
+  transcript: Transcript | null,
+  lookaheadWords = 12,
+): AttemptEvaluation {
+  return evaluateTranscriptAttemptWithAligner(
+    input,
+    transcript,
+    (typedWords, targetWords) => alignWordPairsGreedyWindow(typedWords, targetWords, lookaheadWords),
+  );
+}
+
+function evaluateTranscriptAttemptWithAligner(
+  input: string,
+  transcript: Transcript | null,
+  aligner: (typedWords: string[], targetWords: string[]) => WordAlignmentPair[],
+): AttemptEvaluation {
   const typedWords = input
     .split(/\s+/)
     .map((word) => normalizeWord(word))
@@ -45,7 +69,7 @@ export function evaluateTranscriptAttempt(input: string, transcript: Transcript 
     };
   }
 
-  const pairs = alignWordPairs(typedWords, targetWords);
+  const pairs = aligner(typedWords, targetWords);
   const matchedWords = pairs.length;
   const accuracy = typedWords.length === 0 ? 100 : (matchedWords / typedWords.length) * 100;
 
