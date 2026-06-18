@@ -2,6 +2,7 @@ import type {
   AdaptiveBenchmarksByInputLanguage,
   AdaptiveSessionFeedbackByInputLanguage,
 } from '../components/openrouter/types';
+import { safeGetLocalStorageItem } from '../core/storage/safeLocalStorage';
 import { trySetLocalStorageItem } from './localStorageQuota';
 import {
   ADAPTIVE_BENCHMARKS_KEY,
@@ -25,7 +26,7 @@ export function persistAdaptiveSessionFeedback(value: AdaptiveSessionFeedbackByI
 }
 
 function loadJsonObject<TValue extends object>(key: string): TValue {
-  const raw = window.localStorage.getItem(key);
+  const raw = safeGetLocalStorageItem(key);
   if (!raw) {
     return {} as TValue;
   }

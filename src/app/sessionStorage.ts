@@ -7,6 +7,7 @@ import { cloneTelemetry, normalizeSessionForPersistence } from '../core/sessionN
 import { normalizeRestoredSessionStatus } from '../core/sessionStatusNormalization';
 import { normalizeCreatedDeviceKind } from '../core/sessionDevice';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../core/sessionInputModes';
+import { safeGetLocalStorageItem } from '../core/storage/safeLocalStorage';
 import { normalizeBrowserTtsEnvironmentFingerprint } from '../inputs/browserTts/browserTtsEnvironment';
 import { createDefaultMetrics, createStoredSession } from './sessionFactory';
 import { normalizeRestoredStoredSession as normalizeRestoredStoredSessionWithDependencies } from './sessionRestoreNormalization';
@@ -102,7 +103,7 @@ export function normalizeRestoredStoredSession(session: StoredSession): StoredSe
 }
 
 export function loadSessions(): StoredSession[] {
-  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  const raw = safeGetLocalStorageItem(SESSION_STORAGE_KEY);
   if (!raw) {
     return [];
   }
