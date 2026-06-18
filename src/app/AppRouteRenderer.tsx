@@ -6,6 +6,7 @@ import { AuthWorkspace } from '../components/auth/AuthWorkspace';
 import { TrainingHeader } from '../components/training/TrainingHeader';
 import { SessionCreateCard } from '../components/runtime-workspaces/SessionCreateCard';
 import { LiveMetricsDock } from '../components/runtime-workspaces/LiveMetricsDock';
+import { VercelSpeedInsightsRouteSync } from '../observability/VercelSpeedInsights';
 import { AppWorkspaceContent } from './AppWorkspaceContent';
 import type { StoredSession } from './sessionTypes';
 
@@ -52,6 +53,36 @@ type AppRouteRendererProps = {
   liveMetricsDockProps: ComponentProps<typeof LiveMetricsDock>;
 };
 
+
+type AppSpeedInsightsRouteInput = {
+  isAuthRoute: boolean;
+  isFocusedTrainingRoute: boolean;
+  sessionCreationMode: unknown;
+  workspaceMode: AppWorkspaceContentProps['workspaceMode'];
+};
+
+function getAppSpeedInsightsRoute({
+  isAuthRoute,
+  isFocusedTrainingRoute,
+  sessionCreationMode,
+  workspaceMode,
+}: AppSpeedInsightsRouteInput) {
+  if (isAuthRoute) return '/auth';
+  if (isFocusedTrainingRoute) return '/training';
+  if (sessionCreationMode) return '/session/new';
+
+  switch (workspaceMode) {
+    case 'adaptive': return '/adaptive';
+    case 'dashboard': return '/session/dashboard';
+    case 'openrouter': return '/openrouter';
+    case 'tts': return '/training/tts';
+    case 'admin': return '/admin';
+    case 'training':
+    default:
+      return '/';
+  }
+}
+
 export function AppRouteRenderer({
   syncAuthRequired,
   authLoading,
@@ -92,7 +123,7 @@ export function AppRouteRenderer({
   showLeaderboardWorkspace,
   liveMetricsDockProps,
 }: AppRouteRendererProps) {
-  if (
+  const isAuthRoute =
     syncAuthRequired &&
     (
       authLoading ||
@@ -102,10 +133,20 @@ export function AppRouteRenderer({
       appProfileError ||
       !localStorageReadyForEffectiveProfile ||
       supabaseInitialSyncPending
-    )
-  ) {
+    );
+  const speedInsightsRoute = getAppSpeedInsightsRoute({
+    isAuthRoute: Boolean(isAuthRoute),
+    isFocusedTrainingRoute,
+    sessionCreationMode,
+    workspaceMode,
+  });
+
+  if (isAuthRoute) {
     return (
-      <AuthWorkspace {...authWorkspaceProps} />
+      <>
+        <VercelSpeedInsightsRouteSync route={speedInsightsRoute} />
+        <AuthWorkspace {...authWorkspaceProps} />
+      </>
     );
   }
 
@@ -115,49 +156,55 @@ export function AppRouteRenderer({
       : '';
 
     return (
-      <main className={`app training-route-app${trainingRouteGenerationClass} ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
-        <TrainingHeader
-          selectedLanguage={dictaLanguageView}
-          onChangeLanguage={setDictaLanguageView}
-          onBackToApp={onBackToApp}
-          generationButtons={focusedTrainingProps.generationButtons}
-        />
-        <TrainingView {...focusedTrainingProps} />
-        <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />
-      </main>
+      <>
+        <VercelSpeedInsightsRouteSync route={speedInsightsRoute} />
+        <main className={`app training-route-app${trainingRouteGenerationClass} ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
+          <TrainingHeader
+            selectedLanguage={dictaLanguageView}
+            onChangeLanguage={setDictaLanguageView}
+            onBackToApp={onBackToApp}
+            generationButtons={focusedTrainingProps.generationButtons}
+          />
+          <TrainingView {...focusedTrainingProps} />
+          <PerfDiagnosticsOverlay enabled={perfDiagnosticsEnabled} />
+        </main>
+      </>
     );
   }
 
   return (
-    <main className={`app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
-      <section className="layout">
-        <AppShellHeader {...appShellHeaderProps}>
-          {sessionCreationMode ? (
-            <SessionCreateCard {...sessionCreateCardProps} />
-          ) : null}
-        </AppShellHeader>
-        <AppWorkspaceContent
-          pendingSessions={pendingSessions}
-          activeSessionId={activeSessionId}
-          onOpenPendingSession={openWorkspaceForSession}
-          onDeleteSession={deleteSession}
-          workspaceMode={workspaceMode}
-          dashboardSession={dashboardSession}
-          sessions={sessions}
-          formatSessionStatus={formatSessionStatus}
-          formatSessionDate={formatSessionDate}
-          formatSessionPlaybackDuration={formatSessionPlaybackDuration}
-          onBackToTraining={showLeaderboardWorkspace}
-          adaptiveAdvancedDiagnosticsProps={adaptiveAdvancedDiagnosticsProps}
-          adaptiveBenchmarkSectionProps={adaptiveBenchmarkSectionProps}
-          openRouterAccessState={openRouterAccessState}
-          openRouterAccessMessage={openRouterAccessMessage}
-          openRouterWorkspaceProps={openRouterWorkspaceProps}
-          canAccessAdminWorkspace={canAccessAdminWorkspace}
-          adminWorkspaceProps={adminWorkspaceProps}
-        />
-      </section>
-      <LiveMetricsDock {...liveMetricsDockProps} />
-    </main>
+    <>
+      <VercelSpeedInsightsRouteSync route={speedInsightsRoute} />
+      <main className={`app ${themeMode === 'dark' ? 'app-theme-dark' : 'app-theme-light'}`}>
+        <section className="layout">
+          <AppShellHeader {...appShellHeaderProps}>
+            {sessionCreationMode ? (
+              <SessionCreateCard {...sessionCreateCardProps} />
+            ) : null}
+          </AppShellHeader>
+          <AppWorkspaceContent
+            pendingSessions={pendingSessions}
+            activeSessionId={activeSessionId}
+            onOpenPendingSession={openWorkspaceForSession}
+            onDeleteSession={deleteSession}
+            workspaceMode={workspaceMode}
+            dashboardSession={dashboardSession}
+            sessions={sessions}
+            formatSessionStatus={formatSessionStatus}
+            formatSessionDate={formatSessionDate}
+            formatSessionPlaybackDuration={formatSessionPlaybackDuration}
+            onBackToTraining={showLeaderboardWorkspace}
+            adaptiveAdvancedDiagnosticsProps={adaptiveAdvancedDiagnosticsProps}
+            adaptiveBenchmarkSectionProps={adaptiveBenchmarkSectionProps}
+            openRouterAccessState={openRouterAccessState}
+            openRouterAccessMessage={openRouterAccessMessage}
+            openRouterWorkspaceProps={openRouterWorkspaceProps}
+            canAccessAdminWorkspace={canAccessAdminWorkspace}
+            adminWorkspaceProps={adminWorkspaceProps}
+          />
+        </section>
+        <LiveMetricsDock {...liveMetricsDockProps} />
+      </main>
+    </>
   );
 }
