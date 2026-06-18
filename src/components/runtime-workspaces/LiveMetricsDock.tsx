@@ -1,4 +1,4 @@
-import { LiveMetricsDiagnosticFallback, LiveMetricsDiagnosticMessage } from './LiveMetricsDiagnosticFallback';
+import { LiveMetricsDiagnosticFallback } from './LiveMetricsDiagnosticFallback';
 import { LiveMetricsDockHeader } from './LiveMetricsDockHeader';
 import { LiveMetricsLastSessionSummary } from './LiveMetricsLastSessionSummary';
 import { LiveMetricsPeriodSummary } from './LiveMetricsPeriodSummary';
@@ -11,7 +11,6 @@ export function LiveMetricsDock({
   metricsLanguageView,
   metricsRangeView,
   trend,
-  insightsDiagnosticMessage,
   insightsDiagnosticFallbackReport,
   lastSessionForLanguage,
   lastSessionScoreHelpText,
@@ -35,7 +34,6 @@ export function LiveMetricsDock({
             onChangeMetricsLanguageView={onChangeMetricsLanguageView}
             onToggleInsightsCollapsed={onToggleInsightsCollapsed}
           />
-          <LiveMetricsDiagnosticMessage message={insightsDiagnosticMessage} />
           <LiveMetricsDiagnosticFallback
             report={insightsDiagnosticFallbackReport}
             onSelectReport={onSelectInsightsDiagnosticFallbackReport}

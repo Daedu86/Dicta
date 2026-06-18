@@ -108,3 +108,15 @@
 .dashboard-card-header .widget-tools {
   position: static;
 }
+
+.adaptive-report-action-stack {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+}
+
+.adaptive-report-action-stack .insights-diagnostic-message {
+  max-width: 24rem;
+  font-size: 0.78rem;
+  text-align: left;
+}
