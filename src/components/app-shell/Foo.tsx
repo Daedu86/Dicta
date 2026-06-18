@@ -4,7 +4,7 @@ type VersionPromptProps = {
   onActivate: () => void;
 };
 
-export function VersionPrompt({ compact = false, className = '', onActivate }: VersionPromptProps) {
+export function Foo({ compact = false, className = '', onActivate }: VersionPromptProps) {
   const classes = ['app-update-banner', compact ? 'app-update-banner-compact' : '', className]
     .filter(Boolean)
     .join(' ');
@@ -12,7 +12,7 @@ export function VersionPrompt({ compact = false, className = '', onActivate }: V
   return (
     <div className={classes} role="status" aria-live="polite">
       <span className="app-update-banner-text">
-        {compact ? 'Nueva versión disponible.' : 'Hay una nueva versión de Dicta disponible.'}
+        {compact ? 'Nueva version disponible.' : 'Hay una nueva version de Dicta disponible.'}
       </span>
       <button type="button" className="app-update-banner-button" onClick={onActivate}>
         Actualizar
