@@ -1,6 +1,6 @@
 # Listening Cycle V3 Architecture
 
-_Last updated: 2026-06-17_
+_Last updated: 2026-06-18_
 
 This document describes the implemented Listening Cycle V3 baseline. It is intentionally short and operational: it documents what the runtime now owns, what the LLM may own, and which files form the current V3 spine.
 
@@ -60,16 +60,19 @@ Each planned chunk can expose `v3Prosody` with the information needed for downst
 Files:
 
 - `src/app/browserTtsPlaybackLoopPauseModel.ts`
+- `src/app/browserTtsPlaybackPlan.ts`
 - `src/app/browserTtsPlaybackLoopCompletionHandler.ts`
 
 The runtime now maps `v3Prosody.pauseClass` to separate pause buckets:
 
-- `microPauseMs`
-- `boundaryPauseMs`
-- `sentencePauseMs`
-- `recoveryPauseMs`
+- `micro`: 500 ms
+- `boundary`: 900 ms
+- `sentence`: 1400 ms
+- `recovery`: 2600 ms
 
-Legacy fallback remains available when no V3 prosody exists.
+All nonzero chunk pauses are clamped to 500-4000 ms. Pause resolution happens in the playback plan and is carried through chunk commit, completion scheduling, benchmark telemetry, and decision traces as the same resolved value. Legacy fallback remains available when no V3 prosody exists, but controller fallback pauses only schedule when the controller explicitly requested a pause.
+
+Minor boundaries are playable microchunk pauses. Unsafe boundaries stay unpaused at the immediate edge so the next planning pass can move toward a safe clause or sentence boundary.
 
 ### 3. Browser TTS voice calibration
 
@@ -79,7 +82,9 @@ Files:
 - `src/app/browserTtsPlaybackLoopUtterance.ts`
 - `src/app/browserTtsUtterancePerfMetadata.ts`
 
-The runtime no longer assumes that `rate = 1.0` means the same thing across browsers, OSes, and voices. The playback loop calculates an `effectiveRate`, applies safety caps, and records calibration metadata.
+The runtime no longer assumes that `rate = 1.0` means the same thing across browsers, OSes, and voices. Recommendation and prescription code can represent the broad product envelope of 0.1-2.0, while Browser TTS execution still applies voice/runtime safety caps. The playback loop calculates an `effectiveRate`, applies safety caps, and records calibration metadata.
+
+German Browser TTS tolerance is DE-scoped. Clean or improving current samples are allowed out of the old 0.80-0.85 support band; repeated strong/severe learner pressure can still cap the upper recommendation and shift support toward shorter semantic chunks plus longer pauses.
 
 ### 4. Listener state V3
 
@@ -119,6 +124,7 @@ The runtime does not rely on browser word-boundary events to replay arbitrary mi
 Files:
 
 - `src/core/adaptive/listeningCycleInsightReportV3.ts`
+- `src/core/adaptive/adaptiveUserSystemReportListeningCycleV3.ts`
 - `src/core/adaptive/types.ts`
 
 The report summarizes observed evidence rather than inventing causal explanations. It uses telemetry frames, listener state, prosody, replay plans, pause data, and voice calibration metadata to produce:
@@ -129,6 +135,8 @@ The report summarizes observed evidence rather than inventing causal explanation
 - reason codes
 - summary bullets
 - next-session knobs
+
+The adaptive user/system report schema is now v3 and includes a top-level `listeningCycleV3` block. It records the primary constraint, axes, confidence, evidence counts, reason codes, next-session knobs, contradiction notes, and an accessibility note that real pauses and semantic chunks are intentional listening supports.
 
 ## Allowed LLM responsibilities
 
@@ -158,6 +166,8 @@ npm test -- browserTtsVoiceCalibration
 npm test -- listenerStateV3
 npm test -- browserTtsSurgicalReplayPlan
 npm test -- listeningCycleInsightReportV3
+npm test -- adaptiveUserSystemReport
+npm test -- browserTtsDeBenchmarkTolerance
 npm run build
 ```
 
@@ -165,7 +175,7 @@ npm run build
 
 Recommended next changes should be additive:
 
-1. Wire the insight report into the visible session report UI.
+1. Continue improving how the top-level V3 report block is presented in visible session reports.
 2. Add user-triggered replay controls that consume `surgicalReplayPlan`.
 3. Persist voice calibration observations per voice/browser/platform.
 4. Promote V3 next-session knobs into adaptive session planning.

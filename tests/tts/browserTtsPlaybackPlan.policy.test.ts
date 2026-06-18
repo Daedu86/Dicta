@@ -43,6 +43,7 @@ describe('buildBrowserTtsPlaybackPlan runtime policies', () => {
     expect(plan?.unsafeBoundaryApplied).toBe(true);
     expect(plan?.runtimeDecision.playbackRate).toBe(0.84);
     expect(plan?.runtimeDecision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(1200);
+    expect(plan?.pauseBeforeNextChunkMs).toBe(0);
     expect(plan?.runtimeDecision.reason).toContain('unsafe-boundary-conservative');
     expect(plan?.chunkTelemetry.unsafeChunkCount).toBe(1);
   });
@@ -60,5 +61,44 @@ describe('buildBrowserTtsPlaybackPlan runtime policies', () => {
     expect(plan?.runtimeDecision.nextPhraseSize).toBe('short');
     expect(plan?.runtimeDecision.shouldPauseNow).toBe(true);
     expect(plan?.runtimeDecision.pauseAfterPhraseMs).toBeGreaterThanOrEqual(1600);
+  });
+
+  it('schedules the larger controller pause when V3 boundary buckets would be shorter', () => {
+    const boundaryChunk = chunk({
+      phraseBoundaryType: 'clause',
+      canPauseAfter: true,
+      v3Prosody: {
+        boundaryStrength: 'clause',
+        pauseClass: 'boundary',
+        semanticCompletenessClass: 'stable-clause',
+        syntacticRisk: 'low',
+        edgeWordFlag: false,
+        replayStrategy: 'repeat-short',
+        breathGroup: {
+          startWordIndex: 0,
+          endWordIndex: 2,
+          wordCount: 3,
+          isComplete: true,
+        },
+      },
+    });
+    const planner: BrowserTtsChunkPlanner = () => boundaryChunk;
+
+    const plan = buildBrowserTtsPlaybackPlan(input({
+      chunkPlanner: planner,
+      adaptiveController: {
+        decide: () => decision({
+          mode: 'support',
+          shouldPauseNow: true,
+          playbackRate: 0.9,
+          replayRate: 0.84,
+          pauseAfterPhraseMs: 3200,
+        }),
+      },
+    }));
+
+    expect(plan?.effectivePauseNow).toBe(true);
+    expect(plan?.pauseResolution.pauseMs).toBe(3200);
+    expect(plan?.pauseBeforeNextChunkMs).toBe(3200);
   });
 });

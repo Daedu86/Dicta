@@ -59,6 +59,7 @@ export function commitBrowserTtsPlaybackLoopChunk({
     semanticCompleteness,
     rate,
     effectivePauseNow,
+    pauseBeforeNextChunkMs,
     effectiveReplay,
     chunkTelemetry,
   } = playbackPlan;
@@ -82,7 +83,7 @@ export function commitBrowserTtsPlaybackLoopChunk({
   });
   recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
     actualPlaybackRate: rate,
-    actualPauseMs: effectivePauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
+    actualPauseMs: pauseBeforeNextChunkMs,
     replayExecuted: effectiveReplay,
     actualBoundaryType: chunk.phraseBoundaryType,
     ttsEnvironment: browserTtsEnvironment,

@@ -18,6 +18,9 @@ import {
   hasSensitiveBenchmarkWeakAreas,
 } from './inputLanguageBenchmarkWeakAreas';
 
+const MIN_RECOMMENDED_PAUSE_MS = 500;
+const MAX_RECOMMENDED_PAUSE_MS = 4000;
+
 export { pickBestRateRange } from './inputLanguageBenchmarkRateRange';
 export { deriveWeakAreas } from './inputLanguageBenchmarkWeakAreas';
 
@@ -38,7 +41,7 @@ export function computeBenchmarkRecommendation(metrics: InputLanguageBenchmarkMe
   return {
     targetRateRange,
     targetPhraseSize,
-    targetPauseMs: Math.round(Math.max(1200, metrics.preferredPauseAfterPhraseMs || 1200)),
+    targetPauseMs: clampPauseMs(metrics.preferredPauseAfterPhraseMs || 1200),
     nextTrainingFocus: focus,
     confidence,
     summary:
@@ -75,9 +78,14 @@ export function applyRecommendationHysteresis(
   if (targetRateRange[0] > targetRateRange[1]) {
     targetRateRange[0] = targetRateRange[1];
   }
-  return { ...recommendation, targetRateRange, targetPhraseSize, targetPauseMs };
+  return { ...recommendation, targetRateRange, targetPhraseSize, targetPauseMs: clampPauseMs(targetPauseMs) };
 }
 
 function formatWeakArea(value: AdaptiveWeakArea): string {
   return value.replace(/_/g, ' ');
+}
+
+function clampPauseMs(value: number): number {
+  if (!Number.isFinite(value)) return 1200;
+  return Math.round(Math.min(MAX_RECOMMENDED_PAUSE_MS, Math.max(MIN_RECOMMENDED_PAUSE_MS, value)));
 }

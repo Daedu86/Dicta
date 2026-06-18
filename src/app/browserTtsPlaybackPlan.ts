@@ -12,6 +12,7 @@ import type {
   BrowserTtsPlaybackPlanInput,
 } from './browserTtsPlaybackPlanTypes';
 import { buildBrowserTtsRuntimeDecisionPipeline } from './browserTtsPlaybackDecisionPipeline';
+import { resolveBrowserTtsPlaybackPauseMs } from './browserTtsPlaybackLoopPauseModel';
 import { resolveBrowserTtsCandidateDecision } from './browserTtsPlaybackPlanCandidateDecision';
 import { buildBrowserTtsPlanChunkTelemetry } from './browserTtsPlaybackPlanChunkTelemetry';
 import { planBrowserTtsSurgicalReplay } from './browserTtsSurgicalReplayPlan';
@@ -89,7 +90,14 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
   });
   const nextUnsafeChunkCount = unsafeChunkCount + (unsafeBoundaryApplied ? 1 : 0);
   const rate = runtimeDecision.playbackRate;
-  const effectivePauseNow = runtimeDecision.shouldPauseNow && pauseAtBoundary;
+  const pauseResolution = resolveBrowserTtsPlaybackPauseMs({
+    pauseClass: chunk.v3Prosody?.pauseClass,
+    fallbackPauseMs: runtimeDecision.shouldPauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
+    controllerPauseMs: runtimeDecision.shouldPauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
+    extendWithControllerPause: runtimeDecision.mode === 'support' || runtimeDecision.mode === 'recovery',
+  });
+  const effectivePauseNow = pauseAtBoundary && pauseResolution.pauseMs > 0;
+  const pauseBeforeNextChunkMs = effectivePauseNow ? pauseResolution.pauseMs : 0;
   const chunkTelemetry = buildBrowserTtsPlanChunkTelemetry({
     input,
     chunk,
@@ -115,6 +123,8 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     semanticCompleteness,
     rate,
     effectivePauseNow,
+    pauseBeforeNextChunkMs,
+    pauseResolution,
     effectiveReplay: false,
     browserTelemetry,
     chunkTelemetry,

@@ -31,9 +31,9 @@ describe('buildAdaptivePlaybackComfortProfile', () => {
     const profile = buildAdaptivePlaybackComfortProfile({ history: history() });
 
     expect(profile.source).toBe('history');
-    expect(profile.rateRange[0]).toBeGreaterThanOrEqual(0.6);
-    expect(profile.rateRange[1]).toBeLessThanOrEqual(1.15);
-    expect(profile.pauseRangeMs[0]).toBeGreaterThanOrEqual(1200);
+    expect(profile.rateRange[0]).toBeGreaterThanOrEqual(0.1);
+    expect(profile.rateRange[1]).toBeLessThanOrEqual(2);
+    expect(profile.pauseRangeMs[0]).toBeGreaterThanOrEqual(500);
     expect(profile.pauseRangeMs[1]).toBeLessThanOrEqual(4000);
     expect(profile.preferredPhraseSize).toBe('short');
     expect(profile.statePauseMs.recovery).toBeGreaterThan(profile.statePauseMs.support);

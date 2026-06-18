@@ -50,7 +50,7 @@ describe('adaptiveUserSystemReport', () => {
     });
 
     expect(report.reportMetadata).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       reportType: 'adaptive_user_system_report',
       inputMode: 'browser-tts',
       inputModeLabel: 'Browser TTS',
@@ -58,8 +58,11 @@ describe('adaptiveUserSystemReport', () => {
       languageLabel: 'DE',
     });
     expect(report.reportMetadata.reportLayers).toContain('executiveSummary');
+    expect(report.reportMetadata.reportLayers).toContain('listeningCycleV3');
     expect(report.reportMetadata.ttsEnvironment).toEqual(browserEnvironment);
     expect(report.executiveSummary.status).toBe('recovery_recommended');
+    expect(report.listeningCycleV3.status).toBe('available');
+    expect(report.listeningCycleV3.accessibilityNote).toContain('Real pauses and semantic chunks');
     expect(report.adaptiveLoopBreakdown.sourceOfTruth.insightReport).toContain('not the direct LLM prompt');
     expect(report.componentDiagnostics.generationAndPrescription.promptMode).toBe('compact-adaptive-v2');
     expect(report.componentDiagnostics.plannerAndChunking.targetPhraseSize).toBe('short');
@@ -163,5 +166,64 @@ describe('adaptiveUserSystemReport', () => {
     expect(report.executiveSummary.status).toBe('challenge_ready');
     expect(report.userProgressSummary.positiveSignals.join(' ')).toContain('Strong latest-session accuracy');
     expect(report.adaptiveSystemSummary.recommendedSystemAdjustments.playbackRate).toContain('0.95x-1.05x');
+  });
+
+  it('adds a Listening Cycle V3 block that resolves latest clean signals against historical pressure', () => {
+    const profile = createRecoveryBenchmarkProfile();
+    profile.weakAreas = ['lag', 'support_dependency'];
+    profile.recommendation = {
+      ...profile.recommendation,
+      targetPauseMs: 900,
+    };
+    profile.timeline = [
+      {
+        timestampMs: 1,
+        inputMode: 'browser-tts',
+        language: 'de',
+        mode: 'recovery',
+        playbackRate: 0.92,
+        actualPlaybackRate: 0.92,
+        accuracy: 0.78,
+        lagSec: 0.48,
+        stableLagSec: 0.48,
+        wpm: 42,
+        pauseMs: 900,
+        actualPauseMs: 2600,
+        phraseBoundaryType: 'clause',
+        semanticCompleteness: 0.82,
+        event: 'phrase_completed',
+        decisionReason: 'recovery,lag-pressure',
+      },
+    ];
+
+    const report = buildAdaptiveUserSystemReport({
+      profile,
+      feedback: null,
+      technicalDebugData: {},
+      generatedAt: REPORT_GENERATED_AT,
+      latestSession: {
+        id: 'session-clean',
+        name: 'Improving German run',
+        inputMode: 'input2',
+        language: 'de',
+        ttsText: 'eins zwei drei vier',
+        metrics: {
+          score: 360,
+          points: 3,
+          accuracy: 78,
+          wpm: 42,
+          lagSec: 0.48,
+          trend: 'improving',
+        },
+        telemetry: { repeatCount: 1 },
+      },
+    });
+
+    expect(report.listeningCycleV3.status).toBe('available');
+    expect(report.listeningCycleV3.contradictionNotes.join(' ')).toContain('Latest lag is controlled');
+    expect(report.listeningCycleV3.contradictionNotes.join(' ')).toContain('Typing speed is usable');
+    expect(report.listeningCycleV3.contradictionNotes.join(' ')).toContain('runtime recovery recently used');
+    expect(report.listeningCycleV3.contradictionNotes.join(' ')).toContain('latest trend is improving');
+    expect(report.listeningCycleV3.accessibilityNote).toContain('not treated as typing-speed failure');
   });
 });

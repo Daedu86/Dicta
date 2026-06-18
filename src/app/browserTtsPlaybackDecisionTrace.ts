@@ -93,7 +93,7 @@ export function buildBrowserTtsDecisionTrace(args: {
     requestedPlaybackRate: execution.requestedPlaybackRate ?? playbackPlan.decision.playbackRate,
     actualPlaybackRate: execution.actualPlaybackRate ?? playbackPlan.rate,
     requestedPauseMs: execution.requestedPauseMs ?? playbackPlan.decision.pauseAfterPhraseMs,
-    actualPauseMs: execution.actualPauseMs ?? playbackPlan.runtimeDecision.pauseAfterPhraseMs,
+    actualPauseMs: execution.actualPauseMs ?? playbackPlan.pauseBeforeNextChunkMs,
     replayExecuted: execution.replayExecuted ?? playbackPlan.effectiveReplay,
     unsafeBoundaryApplied: playbackPlan.unsafeBoundaryApplied,
     mobileFallbackApplied: playbackPlan.mobileFallbackApplied,

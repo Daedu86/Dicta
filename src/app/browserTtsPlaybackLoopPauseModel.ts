@@ -10,6 +10,8 @@ export interface BrowserTtsPlaybackPauseProfile {
 export interface BrowserTtsPlaybackPauseSource {
   pauseClass?: BrowserTtsPlaybackPauseClass;
   fallbackPauseMs?: number;
+  controllerPauseMs?: number;
+  extendWithControllerPause?: boolean;
 }
 
 export interface BrowserTtsPlaybackPauseResolution {
@@ -19,17 +21,20 @@ export interface BrowserTtsPlaybackPauseResolution {
 }
 
 export const DEFAULT_BROWSER_TTS_PLAYBACK_PAUSE_PROFILE: BrowserTtsPlaybackPauseProfile = {
-  microPauseMs: 220,
-  boundaryPauseMs: 520,
-  sentencePauseMs: 900,
-  recoveryPauseMs: 1400,
+  microPauseMs: 500,
+  boundaryPauseMs: 900,
+  sentencePauseMs: 1400,
+  recoveryPauseMs: 2600,
 };
 
+export const MIN_BROWSER_TTS_CHUNK_PAUSE_MS = 500;
+export const MAX_BROWSER_TTS_CHUNK_PAUSE_MS = 4000;
+
 const PAUSE_LIMITS: Record<keyof BrowserTtsPlaybackPauseProfile, { min: number; max: number }> = {
-  microPauseMs: { min: 180, max: 250 },
-  boundaryPauseMs: { min: 350, max: 700 },
-  sentencePauseMs: { min: 700, max: 1400 },
-  recoveryPauseMs: { min: 1200, max: 2200 },
+  microPauseMs: { min: MIN_BROWSER_TTS_CHUNK_PAUSE_MS, max: MAX_BROWSER_TTS_CHUNK_PAUSE_MS },
+  boundaryPauseMs: { min: MIN_BROWSER_TTS_CHUNK_PAUSE_MS, max: MAX_BROWSER_TTS_CHUNK_PAUSE_MS },
+  sentencePauseMs: { min: MIN_BROWSER_TTS_CHUNK_PAUSE_MS, max: MAX_BROWSER_TTS_CHUNK_PAUSE_MS },
+  recoveryPauseMs: { min: MIN_BROWSER_TTS_CHUNK_PAUSE_MS, max: MAX_BROWSER_TTS_CHUNK_PAUSE_MS },
 };
 
 function clampPauseMs(value: number, limit: { min: number; max: number }): number {
@@ -61,20 +66,33 @@ export function resolveBrowserTtsPlaybackPauseMs(
   profile?: Partial<BrowserTtsPlaybackPauseProfile>,
 ): BrowserTtsPlaybackPauseResolution {
   const normalizedProfile = normalizeBrowserTtsPlaybackPauseProfile(profile);
+  const controllerPauseMs = clampOptionalPauseMs(source.controllerPauseMs);
+
+  const withControllerPause = (
+    pauseClass: BrowserTtsPlaybackPauseClass,
+    pauseMs: number,
+    resolutionSource: BrowserTtsPlaybackPauseResolution['source'],
+  ): BrowserTtsPlaybackPauseResolution => ({
+    pauseClass,
+    pauseMs: source.extendWithControllerPause
+      ? Math.max(pauseMs, controllerPauseMs)
+      : pauseMs,
+    source: resolutionSource,
+  });
 
   switch (source.pauseClass) {
     case 'none':
       return { pauseClass: 'none', pauseMs: 0, source: 'v3-prosody' };
     case 'micro':
-      return { pauseClass: 'micro', pauseMs: normalizedProfile.microPauseMs, source: 'v3-prosody' };
+      return withControllerPause('micro', normalizedProfile.microPauseMs, 'v3-prosody');
     case 'boundary':
-      return { pauseClass: 'boundary', pauseMs: normalizedProfile.boundaryPauseMs, source: 'v3-prosody' };
+      return withControllerPause('boundary', normalizedProfile.boundaryPauseMs, 'v3-prosody');
     case 'sentence':
-      return { pauseClass: 'sentence', pauseMs: normalizedProfile.sentencePauseMs, source: 'v3-prosody' };
+      return withControllerPause('sentence', normalizedProfile.sentencePauseMs, 'v3-prosody');
     case 'recovery':
-      return { pauseClass: 'recovery', pauseMs: normalizedProfile.recoveryPauseMs, source: 'v3-prosody' };
+      return withControllerPause('recovery', normalizedProfile.recoveryPauseMs, 'v3-prosody');
     default: {
-      const fallbackPauseMs = Math.max(0, Math.round(source.fallbackPauseMs ?? 0));
+      const fallbackPauseMs = clampOptionalPauseMs(source.fallbackPauseMs);
       return {
         pauseClass: fallbackPauseMs > 0 ? 'boundary' : 'none',
         pauseMs: fallbackPauseMs,
@@ -82,4 +100,10 @@ export function resolveBrowserTtsPlaybackPauseMs(
       };
     }
   }
+}
+
+function clampOptionalPauseMs(value: number | undefined): number {
+  const rounded = Math.round(value ?? 0);
+  if (!Number.isFinite(rounded) || rounded <= 0) return 0;
+  return Math.min(MAX_BROWSER_TTS_CHUNK_PAUSE_MS, Math.max(MIN_BROWSER_TTS_CHUNK_PAUSE_MS, rounded));
 }

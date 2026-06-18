@@ -20,8 +20,8 @@ describe('browserTtsDeRecoveryPolicy', () => {
     expect(recovery.active).toBe(true);
     expect(recovery.level).toBe('strong');
     expect(recovery.shortChunkWordCap).toBe(4);
-    expect(next.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2600);
-    expect(next.playbackRate).toBe(0.84);
+    expect(next.pauseAfterPhraseMs).toBeGreaterThanOrEqual(3200);
+    expect(next.playbackRate).toBe(0.9);
     expect(next.nextPhraseSize).toBe('short');
   });
 
@@ -49,8 +49,8 @@ describe('browserTtsDeRecoveryPolicy', () => {
 
     expect(recovery.active).toBe(true);
     expect(recovery.level).toBe('moderate');
-    expect(next.playbackRate).toBe(0.88);
-    expect(next.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2200);
+    expect(next.playbackRate).toBe(0.98);
+    expect(next.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2600);
   });
 
   it('uses severe fallback only for repeated high lag plus low accuracy', () => {
@@ -63,8 +63,8 @@ describe('browserTtsDeRecoveryPolicy', () => {
     });
 
     expect(recovery.level).toBe('severe');
-    expect(next.playbackRate).toBe(0.8);
-    expect(next.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2600);
+    expect(next.playbackRate).toBe(0.7);
+    expect(next.pauseAfterPhraseMs).toBeGreaterThanOrEqual(3200);
   });
 
   it('exits recovery after recent valid low-lag high-accuracy phrases', () => {

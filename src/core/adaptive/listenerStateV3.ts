@@ -237,7 +237,7 @@ function scoreTtsEnvironment(
     reasonCodes.add('rate-too-high');
   }
 
-  if (signals.currentPauseAfterPhraseMs > 0 && signals.currentPauseAfterPhraseMs < 250) {
+  if (signals.currentPauseAfterPhraseMs > 0 && signals.currentPauseAfterPhraseMs < 500) {
     score += 0.18;
     reasonCodes.add('pause-too-short');
   }

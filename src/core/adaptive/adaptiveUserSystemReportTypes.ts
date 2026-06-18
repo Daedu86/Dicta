@@ -1,6 +1,7 @@
 import type { SessionPointsSource } from '../evaluation';
 import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../types/dictation';
 import type { AdaptiveWeakArea, InputLanguageBenchmarkMetrics } from './types';
+import type { ListeningCycleInsightReportV3 } from './listeningCycleInsightReportV3';
 import type {
   AdaptiveUserSystemReportComponentDiagnostics,
   AdaptiveUserSystemReportLoopBreakdown,
@@ -47,9 +48,28 @@ export type AdaptiveReportSession = SessionPointsSource & {
   } | null;
 };
 
+export type AdaptiveUserSystemReportSessionSummary = {
+  id: string;
+  name: string;
+  status?: string;
+  difficulty: string | null;
+  inputMode: string | null;
+  language: string | null;
+  score: number;
+  points: string;
+  accuracy: string;
+  wpm: string;
+  lag: string;
+  duration: string | null;
+  updatedAt: string | null;
+  finishedAt: string | null;
+  trend: string | null;
+  repeatCount: number | null;
+};
+
 export type AdaptiveUserSystemReport = {
   reportMetadata: {
-    schemaVersion: 2;
+    schemaVersion: 3;
     generatedAt: string;
     reportType: 'adaptive_user_system_report';
     inputMode: InputLanguageBenchmarkMetrics['inputMode'];
@@ -73,6 +93,18 @@ export type AdaptiveUserSystemReport = {
   };
   adaptiveLoopBreakdown: AdaptiveUserSystemReportLoopBreakdown;
   componentDiagnostics: AdaptiveUserSystemReportComponentDiagnostics;
+  listeningCycleV3: {
+    status: 'available' | 'no_frames';
+    primaryConstraint: ListeningCycleInsightReportV3['primaryConstraint'];
+    confidence: number;
+    axes: ListeningCycleInsightReportV3['axes'];
+    evidence: ListeningCycleInsightReportV3['evidence'];
+    reasonCodes: string[];
+    nextSessionKnobs: ListeningCycleInsightReportV3['nextSessionKnobs'];
+    summaryBullets: string[];
+    contradictionNotes: string[];
+    accessibilityNote: string;
+  };
   compactTechnicalDebugSummary: {
     estimatedTechnicalDebugDataBytes: number | null;
     rawDebugIncluded: true;
@@ -84,24 +116,7 @@ export type AdaptiveUserSystemReport = {
   userProgressSummary: {
     status: 'available' | 'no_finished_session';
     howYouDid: string;
-    latestSession: null | {
-      id: string;
-      name: string;
-      status?: string;
-      difficulty: string | null;
-      inputMode: string | null;
-      language: string | null;
-      score: number;
-      points: string;
-      accuracy: string;
-      wpm: string;
-      lag: string;
-      duration: string | null;
-      updatedAt: string | null;
-      finishedAt: string | null;
-      trend: string | null;
-      repeatCount: number | null;
-    };
+    latestSession: null | AdaptiveUserSystemReportSessionSummary;
     positiveSignals: string[];
     needsImprovement: string[];
     nextPracticeFocus: string[];

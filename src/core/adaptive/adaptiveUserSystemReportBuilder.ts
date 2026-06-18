@@ -25,6 +25,7 @@ import { buildExecutiveSummary } from './adaptiveUserSystemReportExecutiveSummar
 import { buildAdaptiveLoopBreakdown } from './adaptiveUserSystemReportLoopBreakdown';
 import { buildComponentDiagnostics } from './adaptiveUserSystemReportComponentDiagnostics';
 import { buildCompactTechnicalDebugSummary } from './adaptiveUserSystemReportDebugSummary';
+import { buildAdaptiveUserSystemReportListeningCycleV3 } from './adaptiveUserSystemReportListeningCycleV3';
 
 export function buildAdaptiveUserSystemReport({
   profile,
@@ -45,6 +46,10 @@ export function buildAdaptiveUserSystemReport({
 }): AdaptiveUserSystemReport {
   const normalizedProfile = normalizeReportProfile(profile);
   const sessionSummary = latestSession ? summarizeLatestSession(latestSession) : null;
+  const listeningCycleV3 = buildAdaptiveUserSystemReportListeningCycleV3({
+    profile: normalizedProfile,
+    latestSession: sessionSummary,
+  });
   const playbackIssues = feedback?.playbackIssues ?? null;
   const repeatCount = playbackIssues?.repeatedPhraseCount ?? latestSession?.telemetry?.repeatCount ?? 0;
   const positiveSignals = buildPositiveSignals(normalizedProfile, sessionSummary, feedback);
@@ -59,7 +64,7 @@ export function buildAdaptiveUserSystemReport({
 
   return {
     reportMetadata: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       generatedAt,
       reportType: 'adaptive_user_system_report',
       inputMode: normalizedProfile.inputMode,
@@ -72,6 +77,7 @@ export function buildAdaptiveUserSystemReport({
         'executiveSummary',
         'adaptiveLoopBreakdown',
         'componentDiagnostics',
+        'listeningCycleV3',
         'userProgressSummary',
         'adaptiveSystemSummary',
         'compactTechnicalDebugSummary',
@@ -104,6 +110,7 @@ export function buildAdaptiveUserSystemReport({
       ttsEnvironmentReport,
       technicalDebugData,
     }),
+    listeningCycleV3,
     compactTechnicalDebugSummary: buildCompactTechnicalDebugSummary(technicalDebugData, estimatedTechnicalDebugDataBytes),
     userProgressSummary: {
       status: sessionSummary ? 'available' : 'no_finished_session',

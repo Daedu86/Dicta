@@ -5,6 +5,10 @@ import type {
   LanguageCode,
 } from './types';
 import { normalizeBenchmarkLanguage } from './adaptiveBenchmarkLanguage';
+import {
+  PRODUCT_MAX_PLAYBACK_RATE,
+  PRODUCT_MIN_PLAYBACK_RATE,
+} from './adaptiveDictationControllerMath';
 
 export const ROLLING_WINDOW_DAYS = 30 as const;
 
@@ -61,7 +65,7 @@ export function createEmptyInputLanguageBenchmark(
 
 export function buildDefaultRecommendation(): InputLanguageBenchmarkRecommendation {
   return {
-    targetRateRange: [0.6, 1.15],
+    targetRateRange: [PRODUCT_MIN_PLAYBACK_RATE, PRODUCT_MAX_PLAYBACK_RATE],
     targetPhraseSize: 'medium',
     targetPauseMs: 1200,
     nextTrainingFocus: ['Collect benchmark samples'],

@@ -29,7 +29,7 @@ describe('ListeningTrainerPolicy precision pressure', () => {
 
     expect(prescription.mode).toBe('recover');
     expect(prescription.difficulty).toBe('easy');
-    expect(prescription.targetRateRange[1]).toBeLessThanOrEqual(0.95);
+    expect(prescription.targetRateRange[1]).toBeLessThanOrEqual(1.05);
     expect(prescription.targetPhraseSize).toBe('short');
     expect(prescription.boundaryPolicy).toBe('strict_semantic');
     expect(prescription.rationale.join(' ')).toContain('Listening precision pressure');
@@ -52,7 +52,7 @@ describe('ListeningTrainerPolicy precision pressure', () => {
 
     expect(prescription.mode).toBe('stabilize');
     expect(prescription.difficulty).toBe('normal');
-    expect(prescription.targetRateRange[1]).toBeLessThanOrEqual(1);
+    expect(prescription.targetRateRange[1]).toBeLessThanOrEqual(1.05);
     expect(prescription.targetPauseMs).toBeGreaterThanOrEqual(800);
     expect(prescription.boundaryPolicy).toBe('strict_semantic');
     expect(prescription.pacingGuidance.join(' ')).toContain('Precision pressure is active');

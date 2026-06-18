@@ -1,16 +1,23 @@
 import { resolveBrowserTtsAdaptiveProfile } from '../../inputs/browserTts/browserTtsAdaptiveProfiles';
+import {
+  PRODUCT_MAX_PLAYBACK_RATE,
+  PRODUCT_MIN_PLAYBACK_RATE,
+} from './adaptiveDictationControllerMath';
 import type { InputLanguageBenchmarkMetrics, RateAccuracyBucket } from './types';
 import { clamp01, normalizeAccuracy } from './inputLanguageBenchmarkMath';
 
 export function pickBestRateRange(rateAccuracyBuckets: RateAccuracyBucket[]): [number, number] {
-  if (rateAccuracyBuckets.length === 0) return [0.6, 1.15];
+  if (rateAccuracyBuckets.length === 0) return [PRODUCT_MIN_PLAYBACK_RATE, PRODUCT_MAX_PLAYBACK_RATE];
   const scored = [...rateAccuracyBuckets].sort((a, b) => rateBucketScore(b) - rateBucketScore(a));
   const best = scored[0];
   const nearby = scored.filter((bucket) => Math.abs(bucket.rate - best.rate) <= 0.05 && rateBucketScore(bucket) >= rateBucketScore(best) * 0.85);
   const rates = nearby.length > 0 ? nearby.map((bucket) => bucket.rate) : [best.rate];
   const lower = Math.min(...rates);
   const upper = Math.max(...rates);
-  return [Math.max(0.6, lower - 0.04), Math.min(1.15, upper + 0.04)];
+  return [
+    Math.max(PRODUCT_MIN_PLAYBACK_RATE, lower - 0.04),
+    Math.min(PRODUCT_MAX_PLAYBACK_RATE, upper + 0.04),
+  ];
 }
 
 export function calibrateTargetRateRangeForProfile(

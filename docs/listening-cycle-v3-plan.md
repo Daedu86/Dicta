@@ -1,6 +1,6 @@
 # Listening Cycle V3 Plan
 
-_Last updated: 2026-06-17_
+_Last updated: 2026-06-18_
 
 V3 keeps Dicta listening-first: the goal is not faster typing. The system should help the listener hear, segment, retain, reconstruct, and type what was heard.
 
@@ -42,7 +42,7 @@ Goal: make chunks sound more human and easier to reconstruct.
 Add planner/chunk metadata:
 
 - `boundaryStrength`: `weak | clause | sentence | paragraph | unsafe`
-- `pauseClass`: `micro | boundary | recovery`
+- `pauseClass`: `none | micro | boundary | sentence | recovery`
 - `semanticCompleteness`
 - `syntacticRisk`
 - `functionWordRisk`
@@ -70,6 +70,15 @@ Introduce three pause layers:
 - `boundaryPauseMs`: safe chunk/sentence boundary.
 - `recoveryPauseMs`: listener catch-up and repair.
 
+Current Browser TTS V3 buckets are:
+
+- `micro`: 500 ms
+- `boundary`: 900 ms
+- `sentence`: 1400 ms
+- `recovery`: 2600 ms
+
+All nonzero chunk pauses resolve inside a 500-4000 ms envelope. The playback plan owns the resolved pause so completion, telemetry, benchmark records, and decision traces share the same `actualPauseMs`. When the controller asks for support or recovery, the scheduled pause is `max(v3Bucket, controllerPause)` capped at 4000 ms.
+
 Runtime rule:
 
 ```text
@@ -81,6 +90,7 @@ Validation:
 
 - Tests for pause class mapping.
 - Tests that support/recovery can extend pauses without permanently lowering flow pacing.
+- Tests that minor boundaries are pausable microchunks and unsafe edges remain unpaused until the next safe boundary.
 
 ## Phase 3 — Browser TTS voice calibration
 
@@ -97,9 +107,13 @@ Add per environment/voice calibration:
 
 Rules:
 
-- Keep 0.60-1.15 as safe default window.
+- Keep the product recommendation and prescription envelope broad at 0.1-2.0.
+- Treat Browser TTS executable limits as a separate runtime safety layer.
+- Keep unmeasured browser voices conservative; calibrated voices may use the measured safe cap.
 - Do not expose 1.5x as normal dictation unless calibration and history show stable precision.
 - Prefer pause modulation before aggressive rate increases.
+
+German Browser TTS support/recovery should no longer lock clean or improving sessions into 0.80-0.85. Strong or severe recent learner pressure can still cap the upper executable recommendation, but support history alone is not sufficient.
 
 Validation:
 
@@ -160,12 +174,14 @@ Add/report:
 - realized voice pace when available
 - reason-code chips
 - listener-state summary: `hearing`, `reconstructing`, `catching-up`, `flowing`
+- adaptive user/system report schema v3 top-level `listeningCycleV3` block with primary constraint, axes, confidence, evidence counts, next-session knobs, contradiction notes, and accessibility wording
 
 Report language:
 
 - Explain pacing as coaching.
 - Do not frame slow typing as failure.
 - Separate listener progress from TTS/browser environment changes.
+- Resolve contradictions explicitly, including latest controlled lag vs historical lag instability, target pause vs runtime recovery pause, usable WPM vs typing bottleneck, and improving trend vs cautious recovery.
 
 Validation:
 
@@ -206,5 +222,13 @@ npm run build
 For mobile/Browser TTS runtime changes:
 
 ```bash
+npm test -- ttsDynamicChunkPlanner
+npm test -- browserTtsPlaybackLoopPauseModel
+npm test -- browserTtsVoiceCalibration
+npm test -- listenerStateV3
+npm test -- browserTtsSurgicalReplayPlan
+npm test -- listeningCycleInsightReportV3
+npm test -- adaptiveUserSystemReport
+npm test -- browserTtsDeBenchmarkTolerance
 npm run test:e2e:mobile
 ```

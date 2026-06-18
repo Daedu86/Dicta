@@ -72,14 +72,16 @@ describe('planBrowserTtsAdaptiveChunk', () => {
     expect(['sentence', 'clause']).toContain(chunk?.phraseBoundaryType);
   });
 
-  it('can produce a minor boundary when strictness is phrase', () => {
+  it('treats minor phrase boundaries as pausable microchunks', () => {
     const chunk = planChunk({
-      text: 'This is a long phrase without punctuation to force a minor cut',
+      text: 'Bright rivers carry winter sunlight across quiet hills today',
     });
 
     expect(chunk).not.toBeNull();
     expect((chunk?.wordCount ?? 0)).toBeGreaterThan(0);
-    expect(['sentence', 'clause', 'minor', 'unsafe']).toContain(chunk?.phraseBoundaryType);
+    expect(chunk?.phraseBoundaryType).toBe('minor');
+    expect(chunk?.canPauseAfter).toBe(true);
+    expect(chunk?.v3Prosody?.pauseClass).toBe('micro');
   });
 
   it('never produces an empty chunk in normal cases', () => {

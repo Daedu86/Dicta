@@ -7,7 +7,7 @@ import type {
 } from './types';
 import { MAX_PLAYBACK_RATE, MIN_PLAYBACK_RATE, clamp } from './adaptiveDictationControllerMath';
 
-const MIN_COMFORT_PAUSE_MS = 1200;
+const MIN_COMFORT_PAUSE_MS = 500;
 const MAX_COMFORT_PAUSE_MS = 4000;
 const DEFAULT_BOOTSTRAP_RATE = 0.82;
 const DEFAULT_BOOTSTRAP_PAUSE_MS = 2200;

@@ -6,9 +6,11 @@ import {
   clampNumber,
   isBrowserTtsDe,
 } from './browserTtsDeBenchmarkCore';
+import { hasCleanRecentBrowserTtsDeCompletedSamples } from './browserTtsDeBenchmarkPressureSignals';
 import {
   deriveTimelineEvent,
   getBrowserTtsDeBenchmarkRejectionTokens,
+  isValidBrowserTtsDeBenchmarkSample,
 } from './browserTtsDeBenchmarkSamples';
 
 export function clampBrowserTtsDeDecisionToRecommendation(
@@ -20,9 +22,20 @@ export function clampBrowserTtsDeDecisionToRecommendation(
   if (!Array.isArray(targetRateRange) || targetRateRange.length !== 2) return decision;
   const [minRate, maxRate] = targetRateRange;
   if (!Number.isFinite(minRate) || !Number.isFinite(maxRate) || maxRate < minRate) return decision;
+  const hasStrongRecoveryPressure = metrics.weakAreas.some((weakArea) =>
+    weakArea === 'low_accuracy' ||
+    weakArea === 'accuracy_instability' ||
+    weakArea === 'lag' ||
+    weakArea === 'lag_instability' ||
+    weakArea === 'support_dependency'
+  );
+  const validCompletedSamples = metrics.timeline
+    .filter((point) => point.event === 'phrase_completed')
+    .filter(isValidBrowserTtsDeBenchmarkSample);
+  if (!hasStrongRecoveryPressure || hasCleanRecentBrowserTtsDeCompletedSamples(validCompletedSamples)) return decision;
   const upper = maxRate + BROWSER_TTS_DE_MAX_RATE_MARGIN;
-  const playbackRate = Number(clampNumber(decision.playbackRate, minRate, upper).toFixed(2));
-  const replayRate = Number(clampNumber(decision.replayRate, minRate, upper).toFixed(2));
+  const playbackRate = Number(clampNumber(decision.playbackRate, 0, upper).toFixed(2));
+  const replayRate = Number(clampNumber(decision.replayRate, 0, upper).toFixed(2));
   if (playbackRate === decision.playbackRate && replayRate === decision.replayRate) return decision;
   return {
     ...decision,

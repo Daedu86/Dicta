@@ -34,6 +34,7 @@ export function attachBrowserTtsPlaybackLoopChunkHandlers({
       macroWordsLength: input.runnerState.macroPhrase.macroWords.length,
       chunk: playbackPlan.chunk,
       effectivePauseNow: playbackPlan.effectivePauseNow,
+      pauseBeforeNextChunkMs: playbackPlan.pauseBeforeNextChunkMs,
       runtimeDecision: playbackPlan.runtimeDecision,
       ttsCompletedSourceWordsRef: input.progressContext.ttsCompletedSourceWordsRef,
       recordPhrasePlaybackEvent: input.telemetryContext.recordPhrasePlaybackEvent,

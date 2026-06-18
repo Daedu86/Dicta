@@ -14,6 +14,15 @@ export function chooseAdaptivePacingMode(input: AdaptivePacingInput): PacingMode
   const longPhrase = live.phraseLengthWords >= 10 || live.phraseLengthChars >= 65 || live.phraseDifficulty >= 0.75;
   const phraseOverload = longPhrase && (rollingAccuracy < 0.88 || lag > 1.5 || correction > 0.08);
   const longPhraseSensitive = history.strugglesWithLongPhrases && live.phraseLengthWords >= 8;
+  const deImprovingWithControlledLag =
+    live.inputMode === 'browser-tts' &&
+    live.language === 'de' &&
+    live.trend === 'improving' &&
+    lag < 0.8 &&
+    rollingAccuracy >= 0.7 &&
+    correction <= 0.12 &&
+    !phraseOverload &&
+    !longPhraseSensitive;
 
   const goodFlow =
     rollingAccuracy >= 0.94 &&
@@ -34,6 +43,10 @@ export function chooseAdaptivePacingMode(input: AdaptivePacingInput): PacingMode
 
   if (recoveryNeeded) {
     return 'recovery';
+  }
+
+  if (deImprovingWithControlledLag) {
+    return 'balanced';
   }
 
   if (struggling) {

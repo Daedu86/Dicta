@@ -114,13 +114,13 @@ export function applyBrowserTtsDeRecoveryPolicy(params: {
 }): PacingDecision {
   if (!params.recovery.active) return params.decision;
 
-  const targetPauseMs = params.recovery.level === 'moderate' ? 2200 : 2600;
+  const targetPauseMs = params.recovery.level === 'moderate' ? 2600 : 3200;
   const rateCeiling =
     params.recovery.level === 'severe'
       ? params.profile.supportRateFloor
       : params.recovery.level === 'strong'
-        ? 0.84
-        : 0.88;
+        ? 0.9
+        : 0.98;
   const playbackRate = roundRate(Math.max(params.profile.supportRateFloor, Math.min(params.decision.playbackRate, rateCeiling)));
   const replayRate = roundRate(Math.max(params.profile.supportRateFloor, Math.min(params.decision.replayRate, playbackRate)));
   const reasonToken = `browser-tts-de-recovery-${params.recovery.level}`;

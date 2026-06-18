@@ -52,8 +52,14 @@ export function hasCleanRecentBrowserTtsDeCompletedSamples(validCompletedSamples
 
 export function deriveBrowserTtsDeTimelineWeakAreas(pressure: BrowserTtsDeTimelinePressure): AdaptiveWeakArea[] {
   const weakAreas: AdaptiveWeakArea[] = [];
-  if (pressure.supportRatio > 0.5) weakAreas.push('support_dependency');
-  if (pressure.unsafeBoundaryRatio > 0.1 || pressure.unsafeChunkRatio > 0.15) weakAreas.push('unsafe_boundary_pressure');
+  const hasCurrentLearnerPressure =
+    pressure.highLagRatio > 0.15 ||
+    pressure.lowAccuracyRatio > 0.2 ||
+    pressure.severeRecoveryRatio > 0;
+  if (pressure.supportRatio > 0.5 && hasCurrentLearnerPressure) weakAreas.push('support_dependency');
+  if (!pressure.hasRecentCleanCompletedSamples && (pressure.unsafeBoundaryRatio > 0.1 || pressure.unsafeChunkRatio > 0.15)) {
+    weakAreas.push('unsafe_boundary_pressure');
+  }
   if (pressure.highLagRatio > 0.15 || pressure.severeRecoveryRatio > 0) weakAreas.push('lag_instability');
   if (pressure.lowAccuracyRatio > 0.2) weakAreas.push('accuracy_instability');
   return weakAreas;
@@ -66,7 +72,7 @@ export function buildBrowserTtsDePressureSummary(pressure: BrowserTtsDeTimelineP
   if (!pressure.hasRecentCleanCompletedSamples && (pressure.technicalTimingIssueCount > 0 || pressure.severeRawLagOutlierCount > 0)) {
     return 'Browser TTS DE has lag alignment diagnostics, so benchmark confidence is low.';
   }
-  if (pressure.supportRatio > 0.5) {
+  if (pressure.supportRatio > 0.5 && (pressure.highLagRatio > 0.15 || pressure.lowAccuracyRatio > 0.2 || pressure.severeRecoveryRatio > 0)) {
     return 'Browser TTS DE support-mode pressure remains high.';
   }
   return 'Browser TTS DE benchmark confidence is low.';

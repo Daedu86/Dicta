@@ -49,7 +49,7 @@ export function applyBrowserTtsDeTimelinePressureFallback(metrics: InputLanguage
   const recoveryPressure = pressure.hasLearnerRecoveryPressure;
   const recoveryRateRange: [number, number] = recoveryPressure ? [
     profile.supportRateFloor,
-    Number(Math.min(profile.supportRateFloor + 0.05, profile.supportRateCeiling).toFixed(2)),
+    Number(Math.min(profile.supportRateFloor + 0.18, profile.supportRateCeiling).toFixed(2)),
   ] : BROWSER_TTS_DE_LOW_CONFIDENCE_RATE_RANGE;
   const weakAreas = [...new Set([...metrics.weakAreas, ...deriveBrowserTtsDeTimelineWeakAreas(pressure)])];
   const nextTrainingFocus = buildBrowserTtsDeConservativeFocus(weakAreas);
@@ -124,13 +124,13 @@ export function analyzeBrowserTtsDeTimelinePressure(metrics: InputLanguageBenchm
   const highLagRatio = highLagCount / learnerDenominator;
   const lowAccuracyRatio = lowAccuracyCount / learnerDenominator;
   const hasRecentCleanCompletedSamples = hasCleanRecentBrowserTtsDeCompletedSamples(validCompletedSamples);
-  const semanticBoundaryPressure = unsafeBoundaryRatio > 0.1 || unsafeChunkRatio > 0.15;
-  const learnerPerformancePressure =
-    supportRatio > 0.5 ||
+  const semanticBoundaryPressure = !hasRecentCleanCompletedSamples && (unsafeBoundaryRatio > 0.1 || unsafeChunkRatio > 0.15);
+  const hasCurrentLearnerPressure =
     severeRecoveryRatio > 0 ||
     highLagRatio > 0.15 ||
     lowAccuracyRatio > 0.2;
-  const hasLearnerRecoveryPressure = semanticBoundaryPressure || learnerPerformancePressure;
+  const learnerPerformancePressure = hasCurrentLearnerPressure;
+  const hasLearnerRecoveryPressure = !hasRecentCleanCompletedSamples && (semanticBoundaryPressure || learnerPerformancePressure);
   return {
     validScoringSampleCount,
     supportRatio,

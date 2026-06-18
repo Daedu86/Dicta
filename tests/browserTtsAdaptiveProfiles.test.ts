@@ -34,7 +34,7 @@ describe('resolveBrowserTtsAdaptiveProfile', () => {
     expect(profile.minRecommendedRate).toBe(0.6);
     expect(profile.recommendationCalibrationEnabled).toBe(true);
     expect(profile.sessionWarmup.enabled).toBe(false);
-    expect(profile.adaptivePause.minPauseMs).toBe(1200);
+    expect(profile.adaptivePause.minPauseMs).toBe(500);
     expect(profile.adaptivePause.maxPauseMs).toBe(4000);
     expect(profile.adaptivePause.severeLagBehindPauseMs).toBe(3800);
   });
@@ -49,22 +49,22 @@ describe('resolveBrowserTtsAdaptiveProfile', () => {
     expect(profile.minRecommendedRate).toBe(0.6);
     expect(profile.recommendationCalibrationEnabled).toBe(false);
     expect(profile.sessionWarmup.enabled).toBe(false);
-    expect(profile.adaptivePause.minPauseMs).toBe(1200);
+    expect(profile.adaptivePause.minPauseMs).toBe(500);
     expect(profile.adaptivePause.maxPauseMs).toBe(4000);
     expect(profile.supportRecoveryAggressiveness).toBe('high');
   });
 
-  it('returns DE conservative profile values inside the expanded global window', () => {
+  it('returns DE tolerant profile values inside the expanded global window', () => {
     const profile = resolveBrowserTtsAdaptiveProfile('de');
-    expect(profile.supportRateFloor).toBe(0.8);
-    expect(profile.extremeSupportRateFloor).toBe(0.78);
-    expect(profile.balancedFlowFloor).toBe(0.82);
-    expect(profile.supportRateCeiling).toBe(0.9);
-    expect(profile.unsafeBoundaryMinPauseMs).toBe(1200);
+    expect(profile.supportRateFloor).toBe(0.7);
+    expect(profile.extremeSupportRateFloor).toBe(0.65);
+    expect(profile.balancedFlowFloor).toBe(0.7);
+    expect(profile.supportRateCeiling).toBe(1.05);
+    expect(profile.unsafeBoundaryMinPauseMs).toBe(1400);
     expect(profile.minRecommendedRate).toBe(0.6);
     expect(profile.recommendationCalibrationEnabled).toBe(false);
     expect(profile.sessionWarmup.enabled).toBe(false);
-    expect(profile.adaptivePause.minPauseMs).toBe(1200);
+    expect(profile.adaptivePause.minPauseMs).toBe(500);
     expect(profile.adaptivePause.maxPauseMs).toBe(4000);
     expect(profile.germanShortBias.enabled).toBe(true);
   });

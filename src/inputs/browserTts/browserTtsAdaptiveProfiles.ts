@@ -73,7 +73,7 @@ export const BROWSER_TTS_BASE_PROFILE: BrowserTtsAdaptiveProfile = {
   },
   adaptivePause: {
     enabled: true,
-    minPauseMs: 1200,
+    minPauseMs: 500,
     maxPauseMs: 4000,
     lowAccuracyPauseMs: 2400,
     veryLowAccuracyPauseMs: 3200,
@@ -121,11 +121,11 @@ export const BROWSER_TTS_EN_PROFILE: BrowserTtsAdaptiveProfile = {
 
 export const BROWSER_TTS_DE_PROFILE: BrowserTtsAdaptiveProfile = {
   ...BROWSER_TTS_BASE_PROFILE,
-  supportRateFloor: 0.8,
-  extremeSupportRateFloor: 0.78,
-  balancedFlowFloor: 0.82,
-  supportRateCeiling: 0.9,
-  unsafeBoundaryMinPauseMs: 1200,
+  supportRateFloor: 0.7,
+  extremeSupportRateFloor: 0.65,
+  balancedFlowFloor: 0.7,
+  supportRateCeiling: 1.05,
+  unsafeBoundaryMinPauseMs: 1400,
   recommendationCalibrationEnabled: false,
   supportRecoveryAggressiveness: 'low',
   phraseGrowthConservatism: 'high',

@@ -49,7 +49,8 @@ describe('ListeningTrainerPolicy core prescriptions', () => {
     expect(prescription.targetPhraseSize).toBe('short');
     expect(prescription.phrasePolicy).toBe('short_safe_semantic');
     expect(prescription.boundaryPolicy).toBe('strict_semantic');
-    expect(prescription.targetRateRange[1]).toBeLessThanOrEqual(0.95);
+    expect(prescription.targetRateRange[1]).toBeLessThanOrEqual(1.1);
+    expect(prescription.targetRateRange[1]).toBeGreaterThan(0.95);
     expect(prescription.rationale.join(' ')).toContain('Requested hard difficulty was adjusted to easy');
     expect(prescription.rationale.join(' ')).toContain('Challenge intent was gated');
   });

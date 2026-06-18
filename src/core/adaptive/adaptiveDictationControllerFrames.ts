@@ -38,9 +38,19 @@ export function transitionAdaptiveControllerFrames({
 }): AdaptiveControllerFrameTransitionResult {
   const nextFrameState = { ...frameState };
   const progressGap = computeProgressGap(live);
+  const deImprovingWithControlledLag =
+    live.inputMode === 'browser-tts' &&
+    live.language === 'de' &&
+    live.trend === 'improving' &&
+    live.lagSec < 0.8 &&
+    rollingAccuracyLast3 >= 0.7 &&
+    live.correctionRate <= 0.12 &&
+    !phraseOverload &&
+    !longPhraseSensitive;
+  const accuracyPressureThreshold = deImprovingWithControlledLag ? 0.68 : 0.82;
   const userIsStruggling =
     live.lagSec > 2.0 ||
-    rollingAccuracyLast3 < 0.82 ||
+    rollingAccuracyLast3 < accuracyPressureThreshold ||
     live.correctionRate > 0.12 ||
     (live.lagSec > 1.8 && progressGap > 0.18) ||
     phraseOverload ||

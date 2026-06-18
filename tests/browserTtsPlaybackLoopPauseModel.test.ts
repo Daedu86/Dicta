@@ -37,17 +37,17 @@ describe('browserTtsPlaybackLoopPauseModel', () => {
         recoveryPauseMs: 999_999,
       }),
     ).toEqual({
-      microPauseMs: 180,
-      boundaryPauseMs: 700,
-      sentencePauseMs: 700,
-      recoveryPauseMs: 2200,
+      microPauseMs: 500,
+      boundaryPauseMs: 4000,
+      sentencePauseMs: 500,
+      recoveryPauseMs: 4000,
     });
   });
 
-  it('keeps legacy fallback pause behavior when V3 prosody is not available', () => {
+  it('clamps legacy fallback pauses into the perceptible chunk-pause envelope', () => {
     expect(resolveBrowserTtsPlaybackPauseMs({ fallbackPauseMs: 333 })).toEqual({
       pauseClass: 'boundary',
-      pauseMs: 333,
+      pauseMs: 500,
       source: 'fallback',
     });
 
@@ -55,6 +55,20 @@ describe('browserTtsPlaybackLoopPauseModel', () => {
       pauseClass: 'none',
       pauseMs: 0,
       source: 'none',
+    });
+  });
+
+  it('does not let a V3 pause bucket shorten support or recovery controller pauses', () => {
+    expect(
+      resolveBrowserTtsPlaybackPauseMs({
+        pauseClass: 'boundary',
+        controllerPauseMs: 3200,
+        extendWithControllerPause: true,
+      }),
+    ).toEqual({
+      pauseClass: 'boundary',
+      pauseMs: 3200,
+      source: 'v3-prosody',
     });
   });
 });

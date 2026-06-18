@@ -1,7 +1,9 @@
 import type { AdaptivePacingInput, PacingMode, PhraseSize } from './types';
 
-export const MIN_PLAYBACK_RATE = 0.6;
-export const MAX_PLAYBACK_RATE = 1.15;
+export const PRODUCT_MIN_PLAYBACK_RATE = 0.1;
+export const PRODUCT_MAX_PLAYBACK_RATE = 2.0;
+export const MIN_PLAYBACK_RATE = PRODUCT_MIN_PLAYBACK_RATE;
+export const MAX_PLAYBACK_RATE = PRODUCT_MAX_PLAYBACK_RATE;
 const MAX_RATE_DELTA = 0.05;
 
 export const phraseSizeForMode: Record<PacingMode, PhraseSize> = {

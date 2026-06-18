@@ -92,7 +92,7 @@ export function planBrowserTtsAdaptiveChunk(input: PlanBrowserTtsChunkInput): Pl
   const endIndex = input.macroWordOffset + bestCut;
   const words = input.macroWords.slice(input.macroWordOffset, endIndex);
   const scored = scoreChunk(words, input.language, bestBoundary);
-  const canPauseAfter = bestBoundary === 'sentence' || bestBoundary === 'clause';
+  const canPauseAfter = bestBoundary === 'sentence' || bestBoundary === 'clause' || bestBoundary === 'minor';
   const startWordIndex = input.globalStartWordIndex + input.macroWordOffset;
   const tailWord = normalizeWord(words[words.length - 1] ?? '');
   const nextWord = normalizeWord(input.macroWords[endIndex] ?? '');

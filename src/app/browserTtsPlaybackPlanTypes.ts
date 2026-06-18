@@ -15,6 +15,7 @@ import type {
   SupportedLanguage,
 } from '../inputs/browserTts/ttsDynamicChunkPlanner';
 import type { TtsPacingMode } from '../types/dictation';
+import type { BrowserTtsPlaybackPauseResolution } from './browserTtsPlaybackLoopPauseModel';
 import type { BrowserTtsSurgicalReplayPlan } from './browserTtsSurgicalReplayPlan';
 import type { TtsLiveSignal } from './ttsPlaybackProfile';
 
@@ -69,6 +70,8 @@ export type BrowserTtsPlaybackPlan = {
   semanticCompleteness: number;
   rate: number;
   effectivePauseNow: boolean;
+  pauseBeforeNextChunkMs: number;
+  pauseResolution: BrowserTtsPlaybackPauseResolution;
   effectiveReplay: false;
   browserTelemetry: LiveTelemetryFrame;
   chunkTelemetry: LiveTelemetryFrame;

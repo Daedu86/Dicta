@@ -53,7 +53,7 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
     for (const testCase of cases) expectBrowserTtsRuntimeRateFloor(testCase);
   });
 
-  it('uses conservative DE profile values', () => {
+  it('uses tolerant DE profile values without locking clean sessions to 0.80-0.85', () => {
     const cases: Array<Parameters<typeof expectBrowserTtsRuntimeRateFloor>[0]> = [
       {
         mode: 'balanced',
@@ -61,7 +61,7 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
         lagSec: 0.4,
         accuracy: 0.95,
         profile: DE_BROWSER_TTS_PROFILE,
-        expectedRate: 0.82,
+        expectedRate: 0.8,
       },
       {
         mode: 'support',
@@ -70,7 +70,7 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
         accuracy: 0.8,
         supportNeeded: true,
         profile: DE_BROWSER_TTS_PROFILE,
-        expectedRate: 0.9,
+        expectedRate: 1.0,
       },
     ];
 

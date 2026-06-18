@@ -141,7 +141,7 @@ function buildEvidence(frames: readonly ListeningCycleInsightReportV3Frame[]): L
     if (frame.v3Prosody?.pauseClass === 'recovery') evidence.recoveryPauseFrames += 1;
 
     const pauseMs = frame.actualPauseMs ?? frame.currentPauseAfterPhraseMs ?? 0;
-    if (pauseMs > 0 && pauseMs < 250) evidence.shortPauseFrames += 1;
+    if (pauseMs > 0 && pauseMs < 500) evidence.shortPauseFrames += 1;
 
     const replayStrategy = frame.surgicalReplayPlan?.strategy ?? frame.v3Prosody?.replayStrategy ?? 'none';
     if (replayStrategy !== 'none') evidence.surgicalReplayFrames += 1;
@@ -324,7 +324,7 @@ function buildSummaryBullets(
   }
   if (knobs.shorterChunks) bullets.push('Próxima sesión: usar chunks más cortos.');
   if (knobs.strongerBoundaries) bullets.push('Próxima sesión: preferir boundaries más fuertes.');
-  if (knobs.longerPauses) bullets.push('Próxima sesión: aumentar pausas de sentence/recovery.');
+  if (knobs.longerPauses) bullets.push('Próxima sesión: aumentar pausas perceptibles entre chunks.');
   if (knobs.lowerRate) bullets.push('Próxima sesión: bajar o mantener capado el rate de Browser TTS.');
   if (knobs.preserveRate && !knobs.lowerRate) bullets.push('Próxima sesión: preservar el rate actual.');
 
