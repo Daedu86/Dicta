@@ -39,22 +39,26 @@ describe('LiveMetricsDock', () => {
     expect(topSectionChildren?.[0]?.classList.contains('live-metrics-section-header')).toBe(true);
   });
 
-  it('groups the insights header controls into aligned rows', () => {
+  it('groups the insights header controls into a single row without the diagnostic input selector', () => {
     act(() => {
       root.render(createElement(LiveMetricsDock, createProps()));
     });
 
     const headingRow = host.querySelector('.live-metrics-heading-row');
-    const controlRow = host.querySelector('.live-metrics-control-row');
-    const inputTab = host.querySelector('.live-metrics-input-tab');
+    const headerChildClasses = Array.from(headingRow?.children ?? []).map((child) => child.className);
 
     expect(headingRow?.querySelector('h2')?.textContent).toBe('Insights');
     expect(headingRow?.querySelector('.trend')?.textContent).toBe('Stable');
     expect(headingRow?.querySelectorAll('.live-metrics-language-tab')).toHaveLength(5);
-    expect(controlRow?.querySelector('.live-metrics-input-tabs')).not.toBeNull();
-    expect(controlRow?.querySelector('.live-metrics-action-group')).not.toBeNull();
-    expect(inputTab?.textContent).toBe('Browser TTS');
-    expect(inputTab?.querySelector('small')).toBeNull();
+    expect(headerChildClasses).toEqual([
+      'live-metrics-title-group',
+      'live-metrics-language-tabs',
+      'live-metrics-action-group',
+    ]);
+    expect(host.querySelector('.live-metrics-control-row')).toBeNull();
+    expect(headingRow?.querySelector('.live-metrics-input-tabs')).toBeNull();
+    expect(headingRow?.querySelector('.live-metrics-input-tab')).toBeNull();
+    expect(headingRow?.querySelector('.live-metrics-report-button')?.textContent).toBe('Copy full adaptive report');
   });
 });
 

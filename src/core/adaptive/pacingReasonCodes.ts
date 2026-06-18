@@ -1,8 +1,8 @@
 import type { PacingDecision, PacingReasonCode } from './types';
 
 export function hasPacingReason(
-  decision: Pick<PacingDecision, 'reason'> & { reasonCodes?: PacingReasonCode[] },
-  code: PacingReasonCode,
+  decision: Pick<PacingDecision, 'reason'> & { reasonCodes?: string[] },
+  code: PacingReasonCode | string,
 ): boolean {
   return decision.reasonCodes?.includes(code) ?? hasLegacyReasonToken(decision.reason, code);
 }

@@ -36,7 +36,7 @@ export function buildBenchmarkSnapshotBase({
   executionFidelity,
 }: BuildBenchmarkSnapshotBaseArgs): InputLanguageBenchmarkMetrics {
   const {
-    usesFilteredBrowserTtsDeScoring,
+    usesQualityGateScoring,
     scoringTimeline,
     rawLagSeries,
     stableLagSeries,
@@ -44,7 +44,7 @@ export function buildBenchmarkSnapshotBase({
     stableLagOutlierCount,
     currentPointIsScored,
     sampleCount,
-    hasBrowserTtsDeScoringSamples,
+    hasScoringSamples,
     previousAverageCount,
     latestScoredPoint,
     semanticCounters,
@@ -52,29 +52,29 @@ export function buildBenchmarkSnapshotBase({
 
   return {
     ...current,
-    sessionCount: countUniqueSessions(usesFilteredBrowserTtsDeScoring ? scoringTimeline : timeline),
+    sessionCount: countUniqueSessions(usesQualityGateScoring ? scoringTimeline : timeline),
     sampleCount,
     lastUpdatedAt: new Date(timestampMs).toISOString(),
-    averageAccuracy: usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+    averageAccuracy: usesQualityGateScoring && hasScoringSamples
       ? average(scoringTimeline.map((point) => point.accuracy))
-      : usesFilteredBrowserTtsDeScoring
+      : usesQualityGateScoring
         ? current.averageAccuracy
         : runningAverage(current.averageAccuracy, live.accuracy, previousAverageCount),
-    averageWpm: usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+    averageWpm: usesQualityGateScoring && hasScoringSamples
       ? average(scoringTimeline.map((point) => point.wpm))
-      : usesFilteredBrowserTtsDeScoring
+      : usesQualityGateScoring
         ? current.averageWpm
         : runningAverage(current.averageWpm, live.wpm, previousAverageCount),
-    averageLagSec: hasBrowserTtsDeScoringSamples ? average(stableLagSeries) : current.averageLagSec,
-    rawAverageLagSec: hasBrowserTtsDeScoringSamples ? average(rawLagSeries) : current.rawAverageLagSec,
-    stableAverageLagSec: hasBrowserTtsDeScoringSamples ? average(stableLagSeries) : current.stableAverageLagSec,
-    medianLagSec: hasBrowserTtsDeScoringSamples ? percentile(stableLagSeries, 0.5) : current.medianLagSec,
-    p75LagSec: hasBrowserTtsDeScoringSamples ? percentile(stableLagSeries, 0.75) : current.p75LagSec,
-    p90AbsLagSec: hasBrowserTtsDeScoringSamples ? percentile(absoluteStableLagSeries, 0.9) : current.p90AbsLagSec,
-    lagOutlierCount: hasBrowserTtsDeScoringSamples ? stableLagOutlierCount : current.lagOutlierCount,
-    averageCorrectionRate: usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+    averageLagSec: hasScoringSamples ? average(stableLagSeries) : current.averageLagSec,
+    rawAverageLagSec: hasScoringSamples ? average(rawLagSeries) : current.rawAverageLagSec,
+    stableAverageLagSec: hasScoringSamples ? average(stableLagSeries) : current.stableAverageLagSec,
+    medianLagSec: hasScoringSamples ? percentile(stableLagSeries, 0.5) : current.medianLagSec,
+    p75LagSec: hasScoringSamples ? percentile(stableLagSeries, 0.75) : current.p75LagSec,
+    p90AbsLagSec: hasScoringSamples ? percentile(absoluteStableLagSeries, 0.9) : current.p90AbsLagSec,
+    lagOutlierCount: hasScoringSamples ? stableLagOutlierCount : current.lagOutlierCount,
+    averageCorrectionRate: usesQualityGateScoring && hasScoringSamples
       ? average(scoringTimeline.map((point) => point.correctionRate ?? 0))
-      : usesFilteredBrowserTtsDeScoring
+      : usesQualityGateScoring
         ? current.averageCorrectionRate
         : runningAverage(current.averageCorrectionRate, live.correctionRate, previousAverageCount),
     semanticCutPenalty: semanticCounters.semanticCutPenalty,
@@ -82,25 +82,25 @@ export function buildBenchmarkSnapshotBase({
     safePauseCount: semanticCounters.safePauseCount,
     deferredPauseCount: semanticCounters.deferredPauseCount,
     replayDeniedByBoundaryCount: semanticCounters.replayDeniedByBoundaryCount,
-    averageSemanticCompleteness: usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples
+    averageSemanticCompleteness: usesQualityGateScoring && hasScoringSamples
       ? average(scoringTimeline.map((point) => point.semanticCompleteness ?? 1)) || 1
-      : usesFilteredBrowserTtsDeScoring
+      : usesQualityGateScoring
         ? current.averageSemanticCompleteness
         : runningAverage(current.averageSemanticCompleteness, semanticCompleteness, previousAverageCount),
-    averagePhraseDifficulty: usesFilteredBrowserTtsDeScoring
+    averagePhraseDifficulty: usesQualityGateScoring
       ? currentPointIsScored
         ? runningAverage(current.averagePhraseDifficulty, phraseDifficulty, previousAverageCount)
         : current.averagePhraseDifficulty
       : runningAverage(current.averagePhraseDifficulty, phraseDifficulty, previousAverageCount),
-    preferredPlaybackRate: usesFilteredBrowserTtsDeScoring
+    preferredPlaybackRate: usesQualityGateScoring
       ? (latestScoredPoint?.playbackRate ?? current.preferredPlaybackRate)
       : decision.playbackRate,
     preferredPhraseSize: decision.nextPhraseSize,
-    preferredPauseAfterPhraseMs: usesFilteredBrowserTtsDeScoring
+    preferredPauseAfterPhraseMs: usesQualityGateScoring
       ? (latestScoredPoint?.pauseMs ?? current.preferredPauseAfterPhraseMs)
       : decision.pauseAfterPhraseMs,
-    inputExecutionFidelityScore: usesFilteredBrowserTtsDeScoring
-      ? hasBrowserTtsDeScoringSamples
+    inputExecutionFidelityScore: usesQualityGateScoring
+      ? hasScoringSamples
         ? computeAverageInputExecutionFidelity(scoringTimeline)
         : current.inputExecutionFidelityScore
       : currentPointIsScored

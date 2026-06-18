@@ -22,6 +22,7 @@ export function buildComponentDiagnostics({
   technicalDebugData: unknown;
 }): AdaptiveUserSystemReport['componentDiagnostics'] {
   const recentTimeline = profile.timeline.slice(-RECENT_TIMELINE_SUMMARY_WINDOW);
+  const latestContinuousPoint = [...recentTimeline].reverse().find((point) => point.adaptiveLevel !== undefined || point.pacingOutput || point.sampleQuality) ?? null;
   const debugRecord = asRecord(technicalDebugData);
   const browserTtsDeDiagnostics = asRecord(debugRecord?.browserTtsDeDiagnostics);
 
@@ -77,6 +78,12 @@ export function buildComponentDiagnostics({
       ),
       eventDistribution: topCounts(countBy(recentTimeline, (point) => point.event ?? 'sample'), 8),
       topDecisionReasons: topCounts(countBy(recentTimeline, (point) => point.decisionReason ?? 'not_recorded'), 8),
+      latestAdaptiveLevel: latestContinuousPoint?.adaptiveLevel ?? null,
+      latestDerivedAdaptiveLabel: latestContinuousPoint?.derivedAdaptiveLabel ?? null,
+      latestPressureVector: latestContinuousPoint?.pressureVector ?? null,
+      latestPacingOutput: latestContinuousPoint?.pacingOutput ?? null,
+      latestSampleQuality: latestContinuousPoint?.sampleQuality ?? null,
+      latestLanguageCalibration: latestContinuousPoint?.languageCalibration ?? null,
       expectedControllerBehavior: buildExpectedControllerBehavior(profile),
     },
     browserTtsEnvironment: buildBrowserTtsEnvironmentDiagnostics(profile, ttsEnvironmentReport, browserTtsDeDiagnostics),

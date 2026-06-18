@@ -1,9 +1,4 @@
 import type { AdaptiveWeakArea, InputLanguageBenchmarkMetrics } from './types';
-import {
-  analyzeBrowserTtsDeTimelinePressure,
-  deriveBrowserTtsDeTimelineWeakAreas,
-  isBrowserTtsDe,
-} from './browserTtsDeBenchmarkPolicy';
 
 const SENSITIVE_BENCHMARK_WEAK_AREAS = new Set<AdaptiveWeakArea>([
   'lag',
@@ -24,9 +19,6 @@ export function deriveWeakAreas(metrics: InputLanguageBenchmarkMetrics): Adaptiv
   if (metrics.averageAccuracy < 0.82) weakAreas.push('low_accuracy');
   if (metrics.modeSwitchFrequency > 0.25 || metrics.rateVariance > 0.03) weakAreas.push('flow_instability');
   if (metrics.rateAccuracyBuckets.some((bucket) => bucket.rate >= 1.05 && bucket.averageAccuracy < 0.82)) weakAreas.push('high_rate');
-  if (isBrowserTtsDe(metrics.inputMode, metrics.language)) {
-    weakAreas.push(...deriveBrowserTtsDeTimelineWeakAreas(analyzeBrowserTtsDeTimelinePressure(metrics)));
-  }
   return [...new Set(weakAreas)];
 }
 

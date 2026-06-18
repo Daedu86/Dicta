@@ -2,6 +2,14 @@ import type { InputMode, StoredInputMode } from '../inputModes';
 import type { ListeningPrecisionMetrics } from '../listeningPrecisionMetrics';
 import type { BrowserTtsEnvironmentFingerprint, BrowserTtsEnvironmentHistoryEntry } from '../../../types/dictation';
 import type { ImprovementTrend, LanguageCode, PacingMode, PhraseBoundaryType, PhraseSize } from './pacing';
+import type {
+  AdaptiveDirection,
+  AdaptivePacingOutput,
+  AdaptivePressureVector,
+  DerivedAdaptiveLabel,
+  LanguageAdaptiveCalibration,
+  RuntimeSampleQuality,
+} from '../continuousAdaptiveListeningTypes';
 
 export interface RateAccuracyBucket {
   rate: number;
@@ -27,6 +35,8 @@ export interface AdaptiveTimelinePoint {
   unsafeChunkCount?: number;
   acceptedForBenchmark?: boolean;
   acceptedForSessionInsight?: boolean;
+  acceptedForTelemetryLearning?: boolean;
+  acceptedForRuntimePressure?: boolean;
   wpm: number;
   pauseMs: number;
   correctionRate?: number;
@@ -49,6 +59,15 @@ export interface AdaptiveTimelinePoint {
   mobileFallbackApplied?: boolean;
   recoverySafeBoundary?: boolean;
   germanShortBias?: boolean;
+  adaptiveLevel?: number;
+  adaptiveDirection?: AdaptiveDirection;
+  pressureVector?: AdaptivePressureVector;
+  pacingOutput?: AdaptivePacingOutput;
+  sampleQuality?: RuntimeSampleQuality;
+  languageCalibration?: LanguageAdaptiveCalibration;
+  derivedAdaptiveLabel?: DerivedAdaptiveLabel;
+  perceptualPauseLevel?: number;
+  perceptualPauseShortfallMs?: number;
   trend?: ImprovementTrend;
   decisionReason?: string;
   executionHint?: string;

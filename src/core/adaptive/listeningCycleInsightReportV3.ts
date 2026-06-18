@@ -1,5 +1,13 @@
 import type { ListenerStateV3, ListenerStateV3Axis } from './listenerStateV3';
 import type { LiveTelemetryFrame, PhraseBoundaryType } from './types/pacing';
+import type {
+  AdaptiveDirection,
+  AdaptivePacingOutput,
+  AdaptivePressureVector,
+  DerivedAdaptiveLabel,
+  LanguageAdaptiveCalibration,
+  RuntimeSampleQuality,
+} from './continuousAdaptiveListeningTypes';
 
 export type ListeningCycleInsightReportV3ReplayStrategy =
   | 'none'
@@ -42,6 +50,19 @@ export interface ListeningCycleInsightReportV3Frame
     >
   > {
   actualPauseMs?: number;
+  requestedPauseMs?: number;
+  requestedPlaybackRate?: number;
+  actualPlaybackRate?: number;
+  adaptiveLevel?: number;
+  adaptiveDirection?: AdaptiveDirection;
+  pressureVector?: AdaptivePressureVector;
+  pacingOutput?: AdaptivePacingOutput;
+  sampleQuality?: RuntimeSampleQuality;
+  languageCalibration?: LanguageAdaptiveCalibration;
+  derivedAdaptiveLabel?: DerivedAdaptiveLabel;
+  perceptualPauseLevel?: number;
+  perceptualPauseShortfallMs?: number;
+  pauseDeferred?: boolean;
   v3Prosody?: ListeningCycleInsightReportV3ProsodySnapshot;
   surgicalReplayPlan?: ListeningCycleInsightReportV3ReplaySnapshot;
   voiceCalibrationStatus?: 'calibrated' | 'uncalibrated' | 'rate-capped' | 'voice-unresolved';
@@ -60,6 +81,9 @@ export interface ListeningCycleInsightReportV3Evidence {
   surgicalReplayFrames: number;
   voiceRateLimitedFrames: number;
   lowWpmHighAccuracyFrames: number;
+  perceptualPausePressureFrames: number;
+  pauseShortfallFrames: number;
+  deferredPauseFrames: number;
 }
 
 export interface ListeningCycleInsightReportV3Recommendations {
@@ -85,6 +109,22 @@ export interface ListeningCycleInsightReportV3 {
   >;
   evidence: ListeningCycleInsightReportV3Evidence;
   reasonCodes: string[];
+  continuousAdaptive: {
+    latestAdaptiveLevel: number | null;
+    averageAdaptiveLevel: number | null;
+    latestDirection: AdaptiveDirection | null;
+    latestDerivedLabel: DerivedAdaptiveLabel | null;
+    latestPressureVector: AdaptivePressureVector | null;
+    latestPacingOutput: AdaptivePacingOutput | null;
+    latestSampleQuality: RuntimeSampleQuality | null;
+    latestLanguageCalibration: LanguageAdaptiveCalibration | null;
+    requestedVsActual: {
+      requestedPlaybackRate: number | null;
+      actualPlaybackRate: number | null;
+      requestedPauseMs: number | null;
+      actualPauseMs: number | null;
+    };
+  };
   headline: string;
   summaryBullets: string[];
   nextSessionKnobs: ListeningCycleInsightReportV3Recommendations;
@@ -105,6 +145,7 @@ export function buildListeningCycleInsightReportV3(
   const primaryConstraint = choosePrimaryConstraint(axes);
   const reasonCodes = collectReasonCodes(frames, evidence, primaryConstraint);
   const nextSessionKnobs = buildNextSessionKnobs(frames, primaryConstraint, evidence);
+  const continuousAdaptive = buildContinuousAdaptiveSummary(frames);
 
   return {
     version: 3,
@@ -113,6 +154,7 @@ export function buildListeningCycleInsightReportV3(
     axes,
     evidence,
     reasonCodes,
+    continuousAdaptive,
     headline: buildHeadline(primaryConstraint, evidence),
     summaryBullets: buildSummaryBullets(primaryConstraint, evidence, nextSessionKnobs),
     nextSessionKnobs,
@@ -131,6 +173,9 @@ function buildEvidence(frames: readonly ListeningCycleInsightReportV3Frame[]): L
     surgicalReplayFrames: 0,
     voiceRateLimitedFrames: 0,
     lowWpmHighAccuracyFrames: 0,
+    perceptualPausePressureFrames: 0,
+    pauseShortfallFrames: 0,
+    deferredPauseFrames: 0,
   };
 
   for (const frame of frames) {
@@ -155,6 +200,9 @@ function buildEvidence(frames: readonly ListeningCycleInsightReportV3Frame[]): L
     if ((frame.wpm ?? 0) > 0 && (frame.wpm ?? 0) < 28 && accuracy >= 0.9) {
       evidence.lowWpmHighAccuracyFrames += 1;
     }
+    if ((frame.perceptualPauseLevel ?? 0) >= 0.25) evidence.perceptualPausePressureFrames += 1;
+    if ((frame.perceptualPauseShortfallMs ?? 0) > 0) evidence.pauseShortfallFrames += 1;
+    if (frame.pauseDeferred) evidence.deferredPauseFrames += 1;
   }
 
   return evidence;
@@ -228,6 +276,9 @@ function collectReasonCodes(
   if (evidence.replayWithPrerollFrames > 0) reasonCodes.add('replay-with-preroll');
   if (evidence.voiceRateLimitedFrames > 0) reasonCodes.add('voice-rate-limited');
   if (evidence.lowWpmHighAccuracyFrames > 0) reasonCodes.add('typing-lag-with-accuracy');
+  if (evidence.perceptualPausePressureFrames > 0) reasonCodes.add('perceptual-pause-pressure');
+  if (evidence.pauseShortfallFrames > 0) reasonCodes.add('pause-shortfall');
+  if (evidence.deferredPauseFrames > 0) reasonCodes.add('deferred-pause-pressure');
   if (primaryConstraint === 'none') reasonCodes.add('low-pressure');
 
   return Array.from(reasonCodes).sort();
@@ -263,6 +314,9 @@ function buildNextSessionKnobs(
     knobs.strongerBoundaries = true;
   }
   if (evidence.shortPauseFrames > 0 || evidence.recoveryPauseFrames > 0) knobs.longerPauses = true;
+  if (evidence.perceptualPausePressureFrames > 0 || evidence.pauseShortfallFrames > 0 || evidence.deferredPauseFrames > 0) {
+    knobs.longerPauses = true;
+  }
   if (evidence.voiceRateLimitedFrames > 0) knobs.lowerRate = true;
   if (evidence.lowWpmHighAccuracyFrames > 0 && evidence.voiceRateLimitedFrames === 0) {
     knobs.typingPracticeSeparately = true;
@@ -322,6 +376,12 @@ function buildSummaryBullets(
   if (evidence.lowWpmHighAccuracyFrames > 0 && primaryConstraint === 'typingMechanics') {
     bullets.push('Hubo WPM bajo con accuracy alta; eso apunta a mecánica de tipeo separada del listening.');
   }
+  if (evidence.perceptualPausePressureFrames > 0) {
+    bullets.push(`Apareció presión de pausa perceptual en ${evidence.perceptualPausePressureFrames} frames.`);
+  }
+  if (evidence.pauseShortfallFrames > 0) {
+    bullets.push(`La pausa real quedó por debajo de la solicitada en ${evidence.pauseShortfallFrames} frames.`);
+  }
   if (knobs.shorterChunks) bullets.push('Próxima sesión: usar chunks más cortos.');
   if (knobs.strongerBoundaries) bullets.push('Próxima sesión: preferir boundaries más fuertes.');
   if (knobs.longerPauses) bullets.push('Próxima sesión: aumentar pausas perceptibles entre chunks.');
@@ -340,6 +400,31 @@ function isFragileBoundary(frame: ListeningCycleInsightReportV3Frame): boolean {
     boundaryType === 'unsafe' ||
     frame.v3Prosody?.boundaryStrength === 'weak'
   );
+}
+
+function buildContinuousAdaptiveSummary(frames: readonly ListeningCycleInsightReportV3Frame[]): ListeningCycleInsightReportV3['continuousAdaptive'] {
+  const framesWithLevel = frames.filter((frame) => typeof frame.adaptiveLevel === 'number' && Number.isFinite(frame.adaptiveLevel));
+  const latest = [...frames].reverse().find((frame) => frame.adaptiveLevel !== undefined || frame.pacingOutput || frame.sampleQuality) ?? null;
+  const averageAdaptiveLevel = framesWithLevel.length > 0
+    ? round2(framesWithLevel.reduce((sum, frame) => sum + (frame.adaptiveLevel ?? 0), 0) / framesWithLevel.length)
+    : null;
+
+  return {
+    latestAdaptiveLevel: latest?.adaptiveLevel ?? null,
+    averageAdaptiveLevel,
+    latestDirection: latest?.adaptiveDirection ?? null,
+    latestDerivedLabel: latest?.derivedAdaptiveLabel ?? null,
+    latestPressureVector: latest?.pressureVector ?? null,
+    latestPacingOutput: latest?.pacingOutput ?? null,
+    latestSampleQuality: latest?.sampleQuality ?? null,
+    latestLanguageCalibration: latest?.languageCalibration ?? null,
+    requestedVsActual: {
+      requestedPlaybackRate: latest?.requestedPlaybackRate ?? null,
+      actualPlaybackRate: latest?.actualPlaybackRate ?? latest?.currentPlaybackRate ?? null,
+      requestedPauseMs: latest?.requestedPauseMs ?? null,
+      actualPauseMs: latest?.actualPauseMs ?? latest?.currentPauseAfterPhraseMs ?? null,
+    },
+  };
 }
 
 function toLevel(score: number): ListenerStateV3['axes'][ListenerStateV3Axis]['level'] {

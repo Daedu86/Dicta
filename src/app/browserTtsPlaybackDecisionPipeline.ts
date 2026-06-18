@@ -1,6 +1,3 @@
-import {
-  clampBrowserTtsDeDecisionToRecommendation,
-} from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { hasPacingReason } from '../core/adaptive/pacingReasonCodes';
 import type {
   InputLanguageBenchmarkMetrics,
@@ -8,7 +5,6 @@ import type {
 } from '../core/adaptive/types';
 import type { BrowserTtsAdaptiveProfile } from '../inputs/browserTts/browserTtsAdaptiveProfiles';
 import type { BrowserTtsDeRecoveryState } from '../inputs/browserTts/browserTtsRecoveryPolicy';
-import { applyBrowserTtsDeRecoveryPolicy } from '../inputs/browserTts/browserTtsRecoveryPolicy';
 import {
   applyBrowserTtsMobilePacingFallback,
   applyBrowserTtsRuntimeRateFloor,
@@ -83,12 +79,9 @@ export function buildBrowserTtsRuntimeDecisionPipeline({
     maxTouchPoints: navigatorInfo.maxTouchPoints,
     profile: browserTtsProfile,
   });
-  const recommendedDecision = clampBrowserTtsDeDecisionToRecommendation(mobileFallback.decision, browserTtsBenchmark);
-  const runtimeDecision = applyBrowserTtsDeRecoveryPolicy({
-    decision: recommendedDecision,
-    recovery: browserTtsRecovery,
-    profile: browserTtsProfile,
-  });
+  void browserTtsBenchmark;
+  void browserTtsRecovery;
+  const runtimeDecision = mobileFallback.decision;
 
   return {
     runtimeDecision,

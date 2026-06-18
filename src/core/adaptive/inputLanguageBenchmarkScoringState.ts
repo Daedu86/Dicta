@@ -3,12 +3,6 @@ import type {
   InputLanguageBenchmarkMetrics,
   LanguageCode,
 } from './types';
-import {
-  computeBrowserTtsDeSemanticCounters,
-  dedupeBrowserTtsDeScoringTimeline,
-  isBrowserTtsDe,
-  isValidBrowserTtsDeBenchmarkSample,
-} from './browserTtsDeBenchmarkPolicy';
 
 export type InputLanguageBenchmarkSemanticCounters = Pick<
   InputLanguageBenchmarkMetrics,
@@ -20,7 +14,7 @@ export type InputLanguageBenchmarkSemanticCounters = Pick<
 >;
 
 export type InputLanguageBenchmarkScoringState = {
-  usesFilteredBrowserTtsDeScoring: boolean;
+  usesQualityGateScoring: boolean;
   scoringTimeline: AdaptiveTimelinePoint[];
   rawLagSeries: number[];
   stableLagSeries: number[];
@@ -28,7 +22,7 @@ export type InputLanguageBenchmarkScoringState = {
   stableLagOutlierCount: number;
   currentPointIsScored: boolean;
   sampleCount: number;
-  hasBrowserTtsDeScoringSamples: boolean;
+  hasScoringSamples: boolean;
   previousAverageCount: number;
   latestScoredPoint?: AdaptiveTimelinePoint;
   semanticCounters: InputLanguageBenchmarkSemanticCounters;
@@ -55,24 +49,23 @@ export function buildInputLanguageBenchmarkScoringState({
   deferPauseUntilSafeBoundary: boolean;
   replayDenied: boolean;
 }): InputLanguageBenchmarkScoringState {
-  const usesFilteredBrowserTtsDeScoring = isBrowserTtsDe(timelinePoint.inputMode, language);
-  const scoringTimeline = usesFilteredBrowserTtsDeScoring
-    ? dedupeBrowserTtsDeScoringTimeline(timeline.filter(isValidBrowserTtsDeBenchmarkSample))
-    : timeline;
+  void language;
+  const usesQualityGateScoring = true;
+  const scoringTimeline = timeline.filter((point) => point.acceptedForBenchmark !== false);
   const rawLagSeries = scoringTimeline.map((point) => point.rawLagSec ?? point.lagSec);
   const stableLagSeries = scoringTimeline.map((point) => point.stableLagSec ?? point.lagSec);
   const absoluteStableLagSeries = stableLagSeries.map((value) => Math.abs(value));
   const stableLagOutlierCount = rawLagSeries.filter((value) => Math.abs(value) > 5).length;
-  const currentPointIsScored = !usesFilteredBrowserTtsDeScoring || isValidBrowserTtsDeBenchmarkSample(timelinePoint);
-  const sampleCount = usesFilteredBrowserTtsDeScoring ? scoringTimeline.length : current.sampleCount + 1;
-  const hasBrowserTtsDeScoringSamples = !usesFilteredBrowserTtsDeScoring || scoringTimeline.length > 0;
+  const currentPointIsScored = timelinePoint.acceptedForBenchmark !== false;
+  const sampleCount = scoringTimeline.length;
+  const hasScoringSamples = scoringTimeline.length > 0;
   const previousAverageCount = current.sampleCount;
   const latestScoredPoint = scoringTimeline[scoringTimeline.length - 1];
   const semanticCounters = buildInputLanguageBenchmarkSemanticCounters({
     current,
     scoringTimeline,
-    usesFilteredBrowserTtsDeScoring,
-    hasBrowserTtsDeScoringSamples,
+    usesQualityGateScoring,
+    hasScoringSamples,
     semanticCutPenalty,
     unsafePause,
     safePause,
@@ -81,7 +74,7 @@ export function buildInputLanguageBenchmarkScoringState({
   });
 
   return {
-    usesFilteredBrowserTtsDeScoring,
+    usesQualityGateScoring,
     scoringTimeline,
     rawLagSeries,
     stableLagSeries,
@@ -89,7 +82,7 @@ export function buildInputLanguageBenchmarkScoringState({
     stableLagOutlierCount,
     currentPointIsScored,
     sampleCount,
-    hasBrowserTtsDeScoringSamples,
+    hasScoringSamples,
     previousAverageCount,
     latestScoredPoint,
     semanticCounters,
@@ -99,8 +92,8 @@ export function buildInputLanguageBenchmarkScoringState({
 function buildInputLanguageBenchmarkSemanticCounters({
   current,
   scoringTimeline,
-  usesFilteredBrowserTtsDeScoring,
-  hasBrowserTtsDeScoringSamples,
+  usesQualityGateScoring,
+  hasScoringSamples,
   semanticCutPenalty,
   unsafePause,
   safePause,
@@ -109,19 +102,19 @@ function buildInputLanguageBenchmarkSemanticCounters({
 }: {
   current: InputLanguageBenchmarkMetrics;
   scoringTimeline: AdaptiveTimelinePoint[];
-  usesFilteredBrowserTtsDeScoring: boolean;
-  hasBrowserTtsDeScoringSamples: boolean;
+  usesQualityGateScoring: boolean;
+  hasScoringSamples: boolean;
   semanticCutPenalty: number;
   unsafePause: boolean;
   safePause: boolean;
   deferPauseUntilSafeBoundary: boolean;
   replayDenied: boolean;
 }): InputLanguageBenchmarkSemanticCounters {
-  if (usesFilteredBrowserTtsDeScoring && hasBrowserTtsDeScoringSamples) {
-    return computeBrowserTtsDeSemanticCounters(scoringTimeline);
+  if (usesQualityGateScoring && hasScoringSamples) {
+    return computeSemanticCountersFromTimeline(scoringTimeline);
   }
 
-  if (usesFilteredBrowserTtsDeScoring) {
+  if (usesQualityGateScoring) {
     return {
       semanticCutPenalty: current.semanticCutPenalty,
       unsafePauseCount: current.unsafePauseCount,
@@ -137,5 +130,21 @@ function buildInputLanguageBenchmarkSemanticCounters({
     safePauseCount: current.safePauseCount + (safePause ? 1 : 0),
     deferredPauseCount: current.deferredPauseCount + (deferPauseUntilSafeBoundary ? 1 : 0),
     replayDeniedByBoundaryCount: current.replayDeniedByBoundaryCount + (replayDenied ? 1 : 0),
+  };
+}
+
+function computeSemanticCountersFromTimeline(timeline: AdaptiveTimelinePoint[]): InputLanguageBenchmarkSemanticCounters {
+  const unsafePauseCount = timeline.filter((point) => point.event === 'pause' && point.phraseBoundaryType === 'unsafe').length;
+  const safePauseCount = timeline.filter((point) => point.event === 'pause' && point.phraseBoundaryType !== 'unsafe').length;
+  const deferredPauseCount = timeline.filter((point) => point.event === 'defer_pause').length;
+  const replayDeniedByBoundaryCount = timeline.filter(
+    (point) => point.event === 'replay' && ((point.semanticCompleteness ?? 1) < 0.65 || point.phraseBoundaryType === 'unsafe'),
+  ).length;
+  return {
+    semanticCutPenalty: unsafePauseCount + deferredPauseCount * 0.35 + replayDeniedByBoundaryCount * 0.5,
+    unsafePauseCount,
+    safePauseCount,
+    deferredPauseCount,
+    replayDeniedByBoundaryCount,
   };
 }

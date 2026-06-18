@@ -1,6 +1,14 @@
 import type { InputMode } from '../inputModes';
 import type { ListenerStateV3 } from '../listenerStateV3';
 import type { ListeningPrecisionMetrics } from '../listeningPrecisionMetrics';
+import type {
+  AdaptiveDirection,
+  AdaptivePacingOutput,
+  AdaptivePressureVector,
+  DerivedAdaptiveLabel,
+  LanguageAdaptiveCalibration,
+  RuntimeSampleQuality,
+} from '../continuousAdaptiveListeningTypes';
 
 export type PhraseSize = 'short' | 'medium' | 'long';
 export type PacingMode = 'recovery' | 'support' | 'balanced' | 'flow';
@@ -32,7 +40,18 @@ export type PacingReasonCode =
   | 'adaptive-pause-progress-gap'
   | 'adaptive-pause-history-pressure'
   | 'adaptive-pause-session-pressure'
-  | 'listening-precision-rate-ceiling';
+  | 'listening-precision-rate-ceiling'
+  | 'continuous-adaptive-level'
+  | 'continuous-easing'
+  | 'continuous-challenge-ready'
+  | 'perceptual-pause-pressure'
+  | 'boundary-pressure'
+  | 'semantic-load-pressure'
+  | 'reconstruction-pressure'
+  | 'typing-pressure'
+  | 'environment-pressure'
+  | 'benchmark-sample-gated'
+  | 'runtime-pressure-sample';
 export type ImprovementTrend = 'improving' | 'stable' | 'declining';
 export type PhraseBoundaryType = 'sentence' | 'clause' | 'minor' | 'unsafe';
 export type LanguageCode = 'en' | 'es' | 'de' | 'fr' | 'pt' | 'unknown' | string;
@@ -164,10 +183,20 @@ export interface PacingDecision {
   nextPhraseSize: PhraseSize;
 
   reason: string;
-  reasonCodes: PacingReasonCode[];
+  reasonCodes: string[];
 
   lagScore: number;
   accuracyScore: number;
   hesitationScore: number;
   confidenceScore: number;
+
+  adaptiveLevel?: number;
+  adaptiveDirection?: AdaptiveDirection;
+  pressureVector?: AdaptivePressureVector;
+  pacingOutput?: AdaptivePacingOutput;
+  sampleQuality?: RuntimeSampleQuality;
+  languageCalibration?: LanguageAdaptiveCalibration;
+  derivedAdaptiveLabel?: DerivedAdaptiveLabel;
+  perceptualPauseLevel?: number;
+  perceptualPauseShortfallMs?: number;
 }

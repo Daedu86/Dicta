@@ -14,12 +14,10 @@ import {
   buildInputLanguageBenchmarkTimelinePoint,
   pruneTimelineToRollingWindow,
 } from './inputLanguageBenchmarkTimeline';
-import {
-  getBrowserTtsDeBenchmarkRejectionReason,
-  isValidBrowserTtsDeBenchmarkSample,
-  isValidBrowserTtsDeSessionInsightSample,
-} from './browserTtsDeBenchmarkPolicy';
 import { normalizeInputLanguageBenchmarkForRecommendation } from './inputLanguageBenchmarkRecommendation';
+import { normalizeRuntimeTelemetry } from './continuousTelemetryNormalizer';
+import { evaluateRuntimeSampleQuality } from './runtimeSampleQualityGate';
+import { resolveLanguageAdaptiveCalibration } from './languageAdaptiveCalibration';
 
 export type { InputLanguageBenchmarkUpdateArgs } from './inputLanguageBenchmarkUpdateTypes';
 export { normalizeBenchmarkLanguage } from './adaptiveBenchmarkLanguage';
@@ -94,13 +92,25 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     unsafeBoundaryApplied: args.decision.deferPauseUntilSafeBoundary,
     mobileFallbackApplied: args.execution?.fallbackUsed,
     recoverySafeBoundary: args.decision.deferPauseUntilSafeBoundary,
-    germanShortBias: language === 'de' && args.live.inputMode === 'browser-tts',
+    germanShortBias: false,
   });
-  const usesBrowserTtsDeScoring = args.live.inputMode === 'browser-tts' && language === 'de';
-  const acceptedForBenchmark = !usesBrowserTtsDeScoring || isValidBrowserTtsDeBenchmarkSample(timelinePoint);
-  const acceptedForSessionInsight = !usesBrowserTtsDeScoring || isValidBrowserTtsDeSessionInsightSample(timelinePoint);
-  timelinePoint.acceptedForBenchmark = acceptedForBenchmark;
-  timelinePoint.acceptedForSessionInsight = acceptedForSessionInsight;
+  const languageCalibration = resolveLanguageAdaptiveCalibration(language);
+  const normalizedTelemetry = normalizeRuntimeTelemetry({
+    live: args.live,
+    decision: args.decision,
+    execution: args.execution,
+    event: args.event,
+    phraseIndex: args.phraseIndex,
+    totalSemanticPhrases: args.totalSemanticPhrases,
+    calibration: languageCalibration,
+  });
+  const sampleQuality = evaluateRuntimeSampleQuality(normalizedTelemetry, languageCalibration);
+  timelinePoint.acceptedForBenchmark = sampleQuality.acceptedForBenchmark;
+  timelinePoint.acceptedForSessionInsight = sampleQuality.acceptedForSessionInsight;
+  timelinePoint.acceptedForTelemetryLearning = sampleQuality.acceptedForTelemetryLearning;
+  timelinePoint.acceptedForRuntimePressure = sampleQuality.acceptedForRuntimePressure;
+  timelinePoint.sampleQuality = sampleQuality;
+  timelinePoint.languageCalibration = timelinePoint.languageCalibration ?? languageCalibration;
   const timeline = pruneTimelineToRollingWindow([...current.timeline, timelinePoint], ROLLING_WINDOW_DAYS);
   const environmentState = buildBrowserTtsEnvironmentBenchmarkState({
     current,
@@ -119,10 +129,9 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     deferPauseUntilSafeBoundary: args.decision.deferPauseUntilSafeBoundary,
     replayDenied,
   });
-  const resolvedBenchmarkRejectionReason =
-    usesBrowserTtsDeScoring && !acceptedForBenchmark
-      ? getBrowserTtsDeBenchmarkRejectionReason(timelinePoint)
-      : benchmarkRejectionReason;
+  const resolvedBenchmarkRejectionReason = !sampleQuality.acceptedForBenchmark
+    ? sampleQuality.rejectionReason ?? benchmarkRejectionReason
+    : benchmarkRejectionReason;
   timelinePoint.benchmarkRejectionReason = resolvedBenchmarkRejectionReason ?? undefined;
   const next = buildNextInputLanguageBenchmarkSnapshot({
     current,
@@ -137,7 +146,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     executionFidelity,
   });
 
-  if (scoringState.usesFilteredBrowserTtsDeScoring && !scoringState.hasBrowserTtsDeScoringSamples) {
+  if (scoringState.usesQualityGateScoring && !scoringState.hasScoringSamples) {
     return normalizeInputLanguageBenchmarkForRecommendation(preserveUnscoredBenchmarkScoreState(next, current));
   }
 

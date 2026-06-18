@@ -4,8 +4,6 @@ import {
 import {
   planBrowserTtsPlaybackCandidateChunk,
   planBrowserTtsPlaybackDecisionChunk,
-  shouldApplyGermanShortBias,
-  shouldUseBrowserTtsRecoverySafeChunks,
 } from './browserTtsPlaybackPlanChunkPlanning';
 import type {
   BrowserTtsPlaybackPlan,
@@ -35,7 +33,7 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     navigatorInfo,
   } = input;
 
-  const recoverySafeBoundary = shouldUseBrowserTtsRecoverySafeChunks(input.language, browserTtsRecovery);
+  const recoverySafeBoundary = false;
   const {
     accuracy,
     rollingAccuracyLast3,
@@ -44,7 +42,7 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     typedWordsNow,
     matchedWordsNow,
   } = buildBrowserTtsPlaybackPlanAccuracyState(input);
-  const germanShortBias = shouldApplyGermanShortBias(liveSignal, browserTtsProfile);
+  const germanShortBias = false;
   const candidateChunk = planBrowserTtsPlaybackCandidateChunk(
     input,
     germanShortBias,
@@ -94,7 +92,7 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     pauseClass: chunk.v3Prosody?.pauseClass,
     fallbackPauseMs: runtimeDecision.shouldPauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
     controllerPauseMs: runtimeDecision.shouldPauseNow ? runtimeDecision.pauseAfterPhraseMs : 0,
-    extendWithControllerPause: runtimeDecision.mode === 'support' || runtimeDecision.mode === 'recovery',
+    extendWithControllerPause: shouldExtendV3PauseWithContinuousTarget(runtimeDecision),
   });
   const effectivePauseNow = pauseAtBoundary && pauseResolution.pauseMs > 0;
   const pauseBeforeNextChunkMs = effectivePauseNow ? pauseResolution.pauseMs : 0;
@@ -141,4 +139,12 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     germanShortBias,
     recoverySafeBoundary,
   };
+}
+
+function shouldExtendV3PauseWithContinuousTarget(runtimeDecision: { mode: string; pauseAfterPhraseMs: number; pacingOutput?: { perceptualPauseLevel: number } }): boolean {
+  if (runtimeDecision.pacingOutput) {
+    return runtimeDecision.pacingOutput.perceptualPauseLevel >= 0.1 || runtimeDecision.pauseAfterPhraseMs >= 500;
+  }
+
+  return runtimeDecision.mode === 'support' || runtimeDecision.mode === 'recovery';
 }

@@ -2,6 +2,7 @@ import type { AdaptiveControllerFrameState } from './adaptiveDictationController
 
 export class AdaptiveDictationControllerState {
   private previousRate = 1;
+  private previousAdaptiveLevel: number | undefined;
   private frameState: AdaptiveControllerFrameState = {
     struggleFrames: 0,
     recoveryFrames: 0,
@@ -19,6 +20,14 @@ export class AdaptiveDictationControllerState {
     this.previousRate = previousRate;
   }
 
+  getPreviousAdaptiveLevel(): number | undefined {
+    return this.previousAdaptiveLevel;
+  }
+
+  setPreviousAdaptiveLevel(previousAdaptiveLevel: number): void {
+    this.previousAdaptiveLevel = previousAdaptiveLevel;
+  }
+
   getFrameState(): AdaptiveControllerFrameState {
     return { ...this.frameState };
   }
@@ -29,6 +38,7 @@ export class AdaptiveDictationControllerState {
 
   applyWarmupSupportFrame(playbackRate: number): void {
     this.previousRate = playbackRate;
+    this.previousAdaptiveLevel = 0.35;
     this.frameState = {
       ...this.frameState,
       struggleFrames: Math.max(this.frameState.struggleFrames, 1),

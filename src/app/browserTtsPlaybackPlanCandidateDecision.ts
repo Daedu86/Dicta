@@ -1,6 +1,3 @@
-import {
-  clampBrowserTtsDeDecisionToRecommendation,
-} from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildAdaptiveBrowserTtsInput } from '../inputs/browserTts/browserTtsTelemetryAdapter';
 import type { PlannedBrowserTtsChunk } from '../inputs/browserTts/ttsDynamicChunkPlanner';
 import {
@@ -72,8 +69,9 @@ export function resolveBrowserTtsCandidateDecision({
     language,
     chunk: candidateChunk,
   });
+  void browserTtsBenchmark;
   const rawDecision = adaptiveController.decide(buildAdaptiveBrowserTtsInput(browserTelemetry, historyProfile));
-  const decision = clampBrowserTtsDeDecisionToRecommendation(rawDecision, browserTtsBenchmark);
+  const decision = rawDecision;
 
   return {
     browserTelemetry,

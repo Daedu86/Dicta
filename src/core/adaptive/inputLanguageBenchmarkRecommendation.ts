@@ -3,7 +3,6 @@ import type {
   InputLanguageBenchmarkMetrics,
   InputLanguageBenchmarkRecommendation,
 } from './types';
-import { applyBrowserTtsDeTimelinePressureFallback } from './browserTtsDeBenchmarkPolicy';
 import { clamp01 } from './inputLanguageBenchmarkMath';
 import {
   calibrateTargetRateRangeForProfile,
@@ -27,7 +26,7 @@ export { deriveWeakAreas } from './inputLanguageBenchmarkWeakAreas';
 export function normalizeInputLanguageBenchmarkForRecommendation(
   metrics: InputLanguageBenchmarkMetrics,
 ): InputLanguageBenchmarkMetrics {
-  return applyBrowserTtsDeTimelinePressureFallback(metrics);
+  return metrics;
 }
 
 export function computeBenchmarkRecommendation(metrics: InputLanguageBenchmarkMetrics): InputLanguageBenchmarkRecommendation {
@@ -61,9 +60,8 @@ export function applyRecommendationHysteresis(
   let targetPauseMs = recommendation.targetPauseMs;
   const preferredPhraseSize = metrics.preferredPhraseSize ?? recommendation.targetPhraseSize;
   const sensitiveWeakAreas = hasSensitiveBenchmarkWeakAreas(metrics.weakAreas);
-  const unstableBrowserTtsDe = metrics.inputMode === 'browser-tts' && metrics.language === 'de';
   if (confidence < 0.4) {
-    targetRateRange[1] = Math.min(targetRateRange[1], metrics.preferredPlaybackRate, unstableBrowserTtsDe ? 0.95 : metrics.preferredPlaybackRate);
+    targetRateRange[1] = Math.min(targetRateRange[1], metrics.preferredPlaybackRate);
     targetPhraseSize = sensitiveWeakAreas ? 'short' : clampPhraseSizeAtMost(targetPhraseSize, preferredPhraseSize);
     targetPauseMs = Math.max(targetPauseMs, 900);
   } else if (confidence < 0.6) {

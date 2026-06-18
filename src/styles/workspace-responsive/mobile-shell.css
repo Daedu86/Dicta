@@ -67,8 +67,7 @@
     display: grid;
   }
 
-  .live-metrics-heading-row,
-  .live-metrics-control-row {
+  .live-metrics-heading-row {
     align-items: stretch;
     flex-direction: column;
   }

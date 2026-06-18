@@ -6,10 +6,8 @@ type LiveMetricsDockHeaderProps = Pick<
   | 'insightsCollapsed'
   | 'metricsLanguageView'
   | 'trend'
-  | 'insightsDiagnosticInputOptions'
   | 'insightsDiagnosticInputMode'
   | 'onChangeMetricsLanguageView'
-  | 'onChangeInsightsDiagnosticInputMode'
   | 'onCopyInsightsDiagnosticPackage'
   | 'onToggleInsightsCollapsed'
   | 'formatInputModeLabel'
@@ -25,10 +23,8 @@ export function LiveMetricsDockHeader({
   insightsCollapsed,
   metricsLanguageView,
   trend,
-  insightsDiagnosticInputOptions,
   insightsDiagnosticInputMode,
   onChangeMetricsLanguageView,
-  onChangeInsightsDiagnosticInputMode,
   onCopyInsightsDiagnosticPackage,
   onToggleInsightsCollapsed,
   formatInputModeLabel,
@@ -54,26 +50,6 @@ export function LiveMetricsDockHeader({
             </button>
           ))}
         </div>
-      </div>
-      <div className="live-metrics-control-row">
-        <div className="live-metrics-input-tabs" role="group" aria-label="Adaptive report input">
-          {insightsDiagnosticInputOptions.map((option) => {
-            const inputModeLabel = formatInputModeLabel(option.inputMode);
-            return (
-              <button
-                key={option.inputMode}
-                type="button"
-                className={`live-metrics-input-tab ${insightsDiagnosticInputMode === option.inputMode ? 'live-metrics-input-tab-active' : ''}`}
-                onClick={() => onChangeInsightsDiagnosticInputMode(option.inputMode)}
-                aria-pressed={insightsDiagnosticInputMode === option.inputMode}
-                title={`${inputModeLabel} report`}
-              >
-                <span>{option.label}</span>
-                {option.label !== inputModeLabel ? <small>{inputModeLabel}</small> : null}
-              </button>
-            );
-          })}
-        </div>
         <div className="live-metrics-action-group">
           <button
             type="button"
@@ -81,7 +57,7 @@ export function LiveMetricsDockHeader({
             onClick={() => void onCopyInsightsDiagnosticPackage()}
             title={`Copy one structured adaptive report for ${formatInputModeLabel(insightsDiagnosticInputMode)} / ${metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
           >
-            Copy adaptive report
+            Copy full adaptive report
           </button>
           <button
             type="button"

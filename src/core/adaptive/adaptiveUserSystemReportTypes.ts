@@ -100,6 +100,7 @@ export type AdaptiveUserSystemReport = {
     axes: ListeningCycleInsightReportV3['axes'];
     evidence: ListeningCycleInsightReportV3['evidence'];
     reasonCodes: string[];
+    continuousAdaptive: ListeningCycleInsightReportV3['continuousAdaptive'];
     nextSessionKnobs: ListeningCycleInsightReportV3['nextSessionKnobs'];
     summaryBullets: string[];
     contradictionNotes: string[];

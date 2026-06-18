@@ -8,6 +8,10 @@ import {
 import type { AdaptiveDictationControllerState } from './adaptiveDictationControllerState';
 import { resolveAdaptiveControllerRuntimeContext } from './adaptiveDictationControllerRuntimeContext';
 import { buildAdaptiveDictationDecisionPlan } from './adaptiveDictationControllerDecisionPlan';
+import {
+  applyContinuousAdaptiveSnapshotToDecision,
+  buildContinuousAdaptiveListeningSnapshot,
+} from './continuousAdaptiveListening';
 
 export function decideAdaptiveDictationController(
   input: AdaptivePacingInput,
@@ -38,11 +42,25 @@ export function decideAdaptiveDictationController(
     return warmupDecision;
   }
 
-  return buildAdaptiveDictationDecisionPlan({
+  const legacyDecision = buildAdaptiveDictationDecisionPlan({
     input,
     state,
     runtime,
     scores,
     initialPlaybackRate: playbackRate,
   });
+  const snapshot = buildContinuousAdaptiveListeningSnapshot({
+    input,
+    decision: legacyDecision,
+    previousAdaptiveLevel: state.getPreviousAdaptiveLevel(),
+  });
+  const decision = applyContinuousAdaptiveSnapshotToDecision(
+    legacyDecision,
+    snapshot,
+    runtime.supportsPhraseReplay,
+  );
+  state.setPreviousAdaptiveLevel(snapshot.state.adaptiveLevel);
+  state.setPreviousRate(decision.playbackRate);
+
+  return decision;
 }

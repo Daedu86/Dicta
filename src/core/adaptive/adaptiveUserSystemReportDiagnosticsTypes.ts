@@ -73,6 +73,12 @@ export type AdaptiveUserSystemReportComponentDiagnostics = {
     modeDistributionAcceptedForSessionInsight: AdaptiveReportCount[];
     eventDistribution: AdaptiveReportCount[];
     topDecisionReasons: AdaptiveReportCount[];
+    latestAdaptiveLevel: number | null;
+    latestDerivedAdaptiveLabel: string | null;
+    latestPressureVector: unknown;
+    latestPacingOutput: unknown;
+    latestSampleQuality: unknown;
+    latestLanguageCalibration: unknown;
     expectedControllerBehavior: string[];
   };
   browserTtsEnvironment: {
