@@ -16,7 +16,8 @@ export function createDeferredSupabaseClient(remoteRows: DictaSyncRow[]): {
     select: () => query,
     eq: () => query,
     gt: () => query,
-    order: () => pullResult,
+    order: () => query,
+    range: () => pullResult,
     upsert,
   };
   return {
@@ -34,7 +35,8 @@ export function createKeepaliveSupabaseClient(): SupabaseClient {
     select: () => query,
     eq: () => query,
     gt: () => query,
-    order: () => pullResult,
+    order: () => query,
+    range: () => pullResult,
     upsert: () => new Promise<{ error: null }>(() => undefined),
   };
   return {

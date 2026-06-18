@@ -15,7 +15,7 @@ const createBenchmarkProfile = (
 ): InputLanguageBenchmarkMetrics => ({
   inputMode: 'browser-tts',
   language: 'de',
-  rollingWindowDays: 30,
+  rollingWindowDays: 20,
   sessionCount: 2,
   sampleCount: 3,
   lastUpdatedAt: '2026-06-12T10:00:00.000Z',

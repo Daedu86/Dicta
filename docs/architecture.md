@@ -97,7 +97,7 @@ Browser app:
 - OpenRouter workspace: structured dictation script generation slots.
 - Admin workspace: members, remote sessions, and local diagnostics.
 - `localStorage`: sessions, tombstones, benchmarks, feedback, OpenRouter drafts/jobs, and default OpenRouter model.
-- Saved `finished` and `error` sessions are retained for 30 days by last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`); older completed/error sessions are removed from localStorage and synced as Supabase tombstones. `ready`, `running`, and `paused` sessions are preserved regardless of age.
+- Saved `finished` and `error` sessions are retained for 20 days by last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`); older completed/error sessions are removed from localStorage and synced as Supabase tombstones. `ready`, `running`, and `paused` sessions are preserved regardless of age.
 - Finalized session rows are buffered for critical Supabase sync and sent with a best-effort `keepalive` flush during page exit, which reduces mobile/PWA cases where a submitted session remains a remote `ready` row.
 - PWA shell: manifest and service worker.
 
@@ -112,12 +112,12 @@ Core TypeScript domain:
 - `src/core/adaptive/listenerStateV3.ts`, `src/core/adaptive/listeningCycleInsightReportV3.ts`, and `src/core/adaptive/adaptiveUserSystemReportListeningCycleV3.ts`: Listening Cycle V3 diagnosis and report block for separating listening segmentation, reconstruction, typing mechanics, TTS environment constraints, continuous adaptive state, sample quality, calibration, and requested-vs-actual execution.
 - `SemanticPhrasePlanner`: language-aware phrase boundaries.
 - `AdaptiveDictationController`: rate, pause, replay, and chunk decisions.
-- `AdaptiveInputLanguageBenchmarkService`: 30-day rolling profiles.
+- `AdaptiveInputLanguageBenchmarkService`: 20-day rolling profiles.
 - `src/core/adaptive/benchmarkRejectedSampleDiagnostics.ts`: compact accepted/rejected benchmark sample summary by rejection reason.
 - `sessionFeedback` and `benchmarkJson`: exports and diagnostics.
 - `HistoricalPerformanceService`: prior-session profile input.
 - `supabaseSync` and `profileScopedStorage`: profile-aware persistence.
-- `liveMetrics`: today, week, two-week, three-week, and 30-day month views.
+- `liveMetrics`: today, week, two-week, three-week, and 20-day month views.
 
 Server routes:
 
@@ -151,7 +151,7 @@ Short runtime loop:
 4. `LowLatencyTextarea` captures learner typing without per-keystroke React state.
 5. Running training sessions throttle active-session persistence into the global `sessions` list so live typing and playback metrics do not re-render the full app tree on every sample; explicit controls and submit still flush the latest visible text.
 6. Input telemetry adapters produce `LiveTelemetryFrame`.
-7. `HistoricalPerformanceService` and the 30-day benchmark provide profile context.
+7. `HistoricalPerformanceService` and the 20-day benchmark provide profile context.
 8. `AdaptiveDictationController` emits a `PacingDecision`.
 9. The input engine applies supported controls.
 10. Benchmarks, feedback, and session data persist to localStorage and optionally Supabase.

@@ -135,7 +135,7 @@ export interface InputLanguageBenchmarkRecommendation {
 export interface InputLanguageBenchmarkMetrics {
   inputMode: InputMode;
   language: LanguageCode;
-  rollingWindowDays: 30;
+  rollingWindowDays: 20;
   sessionCount: number;
   sampleCount: number;
   lastUpdatedAt: string | null;

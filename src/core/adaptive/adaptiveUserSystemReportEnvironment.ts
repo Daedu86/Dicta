@@ -41,7 +41,7 @@ export function normalizeReportProfile(profile: InputLanguageBenchmarkMetrics): 
     ...candidate,
     inputMode: profile.inputMode,
     language: profile.language,
-    rollingWindowDays: 30,
+    rollingWindowDays: 20,
     weakAreas: Array.isArray(candidate.weakAreas) ? candidate.weakAreas : base.weakAreas,
     rateAccuracyBuckets: Array.isArray(candidate.rateAccuracyBuckets) ? candidate.rateAccuracyBuckets : base.rateAccuracyBuckets,
     timeline: Array.isArray(candidate.timeline) ? candidate.timeline : base.timeline,

@@ -21,18 +21,18 @@ function session(overrides: Partial<RetainableSession> = {}): RetainableSession 
 }
 
 describe('sessionRetentionPolicy', () => {
-  it('expires finished and error sessions older than the 30-day retention window', () => {
+  it('expires finished and error sessions older than the 20-day retention window', () => {
     const finished = session({ id: 'finished-old', status: 'finished', updatedAt: '2026-05-18T11:59:59.999Z' });
     const error = session({ id: 'error-old', status: 'error', updatedAt: '2026-05-18T11:59:59.999Z' });
 
     expect(isSessionExpiredByRetention(finished, NOW_MS)).toBe(true);
     expect(isSessionExpiredByRetention(error, NOW_MS)).toBe(true);
-    expect(SESSION_RETENTION_DAYS).toBe(30);
+    expect(SESSION_RETENTION_DAYS).toBe(20);
   });
 
   it('keeps finished and error sessions inside the retention window', () => {
-    const finished = session({ status: 'finished', updatedAt: '2026-05-19T12:00:00.000Z' });
-    const error = session({ status: 'error', updatedAt: '2026-05-19T12:00:00.000Z' });
+    const finished = session({ status: 'finished', updatedAt: '2026-06-06T12:00:00.000Z' });
+    const error = session({ status: 'error', updatedAt: '2026-06-06T12:00:00.000Z' });
 
     expect(isSessionExpiredByRetention(finished, NOW_MS)).toBe(false);
     expect(isSessionExpiredByRetention(error, NOW_MS)).toBe(false);

@@ -3,7 +3,7 @@ import type { BrowserTtsEnvironmentFingerprint } from '../../types/dictation';
 import { getBrowserTtsEnvironmentId } from '../../inputs/browserTts/browserTtsEnvironment';
 import { buildTimelineDecisionReason, deriveTimelineEvent } from './browserTtsDeBenchmarkPolicy';
 
-export const MAX_TIMELINE_POINTS = 450;
+export const MAX_TIMELINE_POINTS = 300;
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type InputLanguageBenchmarkTimelinePointArgs = {

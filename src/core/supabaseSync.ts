@@ -6,6 +6,7 @@ export { pullSyncRows } from './supabaseSync/pullRows';
 export { pushSyncRows, pushSyncRowsDetailed, selectPushableSyncRows } from './supabaseSync/pushRows';
 export { buildSyncItems, toSyncRows } from './supabaseSync/serialization';
 export { latestSyncRowTimestamp, mergeSyncRowSnapshots } from './supabaseSync/snapshots';
+export { ACTIVE_SYNC_RETENTION_DAYS, TOMBSTONE_RETENTION_DAYS, getTombstoneExpiresAt, isSyncClientStale } from './supabaseSync/syncRetentionPolicy';
 export { DICTA_SYNC_TABLE } from './supabaseSync/types';
 export type {
   DictaSyncConfig,

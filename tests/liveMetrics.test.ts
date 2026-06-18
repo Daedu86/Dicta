@@ -26,7 +26,7 @@ function makeSession(id: string, updatedAt: string, ttsLanguage: SessionForMetri
 }
 
 describe('buildRangeSummaryForLanguage', () => {
-  it('uses a rolling 30-day window for Month metrics', () => {
+  it('uses a rolling 20-day window for Month metrics', () => {
     const today = new Date('2026-06-18T15:34:00.000Z');
 
     const summary = buildRangeSummaryForLanguage(

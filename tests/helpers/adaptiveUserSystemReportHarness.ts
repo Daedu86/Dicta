@@ -79,7 +79,7 @@ export function createLegacyBenchmarkProfile(): BrowserTtsBenchmarkProfile {
   return {
     inputMode: 'browser-tts',
     language: 'de',
-    rollingWindowDays: 30,
+    rollingWindowDays: 20,
     sessionCount: 2,
     sampleCount: 4,
     weakAreas: ['lag'],

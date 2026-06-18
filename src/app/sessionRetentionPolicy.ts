@@ -1,6 +1,6 @@
 import type { SessionTelemetry } from '../types/dictation';
 
-export const SESSION_RETENTION_DAYS = 30;
+export const SESSION_RETENTION_DAYS = 20;
 export const SESSION_RETENTION_MS = SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 export type RetainableSession = {

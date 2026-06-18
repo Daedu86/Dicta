@@ -10,7 +10,7 @@ import {
   PRODUCT_MIN_PLAYBACK_RATE,
 } from './adaptiveDictationControllerMath';
 
-export const ROLLING_WINDOW_DAYS = 30 as const;
+export const ROLLING_WINDOW_DAYS = 20 as const;
 
 export function createEmptyInputLanguageBenchmark(
   inputMode: InputMode,

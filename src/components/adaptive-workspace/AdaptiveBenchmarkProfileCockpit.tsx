@@ -72,7 +72,7 @@ export function AdaptiveBenchmarkProfileCockpit({
         <section className="adaptive-benchmark-subpanel adaptive-words-widget">
           <h4>Words to improve</h4>
           {repeatWordSummary.length === 0 ? (
-            <p className="hint">No finished sessions for this input/language in the last 30 days.</p>
+            <p className="hint">No finished sessions for this input/language in the last 20 days.</p>
           ) : (
             <div className="adaptive-word-bars" aria-label="Words to improve">
               {topRepeatWords.map((entry) => (

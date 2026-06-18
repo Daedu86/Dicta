@@ -26,7 +26,7 @@ export function buildOpenRouterActivityHints({
   const avgAccuracy = averageSessionMetric(activity.finishedMonthProfileSessions, 'accuracy');
   const avgWpm = averageSessionMetric(activity.finishedMonthProfileSessions, 'wpm');
   const hints = [
-    `User activity context: ${activity.monthLanguageSessions.length} ${language.toUpperCase()} session(s) in the last 30 days; ${activity.monthProfileSessions.length} match ${inputMode}/${language}.`,
+    `User activity context: ${activity.monthLanguageSessions.length} ${language.toUpperCase()} session(s) in the last 20 days; ${activity.monthProfileSessions.length} match ${inputMode}/${language}.`,
   ];
 
   if (benchmarkSessionCount !== activity.monthProfileSessions.length) {

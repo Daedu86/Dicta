@@ -8,6 +8,7 @@ export type DictaSyncRow = {
   item_key: string;
   payload: unknown;
   updated_at: string;
+  server_version?: number | null;
 };
 
 export type DictaSyncItem = {
@@ -41,6 +42,7 @@ export type DictaSyncMergeResult = DictaSyncState & {
 
 export type PullSyncRowsOptions = {
   updatedAfter?: string | null;
+  serverVersionAfter?: number | null;
 };
 
 export type PushSyncRowsResult = {
