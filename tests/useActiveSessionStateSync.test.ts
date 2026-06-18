@@ -2,6 +2,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import {
+  ACTIVE_SESSION_LIVE_PERSIST_DELAY_MS,
+  ACTIVE_SESSION_LIVE_PERSIST_MAX_DELAY_MS,
+  shouldDebounceActiveSessionStatePersist,
+} from '../src/app/useActiveSessionStateSync';
+import type { StoredSession } from '../src/app/sessionTypes';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const appRuntimeSource = readFileSync(resolve(repoRoot, 'src/app/DictaAppRuntimeRoot.tsx'), 'utf-8');
@@ -38,12 +44,37 @@ describe('useActiveSessionStateSync extraction', () => {
   it('preserves hydration, finished-session sync, and finished-downgrade protection in the extracted actions', () => {
     expect(hookSource).toContain('hydrateActiveSessionState(params);');
     expect(hookSource).toContain('syncFinishedActiveSessionState(params);');
-    expect(hookSource).toContain('persistActiveSessionState(params);');
+    expect(hookSource).toContain('shouldDebounceActiveSessionStatePersist(params)');
+    expect(hookSource).toContain('ACTIVE_SESSION_LIVE_PERSIST_DELAY_MS');
+    expect(hookSource).toContain('ACTIVE_SESSION_LIVE_PERSIST_MAX_DELAY_MS');
 
     expect(syncActionsSource).toContain('buildActiveSessionHydrationState(activeSession)');
     expect(syncActionsSource).toContain("activeSession.status !== 'finished' || params.sessionStatus === 'finished'");
     expect(syncActionsSource).toContain('normalizeLiveSessionStatusForPersistence(params.sessionStatus, nextTelemetry, params.running)');
     expect(syncActionsSource).toContain("session.status === 'finished' && nextStatus !== 'finished' && !isExplicitFinishedReset");
     expect(syncActionsSource).toContain('params.allowFinishedSessionResetRef.current = null;');
+  });
+
+  it('debounces only live running-session persistence', () => {
+    const runningSession = { id: 'session-1', status: 'running' } as StoredSession;
+    const finishedSession = { id: 'session-1', status: 'finished' } as StoredSession;
+
+    expect(ACTIVE_SESSION_LIVE_PERSIST_DELAY_MS).toBeGreaterThanOrEqual(3000);
+    expect(ACTIVE_SESSION_LIVE_PERSIST_MAX_DELAY_MS).toBeGreaterThanOrEqual(10000);
+    expect(shouldDebounceActiveSessionStatePersist({
+      activeSession: runningSession,
+      sessionStatus: 'running',
+      running: true,
+    })).toBe(true);
+    expect(shouldDebounceActiveSessionStatePersist({
+      activeSession: runningSession,
+      sessionStatus: 'paused',
+      running: false,
+    })).toBe(false);
+    expect(shouldDebounceActiveSessionStatePersist({
+      activeSession: finishedSession,
+      sessionStatus: 'finished',
+      running: false,
+    })).toBe(false);
   });
 });

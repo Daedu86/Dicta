@@ -146,11 +146,12 @@ Short runtime loop:
 2. `SemanticPhrasePlanner` produces phrase boundaries and difficulty.
 3. The active input engine plays TTS or generated local audio.
 4. `LowLatencyTextarea` captures learner typing without per-keystroke React state.
-5. Input telemetry adapters produce `LiveTelemetryFrame`.
-6. `HistoricalPerformanceService` and the 30-day benchmark provide profile context.
-7. `AdaptiveDictationController` emits a `PacingDecision`.
-8. The input engine applies supported controls.
-9. Benchmarks, feedback, and session data persist to localStorage and optionally Supabase.
+5. Running training sessions throttle active-session persistence into the global `sessions` list so live typing and playback metrics do not re-render the full app tree on every sample; explicit controls and submit still flush the latest visible text.
+6. Input telemetry adapters produce `LiveTelemetryFrame`.
+7. `HistoricalPerformanceService` and the 30-day benchmark provide profile context.
+8. `AdaptiveDictationController` emits a `PacingDecision`.
+9. The input engine applies supported controls.
+10. Benchmarks, feedback, and session data persist to localStorage and optionally Supabase.
 
 Important implementation details:
 

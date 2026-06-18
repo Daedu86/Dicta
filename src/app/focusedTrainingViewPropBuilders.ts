@@ -12,7 +12,7 @@ type FocusedTrainingPlaybackArgs = Pick<
   'focusedTrainingControls' | 'ttsHasText' | 'ttsPlayerDurationSec' | 'onReplayFocusedTts'
 >;
 
-const FOCUSED_TRAINING_TEXT_COMMIT_DELAY_MS = 250;
+const FOCUSED_TRAINING_TEXT_COMMIT_DELAY_MS = 1200;
 const FOCUSED_TRAINING_LAG_HELP_TEXT =
   'Lag compares typed progress with expected playback progress. Positive means you are behind; negative means you are ahead.';
 

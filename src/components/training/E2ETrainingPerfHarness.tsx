@@ -69,7 +69,7 @@ export function E2ETrainingPerfHarness() {
       message="E2E training performance harness"
       messageTone="hint"
       generationButtons={[]}
-      textCommitDelayMs={250}
+      textCommitDelayMs={1200}
       pendingSessions={[]}
       activeSessionId={session.id}
       onOpenPendingSession={() => undefined}
