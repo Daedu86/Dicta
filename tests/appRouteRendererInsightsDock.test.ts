@@ -26,11 +26,14 @@ afterEach(() => {
 });
 
 describe('AppRouteRenderer Insights dock visibility', () => {
-  it('renders the Insights dock on the Home workspace', () => {
-    renderRoute('training');
+  it.each<WorkspaceMode>(['training', 'tts'])(
+    'renders the Insights dock on the Home workspace state %s',
+    (workspaceMode) => {
+      renderRoute(workspaceMode);
 
-    expect(host.querySelector('.bottom-metrics-dock')).not.toBeNull();
-  });
+      expect(host.querySelector('.bottom-metrics-dock')).not.toBeNull();
+    },
+  );
 
   it.each<WorkspaceMode>(['adaptive', 'admin', 'openrouter'])(
     'omits the shared Insights dock from the %s workspace',
