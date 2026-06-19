@@ -6,6 +6,7 @@ import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cleanupFocusedTrainingRouteRuntimeHarness,
+  createFocusedTrainingSession,
   renderFocusedTrainingRouteRuntime,
 } from './helpers/focusedTrainingRouteRuntimeHarnessUtils';
 
@@ -22,6 +23,40 @@ describe('useFocusedTrainingRouteRuntime', () => {
     expect(runtime.focusedTrainingProps.liveScoreLabel).toBe('91');
     expect(runtime.focusedTrainingProps.liveAccuracyLabel).toBe('97.5%');
     expect(runtime.focusedTrainingProps.progressLabel).toBe('Word 2/4');
+  });
+
+  it('uses finalized session metrics for the finished training header', async () => {
+    const activeSession = createFocusedTrainingSession({
+      status: 'finished',
+      metrics: {
+        controllerState: 'hold',
+        rate: 1,
+        lagSec: 1.25,
+        lagWords: 3,
+        wpm: 42,
+        accuracy: 81.4,
+        trend: 'stable',
+        score: 543,
+        points: 3,
+      },
+    });
+
+    const { runtime } = await renderFocusedTrainingRouteRuntime({
+      activeSession,
+      activeSessionId: activeSession.id,
+      activeSessionFinished: true,
+      sessionStatus: 'finished',
+      activeVisibleScore: 91,
+      activeVisibleAccuracy: 97.5,
+      activeLivePointsLabel: '9/10',
+      lagSec: 0.33,
+    });
+
+    expect(runtime.focusedTrainingProps.liveScoreLabel).toBe('543');
+    expect(runtime.focusedTrainingProps.livePointsLabel).toBe('3/4');
+    expect(runtime.focusedTrainingProps.liveAccuracyLabel).toBe('81.4%');
+    expect(runtime.focusedTrainingProps.liveLagLabel).toBe('1.25s');
+    expect(runtime.focusedTrainingProps.liveScoreHelpText).toContain('final score = 543');
   });
 
   it('connects focused training controls', async () => {

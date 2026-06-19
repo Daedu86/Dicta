@@ -1,10 +1,20 @@
 import type { TrainingViewProps } from '../components/TrainingView';
+import { buildSessionPointsHelpText, computeSessionMaxPoints, formatSessionPointsForSession } from '../core/evaluation';
+import { buildSessionScoreHelpText } from '../core/sessionScore';
 import type { StoredSession } from './sessionTypes';
 import type { UseFocusedTrainingViewPropsArgs } from './useFocusedTrainingViewProps';
 
 type FocusedTrainingLiveMetricsArgs = Pick<
   UseFocusedTrainingViewPropsArgs,
-  'activeVisibleScore' | 'activeVisibleAccuracy' | 'lagSec'
+  | 'activeSession'
+  | 'activeSessionFinished'
+  | 'activeVisibleScore'
+  | 'activeVisibleAccuracy'
+  | 'lagSec'
+  | 'liveScoreHelpText'
+  | 'livePointsLabel'
+  | 'livePointsHelpText'
+  | 'liveAccuracyHelpText'
 >;
 
 type FocusedTrainingPlaybackArgs = Pick<
@@ -29,10 +39,6 @@ export function buildFocusedTrainingViewProps({
   onImmediateTextChange,
   onTextKeyDown,
   textPlaceholder,
-  liveScoreHelpText,
-  livePointsLabel,
-  livePointsHelpText,
-  liveAccuracyHelpText,
   activeSessionFinished,
   message,
   messageTone,
@@ -59,11 +65,11 @@ export function buildFocusedTrainingViewProps({
     onImmediateTextChange,
     onTextKeyDown,
     textPlaceholder,
-    ...buildFocusedTrainingLiveMetrics(focusedRuntime),
-    liveScoreHelpText,
-    livePointsLabel,
-    livePointsHelpText,
-    liveAccuracyHelpText,
+    ...buildFocusedTrainingLiveMetrics({
+      activeSession,
+      activeSessionFinished,
+      ...focusedRuntime,
+    }),
     readOnly: activeSessionFinished,
     ...buildFocusedTrainingPlaybackProps(focusedRuntime),
     message,
@@ -81,16 +87,49 @@ export function buildFocusedTrainingViewProps({
 }
 
 function buildFocusedTrainingLiveMetrics({
+  activeSession,
+  activeSessionFinished,
   activeVisibleScore,
   activeVisibleAccuracy,
   lagSec,
+  liveScoreHelpText,
+  livePointsLabel,
+  livePointsHelpText,
+  liveAccuracyHelpText,
 }: FocusedTrainingLiveMetricsArgs): Pick<
   TrainingViewProps<StoredSession>,
-  'liveScoreLabel' | 'liveAccuracyLabel' | 'liveLagLabel' | 'liveLagHelpText'
+  | 'liveScoreLabel'
+  | 'liveScoreHelpText'
+  | 'livePointsLabel'
+  | 'livePointsHelpText'
+  | 'liveAccuracyLabel'
+  | 'liveAccuracyHelpText'
+  | 'liveLagLabel'
+  | 'liveLagHelpText'
 > {
+  if (activeSessionFinished && activeSession?.status === 'finished') {
+    const { metrics } = activeSession;
+    const maxPoints = computeSessionMaxPoints(activeSession);
+
+    return {
+      liveScoreLabel: String(metrics.score),
+      liveScoreHelpText: buildSessionScoreHelpText(metrics),
+      livePointsLabel: formatSessionPointsForSession(metrics.points, activeSession),
+      livePointsHelpText: buildSessionPointsHelpText(maxPoints),
+      liveAccuracyLabel: `${metrics.accuracy.toFixed(1)}%`,
+      liveAccuracyHelpText,
+      liveLagLabel: `${metrics.lagSec.toFixed(2)}s`,
+      liveLagHelpText: FOCUSED_TRAINING_LAG_HELP_TEXT,
+    };
+  }
+
   return {
     liveScoreLabel: String(activeVisibleScore),
+    liveScoreHelpText,
+    livePointsLabel,
+    livePointsHelpText,
     liveAccuracyLabel: `${activeVisibleAccuracy.toFixed(1)}%`,
+    liveAccuracyHelpText,
     liveLagLabel: `${lagSec.toFixed(2)}s`,
     liveLagHelpText: FOCUSED_TRAINING_LAG_HELP_TEXT,
   };
