@@ -201,7 +201,7 @@ export function AppRouteRenderer({
             adminWorkspaceProps={adminWorkspaceProps}
           />
         </section>
-        <LiveMetricsDock {...liveMetricsDockProps} />
+        {workspaceMode === 'training' ? <LiveMetricsDock {...liveMetricsDockProps} /> : null}
       </main>
     </>
   );
