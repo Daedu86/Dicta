@@ -13,7 +13,7 @@ type BenchmarkArgs = Parameters<typeof useAdaptiveBenchmarkSectionProps<Diagnost
 type AdaptiveWorkspaceRouteExportArgs = Omit<ExportArgs, 'insightsDiagnosticProfile' | 'insightsDiagnosticFeedback'>;
 type AdaptiveWorkspaceRouteDiagnosticsArgs = Omit<
   DiagnosticsArgs,
-  'adaptiveAdapters' | 'latestInputAdapter' | 'latestAdaptiveMode'
+  'latestInputAdapter' | 'latestAdaptiveMode'
 >;
 type AdaptiveWorkspaceRouteBenchmarkArgs = Omit<
   BenchmarkArgs,
@@ -86,7 +86,6 @@ export function useAdaptiveWorkspaceRouteRuntime(args: UseAdaptiveWorkspaceRoute
 
   const adaptiveAdvancedDiagnosticsProps = useAdaptiveAdvancedDiagnosticsProps({
     ...routeArgs.diagnostics,
-    adaptiveAdapters: presentation.adaptiveAdapters,
     latestInputAdapter: presentation.latestInputAdapter,
     latestAdaptiveMode: presentation.latestAdaptiveMode,
   });

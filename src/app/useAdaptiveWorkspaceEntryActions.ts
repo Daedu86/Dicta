@@ -11,7 +11,6 @@ import { mapSessionInputMode } from './appRuntimeHelpers';
 export type AdaptiveSectionExpandedState = {
   decision: boolean;
   architecture: boolean;
-  adapters: boolean;
   latest: boolean;
   live: boolean;
   telemetry: boolean;
@@ -66,7 +65,6 @@ export function createAdaptiveWorkspaceEntryActions({
         ...prev,
         decision: false,
         architecture: false,
-        adapters: false,
         latest: false,
         live: false,
         telemetry: false,

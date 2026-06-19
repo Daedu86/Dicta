@@ -21,7 +21,6 @@ import type { StoredSession } from '../src/app/sessionTypes';
 const expandedState: AdaptiveSectionExpandedState = {
   decision: true,
   architecture: true,
-  adapters: true,
   latest: true,
   live: true,
   telemetry: true,
@@ -134,7 +133,6 @@ describe('adaptive workspace entry actions', () => {
     expect(getAdaptiveSectionExpanded()).toEqual({
       decision: false,
       architecture: false,
-      adapters: false,
       latest: false,
       live: false,
       telemetry: false,

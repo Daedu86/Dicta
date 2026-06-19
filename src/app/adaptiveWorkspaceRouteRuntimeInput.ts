@@ -1,4 +1,3 @@
-import { mapSessionInputMode } from './appRuntimeHelpers';
 import type { useAdaptiveWorkspaceRouteRuntime } from './useAdaptiveWorkspaceRouteRuntime';
 import type { DictaAppRouteCompositionRuntimeParams } from './dictaAppRouteCompositionTypes';
 
@@ -59,13 +58,8 @@ export function buildAdaptiveWorkspaceRouteRuntimeInput({
     diagnostics: {
       adaptiveSectionExpanded,
       latestSession,
-      selectedBenchmarkInputMode,
       adaptiveSemanticDebug,
-      mapSessionInputMode,
       setAdaptiveSectionExpanded,
-      setSelectedBenchmarkInputMode,
-      setBenchmarkExportMessage,
-      setSessionFeedbackMessage,
     },
     benchmark: {
       adaptiveBenchmarksByInputLanguage,

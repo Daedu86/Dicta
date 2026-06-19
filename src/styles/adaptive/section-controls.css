@@ -1,6 +1,5 @@
 .adaptive-decision-panel,
-.adaptive-architecture-panel,
-.adaptive-adapters-panel {
+.adaptive-architecture-panel {
   display: grid;
   gap: 0.75rem;
 }

@@ -34,7 +34,7 @@ type RouteDerivedLiveMetricsDockKey =
   | 'selectInsightsDiagnosticFallbackReport';
 
 export type DictaAppRouteCompositionRuntimeParams =
-  Omit<FlatAdaptiveWorkspaceRouteRuntimeArgs, 'mapSessionInputMode'> &
+  FlatAdaptiveWorkspaceRouteRuntimeArgs &
   Omit<
     FlatAppPresentationRuntimeArgs,
     | RouteDerivedWorkspacePanelKey

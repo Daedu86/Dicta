@@ -1,4 +1,3 @@
-import { AdaptiveAdvancedAdaptersPanel } from './AdaptiveAdvancedAdaptersPanel';
 import { AdaptiveAdvancedArchitecturePanel, AdaptiveAdvancedDecisionPanel } from './AdaptiveAdvancedDecisionArchitecturePanels';
 import { AdaptiveAdvancedLatestSessionPanel } from './AdaptiveAdvancedLatestSessionPanel';
 import { AdaptiveAdvancedLiveStatePanel } from './AdaptiveAdvancedLiveStatePanel';
@@ -15,25 +14,20 @@ export type {
 
 export function AdaptiveAdvancedDiagnostics({
   adaptiveSectionExpanded,
-  adaptiveAdapters,
   latestSession,
   latestInputAdapter,
   latestAdaptiveMode,
-  selectedBenchmarkInputMode,
   adaptiveSemanticDebug,
-  mapSessionInputMode,
   onToggleDecisionArchitectureSections,
-  onToggleAdaptersSection,
   onToggleLatestSections,
   onToggleTelemetrySection,
-  onOpenAdapter,
 }: AdaptiveAdvancedDiagnosticsProps) {
   return (
     <details className="adaptive-advanced-shell">
       <summary>
         <span>
           <strong>Advanced diagnostics</strong>
-          <small>Architecture, adapters, latest run, and debug counters</small>
+          <small>Architecture, latest run, and debug counters</small>
         </span>
       </summary>
       <div className="adaptive-advanced-grid">
@@ -45,15 +39,6 @@ export function AdaptiveAdvancedDiagnostics({
         <AdaptiveAdvancedArchitecturePanel
           expanded={adaptiveSectionExpanded.architecture}
           onToggle={onToggleDecisionArchitectureSections}
-        />
-        <AdaptiveAdvancedAdaptersPanel
-          expanded={adaptiveSectionExpanded.adapters}
-          adaptiveAdapters={adaptiveAdapters}
-          latestSession={latestSession}
-          selected={selectedBenchmarkInputMode}
-          mapSessionInputMode={mapSessionInputMode}
-          onToggle={onToggleAdaptersSection}
-          onOpenAdapter={onOpenAdapter}
         />
         <AdaptiveAdvancedLatestSessionPanel
           expanded={adaptiveSectionExpanded.latest}

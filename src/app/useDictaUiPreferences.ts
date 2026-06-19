@@ -37,7 +37,6 @@ export function useDictaUiPreferences() {
   const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState(() => ({
     decision: false,
     architecture: false,
-    adapters: false,
     latest: false,
     live: false,
     telemetry: false,

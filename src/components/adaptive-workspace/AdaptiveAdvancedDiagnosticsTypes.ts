@@ -1,4 +1,3 @@
-import type { InputMode } from '../../core/adaptive/types';
 import type { SessionPointsSource } from '../../core/evaluation';
 import type { SessionDurationInput } from '../../core/sessionDuration';
 import type { SessionScoreMetrics } from '../../core/sessionScore';
@@ -8,7 +7,6 @@ import type { AdaptiveAdapterCardConfig } from './types';
 export type AdaptiveAdvancedDiagnosticsExpandedState = {
   decision: boolean;
   architecture: boolean;
-  adapters: boolean;
   latest: boolean;
   live: boolean;
   telemetry: boolean;
@@ -49,16 +47,11 @@ export type AdaptiveSemanticDebug = {
 
 export type AdaptiveAdvancedDiagnosticsProps = {
   adaptiveSectionExpanded: AdaptiveAdvancedDiagnosticsExpandedState;
-  adaptiveAdapters: AdaptiveAdapterCardConfig[];
   latestSession: AdaptiveLatestSession | null;
   latestInputAdapter: AdaptiveAdapterCardConfig | null;
   latestAdaptiveMode: string;
-  selectedBenchmarkInputMode: InputMode;
   adaptiveSemanticDebug: AdaptiveSemanticDebug;
-  mapSessionInputMode: (mode: AdaptiveAdapterCardConfig['inputMode']) => InputMode;
   onToggleDecisionArchitectureSections: () => void;
-  onToggleAdaptersSection: () => void;
   onToggleLatestSections: () => void;
   onToggleTelemetrySection: () => void;
-  onOpenAdapter: (inputMode: AdaptiveAdapterCardConfig['inputMode']) => void;
 };
