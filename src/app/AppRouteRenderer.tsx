@@ -42,7 +42,6 @@ type AppRouteRendererProps = {
   formatSessionStatus: AppWorkspaceContentProps['formatSessionStatus'];
   formatSessionDate: AppWorkspaceContentProps['formatSessionDate'];
   formatSessionPlaybackDuration: AppWorkspaceContentProps['formatSessionPlaybackDuration'];
-  adaptiveAdvancedDiagnosticsProps: AppWorkspaceContentProps['adaptiveAdvancedDiagnosticsProps'];
   adaptiveBenchmarkSectionProps: AppWorkspaceContentProps['adaptiveBenchmarkSectionProps'];
   openRouterAccessState: AppWorkspaceContentProps['openRouterAccessState'];
   openRouterAccessMessage: AppWorkspaceContentProps['openRouterAccessMessage'];
@@ -113,7 +112,6 @@ export function AppRouteRenderer({
   formatSessionStatus,
   formatSessionDate,
   formatSessionPlaybackDuration,
-  adaptiveAdvancedDiagnosticsProps,
   adaptiveBenchmarkSectionProps,
   openRouterAccessState,
   openRouterAccessMessage,
@@ -194,7 +192,6 @@ export function AppRouteRenderer({
             formatSessionDate={formatSessionDate}
             formatSessionPlaybackDuration={formatSessionPlaybackDuration}
             onBackToTraining={showLeaderboardWorkspace}
-            adaptiveAdvancedDiagnosticsProps={adaptiveAdvancedDiagnosticsProps}
             adaptiveBenchmarkSectionProps={adaptiveBenchmarkSectionProps}
             openRouterAccessState={openRouterAccessState}
             openRouterAccessMessage={openRouterAccessMessage}

@@ -4,7 +4,6 @@ import { PendingSessionLane } from '../components/training/PendingSessionLane';
 import { OpenRouterWorkspace } from '../components/openrouter/OpenRouterWorkspace';
 import { SessionDashboard } from '../components/session-dashboard/SessionDashboard';
 import { AdaptiveBenchmarkSection } from '../components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
-import { AdaptiveAdvancedDiagnostics } from '../components/adaptive-workspace/AdaptiveAdvancedDiagnostics';
 import type { LiveMetricsDockProps } from '../components/runtime-workspaces/LiveMetricsDock';
 import { LiveMetricsDiagnosticMessage } from '../components/runtime-workspaces/LiveMetricsDiagnosticFallback';
 import { AdminWorkspace, type AdminWorkspaceProps } from '../components/admin/AdminWorkspace';
@@ -32,7 +31,6 @@ type AppWorkspaceContentProps = {
   formatSessionDate: (value: string) => string;
   formatSessionPlaybackDuration: (session: StoredSession) => string;
   onBackToTraining: () => void;
-  adaptiveAdvancedDiagnosticsProps: ComponentProps<typeof AdaptiveAdvancedDiagnostics>;
   adaptiveBenchmarkSectionProps: ComponentProps<typeof AdaptiveBenchmarkSection>;
   adaptiveReportButtonProps: AdaptiveReportButtonProps;
   openRouterAccessState: OpenRouterAccessState;
@@ -54,7 +52,6 @@ export function AppWorkspaceContent({
   formatSessionDate,
   formatSessionPlaybackDuration,
   onBackToTraining,
-  adaptiveAdvancedDiagnosticsProps,
   adaptiveBenchmarkSectionProps,
   adaptiveReportButtonProps,
   openRouterAccessState,
@@ -110,7 +107,6 @@ export function AppWorkspaceContent({
               </div>
             </div>
             <div className="adaptive-workspace-grid">
-              <AdaptiveAdvancedDiagnostics {...adaptiveAdvancedDiagnosticsProps} />
               <AdaptiveBenchmarkSection {...adaptiveBenchmarkSectionProps} />
             </div>
           </section>

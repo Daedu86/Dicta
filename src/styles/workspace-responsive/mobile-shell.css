@@ -9,8 +9,6 @@
   .adaptive-benchmark-panel,
   .adaptive-benchmark-workspace,
   .adaptive-benchmark-subpanel,
-  .adaptive-advanced-shell,
-  .adaptive-advanced-grid,
   .adaptive-cockpit-grid,
   .adaptive-coach-grid,
   .adaptive-coach-card,
@@ -49,7 +47,6 @@
   .workspace-main-header .brand-status-row,
   .metrics-header,
   .adaptive-section-header,
-  .adaptive-advanced-shell summary,
   .adaptive-export-panel summary,
   .adaptive-profile-hero-top,
   .adaptive-zone-chart-header,
@@ -119,7 +116,6 @@
   }
 
   .adaptive-section-header > div,
-  .adaptive-advanced-shell summary span,
   .adaptive-export-panel summary span {
     min-width: 0;
   }

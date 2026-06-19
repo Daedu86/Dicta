@@ -9,8 +9,7 @@
 
   .adaptive-selected-profile-actions .compact-button,
   .adaptive-human-feedback-actions button,
-  .adaptive-export-panel summary em,
-  .adaptive-advanced-shell summary::after {
+  .adaptive-export-panel summary em {
     width: 100%;
   }
 

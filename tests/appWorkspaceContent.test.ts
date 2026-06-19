@@ -39,7 +39,6 @@ describe('AppWorkspaceContent', () => {
         formatSessionDate: (value) => value,
         formatSessionPlaybackDuration: () => '0s',
         onBackToTraining: vi.fn(),
-        adaptiveAdvancedDiagnosticsProps: {} as never,
         adaptiveBenchmarkSectionProps: {} as never,
         openRouterAccessState: 'denied',
         openRouterAccessMessage: '',

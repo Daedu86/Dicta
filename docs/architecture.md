@@ -91,7 +91,6 @@ Browser app:
 - `src/app/useOpenRouterModelRuntime.ts`: OpenRouter model assignment/default resolution and refresh wiring.
 - `src/app/useAdminWorkspaceProps.ts`: browser-side Admin workspace prop composition for local storage/session exports, profile access callbacks, auth headers, and model refresh wiring.
 - `src/app/useLeaderboardWorkspaceProps.ts`: browser-side Leaderboard workspace prop composition for expand/collapse state, session snapshot actions, navigation callbacks, and display formatter wiring.
-- `src/app/useAdaptiveAdvancedDiagnosticsProps.ts`: browser-side Adaptive advanced diagnostics prop composition for section toggles, adapter selection, diagnostic message reset, and benchmark-section scrolling.
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.

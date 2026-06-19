@@ -19,11 +19,6 @@ import type { InputMode } from '../src/core/adaptive/types';
 import type { StoredSession } from '../src/app/sessionTypes';
 
 const expandedState: AdaptiveSectionExpandedState = {
-  decision: true,
-  architecture: true,
-  latest: true,
-  live: true,
-  telemetry: true,
   benchmarks: false,
 };
 
@@ -131,11 +126,6 @@ describe('adaptive workspace entry actions', () => {
 
     expect(options.setAdaptiveSectionExpanded).toHaveBeenCalledTimes(1);
     expect(getAdaptiveSectionExpanded()).toEqual({
-      decision: false,
-      architecture: false,
-      latest: false,
-      live: false,
-      telemetry: false,
       benchmarks: false,
     });
     expect(options.showAdaptiveWorkspace).toHaveBeenCalledTimes(1);

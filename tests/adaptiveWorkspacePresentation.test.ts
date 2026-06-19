@@ -5,9 +5,7 @@ import {
   getAdaptiveBenchmarkProfile,
   getLatestAdaptiveFeedback,
 } from '../src/app/adaptiveWorkspacePresentation';
-import type { StoredSession } from '../src/app/sessionTypes';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
-import { BROWSER_TTS_SESSION_INPUT_MODE } from '../src/core/sessionInputModes';
 import type { AdaptiveSessionFeedback } from '../src/core/adaptive/types';
 import type {
   AdaptiveBenchmarksByInputLanguage,
@@ -121,7 +119,6 @@ describe('adaptive workspace presentation state', () => {
       selectedBenchmarkLanguage: 'de',
       insightsDiagnosticInputMode: 'browser-tts',
       metricsLanguageView: 'es',
-      latestSession: null,
     });
 
     expect(state.selectedBenchmarkProfile).toBe(selectedBenchmark);
@@ -130,14 +127,7 @@ describe('adaptive workspace presentation state', () => {
     expect(state.insightsDiagnosticFeedback?.sessionId).toBe('insights');
   });
 
-  it('derives adaptive adapter presentation for the latest session', () => {
-    const latestSession = {
-      inputMode: BROWSER_TTS_SESSION_INPUT_MODE,
-      metrics: {
-        trend: 'improving',
-      },
-    } as StoredSession;
-
+  it('derives adaptive adapter and insights input presentation', () => {
     const state = buildAdaptiveWorkspacePresentationState({
       adaptiveBenchmarksByInputLanguage: {},
       adaptiveSessionFeedbackByInputLanguage: {},
@@ -145,11 +135,9 @@ describe('adaptive workspace presentation state', () => {
       selectedBenchmarkLanguage: 'de',
       insightsDiagnosticInputMode: 'browser-tts',
       metricsLanguageView: 'de',
-      latestSession,
     });
 
-    expect(state.latestAdaptiveMode).toBe('Flow');
-    expect(state.latestInputAdapter?.title).toBe('Browser TTS');
+    expect(state.adaptiveAdapters[0]?.title).toBe('Browser TTS');
     expect(state.insightsDiagnosticInputOptions).toEqual(buildAdaptiveWorkspaceInputOptions());
   });
 });

@@ -1,20 +1,15 @@
 import { useMemo } from 'react';
 import { buildRepeatWordStats } from './repeatWordStats';
-import { useAdaptiveAdvancedDiagnosticsProps } from './useAdaptiveAdvancedDiagnosticsProps';
 import { useAdaptiveBenchmarkSectionProps } from './useAdaptiveBenchmarkSectionProps';
 import { useAdaptiveExportActions } from './useAdaptiveExportActions';
 import { useAdaptiveWorkspacePresentationState } from './useAdaptiveWorkspacePresentationState';
+import type { AdaptiveSectionExpandedState } from './useAdaptiveWorkspaceEntryActions';
 
 type PresentationArgs = Parameters<typeof useAdaptiveWorkspacePresentationState>[0];
 type ExportArgs = Parameters<typeof useAdaptiveExportActions>[0];
-type DiagnosticsArgs = Parameters<typeof useAdaptiveAdvancedDiagnosticsProps>[0];
-type BenchmarkArgs = Parameters<typeof useAdaptiveBenchmarkSectionProps<DiagnosticsArgs['adaptiveSectionExpanded']>>[0];
+type BenchmarkArgs = Parameters<typeof useAdaptiveBenchmarkSectionProps<AdaptiveSectionExpandedState>>[0];
 
 type AdaptiveWorkspaceRouteExportArgs = Omit<ExportArgs, 'insightsDiagnosticProfile' | 'insightsDiagnosticFeedback'>;
-type AdaptiveWorkspaceRouteDiagnosticsArgs = Omit<
-  DiagnosticsArgs,
-  'latestInputAdapter' | 'latestAdaptiveMode'
->;
 type AdaptiveWorkspaceRouteBenchmarkArgs = Omit<
   BenchmarkArgs,
   | 'adaptiveAdapters'
@@ -34,13 +29,11 @@ type AdaptiveWorkspaceRouteBenchmarkArgs = Omit<
 
 type FlatAdaptiveWorkspaceRouteRuntimeArgs = PresentationArgs &
   AdaptiveWorkspaceRouteExportArgs &
-  AdaptiveWorkspaceRouteDiagnosticsArgs &
   AdaptiveWorkspaceRouteBenchmarkArgs;
 
 export type GroupedAdaptiveWorkspaceRouteRuntimeArgs = {
   presentation: PresentationArgs;
   exportActions: AdaptiveWorkspaceRouteExportArgs;
-  diagnostics: AdaptiveWorkspaceRouteDiagnosticsArgs;
   benchmark: AdaptiveWorkspaceRouteBenchmarkArgs;
 };
 
@@ -56,7 +49,6 @@ function normalizeAdaptiveWorkspaceRouteRuntimeArgs(
   return {
     presentation: args,
     exportActions: args,
-    diagnostics: args,
     benchmark: args,
   };
 }
@@ -84,13 +76,7 @@ export function useAdaptiveWorkspaceRouteRuntime(args: UseAdaptiveWorkspaceRoute
     ],
   );
 
-  const adaptiveAdvancedDiagnosticsProps = useAdaptiveAdvancedDiagnosticsProps({
-    ...routeArgs.diagnostics,
-    latestInputAdapter: presentation.latestInputAdapter,
-    latestAdaptiveMode: presentation.latestAdaptiveMode,
-  });
-
-  const adaptiveBenchmarkSectionProps = useAdaptiveBenchmarkSectionProps({
+  const adaptiveBenchmarkSectionProps = useAdaptiveBenchmarkSectionProps<AdaptiveSectionExpandedState>({
     ...routeArgs.benchmark,
     adaptiveAdapters: presentation.adaptiveAdapters,
     selectedBenchmarkProfile: presentation.selectedBenchmarkProfile,
@@ -111,7 +97,6 @@ export function useAdaptiveWorkspaceRouteRuntime(args: UseAdaptiveWorkspaceRoute
     ...presentation,
     ...exportActions,
     repeatWordStats,
-    adaptiveAdvancedDiagnosticsProps,
     adaptiveBenchmarkSectionProps,
   };
 }

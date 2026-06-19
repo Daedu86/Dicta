@@ -10,11 +10,7 @@ import type {
   InputMode,
   LanguageCode,
 } from '../core/adaptive/types';
-import {
-  buildAdaptiveAdapterCards,
-  formatAdaptiveModeFromSession,
-} from './sessionDisplayFormatters';
-import type { StoredSession } from './sessionTypes';
+import { buildAdaptiveAdapterCards } from './sessionDisplayFormatters';
 import type {
   AdaptiveBenchmarksByInputLanguage,
   AdaptiveSessionFeedbackByInputLanguage,
@@ -35,8 +31,6 @@ export type AdaptiveWorkspacePresentationState = {
   insightsDiagnosticProfile: InputLanguageBenchmarkMetrics;
   insightsDiagnosticFeedback: AdaptiveSessionFeedback | null;
   insightsDiagnosticInputOptions: AdaptiveWorkspaceInputOption[];
-  latestAdaptiveMode: string;
-  latestInputAdapter: AdaptiveAdapterCard | null;
 };
 
 export type AdaptiveWorkspacePresentationInput = {
@@ -46,7 +40,6 @@ export type AdaptiveWorkspacePresentationInput = {
   selectedBenchmarkLanguage: BenchmarkLanguageButton;
   insightsDiagnosticInputMode: InputMode;
   metricsLanguageView: BenchmarkLanguageButton;
-  latestSession: StoredSession | null;
 };
 
 export function buildAdaptiveWorkspaceInputOptions(): AdaptiveWorkspaceInputOption[] {
@@ -93,7 +86,6 @@ export function buildAdaptiveWorkspacePresentationState({
   selectedBenchmarkLanguage,
   insightsDiagnosticInputMode,
   metricsLanguageView,
-  latestSession,
 }: AdaptiveWorkspacePresentationInput): AdaptiveWorkspacePresentationState {
   const adaptiveAdapters = buildAdaptiveAdapterCards();
   const selectedBenchmarkProfile = getAdaptiveBenchmarkProfile({
@@ -116,10 +108,6 @@ export function buildAdaptiveWorkspacePresentationState({
     inputMode: insightsDiagnosticInputMode,
     language: metricsLanguageView,
   });
-  const latestAdaptiveMode = latestSession ? formatAdaptiveModeFromSession(latestSession) : 'Balanced';
-  const latestInputAdapter = latestSession
-    ? adaptiveAdapters.find((adapter) => adapter.inputMode === latestSession.inputMode) ?? null
-    : null;
 
   return {
     adaptiveAdapters,
@@ -128,7 +116,5 @@ export function buildAdaptiveWorkspacePresentationState({
     insightsDiagnosticProfile,
     insightsDiagnosticFeedback,
     insightsDiagnosticInputOptions: buildAdaptiveWorkspaceInputOptions(),
-    latestAdaptiveMode,
-    latestInputAdapter,
   };
 }

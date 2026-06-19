@@ -5,7 +5,6 @@ import type {
   AdaptiveSessionFeedbackByInputLanguage,
   BenchmarkLanguageButton,
 } from '../components/openrouter/types';
-import type { StoredSession } from './sessionTypes';
 import {
   buildAdaptiveWorkspacePresentationState,
 } from './adaptiveWorkspacePresentation';
@@ -17,7 +16,6 @@ type AdaptiveWorkspacePresentationStateOptions = {
   selectedBenchmarkLanguage: BenchmarkLanguageButton;
   insightsDiagnosticInputMode: InputMode;
   metricsLanguageView: BenchmarkLanguageButton;
-  latestSession: StoredSession | null;
 };
 
 export function useAdaptiveWorkspacePresentationState({
@@ -27,7 +25,6 @@ export function useAdaptiveWorkspacePresentationState({
   selectedBenchmarkLanguage,
   insightsDiagnosticInputMode,
   metricsLanguageView,
-  latestSession,
 }: AdaptiveWorkspacePresentationStateOptions) {
   return useMemo(
     () =>
@@ -38,7 +35,6 @@ export function useAdaptiveWorkspacePresentationState({
         selectedBenchmarkLanguage,
         insightsDiagnosticInputMode,
         metricsLanguageView,
-        latestSession,
       }),
     [
       adaptiveBenchmarksByInputLanguage,
@@ -47,7 +43,6 @@ export function useAdaptiveWorkspacePresentationState({
       selectedBenchmarkLanguage,
       insightsDiagnosticInputMode,
       metricsLanguageView,
-      latestSession,
     ],
   );
 }

@@ -11,7 +11,6 @@ export function buildAdaptiveWorkspaceRouteRuntimeInput({
   selectedBenchmarkLanguage,
   insightsDiagnosticInputMode,
   metricsLanguageView,
-  latestSession,
   sessions,
   activeSession,
   activeSessionFinished,
@@ -23,7 +22,6 @@ export function buildAdaptiveWorkspaceRouteRuntimeInput({
   setInsightsDiagnosticFallbackReport,
   setInsightsDiagnosticMessage,
   adaptiveSectionExpanded,
-  adaptiveSemanticDebug,
   setAdaptiveSectionExpanded,
   setSelectedBenchmarkInputMode,
   setSelectedBenchmarkLanguage,
@@ -39,7 +37,6 @@ export function buildAdaptiveWorkspaceRouteRuntimeInput({
       selectedBenchmarkLanguage,
       insightsDiagnosticInputMode,
       metricsLanguageView,
-      latestSession,
     },
     exportActions: {
       sessions,
@@ -54,12 +51,6 @@ export function buildAdaptiveWorkspaceRouteRuntimeInput({
       setSessionFeedbackMessage,
       setInsightsDiagnosticFallbackReport,
       setInsightsDiagnosticMessage,
-    },
-    diagnostics: {
-      adaptiveSectionExpanded,
-      latestSession,
-      adaptiveSemanticDebug,
-      setAdaptiveSectionExpanded,
     },
     benchmark: {
       adaptiveBenchmarksByInputLanguage,

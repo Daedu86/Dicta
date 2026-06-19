@@ -1,6 +1,8 @@
 # AdaptiveAdvancedDiagnostics Modularization Plan
 
-`AdaptiveAdvancedDiagnostics` is the advanced diagnostics shell inside the adaptive workspace. It is browser UI for the central brain summary, architecture flow, adapter execution cards, latest run summary, latest pacing snapshot, and debug counters.
+Historical note: the `AdaptiveAdvancedDiagnostics` runtime card was removed from the Adaptive Pace Layer workspace on 2026-06-19. This document is retained only as the older extraction checkpoint.
+
+`AdaptiveAdvancedDiagnostics` was the advanced diagnostics shell inside the adaptive workspace. It was browser UI for the central brain summary, architecture flow, adapter execution cards, latest run summary, latest pacing snapshot, and debug counters.
 
 The extraction was kept UI-only. `App.tsx` still owns adaptive controller state, benchmark/profile state, adapter-open behavior, benchmark persistence, sync, and the `AdaptiveBenchmarkSection` that remains immediately after this component.
 

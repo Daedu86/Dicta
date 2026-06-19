@@ -35,11 +35,6 @@ export function useDictaUiPreferences() {
   );
   const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => loadMetricsRangeView());
   const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState(() => ({
-    decision: false,
-    architecture: false,
-    latest: false,
-    live: false,
-    telemetry: false,
     benchmarks: !isMobileViewport(),
   }));
 

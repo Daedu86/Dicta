@@ -9,11 +9,6 @@ import type { StoredSession } from './sessionTypes';
 import { mapSessionInputMode } from './appRuntimeHelpers';
 
 export type AdaptiveSectionExpandedState = {
-  decision: boolean;
-  architecture: boolean;
-  latest: boolean;
-  live: boolean;
-  telemetry: boolean;
   benchmarks: boolean;
 };
 
@@ -63,11 +58,6 @@ export function createAdaptiveWorkspaceEntryActions({
     if (isMobileViewport()) {
       setAdaptiveSectionExpanded((prev) => ({
         ...prev,
-        decision: false,
-        architecture: false,
-        latest: false,
-        live: false,
-        telemetry: false,
         benchmarks: false,
       }));
     }

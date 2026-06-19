@@ -111,7 +111,6 @@
   }
 
   .adaptive-adapter-grid,
-  .adaptive-advanced-grid,
   .adaptive-benchmark-card-grid,
   .adaptive-flow-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));

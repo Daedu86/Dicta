@@ -141,7 +141,6 @@ export function useDictaRuntimeRootPresentationGraph({
       formatSessionDate,
       formatSessionPlaybackDuration,
       showLeaderboardWorkspace,
-      adaptiveAdvancedDiagnosticsProps: routeCompositionRuntime.adaptiveAdvancedDiagnosticsProps,
       adaptiveBenchmarkSectionProps: routeCompositionRuntime.adaptiveBenchmarkSectionProps,
       openRouterAccessState,
       openRouterAccessMessage,
