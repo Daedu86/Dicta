@@ -15,6 +15,12 @@
   margin-top: 0.5rem;
 }
 
+.adaptive-selected-profile-header {
+  margin-top: 0.2rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #d7e2ee;
+}
+
 .adaptive-human-feedback-editor {
   margin-top: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.08);

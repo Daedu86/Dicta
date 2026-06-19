@@ -35,20 +35,17 @@ export function AdaptiveBenchmarkSection({
   onCopyBenchmarkFeedbackPromptWithHumanFeedback,
 }: AdaptiveBenchmarkSectionProps) {
   const selectedAdapter = adapters.find((adapter) => mapSessionInputMode(adapter.inputMode) === selectedInputMode);
-  const [benchmarkSubsectionsExpanded, setBenchmarkSubsectionsExpanded] = useState(() => ({
-    selector: true,
-    workspace: !isCompactViewport(),
-  }));
+  const [selectedProfileDetailsOpen, setSelectedProfileDetailsOpen] = useState(() => !isCompactViewport());
 
   useEffect(() => {
     if (focusAnchor === 'sessionFeedback' || focusAnchor === 'exports') {
-      setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, workspace: true }));
+      setSelectedProfileDetailsOpen(true);
     }
   }, [focusAnchor]);
 
   function openSelectedProfile(inputMode = selectedInputMode, language: BenchmarkLanguageButton = selectedLanguage): void {
     onSelect(inputMode, language);
-    setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, workspace: true }));
+    setSelectedProfileDetailsOpen(true);
     window.setTimeout(() => {
       document.getElementById('adaptive-selected-profile-cockpit')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
@@ -58,74 +55,44 @@ export function AdaptiveBenchmarkSection({
     <section id={id} className="panel workspace-panel adaptive-benchmark-panel">
       <div className="adaptive-section-header">
         <div>
-          <p className="dashboard-eyebrow">Overview</p>
-          <h3>Benchmarks</h3>
+          <p className="dashboard-eyebrow">Browser TTS x 5 languages</p>
+          <h3>Adaptive profiles</h3>
         </div>
+      </div>
+      {!expanded ? (
         <button
           type="button"
-          className="secondary-button adaptive-section-toggle"
+          className="secondary-button compact-button adaptive-profile-detail-toggle"
           onClick={onToggleExpanded}
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse section' : 'Expand section'}
-          title={expanded ? 'Collapse' : 'Expand'}
         >
-          <span className={`adaptive-section-toggle-icon ${expanded ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
+          Show adaptive profiles
         </button>
-      </div>
-      {expanded ? (
+      ) : (
         <>
-          <div className="adaptive-section-header adaptive-subsection-header">
-            <div>
-              <p className="dashboard-eyebrow">1 input x 5 languages</p>
-              <h4>Profile matrix</h4>
-            </div>
-            <button
-              type="button"
-              className="secondary-button adaptive-section-toggle"
-              onClick={() => setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, selector: !prev.selector }))}
-              aria-expanded={benchmarkSubsectionsExpanded.selector}
-              aria-label={benchmarkSubsectionsExpanded.selector ? 'Collapse section' : 'Expand section'}
-              title={benchmarkSubsectionsExpanded.selector ? 'Collapse' : 'Expand'}
-            >
-              <span className={`adaptive-section-toggle-icon ${benchmarkSubsectionsExpanded.selector ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-            </button>
-          </div>
-          {benchmarkSubsectionsExpanded.selector ? (
-            <AdaptiveProfileMatrix
-              adapters={adapters}
-              benchmarks={benchmarks}
-              selectedInputMode={selectedInputMode}
-              selectedLanguage={selectedLanguage}
-              onSelect={openSelectedProfile}
-            />
-          ) : null}
+          <AdaptiveProfileMatrix
+            adapters={adapters}
+            benchmarks={benchmarks}
+            selectedInputMode={selectedInputMode}
+            selectedLanguage={selectedLanguage}
+            onSelect={openSelectedProfile}
+          />
 
-          <div className="adaptive-section-header adaptive-subsection-header" id="adaptive-selected-profile">
+          <div className="adaptive-section-header adaptive-selected-profile-header" id="adaptive-selected-profile">
             <div>
               <p className="dashboard-eyebrow">Selected profile</p>
               <h4>{selectedAdapter?.title ?? selectedInputMode} / {formatBenchmarkLanguage(selectedProfile.language)}</h4>
             </div>
-            <div className="adaptive-selected-profile-actions">
-              <button
-                type="button"
-                className="secondary-button compact-button"
-                onClick={() => openSelectedProfile()}
-              >
-                Open cockpit
-              </button>
-              <button
-                type="button"
-                className="secondary-button adaptive-section-toggle"
-                onClick={() => setBenchmarkSubsectionsExpanded((prev) => ({ ...prev, workspace: !prev.workspace }))}
-                aria-expanded={benchmarkSubsectionsExpanded.workspace}
-                aria-label={benchmarkSubsectionsExpanded.workspace ? 'Collapse section' : 'Expand section'}
-                title={benchmarkSubsectionsExpanded.workspace ? 'Collapse' : 'Expand'}
-              >
-                <span className={`adaptive-section-toggle-icon ${benchmarkSubsectionsExpanded.workspace ? 'adaptive-section-toggle-icon-open' : ''}`}>⌃</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              className="secondary-button compact-button adaptive-profile-detail-toggle"
+              onClick={() => setSelectedProfileDetailsOpen((open) => !open)}
+              aria-expanded={selectedProfileDetailsOpen}
+              aria-controls="adaptive-selected-profile-cockpit"
+            >
+              {selectedProfileDetailsOpen ? 'Hide details' : 'Show details'}
+            </button>
           </div>
-          {benchmarkSubsectionsExpanded.workspace ? (
+          {selectedProfileDetailsOpen ? (
             <AdaptiveBenchmarkCockpit
               profile={selectedProfile}
               inputTitle={selectedAdapter?.title ?? selectedInputMode}
@@ -147,7 +114,7 @@ export function AdaptiveBenchmarkSection({
             />
           ) : null}
         </>
-      ) : null}
+      )}
     </section>
   );
 }

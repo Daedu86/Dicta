@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { formatScore, formatWeakAreaLabel, getBenchmarkHealth } from './adaptiveWorkspaceViewHelpers';
+import { formatPercent, formatScore, formatWeakAreaLabel, getBenchmarkHealth } from './adaptiveWorkspaceViewHelpers';
 import type { AdaptiveBenchmarkCockpitProps, AdaptiveBenchmarkCockpitRuntime } from './AdaptiveBenchmarkCockpitTypes';
 
 export function AdaptiveBenchmarkProfileCockpit({
@@ -31,30 +31,29 @@ export function AdaptiveBenchmarkProfileCockpit({
 }) {
   return (
     <section className="adaptive-benchmark-subpanel adaptive-cockpit-panel">
-      <div className="adaptive-section-header adaptive-subsection-header">
+      <div className="adaptive-profile-overview-header">
         <div>
-          <p className="dashboard-eyebrow">Profile Cockpit</p>
+          <p className="dashboard-eyebrow">Profile summary</p>
           <h4>{inputTitle} / {languageLabel}</h4>
+          <p className="dashboard-meta">
+            {profile.sampleCount} samples · {profile.sessionCount} sessions · updated {profile.lastUpdatedAt ? formatSessionDate(profile.lastUpdatedAt) : 'n/a'}
+          </p>
         </div>
+        <span className={`adaptive-confidence-pill adaptive-confidence-${getBenchmarkHealth(profile)}`}>{confidenceState}</span>
       </div>
-      <div className="adaptive-cockpit-grid">
-        <section className="adaptive-benchmark-subpanel adaptive-profile-hero-card">
-          <div className="adaptive-profile-hero-top">
-            <div>
-              <span className={`adaptive-confidence-pill adaptive-confidence-${getBenchmarkHealth(profile)}`}>{confidenceState}</span>
-              <h4>{formatScore(profile.sweetSpotScore)} sweet spot</h4>
-            </div>
-            <strong>{profile.sampleCount}</strong>
-          </div>
-          <div className="adaptive-profile-hero-metrics">
-            <span><strong>{formatScore(profile.recommendation.confidence)}</strong> confidence</span>
-            <span><strong>{profile.sessionCount}</strong> sessions</span>
-            <span><strong>{profile.lastUpdatedAt ? formatSessionDate(profile.lastUpdatedAt) : 'n/a'}</strong> updated</span>
-          </div>
-        </section>
 
-        <section className="adaptive-benchmark-subpanel adaptive-next-action-card">
-          <h4>Next target</h4>
+      <div className="adaptive-profile-overview">
+        <div className="adaptive-profile-score-block">
+          <strong>{formatScore(profile.sweetSpotScore)}</strong>
+          <span>sweet spot</span>
+        </div>
+        <div className="adaptive-profile-stat-strip">
+          <span><small>Confidence</small><strong>{formatScore(profile.recommendation.confidence)}</strong></span>
+          <span><small>Avg accuracy</small><strong>{formatPercent(profile.averageAccuracy)}</strong></span>
+          <span><small>Avg lag</small><strong>{profile.averageLagSec.toFixed(2)}s</strong></span>
+        </div>
+        <div className="adaptive-profile-targets">
+          <h5>Next target</h5>
           <div className="adaptive-target-token-grid">
             <span><small>Rate</small><strong>{recommendedRange}</strong></span>
             <span><small>Phrase</small><strong>{profile.recommendation.targetPhraseSize}</strong></span>
@@ -67,10 +66,12 @@ export function AdaptiveBenchmarkProfileCockpit({
               weakAreaSummary.map((area) => <span key={area} className="adaptive-weak-area-chip">{formatWeakAreaLabel(area)}</span>)
             )}
           </div>
-        </section>
+        </div>
+      </div>
 
-        <section className="adaptive-benchmark-subpanel adaptive-words-widget">
-          <h4>Words to improve</h4>
+      <div className="adaptive-profile-support-grid">
+        <section className="adaptive-words-widget">
+          <h5>Words to improve</h5>
           {repeatWordSummary.length === 0 ? (
             <p className="hint">No finished sessions for this input/language in the last 20 days.</p>
           ) : (
@@ -89,15 +90,17 @@ export function AdaptiveBenchmarkProfileCockpit({
           )}
         </section>
 
-        <section className={`adaptive-benchmark-subpanel adaptive-feedback-status-card ${sequencingClean ? 'adaptive-feedback-status-good' : 'adaptive-feedback-status-watch'}`}>
-          <h4>Latest feedback</h4>
+        <section className={`adaptive-feedback-status-card ${sequencingClean ? 'adaptive-feedback-status-good' : 'adaptive-feedback-status-watch'}`}>
+          <h5>Latest feedback</h5>
           <div className="adaptive-feedback-widget-grid">
             <span><small>Verdict</small><strong>{sessionFeedback?.verdict ?? 'n/a'}</strong></span>
             <span><small>Issues</small><strong>{feedbackIssueCount}</strong></span>
             <span><small>Improvement</small><strong>{sessionFeedback ? formatScore(sessionFeedback.improvementDelta.overallImprovementScore) : 'n/a'}</strong></span>
           </div>
         </section>
+      </div>
 
+      <div className="adaptive-profile-export-row">
         {exportPanel}
       </div>
     </section>

@@ -43,8 +43,21 @@
     content: 'FR';
   }
 
+  .adaptive-profile-matrix-row .adaptive-profile-cell:nth-child(6)::before {
+    content: 'PT';
+  }
+
   .adaptive-cockpit-grid {
     grid-template-columns: 1fr;
+  }
+
+  .adaptive-profile-stat-strip span {
+    border-left: 0;
+    border-top: 1px solid #dbe6f2;
+  }
+
+  .adaptive-profile-stat-strip span:first-child {
+    border-top: 0;
   }
 
   .adaptive-coach-card-gauge {

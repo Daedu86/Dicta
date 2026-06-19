@@ -6,8 +6,8 @@ function clamp01(value: number): number {
 }
 
 export function benchmarkSubtitle(inputMode: InputMode): string {
-  if (inputMode === 'browser-tts') return 'Browser or OS voice baseline and fallback execution.';
-  return 'Cached semantic chunks with browser fallback.';
+  if (inputMode === 'browser-tts') return 'SpeechSynthesis profile';
+  return 'Browser fallback profile';
 }
 
 export function formatBenchmarkLanguage(language: LanguageCode): string {

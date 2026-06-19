@@ -47,8 +47,8 @@ export function AdaptiveProfileMatrix({
                   title={`${inputMode}/${language}: ${formatScore(profile.sweetSpotScore)} sweet spot, ${formatScore(profile.recommendation.confidence)} confidence, ${profile.sampleCount} samples`}
                 >
                   <span>{formatScore(profile.sweetSpotScore)}</span>
-                  <strong>{profile.sampleCount}</strong>
-                  <small>{formatScore(profile.recommendation.confidence)}</small>
+                  <strong>{profile.sampleCount} samples</strong>
+                  <small>{formatScore(profile.recommendation.confidence)} confidence</small>
                 </button>
               );
             })}

@@ -76,14 +76,6 @@ export function AdaptiveBenchmarkCockpit({
 
   return (
     <div className="adaptive-benchmark-workspace" id="adaptive-selected-profile-cockpit">
-      <div className="dashboard-card-header">
-        <div>
-          <h3>{inputTitle} / {runtime.languageLabel}</h3>
-          <p className="dashboard-meta">
-            Profile key: {profile.inputMode}/{profile.language}
-          </p>
-        </div>
-      </div>
       {benchmarkExportMessage ? (
         <p className={benchmarkExportMessage.toLowerCase().includes('could not') ? 'error' : 'success'}>{benchmarkExportMessage}</p>
       ) : null}

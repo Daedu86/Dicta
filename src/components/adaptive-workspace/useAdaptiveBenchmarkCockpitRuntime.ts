@@ -49,8 +49,8 @@ export function useAdaptiveBenchmarkCockpitRuntime({
     : fallbackDiagnostics.repeatedPhraseCount + fallbackDiagnostics.replayCount + fallbackDiagnostics.phraseIndexJumpCount;
   const [workspaceSubsectionsExpanded, setWorkspaceSubsectionsExpanded] = useState({
     kpis: false,
-    coach: true,
-    feedback: true,
+    coach: false,
+    feedback: false,
     deepMetrics: false,
     timeline: false,
   });

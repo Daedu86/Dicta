@@ -40,7 +40,9 @@
     grid-template-columns: 1fr;
   }
 
-  .adaptive-profile-hero-metrics,
+  .adaptive-profile-overview,
+  .adaptive-profile-stat-strip,
+  .adaptive-profile-support-grid,
   .adaptive-target-token-grid,
   .adaptive-feedback-widget-grid,
   .today-summary-grid,

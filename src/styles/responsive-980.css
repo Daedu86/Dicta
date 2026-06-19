@@ -66,11 +66,19 @@
 
   .adaptive-profile-matrix-header,
   .adaptive-profile-matrix-row {
-    grid-template-columns: minmax(140px, 0.9fr) repeat(4, minmax(70px, 1fr));
+    grid-template-columns: minmax(132px, 0.9fr) repeat(5, minmax(66px, 1fr));
   }
 
   .adaptive-profile-matrix-header {
     display: grid;
+  }
+
+  .adaptive-profile-overview {
+    grid-template-columns: minmax(8rem, 0.6fr) minmax(0, 1fr);
+  }
+
+  .adaptive-profile-targets {
+    grid-column: 1 / -1;
   }
 }
 
