@@ -20,8 +20,8 @@ export const OPEN_ROUTER_DIRECT_GENERATION_PRESETS = {
     slotLabel: 'Adaptive direct session',
     displayLabel: 'Adaptive session',
     durationMinutes: 2,
-    userIntent: 'auto',
-    targetDifficulty: 'normal',
-    difficultyInstruction: 'Adaptive intent: let the trainer prescription resolve recover, stabilize, progress, or challenge from the current benchmark and latest feedback.',
+    userIntent: 'challenge',
+    targetDifficulty: 'hard',
+    difficultyInstruction: 'Adaptive session: request the highest safe training level, but let the trainer prescription downgrade to recover, stabilize, or progress when the benchmark and latest feedback show pressure.',
   },
 } satisfies Record<OpenRouterDirectGenerationPresetKey, OpenRouterDirectGenerationPreset>;
