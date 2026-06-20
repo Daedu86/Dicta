@@ -92,6 +92,7 @@ export function useDictaRuntimeRootFocusedTrainingGraph({
     trainingGenerationNowMs: openRouterGraph.trainingGenerationNowMs,
     directOpenRouterBusy: openRouterGraph.directOpenRouterBusy,
     generateAdaptiveNextSessionFromOpenRouter: openRouterGraph.generateAdaptiveNextSessionFromOpenRouter,
+    generateTopicNextSessionFromOpenRouter: openRouterGraph.generateTopicNextSessionFromOpenRouter,
   });
 }
 
