@@ -49,10 +49,6 @@ export function buildFocusedTrainingRouteArgs(
     trainingGenerationNotices: args.trainingGenerationNotices,
     trainingGenerationNowMs: args.trainingGenerationNowMs,
     directOpenRouterBusy: args.directOpenRouterBusy,
-    directIntermediateOpenRouterBusy: args.directIntermediateOpenRouterBusy,
-    directAdvancedOpenRouterBusy: args.directAdvancedOpenRouterBusy,
-    generateEasyNextSessionFromOpenRouter: args.generateEasyNextSessionFromOpenRouter,
-    generateIntermediateNextSessionFromOpenRouter: args.generateIntermediateNextSessionFromOpenRouter,
-    generateAdvancedNextSessionFromOpenRouter: args.generateAdvancedNextSessionFromOpenRouter,
+    generateAdaptiveNextSessionFromOpenRouter: args.generateAdaptiveNextSessionFromOpenRouter,
   };
 }
