@@ -18,10 +18,10 @@ describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
     expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive.durationMinutes).toBe(2);
   });
 
-  it('lets the trainer resolve the final mode and difficulty', () => {
+  it('requests the highest safe level and lets the trainer downgrade if needed', () => {
     expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive).toMatchObject({
-      userIntent: 'auto',
-      targetDifficulty: 'normal',
+      userIntent: 'challenge',
+      targetDifficulty: 'hard',
     });
   });
 
