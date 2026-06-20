@@ -12,7 +12,8 @@ export function useFocusedTrainingRouteGenerationButtons({
   openRouterJobNotifications,
   trainingGenerationNotices,
   trainingGenerationNowMs,
-  directOpenRouterBusy,
+  adaptiveOpenRouterBusy,
+  topicOpenRouterBusy,
   generateAdaptiveNextSessionFromOpenRouter,
   generateTopicNextSessionFromOpenRouter,
 }: UseFocusedTrainingRouteRuntimeArgs) {
@@ -27,7 +28,8 @@ export function useFocusedTrainingRouteGenerationButtons({
     openRouterJobNotifications,
     trainingGenerationNotices,
     trainingGenerationNowMs,
-    directOpenRouterBusy,
+    adaptiveOpenRouterBusy,
+    topicOpenRouterBusy,
     generateAdaptiveNextSessionFromOpenRouter,
     generateTopicNextSessionFromOpenRouter,
   });
