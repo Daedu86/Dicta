@@ -19,6 +19,7 @@ type RunOpenRouterDirectGenerationJobRequestArgs = Pick<
   inputMode: InputMode;
   language: BenchmarkLanguageButton;
   generationStartedAt: string;
+  topicContext?: string;
 };
 
 export async function runOpenRouterDirectGenerationJobRequest({
@@ -31,6 +32,7 @@ export async function runOpenRouterDirectGenerationJobRequest({
   adaptiveSessionFeedbackByInputLanguage,
   recentDictationSessionHints,
   generationStartedAt,
+  topicContext,
   getAuthHeaders,
 }: RunOpenRouterDirectGenerationJobRequestArgs): Promise<ActiveOpenRouterJob> {
   const jobPlan = buildOpenRouterDirectGenerationJobPlan({
@@ -43,6 +45,7 @@ export async function runOpenRouterDirectGenerationJobRequest({
     adaptiveSessionFeedbackByInputLanguage,
     recentDictationSessionHints,
     generationStartedAt,
+    topicContext,
   });
 
   return requestOpenRouterGenerationJob({
