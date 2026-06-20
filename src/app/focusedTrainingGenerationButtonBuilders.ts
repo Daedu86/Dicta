@@ -9,7 +9,7 @@ import type {
   SessionQuotaStatusForGenerationButtons,
 } from './useFocusedTrainingGenerationButtons';
 
-const MAX_ACTIVE_OPEN_ROUTER_JOBS = 3;
+const MAX_ACTIVE_OPEN_ROUTER_JOBS_PER_BUTTON = 3;
 
 type FocusedTrainingDirectGenerationButtonDefinition = {
   buttonId: string;
@@ -47,7 +47,7 @@ const ADAPTIVE_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButt
 
 const TOPIC_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButtonDefinition = {
   buttonId: 'topic',
-  preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive,
+  preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic,
   requestingLabel: 'Requesting topic session...',
   readyLabel: 'Generate Topic Session',
   title: 'Generate a two-minute adaptive session around a topic you provide.',
@@ -63,12 +63,12 @@ export function buildFocusedTrainingGenerationButtons(
   return [
     buildDirectGenerationButton({
       ...ADAPTIVE_GENERATION_BUTTON_DEFINITION,
-      busy: args.directOpenRouterBusy,
+      busy: args.adaptiveOpenRouterBusy,
       action: args.generateAdaptiveNextSessionFromOpenRouter,
     }, context),
     buildDirectGenerationButton({
       ...TOPIC_GENERATION_BUTTON_DEFINITION,
-      busy: args.directOpenRouterBusy,
+      busy: args.topicOpenRouterBusy,
       action: args.generateTopicNextSessionFromOpenRouter,
     }, context),
   ];
@@ -78,12 +78,19 @@ function hasOpenRouterModel(modelId: string): boolean {
   return Boolean(modelId.trim());
 }
 
+function countActiveOpenRouterJobsForSlot(
+  activeJobs: DirectGenerationButtonContext['activeOpenRouterJobs'],
+  slotLabel: string,
+): number {
+  return activeJobs.filter((job) => job.slotLabel === slotLabel).length;
+}
+
 function buildDirectGenerationButton(
   config: FocusedTrainingDirectGenerationButtonRuntime,
   context: DirectGenerationButtonContext,
 ): TrainingGenerationButton {
-  const activeJobCount = context.activeOpenRouterJobs.length;
-  const atActiveJobLimit = activeJobCount >= MAX_ACTIVE_OPEN_ROUTER_JOBS;
+  const activeJobCount = countActiveOpenRouterJobsForSlot(context.activeOpenRouterJobs, config.preset.slotLabel);
+  const atActiveJobLimit = activeJobCount >= MAX_ACTIVE_OPEN_ROUTER_JOBS_PER_BUTTON;
   const notice = buildTrainingGenerationButtonNotice({
     slotLabel: config.preset.slotLabel,
     displayLabel: config.preset.displayLabel,
@@ -99,7 +106,7 @@ function buildDirectGenerationButton(
     onClick: () => void config.action(),
     disabled: isModelGenerationDisabled({ ...context, busy: config.busy, atActiveJobLimit }),
     title: buildModelRequiredTitle({
-      fallbackTitle: atActiveJobLimit ? `Generation limit ${MAX_ACTIVE_OPEN_ROUTER_JOBS}/${MAX_ACTIVE_OPEN_ROUTER_JOBS}.` : config.title,
+      fallbackTitle: atActiveJobLimit ? `Generation limit ${MAX_ACTIVE_OPEN_ROUTER_JOBS_PER_BUTTON}/${MAX_ACTIVE_OPEN_ROUTER_JOBS_PER_BUTTON} for this button.` : config.title,
       modelIsSet: context.modelIsSet,
       openRouterOfflineTitle: context.openRouterOfflineTitle,
       sessionQuotaStatus: context.sessionQuotaStatus,
@@ -116,8 +123,8 @@ function buildGenerationButtonLabel(
   atActiveJobLimit: boolean,
 ): string {
   if (config.busy) return config.requestingLabel;
-  if (atActiveJobLimit) return `Generating sessions (${activeJobCount}/${MAX_ACTIVE_OPEN_ROUTER_JOBS})`;
-  if (activeJobCount > 0) return `${config.readyLabel} (${activeJobCount}/${MAX_ACTIVE_OPEN_ROUTER_JOBS})`;
+  if (atActiveJobLimit) return `Generating sessions (${activeJobCount}/${MAX_ACTIVE_OPEN_ROUTER_JOBS_PER_BUTTON})`;
+  if (activeJobCount > 0) return `${config.readyLabel} (${activeJobCount}/${MAX_ACTIVE_OPEN_ROUTER_JOBS_PER_BUTTON})`;
   return config.readyLabel;
 }
 
