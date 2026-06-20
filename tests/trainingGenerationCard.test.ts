@@ -14,7 +14,13 @@ function button(partial: Partial<TrainingGenerationButton> & Pick<TrainingGenera
 }
 
 describe('TrainingGenerationCard intent labels', () => {
-  it('renames standard mobile generation buttons to listening-first intents', () => {
+  it('keeps the adaptive generation label and queue count visible', () => {
+    expect(buildTrainingGenerationButtonDisplay(button({ id: 'adaptive', label: 'Generate Session' })).displayLabel).toBe('Generate Session');
+    expect(buildTrainingGenerationButtonDisplay(button({ id: 'adaptive', label: 'Generate Session (2/3)' })).displayLabel).toBe('Generate Session (2/3)');
+    expect(buildTrainingGenerationButtonDisplay(button({ id: 'adaptive', label: 'Generating sessions (3/3)' })).displayLabel).toBe('Generating sessions (3/3)');
+  });
+
+  it('renames legacy generation buttons to listening-first intents', () => {
     expect(buildTrainingGenerationButtonDisplay(button({ id: 'easy', label: 'New Easy Session' })).displayLabel).toBe('Precision');
     expect(buildTrainingGenerationButtonDisplay(button({ id: 'medium', label: 'New Medium Session' })).displayLabel).toBe('Stabilize');
     expect(buildTrainingGenerationButtonDisplay(button({ id: 'hard', label: 'New Hard Session' })).displayLabel).toBe('Challenge');
@@ -26,9 +32,17 @@ describe('TrainingGenerationCard intent labels', () => {
     expect(buildTrainingGenerationButtonDisplay(button({ id: 'express-hard', label: 'Express Hard Session' })).displayLabel).toBe('Challenge');
   });
 
-  it('renames loading states to the same intent vocabulary', () => {
+  it('renames loading states to the same intent vocabulary for legacy buttons', () => {
     expect(buildTrainingGenerationButtonDisplay(button({ id: 'easy', label: 'Requesting easy...' })).displayLabel).toBe('Requesting Precision...');
     expect(buildTrainingGenerationButtonDisplay(button({ id: 'express-medium', label: 'Generating express medium...' })).displayLabel).toBe('Generating Stabilize...');
+  });
+
+  it('describes the adaptive button as benchmark-driven', () => {
+    const adaptive = buildTrainingGenerationButtonDisplay(button({ id: 'adaptive', label: 'Generate Session' }));
+
+    expect(adaptive.displayTitle).toContain('benchmark');
+    expect(adaptive.displayTitle).toContain('recovery, stabilization, progress, or challenge');
+    expect(adaptive.displayHelpText).toContain('trainer reads your benchmark');
   });
 
   it('updates Precision descriptions for recall and completion-window work', () => {
