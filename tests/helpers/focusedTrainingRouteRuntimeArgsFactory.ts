@@ -106,6 +106,7 @@ export function createFocusedTrainingRouteRuntimeArgs(
     trainingGenerationNowMs: 0,
     directOpenRouterBusy: false,
     generateAdaptiveNextSessionFromOpenRouter: vi.fn(),
+    generateTopicNextSessionFromOpenRouter: vi.fn(),
     ...overrides,
   };
 }
