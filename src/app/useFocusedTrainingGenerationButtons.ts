@@ -28,6 +28,7 @@ export type UseFocusedTrainingGenerationButtonsArgs = {
   trainingGenerationNowMs: number;
   directOpenRouterBusy: boolean;
   generateAdaptiveNextSessionFromOpenRouter: GenerateSessionAction;
+  generateTopicNextSessionFromOpenRouter: GenerateSessionAction;
 };
 
 export type BuildFocusedTrainingGenerationButtonsArgs = Pick<
@@ -42,6 +43,7 @@ export type BuildFocusedTrainingGenerationButtonsArgs = Pick<
   | 'trainingGenerationNowMs'
   | 'directOpenRouterBusy'
   | 'generateAdaptiveNextSessionFromOpenRouter'
+  | 'generateTopicNextSessionFromOpenRouter'
 >;
 
 export function useFocusedTrainingGenerationButtons({
@@ -57,6 +59,7 @@ export function useFocusedTrainingGenerationButtons({
   trainingGenerationNowMs,
   directOpenRouterBusy,
   generateAdaptiveNextSessionFromOpenRouter,
+  generateTopicNextSessionFromOpenRouter,
 }: UseFocusedTrainingGenerationButtonsArgs): TrainingGenerationButton[] {
   return useMemo(() => {
     if (!openRouterAccessAllowed) return [];
@@ -72,6 +75,7 @@ export function useFocusedTrainingGenerationButtons({
       trainingGenerationNowMs,
       directOpenRouterBusy,
       generateAdaptiveNextSessionFromOpenRouter,
+      generateTopicNextSessionFromOpenRouter,
     });
   }, [
     openRouterAccessAllowed,
@@ -87,5 +91,6 @@ export function useFocusedTrainingGenerationButtons({
     activeSession,
     directOpenRouterBusy,
     generateAdaptiveNextSessionFromOpenRouter,
+    generateTopicNextSessionFromOpenRouter,
   ]);
 }
