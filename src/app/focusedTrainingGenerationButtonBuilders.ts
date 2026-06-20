@@ -9,10 +9,11 @@ import type {
   SessionQuotaStatusForGenerationButtons,
 } from './useFocusedTrainingGenerationButtons';
 
+const MAX_ACTIVE_OPEN_ROUTER_JOBS = 3;
+
 type FocusedTrainingDirectGenerationButtonDefinition = {
   preset: OpenRouterDirectGenerationPreset;
   requestingLabel: string;
-  runningLabel: string;
   readyLabel: string;
   title: string;
   helpText: string;
@@ -34,43 +35,28 @@ type DirectGenerationButtonContext = Pick<
   | 'trainingGenerationNowMs'
 > & { modelIsSet: boolean };
 
-const DIRECT_GENERATION_BUTTON_DEFINITIONS: FocusedTrainingDirectGenerationButtonDefinition[] = [
-  {
-    preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.easy,
-    requestingLabel: 'Requesting precision...',
-    runningLabel: 'Generating precision...',
-    readyLabel: 'New Precision Session',
-    title: 'Generate a two-minute Precision session with OpenRouter.',
-    helpText: 'About 2 minutes. Precision level with simpler vocabulary, shorter clauses, and roughly 300 spoken words.',
-  },
-  {
-    preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.medium,
-    requestingLabel: 'Requesting stabilize...',
-    runningLabel: 'Generating stabilize...',
-    readyLabel: 'New Stabilize Session',
-    title: 'Generate a two-minute Stabilize session with OpenRouter.',
-    helpText: 'About 2 minutes. Stabilize level with balanced vocabulary, natural phrasing, and roughly 300 spoken words.',
-  },
-  {
-    preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.hard,
-    requestingLabel: 'Requesting challenge...',
-    runningLabel: 'Generating challenge...',
-    readyLabel: 'New Challenge Session',
-    title: 'Generate a two-minute Challenge session with OpenRouter.',
-    helpText: 'About 2 minutes. Challenge level with denser vocabulary, more complex grammar, and roughly 300 spoken words.',
-  },
-];
+const ADAPTIVE_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButtonDefinition = {
+  preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive,
+  requestingLabel: 'Requesting session...',
+  readyLabel: 'Generate Session',
+  title: 'Generate a two-minute adaptive session with OpenRouter.',
+  helpText: 'About 2 minutes. The benchmark and latest feedback resolve whether the next session should recover, stabilize, progress, or challenge.',
+};
 
 export function buildFocusedTrainingGenerationButtons(
   args: BuildFocusedTrainingGenerationButtonsArgs,
 ): TrainingGenerationButton[] {
   const modelIsSet = hasOpenRouterModel(args.effectiveOpenRouterDefaultModel);
-  return buildDirectGenerationButtonRuntimes(args).map((config) =>
-    buildDirectGenerationButton(config, {
+  return [
+    buildDirectGenerationButton({
+      ...ADAPTIVE_GENERATION_BUTTON_DEFINITION,
+      busy: args.directOpenRouterBusy,
+      action: args.generateAdaptiveNextSessionFromOpenRouter,
+    }, {
       ...args,
       modelIsSet,
     }),
-  );
+  ];
 }
 
 function hasOpenRouterModel(modelId: string): boolean {
@@ -81,7 +67,8 @@ function buildDirectGenerationButton(
   config: FocusedTrainingDirectGenerationButtonRuntime,
   context: DirectGenerationButtonContext,
 ): TrainingGenerationButton {
-  const running = context.activeOpenRouterJobs.some((job) => job.slotLabel === config.preset.slotLabel);
+  const activeJobCount = context.activeOpenRouterJobs.length;
+  const atActiveJobLimit = activeJobCount >= MAX_ACTIVE_OPEN_ROUTER_JOBS;
   const notice = buildTrainingGenerationButtonNotice({
     slotLabel: config.preset.slotLabel,
     displayLabel: config.preset.displayLabel,
@@ -93,11 +80,13 @@ function buildDirectGenerationButton(
 
   return {
     id: config.preset.id,
-    label: config.busy ? config.requestingLabel : running ? config.runningLabel : config.readyLabel,
+    label: buildGenerationButtonLabel(config, activeJobCount, atActiveJobLimit),
     onClick: () => void config.action(),
-    disabled: isModelGenerationDisabled({ ...context, busy: config.busy, running }),
+    disabled: isModelGenerationDisabled({ ...context, busy: config.busy, atActiveJobLimit }),
     title: buildModelRequiredTitle({
-      fallbackTitle: config.title,
+      fallbackTitle: atActiveJobLimit
+        ? `Wait for one of the ${MAX_ACTIVE_OPEN_ROUTER_JOBS} active generations to finish.`
+        : config.title,
       modelIsSet: context.modelIsSet,
       openRouterOfflineTitle: context.openRouterOfflineTitle,
       sessionQuotaStatus: context.sessionQuotaStatus,
@@ -106,6 +95,17 @@ function buildDirectGenerationButton(
     statusMessage: notice?.message,
     statusTone: notice?.tone,
   };
+}
+
+function buildGenerationButtonLabel(
+  config: FocusedTrainingDirectGenerationButtonRuntime,
+  activeJobCount: number,
+  atActiveJobLimit: boolean,
+): string {
+  if (config.busy) return config.requestingLabel;
+  if (atActiveJobLimit) return `Generating sessions (${activeJobCount}/${MAX_ACTIVE_OPEN_ROUTER_JOBS})`;
+  if (activeJobCount > 0) return `${config.readyLabel} (${activeJobCount}/${MAX_ACTIVE_OPEN_ROUTER_JOBS})`;
+  return config.readyLabel;
 }
 
 function buildModelRequiredTitle({
@@ -125,30 +125,10 @@ function buildModelRequiredTitle({
 
 function isModelGenerationDisabled({
   busy,
-  running,
+  atActiveJobLimit,
   isOnline,
   modelIsSet,
   sessionQuotaStatus,
-}: DirectGenerationButtonContext & { busy: boolean; running: boolean }): boolean {
-  return !isOnline || busy || running || !modelIsSet || sessionQuotaStatus.blocked;
-}
-
-function buildDirectGenerationButtonRuntimes({
-  directOpenRouterBusy,
-  directIntermediateOpenRouterBusy,
-  directAdvancedOpenRouterBusy,
-  generateEasyNextSessionFromOpenRouter,
-  generateIntermediateNextSessionFromOpenRouter,
-  generateAdvancedNextSessionFromOpenRouter,
-}: BuildFocusedTrainingGenerationButtonsArgs): FocusedTrainingDirectGenerationButtonRuntime[] {
-  const runtimes = [
-    { busy: directOpenRouterBusy, action: generateEasyNextSessionFromOpenRouter },
-    { busy: directIntermediateOpenRouterBusy, action: generateIntermediateNextSessionFromOpenRouter },
-    { busy: directAdvancedOpenRouterBusy, action: generateAdvancedNextSessionFromOpenRouter },
-  ];
-
-  return DIRECT_GENERATION_BUTTON_DEFINITIONS.map((definition, index) => ({
-    ...definition,
-    ...runtimes[index]!,
-  }));
+}: DirectGenerationButtonContext & { busy: boolean; atActiveJobLimit: boolean }): boolean {
+  return !isOnline || busy || atActiveJobLimit || !modelIsSet || sessionQuotaStatus.blocked;
 }
