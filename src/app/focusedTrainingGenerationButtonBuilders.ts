@@ -12,6 +12,7 @@ import type {
 const MAX_ACTIVE_OPEN_ROUTER_JOBS = 3;
 
 type FocusedTrainingDirectGenerationButtonDefinition = {
+  buttonId: string;
   preset: OpenRouterDirectGenerationPreset;
   requestingLabel: string;
   readyLabel: string;
@@ -36,6 +37,7 @@ type DirectGenerationButtonContext = Pick<
 > & { modelIsSet: boolean };
 
 const ADAPTIVE_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButtonDefinition = {
+  buttonId: 'adaptive',
   preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive,
   requestingLabel: 'Requesting session...',
   readyLabel: 'Generate Session',
@@ -43,19 +45,32 @@ const ADAPTIVE_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButt
   helpText: 'About 2 minutes. The benchmark and latest feedback resolve whether the next session should recover, stabilize, progress, or challenge.',
 };
 
+const TOPIC_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButtonDefinition = {
+  buttonId: 'topic',
+  preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive,
+  requestingLabel: 'Requesting topic session...',
+  readyLabel: 'Generate Topic Session',
+  title: 'Generate a two-minute adaptive session around a topic you provide.',
+  helpText: 'Adds your topic to the LLM prompt while the benchmark still controls difficulty, phrase length, and pacing.',
+};
+
 export function buildFocusedTrainingGenerationButtons(
   args: BuildFocusedTrainingGenerationButtonsArgs,
 ): TrainingGenerationButton[] {
   const modelIsSet = hasOpenRouterModel(args.effectiveOpenRouterDefaultModel);
+  const context = { ...args, modelIsSet };
+
   return [
     buildDirectGenerationButton({
       ...ADAPTIVE_GENERATION_BUTTON_DEFINITION,
       busy: args.directOpenRouterBusy,
       action: args.generateAdaptiveNextSessionFromOpenRouter,
-    }, {
-      ...args,
-      modelIsSet,
-    }),
+    }, context),
+    buildDirectGenerationButton({
+      ...TOPIC_GENERATION_BUTTON_DEFINITION,
+      busy: args.directOpenRouterBusy,
+      action: args.generateTopicNextSessionFromOpenRouter,
+    }, context),
   ];
 }
 
@@ -79,14 +94,12 @@ function buildDirectGenerationButton(
   });
 
   return {
-    id: config.preset.id,
+    id: config.buttonId,
     label: buildGenerationButtonLabel(config, activeJobCount, atActiveJobLimit),
     onClick: () => void config.action(),
     disabled: isModelGenerationDisabled({ ...context, busy: config.busy, atActiveJobLimit }),
     title: buildModelRequiredTitle({
-      fallbackTitle: atActiveJobLimit
-        ? `Wait for one of the ${MAX_ACTIVE_OPEN_ROUTER_JOBS} active generations to finish.`
-        : config.title,
+      fallbackTitle: atActiveJobLimit ? `Generation limit ${MAX_ACTIVE_OPEN_ROUTER_JOBS}/${MAX_ACTIVE_OPEN_ROUTER_JOBS}.` : config.title,
       modelIsSet: context.modelIsSet,
       openRouterOfflineTitle: context.openRouterOfflineTitle,
       sessionQuotaStatus: context.sessionQuotaStatus,
