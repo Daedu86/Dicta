@@ -48,7 +48,8 @@ export function buildFocusedTrainingRouteArgs(
     openRouterJobNotifications: args.openRouterJobNotifications,
     trainingGenerationNotices: args.trainingGenerationNotices,
     trainingGenerationNowMs: args.trainingGenerationNowMs,
-    directOpenRouterBusy: args.directOpenRouterBusy,
+    adaptiveOpenRouterBusy: args.adaptiveOpenRouterBusy,
+    topicOpenRouterBusy: args.topicOpenRouterBusy,
     generateAdaptiveNextSessionFromOpenRouter: args.generateAdaptiveNextSessionFromOpenRouter,
     generateTopicNextSessionFromOpenRouter: args.generateTopicNextSessionFromOpenRouter,
   };
