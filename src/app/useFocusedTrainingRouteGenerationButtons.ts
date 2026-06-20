@@ -13,11 +13,7 @@ export function useFocusedTrainingRouteGenerationButtons({
   trainingGenerationNotices,
   trainingGenerationNowMs,
   directOpenRouterBusy,
-  directIntermediateOpenRouterBusy,
-  directAdvancedOpenRouterBusy,
-  generateEasyNextSessionFromOpenRouter,
-  generateIntermediateNextSessionFromOpenRouter,
-  generateAdvancedNextSessionFromOpenRouter,
+  generateAdaptiveNextSessionFromOpenRouter,
 }: UseFocusedTrainingRouteRuntimeArgs) {
   return useFocusedTrainingGenerationButtons({
     openRouterAccessAllowed,
@@ -31,10 +27,6 @@ export function useFocusedTrainingRouteGenerationButtons({
     trainingGenerationNotices,
     trainingGenerationNowMs,
     directOpenRouterBusy,
-    directIntermediateOpenRouterBusy,
-    directAdvancedOpenRouterBusy,
-    generateEasyNextSessionFromOpenRouter,
-    generateIntermediateNextSessionFromOpenRouter,
-    generateAdvancedNextSessionFromOpenRouter,
+    generateAdaptiveNextSessionFromOpenRouter,
   });
 }
