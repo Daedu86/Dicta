@@ -55,4 +55,5 @@ export type UseOpenRouterDirectGenerationRunnerOptions = {
 export type GenerateOpenRouterDirectSessionOptions = OpenRouterDirectGenerationPreset & {
   isBusy: boolean;
   setBusy: (value: boolean) => void;
+  topicContext?: string;
 };
