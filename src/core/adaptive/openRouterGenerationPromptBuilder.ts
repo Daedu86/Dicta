@@ -17,6 +17,7 @@ export function buildOpenRouterGenerationPrompt({
   targetDifficulty,
   difficultyInstruction,
   diversificationHints,
+  topicContext,
 }: OpenRouterGenerationPromptArgs): OpenRouterGenerationPromptPayload {
   const normalizedProfile = normalizeInputLanguageBenchmarkForRecommendation(profile);
   const trainingPrescription = buildListeningTrainingPrescription({
@@ -42,6 +43,7 @@ export function buildOpenRouterGenerationPrompt({
         targetDifficulty,
         difficultyInstruction,
         diversificationHints,
+        topicContext,
         compactAdaptiveV2Context: promptContext.compactAdaptiveV2Context,
       }),
       outputTemplate: promptContext.outputTemplate,
@@ -58,7 +60,11 @@ export function buildOpenRouterGenerationPrompt({
       targetDifficulty,
       difficultyInstruction,
       diversificationHints,
-    })}\n\nGeneration context:\n${selectOpenRouterSourcePayload({
+      topicContext,
+    })}
+
+Generation context:
+${selectOpenRouterSourcePayload({
       promptSource,
       hasSessionFeedback: Boolean(sessionFeedback),
       compactPromptPackage: promptContext.compactPromptPackage,
