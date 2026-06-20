@@ -19,6 +19,7 @@ type BuildHardRulesPromptArgs = {
   targetDifficulty?: DictationScriptDifficulty;
   difficultyInstruction?: string;
   diversificationHints?: string[];
+  topicContext?: string;
 };
 
 type BuildCompactAdaptiveV2PromptArgs = BuildHardRulesPromptArgs & {
@@ -33,6 +34,7 @@ export function buildOpenRouterHardRulesPrompt({
   targetDifficulty,
   difficultyInstruction,
   diversificationHints,
+  topicContext,
 }: BuildHardRulesPromptArgs): string {
   const { durationLabel, targetSpokenWords, minSpokenWords, maxSpokenWords, minimumPhraseCount } =
     getDurationTargets(durationMinutes);
@@ -43,6 +45,7 @@ export function buildOpenRouterHardRulesPrompt({
     `The returned JSON field "language" must be exactly "${normalizedProfile.language}".`,
     ...(targetDifficulty ? [`The returned JSON field "difficulty" must be exactly "${targetDifficulty}".`] : []),
     ...(difficultyInstruction ? [difficultyInstruction] : []),
+    ...buildTopicContextPromptLines(topicContext),
     `Generate a training script with voice playback duration of ${durationLabel} and set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
     `The combined spoken text across all phrases should be ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total, so the actual dictation lasts about ${durationLabel}.`,
     `Create at least ${minimumPhraseCount} phrases unless the phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
@@ -65,6 +68,7 @@ export function buildCompactAdaptiveV2Prompt({
   targetDifficulty,
   difficultyInstruction,
   diversificationHints,
+  topicContext,
   compactAdaptiveV2Context,
 }: BuildCompactAdaptiveV2PromptArgs): string {
   const { durationLabel, targetSpokenWords, minSpokenWords, maxSpokenWords, minimumPhraseCount } =
@@ -86,6 +90,7 @@ export function buildCompactAdaptiveV2Prompt({
     `Set "recommendedPauseMs" close to ${trainingPrescription.targetPauseMs}.`,
     `Keep phrase-level "difficulty" values in ${trainingPrescription.phraseDifficultyRange[0].toFixed(2)}-${trainingPrescription.phraseDifficultyRange[1].toFixed(2)}.`,
     ...buildTrainingPrescriptionRequestNotes(trainingPrescription, targetDifficulty, difficultyInstruction),
+    ...buildTopicContextPromptLines(topicContext),
     `Target voice playback duration: ${durationLabel}; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
     `Combined spoken phrase text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
     `Create at least ${minimumPhraseCount} phrases unless phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
@@ -116,6 +121,17 @@ function getDurationTargets(durationMinutes: OpenRouterDurationMinutes): Duratio
 
 function formatDurationMinutes(minutes: OpenRouterDurationMinutes): string {
   return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
+function buildTopicContextPromptLines(topicContext?: string): string[] {
+  const trimmed = topicContext?.trim();
+  if (!trimmed) return [];
+
+  return [
+    'User topic context:',
+    trimmed,
+    'Use the topic as the semantic theme for the session, but keep the resolved trainer difficulty, phrase length, language, and pacing constraints above the topic preference.',
+  ];
 }
 
 function buildDiversificationPromptLines(diversificationHints?: string[]): string[] {
