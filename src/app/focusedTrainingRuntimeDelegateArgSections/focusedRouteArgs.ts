@@ -50,5 +50,6 @@ export function buildFocusedTrainingRouteArgs(
     trainingGenerationNowMs: args.trainingGenerationNowMs,
     directOpenRouterBusy: args.directOpenRouterBusy,
     generateAdaptiveNextSessionFromOpenRouter: args.generateAdaptiveNextSessionFromOpenRouter,
+    generateTopicNextSessionFromOpenRouter: args.generateTopicNextSessionFromOpenRouter,
   };
 }
