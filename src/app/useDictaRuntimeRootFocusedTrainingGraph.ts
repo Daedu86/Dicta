@@ -91,11 +91,7 @@ export function useDictaRuntimeRootFocusedTrainingGraph({
     trainingGenerationNotices: openRouterGraph.trainingGenerationNotices,
     trainingGenerationNowMs: openRouterGraph.trainingGenerationNowMs,
     directOpenRouterBusy: openRouterGraph.directOpenRouterBusy,
-    directIntermediateOpenRouterBusy: openRouterGraph.directIntermediateOpenRouterBusy,
-    directAdvancedOpenRouterBusy: openRouterGraph.directAdvancedOpenRouterBusy,
-    generateEasyNextSessionFromOpenRouter: openRouterGraph.generateEasyNextSessionFromOpenRouter,
-    generateIntermediateNextSessionFromOpenRouter: openRouterGraph.generateIntermediateNextSessionFromOpenRouter,
-    generateAdvancedNextSessionFromOpenRouter: openRouterGraph.generateAdvancedNextSessionFromOpenRouter,
+    generateAdaptiveNextSessionFromOpenRouter: openRouterGraph.generateAdaptiveNextSessionFromOpenRouter,
   });
 }
 
