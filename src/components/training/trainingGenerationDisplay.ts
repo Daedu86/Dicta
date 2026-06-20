@@ -15,10 +15,11 @@ export type TrainingGenerationButtonDisplay = TrainingGenerationButton & {
   displayHelpText?: string;
 };
 
-type TrainingGenerationIntent = 'adaptive' | 'precision' | 'stabilize' | 'challenge';
+type TrainingGenerationIntent = 'adaptive' | 'topic' | 'precision' | 'stabilize' | 'challenge';
 
 const INTENT_LABELS: Record<TrainingGenerationIntent, string> = {
   adaptive: 'Generate Session',
+  topic: 'Generate Topic Session',
   precision: 'Precision',
   stabilize: 'Stabilize',
   challenge: 'Challenge',
@@ -27,7 +28,7 @@ const INTENT_LABELS: Record<TrainingGenerationIntent, string> = {
 export function buildTrainingGenerationButtonDisplay(button: TrainingGenerationButton): TrainingGenerationButtonDisplay {
   const intent = resolveTrainingGenerationIntent(button.id);
   const intentLabel = INTENT_LABELS[intent];
-  const displayName = intent === 'adaptive' ? (button.label.trim() || intentLabel) : intentLabel;
+  const displayName = intent === 'adaptive' || intent === 'topic' ? (button.label.trim() || intentLabel) : intentLabel;
   const displayLabel = formatIntentButtonLabel(button.label, intent, intentLabel, displayName);
 
   return {
@@ -42,6 +43,8 @@ function resolveTrainingGenerationIntent(id: string): TrainingGenerationIntent {
   switch (id) {
     case 'adaptive':
       return 'adaptive';
+    case 'topic':
+      return 'topic';
     case 'easy':
     case 'express-easy':
       return 'precision';
@@ -57,7 +60,7 @@ function resolveTrainingGenerationIntent(id: string): TrainingGenerationIntent {
 }
 
 function formatIntentButtonLabel(label: string, intent: TrainingGenerationIntent, intentLabel: string, displayName: string): string {
-  if (intent === 'adaptive') return displayName;
+  if (intent === 'adaptive' || intent === 'topic') return displayName;
 
   const normalized = label.trim().toLocaleLowerCase();
   if (normalized.startsWith('requesting')) return `Requesting ${intentLabel}...`;
@@ -70,6 +73,8 @@ function buildIntentButtonTitle(intent: TrainingGenerationIntent, fallback: stri
   switch (intent) {
     case 'adaptive':
       return `Generate a ${duration} adaptive session: the benchmark and latest feedback choose recovery, stabilization, progress, or challenge.`;
+    case 'topic':
+      return `Generate a ${duration} adaptive topic session: you provide the semantic theme, while the benchmark still resolves difficulty and pacing.`;
     case 'precision':
       return `Generate a ${duration} Precision session: short, clear listening phrases that prioritize recall, content-word anchors, and on-time completion.`;
     case 'stabilize':
@@ -84,6 +89,9 @@ function buildIntentButtonTitle(intent: TrainingGenerationIntent, fallback: stri
 function buildIntentButtonHelpText(intent: TrainingGenerationIntent): string {
   if (intent === 'adaptive') {
     return 'About 2 minutes. The trainer reads your benchmark and latest feedback, then resolves the actual training mode before asking OpenRouter for a session.';
+  }
+  if (intent === 'topic') {
+    return 'About 2 minutes. Adds your topic to the LLM prompt, but the trainer still controls difficulty, phrase length, and pacing from your benchmark.';
   }
   if (intent === 'precision') {
     return 'About 2 minutes. Rebuilds listening precision with shorter phrases, clearer content-word anchors, detail recall, and a safer completion window.';
