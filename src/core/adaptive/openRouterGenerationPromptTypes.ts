@@ -26,6 +26,7 @@ export type OpenRouterGenerationPromptArgs = {
   targetDifficulty?: DictationScriptDifficulty;
   difficultyInstruction?: string;
   diversificationHints?: string[];
+  topicContext?: string;
 };
 
 export type OpenRouterGenerationPromptPayload = {
