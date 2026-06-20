@@ -24,7 +24,10 @@ import {
 import { buildExecutiveSummary } from './adaptiveUserSystemReportExecutiveSummary';
 import { buildAdaptiveLoopBreakdown } from './adaptiveUserSystemReportLoopBreakdown';
 import { buildComponentDiagnostics } from './adaptiveUserSystemReportComponentDiagnostics';
-import { buildCompactTechnicalDebugSummary } from './adaptiveUserSystemReportDebugSummary';
+import {
+  buildCompactTechnicalDebugSummary,
+  compactTechnicalDebugData,
+} from './adaptiveUserSystemReportDebugSummary';
 import { buildAdaptiveUserSystemReportListeningCycleV3 } from './adaptiveUserSystemReportListeningCycleV3';
 
 export function buildAdaptiveUserSystemReport({
@@ -60,7 +63,8 @@ export function buildAdaptiveUserSystemReport({
   const whatNeedsTuning = buildSystemTuningSignals(normalizedProfile, needsImprovement, feedback);
   const ttsEnvironmentReport = buildTtsEnvironmentReport(normalizedProfile, feedback, latestSession ?? null);
   const feedbackStatus = feedback ? `Current feedback is available for session ${feedback.sessionId}.` : 'No current completed-session feedback is available for this input/language yet.';
-  const estimatedTechnicalDebugDataBytes = estimateJsonBytes(technicalDebugData);
+  const reportTechnicalDebugData = compactTechnicalDebugData(technicalDebugData);
+  const estimatedTechnicalDebugDataBytes = estimateJsonBytes(reportTechnicalDebugData);
 
   return {
     reportMetadata: {
@@ -84,7 +88,7 @@ export function buildAdaptiveUserSystemReport({
         'technicalDebugData',
       ],
       rawDebugDataPolicy:
-        'Keep one button and one report: summarized diagnostics appear first; raw technical debug remains at technicalDebugData for deep troubleshooting.',
+        'Keep one button and one report: summarized diagnostics appear first; technicalDebugData is compacted for export and keeps raw detail only where it is diagnostically useful.',
       estimatedTechnicalDebugDataBytes,
       ...ttsEnvironmentReport,
     },
@@ -111,7 +115,7 @@ export function buildAdaptiveUserSystemReport({
       technicalDebugData,
     }),
     listeningCycleV3,
-    compactTechnicalDebugSummary: buildCompactTechnicalDebugSummary(technicalDebugData, estimatedTechnicalDebugDataBytes),
+    compactTechnicalDebugSummary: buildCompactTechnicalDebugSummary(reportTechnicalDebugData, estimatedTechnicalDebugDataBytes),
     userProgressSummary: {
       status: sessionSummary ? 'available' : 'no_finished_session',
       howYouDid: buildHowYouDid(sessionSummary),
@@ -134,6 +138,6 @@ export function buildAdaptiveUserSystemReport({
       recommendedSystemAdjustments: buildSystemAdjustments(normalizedProfile, sessionSummary, repeatCount, recommendedNextExercise),
       feedbackStatus,
     },
-    technicalDebugData,
+    technicalDebugData: reportTechnicalDebugData,
   };
 }
