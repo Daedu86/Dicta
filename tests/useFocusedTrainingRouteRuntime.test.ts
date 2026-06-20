@@ -4,6 +4,8 @@
 
 import { act } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { ActiveOpenRouterJob } from '../src/core/openRouterJobs';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../src/core/sessionInputModes';
 import {
   cleanupFocusedTrainingRouteRuntimeHarness,
   renderFocusedTrainingRouteRuntime,
@@ -61,14 +63,14 @@ describe('useFocusedTrainingRouteRuntime', () => {
   });
 });
 
-function createActiveTrainingJob(jobId: string, slotLabel: string) {
+function createActiveTrainingJob(jobId: string, slotLabel: string): ActiveOpenRouterJob {
   return {
     jobId,
     model: 'test-model',
     slotLabel,
-    inputMode: 'browser-tts' as const,
-    language: 'de' as const,
-    durationMinutes: 2 as const,
+    inputMode: BROWSER_TTS_SESSION_INPUT_MODE,
+    language: 'de',
+    durationMinutes: 2,
     startedAt: '2026-06-20T12:00:00.000Z',
   };
 }
