@@ -108,7 +108,7 @@ export type AdaptiveUserSystemReport = {
   };
   compactTechnicalDebugSummary: {
     estimatedTechnicalDebugDataBytes: number | null;
-    rawDebugIncluded: true;
+    rawDebugIncluded: boolean;
     rawDebugLocation: 'technicalDebugData';
     debugTopLevelKeys: string[];
     recentTimelinePointCount: number | null;
