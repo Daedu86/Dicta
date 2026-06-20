@@ -1,10 +1,13 @@
 import { useState } from 'react';
 
 export function useOpenRouterGenerationBusyState() {
-  const [directOpenRouterBusy, setDirectOpenRouterBusy] = useState(false);
+  const [adaptiveOpenRouterBusy, setAdaptiveOpenRouterBusy] = useState(false);
+  const [topicOpenRouterBusy, setTopicOpenRouterBusy] = useState(false);
 
   return {
-    directOpenRouterBusy,
-    setDirectOpenRouterBusy,
+    adaptiveOpenRouterBusy,
+    setAdaptiveOpenRouterBusy,
+    topicOpenRouterBusy,
+    setTopicOpenRouterBusy,
   };
 }
