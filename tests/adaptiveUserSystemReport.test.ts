@@ -106,7 +106,7 @@ describe('adaptiveUserSystemReport', () => {
     expect(compactDebugData).not.toBe(technicalDebugData);
     expect(compactDebugData.benchmarkProfile?.sampleCount).toBe(12);
     expect(compactDebugData.benchmarkProfile?.ttsEnvironmentHistorySummary?.count).toBe(1);
-    expect(compactDebugData.recentTimelinePoints).toHaveLength(12);
+    expect(compactDebugData.recentTimelinePoints?.length).toBe(12);
     expect(compactDebugData.recentTimelineOmittedCount).toBe(8);
     expect(compactDebugData.debugCompaction?.benchmarkProfileCompacted).toBe(true);
     expect(JSON.stringify(compactDebugData.recentTimelinePoints)).not.toContain('languageCalibration');
