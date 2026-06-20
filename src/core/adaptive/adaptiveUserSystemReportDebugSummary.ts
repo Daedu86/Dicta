@@ -23,7 +23,7 @@ const BENCHMARK_PROFILE_COMPACT_KEYS = [
   'weakAreas',
   'recommendation',
   'environmentChanged',
-];
+] as const;
 
 const TIMELINE_POINT_COMPACT_KEYS = [
   'timestampMs',
@@ -59,7 +59,7 @@ const TIMELINE_POINT_COMPACT_KEYS = [
   'ttsEnvironmentId',
   'unsafeChunkCount',
   'perceptualPauseShortfallMs',
-];
+] as const;
 
 const PACING_OUTPUT_COMPACT_KEYS = [
   'pauseMsTarget',
@@ -70,7 +70,7 @@ const PACING_OUTPUT_COMPACT_KEYS = [
   'playbackRateTarget',
   'perceptualRateLevel',
   'perceptualPauseLevel',
-];
+] as const;
 
 const SAMPLE_QUALITY_COMPACT_KEYS = [
   'lagReliability',
@@ -80,7 +80,7 @@ const SAMPLE_QUALITY_COMPACT_KEYS = [
   'acceptedForSessionInsight',
   'acceptedForRuntimePressure',
   'acceptedForTelemetryLearning',
-];
+] as const;
 
 const PRESSURE_VECTOR_COMPACT_KEYS = [
   'lag',
@@ -93,7 +93,7 @@ const PRESSURE_VECTOR_COMPACT_KEYS = [
   'currentSession',
   'reconstruction',
   'perceptualPause',
-];
+] as const;
 
 const TTS_ENVIRONMENT_COMPACT_KEYS = [
   'engine',
@@ -106,7 +106,7 @@ const TTS_ENVIRONMENT_COMPACT_KEYS = [
   'availableVoiceCount',
   'matchingVoiceCount',
   'browserUserAgentHash',
-];
+] as const;
 
 export function compactTechnicalDebugData(technicalDebugData: unknown): unknown {
   const debugRecord = asRecord(technicalDebugData);
@@ -220,7 +220,7 @@ function compactTtsEnvironment(ttsEnvironment: Record<string, unknown>): Record<
   return pickKnown(ttsEnvironment, TTS_ENVIRONMENT_COMPACT_KEYS);
 }
 
-function pickKnown(record: Record<string, unknown>, keys: string[]): Record<string, unknown> {
+function pickKnown(record: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {
   const picked: Record<string, unknown> = {};
   for (const key of keys) {
     if (record[key] !== undefined) picked[key] = record[key];
