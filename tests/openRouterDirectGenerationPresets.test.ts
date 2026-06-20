@@ -4,40 +4,24 @@ import { OPEN_ROUTER_DIRECT_GENERATION_PRESETS } from '../src/app/openRouterDire
 describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
   const presetEntries = Object.entries(OPEN_ROUTER_DIRECT_GENERATION_PRESETS);
 
-  it('contains exactly the supported direct presets', () => {
+  it('contains exactly the supported direct preset', () => {
     expect(Object.keys(OPEN_ROUTER_DIRECT_GENERATION_PRESETS)).toEqual([
-      'easy',
-      'medium',
-      'hard',
+      'adaptive',
     ]);
 
     expect(presetEntries.map(([, preset]) => preset.id)).toEqual([
-      'easy',
-      'medium',
-      'hard',
+      'adaptive',
     ]);
   });
 
-  it('keeps direct presets at two minutes', () => {
-    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.easy.durationMinutes).toBe(2);
-    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.medium.durationMinutes).toBe(2);
-    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.hard.durationMinutes).toBe(2);
+  it('keeps the adaptive direct preset at two minutes', () => {
+    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive.durationMinutes).toBe(2);
   });
 
-  it('maps each direct preset to the expected listening intent and stored difficulty', () => {
-    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.easy).toMatchObject({
-      userIntent: 'recover',
-      targetDifficulty: 'easy',
-    });
-
-    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.medium).toMatchObject({
-      userIntent: 'progress',
+  it('lets the trainer resolve the final mode and difficulty', () => {
+    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive).toMatchObject({
+      userIntent: 'auto',
       targetDifficulty: 'normal',
-    });
-
-    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.hard).toMatchObject({
-      userIntent: 'challenge',
-      targetDifficulty: 'hard',
     });
   });
 
@@ -52,6 +36,6 @@ describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
     }
 
     expect(new Set(slotLabels).size).toBe(slotLabels.length);
-    expect(displayLabels).toEqual(['Precision session', 'Stabilize session', 'Challenge session']);
+    expect(displayLabels).toEqual(['Adaptive session']);
   });
 });
