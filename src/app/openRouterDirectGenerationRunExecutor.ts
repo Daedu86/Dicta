@@ -45,6 +45,7 @@ export async function runOpenRouterDirectGeneration(
     userIntent,
     targetDifficulty,
     difficultyInstruction,
+    topicContext,
   } = generationOptions;
 
   if (isBusy) return;
@@ -92,6 +93,7 @@ export async function runOpenRouterDirectGeneration(
         targetDifficulty,
         difficultyInstruction,
       },
+      topicContext,
       inputMode,
       language,
       sessions,
