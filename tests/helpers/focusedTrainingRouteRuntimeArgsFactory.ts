@@ -105,11 +105,7 @@ export function createFocusedTrainingRouteRuntimeArgs(
     trainingGenerationNotices: {},
     trainingGenerationNowMs: 0,
     directOpenRouterBusy: false,
-    directIntermediateOpenRouterBusy: false,
-    directAdvancedOpenRouterBusy: false,
-    generateEasyNextSessionFromOpenRouter: vi.fn(),
-    generateIntermediateNextSessionFromOpenRouter: vi.fn(),
-    generateAdvancedNextSessionFromOpenRouter: vi.fn(),
+    generateAdaptiveNextSessionFromOpenRouter: vi.fn(),
     ...overrides,
   };
 }
