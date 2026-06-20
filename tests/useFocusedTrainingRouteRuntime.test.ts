@@ -24,17 +24,20 @@ describe('useFocusedTrainingRouteRuntime', () => {
     expect(runtime.focusedTrainingProps.progressLabel).toBe('Word 2/4');
   });
 
-  it('connects the adaptive generation button', async () => {
+  it('connects the adaptive and topic generation buttons', async () => {
     const { args, runtime } = await renderFocusedTrainingRouteRuntime();
 
-    expect(runtime.focusedTrainingProps.generationButtons.map((button) => button.id)).toEqual(['adaptive']);
+    expect(runtime.focusedTrainingProps.generationButtons.map((button) => button.id)).toEqual(['adaptive', 'topic']);
 
     const adaptiveButton = runtime.focusedTrainingProps.generationButtons.find((button) => button.id === 'adaptive');
+    const topicButton = runtime.focusedTrainingProps.generationButtons.find((button) => button.id === 'topic');
 
     act(() => {
       adaptiveButton?.onClick();
+      topicButton?.onClick();
     });
 
     expect(args.generateAdaptiveNextSessionFromOpenRouter).toHaveBeenCalledTimes(1);
+    expect(args.generateTopicNextSessionFromOpenRouter).toHaveBeenCalledTimes(1);
   });
 });
