@@ -13,7 +13,23 @@ import {
 
 describe('adaptiveUserSystemReport', () => {
   it('wraps the technical debug package with human and system summaries', () => {
-    const technicalDebugData = { benchmarkProfile: { sampleCount: 12 }, recentTimelinePoints: [{ event: 'rate_change' }] };
+    const technicalDebugData = {
+      benchmarkProfile: {
+        sampleCount: 12,
+        ttsEnvironmentHistory: [
+          {
+            environmentId: 'env-1',
+            ttsEnvironment: browserEnvironment,
+          },
+        ],
+      },
+      recentTimelinePoints: Array.from({ length: 20 }, (_, index) => ({
+        event: 'rate_change',
+        phraseIndex: index,
+        pressureVector: { accuracy: 1, reconstruction: 0.8 },
+        languageCalibration: { verbose: true },
+      })),
+    };
 
     const report = buildAdaptiveUserSystemReport({
       profile: createRecoveryBenchmarkProfile(),
@@ -70,13 +86,30 @@ describe('adaptiveUserSystemReport', () => {
     expect(report.componentDiagnostics.controllerAndPacing.topDecisionReasons).toContainEqual({ name: 'lag-pressure', count: 1 });
     expect(report.componentDiagnostics.controllerAndPacing.latestAdaptiveLevel).toBeNull();
     expect(report.componentDiagnostics.browserTtsEnvironment.selectedVoice?.voiceName).toBe('German Local');
+    expect(report.compactTechnicalDebugSummary.rawDebugIncluded).toBe(false);
     expect(report.compactTechnicalDebugSummary.debugTopLevelKeys).toContain('benchmarkProfile');
     expect(report.userProgressSummary.latestSession?.points).toBe('3/4');
     expect(report.userProgressSummary.howYouDid).toContain('3/4 points');
     expect(report.userProgressSummary.needsImprovement.join(' ')).toContain('Accuracy needs work');
     expect(report.userProgressSummary.needsImprovement.join(' ')).toContain('Lag is a weak area');
     expect(report.adaptiveSystemSummary.recommendedSystemAdjustments.playbackRate).toContain('lower end');
-    expect(report.technicalDebugData).toBe(technicalDebugData);
+
+    const compactDebugData = report.technicalDebugData as {
+      benchmarkProfile?: {
+        sampleCount?: number;
+        ttsEnvironmentHistorySummary?: { count?: number };
+      };
+      recentTimelinePoints?: unknown[];
+      recentTimelineOmittedCount?: number;
+      debugCompaction?: { benchmarkProfileCompacted?: boolean };
+    };
+    expect(compactDebugData).not.toBe(technicalDebugData);
+    expect(compactDebugData.benchmarkProfile?.sampleCount).toBe(12);
+    expect(compactDebugData.benchmarkProfile?.ttsEnvironmentHistorySummary?.count).toBe(1);
+    expect(compactDebugData.recentTimelinePoints).toHaveLength(12);
+    expect(compactDebugData.recentTimelineOmittedCount).toBe(8);
+    expect(compactDebugData.debugCompaction?.benchmarkProfileCompacted).toBe(true);
+    expect(JSON.stringify(compactDebugData.recentTimelinePoints)).not.toContain('languageCalibration');
   });
 
   it('falls back cleanly when no finished session or feedback exists', () => {
