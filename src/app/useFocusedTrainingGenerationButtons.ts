@@ -26,7 +26,8 @@ export type UseFocusedTrainingGenerationButtonsArgs = {
   openRouterJobNotifications: Record<string, OpenRouterJobNotification>;
   trainingGenerationNotices: Record<string, TrainingGenerationNotice>;
   trainingGenerationNowMs: number;
-  directOpenRouterBusy: boolean;
+  adaptiveOpenRouterBusy: boolean;
+  topicOpenRouterBusy: boolean;
   generateAdaptiveNextSessionFromOpenRouter: GenerateSessionAction;
   generateTopicNextSessionFromOpenRouter: GenerateSessionAction;
 };
@@ -41,7 +42,8 @@ export type BuildFocusedTrainingGenerationButtonsArgs = Pick<
   | 'openRouterJobNotifications'
   | 'trainingGenerationNotices'
   | 'trainingGenerationNowMs'
-  | 'directOpenRouterBusy'
+  | 'adaptiveOpenRouterBusy'
+  | 'topicOpenRouterBusy'
   | 'generateAdaptiveNextSessionFromOpenRouter'
   | 'generateTopicNextSessionFromOpenRouter'
 >;
@@ -57,7 +59,8 @@ export function useFocusedTrainingGenerationButtons({
   openRouterJobNotifications,
   trainingGenerationNotices,
   trainingGenerationNowMs,
-  directOpenRouterBusy,
+  adaptiveOpenRouterBusy,
+  topicOpenRouterBusy,
   generateAdaptiveNextSessionFromOpenRouter,
   generateTopicNextSessionFromOpenRouter,
 }: UseFocusedTrainingGenerationButtonsArgs): TrainingGenerationButton[] {
@@ -73,7 +76,8 @@ export function useFocusedTrainingGenerationButtons({
       openRouterJobNotifications,
       trainingGenerationNotices,
       trainingGenerationNowMs,
-      directOpenRouterBusy,
+      adaptiveOpenRouterBusy,
+      topicOpenRouterBusy,
       generateAdaptiveNextSessionFromOpenRouter,
       generateTopicNextSessionFromOpenRouter,
     });
@@ -89,7 +93,8 @@ export function useFocusedTrainingGenerationButtons({
     openRouterOfflineTitle,
     isOnline,
     activeSession,
-    directOpenRouterBusy,
+    adaptiveOpenRouterBusy,
+    topicOpenRouterBusy,
     generateAdaptiveNextSessionFromOpenRouter,
     generateTopicNextSessionFromOpenRouter,
   ]);
