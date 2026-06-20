@@ -7,8 +7,10 @@ import {
 const MAX_TOPIC_CONTEXT_LENGTH = 180;
 
 type OpenRouterDirectGenerationBusyControls = {
-  directOpenRouterBusy: boolean;
-  setDirectOpenRouterBusy: (value: boolean) => void;
+  adaptiveOpenRouterBusy: boolean;
+  setAdaptiveOpenRouterBusy: (value: boolean) => void;
+  topicOpenRouterBusy: boolean;
+  setTopicOpenRouterBusy: (value: boolean) => void;
 };
 
 type GenerateOpenRouterDirectSession = (
@@ -25,28 +27,30 @@ type UseOpenRouterDirectGenerationPresetActionsOptions = OpenRouterDirectGenerat
 
 export function useOpenRouterDirectGenerationPresetActions({
   generateDirectSessionFromOpenRouter,
-  directOpenRouterBusy,
-  setDirectOpenRouterBusy,
+  adaptiveOpenRouterBusy,
+  setAdaptiveOpenRouterBusy,
+  topicOpenRouterBusy,
+  setTopicOpenRouterBusy,
 }: UseOpenRouterDirectGenerationPresetActionsOptions) {
   const generateAdaptiveNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
     await generateDirectSessionFromOpenRouter({
       ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive,
-      isBusy: directOpenRouterBusy,
-      setBusy: setDirectOpenRouterBusy,
+      isBusy: adaptiveOpenRouterBusy,
+      setBusy: setAdaptiveOpenRouterBusy,
     });
-  }, [directOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectOpenRouterBusy]);
+  }, [adaptiveOpenRouterBusy, generateDirectSessionFromOpenRouter, setAdaptiveOpenRouterBusy]);
 
   const generateTopicNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
     const topicContext = readTopicContextFromPrompt();
     if (!topicContext) return;
 
     await generateDirectSessionFromOpenRouter({
-      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive,
-      isBusy: directOpenRouterBusy,
-      setBusy: setDirectOpenRouterBusy,
+      ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic,
+      isBusy: topicOpenRouterBusy,
+      setBusy: setTopicOpenRouterBusy,
       topicContext,
     });
-  }, [directOpenRouterBusy, generateDirectSessionFromOpenRouter, setDirectOpenRouterBusy]);
+  }, [generateDirectSessionFromOpenRouter, setTopicOpenRouterBusy, topicOpenRouterBusy]);
 
   return {
     generateAdaptiveNextSessionFromOpenRouter,
