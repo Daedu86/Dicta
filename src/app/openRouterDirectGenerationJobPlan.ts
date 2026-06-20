@@ -56,6 +56,7 @@ export type OpenRouterDirectGenerationJobPlanArgs = {
   adaptiveSessionFeedbackByInputLanguage: AdaptiveSessionFeedbackByInputLanguage;
   recentDictationSessionHints: RecentDictationSessionHint[];
   generationStartedAt: string;
+  topicContext?: string;
 };
 
 export function buildOpenRouterDirectGenerationJobPlan({
@@ -68,6 +69,7 @@ export function buildOpenRouterDirectGenerationJobPlan({
   adaptiveSessionFeedbackByInputLanguage,
   recentDictationSessionHints,
   generationStartedAt,
+  topicContext,
 }: OpenRouterDirectGenerationJobPlanArgs): OpenRouterDirectGenerationJobPlan {
   const {
     slotLabel,
@@ -94,6 +96,7 @@ export function buildOpenRouterDirectGenerationJobPlan({
     userIntent,
     targetDifficulty,
     difficultyInstruction,
+    topicContext,
     diversificationHints: buildOpenRouterDiversificationHints({
       durationMinutes,
       targetDifficulty,
