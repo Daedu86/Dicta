@@ -41,6 +41,7 @@ export function resolveTrainingMode({
       return stableEnough ? 'progress' : 'stabilize';
     case 'auto':
       if (recoveryRecommended) return 'recover';
+      if (challengeSafe) return 'challenge';
       return stableEnough ? 'progress' : 'stabilize';
   }
 }
