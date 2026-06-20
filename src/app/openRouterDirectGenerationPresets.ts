@@ -2,13 +2,10 @@ import type { ListeningTrainingIntent } from '../core/adaptive/types';
 import type { DictationScriptDifficulty } from '../core/adaptive/dictationScriptValidation';
 import type { OpenRouterDurationMinutes } from '../core/adaptive/openRouterGenerationPrompt';
 
-export type OpenRouterDirectGenerationPresetKey =
-  | 'easy'
-  | 'medium'
-  | 'hard';
+export type OpenRouterDirectGenerationPresetKey = 'adaptive';
 
 export type OpenRouterDirectGenerationPreset = {
-  id: 'easy' | 'medium' | 'hard';
+  id: 'adaptive';
   slotLabel: string;
   displayLabel: string;
   durationMinutes: OpenRouterDurationMinutes;
@@ -18,31 +15,13 @@ export type OpenRouterDirectGenerationPreset = {
 };
 
 export const OPEN_ROUTER_DIRECT_GENERATION_PRESETS = {
-  easy: {
-    id: 'easy',
-    slotLabel: 'Easy direct session',
-    displayLabel: 'Precision session',
+  adaptive: {
+    id: 'adaptive',
+    slotLabel: 'Adaptive direct session',
+    displayLabel: 'Adaptive session',
     durationMinutes: 2,
-    userIntent: 'recover',
-    targetDifficulty: 'easy',
-    difficultyInstruction: 'Recovery intent: keep material accessible and obey the trainer prescription if it narrows the range.',
-  },
-  medium: {
-    id: 'medium',
-    slotLabel: 'Intermediate direct session',
-    displayLabel: 'Stabilize session',
-    durationMinutes: 2,
-    userIntent: 'progress',
+    userIntent: 'auto',
     targetDifficulty: 'normal',
-    difficultyInstruction: 'Progress intent: use moderate phrase difficulty only when the trainer prescription allows it.',
-  },
-  hard: {
-    id: 'hard',
-    slotLabel: 'Advanced direct session',
-    displayLabel: 'Challenge session',
-    durationMinutes: 2,
-    userIntent: 'challenge',
-    targetDifficulty: 'hard',
-    difficultyInstruction: 'Challenge intent: use harder content only if the trainer prescription keeps the session in challenge mode.',
+    difficultyInstruction: 'Adaptive intent: let the trainer prescription resolve recover, stabilize, progress, or challenge from the current benchmark and latest feedback.',
   },
 } satisfies Record<OpenRouterDirectGenerationPresetKey, OpenRouterDirectGenerationPreset>;
