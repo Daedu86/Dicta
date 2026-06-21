@@ -19,7 +19,8 @@ import type { TtsLiveSignal } from './ttsPlaybackProfile';
 
 const EN_BENCHMARK_MIN_SAMPLE_COUNT = 3;
 const EN_BENCHMARK_LOW_CONFIDENCE = 0.15;
-const EN_BENCHMARK_RECOVERY_RATE_CEILING = 0.78;
+const EN_BENCHMARK_INTRACHUNK_RATE_CEILING = 0.66;
+const EN_BENCHMARK_ENV_CHANGED_INTRACHUNK_RATE_CEILING = 0.62;
 const EN_BENCHMARK_MIN_PAUSE_MS = 2600;
 const EN_BENCHMARK_ENV_CHANGED_MIN_PAUSE_MS = 3000;
 
@@ -130,9 +131,12 @@ export function applyBrowserTtsEnBenchmarkRecoveryPolicy(params: {
   if (!pressure.shouldApply) return decision;
 
   const recommendedCeiling = safeNumber(browserTtsBenchmark.recommendation.targetRateRange[1]);
+  const perceptualCeiling = pressure.environmentChanged
+    ? EN_BENCHMARK_ENV_CHANGED_INTRACHUNK_RATE_CEILING
+    : EN_BENCHMARK_INTRACHUNK_RATE_CEILING;
   const rateCeiling = Math.max(
     profile.extremeSupportRateFloor,
-    Math.min(EN_BENCHMARK_RECOVERY_RATE_CEILING, recommendedCeiling ?? EN_BENCHMARK_RECOVERY_RATE_CEILING),
+    Math.min(perceptualCeiling, recommendedCeiling ?? perceptualCeiling),
   );
   const playbackRate = roundRate(Math.max(profile.extremeSupportRateFloor, Math.min(decision.playbackRate, rateCeiling)));
   const replayRate = roundRate(
@@ -151,7 +155,10 @@ export function applyBrowserTtsEnBenchmarkRecoveryPolicy(params: {
     pauseAfterPhraseMs: Math.max(decision.pauseAfterPhraseMs, benchmarkPauseMs),
     shouldPauseNow: true,
     nextPhraseSize: 'short',
-    reason: appendDecisionReason(decision.reason, 'browser-tts-en-benchmark-recovery'),
+    reason: appendDecisionReason(
+      appendDecisionReason(decision.reason, 'browser-tts-en-benchmark-recovery'),
+      'browser-tts-en-intrachunk-slowdown',
+    ),
     reasonCodes: appendReasonCode(
       appendReasonCode(decision.reasonCodes, pressure.environmentChanged ? 'environment-pressure' : 'low-history-confidence'),
       'support-needed',
