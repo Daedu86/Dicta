@@ -116,7 +116,7 @@ export function AppWorkspaceContent({
             </div>
           </section>
         ) : workspaceMode === 'adaptive-flow' ? (
-          <AdaptivePaceLayerFlowWorkspace insights={adaptiveReportButtonProps} />
+          <AdaptivePaceLayerFlowWorkspace />
         ) : workspaceMode === 'openrouter' ? (
           openRouterAccessState !== 'allowed' ? (
             <section className="panel workspace-panel">
