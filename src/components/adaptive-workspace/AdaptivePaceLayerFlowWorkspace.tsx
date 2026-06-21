@@ -7,13 +7,15 @@ import {
 } from '../../core/languages';
 
 const ADAPTIVE_FLOW_PHASES = [
-  ['Fase 1', 'Generate session', 'Creates the practice session and locks the language context.'],
-  ['Fase 2', 'Chunker', 'Splits the session into safe teachable chunks.'],
-  ['Fase 3', 'Planner', 'Chooses phrase size, pause intention, replay behavior, and pacing mode.'],
-  ['Fase 4', 'Runtime', 'Applies the live controller decision using lag, accuracy, history, and recovery signals.'],
-  ['Fase 5', 'Browser TTS', 'Executes the plan with effective rate, voice calibration, and chunk playback.'],
-  ['Fase 6', 'Telemetria benchmarks', 'Records rate, pause, lag, accuracy, environment, benchmark, and session insight samples.'],
-  ['Fase 7', 'Goes to Fase 1', 'Feeds the new evidence back into the next cycle.'],
+  ['Step 1', 'Generation', 'Create the practice material with language, difficulty, target duration, and session objective.'],
+  ['Step 2', 'Planner', 'Choose target pace, phrase size, pause policy, replay policy, and recovery thresholds.'],
+  ['Step 3', 'Chunker', 'Split text into teachable chunks that preserve punctuation, phrase intent, and sentence boundaries.'],
+  ['Step 4', 'Browser TTS implementation', 'Apply voice selection, effective rate, queue handling, replay behavior, and browser fallbacks.'],
+  ['Step 5', 'Playback loop', 'Run chunk-by-chunk playback and collect timing, pause, replay, and lag signals.'],
+  ['Step 6', 'Scoring', 'Compute accuracy, WPM, score, points, and recovery state from the learner response.'],
+  ['Step 7', 'Telemetry', 'Persist runtime samples, adaptive timeline, control actions, perf markers, and device context.'],
+  ['Step 8', 'Benchmark', 'Calibrate rate, pause realism, chunk duration, voice behavior, and language thresholds.'],
+  ['Step 9', 'Adaptation', 'Update the pace profile and feed the next planner cycle with measured evidence.'],
 ] as const;
 
 const LANGUAGE_FLOW_NOTES: Record<SupportedLanguage, string> = {
@@ -32,10 +34,10 @@ export function AdaptivePaceLayerFlowWorkspace() {
     <section className="panel workspace-panel adaptive-workspace adaptive-flow-workspace">
       <div className="tts-workspace-header adaptive-flow-header">
         <div>
-          <p className="dashboard-eyebrow">Adaptive brain map</p>
+          <p className="dashboard-eyebrow">Implementation cycle</p>
           <h2>Adaptative Pace Layer Flow</h2>
           <p className="hint adaptive-flow-summary">
-            Ciclo completo: generate session, chunker, planner, runtime, Browser TTS, telemetria benchmarks y vuelta a Fase 1.
+            Ciclo completo: generation, planner, chunker, Browser TTS implementation, playback loop, scoring, telemetria, benchmark y vuelta al planner.
           </p>
         </div>
       </div>
