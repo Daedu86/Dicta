@@ -12,14 +12,14 @@ import {
 } from './browserTtsRatePolicyTestUtils';
 
 describe('applyBrowserTtsRuntimeRateFloor', () => {
-  it('enforces EN balanced and flow floor at 0.80', () => {
+  it('enforces EN balanced and flow floor at 0.72', () => {
     for (const mode of ['balanced', 'flow'] as const) {
       expectBrowserTtsRuntimeRateFloor({
         mode,
-        requestedRate: 0.78,
+        requestedRate: 0.68,
         lagSec: mode === 'balanced' ? 1.2 : 0.2,
         accuracy: mode === 'balanced' ? 0.9 : 0.97,
-        expectedRate: 0.8,
+        expectedRate: 0.72,
       });
     }
   });
@@ -28,17 +28,17 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
     const cases: Array<Parameters<typeof expectBrowserTtsRuntimeRateFloor>[0]> = [
       {
         mode: 'support',
-        requestedRate: 0.76,
+        requestedRate: 0.62,
         lagSec: 2.8,
         accuracy: 0.84,
-        expectedRate: 0.78,
+        expectedRate: 0.66,
       },
       {
         mode: 'support',
-        requestedRate: 0.72,
+        requestedRate: 0.58,
         lagSec: 4.4,
         accuracy: 0.72,
-        expectedRate: 0.74,
+        expectedRate: 0.6,
       },
       {
         mode: 'support',
@@ -46,7 +46,7 @@ describe('applyBrowserTtsRuntimeRateFloor', () => {
         lagSec: 2.3,
         accuracy: 0.83,
         supportNeeded: true,
-        expectedRate: 0.88,
+        expectedRate: 0.82,
       },
     ];
 
