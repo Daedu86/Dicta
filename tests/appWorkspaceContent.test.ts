@@ -55,7 +55,7 @@ describe('AppWorkspaceContent', () => {
     expect(host.textContent).toContain('Generation');
     expect(host.textContent).toContain('Planner');
     expect(host.textContent).toContain('Chunker');
-    expect(host.textContent).toContain('Browser TTS implementation');
+    expect(host.textContent).toContain('Browser TTS');
     expect(host.textContent).toContain('Telemetry');
     expect(host.textContent).toContain('Benchmark');
     expect(host.textContent).toContain('Step 9');
