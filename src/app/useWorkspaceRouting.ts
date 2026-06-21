@@ -13,7 +13,7 @@ export type WorkspaceMode =
   | 'admin'
   | 'openrouter';
 
-type AppRoutePath = '/' | '/training';
+type AppRoutePath = '/' | '/training' | '/adaptive' | '/adaptive/flow' | '/admin' | '/openrouter';
 
 type WorkspaceRouting = {
   workspaceMode: WorkspaceMode;
@@ -31,22 +31,67 @@ type WorkspaceRouting = {
   showSessionInputWorkspace: (inputMode: SessionInputMode) => void;
 };
 
+function getWorkspaceModeForPath(path: string): WorkspaceMode {
+  switch (path.replace(/\/$/, '') || '/') {
+    case '/adaptive':
+      return 'adaptive';
+    case '/adaptive/flow':
+      return 'adaptive-flow';
+    case '/admin':
+      return 'admin';
+    case '/openrouter':
+      return 'openrouter';
+    case '/training':
+    case '/':
+    default:
+      return 'training';
+  }
+}
+
+function getPathForWorkspaceMode(mode: WorkspaceMode): AppRoutePath {
+  switch (mode) {
+    case 'adaptive':
+      return '/adaptive';
+    case 'adaptive-flow':
+      return '/adaptive/flow';
+    case 'admin':
+      return '/admin';
+    case 'openrouter':
+      return '/openrouter';
+    case 'training':
+    case 'dashboard':
+    case 'tts':
+    default:
+      return '/';
+  }
+}
+
+function pushAppRoute(path: AppRoutePath) {
+  if (window.location.pathname !== path) {
+    window.history.pushState(null, '', path);
+  }
+}
+
 export function useWorkspaceRouting(): WorkspaceRouting {
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('training');
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => getWorkspaceModeForPath(window.location.pathname));
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [dashboardSessionId, setDashboardSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     startTransition(() => {
-      setWorkspaceMode('training');
+      setWorkspaceMode(getWorkspaceModeForPath(window.location.pathname));
       setDashboardSessionId(null);
     });
   }, []);
 
   useEffect(() => {
     const onRouteChange = () => {
+      const nextPath = window.location.pathname;
+
       startTransition(() => {
-        setCurrentPath(window.location.pathname);
+        setCurrentPath(nextPath);
+        setWorkspaceMode(getWorkspaceModeForPath(nextPath));
+        setDashboardSessionId(null);
       });
     };
 
@@ -65,23 +110,31 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   }, []);
 
   const navigateAppRoute = useCallback((path: AppRoutePath) => {
-    if (window.location.pathname !== path) {
-      window.history.pushState(null, '', path);
-    }
+    pushAppRoute(path);
 
     startTransition(() => {
       setCurrentPath(path);
+      setWorkspaceMode(getWorkspaceModeForPath(path));
+      setDashboardSessionId(null);
     });
   }, []);
 
   const showWorkspaceMode = useCallback((mode: WorkspaceMode) => {
+    const path = getPathForWorkspaceMode(mode);
+    pushAppRoute(path);
+
     startTransition(() => {
+      setCurrentPath(path);
       setWorkspaceMode(mode);
     });
   }, []);
 
   const showWorkspace = useCallback((mode: WorkspaceMode) => {
+    const path = getPathForWorkspaceMode(mode);
+    pushAppRoute(path);
+
     startTransition(() => {
+      setCurrentPath(path);
       setWorkspaceMode(mode);
       setDashboardSessionId(null);
     });
@@ -94,7 +147,10 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   const showAdaptiveFlowWorkspace = useCallback(() => showWorkspace('adaptive-flow'), [showWorkspace]);
 
   const showDashboardWorkspace = useCallback((sessionId: string) => {
+    pushAppRoute('/');
+
     startTransition(() => {
+      setCurrentPath('/');
       setDashboardSessionId(sessionId);
       setWorkspaceMode('dashboard');
     });
@@ -102,12 +158,11 @@ export function useWorkspaceRouting(): WorkspaceRouting {
 
   const showSessionInputWorkspace = useCallback((inputMode: SessionInputMode) => {
     void inputMode;
-    if (window.location.pathname !== '/training') {
-      window.history.pushState(null, '', '/training');
-    }
+    pushAppRoute('/training');
 
     startTransition(() => {
       setDashboardSessionId(null);
+      setWorkspaceMode('training');
       setCurrentPath('/training');
     });
   }, []);
