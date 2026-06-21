@@ -37,15 +37,19 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelector('.workspace-panel')).toBeNull();
   });
 
-  it('renders the adaptive pace layer flow workspace with language tabs and the brain cycle', () => {
+  it('renders the adaptive pace layer flow workspace with language tabs, insights, and the brain cycle', () => {
     act(() => {
       root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
+        pendingSessions: [createPendingSession()],
         workspaceMode: 'adaptive-flow',
       })));
     });
 
+    expect(host.querySelector('[aria-label="Pending sessions"]')).toBeNull();
     expect(host.textContent).toContain('Adaptative Pace Layer Flow');
     expect(host.querySelectorAll('.adaptive-flow-language-button')).toHaveLength(5);
+    expect(host.querySelector('.adaptive-flow-insights-card')).not.toBeNull();
+    expect(host.textContent).toContain('Session insight + benchmark loop');
     expect(host.textContent).toContain('Fase 1');
     expect(host.textContent).toContain('Generate session');
     expect(host.textContent).toContain('Fase 7');
