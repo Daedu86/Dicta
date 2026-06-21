@@ -35,7 +35,7 @@ describe('AppRouteRenderer Insights dock visibility', () => {
     },
   );
 
-  it.each<WorkspaceMode>(['adaptive', 'admin', 'openrouter'])(
+  it.each<WorkspaceMode>(['adaptive', 'adaptive-flow', 'admin', 'openrouter'])(
     'omits the shared Insights dock from the %s workspace',
     (workspaceMode) => {
       renderRoute(workspaceMode);
@@ -89,6 +89,7 @@ function createRouteProps(workspaceMode: WorkspaceMode): ComponentProps<typeof A
       sessionQuotaBlocked: false,
       onOpenMobileTraining: vi.fn(),
       onOpenAdaptive: vi.fn(),
+      onOpenAdaptiveFlow: vi.fn(),
       onOpenAdmin: vi.fn(),
       onOpenOpenRouter: vi.fn(),
       onToggleTheme: vi.fn(),
