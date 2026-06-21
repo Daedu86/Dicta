@@ -43,6 +43,21 @@ describe('AppRouteRenderer Insights dock visibility', () => {
       expect(host.querySelector('.bottom-metrics-dock')).toBeNull();
     },
   );
+
+  it('renders the adaptive flow implementation cycle without the shared Insights dock', () => {
+    renderRoute('adaptive-flow');
+
+    expect(host.textContent).toContain('Implementation cycle');
+    expect(host.textContent).toContain('Generation');
+    expect(host.textContent).toContain('Planner');
+    expect(host.textContent).toContain('Chunker');
+    expect(host.textContent).toContain('Browser TTS');
+    expect(host.textContent).toContain('Telemetry');
+    expect(host.textContent).toContain('Benchmark');
+    expect(host.textContent).toContain('Adaptation');
+    expect(host.textContent).not.toContain('Insights');
+    expect(host.querySelector('.bottom-metrics-dock')).toBeNull();
+  });
 });
 
 function renderRoute(workspaceMode: WorkspaceMode): void {

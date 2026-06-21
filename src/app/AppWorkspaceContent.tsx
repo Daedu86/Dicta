@@ -61,19 +61,25 @@ export function AppWorkspaceContent({
   canAccessAdminWorkspace,
   adminWorkspaceProps,
 }: AppWorkspaceContentProps) {
-  const showPendingSessionLane = workspaceMode !== 'adaptive-flow';
+  if (workspaceMode === 'adaptive-flow') {
+    return (
+      <section className="workspace">
+        <section className="workspace-shell">
+          <AdaptivePaceLayerFlowWorkspace />
+        </section>
+      </section>
+    );
+  }
 
   return (
     <section className="workspace">
       <section className="workspace-shell">
-        {showPendingSessionLane ? (
-          <PendingSessionLane
-            sessions={pendingSessions}
-            activeSessionId={activeSessionId}
-            onOpenSession={onOpenPendingSession}
-            onDeleteSession={onDeleteSession}
-          />
-        ) : null}
+        <PendingSessionLane
+          sessions={pendingSessions}
+          activeSessionId={activeSessionId}
+          onOpenSession={onOpenPendingSession}
+          onDeleteSession={onDeleteSession}
+        />
         {workspaceMode === 'dashboard' && dashboardSession ? (
           <SessionDashboard
             session={dashboardSession}
@@ -117,8 +123,6 @@ export function AppWorkspaceContent({
               <AdaptiveBenchmarkSection {...adaptiveBenchmarkSectionProps} />
             </div>
           </section>
-        ) : workspaceMode === 'adaptive-flow' ? (
-          <AdaptivePaceLayerFlowWorkspace />
         ) : workspaceMode === 'openrouter' ? (
           openRouterAccessState !== 'allowed' ? (
             <section className="panel workspace-panel">

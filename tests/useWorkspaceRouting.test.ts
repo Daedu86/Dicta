@@ -23,7 +23,9 @@ import {
   showDashboardWorkspace,
   showSessionInputWorkspace,
   switchFromDashboardWorkspace,
+  updateWorkspaceRouting,
   type WorkspaceRoutingActionName,
+  WORKSPACE_MODE_KEY,
 } from './useWorkspaceRoutingTestUtils';
 import type { WorkspaceMode } from '../src/app/useWorkspaceRouting';
 
@@ -64,6 +66,19 @@ describe('useWorkspaceRouting', () => {
     expectWorkspaceState(getRouting(), {
       mode: 'adaptive-flow',
       currentPath: '/adaptive/flow',
+      dashboardSessionId: null,
+    });
+    expectStoredWorkspaceMode('adaptive-flow');
+  });
+
+  it('restores the adaptive flow workspace from the small workspace preference', async () => {
+    window.localStorage.setItem(WORKSPACE_MODE_KEY, 'adaptive-flow');
+
+    const { getRouting } = await renderWorkspaceRouting('/');
+
+    expectWorkspaceState(getRouting(), {
+      mode: 'adaptive-flow',
+      currentPath: '/',
       dashboardSessionId: null,
     });
     expectStoredWorkspaceMode('adaptive-flow');
@@ -112,6 +127,20 @@ describe('useWorkspaceRouting', () => {
     });
     expectCurrentBrowserPath(path);
     expectStoredWorkspaceMode(mode);
+  });
+
+  it('opens the adaptive flow workspace off the focused training route', async () => {
+    const { getRouting } = await renderWorkspaceRouting('/training');
+
+    await updateWorkspaceRouting((routing) => routing.showAdaptiveFlowWorkspace(), getRouting);
+
+    expectWorkspaceState(getRouting(), {
+      mode: 'adaptive-flow',
+      currentPath: '/#adaptive-flow',
+      dashboardSessionId: null,
+    });
+    expectCurrentBrowserPath('/#adaptive-flow');
+    expectStoredWorkspaceMode('adaptive-flow');
   });
 
   it('navigates app routes through history and currentPath state', async () => {

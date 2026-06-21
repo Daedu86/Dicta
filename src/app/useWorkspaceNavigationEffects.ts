@@ -56,6 +56,7 @@ export function useWorkspaceNavigationEffects({
       activeSession &&
       workspaceMode !== 'dashboard' &&
       workspaceMode !== 'adaptive' &&
+      workspaceMode !== 'adaptive-flow' &&
       workspaceMode !== 'admin' &&
       workspaceMode !== 'openrouter'
     ) {

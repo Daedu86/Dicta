@@ -1,6 +1,6 @@
 import { startTransition, useCallback, useEffect, useState } from 'react';
 import type { SessionInputMode } from '../core/sessionInputModes';
-import { safeSetLocalStorageItem } from '../core/storage/safeLocalStorage';
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../core/storage/safeLocalStorage';
 
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 const ADAPTIVE_FLOW_HASH = '#adaptive-flow';
@@ -15,6 +15,13 @@ export type WorkspaceMode =
   | 'openrouter';
 
 type AppRoutePath = '/' | '/training' | '/adaptive' | '/adaptive/flow' | '/#adaptive-flow' | '/admin' | '/openrouter';
+
+function loadInitialWorkspaceMode(): WorkspaceMode {
+  const routeMode = getCurrentWorkspaceMode();
+  if (routeMode !== 'training') return routeMode;
+
+  return safeGetLocalStorageItem(WORKSPACE_MODE_KEY) === 'adaptive-flow' ? 'adaptive-flow' : routeMode;
+}
 
 type WorkspaceRouting = {
   workspaceMode: WorkspaceMode;
@@ -86,17 +93,9 @@ function pushAppRoute(path: AppRoutePath) {
 }
 
 export function useWorkspaceRouting(): WorkspaceRouting {
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => getCurrentWorkspaceMode());
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => loadInitialWorkspaceMode());
   const [currentPath, setCurrentPath] = useState(() => getCurrentAppPath());
   const [dashboardSessionId, setDashboardSessionId] = useState<string | null>(null);
-
-  useEffect(() => {
-    startTransition(() => {
-      setCurrentPath(getCurrentAppPath());
-      setWorkspaceMode(getCurrentWorkspaceMode());
-      setDashboardSessionId(null);
-    });
-  }, []);
 
   useEffect(() => {
     const onRouteChange = () => {

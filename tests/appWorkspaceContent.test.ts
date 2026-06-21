@@ -47,6 +47,7 @@ describe('AppWorkspaceContent', () => {
 
     expect(host.querySelector('[aria-label="Pending sessions"]')).toBeNull();
     expect(host.textContent).toContain('Adaptative Pace Layer Flow');
+    expect(host.textContent).toContain('Implementation cycle');
     expect(host.querySelectorAll('.adaptive-flow-language-button')).toHaveLength(5);
     expect(host.querySelector('.adaptive-flow-insights-card')).toBeNull();
     expect(host.querySelector('.adaptive-flow-cycle')).not.toBeNull();
