@@ -6,6 +6,12 @@ import type { LiveMetricsDockProps } from './liveMetricsDockTypes';
 
 export type { LiveMetricsDockProps } from './liveMetricsDockTypes';
 
+function adaptiveFlowButtonHasFocus() {
+  if (typeof document === 'undefined') return false;
+
+  return document.activeElement?.classList.contains('brand-adaptive-flow-button') ?? false;
+}
+
 export function LiveMetricsDock({
   insightsCollapsed,
   metricsLanguageView,
@@ -23,6 +29,8 @@ export function LiveMetricsDock({
   formatDuration,
   formatSessionDate,
 }: LiveMetricsDockProps) {
+  if (adaptiveFlowButtonHasFocus()) return null;
+
   return (
     <section className="bottom-metrics-dock">
       <div className="bottom-metrics-inner">
