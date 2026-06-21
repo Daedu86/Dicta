@@ -37,7 +37,7 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelector('.workspace-panel')).toBeNull();
   });
 
-  it('renders the adaptive pace layer flow workspace with language tabs and the visible brain cycle', () => {
+  it('renders the adaptive pace layer flow workspace with language tabs and the visible implementation cycle', () => {
     act(() => {
       root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
         pendingSessions: [createPendingSession()],
@@ -50,11 +50,16 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelectorAll('.adaptive-flow-language-button')).toHaveLength(5);
     expect(host.querySelector('.adaptive-flow-insights-card')).toBeNull();
     expect(host.querySelector('.adaptive-flow-cycle')).not.toBeNull();
-    expect(host.querySelectorAll('.adaptive-flow-phase-card')).toHaveLength(7);
-    expect(host.textContent).toContain('Fase 1');
-    expect(host.textContent).toContain('Generate session');
-    expect(host.textContent).toContain('Fase 7');
-    expect(host.textContent).toContain('Goes to Fase 1');
+    expect(host.querySelectorAll('.adaptive-flow-phase-card')).toHaveLength(9);
+    expect(host.textContent).toContain('Step 1');
+    expect(host.textContent).toContain('Generation');
+    expect(host.textContent).toContain('Planner');
+    expect(host.textContent).toContain('Chunker');
+    expect(host.textContent).toContain('Browser TTS implementation');
+    expect(host.textContent).toContain('Telemetry');
+    expect(host.textContent).toContain('Benchmark');
+    expect(host.textContent).toContain('Step 9');
+    expect(host.textContent).toContain('Adaptation');
   });
 });
 
