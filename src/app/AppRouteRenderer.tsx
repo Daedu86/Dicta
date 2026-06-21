@@ -72,6 +72,7 @@ function getAppSpeedInsightsRoute({
 
   switch (workspaceMode) {
     case 'adaptive': return '/adaptive';
+    case 'adaptive-flow': return '/adaptive/flow';
     case 'dashboard': return '/session/dashboard';
     case 'openrouter': return '/openrouter';
     case 'tts': return '/training/tts';
