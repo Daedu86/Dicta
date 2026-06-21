@@ -39,12 +39,12 @@ describe('resolveBrowserTtsAdaptiveProfile', () => {
     expect(profile.adaptivePause.severeLagBehindPauseMs).toBe(3800);
   });
 
-  it('returns EN profile values without language-specific warmup', () => {
+  it('returns EN profile values with lower intra-chunk recovery floors', () => {
     const profile = resolveBrowserTtsAdaptiveProfile('en');
-    expect(profile.supportRateFloor).toBe(0.78);
-    expect(profile.extremeSupportRateFloor).toBe(0.74);
-    expect(profile.balancedFlowFloor).toBe(0.8);
-    expect(profile.supportRateCeiling).toBe(0.88);
+    expect(profile.supportRateFloor).toBe(0.66);
+    expect(profile.extremeSupportRateFloor).toBe(0.6);
+    expect(profile.balancedFlowFloor).toBe(0.72);
+    expect(profile.supportRateCeiling).toBe(0.82);
     expect(profile.unsafeBoundaryMinPauseMs).toBe(1200);
     expect(profile.minRecommendedRate).toBe(0.6);
     expect(profile.recommendationCalibrationEnabled).toBe(false);
