@@ -33,7 +33,7 @@ type AppWorkspaceContentProps = {
   formatSessionPlaybackDuration: (session: StoredSession) => string;
   onBackToTraining: () => void;
   adaptiveBenchmarkSectionProps: ComponentProps<typeof AdaptiveBenchmarkSection>;
-  adaptiveReportButtonProps: AdaptiveReportButtonProps;
+  adaptiveReportButtonProps?: AdaptiveReportButtonProps;
   openRouterAccessState: OpenRouterAccessState;
   openRouterAccessMessage: string;
   openRouterWorkspaceProps: ComponentProps<typeof OpenRouterWorkspace>;
@@ -91,17 +91,19 @@ export function AppWorkspaceContent({
                 <h2>Adaptive Pace Layer</h2>
               </div>
               <div className="dashboard-header-actions">
-                <div className="adaptive-report-action-stack">
-                  <button
-                    type="button"
-                    className="secondary-button live-metrics-report-button"
-                    onClick={() => void adaptiveReportButtonProps.onCopyInsightsDiagnosticPackage()}
-                    title={`Copy one structured adaptive report for ${adaptiveReportButtonProps.formatInputModeLabel(adaptiveReportButtonProps.insightsDiagnosticInputMode)} / ${adaptiveReportButtonProps.metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
-                  >
-                    Copy full adaptive report
-                  </button>
-                  <LiveMetricsDiagnosticMessage message={adaptiveReportButtonProps.insightsDiagnosticMessage} />
-                </div>
+                {adaptiveReportButtonProps ? (
+                  <div className="adaptive-report-action-stack">
+                    <button
+                      type="button"
+                      className="secondary-button live-metrics-report-button"
+                      onClick={() => void adaptiveReportButtonProps.onCopyInsightsDiagnosticPackage()}
+                      title={`Copy one structured adaptive report for ${adaptiveReportButtonProps.formatInputModeLabel(adaptiveReportButtonProps.insightsDiagnosticInputMode)} / ${adaptiveReportButtonProps.metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
+                    >
+                      Copy full adaptive report
+                    </button>
+                    <LiveMetricsDiagnosticMessage message={adaptiveReportButtonProps.insightsDiagnosticMessage} />
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   className="secondary-button"
