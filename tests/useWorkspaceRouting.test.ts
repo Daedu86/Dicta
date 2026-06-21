@@ -47,7 +47,18 @@ describe('useWorkspaceRouting', () => {
     expectStoredWorkspaceMode('training');
   });
 
-  it('starts on the adaptive flow workspace when loaded from /adaptive/flow', async () => {
+  it('starts on the adaptive flow workspace when loaded from the hash route', async () => {
+    const { getRouting } = await renderWorkspaceRouting('/#adaptive-flow');
+
+    expectWorkspaceState(getRouting(), {
+      mode: 'adaptive-flow',
+      currentPath: '/#adaptive-flow',
+      dashboardSessionId: null,
+    });
+    expectStoredWorkspaceMode('adaptive-flow');
+  });
+
+  it('still accepts the legacy /adaptive/flow path when the host serves it', async () => {
     const { getRouting } = await renderWorkspaceRouting('/adaptive/flow');
 
     expectWorkspaceState(getRouting(), {
@@ -88,7 +99,7 @@ describe('useWorkspaceRouting', () => {
     { action: 'showAdminWorkspace', mode: 'admin', path: '/admin' },
     { action: 'showOpenRouterWorkspace', mode: 'openrouter', path: '/openrouter' },
     { action: 'showAdaptiveWorkspace', mode: 'adaptive', path: '/adaptive' },
-    { action: 'showAdaptiveFlowWorkspace', mode: 'adaptive-flow', path: '/adaptive/flow' },
+    { action: 'showAdaptiveFlowWorkspace', mode: 'adaptive-flow', path: '/#adaptive-flow' },
   ])('switches to $mode and clears the dashboard session id', async ({ action, mode, path }) => {
     const { getRouting } = await renderWorkspaceRouting();
 
@@ -111,12 +122,12 @@ describe('useWorkspaceRouting', () => {
     expectCurrentBrowserPath('/training');
     expect(getRouting().currentPath).toBe('/training');
 
-    await navigateAppRoute(getRouting, '/adaptive/flow');
+    await navigateAppRoute(getRouting, '/#adaptive-flow');
 
-    expectCurrentBrowserPath('/adaptive/flow');
+    expectCurrentBrowserPath('/#adaptive-flow');
     expectWorkspaceState(getRouting(), {
       mode: 'adaptive-flow',
-      currentPath: '/adaptive/flow',
+      currentPath: '/#adaptive-flow',
     });
 
     await navigateAppRoute(getRouting, '/');
@@ -141,11 +152,11 @@ describe('useWorkspaceRouting', () => {
 
     expect(getRouting().currentPath).toBe('/');
 
-    await dispatchPopState('/adaptive/flow');
+    await dispatchPopState('/#adaptive-flow');
 
     expectWorkspaceState(getRouting(), {
       mode: 'adaptive-flow',
-      currentPath: '/adaptive/flow',
+      currentPath: '/#adaptive-flow',
       dashboardSessionId: null,
     });
   });
