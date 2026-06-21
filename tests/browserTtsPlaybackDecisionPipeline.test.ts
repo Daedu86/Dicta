@@ -86,24 +86,25 @@ function buildBenchmark(overrides: Partial<InputLanguageBenchmarkMetrics> = {}):
 }
 
 describe('applyBrowserTtsEnBenchmarkRecoveryPolicy', () => {
-  it('uses low-confidence EN benchmark recommendations as a hard runtime recovery clamp', () => {
+  it('uses low-confidence EN benchmark recommendations as a hard intra-chunk slowdown clamp', () => {
     const result = applyBrowserTtsEnBenchmarkRecoveryPolicy({
       decision: BASE_DECISION,
       browserTtsBenchmark: buildBenchmark(),
       profile: EN_BROWSER_TTS_PROFILE,
     });
 
-    expect(result.playbackRate).toBe(0.78);
+    expect(result.playbackRate).toBe(0.66);
     expect(result.replayRate).toBeLessThanOrEqual(result.playbackRate);
     expect(result.pauseAfterPhraseMs).toBeGreaterThanOrEqual(2600);
     expect(result.shouldPauseNow).toBe(true);
     expect(result.nextPhraseSize).toBe('short');
     expect(result.reason).toContain('browser-tts-en-benchmark-recovery');
+    expect(result.reason).toContain('browser-tts-en-intrachunk-slowdown');
     expect(result.reasonCodes).toContain('low-history-confidence');
     expect(result.reasonCodes).toContain('support-needed');
   });
 
-  it('adds extra pause when the EN browser TTS environment changed', () => {
+  it('slows even more and adds extra pause when the EN browser TTS environment changed', () => {
     const result = applyBrowserTtsEnBenchmarkRecoveryPolicy({
       decision: BASE_DECISION,
       browserTtsBenchmark: buildBenchmark({
@@ -120,7 +121,7 @@ describe('applyBrowserTtsEnBenchmarkRecoveryPolicy', () => {
       profile: EN_BROWSER_TTS_PROFILE,
     });
 
-    expect(result.playbackRate).toBe(0.78);
+    expect(result.playbackRate).toBe(0.62);
     expect(result.pauseAfterPhraseMs).toBeGreaterThanOrEqual(3000);
     expect(result.reasonCodes).toContain('environment-pressure');
   });
