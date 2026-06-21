@@ -175,5 +175,5 @@ export function expectWorkspaceState(
 }
 
 export function expectCurrentBrowserPath(path: string) {
-  expect(window.location.pathname).toBe(path);
+  expect(`${window.location.pathname}${window.location.hash}`).toBe(path);
 }
