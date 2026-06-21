@@ -4,6 +4,7 @@ import { PendingSessionLane } from '../components/training/PendingSessionLane';
 import { OpenRouterWorkspace } from '../components/openrouter/OpenRouterWorkspace';
 import { SessionDashboard } from '../components/session-dashboard/SessionDashboard';
 import { AdaptiveBenchmarkSection } from '../components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
+import { AdaptivePaceLayerFlowWorkspace } from '../components/adaptive-workspace/AdaptivePaceLayerFlowWorkspace';
 import type { LiveMetricsDockProps } from '../components/runtime-workspaces/LiveMetricsDock';
 import { LiveMetricsDiagnosticMessage } from '../components/runtime-workspaces/LiveMetricsDiagnosticFallback';
 import { AdminWorkspace, type AdminWorkspaceProps } from '../components/admin/AdminWorkspace';
@@ -110,6 +111,8 @@ export function AppWorkspaceContent({
               <AdaptiveBenchmarkSection {...adaptiveBenchmarkSectionProps} />
             </div>
           </section>
+        ) : workspaceMode === 'adaptive-flow' ? (
+          <AdaptivePaceLayerFlowWorkspace />
         ) : workspaceMode === 'openrouter' ? (
           openRouterAccessState !== 'allowed' ? (
             <section className="panel workspace-panel">
