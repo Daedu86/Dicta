@@ -23,6 +23,7 @@ export type AppShellHeaderProps = {
   children?: ReactNode;
   onOpenMobileTraining: () => void;
   onOpenAdaptive: () => void;
+  onOpenAdaptiveFlow: () => void;
   onOpenAdmin: () => void;
   onOpenOpenRouter: () => void;
   onToggleTheme: () => void;
@@ -48,6 +49,7 @@ export function AppShellHeader({
   children,
   onOpenMobileTraining,
   onOpenAdaptive,
+  onOpenAdaptiveFlow,
   onOpenAdmin,
   onOpenOpenRouter,
   onToggleTheme,
@@ -88,13 +90,23 @@ export function AppShellHeader({
           Training Mode
         </button>
         {showAdaptiveButton ? (
-          <button
-            type="button"
-            className="secondary-button brand-adaptive-button"
-            onClick={onOpenAdaptive}
-          >
-            🧠 Adaptive Pace Layer
-          </button>
+          <>
+            <button
+              type="button"
+              className="secondary-button brand-adaptive-button"
+              onClick={onOpenAdaptive}
+            >
+              🧠 Adaptive Pace Layer
+            </button>
+            <button
+              type="button"
+              className="secondary-button brand-adaptive-flow-button"
+              onClick={onOpenAdaptiveFlow}
+              title="Open the adaptive pace layer flow workspace"
+            >
+              🧠 Adaptative Pace Layer Flow
+            </button>
+          </>
         ) : null}
         {showAdminButton ? (
           <button
