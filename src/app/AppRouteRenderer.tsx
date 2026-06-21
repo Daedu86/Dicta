@@ -139,6 +139,9 @@ export function AppRouteRenderer({
     sessionCreationMode,
     workspaceMode,
   });
+  const showSharedLiveMetricsDock =
+    workspaceMode === 'training' ||
+    workspaceMode === 'tts';
 
   if (isAuthRoute) {
     return (
@@ -202,7 +205,7 @@ export function AppRouteRenderer({
             adminWorkspaceProps={adminWorkspaceProps}
           />
         </section>
-        {workspaceMode === 'training' || workspaceMode === 'tts' ? (
+        {showSharedLiveMetricsDock ? (
           <LiveMetricsDock {...liveMetricsDockProps} />
         ) : null}
       </main>
