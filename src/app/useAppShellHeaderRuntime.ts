@@ -34,6 +34,7 @@ type UseAppShellHeaderRuntimeArgs = {
   sessionQuotaStatus: AppShellHeaderPropsArgs['sessionQuotaStatus'];
   navigateAppRoute: (path: '/training') => void;
   openAdaptiveWorkspaceFromHeader: AppShellHeaderPropsArgs['onOpenAdaptive'];
+  showAdaptiveFlowWorkspace: AppShellHeaderPropsArgs['onOpenAdaptiveFlow'];
   showAdminWorkspace: AppShellHeaderPropsArgs['onOpenAdmin'];
   showOpenRouterWorkspace: AppShellHeaderPropsArgs['onOpenOpenRouter'];
   setThemeMode: Dispatch<SetStateAction<ThemeMode>>;
@@ -52,6 +53,7 @@ export function useAppShellHeaderRuntime({
   sessionQuotaStatus,
   navigateAppRoute,
   openAdaptiveWorkspaceFromHeader,
+  showAdaptiveFlowWorkspace,
   showAdminWorkspace,
   showOpenRouterWorkspace,
   setThemeMode,
@@ -82,6 +84,7 @@ export function useAppShellHeaderRuntime({
     sessionQuotaStatus,
     onOpenMobileTraining: () => navigateAppRoute('/training'),
     onOpenAdaptive: openAdaptiveWorkspaceFromHeader,
+    onOpenAdaptiveFlow: showAdaptiveFlowWorkspace,
     onOpenAdmin: showAdminWorkspace,
     onOpenOpenRouter: showOpenRouterWorkspace,
     onToggleTheme: () => setThemeMode((value) => (value === 'dark' ? 'light' : 'dark')),
