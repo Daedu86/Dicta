@@ -48,7 +48,11 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelector('[aria-label="Pending sessions"]')).toBeNull();
     expect(host.textContent).toContain('Adaptative Pace Layer Flow');
     expect(host.textContent).toContain('Implementation cycle');
-    expect(host.querySelectorAll('.adaptive-flow-language-button')).toHaveLength(5);
+    const languageButtons = host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-language-button');
+    expect(languageButtons).toHaveLength(5);
+    expect(languageButtons[0].getAttribute('aria-pressed')).toBe('true');
+    expect(host.textContent).toContain('browser-tts/en');
+    expect(host.querySelectorAll('.adaptive-flow-phase-kpi')).toHaveLength(27);
     expect(host.querySelector('.adaptive-flow-insights-card')).toBeNull();
     expect(host.querySelector('.adaptive-flow-cycle')).not.toBeNull();
     expect(host.querySelectorAll('.adaptive-flow-phase-card')).toHaveLength(9);
@@ -61,6 +65,16 @@ describe('AppWorkspaceContent', () => {
     expect(host.textContent).toContain('Benchmark');
     expect(host.textContent).toContain('Step 9');
     expect(host.textContent).toContain('Adaptation');
+
+    act(() => {
+      languageButtons[1].click();
+    });
+
+    expect(languageButtons[0].getAttribute('aria-pressed')).toBe('false');
+    expect(languageButtons[1].getAttribute('aria-pressed')).toBe('true');
+    expect(host.textContent).toContain('Spanish');
+    expect(host.textContent).toContain('browser-tts/es');
+    expect(host.textContent).not.toContain('browser-tts/en');
   });
 });
 
