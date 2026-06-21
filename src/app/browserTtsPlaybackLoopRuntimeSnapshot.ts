@@ -1,7 +1,10 @@
 import { normalizeBenchmarkLanguage } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { evaluateTranscriptAttempt } from '../core/evaluation';
 import { resolveBrowserTtsAdaptiveProfile } from '../inputs/browserTts/browserTtsAdaptiveProfiles';
-import type { BrowserTtsDeRecoveryState } from '../inputs/browserTts/browserTtsRecoveryPolicy';
+import {
+  summarizeBrowserTtsDeRecoveryState,
+  type BrowserTtsDeRecoveryState,
+} from '../inputs/browserTts/browserTtsRecoveryPolicy';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 import { collectBrowserTtsNavigatorInfo } from './browserTtsPlaybackLoopNavigator';
 
@@ -29,15 +32,10 @@ export function buildBrowserTtsPlaybackRuntimeSnapshot({
   const browserTtsProfile = resolveBrowserTtsAdaptiveProfile(ttsLanguage);
   const browserTtsBenchmark = getBenchmarkSnapshot('browser-tts', normalizeBenchmarkLanguage(ttsLanguage));
   const navigatorInfo = collectBrowserTtsNavigatorInfo();
-  const browserTtsRecovery: BrowserTtsDeRecoveryState = {
-    active: false,
-    level: 'none',
-    validCompletedSampleCount: 0,
-    pressureSampleCount: 0,
-    highLagSampleCount: 0,
-    lowAccuracySampleCount: 0,
-    recentOutlierDiagnosticCount: 0,
-  };
+  const browserTtsRecovery: BrowserTtsDeRecoveryState = summarizeBrowserTtsDeRecoveryState({
+    timeline: browserTtsBenchmark?.timeline ?? [],
+    ...navigatorInfo,
+  });
 
   return {
     historyProfile,
