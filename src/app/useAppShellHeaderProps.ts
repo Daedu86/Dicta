@@ -18,6 +18,7 @@ type UseAppShellHeaderPropsArgs = {
   sessionQuotaStatus: DictaSessionQuotaStatus;
   onOpenMobileTraining: () => void;
   onOpenAdaptive: () => void;
+  onOpenAdaptiveFlow: () => void;
   onOpenAdmin: () => void;
   onOpenOpenRouter: () => void;
   onToggleTheme: () => void;
@@ -39,6 +40,7 @@ export function useAppShellHeaderProps({
   sessionQuotaStatus,
   onOpenMobileTraining,
   onOpenAdaptive,
+  onOpenAdaptiveFlow,
   onOpenAdmin,
   onOpenOpenRouter,
   onToggleTheme,
@@ -68,6 +70,7 @@ export function useAppShellHeaderProps({
       sessionQuotaBlocked: sessionQuotaStatus.blocked,
       onOpenMobileTraining,
       onOpenAdaptive,
+      onOpenAdaptiveFlow,
       onOpenAdmin,
       onOpenOpenRouter,
       onToggleTheme,
@@ -90,6 +93,7 @@ export function useAppShellHeaderProps({
     sessionQuotaStatus.blocked,
     onOpenMobileTraining,
     onOpenAdaptive,
+    onOpenAdaptiveFlow,
     onOpenAdmin,
     onOpenOpenRouter,
     onToggleTheme,
