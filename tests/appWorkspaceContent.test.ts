@@ -27,31 +27,63 @@ afterEach(() => {
 describe('AppWorkspaceContent', () => {
   it('omits the idle training workspace panel while preserving pending sessions', () => {
     act(() => {
-      root.render(createElement(AppWorkspaceContent, {
+      root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
         pendingSessions: [createPendingSession()],
-        activeSessionId: '',
-        onOpenPendingSession: vi.fn(),
-        onDeleteSession: vi.fn(),
         workspaceMode: 'training',
-        dashboardSession: null,
-        sessions: [],
-        formatSessionStatus: (status) => status,
-        formatSessionDate: (value) => value,
-        formatSessionPlaybackDuration: () => '0s',
-        onBackToTraining: vi.fn(),
-        adaptiveBenchmarkSectionProps: {} as never,
-        openRouterAccessState: 'denied',
-        openRouterAccessMessage: '',
-        openRouterWorkspaceProps: {} as never,
-        canAccessAdminWorkspace: false,
-        adminWorkspaceProps: {} as never,
-      }));
+      })));
     });
 
     expect(host.querySelector('[aria-label="Pending sessions"]')).not.toBeNull();
     expect(host.querySelector('.workspace-panel')).toBeNull();
   });
+
+  it('renders the adaptive pace layer flow workspace with language tabs and the brain cycle', () => {
+    act(() => {
+      root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
+        workspaceMode: 'adaptive-flow',
+      })));
+    });
+
+    expect(host.textContent).toContain('Adaptative Pace Layer Flow');
+    expect(host.querySelectorAll('.adaptive-flow-language-button')).toHaveLength(5);
+    expect(host.textContent).toContain('Fase 1');
+    expect(host.textContent).toContain('Generate session');
+    expect(host.textContent).toContain('Fase 7');
+    expect(host.textContent).toContain('Goes to Fase 1');
+  });
 });
+
+type AppWorkspaceContentProps = Parameters<typeof AppWorkspaceContent>[0];
+
+function buildWorkspaceContentProps(overrides: Partial<AppWorkspaceContentProps> = {}): AppWorkspaceContentProps {
+  return {
+    pendingSessions: [],
+    activeSessionId: '',
+    onOpenPendingSession: vi.fn(),
+    onDeleteSession: vi.fn(),
+    workspaceMode: 'training',
+    dashboardSession: null,
+    sessions: [],
+    formatSessionStatus: (status) => status,
+    formatSessionDate: (value) => value,
+    formatSessionPlaybackDuration: () => '0s',
+    onBackToTraining: vi.fn(),
+    adaptiveBenchmarkSectionProps: {} as never,
+    adaptiveReportButtonProps: {
+      metricsLanguageView: 'en',
+      insightsDiagnosticInputMode: 'browser-tts',
+      insightsDiagnosticMessage: null,
+      onCopyInsightsDiagnosticPackage: vi.fn(),
+      formatInputModeLabel: (inputMode) => inputMode,
+    } as never,
+    openRouterAccessState: 'denied',
+    openRouterAccessMessage: '',
+    openRouterWorkspaceProps: {} as never,
+    canAccessAdminWorkspace: false,
+    adminWorkspaceProps: {} as never,
+    ...overrides,
+  };
+}
 
 function createPendingSession(): StoredSession {
   return {
