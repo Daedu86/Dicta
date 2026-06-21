@@ -1,10 +1,25 @@
 import { useMemo, useState } from 'react';
+import type { LiveMetricsDockProps } from '../runtime-workspaces/LiveMetricsDock';
+import { LiveMetricsDiagnosticMessage } from '../runtime-workspaces/LiveMetricsDiagnosticFallback';
 import {
   LANGUAGE_LABELS,
   LANGUAGE_TAB_LABELS,
   SUPPORTED_LANGUAGES,
   type SupportedLanguage,
 } from '../../core/languages';
+
+type AdaptiveFlowInsightsProps = Pick<
+  LiveMetricsDockProps,
+  | 'metricsLanguageView'
+  | 'insightsDiagnosticInputMode'
+  | 'insightsDiagnosticMessage'
+  | 'onCopyInsightsDiagnosticPackage'
+  | 'formatInputModeLabel'
+>;
+
+type AdaptivePaceLayerFlowWorkspaceProps = {
+  insights: AdaptiveFlowInsightsProps;
+};
 
 const ADAPTIVE_FLOW_PHASES = [
   {
@@ -52,7 +67,9 @@ const LANGUAGE_FLOW_NOTES: Record<SupportedLanguage, string> = {
   pt: 'Portuguese follows the base adaptive path while collecting benchmark evidence for later specialization.',
 };
 
-export function AdaptivePaceLayerFlowWorkspace() {
+export function AdaptivePaceLayerFlowWorkspace({
+  insights,
+}: AdaptivePaceLayerFlowWorkspaceProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
   const selectedLanguageLabel = LANGUAGE_LABELS[selectedLanguage];
   const selectedLanguageNote = LANGUAGE_FLOW_NOTES[selectedLanguage];
@@ -71,29 +88,52 @@ export function AdaptivePaceLayerFlowWorkspace() {
         </div>
       </div>
 
-      <section className="adaptive-flow-language-card" aria-label="Adaptive pace layer language selector">
-        <div>
-          <p className="dashboard-eyebrow">Language workspace</p>
-          <h3>{selectedLanguageLabel}</h3>
-          <p className="hint">{selectedLanguageNote}</p>
+      <section className="adaptive-flow-control-card" aria-label="Adaptive pace layer flow controls">
+        <div className="adaptive-flow-language-card" aria-label="Adaptive pace layer language selector">
+          <div>
+            <p className="dashboard-eyebrow">Language workspace</p>
+            <h3>{selectedLanguageLabel}</h3>
+            <p className="hint">{selectedLanguageNote}</p>
+          </div>
+          <div className="adaptive-flow-language-buttons" role="tablist" aria-label="Adaptive pace layer languages">
+            {SUPPORTED_LANGUAGES.map((language) => {
+              const selected = language === selectedLanguage;
+              return (
+                <button
+                  key={language}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  className={`secondary-button adaptive-flow-language-button ${selected ? 'adaptive-flow-language-button-active' : ''}`}
+                  onClick={() => setSelectedLanguage(language)}
+                >
+                  <span>{LANGUAGE_TAB_LABELS[language]}</span>
+                  <small>{LANGUAGE_LABELS[language]}</small>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="adaptive-flow-language-buttons" role="tablist" aria-label="Adaptive pace layer languages">
-          {SUPPORTED_LANGUAGES.map((language) => {
-            const selected = language === selectedLanguage;
-            return (
-              <button
-                key={language}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                className={`secondary-button adaptive-flow-language-button ${selected ? 'adaptive-flow-language-button-active' : ''}`}
-                onClick={() => setSelectedLanguage(language)}
-              >
-                <span>{LANGUAGE_TAB_LABELS[language]}</span>
-                <small>{LANGUAGE_LABELS[language]}</small>
-              </button>
-            );
-          })}
+
+        <div className="adaptive-flow-insights-card" aria-label="Adaptive pace layer flow insights">
+          <div>
+            <p className="dashboard-eyebrow">Insights</p>
+            <h3>Session insight + benchmark loop</h3>
+            <p className="hint">
+              Este bloque vive dentro del Flow para revisar cómo el cerebro convierte telemetría en benchmark y vuelve al siguiente ciclo.
+            </p>
+          </div>
+          <div className="adaptive-report-action-stack">
+            <button
+              type="button"
+              className="secondary-button live-metrics-report-button"
+              onClick={() => void insights.onCopyInsightsDiagnosticPackage()}
+              title={`Copy one structured adaptive report for ${insights.formatInputModeLabel(insights.insightsDiagnosticInputMode)} / ${insights.metricsLanguageView.toUpperCase()}: summary, loop breakdown, planner/controller/runtime diagnostics, Browser TTS metadata, benchmark, feedback, and compact raw debug.`}
+            >
+              Copy full adaptive report
+            </button>
+            <LiveMetricsDiagnosticMessage message={insights.insightsDiagnosticMessage} />
+          </div>
         </div>
       </section>
 
