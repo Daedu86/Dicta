@@ -23,35 +23,18 @@
   margin: 0.35rem 0 0;
 }
 
-.adaptive-flow-control-card {
+.adaptive-flow-language-card {
   display: grid;
-  grid-template-columns: minmax(24rem, 1.25fr) minmax(18rem, 0.75fr);
-  gap: 0.85rem;
-  align-items: stretch;
-}
-
-.adaptive-flow-language-card,
-.adaptive-flow-insights-card {
-  display: grid;
+  grid-template-columns: minmax(14rem, 0.85fr) minmax(18rem, 1.35fr);
   gap: 1rem;
-  align-content: start;
+  align-items: center;
   padding: 1rem;
   border: 1px solid #bfd2ee;
   border-radius: 1rem;
   background: #f7fbff;
 }
 
-.adaptive-flow-language-card {
-  grid-template-columns: minmax(14rem, 0.85fr) minmax(18rem, 1.35fr);
-  align-items: center;
-}
-
-.adaptive-flow-insights-card {
-  background: rgba(255, 255, 255, 0.92);
-}
-
 .adaptive-flow-language-card h3,
-.adaptive-flow-insights-card h3,
 .adaptive-flow-phase-card h3 {
   margin: 0.15rem 0 0.35rem;
 }
@@ -87,11 +70,10 @@
 
 .adaptive-flow-cycle {
   display: grid;
-  grid-template-columns: repeat(7, minmax(10rem, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
   align-items: stretch;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
+  overflow: visible;
 }
 
 .adaptive-flow-phase-card {
@@ -99,8 +81,8 @@
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 0.75rem;
-  min-width: 10rem;
-  min-height: 15rem;
+  min-width: 0;
+  min-height: 13rem;
   padding: 1rem;
   border: 1px solid #bfd2ee;
   border-radius: 1rem;
@@ -134,7 +116,6 @@
 }
 
 @media (max-width: 980px) {
-  .adaptive-flow-control-card,
   .adaptive-flow-language-card {
     grid-template-columns: 1fr;
   }
@@ -142,5 +123,9 @@
   .adaptive-flow-language-buttons {
     grid-template-columns: repeat(5, minmax(4rem, 1fr));
     overflow-x: auto;
+  }
+
+  .adaptive-flow-cycle {
+    grid-template-columns: 1fr;
   }
 }
