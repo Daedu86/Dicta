@@ -63,6 +63,35 @@ describe('AppShellHeader', () => {
     expect(syncIndex).toBeGreaterThan(badgeIndex);
   });
 
+  it('renders the adaptive pace layer flow tab next to the adaptive tab', () => {
+    const onOpenAdaptive = vi.fn();
+    const onOpenAdaptiveFlow = vi.fn();
+
+    act(() => {
+      root.render(createElement(AppShellHeader, appShellHeaderProps({
+        showAdaptiveButton: true,
+        onOpenAdaptive,
+        onOpenAdaptiveFlow,
+      })));
+    });
+
+    const actions = host.querySelector<HTMLElement>('.brand-header-actions');
+    const actionChildren = Array.from(actions?.children ?? []);
+    const adaptiveButton = host.querySelector<HTMLButtonElement>('.brand-adaptive-button');
+    const adaptiveFlowButton = host.querySelector<HTMLButtonElement>('.brand-adaptive-flow-button');
+
+    expect(adaptiveButton?.textContent).toContain('Adaptive Pace Layer');
+    expect(adaptiveFlowButton?.textContent).toContain('Adaptative Pace Layer Flow');
+    expect(actionChildren.indexOf(adaptiveFlowButton as HTMLElement)).toBe(actionChildren.indexOf(adaptiveButton as HTMLElement) + 1);
+
+    act(() => {
+      adaptiveFlowButton?.click();
+    });
+
+    expect(onOpenAdaptive).not.toHaveBeenCalled();
+    expect(onOpenAdaptiveFlow).toHaveBeenCalledTimes(1);
+  });
+
   it('uses the red LED state when no LLM is assigned', () => {
     act(() => {
       root.render(createElement(AppShellHeader, appShellHeaderProps({
@@ -133,6 +162,7 @@ function appShellHeaderProps(overrides: Partial<AppShellHeaderProps> = {}): AppS
     sessionQuotaBlocked: false,
     onOpenMobileTraining: vi.fn(),
     onOpenAdaptive: vi.fn(),
+    onOpenAdaptiveFlow: vi.fn(),
     onOpenAdmin: vi.fn(),
     onOpenOpenRouter: vi.fn(),
     onToggleTheme: vi.fn(),
