@@ -109,10 +109,10 @@ export const BROWSER_TTS_ES_PROFILE: BrowserTtsAdaptiveProfile = {
 
 export const BROWSER_TTS_EN_PROFILE: BrowserTtsAdaptiveProfile = {
   ...BROWSER_TTS_BASE_PROFILE,
-  supportRateFloor: 0.78,
-  extremeSupportRateFloor: 0.74,
-  balancedFlowFloor: 0.8,
-  supportRateCeiling: 0.88,
+  supportRateFloor: 0.66,
+  extremeSupportRateFloor: 0.6,
+  balancedFlowFloor: 0.72,
+  supportRateCeiling: 0.82,
   unsafeBoundaryMinPauseMs: 1200,
   recommendationCalibrationEnabled: false,
   supportRecoveryAggressiveness: 'high',
