@@ -48,8 +48,9 @@ describe('AppWorkspaceContent', () => {
     });
 
     expect(host.querySelector('[aria-label="Pending sessions"]')).toBeNull();
-    expect(host.textContent).toContain('Adaptative Pace Layer Flow');
+    expect(host.textContent).toContain('Adaptive Pace Layer Flow');
     expect(host.textContent).toContain('Implementation cycle');
+    expect(host.textContent).toContain('memoria → preparar → ejecutar → aprender → siguiente vuelta');
     const languageButtons = host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-language-button');
     expect(languageButtons).toHaveLength(5);
     expect(languageButtons[0].getAttribute('aria-pressed')).toBe('true');
@@ -69,11 +70,17 @@ describe('AppWorkspaceContent', () => {
     expect(host.textContent).toContain('Pipeline + brain');
     expect(host.textContent).toContain('Ciclo cerrado del Adaptive Pace Layer');
     expect(host.textContent).toContain('Adaptive Runtime / Pace Layer');
-    expect(host.textContent).toContain('Histórico del perfil');
+    expect(host.textContent).toContain('Benchmark + feedback reciente');
     expect(host.textContent).toContain('Preparar próxima sesión');
+    expect(host.textContent).toContain('Evidencia entra');
+    expect(host.textContent).toContain('Decisión / salida');
+    expect(host.textContent).toContain('siguiente vuelta');
     expect(host.textContent).toContain('Señales en vivo');
     expect(host.querySelector('.adaptive-flow-runtime-cycle-center')).not.toBeNull();
     expect(host.querySelectorAll('.adaptive-flow-runtime-cycle-node')).toHaveLength(4);
+    const runtimePhaseChips = host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-runtime-phase-chip');
+    expect(runtimePhaseChips).toHaveLength(10);
+    expect(Array.from(runtimePhaseChips).some((chip) => chip.textContent === 'Planner')).toBe(true);
     expect(host.querySelector('.adaptive-flow-cycle')).not.toBeNull();
     expect(host.querySelectorAll('.adaptive-flow-phase-card')).toHaveLength(9);
     expect(host.querySelector('.adaptive-flow-cycle-workspace')).toBeNull();
@@ -89,8 +96,11 @@ describe('AppWorkspaceContent', () => {
     expect(host.textContent).toContain('Step 9');
     expect(host.textContent).toContain('Adaptation');
 
+    const plannerRuntimeChip = Array.from(runtimePhaseChips).find((chip) => chip.textContent === 'Planner');
+    expect(plannerRuntimeChip).not.toBeUndefined();
+
     act(() => {
-      phaseButtons[1].click();
+      plannerRuntimeChip?.click();
     });
 
     expect(window.location.hash).toBe('#adaptive-flow/planner');

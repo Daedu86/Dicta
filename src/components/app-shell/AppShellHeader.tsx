@@ -104,7 +104,7 @@ export function AppShellHeader({
               onClick={onOpenAdaptiveFlow}
               title="Open the adaptive pace layer flow workspace"
             >
-              🧠 Adaptative Pace Layer Flow
+              🧠 Adaptive Pace Layer Flow
             </button>
           </>
         ) : null}

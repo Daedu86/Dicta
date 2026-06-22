@@ -81,7 +81,7 @@ describe('AppShellHeader', () => {
     const adaptiveFlowButton = host.querySelector<HTMLButtonElement>('.brand-adaptive-flow-button');
 
     expect(adaptiveButton?.textContent).toContain('Adaptive Pace Layer');
-    expect(adaptiveFlowButton?.textContent).toContain('Adaptative Pace Layer Flow');
+    expect(adaptiveFlowButton?.textContent).toContain('Adaptive Pace Layer Flow');
     expect(actionChildren.indexOf(adaptiveFlowButton as HTMLElement)).toBe(actionChildren.indexOf(adaptiveButton as HTMLElement) + 1);
 
     act(() => {

@@ -1,6 +1,6 @@
 # Adaptive Training Cycle
 
-_Last updated: 2026-06-16_
+_Last updated: 2026-06-22_
 
 Dicta is a closed adaptive listening loop. This page is the compact entry point for the adaptive training cycle.
 
@@ -13,7 +13,16 @@ Related docs:
 
 ## One-line model
 
-Benchmark and feedback feed the training prescription. The prescription guides LLM generation. The planner turns generated text into playable chunks. The controller chooses live pacing. The runtime pipeline makes the decision executable. Browser TTS speaks the chunk. Telemetry updates benchmark and feedback. The insight report explains the full loop.
+The runtime loop is causal: memory feeds preparation, preparation drives the current session, the session produces evidence, and that evidence updates the next turn. Benchmark and feedback feed the training prescription. The prescription guides LLM generation. The planner turns generated text into playable chunks. The controller chooses live pacing. The runtime pipeline makes the decision executable. Browser TTS speaks the chunk. Telemetry updates benchmark and feedback. The insight report explains the full loop.
+
+## Workspace map
+
+The Adaptive Pace Layer Flow workspace explains the loop as four auditable groups:
+
+- Memory: 20-day benchmark, recent feedback, and active `browser-tts/{language}` calibration.
+- Prepare: Generation, Planner, and Chunker convert evidence into content, runtime policy, and playable chunks.
+- Run: Browser TTS and the Playback loop execute the current session and collect live pressure.
+- Learn: Scoring, Telemetry, Benchmark, and Adaptation return evidence to the next cycle.
 
 ## Module map
 

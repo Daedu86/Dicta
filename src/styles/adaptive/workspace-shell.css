@@ -138,6 +138,11 @@
   margin: 0.15rem 0 0;
 }
 
+.adaptive-flow-runtime-map-subtitle {
+  max-width: 46rem;
+  margin: 0.35rem 0 0;
+}
+
 .adaptive-flow-runtime-map-header > span {
   flex: 0 0 auto;
   padding: 0.42rem 0.58rem;
@@ -151,7 +156,16 @@
 
 .adaptive-flow-runtime-map {
   position: relative;
-  min-height: 34rem;
+  display: grid;
+  grid-template-areas:
+    "history history history"
+    "prep center run"
+    "learn learn learn";
+  grid-template-columns: minmax(14rem, 1fr) minmax(13rem, 0.82fr) minmax(14rem, 1fr);
+  gap: 1rem 1.15rem;
+  align-items: center;
+  min-height: 0;
+  padding: 1rem;
   overflow: hidden;
   border: 1px solid rgba(191, 210, 238, 0.72);
   border-radius: 1rem;
@@ -164,26 +178,28 @@
 .adaptive-flow-runtime-map::before {
   content: "";
   position: absolute;
-  inset: 4.6rem 6.5rem 5.6rem;
+  z-index: 0;
+  inset: 5.7rem 5.8rem 6.3rem;
   border-radius: 999px;
   background: conic-gradient(
     from -34deg,
-    rgba(37, 99, 235, 0.82) 0 29%,
-    rgba(15, 118, 110, 0.82) 29% 62%,
-    rgba(124, 58, 237, 0.78) 62% 86%,
-    rgba(37, 99, 235, 0.38) 86% 100%
+    rgba(37, 99, 235, 0.56) 0 29%,
+    rgba(15, 118, 110, 0.56) 29% 62%,
+    rgba(124, 58, 237, 0.52) 62% 86%,
+    rgba(37, 99, 235, 0.28) 86% 100%
   );
-  opacity: 0.74;
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1rem), #000 calc(100% - 0.92rem));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 1rem), #000 calc(100% - 0.92rem));
+  opacity: 0.6;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 0.7rem), #000 calc(100% - 0.62rem));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 0.7rem), #000 calc(100% - 0.62rem));
   pointer-events: none;
 }
 
 .adaptive-flow-runtime-map::after {
   content: "";
   position: absolute;
-  inset: 6.4rem 8.6rem 7.4rem;
-  border: 1px dashed rgba(37, 99, 235, 0.24);
+  z-index: 0;
+  inset: 7.4rem 7.9rem 8.1rem;
+  border: 1px dashed rgba(37, 99, 235, 0.28);
   border-radius: 999px;
   pointer-events: none;
 }
@@ -193,24 +209,23 @@
   min-width: 0;
   border: 1px solid rgba(191, 210, 238, 0.82);
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.09);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
 }
 
 .adaptive-flow-runtime-cycle-center {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  top: 50%;
-  left: 50%;
+  grid-area: center;
   display: grid;
-  width: min(18.5rem, 42%);
-  min-height: 9.8rem;
+  justify-self: center;
+  width: min(16rem, 100%);
+  min-height: 8.7rem;
   place-items: center;
-  padding: 1.2rem;
+  padding: 1rem;
   border-color: rgba(15, 118, 110, 0.42);
   border-radius: 999px;
   background: rgba(240, 253, 250, 0.95);
   text-align: center;
-  transform: translate(-50%, -50%);
 }
 
 .adaptive-flow-runtime-cycle-center p,
@@ -236,7 +251,7 @@
 }
 
 .adaptive-flow-runtime-cycle-center span,
-.adaptive-flow-runtime-cycle-node > span {
+.adaptive-flow-runtime-cycle-detail {
   display: block;
   margin-top: 0.22rem;
   color: #4e6076;
@@ -245,7 +260,7 @@
 }
 
 .adaptive-flow-runtime-cycle-node {
-  position: absolute;
+  position: relative;
   z-index: 3;
   display: grid;
   gap: 0.45rem;
@@ -279,7 +294,43 @@
   font-size: 0.93rem;
 }
 
-.adaptive-flow-runtime-cycle-node ul {
+.adaptive-flow-runtime-cycle-evidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.adaptive-flow-runtime-cycle-field {
+  min-width: 0;
+  padding: 0.48rem;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: 0.8rem;
+  background: rgba(247, 251, 255, 0.86);
+}
+
+.adaptive-flow-runtime-cycle-field span {
+  display: block;
+  color: #6d7f93;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adaptive-flow-runtime-cycle-field p {
+  margin: 0.22rem 0 0;
+  color: #102f63;
+  font-size: 0.72rem;
+  font-weight: 760;
+  line-height: 1.28;
+}
+
+.adaptive-flow-runtime-cycle-field-output {
+  border-color: rgba(15, 118, 110, 0.16);
+  background: rgba(240, 253, 250, 0.78);
+}
+
+.adaptive-flow-runtime-phase-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.36rem;
@@ -288,57 +339,69 @@
   list-style: none;
 }
 
-.adaptive-flow-runtime-cycle-node li {
+.adaptive-flow-runtime-phase-list li {
+  min-width: 0;
+}
+
+.adaptive-flow-runtime-phase-chip {
   min-width: 0;
   padding: 0.34rem 0.5rem;
   border: 1px solid rgba(37, 99, 235, 0.14);
   border-radius: 999px;
   background: #f7fbff;
   color: #102f63;
+  cursor: pointer;
   font-size: 0.72rem;
   font-weight: 850;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
+.adaptive-flow-runtime-phase-chip:hover,
+.adaptive-flow-runtime-phase-chip:focus-visible {
+  border-color: rgba(37, 99, 235, 0.42);
+  background: #eaf2ff;
+  outline: none;
+}
+
+.adaptive-flow-runtime-phase-chip:focus-visible {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22);
+}
+
 .adaptive-flow-runtime-cycle-node-history {
-  top: 1rem;
-  left: 50%;
-  width: min(34rem, calc(100% - 2rem));
+  grid-area: history;
+  justify-self: center;
+  width: min(42rem, 100%);
   border-color: rgba(37, 99, 235, 0.34);
-  transform: translateX(-50%);
 }
 
 .adaptive-flow-runtime-cycle-node-prep {
-  top: 9.25rem;
-  left: 1rem;
-  width: min(17.5rem, 30%);
+  grid-area: prep;
+  align-self: stretch;
   border-color: rgba(37, 99, 235, 0.3);
 }
 
 .adaptive-flow-runtime-cycle-node-run {
-  top: 9.25rem;
-  right: 1rem;
-  width: min(18rem, 31%);
+  grid-area: run;
+  align-self: stretch;
   border-color: rgba(15, 118, 110, 0.34);
 }
 
 .adaptive-flow-runtime-cycle-node-run .adaptive-flow-runtime-cycle-node-header span,
-.adaptive-flow-runtime-cycle-node-run li {
+.adaptive-flow-runtime-cycle-node-run .adaptive-flow-runtime-phase-chip {
   border-color: rgba(15, 118, 110, 0.18);
   background: #f0fdfa;
 }
 
 .adaptive-flow-runtime-cycle-node-learn {
-  bottom: 1rem;
-  left: 50%;
-  width: min(32rem, calc(100% - 2rem));
+  grid-area: learn;
+  justify-self: center;
+  width: min(42rem, 100%);
   border-color: rgba(124, 58, 237, 0.3);
-  transform: translateX(-50%);
 }
 
 .adaptive-flow-runtime-cycle-node-learn .adaptive-flow-runtime-cycle-node-header span,
-.adaptive-flow-runtime-cycle-node-learn li {
+.adaptive-flow-runtime-cycle-node-learn .adaptive-flow-runtime-phase-chip {
   border-color: rgba(124, 58, 237, 0.18);
   background: #f5f3ff;
 }
@@ -647,29 +710,36 @@
   }
 
   .adaptive-flow-runtime-map {
-    min-height: 39rem;
+    grid-template-areas:
+      "history history"
+      "prep run"
+      "center center"
+      "learn learn";
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    padding: 0.85rem;
   }
 
   .adaptive-flow-runtime-map::before {
-    inset: 5.4rem 2.2rem 6.5rem;
+    inset: 6rem 2.4rem 7.2rem;
   }
 
   .adaptive-flow-runtime-map::after {
-    inset: 7.2rem 4rem 8.4rem;
+    inset: 7.8rem 4rem 9rem;
   }
 
   .adaptive-flow-runtime-cycle-center {
-    width: min(15rem, 42%);
+    width: min(24rem, 100%);
+    border-radius: 1.1rem;
   }
 
-  .adaptive-flow-runtime-cycle-node-prep,
-  .adaptive-flow-runtime-cycle-node-run {
-    top: 10.25rem;
-    width: min(13.75rem, 31%);
+  .adaptive-flow-runtime-cycle-evidence {
+    grid-template-columns: 1fr;
   }
 
+  .adaptive-flow-runtime-cycle-node-history,
   .adaptive-flow-runtime-cycle-node-learn {
-    width: min(28rem, calc(100% - 2rem));
+    width: 100%;
   }
 
   .adaptive-flow-cycle-workspace-grid,
@@ -686,9 +756,14 @@
 
 @media (max-width: 800px) {
   .adaptive-flow-runtime-map {
-    display: grid;
+    grid-template-areas:
+      "history"
+      "center"
+      "prep"
+      "run"
+      "learn";
+    grid-template-columns: 1fr;
     gap: 0.65rem;
-    min-height: 0;
     padding: 0.65rem;
   }
 
@@ -699,35 +774,16 @@
 
   .adaptive-flow-runtime-cycle-center,
   .adaptive-flow-runtime-cycle-node {
-    position: static;
     width: auto;
     min-height: 0;
-    transform: none;
   }
 
   .adaptive-flow-runtime-cycle-center {
-    order: 2;
     padding: 0.9rem;
     border-radius: 1.1rem;
   }
 
   .adaptive-flow-runtime-cycle-node {
     border-radius: 1rem;
-  }
-
-  .adaptive-flow-runtime-cycle-node-history {
-    order: 1;
-  }
-
-  .adaptive-flow-runtime-cycle-node-prep {
-    order: 3;
-  }
-
-  .adaptive-flow-runtime-cycle-node-run {
-    order: 4;
-  }
-
-  .adaptive-flow-runtime-cycle-node-learn {
-    order: 5;
   }
 }
