@@ -67,9 +67,13 @@ describe('AppWorkspaceContent', () => {
     expect(Boolean(runtimeMapPosition & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(Boolean(runtimeLoopPosition & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(host.textContent).toContain('Pipeline + brain');
+    expect(host.textContent).toContain('Ciclo cerrado del Adaptive Pace Layer');
     expect(host.textContent).toContain('Adaptive Runtime / Pace Layer');
     expect(host.textContent).toContain('Histórico del perfil');
+    expect(host.textContent).toContain('Preparar próxima sesión');
     expect(host.textContent).toContain('Señales en vivo');
+    expect(host.querySelector('.adaptive-flow-runtime-cycle-center')).not.toBeNull();
+    expect(host.querySelectorAll('.adaptive-flow-runtime-cycle-node')).toHaveLength(4);
     expect(host.querySelector('.adaptive-flow-cycle')).not.toBeNull();
     expect(host.querySelectorAll('.adaptive-flow-phase-card')).toHaveLength(9);
     expect(host.querySelector('.adaptive-flow-cycle-workspace')).toBeNull();

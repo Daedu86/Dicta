@@ -42,6 +42,15 @@ type AdaptiveFlowPhase = {
   signals: readonly string[];
 };
 
+type AdaptiveRuntimeCycleGroup = {
+  id: 'history' | 'prep' | 'run' | 'learn';
+  range: string;
+  eyebrow: string;
+  title: string;
+  detail: string | ((language: AdaptiveFlowLanguage) => string);
+  items: readonly string[];
+};
+
 const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
   {
     id: 'generation',
@@ -260,12 +269,51 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
   },
 ];
 
+const ADAPTIVE_RUNTIME_CYCLE_GROUPS: readonly AdaptiveRuntimeCycleGroup[] = [
+  {
+    id: 'history',
+    range: 'perfil',
+    eyebrow: 'Memoria',
+    title: 'Histórico del perfil',
+    detail: (language) => `benchmark 20 días + feedback reciente + ${language.name}`,
+    items: ['benchmark 20 días', 'feedback reciente', 'calibración idioma'],
+  },
+  {
+    id: 'prep',
+    range: '1-3',
+    eyebrow: 'Preparar próxima sesión',
+    title: 'Generation → Planner → Chunker',
+    detail: 'La receta convierte evidencia en texto, ritmo objetivo y chunks escuchables.',
+    items: ['Generation', 'Planner', 'Chunker'],
+  },
+  {
+    id: 'run',
+    range: '4-5',
+    eyebrow: 'Ejecutar sesión actual',
+    title: 'Browser TTS + Playback loop',
+    detail: 'El runtime habla, el usuario reconstruye, y Dicta mide la presión real.',
+    items: ['Browser TTS', 'Playback loop', 'Usuario escribe', 'Señales en vivo'],
+  },
+  {
+    id: 'learn',
+    range: '6-9',
+    eyebrow: 'Aprender de la sesión',
+    title: 'Scoring → Telemetry → Benchmark → Adaptation',
+    detail: 'La evidencia vuelve al historial y ajusta la siguiente vuelta del ciclo.',
+    items: ['Scoring', 'Telemetry', 'Benchmark', 'Adaptation'],
+  },
+];
+
 function resolveAdaptiveFlowKpiValue(kpi: AdaptiveFlowKpi, language: AdaptiveFlowLanguage): string {
   return typeof kpi.value === 'function' ? kpi.value(language) : kpi.value;
 }
 
 function resolveAdaptiveFlowMetricValue(metric: AdaptiveFlowMetric, language: AdaptiveFlowLanguage): string {
   return typeof metric.value === 'function' ? metric.value(language) : metric.value;
+}
+
+function resolveAdaptiveRuntimeCycleDetail(group: AdaptiveRuntimeCycleGroup, language: AdaptiveFlowLanguage): string {
+  return typeof group.detail === 'function' ? group.detail(language) : group.detail;
 }
 
 function getAdaptiveFlowPhaseHash(phaseId: string): string {
@@ -429,68 +477,40 @@ function AdaptiveFlowRuntimeMap({
   selectedLanguage: AdaptiveFlowLanguage;
 }) {
   return (
-    <section className="adaptive-flow-runtime-map-card" aria-label="Adaptive pace layer vertical runtime map">
+    <section className="adaptive-flow-runtime-map-card" aria-label="Adaptive pace layer circular runtime map">
       <div className="adaptive-flow-runtime-map-header">
         <div>
           <p className="dashboard-eyebrow">Pipeline + brain</p>
-          <h3>How the 9 phases feed the adaptive runtime</h3>
+          <h3>Ciclo cerrado del Adaptive Pace Layer</h3>
         </div>
         <span>browser-tts/{selectedLanguage.code}</span>
       </div>
 
-      <div className="adaptive-flow-runtime-map">
-        <div className="adaptive-flow-map-main" aria-label="Nine phase vertical cycle">
-          <div className="adaptive-flow-map-node adaptive-flow-map-node-history">
-            <strong>Histórico del perfil</strong>
-            <span>benchmark 20 días · feedback reciente · {selectedLanguage.name}</span>
-          </div>
-          <div className="adaptive-flow-map-arrow" aria-hidden="true">↓</div>
-
-          <div className="adaptive-flow-map-group adaptive-flow-map-group-prep">
-            <p>Preparar próxima sesión</p>
-            <div className="adaptive-flow-map-node-list">
-              <span>1 Generation</span>
-              <span>2 Planner</span>
-              <span>3 Chunker</span>
-            </div>
-          </div>
-          <div className="adaptive-flow-map-arrow" aria-hidden="true">↓</div>
-
-          <div className="adaptive-flow-map-group adaptive-flow-map-group-run">
-            <p>Ejecutar sesión actual</p>
-            <div className="adaptive-flow-map-node-list">
-              <span>4 Browser TTS</span>
-              <span>5 Playback loop</span>
-              <span>Usuario escribe</span>
-              <span>Señales en vivo</span>
-            </div>
-          </div>
-          <div className="adaptive-flow-map-arrow" aria-hidden="true">↓</div>
-
-          <div className="adaptive-flow-map-group adaptive-flow-map-group-learn">
-            <p>Aprender de la sesión</p>
-            <div className="adaptive-flow-map-node-list">
-              <span>6 Scoring</span>
-              <span>7 Telemetry</span>
-              <span>8 Benchmark</span>
-              <span>9 Adaptation</span>
-            </div>
-          </div>
-          <div className="adaptive-flow-map-arrow adaptive-flow-map-arrow-loop" aria-hidden="true">↺</div>
+      <div className="adaptive-flow-runtime-map" aria-label={`Closed adaptive runtime cycle for ${selectedLanguage.name}`}>
+        <div className="adaptive-flow-runtime-cycle-center" aria-label="Adaptive runtime inputs and outputs">
+          <p>Adaptive Runtime / Pace Layer</p>
+          <strong>Decide pacing</strong>
+          <span>rate · pause · chunk size · boundaries · replay</span>
         </div>
 
-        <div className="adaptive-flow-map-brain" aria-label="Adaptive runtime inputs and outputs">
-          <div className="adaptive-flow-map-brain-card">
-            <p>Adaptive Runtime / Pace Layer</p>
-            <strong>Decide pacing</strong>
-            <span>rate · pause · chunk size · boundaries · replay</span>
-          </div>
-          <div className="adaptive-flow-map-connector">
-            <span>Histórico → brain</span>
-            <span>Señales en vivo → brain</span>
-            <span>brain → fases 4 y 5</span>
-          </div>
-        </div>
+        {ADAPTIVE_RUNTIME_CYCLE_GROUPS.map((group) => (
+          <article
+            className={`adaptive-flow-runtime-cycle-node adaptive-flow-runtime-cycle-node-${group.id}`}
+            key={group.id}
+          >
+            <div className="adaptive-flow-runtime-cycle-node-header">
+              <span>{group.range}</span>
+              <p>{group.eyebrow}</p>
+            </div>
+            <strong>{group.title}</strong>
+            <span>{resolveAdaptiveRuntimeCycleDetail(group, selectedLanguage)}</span>
+            <ul>
+              {group.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
       </div>
     </section>
   );
