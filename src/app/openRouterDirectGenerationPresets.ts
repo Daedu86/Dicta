@@ -18,7 +18,7 @@ const ADAPTIVE_DIRECT_GENERATION_PRESET: OpenRouterDirectGenerationPreset = {
   id: 'adaptive',
   slotLabel: 'Adaptive direct session',
   displayLabel: 'Adaptive session',
-  durationMinutes: 2,
+  durationMinutes: 3,
   userIntent: 'challenge',
   targetDifficulty: 'hard',
   difficultyInstruction: 'Adaptive session: request the highest safe training level, but let the trainer prescription downgrade to recover, stabilize, or progress when the benchmark and latest feedback show pressure.',

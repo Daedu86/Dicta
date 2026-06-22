@@ -46,13 +46,13 @@ describe('TrainingGenerationCard intent labels', () => {
   });
 
   it('shows the approximate voice duration from the generation button preset', () => {
-    const adaptive = buildTrainingGenerationButtonDisplay(button({ id: 'adaptive', label: 'Generate Session', durationMinutes: 2 }));
-    const custom = buildTrainingGenerationButtonDisplay(button({ id: 'topic', label: 'Generate Topic Session', durationMinutes: 3 }));
+    const adaptive = buildTrainingGenerationButtonDisplay(button({ id: 'adaptive', label: 'Generate Session', durationMinutes: 3 }));
+    const custom = buildTrainingGenerationButtonDisplay(button({ id: 'topic', label: 'Generate Topic Session', durationMinutes: 4 }));
 
-    expect(adaptive.displayDurationLabel).toBe('Approx. 2 min audio');
-    expect(adaptive.displayHelpText).toContain('About 2 minutes');
-    expect(custom.displayDurationLabel).toBe('Approx. 3 min audio');
-    expect(custom.displayHelpText).toContain('About 3 minutes');
+    expect(adaptive.displayDurationLabel).toBe('Approx. 3 min audio');
+    expect(adaptive.displayHelpText).toContain('About 3 minutes');
+    expect(custom.displayDurationLabel).toBe('Approx. 4 min audio');
+    expect(custom.displayHelpText).toContain('About 4 minutes');
   });
 
   it('updates Precision descriptions for recall and completion-window work', () => {
@@ -62,7 +62,7 @@ describe('TrainingGenerationCard intent labels', () => {
     expect(standard.displayTitle).toContain('short, clear listening phrases');
     expect(standard.displayTitle).toContain('on-time completion');
     expect(standard.displayHelpText).toContain('detail recall');
-    expect(legacyExpress.displayHelpText).toContain('About 2 minutes');
+    expect(legacyExpress.displayHelpText).toContain('About 3 minutes');
     expect(legacyExpress.displayHelpText).not.toContain('Compact');
   });
 
@@ -73,7 +73,7 @@ describe('TrainingGenerationCard intent labels', () => {
     expect(standard.displayTitle).toContain('balanced semantic phrases');
     expect(standard.displayTitle).toContain('word order');
     expect(standard.displayHelpText).toContain('word-order practice');
-    expect(legacyExpress.displayHelpText).toContain('About 2 minutes');
+    expect(legacyExpress.displayHelpText).toContain('About 3 minutes');
     expect(legacyExpress.displayHelpText).not.toContain('Compact');
   });
 
@@ -84,7 +84,7 @@ describe('TrainingGenerationCard intent labels', () => {
     expect(standard.displayTitle).toContain('denser language');
     expect(standard.displayTitle).toContain('completion timing are stable');
     expect(standard.displayHelpText).toContain('richer vocabulary and grammar');
-    expect(legacyExpress.displayHelpText).toContain('About 2 minutes');
+    expect(legacyExpress.displayHelpText).toContain('About 3 minutes');
     expect(legacyExpress.displayHelpText).not.toContain('Compact');
   });
 

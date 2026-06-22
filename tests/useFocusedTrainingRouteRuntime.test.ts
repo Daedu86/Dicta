@@ -30,6 +30,7 @@ describe('useFocusedTrainingRouteRuntime', () => {
     const { args, runtime } = await renderFocusedTrainingRouteRuntime();
 
     expect(runtime.focusedTrainingProps.generationButtons.map((button) => button.id)).toEqual(['adaptive', 'topic']);
+    expect(runtime.focusedTrainingProps.generationButtons.map((button) => button.durationMinutes)).toEqual([3, 3]);
 
     const adaptiveButton = runtime.focusedTrainingProps.generationButtons.find((button) => button.id === 'adaptive');
     const topicButton = runtime.focusedTrainingProps.generationButtons.find((button) => button.id === 'topic');

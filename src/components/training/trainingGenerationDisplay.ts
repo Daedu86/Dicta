@@ -76,7 +76,7 @@ function resolveTrainingGenerationDurationMinutes(durationMinutes: number | unde
   if (typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) && durationMinutes > 0) {
     return durationMinutes;
   }
-  return 2;
+  return 3;
 }
 
 function buildIntentButtonTitle(intent: TrainingGenerationIntent, fallback: string, durationMinutes: number): string {

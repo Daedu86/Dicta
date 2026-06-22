@@ -34,7 +34,7 @@ describe('training notifications', () => {
     expect(notification.options.tag).toBe('dicta-session-ready-job-123');
   });
 
-  it('labels two-minute hard sessions as challenge sessions', () => {
+  it('labels hard direct sessions as challenge sessions', () => {
     const script = createScript({
       title: 'Philosophische Paradoxe',
       language: 'de',

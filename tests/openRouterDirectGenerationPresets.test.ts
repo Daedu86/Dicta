@@ -16,9 +16,9 @@ describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
     ]);
   });
 
-  it('keeps direct presets at two minutes', () => {
-    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive.durationMinutes).toBe(2);
-    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic.durationMinutes).toBe(2);
+  it('keeps direct presets at three minutes', () => {
+    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive.durationMinutes).toBe(3);
+    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic.durationMinutes).toBe(3);
   });
 
   it('requests the highest safe level and lets the trainer downgrade if needed', () => {

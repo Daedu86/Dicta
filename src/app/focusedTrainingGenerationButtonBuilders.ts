@@ -41,8 +41,8 @@ const ADAPTIVE_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButt
   preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive,
   requestingLabel: 'Requesting session...',
   readyLabel: 'Generate Session',
-  title: 'Generate a two-minute adaptive session with OpenRouter.',
-  helpText: 'About 2 minutes. The benchmark and latest feedback resolve whether the next session should recover, stabilize, progress, or challenge.',
+  title: 'Generate a three-minute adaptive session with OpenRouter.',
+  helpText: 'About 3 minutes. The benchmark and latest feedback resolve whether the next session should recover, stabilize, progress, or challenge.',
 };
 
 const TOPIC_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButtonDefinition = {
@@ -50,7 +50,7 @@ const TOPIC_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButtonD
   preset: OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic,
   requestingLabel: 'Requesting topic session...',
   readyLabel: 'Generate Topic Session',
-  title: 'Generate a two-minute adaptive session around a topic you provide.',
+  title: 'Generate a three-minute adaptive session around a topic you provide.',
   helpText: 'Adds your topic to the LLM prompt while the benchmark still controls difficulty, phrase length, and pacing.',
 };
 

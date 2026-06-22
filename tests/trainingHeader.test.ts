@@ -133,9 +133,9 @@ describe('TrainingHeader', () => {
     expect(generationCard).not.toBeNull();
     expect(generationButtons.map((button) => button.textContent)).toEqual(['Precision', 'Stabilize', 'Challenge']);
     expect(generationDurations.map((duration) => duration.textContent)).toEqual([
-      'Approx. 2 min audio',
-      'Approx. 2 min audio',
-      'Approx. 2 min audio',
+      'Approx. 3 min audio',
+      'Approx. 3 min audio',
+      'Approx. 3 min audio',
     ]);
 
     act(() => {
