@@ -57,11 +57,15 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelectorAll('.adaptive-flow-phase-kpi')).toHaveLength(27);
     expect(host.querySelector('.adaptive-flow-insights-card')).toBeNull();
     const runtimeMapCard = host.querySelector<HTMLElement>('.adaptive-flow-runtime-map-card');
+    const runtimeLoopCard = host.querySelector<HTMLElement>('.adaptive-flow-language-card');
     const phaseCycle = host.querySelector<HTMLElement>('.adaptive-flow-cycle');
     expect(runtimeMapCard).not.toBeNull();
+    expect(runtimeLoopCard).not.toBeNull();
     expect(phaseCycle).not.toBeNull();
-    const runtimeMapPosition = runtimeMapCard?.compareDocumentPosition(phaseCycle as Node) ?? 0;
+    const runtimeMapPosition = runtimeMapCard?.compareDocumentPosition(runtimeLoopCard as Node) ?? 0;
+    const runtimeLoopPosition = runtimeLoopCard?.compareDocumentPosition(phaseCycle as Node) ?? 0;
     expect(Boolean(runtimeMapPosition & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(Boolean(runtimeLoopPosition & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(host.textContent).toContain('Pipeline + brain');
     expect(host.textContent).toContain('Adaptive Runtime / Pace Layer');
     expect(host.textContent).toContain('Histórico del perfil');

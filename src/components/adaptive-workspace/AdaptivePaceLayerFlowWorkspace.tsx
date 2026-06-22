@@ -341,6 +341,8 @@ export function AdaptivePaceLayerFlowWorkspace() {
         </div>
       </div>
 
+      <AdaptiveFlowRuntimeMap selectedLanguage={selectedLanguage} />
+
       <section className="adaptive-flow-language-card" aria-label="Adaptive pace layer implementation summary">
         <div>
           <p className="dashboard-eyebrow">Runtime loop</p>
@@ -379,8 +381,6 @@ export function AdaptivePaceLayerFlowWorkspace() {
           </span>
         </div>
       </section>
-
-      <AdaptiveFlowRuntimeMap selectedLanguage={selectedLanguage} />
 
       <section
         className="adaptive-flow-cycle"
