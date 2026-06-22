@@ -380,6 +380,8 @@ export function AdaptivePaceLayerFlowWorkspace() {
         </div>
       </section>
 
+      <AdaptiveFlowRuntimeMap selectedLanguage={selectedLanguage} />
+
       <section
         className="adaptive-flow-cycle"
         aria-label={`Adaptive pace layer implementation cycle for ${selectedLanguage.name}`}
@@ -417,6 +419,79 @@ export function AdaptivePaceLayerFlowWorkspace() {
           );
         })}
       </section>
+    </section>
+  );
+}
+
+function AdaptiveFlowRuntimeMap({
+  selectedLanguage,
+}: {
+  selectedLanguage: AdaptiveFlowLanguage;
+}) {
+  return (
+    <section className="adaptive-flow-runtime-map-card" aria-label="Adaptive pace layer vertical runtime map">
+      <div className="adaptive-flow-runtime-map-header">
+        <div>
+          <p className="dashboard-eyebrow">Pipeline + brain</p>
+          <h3>How the 9 phases feed the adaptive runtime</h3>
+        </div>
+        <span>browser-tts/{selectedLanguage.code}</span>
+      </div>
+
+      <div className="adaptive-flow-runtime-map">
+        <div className="adaptive-flow-map-main" aria-label="Nine phase vertical cycle">
+          <div className="adaptive-flow-map-node adaptive-flow-map-node-history">
+            <strong>Histórico del perfil</strong>
+            <span>benchmark 20 días · feedback reciente · {selectedLanguage.name}</span>
+          </div>
+          <div className="adaptive-flow-map-arrow" aria-hidden="true">↓</div>
+
+          <div className="adaptive-flow-map-group adaptive-flow-map-group-prep">
+            <p>Preparar próxima sesión</p>
+            <div className="adaptive-flow-map-node-list">
+              <span>1 Generation</span>
+              <span>2 Planner</span>
+              <span>3 Chunker</span>
+            </div>
+          </div>
+          <div className="adaptive-flow-map-arrow" aria-hidden="true">↓</div>
+
+          <div className="adaptive-flow-map-group adaptive-flow-map-group-run">
+            <p>Ejecutar sesión actual</p>
+            <div className="adaptive-flow-map-node-list">
+              <span>4 Browser TTS</span>
+              <span>5 Playback loop</span>
+              <span>Usuario escribe</span>
+              <span>Señales en vivo</span>
+            </div>
+          </div>
+          <div className="adaptive-flow-map-arrow" aria-hidden="true">↓</div>
+
+          <div className="adaptive-flow-map-group adaptive-flow-map-group-learn">
+            <p>Aprender de la sesión</p>
+            <div className="adaptive-flow-map-node-list">
+              <span>6 Scoring</span>
+              <span>7 Telemetry</span>
+              <span>8 Benchmark</span>
+              <span>9 Adaptation</span>
+            </div>
+          </div>
+          <div className="adaptive-flow-map-arrow adaptive-flow-map-arrow-loop" aria-hidden="true">↺</div>
+        </div>
+
+        <div className="adaptive-flow-map-brain" aria-label="Adaptive runtime inputs and outputs">
+          <div className="adaptive-flow-map-brain-card">
+            <p>Adaptive Runtime / Pace Layer</p>
+            <strong>Decide pacing</strong>
+            <span>rate · pause · chunk size · boundaries · replay</span>
+          </div>
+          <div className="adaptive-flow-map-connector">
+            <span>Histórico → brain</span>
+            <span>Señales en vivo → brain</span>
+            <span>brain → fases 4 y 5</span>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

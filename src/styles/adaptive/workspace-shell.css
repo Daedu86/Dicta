@@ -118,6 +118,170 @@
   font-size: 0.9rem;
 }
 
+.adaptive-flow-runtime-map-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.adaptive-flow-runtime-map-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.adaptive-flow-runtime-map-header h3 {
+  margin: 0.15rem 0 0;
+}
+
+.adaptive-flow-runtime-map-header > span {
+  flex: 0 0 auto;
+  padding: 0.42rem 0.58rem;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #102f63;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.adaptive-flow-runtime-map {
+  display: grid;
+  grid-template-columns: minmax(17rem, 1fr) minmax(14rem, 0.62fr);
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.adaptive-flow-map-main,
+.adaptive-flow-map-brain {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.adaptive-flow-map-node,
+.adaptive-flow-map-group,
+.adaptive-flow-map-brain-card {
+  min-width: 0;
+  padding: 0.72rem;
+  border: 1px solid rgba(191, 210, 238, 0.78);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.adaptive-flow-map-node strong,
+.adaptive-flow-map-brain-card strong {
+  display: block;
+  color: #102f63;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.adaptive-flow-map-node span,
+.adaptive-flow-map-brain-card span {
+  display: block;
+  margin-top: 0.22rem;
+  color: #4e6076;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.adaptive-flow-map-node-history {
+  border-color: rgba(37, 99, 235, 0.32);
+  background: #eef5ff;
+}
+
+.adaptive-flow-map-arrow {
+  display: grid;
+  place-items: center;
+  color: #2563eb;
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.adaptive-flow-map-arrow-loop {
+  color: #102f63;
+}
+
+.adaptive-flow-map-group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.adaptive-flow-map-group p,
+.adaptive-flow-map-brain-card p {
+  margin: 0;
+  color: #6d7f93;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adaptive-flow-map-node-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.adaptive-flow-map-group-run .adaptive-flow-map-node-list,
+.adaptive-flow-map-group-learn .adaptive-flow-map-node-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.adaptive-flow-map-node-list span,
+.adaptive-flow-map-connector span {
+  min-width: 0;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 0.68rem;
+  background: #f7fbff;
+  color: #102f63;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.adaptive-flow-map-group-prep {
+  border-left: 4px solid #2563eb;
+}
+
+.adaptive-flow-map-group-run {
+  border-left: 4px solid #0f766e;
+}
+
+.adaptive-flow-map-group-learn {
+  border-left: 4px solid #7c3aed;
+}
+
+.adaptive-flow-map-brain {
+  align-content: center;
+}
+
+.adaptive-flow-map-brain-card {
+  border-color: rgba(15, 118, 110, 0.36);
+  background: linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+}
+
+.adaptive-flow-map-connector {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+
+.adaptive-flow-map-connector span {
+  border-color: rgba(15, 118, 110, 0.2);
+  background: #f0fdfa;
+}
+
 .adaptive-flow-cycle {
   display: grid;
   grid-template-columns: 1fr;
@@ -410,6 +574,25 @@
   }
 
   .adaptive-flow-selected-profile {
+    grid-template-columns: 1fr;
+  }
+
+  .adaptive-flow-runtime-map-header,
+  .adaptive-flow-runtime-map {
+    grid-template-columns: 1fr;
+  }
+
+  .adaptive-flow-runtime-map-header {
+    display: grid;
+  }
+
+  .adaptive-flow-runtime-map-header > span {
+    justify-self: start;
+  }
+
+  .adaptive-flow-map-node-list,
+  .adaptive-flow-map-group-run .adaptive-flow-map-node-list,
+  .adaptive-flow-map-group-learn .adaptive-flow-map-node-list {
     grid-template-columns: 1fr;
   }
 
