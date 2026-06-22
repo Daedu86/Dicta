@@ -29,6 +29,7 @@ export function TrainingGenerationCard({ generationButtons, className = '' }: Tr
                 </button>
                 {display.displayHelpText ? <HelpIcon tooltip={display.displayHelpText} ariaLabel={`Help for ${display.displayLabel}`} /> : null}
               </div>
+              <p className="training-generation-duration">{display.displayDurationLabel}</p>
               {button.statusMessage ? (
                 <p className={`training-generation-notice training-generation-notice-${button.statusTone ?? 'hint'}`} aria-live="polite">
                   {button.statusMessage}

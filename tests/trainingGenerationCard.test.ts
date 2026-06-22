@@ -45,6 +45,16 @@ describe('TrainingGenerationCard intent labels', () => {
     expect(adaptive.displayHelpText).toContain('trainer reads your benchmark');
   });
 
+  it('shows the approximate voice duration from the generation button preset', () => {
+    const adaptive = buildTrainingGenerationButtonDisplay(button({ id: 'adaptive', label: 'Generate Session', durationMinutes: 2 }));
+    const custom = buildTrainingGenerationButtonDisplay(button({ id: 'topic', label: 'Generate Topic Session', durationMinutes: 3 }));
+
+    expect(adaptive.displayDurationLabel).toBe('Approx. 2 min audio');
+    expect(adaptive.displayHelpText).toContain('About 2 minutes');
+    expect(custom.displayDurationLabel).toBe('Approx. 3 min audio');
+    expect(custom.displayHelpText).toContain('About 3 minutes');
+  });
+
   it('updates Precision descriptions for recall and completion-window work', () => {
     const standard = buildTrainingGenerationButtonDisplay(button({ id: 'easy', label: 'New Easy Session' }));
     const legacyExpress = buildTrainingGenerationButtonDisplay(button({ id: 'express-easy', label: 'Express Easy Session' }));

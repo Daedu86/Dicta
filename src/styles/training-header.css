@@ -120,6 +120,11 @@
   font-size: 0.74rem;
 }
 
+.training-header-generation-card .training-generation-duration {
+  color: #a8bdd7;
+  font-size: 0.72rem;
+}
+
 .training-header-actions {
   display: flex;
   align-items: center;

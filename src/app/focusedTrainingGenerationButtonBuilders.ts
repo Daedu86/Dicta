@@ -111,6 +111,7 @@ function buildDirectGenerationButton(
       openRouterOfflineTitle: context.openRouterOfflineTitle,
       sessionQuotaStatus: context.sessionQuotaStatus,
     }),
+    durationMinutes: config.preset.durationMinutes,
     helpText: config.helpText,
     statusMessage: notice?.message,
     statusTone: notice?.tone,

@@ -163,6 +163,14 @@
   line-height: 1.35;
 }
 
+.training-generation-duration {
+  margin: -0.1rem 0 0;
+  color: #60758d;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
 .training-generation-notice-success {
   border-color: #86efac;
   background: #f0fdf4;

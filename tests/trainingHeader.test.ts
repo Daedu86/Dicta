@@ -128,9 +128,15 @@ describe('TrainingHeader', () => {
 
     const generationCard = host.querySelector('.training-header .training-header-generation-card');
     const generationButtons = Array.from(generationCard?.querySelectorAll<HTMLButtonElement>('.training-generation-button') ?? []);
+    const generationDurations = Array.from(generationCard?.querySelectorAll<HTMLElement>('.training-generation-duration') ?? []);
 
     expect(generationCard).not.toBeNull();
     expect(generationButtons.map((button) => button.textContent)).toEqual(['Precision', 'Stabilize', 'Challenge']);
+    expect(generationDurations.map((duration) => duration.textContent)).toEqual([
+      'Approx. 2 min audio',
+      'Approx. 2 min audio',
+      'Approx. 2 min audio',
+    ]);
 
     act(() => {
       generationButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
