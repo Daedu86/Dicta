@@ -43,6 +43,7 @@ export function createDefaultNavigationEffectProps(overrides: Partial<Navigation
     activeSessionId: activeSession.id,
     activeInputWorkspaceMode: 'tts',
     workspaceMode: 'dashboard',
+    isFocusedTrainingRoute: false,
     openRouterAccessState: 'allowed',
     openRouterAccessMessage: '',
     suppressSidebarAutoSelectRef: { current: false },

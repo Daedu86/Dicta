@@ -25,6 +25,7 @@ export function useDictaRuntimeRootAdaptiveWorkspaceGraph({
   const { sessions, activeSessionId, setActiveSessionId } = sessionsState;
   const {
     workspaceMode,
+    currentPath,
     dashboardSessionId,
     clearDashboardSession,
     showWorkspaceMode,
@@ -90,6 +91,7 @@ export function useDictaRuntimeRootAdaptiveWorkspaceGraph({
     activeSessionId,
     activeInputWorkspaceMode,
     workspaceMode,
+    isFocusedTrainingRoute: currentPath === '/training' || currentPath === '/training/',
     openRouterAccessState,
     openRouterAccessMessage,
     suppressSidebarAutoSelectRef,

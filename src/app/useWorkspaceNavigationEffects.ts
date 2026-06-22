@@ -8,6 +8,7 @@ interface UseWorkspaceNavigationEffectsOptions {
   activeSessionId: string;
   activeInputWorkspaceMode: WorkspaceMode;
   workspaceMode: WorkspaceMode;
+  isFocusedTrainingRoute: boolean;
   openRouterAccessState: string;
   openRouterAccessMessage: string;
   suppressSidebarAutoSelectRef: { current: boolean };
@@ -23,6 +24,7 @@ export function useWorkspaceNavigationEffects({
   activeSessionId,
   activeInputWorkspaceMode,
   workspaceMode,
+  isFocusedTrainingRoute,
   openRouterAccessState,
   openRouterAccessMessage,
   suppressSidebarAutoSelectRef,
@@ -51,6 +53,7 @@ export function useWorkspaceNavigationEffects({
   }, [activeSessionId, sessions, setActiveSessionId]);
 
   useEffect(() => {
+    if (isFocusedTrainingRoute) return;
     if (suppressSidebarAutoSelectRef.current) return;
     if (
       activeSession &&
@@ -62,5 +65,5 @@ export function useWorkspaceNavigationEffects({
     ) {
       showWorkspaceMode(activeInputWorkspaceMode);
     }
-  }, [activeInputWorkspaceMode, activeSession, showWorkspaceMode, suppressSidebarAutoSelectRef, workspaceMode]);
+  }, [activeInputWorkspaceMode, activeSession, isFocusedTrainingRoute, showWorkspaceMode, suppressSidebarAutoSelectRef, workspaceMode]);
 }

@@ -21,6 +21,7 @@ type HookProps = {
   activeSessionId: string;
   activeInputWorkspaceMode: WorkspaceMode;
   workspaceMode: WorkspaceMode;
+  isFocusedTrainingRoute: boolean;
   openRouterAccessState: 'pending' | 'allowed' | 'denied';
   openRouterAccessMessage: string;
   suppressSidebarAutoSelectRef: { current: boolean };
@@ -61,6 +62,7 @@ function createDefaultProps(overrides: Partial<HookProps> = {}): HookProps {
     activeSessionId: activeSession.id,
     activeInputWorkspaceMode: 'tts',
     workspaceMode: 'dashboard',
+    isFocusedTrainingRoute: false,
     openRouterAccessState: 'allowed',
     openRouterAccessMessage: '',
     suppressSidebarAutoSelectRef: { current: false },
@@ -155,6 +157,19 @@ describe('useWorkspaceNavigationEffects', () => {
       workspaceMode: 'training',
       activeInputWorkspaceMode: 'tts',
       suppressSidebarAutoSelectRef: { current: true },
+    });
+
+    await renderNavigationEffects(props);
+
+    expect(props.showWorkspaceMode).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-select the active input workspace on the focused training route', async () => {
+    const props = createDefaultProps({
+      workspaceMode: 'training',
+      isFocusedTrainingRoute: true,
+      activeInputWorkspaceMode: 'tts',
+      suppressSidebarAutoSelectRef: { current: false },
     });
 
     await renderNavigationEffects(props);
