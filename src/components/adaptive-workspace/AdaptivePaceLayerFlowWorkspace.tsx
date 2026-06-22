@@ -196,7 +196,7 @@ export function AdaptivePaceLayerFlowWorkspace() {
               </dl>
             </div>
             <span className="adaptive-flow-phase-arrow" aria-hidden="true">
-              {index === ADAPTIVE_FLOW_PHASES.length - 1 ? '↺' : '→'}
+              {index === ADAPTIVE_FLOW_PHASES.length - 1 ? '↺' : '↓'}
             </span>
           </article>
         ))}
