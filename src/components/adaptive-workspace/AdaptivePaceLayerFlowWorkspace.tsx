@@ -276,7 +276,7 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
 const ADAPTIVE_RUNTIME_CYCLE_GROUPS: readonly AdaptiveRuntimeCycleGroup[] = [
   {
     id: 'history',
-    range: 'memoria',
+    range: 'estado',
     eyebrow: 'Memoria del perfil',
     title: 'Benchmark + feedback reciente',
     detail: (language) => `Lee solo el perfil browser-tts/${language.code} antes de decidir la siguiente sesión.`,
@@ -508,16 +508,28 @@ function AdaptiveFlowRuntimeMap({
           <p className="dashboard-eyebrow">Pipeline + brain</p>
           <h3>Ciclo cerrado del Adaptive Pace Layer</h3>
           <p className="hint adaptive-flow-runtime-map-subtitle">
-            Cada bloque muestra qué evidencia entra, qué decisión sale y qué fase puedes abrir para auditarla.
+            Lee el mapa en sentido horario: memoria → preparar → ejecutar → aprender → memoria actualizada.
           </p>
         </div>
         <span>browser-tts/{selectedLanguage.code}</span>
       </div>
 
+      <div className="adaptive-flow-runtime-cycle-order" aria-label="Adaptive pace layer clockwise order">
+        <span>Orden horario</span>
+        <strong>Memoria → 1-3 preparar → 4-5 ejecutar → 6-9 aprender → memoria actualizada</strong>
+      </div>
+
       <div className="adaptive-flow-runtime-map" aria-label={`Closed adaptive runtime cycle for ${selectedLanguage.name}`}>
+        <div className="adaptive-flow-runtime-cycle-arrows" aria-hidden="true">
+          <span className="adaptive-flow-runtime-cycle-arrow adaptive-flow-runtime-cycle-arrow-history-prep">→</span>
+          <span className="adaptive-flow-runtime-cycle-arrow adaptive-flow-runtime-cycle-arrow-prep-run">↓</span>
+          <span className="adaptive-flow-runtime-cycle-arrow adaptive-flow-runtime-cycle-arrow-run-learn">←</span>
+          <span className="adaptive-flow-runtime-cycle-arrow adaptive-flow-runtime-cycle-arrow-learn-history">↑</span>
+        </div>
+
         <div className="adaptive-flow-runtime-cycle-center" aria-label="Adaptive runtime inputs and outputs">
           <p>Adaptive Runtime / Pace Layer</p>
-          <strong>Decide la siguiente acción</strong>
+          <strong>Motor de cada vuelta</strong>
           <span>rate · pause · chunk size · boundaries · replay</span>
         </div>
 
