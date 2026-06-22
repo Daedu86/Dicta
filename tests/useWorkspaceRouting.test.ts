@@ -60,6 +60,17 @@ describe('useWorkspaceRouting', () => {
     expectStoredWorkspaceMode('adaptive-flow');
   });
 
+  it('starts on the adaptive flow workspace when loaded from a phase hash route', async () => {
+    const { getRouting } = await renderWorkspaceRouting('/#adaptive-flow/planner');
+
+    expectWorkspaceState(getRouting(), {
+      mode: 'adaptive-flow',
+      currentPath: '/#adaptive-flow/planner',
+      dashboardSessionId: null,
+    });
+    expectStoredWorkspaceMode('adaptive-flow');
+  });
+
   it('still accepts the legacy /adaptive/flow path when the host serves it', async () => {
     const { getRouting } = await renderWorkspaceRouting('/adaptive/flow');
 
@@ -181,11 +192,11 @@ describe('useWorkspaceRouting', () => {
 
     expect(getRouting().currentPath).toBe('/');
 
-    await dispatchPopState('/#adaptive-flow');
+    await dispatchPopState('/#adaptive-flow/browser-tts');
 
     expectWorkspaceState(getRouting(), {
       mode: 'adaptive-flow',
-      currentPath: '/#adaptive-flow',
+      currentPath: '/#adaptive-flow/browser-tts',
       dashboardSessionId: null,
     });
   });

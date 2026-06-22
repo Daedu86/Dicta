@@ -18,6 +18,18 @@
   align-items: flex-start;
 }
 
+.adaptive-flow-phase-page-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.adaptive-flow-back-button {
+  align-self: start;
+  min-width: 7.5rem;
+}
+
 .adaptive-flow-summary {
   max-width: 68rem;
   margin: 0.35rem 0 0;
@@ -37,6 +49,10 @@
 .adaptive-flow-language-card h3,
 .adaptive-flow-phase-card h3 {
   margin: 0.15rem 0 0.35rem;
+}
+
+.adaptive-flow-phase-profile-card {
+  align-items: start;
 }
 
 .adaptive-flow-language-buttons {
@@ -119,6 +135,10 @@
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
 }
 
+.adaptive-flow-cycle-workspace-page {
+  gap: 1rem;
+}
+
 .adaptive-flow-cycle-workspace-header h3 {
   margin: 0.15rem 0 0.25rem;
 }
@@ -175,6 +195,10 @@
   margin-top: 0.45rem;
 }
 
+.adaptive-flow-repo-list-wide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .adaptive-flow-repo-chip {
   min-width: 0;
   padding: 0.6rem;
@@ -188,6 +212,48 @@
   font-size: 0.76rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.adaptive-flow-metric-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.45rem 0 0;
+}
+
+.adaptive-flow-metric-row {
+  min-width: 0;
+  padding: 0.6rem;
+  border: 1px solid rgba(191, 210, 238, 0.72);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.adaptive-flow-metric-row dt {
+  margin: 0 0 0.18rem;
+  color: #6d7f93;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adaptive-flow-metric-row dd {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.adaptive-flow-metric-row strong {
+  color: #102f63;
+  font-size: 0.84rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.adaptive-flow-metric-row span {
+  color: #4e6076;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .adaptive-flow-signal-strip {
@@ -330,6 +396,14 @@
     grid-template-columns: 1fr;
   }
 
+  .adaptive-flow-phase-page-header {
+    grid-template-columns: 1fr;
+  }
+
+  .adaptive-flow-back-button {
+    width: 100%;
+  }
+
   .adaptive-flow-language-buttons {
     grid-template-columns: repeat(5, minmax(4rem, 1fr));
     overflow-x: auto;
@@ -341,7 +415,8 @@
 
   .adaptive-flow-cycle-workspace-grid,
   .adaptive-flow-cycle-workspace-kpis,
-  .adaptive-flow-repo-list {
+  .adaptive-flow-repo-list,
+  .adaptive-flow-repo-list-wide {
     grid-template-columns: 1fr;
   }
 

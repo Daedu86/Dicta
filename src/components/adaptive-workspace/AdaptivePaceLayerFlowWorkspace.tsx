@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+const ADAPTIVE_FLOW_HASH = '#adaptive-flow';
+const ADAPTIVE_FLOW_PHASE_HASH_PREFIX = `${ADAPTIVE_FLOW_HASH}/`;
 
 const ADAPTIVE_FLOW_LANGUAGES = [
   { code: 'en', label: 'EN', name: 'English' },
@@ -21,6 +24,12 @@ type AdaptiveFlowRepositoryOwner = {
   path: string;
 };
 
+type AdaptiveFlowMetric = {
+  label: string;
+  value: string | ((language: AdaptiveFlowLanguage) => string);
+  detail: string;
+};
+
 type AdaptiveFlowPhase = {
   id: string;
   step: string;
@@ -28,6 +37,7 @@ type AdaptiveFlowPhase = {
   description: string;
   workspaceSummary: string;
   kpis: readonly AdaptiveFlowKpi[];
+  metrics: readonly AdaptiveFlowMetric[];
   repositoryOwners: readonly AdaptiveFlowRepositoryOwner[];
   signals: readonly string[];
 };
@@ -43,6 +53,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Profile', value: (language) => `browser-tts/${language.code}` },
       { label: 'Intent', value: 'Precision / Stabilize / Challenge' },
       { label: 'Target', value: (language) => `${language.name} script package` },
+    ],
+    metrics: [
+      { label: 'Prompt budget', value: 'max tokens by duration', detail: 'Keeps generation inside the selected session duration and model budget.' },
+      { label: 'Validation', value: 'DictationScript schema', detail: 'Rejects malformed scripts before they become playable sessions.' },
+      { label: 'Language target', value: (language) => language.name, detail: 'Locks script language to the active Browser TTS profile.' },
     ],
     repositoryOwners: [
       { label: 'generation runtime', path: 'src/app/useOpenRouterGenerationRuntime.ts' },
@@ -63,6 +78,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Pause', value: 'pause ms target' },
       { label: 'Replay', value: 'safe replay support' },
     ],
+    metrics: [
+      { label: 'Rate envelope', value: '0.1-2.0 product range', detail: 'Prescription can describe the broad product pace envelope before Browser TTS clamps execution.' },
+      { label: 'Pause target', value: '100-4000 ms', detail: 'Perceptual pause pressure can increase pause time without forcing rate down.' },
+      { label: 'Intent safety', value: 'recover / progress / challenge', detail: 'User intent is downgraded when the active profile shows unstable evidence.' },
+    ],
     repositoryOwners: [
       { label: 'pedagogical policy', path: 'src/core/adaptive/ListeningTrainerPolicy.ts' },
       { label: 'policy layers', path: 'src/core/adaptive/adaptivePolicyLayers.ts' },
@@ -81,6 +101,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Boundary', value: 'strictness score' },
       { label: 'Semantics', value: 'completeness score' },
     ],
+    metrics: [
+      { label: 'Chunk size', value: 'short / medium / long', detail: 'Controls how much text is spoken before the learner reconstructs it.' },
+      { label: 'Boundary risk', value: 'safe vs unsafe', detail: 'Unsafe boundaries prevent arbitrary replay and push pressure toward safer chunking.' },
+      { label: 'Semantic score', value: '0-1 completeness', detail: 'Measures whether a chunk remains meaningful enough to learn from.' },
+    ],
     repositoryOwners: [
       { label: 'semantic planner', path: 'src/core/adaptive/SemanticPhrasePlanner.ts' },
       { label: 'dynamic chunk planner', path: 'src/inputs/browserTts/ttsDynamicChunkPlanner.ts' },
@@ -98,6 +123,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Voice', value: (language) => `${language.label} voice metadata` },
       { label: 'Rate', value: 'requested vs actual' },
       { label: 'Queue', value: 'speechSynthesis state' },
+    ],
+    metrics: [
+      { label: 'Voice identity', value: 'voice URI + locale', detail: 'Separates learner progress from browser, OS, or voice changes.' },
+      { label: 'Execution rate', value: 'requested / actual', detail: 'Records the rate Dicta requested and what Browser TTS actually executed.' },
+      { label: 'Environment id', value: 'hashed fingerprint', detail: 'Tracks TTS environment without storing the raw user agent.' },
     ],
     repositoryOwners: [
       { label: 'TTS runtime', path: 'src/app/useBrowserTtsRuntime.ts' },
@@ -118,6 +148,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Replay', value: 'replay count' },
       { label: 'Pause', value: 'shortfall ms' },
     ],
+    metrics: [
+      { label: 'Stable lag', value: 'seconds', detail: 'Uses smoothed lag to decide learner pressure during phrase playback.' },
+      { label: 'Replay pressure', value: 'count + denial reason', detail: 'Counts replay attempts and whether the current boundary can safely replay.' },
+      { label: 'Pause shortfall', value: 'requested vs actual', detail: 'Compares intended pause support with the pause the runtime could deliver.' },
+    ],
     repositoryOwners: [
       { label: 'loop orchestration', path: 'src/app/useBrowserTtsPlaybackLoop.ts' },
       { label: 'progress estimator', path: 'src/app/useTtsPlaybackProgressEstimator.ts' },
@@ -136,6 +171,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Accuracy', value: 'rolling accuracy' },
       { label: 'Typing', value: 'WPM + corrections' },
       { label: 'Score', value: 'points + state' },
+    ],
+    metrics: [
+      { label: 'Listening precision', value: 'accuracy + reconstruction', detail: 'Measures how much of the spoken phrase was reconstructed correctly.' },
+      { label: 'Diagnostic WPM', value: 'typing pace', detail: 'Typing speed is diagnostic; it does not dominate the listening prescription.' },
+      { label: 'Completion state', value: 'finished / error', detail: 'Final status controls persistence, dashboard display, and benchmark eligibility.' },
     ],
     repositoryOwners: [
       { label: 'score model', path: 'src/core/sessionScore.ts' },
@@ -156,6 +196,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Actions', value: 'control events' },
       { label: 'Device', value: 'TTS environment' },
     ],
+    metrics: [
+      { label: 'Timeline frames', value: 'live telemetry', detail: 'Captures lag, accuracy, rate, phrase position, and adaptive decisions over time.' },
+      { label: 'Control actions', value: 'pause / replay / seek', detail: 'Records learner and runtime controls that shape pressure diagnostics.' },
+      { label: 'Final sample', value: 'session package', detail: 'Packages final metrics before persistence and benchmark update.' },
+    ],
     repositoryOwners: [
       { label: 'telemetry recorder', path: 'src/app/useTtsTelemetryRecorder.ts' },
       { label: 'UI publisher', path: 'src/app/useTtsUiPublisher.ts' },
@@ -174,6 +219,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Window', value: '20-day profile' },
       { label: 'Quality', value: 'rejection reasons' },
       { label: 'Calibration', value: (language) => `${language.label} thresholds` },
+    ],
+    metrics: [
+      { label: 'Rolling window', value: '20 days', detail: 'Keeps benchmark memory recent while preserving active and pending sessions separately.' },
+      { label: 'Sample gate', value: 'accepted / rejected', detail: 'Separates benchmark scoring from session insight, telemetry learning, and runtime pressure.' },
+      { label: 'Confidence', value: 'profile strength', detail: 'Controls how much the next planner should trust the benchmark.' },
     ],
     repositoryOwners: [
       { label: 'benchmark service', path: 'src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts' },
@@ -194,6 +244,11 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Pressure', value: 'pressure vector' },
       { label: 'Next', value: (language) => `${language.label} session knobs` },
     ],
+    metrics: [
+      { label: 'Adaptive level', value: 'continuous 0-1 state', detail: 'Maps learner pressure into rate, pause, phrase size, boundary strictness, and replay support.' },
+      { label: 'Pressure vector', value: 'lag / accuracy / semantics', detail: 'Combines runtime evidence without splitting language-specific pipelines.' },
+      { label: 'Next knobs', value: 'planner outputs', detail: 'Feeds the next generation and playback cycle for the active profile.' },
+    ],
     repositoryOwners: [
       { label: 'continuous cycle', path: 'src/core/adaptive/continuousAdaptiveListening.ts' },
       { label: 'pressure vector', path: 'src/core/adaptive/adaptivePressureVector.ts' },
@@ -209,11 +264,70 @@ function resolveAdaptiveFlowKpiValue(kpi: AdaptiveFlowKpi, language: AdaptiveFlo
   return typeof kpi.value === 'function' ? kpi.value(language) : kpi.value;
 }
 
+function resolveAdaptiveFlowMetricValue(metric: AdaptiveFlowMetric, language: AdaptiveFlowLanguage): string {
+  return typeof metric.value === 'function' ? metric.value(language) : metric.value;
+}
+
+function getAdaptiveFlowPhaseHash(phaseId: string): string {
+  return `${ADAPTIVE_FLOW_PHASE_HASH_PREFIX}${phaseId}`;
+}
+
+function getAdaptiveFlowRoutePhaseId(): string | null {
+  if (typeof window === 'undefined') return null;
+  const { hash } = window.location;
+  if (!hash.startsWith(ADAPTIVE_FLOW_PHASE_HASH_PREFIX)) return null;
+  const phaseId = decodeURIComponent(hash.slice(ADAPTIVE_FLOW_PHASE_HASH_PREFIX.length));
+  return ADAPTIVE_FLOW_PHASES.some((phase) => phase.id === phaseId) ? phaseId : null;
+}
+
+function navigateAdaptiveFlowHash(hash: string): void {
+  if (typeof window === 'undefined') return;
+  if (window.location.hash === hash) return;
+  window.location.hash = hash;
+}
+
 export function AdaptivePaceLayerFlowWorkspace() {
   const [selectedLanguageCode, setSelectedLanguageCode] = useState<AdaptiveFlowLanguageCode>('en');
-  const [selectedPhaseId, setSelectedPhaseId] = useState(ADAPTIVE_FLOW_PHASES[0].id);
+  const [routePhaseId, setRoutePhaseId] = useState<string | null>(() => getAdaptiveFlowRoutePhaseId());
   const selectedLanguage = ADAPTIVE_FLOW_LANGUAGES.find(({ code }) => code === selectedLanguageCode) ?? ADAPTIVE_FLOW_LANGUAGES[0];
-  const selectedPhase = ADAPTIVE_FLOW_PHASES.find(({ id }) => id === selectedPhaseId) ?? ADAPTIVE_FLOW_PHASES[0];
+  const routePhase = routePhaseId
+    ? ADAPTIVE_FLOW_PHASES.find(({ id }) => id === routePhaseId) ?? null
+    : null;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncRoutePhase = () => setRoutePhaseId(getAdaptiveFlowRoutePhaseId());
+
+    window.addEventListener('hashchange', syncRoutePhase);
+    window.addEventListener('popstate', syncRoutePhase);
+    return () => {
+      window.removeEventListener('hashchange', syncRoutePhase);
+      window.removeEventListener('popstate', syncRoutePhase);
+    };
+  }, []);
+
+  const openPhaseWorkspace = (phaseId: string) => {
+    setRoutePhaseId(phaseId);
+    navigateAdaptiveFlowHash(getAdaptiveFlowPhaseHash(phaseId));
+  };
+
+  const backToFlowIndex = () => {
+    setRoutePhaseId(null);
+    navigateAdaptiveFlowHash(ADAPTIVE_FLOW_HASH);
+  };
+
+  if (routePhase) {
+    return (
+      <AdaptiveFlowPhasePage
+        selectedLanguage={selectedLanguage}
+        selectedLanguageCode={selectedLanguageCode}
+        selectedPhase={routePhase}
+        onBack={backToFlowIndex}
+        onSelectLanguage={setSelectedLanguageCode}
+      />
+    );
+  }
 
   return (
     <section className="panel workspace-panel adaptive-workspace adaptive-flow-workspace">
@@ -267,70 +381,20 @@ export function AdaptivePaceLayerFlowWorkspace() {
       </section>
 
       <section
-        className="adaptive-flow-cycle-workspace"
-        aria-label={`${selectedPhase.title} cycle workspace`}
-        aria-live="polite"
-      >
-        <div className="adaptive-flow-cycle-workspace-header">
-          <p className="dashboard-eyebrow">{selectedPhase.step} workspace</p>
-          <h3>{selectedPhase.title}</h3>
-          <p className="hint">{selectedPhase.workspaceSummary}</p>
-        </div>
-
-        <div className="adaptive-flow-cycle-workspace-grid">
-          <section
-            className="adaptive-flow-cycle-workspace-section"
-            aria-label={`${selectedPhase.title} KPIs for ${selectedLanguage.name}`}
-          >
-            <p className="dashboard-eyebrow">Main KPIs</p>
-            <dl className="adaptive-flow-cycle-workspace-kpis">
-              {selectedPhase.kpis.map((kpi) => (
-                <div className="adaptive-flow-cycle-workspace-kpi" key={kpi.label}>
-                  <dt>{kpi.label}</dt>
-                  <dd>{resolveAdaptiveFlowKpiValue(kpi, selectedLanguage)}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-
-          <section className="adaptive-flow-cycle-workspace-section" aria-label={`${selectedPhase.title} repository owners`}>
-            <p className="dashboard-eyebrow">Repo owners</p>
-            <div className="adaptive-flow-repo-list">
-              {selectedPhase.repositoryOwners.map((owner) => (
-                <div className="adaptive-flow-repo-chip" key={owner.path}>
-                  <strong>{owner.label}</strong>
-                  <code>{owner.path}</code>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="adaptive-flow-signal-strip" aria-label={`${selectedPhase.title} runtime signals`}>
-          {selectedPhase.signals.map((signal) => (
-            <span key={signal}>{signal}</span>
-          ))}
-        </div>
-      </section>
-
-      <section
         className="adaptive-flow-cycle"
         aria-label={`Adaptive pace layer implementation cycle for ${selectedLanguage.name}`}
       >
         {ADAPTIVE_FLOW_PHASES.map((phase, index) => {
-          const active = selectedPhase.id === phase.id;
-
           return (
             <article
-              className={`adaptive-flow-phase-card${active ? ' adaptive-flow-phase-card-active' : ''}`}
+              className="adaptive-flow-phase-card"
               key={phase.id}
             >
               <button
                 type="button"
                 className="adaptive-flow-phase-open-button"
                 aria-label={`Open ${phase.title} cycle workspace`}
-                aria-pressed={active}
-                onClick={() => setSelectedPhaseId(phase.id)}
+                onClick={() => openPhaseWorkspace(phase.id)}
               />
               <div className="adaptive-flow-phase-index" aria-hidden="true">{index + 1}</div>
               <div className="adaptive-flow-phase-content">
@@ -352,6 +416,131 @@ export function AdaptivePaceLayerFlowWorkspace() {
             </article>
           );
         })}
+      </section>
+    </section>
+  );
+}
+
+function AdaptiveFlowPhasePage({
+  selectedLanguage,
+  selectedLanguageCode,
+  selectedPhase,
+  onBack,
+  onSelectLanguage,
+}: {
+  selectedLanguage: AdaptiveFlowLanguage;
+  selectedLanguageCode: AdaptiveFlowLanguageCode;
+  selectedPhase: AdaptiveFlowPhase;
+  onBack: () => void;
+  onSelectLanguage: (languageCode: AdaptiveFlowLanguageCode) => void;
+}) {
+  return (
+    <section className="panel workspace-panel adaptive-workspace adaptive-flow-workspace adaptive-flow-phase-page">
+      <div className="tts-workspace-header adaptive-flow-header adaptive-flow-phase-page-header">
+        <button
+          type="button"
+          className="secondary-button adaptive-flow-back-button"
+          onClick={onBack}
+        >
+          Back to flow
+        </button>
+        <div>
+          <p className="dashboard-eyebrow">{selectedPhase.step} workspace</p>
+          <h2>{selectedPhase.title}</h2>
+          <p className="hint adaptive-flow-summary">{selectedPhase.description}</p>
+        </div>
+      </div>
+
+      <section className="adaptive-flow-language-card adaptive-flow-phase-profile-card" aria-label={`${selectedPhase.title} profile scope`}>
+        <div>
+          <p className="dashboard-eyebrow">Profile scope</p>
+          <h3>browser-tts/{selectedLanguage.code}</h3>
+          <p className="hint">{selectedPhase.workspaceSummary}</p>
+        </div>
+        <div className="adaptive-flow-language-buttons" aria-label="Adaptive pace layer supported languages">
+          {ADAPTIVE_FLOW_LANGUAGES.map((language) => {
+            const active = selectedLanguageCode === language.code;
+
+            return (
+              <button
+                type="button"
+                className={`secondary-button adaptive-flow-language-button${active ? ' adaptive-flow-language-button-active' : ''}`}
+                key={language.code}
+                aria-pressed={active}
+                onClick={() => onSelectLanguage(language.code)}
+              >
+                <span>{language.label}</span>
+                <small>{active ? 'showing KPIs' : 'enabled'}</small>
+              </button>
+            );
+          })}
+        </div>
+        <div className="adaptive-flow-selected-profile" aria-live="polite">
+          <span>
+            Phase <strong>{selectedPhase.step}</strong>
+          </span>
+          <span>
+            Language <strong>{selectedLanguage.name}</strong>
+          </span>
+          <span>
+            Window <strong>20 days</strong>
+          </span>
+        </div>
+      </section>
+
+      <section
+        className="adaptive-flow-cycle-workspace adaptive-flow-cycle-workspace-page"
+        aria-label={`${selectedPhase.title} cycle workspace`}
+      >
+        <div className="adaptive-flow-cycle-workspace-grid">
+          <section
+            className="adaptive-flow-cycle-workspace-section"
+            aria-label={`${selectedPhase.title} KPIs for ${selectedLanguage.name}`}
+          >
+            <p className="dashboard-eyebrow">KPIs</p>
+            <dl className="adaptive-flow-cycle-workspace-kpis">
+              {selectedPhase.kpis.map((kpi) => (
+                <div className="adaptive-flow-cycle-workspace-kpi" key={kpi.label}>
+                  <dt>{kpi.label}</dt>
+                  <dd>{resolveAdaptiveFlowKpiValue(kpi, selectedLanguage)}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section className="adaptive-flow-cycle-workspace-section" aria-label={`${selectedPhase.title} operational metrics`}>
+            <p className="dashboard-eyebrow">Operational metrics</p>
+            <dl className="adaptive-flow-metric-list">
+              {selectedPhase.metrics.map((metric) => (
+                <div className="adaptive-flow-metric-row" key={metric.label}>
+                  <dt>{metric.label}</dt>
+                  <dd>
+                    <strong>{resolveAdaptiveFlowMetricValue(metric, selectedLanguage)}</strong>
+                    <span>{metric.detail}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        </div>
+
+        <section className="adaptive-flow-cycle-workspace-section" aria-label={`${selectedPhase.title} related files`}>
+          <p className="dashboard-eyebrow">Related files</p>
+          <div className="adaptive-flow-repo-list adaptive-flow-repo-list-wide">
+            {selectedPhase.repositoryOwners.map((owner) => (
+              <div className="adaptive-flow-repo-chip" key={owner.path}>
+                <strong>{owner.label}</strong>
+                <code>{owner.path}</code>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="adaptive-flow-signal-strip" aria-label={`${selectedPhase.title} runtime signals`}>
+          {selectedPhase.signals.map((signal) => (
+            <span key={signal}>{signal}</span>
+          ))}
+        </div>
       </section>
     </section>
   );

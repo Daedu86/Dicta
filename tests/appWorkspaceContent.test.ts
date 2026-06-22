@@ -12,6 +12,7 @@ let host: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
+  window.history.replaceState(null, '', '/');
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -22,6 +23,7 @@ afterEach(() => {
     root.unmount();
   });
   host.remove();
+  window.history.replaceState(null, '', '/');
 });
 
 describe('AppWorkspaceContent', () => {
@@ -56,12 +58,9 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelector('.adaptive-flow-insights-card')).toBeNull();
     expect(host.querySelector('.adaptive-flow-cycle')).not.toBeNull();
     expect(host.querySelectorAll('.adaptive-flow-phase-card')).toHaveLength(9);
-    expect(host.querySelector('.adaptive-flow-cycle-workspace')).not.toBeNull();
+    expect(host.querySelector('.adaptive-flow-cycle-workspace')).toBeNull();
     const phaseButtons = host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-phase-open-button');
     expect(phaseButtons).toHaveLength(9);
-    expect(phaseButtons[0].getAttribute('aria-pressed')).toBe('true');
-    expect(host.textContent).toContain('Step 1 workspace');
-    expect(host.textContent).toContain('src/app/useOpenRouterGenerationRuntime.ts');
     expect(host.textContent).toContain('Step 1');
     expect(host.textContent).toContain('Generation');
     expect(host.textContent).toContain('Planner');
@@ -76,21 +75,56 @@ describe('AppWorkspaceContent', () => {
       phaseButtons[1].click();
     });
 
-    expect(phaseButtons[0].getAttribute('aria-pressed')).toBe('false');
-    expect(phaseButtons[1].getAttribute('aria-pressed')).toBe('true');
+    expect(window.location.hash).toBe('#adaptive-flow/planner');
+    expect(host.querySelector('.adaptive-flow-cycle')).toBeNull();
+    expect(host.querySelector('.adaptive-flow-phase-page')).not.toBeNull();
     expect(host.textContent).toContain('Step 2 workspace');
+    expect(host.textContent).toContain('Operational metrics');
+    expect(host.textContent).toContain('Related files');
     expect(host.textContent).toContain('target playback rate');
     expect(host.textContent).toContain('src/core/adaptive/ListeningTrainerPolicy.ts');
 
+    const phaseLanguageButtons = host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-language-button');
     act(() => {
-      languageButtons[1].click();
+      phaseLanguageButtons[1].click();
     });
 
-    expect(languageButtons[0].getAttribute('aria-pressed')).toBe('false');
-    expect(languageButtons[1].getAttribute('aria-pressed')).toBe('true');
+    expect(phaseLanguageButtons[0].getAttribute('aria-pressed')).toBe('false');
+    expect(phaseLanguageButtons[1].getAttribute('aria-pressed')).toBe('true');
     expect(host.textContent).toContain('Spanish');
     expect(host.textContent).toContain('browser-tts/es');
     expect(host.textContent).not.toContain('browser-tts/en');
+
+    const backButton = host.querySelector<HTMLButtonElement>('.adaptive-flow-back-button');
+    expect(backButton).not.toBeNull();
+
+    act(() => {
+      backButton?.click();
+    });
+
+    expect(window.location.hash).toBe('#adaptive-flow');
+    expect(host.querySelector('.adaptive-flow-phase-page')).toBeNull();
+    expect(host.querySelector('.adaptive-flow-cycle')).not.toBeNull();
+    expect(host.querySelectorAll('.adaptive-flow-phase-card')).toHaveLength(9);
+  });
+
+  it('opens an adaptive flow phase subpage directly from the phase hash route', () => {
+    window.history.replaceState(null, '', '/#adaptive-flow/benchmark');
+
+    act(() => {
+      root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
+        workspaceMode: 'adaptive-flow',
+      })));
+    });
+
+    expect(host.querySelector('.adaptive-flow-phase-page')).not.toBeNull();
+    expect(host.querySelector('.adaptive-flow-cycle')).toBeNull();
+    expect(host.textContent).toContain('Step 8 workspace');
+    expect(host.textContent).toContain('Benchmark');
+    expect(host.textContent).toContain('KPIs');
+    expect(host.textContent).toContain('Operational metrics');
+    expect(host.textContent).toContain('Related files');
+    expect(host.textContent).toContain('src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts');
   });
 });
 

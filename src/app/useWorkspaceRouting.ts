@@ -4,6 +4,7 @@ import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../core/storag
 
 const WORKSPACE_MODE_KEY = 'dicta.workspaceMode.v1';
 const ADAPTIVE_FLOW_HASH = '#adaptive-flow';
+const ADAPTIVE_FLOW_HASH_PREFIX = `${ADAPTIVE_FLOW_HASH}/`;
 
 export type WorkspaceMode =
   | 'training'
@@ -14,7 +15,16 @@ export type WorkspaceMode =
   | 'admin'
   | 'openrouter';
 
-type AppRoutePath = '/' | '/training' | '/adaptive' | '/adaptive/flow' | '/#adaptive-flow' | '/admin' | '/openrouter';
+type AdaptiveFlowPhaseRoutePath = `/#adaptive-flow/${string}`;
+type AppRoutePath =
+  | '/'
+  | '/training'
+  | '/adaptive'
+  | '/adaptive/flow'
+  | '/#adaptive-flow'
+  | AdaptiveFlowPhaseRoutePath
+  | '/admin'
+  | '/openrouter';
 
 function loadInitialWorkspaceMode(): WorkspaceMode {
   const routeMode = getCurrentWorkspaceMode();
@@ -44,7 +54,12 @@ function getCurrentAppPath() {
 }
 
 function getWorkspaceModeForLocation(path: string, hash = ''): WorkspaceMode {
-  if (hash === ADAPTIVE_FLOW_HASH || path === '/#adaptive-flow') {
+  if (
+    hash === ADAPTIVE_FLOW_HASH ||
+    hash.startsWith(ADAPTIVE_FLOW_HASH_PREFIX) ||
+    path === '/#adaptive-flow' ||
+    path.startsWith('/#adaptive-flow/')
+  ) {
     return 'adaptive-flow';
   }
 
