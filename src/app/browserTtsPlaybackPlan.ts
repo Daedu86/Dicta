@@ -27,7 +27,6 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
     liveSignal,
     browserTtsProfile,
     browserTtsBenchmark,
-    browserTtsRecovery,
     ttsSpeechRate,
     unsafeChunkCount,
     navigatorInfo,
@@ -78,7 +77,6 @@ export function buildBrowserTtsPlaybackPlan(input: BrowserTtsPlaybackPlanInput):
   } = buildBrowserTtsRuntimeDecisionPipeline({
     decision,
     browserTtsBenchmark,
-    browserTtsRecovery,
     browserTtsProfile,
     liveSignal,
     rollingAccuracyLast3,

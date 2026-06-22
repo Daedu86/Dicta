@@ -19,6 +19,12 @@ export function getOpenRouterTrainingSlotAliases(slotLabel: string): string[] {
   switch (resolveOpenRouterTrainingIntentFromLabel(slotLabel)) {
     case 'adaptive':
       return ['Adaptive direct session'];
+    case 'precision':
+      return ['Easy direct session', 'Express easy direct session'];
+    case 'stabilize':
+      return ['Intermediate direct session', 'Medium direct session', 'Express intermediate direct session', 'Express medium direct session'];
+    case 'challenge':
+      return ['Advanced direct session', 'Hard direct session', 'Express advanced direct session', 'Express hard direct session'];
     default:
       return [slotLabel];
   }

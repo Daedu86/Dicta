@@ -5,7 +5,7 @@ import type { OpenRouterDurationMinutes } from '../core/adaptive/openRouterGener
 export type OpenRouterDirectGenerationPresetKey = 'adaptive' | 'topic';
 
 export type OpenRouterDirectGenerationPreset = {
-  id: 'adaptive';
+  id: OpenRouterDirectGenerationPresetKey;
   slotLabel: string;
   displayLabel: string;
   durationMinutes: OpenRouterDurationMinutes;
@@ -28,6 +28,7 @@ export const OPEN_ROUTER_DIRECT_GENERATION_PRESETS = {
   adaptive: ADAPTIVE_DIRECT_GENERATION_PRESET,
   topic: {
     ...ADAPTIVE_DIRECT_GENERATION_PRESET,
+    id: 'topic',
     slotLabel: 'Topic direct session',
     displayLabel: 'Topic session',
   },

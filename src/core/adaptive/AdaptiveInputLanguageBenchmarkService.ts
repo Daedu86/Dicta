@@ -111,7 +111,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
   timelinePoint.acceptedForRuntimePressure = sampleQuality.acceptedForRuntimePressure;
   timelinePoint.sampleQuality = sampleQuality;
   timelinePoint.languageCalibration = timelinePoint.languageCalibration ?? languageCalibration;
-  const timeline = pruneTimelineToRollingWindow([...current.timeline, timelinePoint], ROLLING_WINDOW_DAYS);
+  const timeline = pruneTimelineToRollingWindow([...current.timeline, timelinePoint], ROLLING_WINDOW_DAYS, timestampMs);
   const environmentState = buildBrowserTtsEnvironmentBenchmarkState({
     current,
     timeline,

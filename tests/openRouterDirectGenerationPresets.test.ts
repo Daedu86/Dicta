@@ -4,22 +4,29 @@ import { OPEN_ROUTER_DIRECT_GENERATION_PRESETS } from '../src/app/openRouterDire
 describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
   const presetEntries = Object.entries(OPEN_ROUTER_DIRECT_GENERATION_PRESETS);
 
-  it('contains exactly the supported direct preset', () => {
+  it('contains exactly the supported direct presets', () => {
     expect(Object.keys(OPEN_ROUTER_DIRECT_GENERATION_PRESETS)).toEqual([
       'adaptive',
+      'topic',
     ]);
 
     expect(presetEntries.map(([, preset]) => preset.id)).toEqual([
       'adaptive',
+      'topic',
     ]);
   });
 
-  it('keeps the adaptive direct preset at two minutes', () => {
+  it('keeps direct presets at two minutes', () => {
     expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive.durationMinutes).toBe(2);
+    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic.durationMinutes).toBe(2);
   });
 
   it('requests the highest safe level and lets the trainer downgrade if needed', () => {
     expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive).toMatchObject({
+      userIntent: 'challenge',
+      targetDifficulty: 'hard',
+    });
+    expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic).toMatchObject({
       userIntent: 'challenge',
       targetDifficulty: 'hard',
     });
@@ -36,6 +43,6 @@ describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
     }
 
     expect(new Set(slotLabels).size).toBe(slotLabels.length);
-    expect(displayLabels).toEqual(['Adaptive session']);
+    expect(displayLabels).toEqual(['Adaptive session', 'Topic session']);
   });
 });

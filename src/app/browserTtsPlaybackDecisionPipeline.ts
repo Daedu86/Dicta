@@ -6,10 +6,6 @@ import type {
 } from '../core/adaptive/types';
 import type { BrowserTtsAdaptiveProfile } from '../inputs/browserTts/browserTtsAdaptiveProfiles';
 import {
-  applyBrowserTtsDeRecoveryPolicy,
-  type BrowserTtsDeRecoveryState,
-} from '../inputs/browserTts/browserTtsRecoveryPolicy';
-import {
   applyBrowserTtsMobilePacingFallback,
   applyBrowserTtsRuntimeRateFloor,
 } from '../inputs/browserTts/browserTtsRatePolicy';
@@ -42,7 +38,6 @@ export type BrowserTtsRuntimeDecisionPipelineResult = {
 export function buildBrowserTtsRuntimeDecisionPipeline({
   decision,
   browserTtsBenchmark,
-  browserTtsRecovery,
   browserTtsProfile,
   liveSignal,
   rollingAccuracyLast3,
@@ -52,7 +47,6 @@ export function buildBrowserTtsRuntimeDecisionPipeline({
 }: {
   decision: PacingDecision;
   browserTtsBenchmark: InputLanguageBenchmarkMetrics | null | undefined;
-  browserTtsRecovery: BrowserTtsDeRecoveryState;
   browserTtsProfile: BrowserTtsAdaptiveProfile;
   liveSignal: TtsLiveSignal;
   rollingAccuracyLast3: number;
@@ -99,13 +93,8 @@ export function buildBrowserTtsRuntimeDecisionPipeline({
     maxTouchPoints: navigatorInfo.maxTouchPoints,
     profile: browserTtsProfile,
   });
-  const postRecoveryDecision = applyBrowserTtsDeRecoveryPolicy({
-    decision: mobileFallback.decision,
-    recovery: browserTtsRecovery,
-    profile: browserTtsProfile,
-  });
   const runtimeDecision = applyBrowserTtsEnBenchmarkRecoveryPolicy({
-    decision: postRecoveryDecision,
+    decision: mobileFallback.decision,
     browserTtsBenchmark,
     profile: browserTtsProfile,
   });
@@ -124,6 +113,9 @@ export function applyBrowserTtsEnBenchmarkRecoveryPolicy(params: {
 }): PacingDecision {
   const { browserTtsBenchmark, decision, profile } = params;
   if (!browserTtsBenchmark || browserTtsBenchmark.inputMode !== 'browser-tts' || browserTtsBenchmark.language !== 'en') {
+    return decision;
+  }
+  if (!hasBenchmarkEvidence(browserTtsBenchmark)) {
     return decision;
   }
 
@@ -164,6 +156,15 @@ export function applyBrowserTtsEnBenchmarkRecoveryPolicy(params: {
       'support-needed',
     ),
   };
+}
+
+function hasBenchmarkEvidence(benchmark: InputLanguageBenchmarkMetrics): boolean {
+  return (
+    benchmark.sampleCount > 0 ||
+    benchmark.sessionCount > 0 ||
+    benchmark.timeline.length > 0 ||
+    (typeof benchmark.lastUpdatedAt === 'string' && benchmark.lastUpdatedAt.trim() !== '')
+  );
 }
 
 function summarizeBrowserTtsEnBenchmarkPressure(benchmark: InputLanguageBenchmarkMetrics): {

@@ -56,6 +56,12 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelector('.adaptive-flow-insights-card')).toBeNull();
     expect(host.querySelector('.adaptive-flow-cycle')).not.toBeNull();
     expect(host.querySelectorAll('.adaptive-flow-phase-card')).toHaveLength(9);
+    expect(host.querySelector('.adaptive-flow-cycle-workspace')).not.toBeNull();
+    const phaseButtons = host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-phase-open-button');
+    expect(phaseButtons).toHaveLength(9);
+    expect(phaseButtons[0].getAttribute('aria-pressed')).toBe('true');
+    expect(host.textContent).toContain('Step 1 workspace');
+    expect(host.textContent).toContain('src/app/useOpenRouterGenerationRuntime.ts');
     expect(host.textContent).toContain('Step 1');
     expect(host.textContent).toContain('Generation');
     expect(host.textContent).toContain('Planner');
@@ -65,6 +71,16 @@ describe('AppWorkspaceContent', () => {
     expect(host.textContent).toContain('Benchmark');
     expect(host.textContent).toContain('Step 9');
     expect(host.textContent).toContain('Adaptation');
+
+    act(() => {
+      phaseButtons[1].click();
+    });
+
+    expect(phaseButtons[0].getAttribute('aria-pressed')).toBe('false');
+    expect(phaseButtons[1].getAttribute('aria-pressed')).toBe('true');
+    expect(host.textContent).toContain('Step 2 workspace');
+    expect(host.textContent).toContain('target playback rate');
+    expect(host.textContent).toContain('src/core/adaptive/ListeningTrainerPolicy.ts');
 
     act(() => {
       languageButtons[1].click();

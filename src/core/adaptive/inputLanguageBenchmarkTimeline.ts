@@ -82,8 +82,12 @@ export function buildInputLanguageBenchmarkTimelinePoint(args: InputLanguageBenc
   };
 }
 
-export function pruneTimelineToRollingWindow(timeline: AdaptiveTimelinePoint[], rollingWindowDays: number): AdaptiveTimelinePoint[] {
-  const cutoff = Date.now() - rollingWindowDays * MS_PER_DAY;
+export function pruneTimelineToRollingWindow(
+  timeline: AdaptiveTimelinePoint[],
+  rollingWindowDays: number,
+  referenceTimestampMs = Date.now(),
+): AdaptiveTimelinePoint[] {
+  const cutoff = referenceTimestampMs - rollingWindowDays * MS_PER_DAY;
   return timeline.filter((point) => point.timestampMs >= cutoff).slice(-MAX_TIMELINE_POINTS);
 }
 
