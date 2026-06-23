@@ -44,6 +44,14 @@ describe('useFocusedTrainingRouteRuntime', () => {
     expect(args.generateTopicNextSessionFromOpenRouter).toHaveBeenCalledTimes(1);
   });
 
+  it('reflects the shared direct generation duration in focused training buttons', async () => {
+    const { runtime } = await renderFocusedTrainingRouteRuntime({
+      directGenerationDurationMinutes: 5,
+    });
+
+    expect(runtime.focusedTrainingProps.generationButtons.map((button) => button.durationMinutes)).toEqual([5, 5]);
+  });
+
   it('keeps adaptive and topic generation job limits independent', async () => {
     const { runtime } = await renderFocusedTrainingRouteRuntime({
       activeOpenRouterJobs: [

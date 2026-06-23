@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { OPEN_ROUTER_DIRECT_GENERATION_DEFAULT_DURATION } from './openRouterDirectGenerationPresets';
 import { useDictaRootOpenRouterRuntime } from './useDictaRootOpenRouterRuntime';
 import type { DictaRuntimeRootAdaptiveWorkspaceGraph } from './useDictaRuntimeRootAdaptiveWorkspaceGraph';
 import type { DictaRuntimeRootEnvironment } from './useDictaRuntimeRootEnvironment';
@@ -14,6 +16,7 @@ export function useDictaRuntimeRootOpenRouterGraph({
   sessionGraph,
   adaptiveWorkspaceGraph,
 }: UseDictaRuntimeRootOpenRouterGraphOptions) {
+  const [directGenerationDurationMinutes, setDirectGenerationDurationMinutes] = useState(OPEN_ROUTER_DIRECT_GENERATION_DEFAULT_DURATION);
   const {
     sessionsState,
     trainingState,
@@ -112,6 +115,7 @@ export function useDictaRuntimeRootOpenRouterGraph({
       effectiveOpenRouterDefaultModel,
       getAuthHeaders,
       ensureCanCreateDictationSession,
+      directGenerationDurationMinutes,
     },
     adaptiveContext: {
       adaptiveBenchmarksByInputLanguage,
@@ -135,6 +139,8 @@ export function useDictaRuntimeRootOpenRouterGraph({
     openRouterGenerateFocusRequest,
     selectedBenchmarkInputMode,
     selectedBenchmarkLanguage,
+    directGenerationDurationMinutes,
+    setDirectGenerationDurationMinutes,
   };
 }
 

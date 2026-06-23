@@ -21,7 +21,7 @@ type UseOpenRouterGenerationRuntimeOptions = {
   >;
   generation: Pick<
     OpenRouterGenerationRuntimeActionOptions,
-    'effectiveOpenRouterDefaultModel' | 'getAuthHeaders' | 'ensureCanCreateDictationSession'
+    'effectiveOpenRouterDefaultModel' | 'getAuthHeaders' | 'ensureCanCreateDictationSession' | 'directGenerationDurationMinutes'
   >;
   adaptiveContext: Pick<
     OpenRouterGenerationRuntimeActionOptions,

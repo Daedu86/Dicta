@@ -1,6 +1,8 @@
 import type { ActiveOpenRouterJob } from '../../core/openRouterJobs';
 import type { AdaptiveSessionFeedback, InputLanguageBenchmarkMetrics, InputMode } from '../../core/adaptive/types';
+import type { OpenRouterDurationMinutes } from '../../core/adaptive/openRouterGenerationPrompt';
 import type { SupportedLanguage } from '../../core/languages';
+import type { StoredSession } from '../../app/sessionTypes';
 
 export type OpenRouterJobNotification = {
   jobId: string;
@@ -33,37 +35,23 @@ export type AdaptiveBenchmarksByInputLanguage = Record<string, Record<string, In
 export type AdaptiveSessionFeedbackByInputLanguage = Record<string, Record<string, AdaptiveSessionFeedback[]>>;
 export type BenchmarkLanguageButton = SupportedLanguage;
 
-export type PersistedOpenRouterGeneration = {
-  text: string;
-  json: string;
-  inputMode: InputMode;
-  language: BenchmarkLanguageButton;
-  usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
-  elapsedMs: number | null;
+export type OpenRouterDirectGenerationRequestOptions = {
+  durationMinutes?: OpenRouterDurationMinutes;
+  topicContext?: string;
+  inputModeOverride?: InputMode;
+  languageOverride?: BenchmarkLanguageButton;
 };
 
-export type OpenRouterGenerationSlotId = 'prompt1' | 'prompt2';
+export type OpenRouterRecentSessionHint = {
+  title: string;
+  opener: string;
+};
 
 export type OpenRouterGenerationUsage = {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
 };
-
-export type OpenRouterGenerationSlotState = {
-  notes: string;
-  model: string;
-  text: string;
-  json: string;
-  inputMode: InputMode | null;
-  language: BenchmarkLanguageButton | null;
-  usage: OpenRouterGenerationUsage | null;
-  elapsedMs: number | null;
-  generatedAt: string | null;
-  error: string;
-};
-
-export type OpenRouterGenerationSlots = Record<OpenRouterGenerationSlotId, OpenRouterGenerationSlotState>;
 
 export type OpenRouterWorkspaceProps = {
   defaultModel: string;
@@ -75,10 +63,20 @@ export type OpenRouterWorkspaceProps = {
   error: string;
   onRefreshModels: () => Promise<void>;
   onBackToTraining: () => void;
+  sessions: StoredSession[];
   benchmarks: AdaptiveBenchmarksByInputLanguage;
   sessionFeedbackByInputLanguage: AdaptiveSessionFeedbackByInputLanguage;
+  recentDictationSessionHints: OpenRouterRecentSessionHint[];
   defaultGenerateInputMode: InputMode;
   defaultGenerateLanguage: BenchmarkLanguageButton;
+  directGenerationDurationMinutes: OpenRouterDurationMinutes;
+  onChangeDirectGenerationDurationMinutes: (durationMinutes: OpenRouterDurationMinutes) => void;
+  isOnline: boolean;
+  openRouterOfflineTitle: string;
+  adaptiveOpenRouterBusy: boolean;
+  topicOpenRouterBusy: boolean;
+  onGenerateAdaptiveDirectSession: (options?: OpenRouterDirectGenerationRequestOptions) => void | Promise<void>;
+  onGenerateTopicDirectSession: (options?: OpenRouterDirectGenerationRequestOptions) => void | Promise<void>;
   focusGenerateRequest: number;
   activeJobs: ActiveOpenRouterJob[];
   jobNotifications: Record<string, OpenRouterJobNotification>;

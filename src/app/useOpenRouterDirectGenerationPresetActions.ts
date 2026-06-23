@@ -3,8 +3,8 @@ import {
   OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
   type OpenRouterDirectGenerationPreset,
 } from './openRouterDirectGenerationPresets';
-
-const MAX_TOPIC_CONTEXT_LENGTH = 180;
+import type { OpenRouterDirectGenerationActionOptions } from './openRouterDirectGenerationRunnerTypes';
+import { normalizeOpenRouterDirectGenerationTopicContext } from './openRouterDirectGenerationTopicContext';
 
 type OpenRouterDirectGenerationBusyControls = {
   adaptiveOpenRouterBusy: boolean;
@@ -14,43 +14,54 @@ type OpenRouterDirectGenerationBusyControls = {
 };
 
 type GenerateOpenRouterDirectSession = (
-  options: OpenRouterDirectGenerationPreset & {
+  options: OpenRouterDirectGenerationPreset & OpenRouterDirectGenerationActionOptions & {
     isBusy: boolean;
     setBusy: (value: boolean) => void;
-    topicContext?: string;
   },
 ) => Promise<void>;
 
 type UseOpenRouterDirectGenerationPresetActionsOptions = OpenRouterDirectGenerationBusyControls & {
   generateDirectSessionFromOpenRouter: GenerateOpenRouterDirectSession;
+  directGenerationDurationMinutes: OpenRouterDirectGenerationPreset['durationMinutes'];
 };
 
 export function useOpenRouterDirectGenerationPresetActions({
   generateDirectSessionFromOpenRouter,
+  directGenerationDurationMinutes,
   adaptiveOpenRouterBusy,
   setAdaptiveOpenRouterBusy,
   topicOpenRouterBusy,
   setTopicOpenRouterBusy,
 }: UseOpenRouterDirectGenerationPresetActionsOptions) {
-  const generateAdaptiveNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
+  const generateAdaptiveNextSessionFromOpenRouter = useCallback(async (
+    options: OpenRouterDirectGenerationActionOptions = {},
+  ): Promise<void> => {
+    const durationMinutes = options.durationMinutes ?? directGenerationDurationMinutes;
     await generateDirectSessionFromOpenRouter({
       ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive,
+      ...options,
+      durationMinutes,
       isBusy: adaptiveOpenRouterBusy,
       setBusy: setAdaptiveOpenRouterBusy,
     });
-  }, [adaptiveOpenRouterBusy, generateDirectSessionFromOpenRouter, setAdaptiveOpenRouterBusy]);
+  }, [adaptiveOpenRouterBusy, directGenerationDurationMinutes, generateDirectSessionFromOpenRouter, setAdaptiveOpenRouterBusy]);
 
-  const generateTopicNextSessionFromOpenRouter = useCallback(async (): Promise<void> => {
-    const topicContext = readTopicContextFromPrompt();
+  const generateTopicNextSessionFromOpenRouter = useCallback(async (
+    options: OpenRouterDirectGenerationActionOptions = {},
+  ): Promise<void> => {
+    const topicContext = normalizeTopicContext(options.topicContext ?? readTopicContextFromPrompt());
     if (!topicContext) return;
+    const durationMinutes = options.durationMinutes ?? directGenerationDurationMinutes;
 
     await generateDirectSessionFromOpenRouter({
       ...OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic,
+      ...options,
+      durationMinutes,
       isBusy: topicOpenRouterBusy,
       setBusy: setTopicOpenRouterBusy,
       topicContext,
     });
-  }, [generateDirectSessionFromOpenRouter, setTopicOpenRouterBusy, topicOpenRouterBusy]);
+  }, [directGenerationDurationMinutes, generateDirectSessionFromOpenRouter, setTopicOpenRouterBusy, topicOpenRouterBusy]);
 
   return {
     generateAdaptiveNextSessionFromOpenRouter,
@@ -64,7 +75,4 @@ function readTopicContextFromPrompt(): string {
   return normalizeTopicContext(value);
 }
 
-function normalizeTopicContext(value: string | null): string {
-  const trimmed = value?.trim().replace(/\s+/g, ' ') ?? '';
-  return trimmed.slice(0, MAX_TOPIC_CONTEXT_LENGTH);
-}
+const normalizeTopicContext = normalizeOpenRouterDirectGenerationTopicContext;

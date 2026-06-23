@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { OPEN_ROUTER_DIRECT_GENERATION_PRESETS } from '../src/app/openRouterDirectGenerationPresets';
+import {
+  OPEN_ROUTER_DIRECT_GENERATION_DURATION_OPTIONS,
+  OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
+} from '../src/app/openRouterDirectGenerationPresets';
 
 describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
   const presetEntries = Object.entries(OPEN_ROUTER_DIRECT_GENERATION_PRESETS);
@@ -19,6 +22,10 @@ describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
   it('keeps direct presets at three minutes', () => {
     expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.adaptive.durationMinutes).toBe(3);
     expect(OPEN_ROUTER_DIRECT_GENERATION_PRESETS.topic.durationMinutes).toBe(3);
+  });
+
+  it('supports direct generation duration choices for the adaptive flow selector', () => {
+    expect(OPEN_ROUTER_DIRECT_GENERATION_DURATION_OPTIONS).toEqual([2, 3, 4, 5]);
   });
 
   it('requests the highest safe level and lets the trainer downgrade if needed', () => {

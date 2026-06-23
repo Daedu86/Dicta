@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { OpenRouterAccessState } from '../../core/appProfiles';
-import { OpenRouterGenerateSessionSection } from '../openrouter/OpenRouterGenerateSessionSection';
 import type { OpenRouterWorkspaceProps } from '../openrouter/types';
 import {
-  OPENROUTER_GENERATE_SESSION_CARD_ID,
-  useOpenRouterGenerateSessionRuntime,
-} from '../openrouter/useOpenRouterGenerateSessionRuntime';
+  AdaptiveFlowDirectGenerationCard,
+  OPENROUTER_DIRECT_GENERATION_CARD_ID,
+} from './AdaptiveFlowDirectGenerationCard';
 
 const ADAPTIVE_FLOW_HASH = '#adaptive-flow';
 const ADAPTIVE_FLOW_PHASE_HASH_PREFIX = `${ADAPTIVE_FLOW_HASH}/`;
@@ -73,25 +72,25 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
     id: 'generation',
     step: 'Step 1',
     title: 'Generation',
-    description: 'Generate the practice material with language, difficulty, duration target, and session goal.',
-    workspaceSummary: 'Creates and validates the structured DictationScript package before Browser TTS playback owns the runtime.',
+    description: 'Generate the practice material with language, difficulty, shared duration target, and session goal.',
+    workspaceSummary: 'Creates the direct OpenRouter prompt package before Browser TTS playback owns the runtime.',
     kpis: [
       { label: 'Profile', value: (language) => `browser-tts/${language.code}` },
       { label: 'Intent', value: 'Precision / Stabilize / Challenge' },
       { label: 'Target', value: (language) => `${language.name} script package` },
     ],
     metrics: [
-      { label: 'Prompt budget', value: 'max tokens by duration', detail: 'Keeps generation inside the selected session duration and model budget.' },
+      { label: 'Prompt budget', value: 'max tokens by duration', detail: 'Keeps generation inside the selected 2-5 minute session duration and model budget.' },
       { label: 'Validation', value: 'DictationScript schema', detail: 'Rejects malformed scripts before they become playable sessions.' },
       { label: 'Language target', value: (language) => language.name, detail: 'Locks script language to the active Browser TTS profile.' },
     ],
     repositoryOwners: [
-      { label: 'generation runtime', path: 'src/app/useOpenRouterGenerationRuntime.ts' },
+      { label: 'flow generation card', path: 'src/components/adaptive-workspace/AdaptiveFlowDirectGenerationCard.tsx' },
       { label: 'direct generation runtime', path: 'src/app/useOpenRouterDirectGenerationRuntime.ts' },
+      { label: 'direct job plan', path: 'src/app/openRouterDirectGenerationJobPlan.ts' },
       { label: 'prompt package', path: 'src/core/adaptive/openRouterGenerationPrompt.ts' },
-      { label: 'script validation', path: 'src/core/adaptive/dictationScriptValidation.ts' },
     ],
-    signals: ['language + intent', 'duration target', 'structured DictationScript', 'OpenRouter job state'],
+    signals: ['language + intent', 'shared duration target', 'prompt preview', 'OpenRouter job state'],
   },
   {
     id: 'planner',
@@ -765,7 +764,7 @@ function AdaptiveFlowGenerationLiveCard({
 }) {
   return (
     <section
-      id={OPENROUTER_GENERATE_SESSION_CARD_ID}
+      id={OPENROUTER_DIRECT_GENERATION_CARD_ID}
       className="adaptive-flow-cycle-workspace-section adaptive-flow-generation-live-card"
       aria-label="Generation OpenRouter live controls"
     >
@@ -784,10 +783,8 @@ function AdaptiveFlowGenerationLiveCard({
         </p>
       ) : (
         <AdaptiveFlowGenerationAllowedCard
-          openRouterWorkspaceProps={{
-            ...openRouterWorkspaceProps,
-            defaultGenerateLanguage: selectedLanguageCode,
-          }}
+          openRouterWorkspaceProps={openRouterWorkspaceProps}
+          selectedLanguageCode={selectedLanguageCode}
         />
       )}
     </section>
@@ -796,10 +793,15 @@ function AdaptiveFlowGenerationLiveCard({
 
 function AdaptiveFlowGenerationAllowedCard({
   openRouterWorkspaceProps,
+  selectedLanguageCode,
 }: {
   openRouterWorkspaceProps: OpenRouterWorkspaceProps;
+  selectedLanguageCode: AdaptiveFlowLanguageCode;
 }) {
-  const runtime = useOpenRouterGenerateSessionRuntime(openRouterWorkspaceProps);
-
-  return <OpenRouterGenerateSessionSection runtime={runtime} />;
+  return (
+    <AdaptiveFlowDirectGenerationCard
+      openRouterWorkspaceProps={openRouterWorkspaceProps}
+      selectedLanguageCode={selectedLanguageCode}
+    />
+  );
 }

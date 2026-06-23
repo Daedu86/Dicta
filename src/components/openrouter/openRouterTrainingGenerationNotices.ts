@@ -1,6 +1,5 @@
 import type { ActiveOpenRouterJob } from '../../core/openRouterJobs';
 import type {
-  OpenRouterGenerationSlotId,
   OpenRouterJobNotification,
   TrainingGenerationNotice,
   TrainingGenerationNoticeView,
@@ -90,10 +89,6 @@ export function formatTrainingGenerationNotice(
     tone: 'hint',
     message: `${notice.displayLabel} is being created... elapsed ${elapsed}.`,
   };
-}
-
-export function getOpenRouterSlotLabel(slotId: OpenRouterGenerationSlotId): string {
-  return slotId === 'prompt1' ? 'Session 1' : 'Session 2';
 }
 
 export function formatInterruptedOpenRouterMessage(slotLabel: string, model: string, elapsedMs: number): string {

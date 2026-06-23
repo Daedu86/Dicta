@@ -34,6 +34,7 @@ type DirectGenerationButtonContext = Pick<
   | 'openRouterJobNotifications'
   | 'trainingGenerationNotices'
   | 'trainingGenerationNowMs'
+  | 'directGenerationDurationMinutes'
 > & { modelIsSet: boolean };
 
 const ADAPTIVE_GENERATION_BUTTON_DEFINITION: FocusedTrainingDirectGenerationButtonDefinition = {
@@ -111,7 +112,7 @@ function buildDirectGenerationButton(
       openRouterOfflineTitle: context.openRouterOfflineTitle,
       sessionQuotaStatus: context.sessionQuotaStatus,
     }),
-    durationMinutes: config.preset.durationMinutes,
+    durationMinutes: context.directGenerationDurationMinutes,
     helpText: config.helpText,
     statusMessage: notice?.message,
     statusTone: notice?.tone,

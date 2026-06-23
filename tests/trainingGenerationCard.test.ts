@@ -47,12 +47,12 @@ describe('TrainingGenerationCard intent labels', () => {
 
   it('shows the approximate voice duration from the generation button preset', () => {
     const adaptive = buildTrainingGenerationButtonDisplay(button({ id: 'adaptive', label: 'Generate Session', durationMinutes: 3 }));
-    const custom = buildTrainingGenerationButtonDisplay(button({ id: 'topic', label: 'Generate Topic Session', durationMinutes: 4 }));
+    const custom = buildTrainingGenerationButtonDisplay(button({ id: 'topic', label: 'Generate Topic Session', durationMinutes: 5 }));
 
     expect(adaptive.displayDurationLabel).toBe('Approx. 3 min audio');
     expect(adaptive.displayHelpText).toContain('About 3 minutes');
-    expect(custom.displayDurationLabel).toBe('Approx. 4 min audio');
-    expect(custom.displayHelpText).toContain('About 4 minutes');
+    expect(custom.displayDurationLabel).toBe('Approx. 5 min audio');
+    expect(custom.displayHelpText).toContain('About 5 minutes');
   });
 
   it('updates Precision descriptions for recall and completion-window work', () => {

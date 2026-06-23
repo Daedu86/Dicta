@@ -4,19 +4,20 @@ export const OPENROUTER_PROMPT_MAX_CHARS = 32_000;
 export const OPENROUTER_MODEL_MAX_CHARS = 160;
 export const OPENROUTER_MIN_MAX_TOKENS = 128;
 export const OPENROUTER_CHAT_MAX_MAX_TOKENS = 1_800;
-export const OPENROUTER_JOB_MAX_MAX_TOKENS = 4_800;
+export const OPENROUTER_JOB_MAX_MAX_TOKENS = 6_000;
 export const OPENROUTER_CHAT_DEFAULT_MAX_TOKENS = 600;
 export const OPENROUTER_SLOT_LABEL_MAX_CHARS = 80;
 export const OPENROUTER_TARGET_DIFFICULTY_MAX_CHARS = 40;
 
 const VALID_LANGUAGES = new Set(['en', 'es', 'de', 'fr', 'pt']);
 const VALID_INPUT_MODES = new Set(['browser-tts']);
-const VALID_DURATIONS = new Set([1, 2, 3, 4]);
+const VALID_DURATIONS = new Set([1, 2, 3, 4, 5]);
 const DEFAULT_JOB_MAX_TOKENS_BY_DURATION = new Map([
   [1, 1_800],
   [2, 2_600],
   [3, 3_800],
   [4, 4_800],
+  [5, 6_000],
 ]);
 const OPENROUTER_MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
 

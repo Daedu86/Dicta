@@ -100,7 +100,7 @@ describe('openRouterJobs', () => {
           slotLabel: 'Express easy direct session',
           inputMode: 'browser-tts',
           language: 'fr',
-          durationMinutes: 1,
+          durationMinutes: 5,
           startedAt: '2026-05-17T10:00:00.000Z',
         },
         {
@@ -126,7 +126,7 @@ describe('openRouterJobs', () => {
       jobId: 'job-legacy',
       inputMode: 'browser-tts',
       language: 'fr',
-      durationMinutes: 1,
+      durationMinutes: 5,
     });
     expect(restoredJobs[0]).not.toHaveProperty('origin');
     expect(restoredJobs[0]).not.toHaveProperty('customSlotId');

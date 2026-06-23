@@ -137,6 +137,7 @@ describe('TrainingHeader', () => {
       'Approx. 3 min audio',
       'Approx. 3 min audio',
     ]);
+    expect(host.querySelector('.adaptive-flow-direct-duration-button')).toBeNull();
 
     act(() => {
       generationButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));

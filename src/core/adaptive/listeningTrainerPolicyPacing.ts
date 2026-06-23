@@ -179,7 +179,7 @@ export function phrasePolicyForMode(mode: ListeningTrainingMode): ListeningTrain
   return 'moderate_semantic';
 }
 
-export function defaultDurationForMode(mode: ListeningTrainingMode): 1 | 2 | 3 | 4 {
+export function defaultDurationForMode(mode: ListeningTrainingMode): 1 | 2 | 3 | 4 | 5 {
   if (mode === 'recover') return 1;
   if (mode === 'challenge') return 3;
   return 2;

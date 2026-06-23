@@ -159,13 +159,16 @@ describe('AppWorkspaceContent', () => {
   });
 
   it('renders the live OpenRouter generation card inside adaptive flow phase 1 when access is allowed', () => {
+    const onChangeDirectGenerationDurationMinutes = vi.fn();
     window.history.replaceState(null, '', '/#adaptive-flow/generation');
 
     act(() => {
       root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
         workspaceMode: 'adaptive-flow',
         openRouterAccessState: 'allowed',
-        openRouterWorkspaceProps: createOpenRouterWorkspaceProps(),
+        openRouterWorkspaceProps: createOpenRouterWorkspaceProps({
+          onChangeDirectGenerationDurationMinutes,
+        }),
       })));
     });
 
@@ -175,8 +178,43 @@ describe('AppWorkspaceContent', () => {
     expect(host.textContent).toContain('Prompt sent to OpenRouter');
     expect(host.textContent).toContain('Target');
     expect(host.textContent).toContain('browser-tts/en');
+    expect(host.textContent).toContain('compact-adaptive-v2');
     expect(host.querySelector('#adaptive-flow-generation-session-card')).not.toBeNull();
     expect(host.querySelector('.adaptive-flow-generation-live-card')).not.toBeNull();
+    const durationButtons = Array.from(host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-direct-duration-button'));
+    expect(durationButtons.map((button) => button.textContent)).toEqual(['2 min', '3 min', '4 min', '5 min']);
+    expect(durationButtons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
+
+    act(() => {
+      durationButtons[3].click();
+    });
+
+    expect(onChangeDirectGenerationDurationMinutes).toHaveBeenCalledWith(5);
+
+    const actionButtons = Array.from(host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-direct-generation-button'));
+    expect(actionButtons.map((button) => button.textContent)).toEqual(['Prompt generation', 'Prompt generation + my context']);
+    expect(actionButtons[0].disabled).toBe(false);
+    expect(actionButtons[1].disabled).toBe(true);
+
+    const contextTextarea = host.querySelector<HTMLTextAreaElement>('#adaptive-flow-direct-context');
+    expect(contextTextarea).not.toBeNull();
+
+    act(() => {
+      const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      valueSetter?.call(contextTextarea, '  Berlin   appointment   vocabulary  ');
+      contextTextarea!.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const updatedActionButtons = Array.from(host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-direct-generation-button'));
+    expect(updatedActionButtons[1].disabled).toBe(false);
+
+    const previewTabs = Array.from(host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-direct-preview-tab'));
+    act(() => {
+      previewTabs[1].click();
+    });
+
+    expect(host.textContent).toContain('User topic context:');
+    expect(host.textContent).toContain('Berlin appointment vocabulary');
   });
 
   it('keeps Generate Training Session and export/copy actions out of the OpenRouter workspace', () => {
@@ -298,14 +336,24 @@ function createOpenRouterWorkspaceProps(overrides: Partial<OpenRouterWorkspacePr
     error: '',
     onRefreshModels: vi.fn(async () => undefined),
     onBackToTraining: vi.fn(),
+    sessions: [],
     benchmarks: {
       'browser-tts': {
         en: benchmark,
       },
     },
     sessionFeedbackByInputLanguage: {},
+    recentDictationSessionHints: [],
     defaultGenerateInputMode: 'browser-tts',
     defaultGenerateLanguage: 'en',
+    directGenerationDurationMinutes: 3,
+    onChangeDirectGenerationDurationMinutes: vi.fn(),
+    isOnline: true,
+    openRouterOfflineTitle: '',
+    adaptiveOpenRouterBusy: false,
+    topicOpenRouterBusy: false,
+    onGenerateAdaptiveDirectSession: vi.fn(),
+    onGenerateTopicDirectSession: vi.fn(),
     focusGenerateRequest: 0,
     activeJobs: [],
     jobNotifications: {},

@@ -10,8 +10,8 @@ Current owners:
 
 - `src/components/openrouter/useOpenRouterWorkspaceRuntime.ts` — runtime coordinator only.
 - `src/components/openrouter/useOpenRouterWorkspaceUiState.ts` — workspace UI state.
-- `src/components/openrouter/useOpenRouterGenerateSessionRuntime.ts` — Phase 1 Adaptive Flow generation runtime for prompt payloads, notices, active slot state, and job request flow.
-- `src/components/openrouter/useOpenRouterWorkspaceSlotGeneration.ts` — shared custom generation job request flow used by the Phase 1 generation runtime.
+- `src/components/adaptive-workspace/AdaptiveFlowDirectGenerationCard.tsx` — Phase 1 Adaptive Flow direct generation card for duration selection, context entry, prompt preview, and direct Training generation actions.
+- `src/app/openRouterDirectGenerationJobPlan.ts` and `src/app/useOpenRouterDirectGenerationRuntime.ts` — shared direct generation planning/runtime used by both Training Mode and Phase 1 Adaptive Flow generation.
 - `src/components/openrouter/useOpenRouterWorkspaceClipboard.ts` — copy/status helper.
 - `api/openrouter/jobs.js` — thin route handler only.
 - `api/openrouter/_job*.js` — payload, JSON extraction, provider retry, persistence, audit, and runner helpers.

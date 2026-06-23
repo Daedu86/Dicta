@@ -23,7 +23,7 @@ export type ListeningTrainingPrescription = {
   mode: ListeningTrainingMode;
   userIntent: ListeningTrainingIntent;
   difficulty: 'easy' | 'normal' | 'hard';
-  durationMinutes: 1 | 2 | 3 | 4;
+  durationMinutes: 1 | 2 | 3 | 4 | 5;
   targetAccuracyBand: [number, number];
   targetLagMaxSec: number;
   targetRateRange: [number, number];

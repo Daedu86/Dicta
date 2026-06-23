@@ -17,7 +17,7 @@ The runtime loop is causal: memory feeds preparation, preparation drives the cur
 
 ## Workspace map
 
-The Adaptive Pace Layer Flow workspace explains the loop as four auditable groups. Phase 1 / Generation also contains the live OpenRouter Generate Training Session card, because that card configures the prompt, duration, target language, prompt source, job state, and DictationScript validation for the first step of the cycle.
+The Adaptive Pace Layer Flow workspace explains the loop as four auditable groups. Phase 1 / Generation also contains the live direct OpenRouter Generate Training Session card. That card now uses the same `direct-training` path as Training Mode, owns the runtime-memory 2-5 minute duration selector, shows the final prompt sent to OpenRouter, and offers no-context and "my context" prompt variants. Training Mode does not expose a duration selector; its direct generation labels, help text, and OpenRouter job duration reflect the Phase 1 selector.
 
 - Memory: 20-day benchmark, recent feedback, and active `browser-tts/{language}` calibration.
 - Prepare: Generation, Planner, and Chunker convert evidence into content, runtime policy, and playable chunks.

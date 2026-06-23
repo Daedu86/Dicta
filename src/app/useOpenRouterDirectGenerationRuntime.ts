@@ -3,6 +3,7 @@ import {
   type UseOpenRouterDirectGenerationRunnerOptions,
 } from './useOpenRouterDirectGenerationRunner';
 import { useOpenRouterDirectGenerationPresetActions } from './useOpenRouterDirectGenerationPresetActions';
+import type { OpenRouterDirectGenerationPreset } from './openRouterDirectGenerationPresets';
 
 export type { CreateGenerationErrorSessionArgs } from './useOpenRouterDirectGenerationRunner';
 
@@ -13,7 +14,11 @@ export type OpenRouterGenerationBusyControls = {
   setTopicOpenRouterBusy: (value: boolean) => void;
 };
 
-export type UseOpenRouterDirectGenerationRuntimeOptions = OpenRouterGenerationBusyControls & UseOpenRouterDirectGenerationRunnerOptions;
+export type UseOpenRouterDirectGenerationRuntimeOptions = OpenRouterGenerationBusyControls &
+  UseOpenRouterDirectGenerationRunnerOptions & {
+    directGenerationDurationMinutes: OpenRouterDirectGenerationPreset['durationMinutes'];
+  };
+export type { OpenRouterDirectGenerationActionOptions } from './openRouterDirectGenerationRunnerTypes';
 
 export function useOpenRouterDirectGenerationRuntime({
   sessions,
@@ -35,6 +40,7 @@ export function useOpenRouterDirectGenerationRuntime({
   trackOpenRouterJob,
   recordOpenRouterGenerationFailure,
   createOpenRouterErrorSession,
+  directGenerationDurationMinutes,
   adaptiveOpenRouterBusy,
   setAdaptiveOpenRouterBusy,
   topicOpenRouterBusy,
@@ -64,6 +70,7 @@ export function useOpenRouterDirectGenerationRuntime({
 
   return useOpenRouterDirectGenerationPresetActions({
     generateDirectSessionFromOpenRouter,
+    directGenerationDurationMinutes,
     adaptiveOpenRouterBusy,
     setAdaptiveOpenRouterBusy,
     topicOpenRouterBusy,

@@ -46,6 +46,8 @@ export async function runOpenRouterDirectGeneration(
     targetDifficulty,
     difficultyInstruction,
     topicContext,
+    inputModeOverride,
+    languageOverride,
   } = generationOptions;
 
   if (isBusy) return;
@@ -68,7 +70,9 @@ export async function runOpenRouterDirectGeneration(
     return;
   }
 
-  const { model, inputMode, language } = startPlan;
+  const { model } = startPlan;
+  const inputMode = inputModeOverride ?? startPlan.inputMode;
+  const language = languageOverride ?? startPlan.language;
   const { generationStartedAt, endPerfSpan } = startOpenRouterDirectGenerationRun({
     userIntent,
     targetDifficulty,

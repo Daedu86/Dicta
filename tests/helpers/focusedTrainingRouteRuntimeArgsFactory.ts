@@ -106,6 +106,7 @@ export function createFocusedTrainingRouteRuntimeArgs(
     trainingGenerationNowMs: 0,
     adaptiveOpenRouterBusy: false,
     topicOpenRouterBusy: false,
+    directGenerationDurationMinutes: 3,
     generateAdaptiveNextSessionFromOpenRouter: vi.fn(),
     generateTopicNextSessionFromOpenRouter: vi.fn(),
     ...overrides,

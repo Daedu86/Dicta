@@ -52,8 +52,14 @@ export type UseOpenRouterDirectGenerationRunnerOptions = {
   ) => void;
 };
 
-export type GenerateOpenRouterDirectSessionOptions = OpenRouterDirectGenerationPreset & {
+export type OpenRouterDirectGenerationActionOptions = {
+  durationMinutes?: OpenRouterDirectGenerationPreset['durationMinutes'];
+  topicContext?: string;
+  inputModeOverride?: InputMode;
+  languageOverride?: BenchmarkLanguageButton;
+};
+
+export type GenerateOpenRouterDirectSessionOptions = OpenRouterDirectGenerationPreset & OpenRouterDirectGenerationActionOptions & {
   isBusy: boolean;
   setBusy: (value: boolean) => void;
-  topicContext?: string;
 };

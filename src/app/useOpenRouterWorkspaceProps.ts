@@ -18,10 +18,20 @@ export type UseOpenRouterWorkspacePropsArgs = {
   error: string;
   onRefreshModels: () => Promise<void>;
   onBackToTraining: () => void;
+  sessions: OpenRouterWorkspaceProps['sessions'];
   benchmarks: OpenRouterWorkspaceProps['benchmarks'];
   sessionFeedbackByInputLanguage: OpenRouterWorkspaceProps['sessionFeedbackByInputLanguage'];
+  recentDictationSessionHints: OpenRouterWorkspaceProps['recentDictationSessionHints'];
   defaultGenerateInputMode: InputMode;
   defaultGenerateLanguage: BenchmarkLanguageButton;
+  directGenerationDurationMinutes: OpenRouterWorkspaceProps['directGenerationDurationMinutes'];
+  onChangeDirectGenerationDurationMinutes: OpenRouterWorkspaceProps['onChangeDirectGenerationDurationMinutes'];
+  isOnline: boolean;
+  openRouterOfflineTitle: string;
+  adaptiveOpenRouterBusy: boolean;
+  topicOpenRouterBusy: boolean;
+  onGenerateAdaptiveDirectSession: OpenRouterWorkspaceProps['onGenerateAdaptiveDirectSession'];
+  onGenerateTopicDirectSession: OpenRouterWorkspaceProps['onGenerateTopicDirectSession'];
   focusGenerateRequest: number;
   activeJobs: ActiveOpenRouterJob[];
   jobNotifications: Record<string, OpenRouterJobNotification>;
@@ -41,10 +51,20 @@ export function useOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArg
     error,
     onRefreshModels,
     onBackToTraining,
+    sessions,
     benchmarks,
     sessionFeedbackByInputLanguage,
+    recentDictationSessionHints,
     defaultGenerateInputMode,
     defaultGenerateLanguage,
+    directGenerationDurationMinutes,
+    onChangeDirectGenerationDurationMinutes,
+    isOnline,
+    openRouterOfflineTitle,
+    adaptiveOpenRouterBusy,
+    topicOpenRouterBusy,
+    onGenerateAdaptiveDirectSession,
+    onGenerateTopicDirectSession,
     focusGenerateRequest,
     activeJobs,
     jobNotifications,
@@ -63,10 +83,20 @@ export function useOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArg
     error,
     onRefreshModels,
     onBackToTraining,
+    sessions,
     benchmarks,
     sessionFeedbackByInputLanguage,
+    recentDictationSessionHints,
     defaultGenerateInputMode,
     defaultGenerateLanguage,
+    directGenerationDurationMinutes,
+    onChangeDirectGenerationDurationMinutes,
+    isOnline,
+    openRouterOfflineTitle,
+    adaptiveOpenRouterBusy,
+    topicOpenRouterBusy,
+    onGenerateAdaptiveDirectSession,
+    onGenerateTopicDirectSession,
     focusGenerateRequest,
     activeJobs,
     jobNotifications,

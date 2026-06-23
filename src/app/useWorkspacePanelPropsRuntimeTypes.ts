@@ -17,10 +17,20 @@ export type UseWorkspacePanelPropsRuntimeArgs = {
   showAdminWorkspace: AdminWorkspacePropsArgs['onOpenOverview'];
   showOpenRouterWorkspace: AdminWorkspacePropsArgs['onOpenOpenRouter'];
 
+  sessions: OpenRouterWorkspacePropsArgs['sessions'];
   adaptiveBenchmarksByInputLanguage: OpenRouterWorkspacePropsArgs['benchmarks'];
   adaptiveSessionFeedbackByInputLanguage: OpenRouterWorkspacePropsArgs['sessionFeedbackByInputLanguage'];
+  recentDictationSessionHints: OpenRouterWorkspacePropsArgs['recentDictationSessionHints'];
   selectedBenchmarkInputMode: OpenRouterWorkspacePropsArgs['defaultGenerateInputMode'];
   selectedBenchmarkLanguage: OpenRouterWorkspacePropsArgs['defaultGenerateLanguage'];
+  directGenerationDurationMinutes: OpenRouterWorkspacePropsArgs['directGenerationDurationMinutes'];
+  setDirectGenerationDurationMinutes: OpenRouterWorkspacePropsArgs['onChangeDirectGenerationDurationMinutes'];
+  isOnline: OpenRouterWorkspacePropsArgs['isOnline'];
+  openRouterOfflineTitle: OpenRouterWorkspacePropsArgs['openRouterOfflineTitle'];
+  adaptiveOpenRouterBusy: OpenRouterWorkspacePropsArgs['adaptiveOpenRouterBusy'];
+  topicOpenRouterBusy: OpenRouterWorkspacePropsArgs['topicOpenRouterBusy'];
+  generateAdaptiveNextSessionFromOpenRouter: OpenRouterWorkspacePropsArgs['onGenerateAdaptiveDirectSession'];
+  generateTopicNextSessionFromOpenRouter: OpenRouterWorkspacePropsArgs['onGenerateTopicDirectSession'];
   openRouterGenerateFocusRequest: OpenRouterWorkspacePropsArgs['focusGenerateRequest'];
   activeOpenRouterJobs: OpenRouterWorkspacePropsArgs['activeJobs'];
   openRouterJobNotifications: OpenRouterWorkspacePropsArgs['jobNotifications'];

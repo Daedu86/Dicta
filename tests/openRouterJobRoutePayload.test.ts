@@ -64,6 +64,22 @@ describe('OpenRouter jobs route payload validation', () => {
     });
   });
 
+  it('accepts five-minute durable generation jobs', () => {
+    expect(
+      readCreateJobPayload({
+        model: 'openrouter/free',
+        prompt: 'Generate a longer Dicta session.',
+        inputMode: 'browser-tts',
+        language: 'en',
+        slotLabel: 'Adaptive direct session',
+        durationMinutes: 5,
+      }),
+    ).toMatchObject({
+      maxTokens: 6000,
+      durationMinutes: 5,
+    });
+  });
+
   it('accepts all three direct mobile generation button job payloads', () => {
     for (const payload of directMobileButtonPayloads) {
       expect(

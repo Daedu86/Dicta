@@ -7,6 +7,7 @@ import type {
 import type { TrainingGenerationButton } from '../components/training/TrainingGenerationCard';
 import type { StoredSession } from './sessionTypes';
 import { buildFocusedTrainingGenerationButtons } from './focusedTrainingGenerationButtonBuilders';
+import type { OpenRouterDurationMinutes } from '../core/adaptive/openRouterGenerationPrompt';
 
 type GenerateSessionAction = () => void | Promise<void>;
 
@@ -28,6 +29,7 @@ export type UseFocusedTrainingGenerationButtonsArgs = {
   trainingGenerationNowMs: number;
   adaptiveOpenRouterBusy: boolean;
   topicOpenRouterBusy: boolean;
+  directGenerationDurationMinutes: OpenRouterDurationMinutes;
   generateAdaptiveNextSessionFromOpenRouter: GenerateSessionAction;
   generateTopicNextSessionFromOpenRouter: GenerateSessionAction;
 };
@@ -44,6 +46,7 @@ export type BuildFocusedTrainingGenerationButtonsArgs = Pick<
   | 'trainingGenerationNowMs'
   | 'adaptiveOpenRouterBusy'
   | 'topicOpenRouterBusy'
+  | 'directGenerationDurationMinutes'
   | 'generateAdaptiveNextSessionFromOpenRouter'
   | 'generateTopicNextSessionFromOpenRouter'
 >;
@@ -61,6 +64,7 @@ export function useFocusedTrainingGenerationButtons({
   trainingGenerationNowMs,
   adaptiveOpenRouterBusy,
   topicOpenRouterBusy,
+  directGenerationDurationMinutes,
   generateAdaptiveNextSessionFromOpenRouter,
   generateTopicNextSessionFromOpenRouter,
 }: UseFocusedTrainingGenerationButtonsArgs): TrainingGenerationButton[] {
@@ -78,6 +82,7 @@ export function useFocusedTrainingGenerationButtons({
       trainingGenerationNowMs,
       adaptiveOpenRouterBusy,
       topicOpenRouterBusy,
+      directGenerationDurationMinutes,
       generateAdaptiveNextSessionFromOpenRouter,
       generateTopicNextSessionFromOpenRouter,
     });
@@ -95,6 +100,7 @@ export function useFocusedTrainingGenerationButtons({
     activeSession,
     adaptiveOpenRouterBusy,
     topicOpenRouterBusy,
+    directGenerationDurationMinutes,
     generateAdaptiveNextSessionFromOpenRouter,
     generateTopicNextSessionFromOpenRouter,
   ]);
