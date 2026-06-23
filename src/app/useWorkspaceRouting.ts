@@ -42,6 +42,7 @@ type WorkspaceRouting = {
   showAdminWorkspace: () => void;
   showOpenRouterWorkspace: () => void;
   showAdaptiveFlowWorkspace: () => void;
+  showAdaptiveFlowGenerationWorkspace: () => void;
   showDashboardWorkspace: (sessionId: string) => void;
   showSessionInputWorkspace: (inputMode: SessionInputMode) => void;
 };
@@ -169,6 +170,7 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   const showAdminWorkspace = useCallback(() => showWorkspace('admin'), [showWorkspace]);
   const showOpenRouterWorkspace = useCallback(() => showWorkspace('openrouter'), [showWorkspace]);
   const showAdaptiveFlowWorkspace = useCallback(() => showWorkspace('adaptive-flow'), [showWorkspace]);
+  const showAdaptiveFlowGenerationWorkspace = useCallback(() => navigateAppRoute('/#adaptive-flow/generation'), [navigateAppRoute]);
 
   const showDashboardWorkspace = useCallback((sessionId: string) => {
     pushAppRoute('/');
@@ -202,6 +204,7 @@ export function useWorkspaceRouting(): WorkspaceRouting {
     showAdminWorkspace,
     showOpenRouterWorkspace,
     showAdaptiveFlowWorkspace,
+    showAdaptiveFlowGenerationWorkspace,
     showDashboardWorkspace,
     showSessionInputWorkspace,
   };

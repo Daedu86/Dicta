@@ -5,9 +5,9 @@ import { OpenRouterGenerationStatusPanel } from './OpenRouterGenerationStatusPan
 import { OpenRouterPromptControls } from './OpenRouterPromptControls';
 import { OpenRouterSlotSelector } from './OpenRouterSlotSelector';
 import { OPENROUTER_GENERATION_SLOT_IDS, formatElapsedMs, getOpenRouterSlotLabel, validateGeneratedScriptForTarget } from './openRouterViewHelpers';
-import type { OpenRouterWorkspaceRuntime } from './openRouterWorkspaceRuntimeTypes';
+import type { OpenRouterGenerateSessionRuntime } from './useOpenRouterGenerateSessionRuntime';
 
-export type OpenRouterGenerateSessionSectionProps = { runtime: OpenRouterWorkspaceRuntime };
+export type OpenRouterGenerateSessionSectionProps = { runtime: OpenRouterGenerateSessionRuntime };
 
 export function OpenRouterGenerateSessionSection({ runtime }: OpenRouterGenerateSessionSectionProps) {
   const slots = OPENROUTER_GENERATION_SLOT_IDS.map((slotId) => {

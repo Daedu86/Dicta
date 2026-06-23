@@ -20,7 +20,7 @@ export function OpenRouterGenerateActionPanel({
       <button type="button" className="secondary-button" disabled={disabled} onClick={onGenerate}>
         {requesting ? 'Requesting...' : generating ? 'Generating...' : `Generate ${slotLabel}`}
       </button>
-      <span className="hint">{model ? `Using: ${model}` : 'Set a default model first (Section #2).'}</span>
+      <span className="hint">{model ? `Using: ${model}` : 'Set a default model in OpenRouter Section #2 first.'}</span>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 # OpenRouter Workspace Modularization
 
 Status: HISTORICAL  
-Last updated: 2026-06-16  
+Last updated: 2026-06-23  
 Branch: `product/input-2`
 
 OpenRouter workspace/runtime modularization is complete enough.
@@ -10,8 +10,8 @@ Current owners:
 
 - `src/components/openrouter/useOpenRouterWorkspaceRuntime.ts` — runtime coordinator only.
 - `src/components/openrouter/useOpenRouterWorkspaceUiState.ts` — workspace UI state.
-- `src/components/openrouter/useOpenRouterWorkspaceDerivations.ts` — derived payloads, prompts, notices, active slot state.
-- `src/components/openrouter/useOpenRouterWorkspaceSlotGeneration.ts` — custom workspace generation job request flow.
+- `src/components/openrouter/useOpenRouterGenerateSessionRuntime.ts` — Phase 1 Adaptive Flow generation runtime for prompt payloads, notices, active slot state, and job request flow.
+- `src/components/openrouter/useOpenRouterWorkspaceSlotGeneration.ts` — shared custom generation job request flow used by the Phase 1 generation runtime.
 - `src/components/openrouter/useOpenRouterWorkspaceClipboard.ts` — copy/status helper.
 - `api/openrouter/jobs.js` — thin route handler only.
 - `api/openrouter/_job*.js` — payload, JSON extraction, provider retry, persistence, audit, and runner helpers.

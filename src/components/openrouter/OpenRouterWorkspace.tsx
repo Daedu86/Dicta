@@ -1,7 +1,6 @@
 import { OpenRouterApiKeySection } from './OpenRouterApiKeySection';
 import { OpenRouterCollapsibleSection } from './OpenRouterCollapsibleSection';
 import { OpenRouterCopyActionsSection as CopyActionsSection } from './OpenRouterCopyActionsSection';
-import { OpenRouterGenerateSessionSection } from './OpenRouterGenerateSessionSection';
 import { OpenRouterModelTestSection } from './OpenRouterModelTestSection';
 import { OpenRouterModelsSection } from './OpenRouterModelsSection';
 import { OpenRouterWorkspaceHeader } from './OpenRouterWorkspaceHeader';
@@ -14,7 +13,6 @@ const sectionTitles = {
   models: `Section # 2 Free ${'Models'}`,
   test: `Section # 3 Testing ${'model'}`,
   exports: `Section # 4 ${'Ex' + 'port'} / Copy ${'Actions'}`,
-  generate: `Section # 5 Generate Training ${'Session'}`,
 };
 
 const O = (props: OpenRouterWorkspaceProps) => {
@@ -42,15 +40,6 @@ const O = (props: OpenRouterWorkspaceProps) => {
 
       <OpenRouterCollapsibleSection title={sectionTitles.exports} expanded={runtime.sectionsExpanded.exports} onToggle={() => toggleSection('exports')}>
         <CopyActionsSection workspace={props} runtime={runtime} />
-      </OpenRouterCollapsibleSection>
-
-      <OpenRouterCollapsibleSection
-        title={sectionTitles.generate}
-        expanded={runtime.sectionsExpanded.generate}
-        onToggle={() => toggleSection('generate')}
-        sectionId="openrouter-generate-section"
-      >
-        <OpenRouterGenerateSessionSection runtime={runtime} />
       </OpenRouterCollapsibleSection>
     </section>
   );

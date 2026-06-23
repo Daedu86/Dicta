@@ -95,8 +95,8 @@ Browser app:
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
-- Adaptive Pace Layer Flow workspace: read-only implementation map. The former benchmark/feedback cockpit dashboard tab no longer exists; adaptive data still feeds Training Mode, OpenRouter context/export behavior, Live Metrics diagnostics, IndexedDB persistence, and Supabase sync internally.
-- OpenRouter workspace: structured dictation script generation slots.
+- Adaptive Pace Layer Flow workspace: implementation map for the closed adaptive loop. Phase 1 / Generation owns the live OpenRouter Generate Training Session card, while the former benchmark/feedback cockpit dashboard tab no longer exists; adaptive data still feeds Training Mode, OpenRouter context/export behavior, Live Metrics diagnostics, IndexedDB persistence, and Supabase sync internally.
+- OpenRouter workspace: OpenRouter API key, model selection, model test, and export/copy actions.
 - Admin workspace: members, remote sessions, and local diagnostics.
 - `localStorage`: small profile/sync/migration manifests, preferences, and small OpenRouter pointers only.
 - `IndexedDB`: local working-copy sessions, tombstones, adaptive benchmarks, and adaptive feedback.

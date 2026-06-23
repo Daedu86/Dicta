@@ -29,7 +29,7 @@ type UseOpenRouterGenerationRuntimeOptions = {
   >;
   presentationActions: Pick<
     OpenRouterGenerationRuntimeActionOptions,
-    | 'showOpenRouterWorkspace'
+    | 'showAdaptiveFlowGenerationWorkspace'
     | 'setOpenRouterGenerateFocusRequest'
     | 'setOpenRouterError'
     | 'setSelectedBenchmarkInputMode'

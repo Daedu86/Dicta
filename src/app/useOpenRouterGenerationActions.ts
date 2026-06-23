@@ -10,7 +10,7 @@ export type { OpenRouterGenerationBusyControls } from './useOpenRouterDirectGene
 
 export type UseOpenRouterGenerationActionsOptions = UseOpenRouterDirectGenerationRuntimeOptions & OpenRouterGenerationBusyControls & {
   allowCustomSessionGeneration: boolean;
-  showOpenRouterWorkspace: () => void;
+  showAdaptiveFlowGenerationWorkspace: () => void;
   setOpenRouterGenerateFocusRequest: (updater: (value: number) => number) => void;
   setBenchmarkExportMessage: (message: string) => void;
   setSessionFeedbackMessage: (message: string) => void;
@@ -25,7 +25,7 @@ export function useOpenRouterGenerationActions(options: UseOpenRouterGenerationA
     isOnline,
     dictaLanguageView,
     ensureCanCreateDictationSession,
-    showOpenRouterWorkspace,
+    showAdaptiveFlowGenerationWorkspace,
     setOpenRouterGenerateFocusRequest,
     setOpenRouterError,
     setSelectedBenchmarkInputMode,
@@ -62,7 +62,7 @@ export function useOpenRouterGenerationActions(options: UseOpenRouterGenerationA
     setSelectedBenchmarkLanguage(plan.language);
     setBenchmarkExportMessage('');
     setSessionFeedbackMessage('');
-    showOpenRouterWorkspace();
+    showAdaptiveFlowGenerationWorkspace();
     setOpenRouterGenerateFocusRequest((value) => value + 1);
   }, [
     activeSession,
@@ -78,7 +78,7 @@ export function useOpenRouterGenerationActions(options: UseOpenRouterGenerationA
     setSelectedBenchmarkInputMode,
     setSelectedBenchmarkLanguage,
     setSessionFeedbackMessage,
-    showOpenRouterWorkspace,
+    showAdaptiveFlowGenerationWorkspace,
   ]);
 
   return {

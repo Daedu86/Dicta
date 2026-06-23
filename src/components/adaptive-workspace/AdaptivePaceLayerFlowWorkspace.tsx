@@ -1,4 +1,11 @@
 import { useEffect, useState } from 'react';
+import type { OpenRouterAccessState } from '../../core/appProfiles';
+import { OpenRouterGenerateSessionSection } from '../openrouter/OpenRouterGenerateSessionSection';
+import type { OpenRouterWorkspaceProps } from '../openrouter/types';
+import {
+  OPENROUTER_GENERATE_SESSION_CARD_ID,
+  useOpenRouterGenerateSessionRuntime,
+} from '../openrouter/useOpenRouterGenerateSessionRuntime';
 
 const ADAPTIVE_FLOW_HASH = '#adaptive-flow';
 const ADAPTIVE_FLOW_PHASE_HASH_PREFIX = `${ADAPTIVE_FLOW_HASH}/`;
@@ -53,6 +60,12 @@ type AdaptiveRuntimeCycleGroup = {
   inputs: AdaptiveRuntimeCycleTextList;
   outputs: AdaptiveRuntimeCycleTextList;
   phaseIds: readonly AdaptiveFlowPhase['id'][];
+};
+
+export type AdaptivePaceLayerFlowWorkspaceProps = {
+  openRouterAccessState: OpenRouterAccessState;
+  openRouterAccessMessage: string;
+  openRouterWorkspaceProps: OpenRouterWorkspaceProps;
 };
 
 const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
@@ -348,14 +361,26 @@ function getAdaptiveFlowRoutePhaseId(): string | null {
   return ADAPTIVE_FLOW_PHASES.some((phase) => phase.id === phaseId) ? phaseId : null;
 }
 
+function normalizeAdaptiveFlowLanguageCode(value: string | undefined): AdaptiveFlowLanguageCode {
+  return ADAPTIVE_FLOW_LANGUAGES.some((language) => language.code === value)
+    ? value as AdaptiveFlowLanguageCode
+    : 'en';
+}
+
 function navigateAdaptiveFlowHash(hash: string): void {
   if (typeof window === 'undefined') return;
   if (window.location.hash === hash) return;
   window.location.hash = hash;
 }
 
-export function AdaptivePaceLayerFlowWorkspace() {
-  const [selectedLanguageCode, setSelectedLanguageCode] = useState<AdaptiveFlowLanguageCode>('en');
+export function AdaptivePaceLayerFlowWorkspace({
+  openRouterAccessState,
+  openRouterAccessMessage,
+  openRouterWorkspaceProps,
+}: AdaptivePaceLayerFlowWorkspaceProps) {
+  const [selectedLanguageCode, setSelectedLanguageCode] = useState<AdaptiveFlowLanguageCode>(() =>
+    normalizeAdaptiveFlowLanguageCode(openRouterWorkspaceProps.defaultGenerateLanguage),
+  );
   const [routePhaseId, setRoutePhaseId] = useState<string | null>(() => getAdaptiveFlowRoutePhaseId());
   const selectedLanguage = ADAPTIVE_FLOW_LANGUAGES.find(({ code }) => code === selectedLanguageCode) ?? ADAPTIVE_FLOW_LANGUAGES[0];
   const routePhase = routePhaseId
@@ -391,6 +416,9 @@ export function AdaptivePaceLayerFlowWorkspace() {
         selectedLanguage={selectedLanguage}
         selectedLanguageCode={selectedLanguageCode}
         selectedPhase={routePhase}
+        openRouterAccessState={openRouterAccessState}
+        openRouterAccessMessage={openRouterAccessMessage}
+        openRouterWorkspaceProps={openRouterWorkspaceProps}
         onBack={backToFlowIndex}
         onSelectLanguage={setSelectedLanguageCode}
       />
@@ -588,12 +616,18 @@ function AdaptiveFlowPhasePage({
   selectedLanguage,
   selectedLanguageCode,
   selectedPhase,
+  openRouterAccessState,
+  openRouterAccessMessage,
+  openRouterWorkspaceProps,
   onBack,
   onSelectLanguage,
 }: {
   selectedLanguage: AdaptiveFlowLanguage;
   selectedLanguageCode: AdaptiveFlowLanguageCode;
   selectedPhase: AdaptiveFlowPhase;
+  openRouterAccessState: OpenRouterAccessState;
+  openRouterAccessMessage: string;
+  openRouterWorkspaceProps: OpenRouterWorkspaceProps;
   onBack: () => void;
   onSelectLanguage: (languageCode: AdaptiveFlowLanguageCode) => void;
 }) {
@@ -687,6 +721,15 @@ function AdaptiveFlowPhasePage({
           </section>
         </div>
 
+        {selectedPhase.id === 'generation' ? (
+          <AdaptiveFlowGenerationLiveCard
+            openRouterAccessState={openRouterAccessState}
+            openRouterAccessMessage={openRouterAccessMessage}
+            openRouterWorkspaceProps={openRouterWorkspaceProps}
+            selectedLanguageCode={selectedLanguageCode}
+          />
+        ) : null}
+
         <section className="adaptive-flow-cycle-workspace-section" aria-label={`${selectedPhase.title} related files`}>
           <p className="dashboard-eyebrow">Related files</p>
           <div className="adaptive-flow-repo-list adaptive-flow-repo-list-wide">
@@ -707,4 +750,56 @@ function AdaptiveFlowPhasePage({
       </section>
     </section>
   );
+}
+
+function AdaptiveFlowGenerationLiveCard({
+  openRouterAccessState,
+  openRouterAccessMessage,
+  openRouterWorkspaceProps,
+  selectedLanguageCode,
+}: {
+  openRouterAccessState: OpenRouterAccessState;
+  openRouterAccessMessage: string;
+  openRouterWorkspaceProps: OpenRouterWorkspaceProps;
+  selectedLanguageCode: AdaptiveFlowLanguageCode;
+}) {
+  return (
+    <section
+      id={OPENROUTER_GENERATE_SESSION_CARD_ID}
+      className="adaptive-flow-cycle-workspace-section adaptive-flow-generation-live-card"
+      aria-label="Generation OpenRouter live controls"
+    >
+      <div className="adaptive-flow-generation-live-card-header">
+        <div>
+          <p className="dashboard-eyebrow">Live generation</p>
+          <h3>Generate Training Session</h3>
+          <p className="hint">
+            Configures the prompt that goes to OpenRouter and validates the returned DictationScript before playback.
+          </p>
+        </div>
+      </div>
+      {openRouterAccessState !== 'allowed' ? (
+        <p className={openRouterAccessState === 'pending' ? 'hint' : 'error'}>
+          {openRouterAccessState === 'pending' ? 'Checking OpenRouter access...' : openRouterAccessMessage}
+        </p>
+      ) : (
+        <AdaptiveFlowGenerationAllowedCard
+          openRouterWorkspaceProps={{
+            ...openRouterWorkspaceProps,
+            defaultGenerateLanguage: selectedLanguageCode,
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+function AdaptiveFlowGenerationAllowedCard({
+  openRouterWorkspaceProps,
+}: {
+  openRouterWorkspaceProps: OpenRouterWorkspaceProps;
+}) {
+  const runtime = useOpenRouterGenerateSessionRuntime(openRouterWorkspaceProps);
+
+  return <OpenRouterGenerateSessionSection runtime={runtime} />;
 }

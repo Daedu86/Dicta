@@ -54,6 +54,8 @@ describe('training OpenRouter language contract', () => {
     expect(source).toContain('dictaLanguageView');
     expect(openOpenRouterGenerateBody).toContain('dictaLanguageView');
     expect(openOpenRouterGenerateBody).toContain('setSelectedBenchmarkLanguage(plan.language)');
+    expect(openOpenRouterGenerateBody).toContain('showAdaptiveFlowGenerationWorkspace()');
+    expect(openOpenRouterGenerateBody).not.toContain('showOpenRouterWorkspace()');
     expect(openOpenRouterGenerateBody).not.toContain("setSelectedBenchmarkLanguage('en')");
     expect(openOpenRouterGenerateBody).not.toContain("setSelectedBenchmarkLanguage('es')");
     expect(openOpenRouterGenerateBody).not.toContain("setSelectedBenchmarkLanguage('de')");

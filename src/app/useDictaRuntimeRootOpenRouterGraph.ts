@@ -25,7 +25,7 @@ export function useDictaRuntimeRootOpenRouterGraph({
   } = environment;
   const { sessions, setActiveSessionId } = sessionsState;
   const { setError } = trainingState;
-  const { showLeaderboardWorkspace, showOpenRouterWorkspace } = routing;
+  const { showLeaderboardWorkspace, showAdaptiveFlowGenerationWorkspace } = routing;
   const { suppressSidebarAutoSelectRef } = refs;
   const { setLeaderboardLanguageView } = uiPreferences;
   const {
@@ -118,7 +118,7 @@ export function useDictaRuntimeRootOpenRouterGraph({
       adaptiveSessionFeedbackByInputLanguage,
     },
     presentationActions: {
-      showOpenRouterWorkspace,
+      showAdaptiveFlowGenerationWorkspace,
       setOpenRouterGenerateFocusRequest,
       setOpenRouterError,
       setSelectedBenchmarkInputMode,

@@ -4,7 +4,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppWorkspaceContent } from '../src/app/AppWorkspaceContent';
 import type { StoredSession } from '../src/app/sessionTypes';
+import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../src/core/sessionInputModes';
+import type { OpenRouterWorkspaceProps } from '../src/components/openrouter/types';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -154,6 +156,59 @@ describe('AppWorkspaceContent', () => {
     expect(host.textContent).toContain('Related files');
     expect(host.textContent).toContain('src/core/adaptive/AdaptiveInputLanguageBenchmarkService.ts');
   });
+
+  it('renders the live OpenRouter generation card inside adaptive flow phase 1 when access is allowed', () => {
+    window.history.replaceState(null, '', '/#adaptive-flow/generation');
+
+    act(() => {
+      root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
+        workspaceMode: 'adaptive-flow',
+        openRouterAccessState: 'allowed',
+        openRouterWorkspaceProps: createOpenRouterWorkspaceProps(),
+      })));
+    });
+
+    expect(host.querySelector('.adaptive-flow-phase-page')).not.toBeNull();
+    expect(host.textContent).toContain('Step 1 workspace');
+    expect(host.textContent).toContain('Generate Training Session');
+    expect(host.textContent).toContain('Prompt sent to OpenRouter');
+    expect(host.textContent).toContain('Target');
+    expect(host.textContent).toContain('browser-tts/en');
+    expect(host.querySelector('#adaptive-flow-generation-session-card')).not.toBeNull();
+    expect(host.querySelector('.adaptive-flow-generation-live-card')).not.toBeNull();
+  });
+
+  it('keeps Generate Training Session out of the OpenRouter workspace', () => {
+    act(() => {
+      root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
+        workspaceMode: 'openrouter',
+        openRouterAccessState: 'allowed',
+        openRouterWorkspaceProps: createOpenRouterWorkspaceProps(),
+      })));
+    });
+
+    expect(host.textContent).toContain('Section # 1 API Key');
+    expect(host.textContent).toContain('Section # 4 Export / Copy Actions');
+    expect(host.textContent).not.toContain('Section # 5 Generate Training Session');
+    expect(host.textContent).not.toContain('Prompt sent to OpenRouter');
+  });
+
+  it('shows OpenRouter access state in adaptive flow phase 1 without mounting generation controls', () => {
+    window.history.replaceState(null, '', '/#adaptive-flow/generation');
+
+    act(() => {
+      root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
+        workspaceMode: 'adaptive-flow',
+        openRouterAccessState: 'pending',
+        openRouterAccessMessage: 'OpenRouter unavailable',
+        openRouterWorkspaceProps: createOpenRouterWorkspaceProps(),
+      })));
+    });
+
+    expect(host.textContent).toContain('Generate Training Session');
+    expect(host.textContent).toContain('Checking OpenRouter access...');
+    expect(host.textContent).not.toContain('Prompt sent to OpenRouter');
+  });
 });
 
 type AppWorkspaceContentProps = Parameters<typeof AppWorkspaceContent>[0];
@@ -218,5 +273,49 @@ function createPendingSession(): StoredSession {
     generationOrigin: 'manual',
     createdDeviceKind: 'desktop',
     dictationScript: null,
+  };
+}
+
+function createOpenRouterWorkspaceProps(overrides: Partial<OpenRouterWorkspaceProps> = {}): OpenRouterWorkspaceProps {
+  const benchmark = createEmptyInputLanguageBenchmark('browser-tts', 'en');
+
+  return {
+    defaultModel: 'openrouter/free',
+    assignedModel: null,
+    authHeaders: {},
+    onSetDefaultModel: vi.fn(),
+    models: [],
+    status: 'ready',
+    error: '',
+    onRefreshModels: vi.fn(async () => undefined),
+    onBackToTraining: vi.fn(),
+    exportProfile: benchmark,
+    exportSessionFeedback: null,
+    exportActiveSessionStatus: undefined,
+    benchmarks: {
+      'browser-tts': {
+        en: benchmark,
+      },
+    },
+    sessionFeedbackByInputLanguage: {},
+    onSelectExportProfile: vi.fn(),
+    defaultGenerateInputMode: 'browser-tts',
+    defaultGenerateLanguage: 'en',
+    focusGenerateRequest: 0,
+    activeJobs: [],
+    jobNotifications: {},
+    generationNowMs: Date.parse('2026-06-23T00:00:00.000Z'),
+    onTrackJob: vi.fn(),
+    onCreateGenerationErrorSession: vi.fn(),
+    onCopyBenchmark: vi.fn(),
+    onExportBenchmark: vi.fn(),
+    onCopyBenchmarkWithScriptPrompt: vi.fn(),
+    onCopyBenchmarkFeedbackPrompt: vi.fn(),
+    onCopyBenchmarkFeedback: vi.fn(),
+    onCopySessionFeedback: vi.fn(),
+    onCopyScriptPrompt: vi.fn(),
+    onCopyScriptTemplate: vi.fn(),
+    onCopyBenchmarkFeedbackPromptWithHumanFeedback: vi.fn(),
+    ...overrides,
   };
 }

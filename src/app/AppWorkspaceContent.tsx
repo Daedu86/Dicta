@@ -49,7 +49,11 @@ export function AppWorkspaceContent({
     return (
       <section className="workspace">
         <section className="workspace-shell">
-          <AdaptivePaceLayerFlowWorkspace />
+          <AdaptivePaceLayerFlowWorkspace
+            openRouterAccessState={openRouterAccessState}
+            openRouterAccessMessage={openRouterAccessMessage}
+            openRouterWorkspaceProps={openRouterWorkspaceProps}
+          />
         </section>
       </section>
     );

@@ -1,6 +1,6 @@
 # Adaptive Training Cycle
 
-_Last updated: 2026-06-22_
+_Last updated: 2026-06-23_
 
 Dicta is a closed adaptive listening loop. This page is the compact entry point for the adaptive training cycle.
 
@@ -17,7 +17,7 @@ The runtime loop is causal: memory feeds preparation, preparation drives the cur
 
 ## Workspace map
 
-The Adaptive Pace Layer Flow workspace explains the loop as four auditable groups:
+The Adaptive Pace Layer Flow workspace explains the loop as four auditable groups. Phase 1 / Generation also contains the live OpenRouter Generate Training Session card, because that card configures the prompt, duration, target language, prompt source, job state, and DictationScript validation for the first step of the cycle.
 
 - Memory: 20-day benchmark, recent feedback, and active `browser-tts/{language}` calibration.
 - Prepare: Generation, Planner, and Chunker convert evidence into content, runtime policy, and playable chunks.

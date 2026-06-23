@@ -517,6 +517,44 @@
   min-width: 0;
 }
 
+.adaptive-flow-generation-live-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.adaptive-flow-generation-live-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.adaptive-flow-generation-live-card-header h3,
+.adaptive-flow-generation-live-card-header p {
+  margin: 0;
+}
+
+.adaptive-flow-generation-live-card .admin-card-body {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.adaptive-flow-generation-live-card .openrouter-button-control h4 {
+  color: #102f63;
+}
+
+.adaptive-flow-generation-live-card .openrouter-choice-button small {
+  color: #4e6076;
+}
+
+.adaptive-flow-generation-live-card .openrouter-choice-button-active small {
+  color: #dbeafe;
+}
+
 .adaptive-flow-cycle-workspace-kpis {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

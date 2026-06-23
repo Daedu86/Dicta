@@ -125,6 +125,7 @@ describe('useWorkspaceRouting', () => {
     { action: 'showAdminWorkspace', mode: 'admin', path: '/admin' },
     { action: 'showOpenRouterWorkspace', mode: 'openrouter', path: '/openrouter' },
     { action: 'showAdaptiveFlowWorkspace', mode: 'adaptive-flow', path: '/#adaptive-flow' },
+    { action: 'showAdaptiveFlowGenerationWorkspace', mode: 'adaptive-flow', path: '/#adaptive-flow/generation' },
   ])('switches to $mode and clears the dashboard session id', async ({ action, mode, path }) => {
     const { getRouting } = await renderWorkspaceRouting();
 
