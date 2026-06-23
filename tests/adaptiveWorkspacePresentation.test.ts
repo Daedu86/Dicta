@@ -127,7 +127,7 @@ describe('adaptive workspace presentation state', () => {
     expect(state.insightsDiagnosticFeedback?.sessionId).toBe('insights');
   });
 
-  it('derives adaptive adapter and insights input presentation', () => {
+  it('derives insights input presentation', () => {
     const state = buildAdaptiveWorkspacePresentationState({
       adaptiveBenchmarksByInputLanguage: {},
       adaptiveSessionFeedbackByInputLanguage: {},
@@ -137,7 +137,6 @@ describe('adaptive workspace presentation state', () => {
       metricsLanguageView: 'de',
     });
 
-    expect(state.adaptiveAdapters[0]?.title).toBe('Browser TTS');
     expect(state.insightsDiagnosticInputOptions).toEqual(buildAdaptiveWorkspaceInputOptions());
   });
 });

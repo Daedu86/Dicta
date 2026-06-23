@@ -19,6 +19,8 @@ Do not store large runtime payloads in `localStorage`. Sessions, telemetry, adap
 
 This is the first file an agent should read before touching Dicta. Dicta is a Vite/React dictation trainer with a shared adaptive "brain" called the Adaptive Pace Layer.
 
+There is no user-facing Adaptive Pace Layer cockpit/dashboard tab. Adaptive data collection, benchmark updates, session feedback, OpenRouter generation context, Live Metrics diagnostics, IndexedDB persistence, and Supabase sync still use the Adaptive Pace Layer internally. User-facing adaptive surfaces are Training Mode, OpenRouter context/export behavior, Live Metrics diagnostics, and the read-only Adaptive Pace Layer Flow workspace.
+
 ## Required Change Protocol
 
 Before proposing or making any code change, read and understand these files in this order:

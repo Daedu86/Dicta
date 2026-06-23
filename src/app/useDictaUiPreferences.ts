@@ -3,7 +3,6 @@ import type {
   MetricsLanguageView,
   MetricsRangeView,
 } from '../core/liveMetrics';
-import { isMobileViewport } from './viewport';
 import {
   DEFAULT_LEADERBOARD_SECTION_EXPANDED,
   type LeaderboardSectionId,
@@ -34,10 +33,6 @@ export function useDictaUiPreferences() {
     () => ({ ...DEFAULT_LEADERBOARD_SECTION_EXPANDED }),
   );
   const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => loadMetricsRangeView());
-  const [adaptiveSectionExpanded, setAdaptiveSectionExpanded] = useState(() => ({
-    benchmarks: !isMobileViewport(),
-  }));
-
   useEffect(() => {
     persistDictaLanguageView(dictaLanguageView);
   }, [dictaLanguageView]);
@@ -67,7 +62,5 @@ export function useDictaUiPreferences() {
     setLeaderboardSectionExpanded,
     metricsRangeView,
     setMetricsRangeView,
-    adaptiveSectionExpanded,
-    setAdaptiveSectionExpanded,
   };
 }

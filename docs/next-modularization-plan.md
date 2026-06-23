@@ -73,7 +73,7 @@ Completed extraction groups known at that checkpoint:
 Historical next recommended pass at that checkpoint:
 
 1. Inspect remaining declarations and closures inside `function App()`.
-2. Pick only hook-level runtime clusters with explicit inputs/outputs; the next reasonable candidate was `AdaptiveBenchmarkSection` prop composition at that time.
+2. Pick only hook-level runtime clusters with explicit inputs/outputs. The old adaptive cockpit prop-composition target has since been removed and is no longer a valid extraction candidate.
 3. Keep JSX extraction small and build-verified.
 4. Avoid the Browser TTS playback loop until a fresh AST-level movement plan exists.
 

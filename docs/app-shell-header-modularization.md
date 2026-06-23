@@ -55,7 +55,7 @@ Keep in `App.tsx`:
 - workspace routing state and `setWorkspaceMode`;
 - dashboard session selection state and `setDashboardSessionId`;
 - focused training navigation;
-- adaptive workspace opening behavior;
+- adaptive flow workspace opening behavior;
 - admin and OpenRouter access decisions;
 - theme state;
 - sign-out behavior;
@@ -84,7 +84,7 @@ Left in `src/App.tsx`:
 
 - all workspace route mutations;
 - focused training navigation;
-- adaptive workspace opening behavior;
+- adaptive flow workspace opening behavior;
 - admin/OpenRouter access decisions;
 - OpenRouter model status text derivation;
 - sync status text derivation;
@@ -137,7 +137,7 @@ Callbacks:
 
 - `onOpenLeaderboard`
 - `onOpenMobileTraining`
-- `onOpenAdaptive`
+- `onOpenAdaptiveFlow`
 - `onOpenAdmin`
 - `onOpenOpenRouter`
 - `onToggleTheme`

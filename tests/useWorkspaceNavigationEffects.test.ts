@@ -177,7 +177,7 @@ describe('useWorkspaceNavigationEffects', () => {
     expect(props.showWorkspaceMode).not.toHaveBeenCalled();
   });
 
-  it.each<WorkspaceMode>(['dashboard', 'adaptive', 'adaptive-flow', 'admin', 'openrouter'])(
+  it.each<WorkspaceMode>(['dashboard', 'adaptive-flow', 'admin', 'openrouter'])(
     'does not auto-select the active input workspace while viewing %s',
     async (workspaceMode) => {
       const props = createDefaultProps({

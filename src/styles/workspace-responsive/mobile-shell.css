@@ -5,22 +5,13 @@
   .pending-session-lane,
   .tts-workspace,
   .adaptive-workspace,
-  .adaptive-workspace-grid,
-  .adaptive-benchmark-panel,
-  .adaptive-benchmark-workspace,
-  .adaptive-benchmark-subpanel,
-  .adaptive-cockpit-grid,
-  .adaptive-coach-grid,
-  .adaptive-coach-card,
   .bottom-metrics-dock,
   .bottom-metrics-inner {
     min-width: 0;
     max-width: 100%;
   }
 
-  .adaptive-workspace,
-  .adaptive-benchmark-subpanel,
-  .adaptive-coach-card {
+  .adaptive-workspace {
     overflow-x: clip;
   }
 
@@ -47,10 +38,6 @@
   .workspace-main-header .brand-status-row,
   .metrics-header,
   .adaptive-section-header,
-  .adaptive-export-panel summary,
-  .adaptive-profile-overview-header,
-  .adaptive-zone-chart-header,
-  .adaptive-mini-trends-header,
   .pending-session-lane-header,
   .tts-source-meta,
   .typing-panel-header,
@@ -115,8 +102,7 @@
     width: 100%;
   }
 
-  .adaptive-section-header > div,
-  .adaptive-export-panel summary span {
+  .adaptive-section-header > div {
     min-width: 0;
   }
 

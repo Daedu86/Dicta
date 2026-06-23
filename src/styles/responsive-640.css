@@ -26,38 +26,4 @@
     width: 100%;
     white-space: normal;
   }
-
-  .adaptive-profile-matrix-header {
-    display: none;
-  }
-
-  .adaptive-profile-matrix-row {
-    grid-template-columns: 1fr;
-  }
-
-  .adaptive-profile-cell {
-    grid-template-columns: 2.4rem minmax(4.25rem, 0.6fr) minmax(0, 1fr);
-    align-items: center;
-    min-height: 58px;
-  }
-
-  .adaptive-profile-cell::before {
-    grid-row: 1 / span 2;
-    align-self: center;
-  }
-
-  .adaptive-profile-cell span {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
-  .adaptive-profile-cell strong {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .adaptive-profile-cell small {
-    grid-column: 3;
-    grid-row: 2;
-  }
 }

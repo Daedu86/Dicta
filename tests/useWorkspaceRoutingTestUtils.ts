@@ -21,7 +21,6 @@ export type WorkspaceRoutingActionName = keyof Pick<
   | 'showLeaderboardWorkspace'
   | 'showAdminWorkspace'
   | 'showOpenRouterWorkspace'
-  | 'showAdaptiveWorkspace'
   | 'showAdaptiveFlowWorkspace'
 >;
 type AppRoutePath = Parameters<WorkspaceRoutingState['navigateAppRoute']>[0];

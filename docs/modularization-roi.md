@@ -31,7 +31,7 @@ Already completed:
 - OpenRouter workspace runtime split into UI state, derivations, clipboard, and slot-generation owners.
 - `api/openrouter/jobs.js` split into thin route handler plus `_job*` helpers.
 - Auth/profile, app-level session persistence runtime, session creation, workspace session, app presentation, and route rendering ownership.
-- Runtime modularization wave for SessionDashboard, adaptive cockpit/diagnostics UI sections, adaptive policies, adaptive controller helpers, adaptive runtime helpers, and performance diagnostics facade.
+- Runtime modularization wave for SessionDashboard, historical adaptive diagnostics UI sections, adaptive policies, adaptive controller helpers, adaptive runtime helpers, and performance diagnostics facade.
 
 Current hotspots:
 

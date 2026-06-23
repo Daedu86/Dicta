@@ -10,7 +10,7 @@ const repoRoot = resolve(__dirname, '..');
 const source = [
   readFileSync(resolve(repoRoot, 'src/App.tsx'), 'utf-8'),
   readFileSync(resolve(repoRoot, 'src/app/AppRouteRenderer.tsx'), 'utf-8'),
-  readFileSync(resolve(repoRoot, 'src/app/useAdaptiveWorkspaceEntryActions.ts'), 'utf-8'),
+  readFileSync(resolve(repoRoot, 'src/app/useOpenRouterGenerationActions.ts'), 'utf-8'),
 ].join('\n');
 
 function findMatchingBrace(sourceText: string, bodyStart: number): number {
@@ -49,15 +49,16 @@ function getFunctionBody(name: string): string {
 
 describe('training OpenRouter language contract', () => {
   it('uses the global Dicta language selector for focused-training generation paths', () => {
-    const openAdaptiveExportsBody = getFunctionBody('openAdaptiveExportsForActiveInput');
+    const openOpenRouterGenerateBody = getFunctionBody('openOpenRouterGenerateForActiveInput');
 
     expect(source).toContain('dictaLanguageView');
-    expect(openAdaptiveExportsBody).toContain('setSelectedBenchmarkLanguage(dictaLanguageView)');
-    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('en')");
-    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('es')");
-    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('de')");
-    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('fr')");
-    expect(openAdaptiveExportsBody).not.toContain("setSelectedBenchmarkLanguage('pt')");
+    expect(openOpenRouterGenerateBody).toContain('dictaLanguageView');
+    expect(openOpenRouterGenerateBody).toContain('setSelectedBenchmarkLanguage(plan.language)');
+    expect(openOpenRouterGenerateBody).not.toContain("setSelectedBenchmarkLanguage('en')");
+    expect(openOpenRouterGenerateBody).not.toContain("setSelectedBenchmarkLanguage('es')");
+    expect(openOpenRouterGenerateBody).not.toContain("setSelectedBenchmarkLanguage('de')");
+    expect(openOpenRouterGenerateBody).not.toContain("setSelectedBenchmarkLanguage('fr')");
+    expect(openOpenRouterGenerateBody).not.toContain("setSelectedBenchmarkLanguage('pt')");
   });
 
   it('wires the focused-training header selector to the same global language state', () => {

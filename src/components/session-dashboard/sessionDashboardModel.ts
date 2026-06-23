@@ -1,10 +1,10 @@
-import type { Transcript } from '../../types/dictation';
 import {
   buildListeningCycleInsightReportV3,
   type ListeningCycleInsightReportV3Frame,
 } from '../../core/adaptive/types';
 import { alignWordPairs } from '../../core/evaluation';
 import { normalizeWord } from '../../core/normalization';
+import { buildTextTranscript } from '../../core/textTranscript';
 import type { DashboardGoals, SessionDashboardSession, TranscriptReview } from './sessionDashboardTypes';
 
 export function buildTranscriptReview(session: SessionDashboardSession): TranscriptReview {
@@ -159,20 +159,6 @@ export function buildListeningCycleV3DashboardInsights(session: SessionDashboard
 
 function isListeningCycleInsightFrame(value: unknown): value is ListeningCycleInsightReportV3Frame {
   return Boolean(value && typeof value === 'object');
-}
-
-function buildTextTranscript(text: string): Transcript | null {
-  const words = text
-    .split(/\s+/)
-    .map((word, index) => {
-      const normalized = normalizeWord(word);
-      return normalized
-        ? { word: normalized, start: index, end: index + 1 }
-        : null;
-    })
-    .filter((word): word is { word: string; start: number; end: number } => Boolean(word));
-
-  return words.length > 0 ? { words } : null;
 }
 
 function average(values: number[]): number {

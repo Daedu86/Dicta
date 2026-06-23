@@ -6,7 +6,7 @@ import {
   formatSessionPointsLabel,
 } from '../core/evaluation';
 import { buildSessionScoreHelpText, computeSessionScore } from '../core/sessionScore';
-import { buildTextTranscript } from './repeatWordStats';
+import { buildTextTranscript } from '../core/textTranscript';
 
 type UseFocusedTrainingLiveMetricsArgs = {
   activeInputMode: NonNullable<Parameters<typeof computeSessionMaxPoints>[0]>['inputMode'];

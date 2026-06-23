@@ -1,4 +1,3 @@
-import { formatSessionDate } from './sessionDateFormatters';
 import type { useDictaLocalStorageImportRuntime } from './useDictaLocalStorageImportRuntime';
 import type { useDictaRootRouteCompositionRuntime } from './useDictaRootRouteCompositionRuntime';
 import type { DictaRuntimeRootAdaptiveWorkspaceGraph } from './useDictaRuntimeRootAdaptiveWorkspaceGraph';
@@ -61,7 +60,6 @@ export function buildDictaRuntimeRootRouteCompositionInput({
     sessions: sessionsState.sessions,
     selectedBenchmarkInputMode: openRouterGraph.selectedBenchmarkInputMode,
     selectedBenchmarkLanguage: openRouterGraph.selectedBenchmarkLanguage,
-    formatSessionDate,
     importDictaLocalStorageSnapshot,
     localDevFeaturesAvailable,
     perfDiagnosticsEnabled,

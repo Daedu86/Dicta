@@ -39,15 +39,3 @@ export function formatAdaptiveModeFromSession(session: { metrics: { trend: strin
 
   return 'Balanced';
 }
-
-export function buildAdaptiveAdapterCards() {
-  return [
-    {
-      inputMode: BROWSER_TTS_SESSION_INPUT_MODE,
-      title: 'Browser TTS',
-      adapter: 'browserTtsTelemetryAdapter',
-      execution: 'Controls browser utterance rate, phrase chunk size, and pause timing from typed progress.',
-      controls: 'Rate + chunks + pauses',
-    },
-  ];
-}

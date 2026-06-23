@@ -10,7 +10,6 @@ export type WorkspaceMode =
   | 'training'
   | 'dashboard'
   | 'tts'
-  | 'adaptive'
   | 'adaptive-flow'
   | 'admin'
   | 'openrouter';
@@ -19,7 +18,6 @@ type AdaptiveFlowPhaseRoutePath = `/#adaptive-flow/${string}`;
 type AppRoutePath =
   | '/'
   | '/training'
-  | '/adaptive'
   | '/adaptive/flow'
   | '/#adaptive-flow'
   | AdaptiveFlowPhaseRoutePath
@@ -43,7 +41,6 @@ type WorkspaceRouting = {
   showLeaderboardWorkspace: () => void;
   showAdminWorkspace: () => void;
   showOpenRouterWorkspace: () => void;
-  showAdaptiveWorkspace: () => void;
   showAdaptiveFlowWorkspace: () => void;
   showDashboardWorkspace: (sessionId: string) => void;
   showSessionInputWorkspace: (inputMode: SessionInputMode) => void;
@@ -64,8 +61,6 @@ function getWorkspaceModeForLocation(path: string, hash = ''): WorkspaceMode {
   }
 
   switch (path.replace(/\/$/, '') || '/') {
-    case '/adaptive':
-      return 'adaptive';
     case '/adaptive/flow':
       return 'adaptive-flow';
     case '/admin':
@@ -85,8 +80,6 @@ function getCurrentWorkspaceMode(): WorkspaceMode {
 
 function getPathForWorkspaceMode(mode: WorkspaceMode): AppRoutePath {
   switch (mode) {
-    case 'adaptive':
-      return '/adaptive';
     case 'adaptive-flow':
       return '/#adaptive-flow';
     case 'admin':
@@ -175,7 +168,6 @@ export function useWorkspaceRouting(): WorkspaceRouting {
   const showLeaderboardWorkspace = useCallback(() => showWorkspace('training'), [showWorkspace]);
   const showAdminWorkspace = useCallback(() => showWorkspace('admin'), [showWorkspace]);
   const showOpenRouterWorkspace = useCallback(() => showWorkspace('openrouter'), [showWorkspace]);
-  const showAdaptiveWorkspace = useCallback(() => showWorkspace('adaptive'), [showWorkspace]);
   const showAdaptiveFlowWorkspace = useCallback(() => showWorkspace('adaptive-flow'), [showWorkspace]);
 
   const showDashboardWorkspace = useCallback((sessionId: string) => {
@@ -209,7 +201,6 @@ export function useWorkspaceRouting(): WorkspaceRouting {
     showLeaderboardWorkspace,
     showAdminWorkspace,
     showOpenRouterWorkspace,
-    showAdaptiveWorkspace,
     showAdaptiveFlowWorkspace,
     showDashboardWorkspace,
     showSessionInputWorkspace,

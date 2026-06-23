@@ -110,12 +110,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .adaptive-adapter-grid,
-  .adaptive-benchmark-card-grid,
-  .adaptive-flow-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .bottom-summary-grid,
   .bottom-metrics-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

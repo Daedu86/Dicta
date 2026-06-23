@@ -33,7 +33,6 @@ type UseAppShellHeaderRuntimeArgs = {
   appProfile: AppShellHeaderPropsArgs['appProfile'];
   sessionQuotaStatus: AppShellHeaderPropsArgs['sessionQuotaStatus'];
   navigateAppRoute: (path: '/training') => void;
-  openAdaptiveWorkspaceFromHeader: AppShellHeaderPropsArgs['onOpenAdaptive'];
   showAdaptiveFlowWorkspace: AppShellHeaderPropsArgs['onOpenAdaptiveFlow'];
   showAdminWorkspace: AppShellHeaderPropsArgs['onOpenAdmin'];
   showOpenRouterWorkspace: AppShellHeaderPropsArgs['onOpenOpenRouter'];
@@ -52,7 +51,6 @@ export function useAppShellHeaderRuntime({
   appProfile,
   sessionQuotaStatus,
   navigateAppRoute,
-  openAdaptiveWorkspaceFromHeader,
   showAdaptiveFlowWorkspace,
   showAdminWorkspace,
   showOpenRouterWorkspace,
@@ -76,14 +74,13 @@ export function useAppShellHeaderRuntime({
     buildInfoTitle: DICTA_BUILD_INFO_TITLE,
     buildInfoLabel: DICTA_BUILD_INFO_LABEL,
     showAdminButton: canAccessInternalWorkspace,
-    showAdaptiveButton: canAccessInternalWorkspace,
+    showAdaptiveFlowButton: canAccessInternalWorkspace,
     showOpenRouterButton: canAccessInternalWorkspace,
     syncStatusState: supabaseSyncStatus.state,
     syncStatusText: appShellSyncStatusText,
     appProfile,
     sessionQuotaStatus,
     onOpenMobileTraining: () => navigateAppRoute('/training'),
-    onOpenAdaptive: openAdaptiveWorkspaceFromHeader,
     onOpenAdaptiveFlow: showAdaptiveFlowWorkspace,
     onOpenAdmin: showAdminWorkspace,
     onOpenOpenRouter: showOpenRouterWorkspace,

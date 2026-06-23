@@ -10,14 +10,13 @@ type UseAppShellHeaderPropsArgs = {
   buildInfoTitle: string;
   buildInfoLabel: string;
   showAdminButton: boolean;
-  showAdaptiveButton: boolean;
+  showAdaptiveFlowButton: boolean;
   showOpenRouterButton: boolean;
   syncStatusState: string;
   syncStatusText: string;
   appProfile: DictaAppProfile | null;
   sessionQuotaStatus: DictaSessionQuotaStatus;
   onOpenMobileTraining: () => void;
-  onOpenAdaptive: () => void;
   onOpenAdaptiveFlow: () => void;
   onOpenAdmin: () => void;
   onOpenOpenRouter: () => void;
@@ -32,14 +31,13 @@ export function useAppShellHeaderProps({
   buildInfoTitle,
   buildInfoLabel,
   showAdminButton,
-  showAdaptiveButton,
+  showAdaptiveFlowButton,
   showOpenRouterButton,
   syncStatusState,
   syncStatusText,
   appProfile,
   sessionQuotaStatus,
   onOpenMobileTraining,
-  onOpenAdaptive,
   onOpenAdaptiveFlow,
   onOpenAdmin,
   onOpenOpenRouter,
@@ -60,7 +58,7 @@ export function useAppShellHeaderProps({
       buildInfoTitle,
       buildInfoLabel,
       showAdminButton,
-      showAdaptiveButton,
+      showAdaptiveFlowButton,
       showOpenRouterButton,
       syncStatusState,
       syncStatusText,
@@ -69,7 +67,6 @@ export function useAppShellHeaderProps({
       sessionQuotaUsed: sessionQuotaStatus.used,
       sessionQuotaBlocked: sessionQuotaStatus.blocked,
       onOpenMobileTraining,
-      onOpenAdaptive,
       onOpenAdaptiveFlow,
       onOpenAdmin,
       onOpenOpenRouter,
@@ -83,7 +80,7 @@ export function useAppShellHeaderProps({
     buildInfoTitle,
     buildInfoLabel,
     showAdminButton,
-    showAdaptiveButton,
+    showAdaptiveFlowButton,
     showOpenRouterButton,
     syncStatusState,
     syncStatusText,
@@ -92,7 +89,6 @@ export function useAppShellHeaderProps({
     sessionQuotaStatus.used,
     sessionQuotaStatus.blocked,
     onOpenMobileTraining,
-    onOpenAdaptive,
     onOpenAdaptiveFlow,
     onOpenAdmin,
     onOpenOpenRouter,

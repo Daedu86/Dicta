@@ -12,7 +12,7 @@ export type AppShellHeaderProps = {
   buildInfoTitle: string;
   buildInfoLabel: string;
   showAdminButton: boolean;
-  showAdaptiveButton: boolean;
+  showAdaptiveFlowButton: boolean;
   showOpenRouterButton: boolean;
   syncStatusState: string;
   syncStatusText: string;
@@ -22,7 +22,6 @@ export type AppShellHeaderProps = {
   sessionQuotaBlocked: boolean;
   children?: ReactNode;
   onOpenMobileTraining: () => void;
-  onOpenAdaptive: () => void;
   onOpenAdaptiveFlow: () => void;
   onOpenAdmin: () => void;
   onOpenOpenRouter: () => void;
@@ -38,7 +37,7 @@ export function AppShellHeader({
   buildInfoTitle,
   buildInfoLabel,
   showAdminButton,
-  showAdaptiveButton,
+  showAdaptiveFlowButton,
   showOpenRouterButton,
   syncStatusState,
   syncStatusText,
@@ -48,7 +47,6 @@ export function AppShellHeader({
   sessionQuotaBlocked,
   children,
   onOpenMobileTraining,
-  onOpenAdaptive,
   onOpenAdaptiveFlow,
   onOpenAdmin,
   onOpenOpenRouter,
@@ -89,24 +87,15 @@ export function AppShellHeader({
         >
           Training Mode
         </button>
-        {showAdaptiveButton ? (
-          <>
-            <button
-              type="button"
-              className="secondary-button brand-adaptive-button"
-              onClick={onOpenAdaptive}
-            >
-              🧠 Adaptive Pace Layer
-            </button>
-            <button
-              type="button"
-              className="secondary-button brand-adaptive-flow-button"
-              onClick={onOpenAdaptiveFlow}
-              title="Open the adaptive pace layer flow workspace"
-            >
-              🧠 Adaptive Pace Layer Flow
-            </button>
-          </>
+        {showAdaptiveFlowButton ? (
+          <button
+            type="button"
+            className="secondary-button brand-adaptive-flow-button"
+            onClick={onOpenAdaptiveFlow}
+            title="Open the adaptive pace layer flow workspace"
+          >
+            🧠 Adaptive Pace Layer Flow
+          </button>
         ) : null}
         {showAdminButton ? (
           <button

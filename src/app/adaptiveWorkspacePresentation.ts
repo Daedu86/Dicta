@@ -10,7 +10,6 @@ import type {
   InputMode,
   LanguageCode,
 } from '../core/adaptive/types';
-import { buildAdaptiveAdapterCards } from './sessionDisplayFormatters';
 import type {
   AdaptiveBenchmarksByInputLanguage,
   AdaptiveSessionFeedbackByInputLanguage,
@@ -22,10 +21,7 @@ export type AdaptiveWorkspaceInputOption = {
   label: string;
 };
 
-export type AdaptiveAdapterCard = ReturnType<typeof buildAdaptiveAdapterCards>[number];
-
 export type AdaptiveWorkspacePresentationState = {
-  adaptiveAdapters: AdaptiveAdapterCard[];
   selectedBenchmarkProfile: InputLanguageBenchmarkMetrics;
   selectedSessionFeedback: AdaptiveSessionFeedback | null;
   insightsDiagnosticProfile: InputLanguageBenchmarkMetrics;
@@ -87,7 +83,6 @@ export function buildAdaptiveWorkspacePresentationState({
   insightsDiagnosticInputMode,
   metricsLanguageView,
 }: AdaptiveWorkspacePresentationInput): AdaptiveWorkspacePresentationState {
-  const adaptiveAdapters = buildAdaptiveAdapterCards();
   const selectedBenchmarkProfile = getAdaptiveBenchmarkProfile({
     adaptiveBenchmarksByInputLanguage,
     inputMode: selectedBenchmarkInputMode,
@@ -110,7 +105,6 @@ export function buildAdaptiveWorkspacePresentationState({
   });
 
   return {
-    adaptiveAdapters,
     selectedBenchmarkProfile,
     selectedSessionFeedback,
     insightsDiagnosticProfile,

@@ -61,8 +61,6 @@ Historical notes are context only. Verify against current source before using th
 
 | Document | Current handling |
 | --- | --- |
-| `adaptive-advanced-diagnostics-modularization.md` | Historical note. |
-| `adaptive-workspace-modularization.md` | Historical note. |
 | `admin-workspace-modularization.md` | Historical note. |
 | `app-post-leaderboard-measurement.md` | Historical note. |
 | `app-shell-header-modularization.md` | Historical note. |

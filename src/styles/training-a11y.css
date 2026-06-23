@@ -32,7 +32,7 @@
    override earlier brand/sidebar button colors. */
 
 .brand-training-mode-button,
-.brand-adaptive-button,
+.brand-adaptive-flow-button,
 .brand-admin-button,
 .brand-openrouter-button,
 .theme-toggle-button,
@@ -47,7 +47,7 @@
   background-color: #6d28d9;
 }
 
-.brand-adaptive-button {
+.brand-adaptive-flow-button {
   background-color: #047857;
 }
 
@@ -72,8 +72,8 @@
   background-color: #5b21b6;
 }
 
-.brand-adaptive-button:hover,
-.brand-adaptive-button:focus-visible {
+.brand-adaptive-flow-button:hover,
+.brand-adaptive-flow-button:focus-visible {
   background-color: #065f46;
 }
 
@@ -98,7 +98,7 @@
 }
 
 .brand-training-mode-button:focus-visible,
-.brand-adaptive-button:focus-visible,
+.brand-adaptive-flow-button:focus-visible,
 .brand-admin-button:focus-visible,
 .brand-openrouter-button:focus-visible,
 .theme-toggle-button:focus-visible,
@@ -109,7 +109,7 @@
 
 @media (forced-colors: active) {
   .brand-training-mode-button,
-  .brand-adaptive-button,
+  .brand-adaptive-flow-button,
   .brand-admin-button,
   .brand-openrouter-button,
   .theme-toggle-button,

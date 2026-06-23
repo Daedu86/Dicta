@@ -23,7 +23,6 @@ export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteComposit
     copyBenchmarkFeedbackJson,
     copyBenchmarkFeedbackPrompt,
     copyBenchmarkFeedbackPromptWithHumanFeedback,
-    adaptiveBenchmarkSectionProps,
   } = useAdaptiveWorkspaceRouteRuntime(buildAdaptiveWorkspaceRouteRuntimeInput(params));
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
 
@@ -55,7 +54,6 @@ export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteComposit
   );
 
   return {
-    adaptiveBenchmarkSectionProps,
     isFocusedTrainingRoute,
     openRouterWorkspaceProps,
     adminWorkspaceProps,

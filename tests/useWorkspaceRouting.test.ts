@@ -124,7 +124,6 @@ describe('useWorkspaceRouting', () => {
     { action: 'showLeaderboardWorkspace', mode: 'training', path: '/' },
     { action: 'showAdminWorkspace', mode: 'admin', path: '/admin' },
     { action: 'showOpenRouterWorkspace', mode: 'openrouter', path: '/openrouter' },
-    { action: 'showAdaptiveWorkspace', mode: 'adaptive', path: '/adaptive' },
     { action: 'showAdaptiveFlowWorkspace', mode: 'adaptive-flow', path: '/#adaptive-flow' },
   ])('switches to $mode and clears the dashboard session id', async ({ action, mode, path }) => {
     const { getRouting } = await renderWorkspaceRouting();
@@ -138,6 +137,17 @@ describe('useWorkspaceRouting', () => {
     });
     expectCurrentBrowserPath(path);
     expectStoredWorkspaceMode(mode);
+  });
+
+  it('treats the removed /adaptive route as the training workspace', async () => {
+    const { getRouting } = await renderWorkspaceRouting('/adaptive');
+
+    expectWorkspaceState(getRouting(), {
+      mode: 'training',
+      currentPath: '/adaptive',
+      dashboardSessionId: null,
+    });
+    expectStoredWorkspaceMode('training');
   });
 
   it('opens the adaptive flow workspace off the focused training route', async () => {

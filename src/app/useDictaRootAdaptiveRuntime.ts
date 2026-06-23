@@ -12,9 +12,6 @@ type UseDictaRootAdaptiveRuntimeOptions = Omit<
   | 'adaptiveSessionFeedbackByInputLanguage'
   | 'setAdaptiveSessionFeedbackByInputLanguage'
   | 'adaptiveSessionFeedbackRef'
-  | 'setAdaptiveBenchmarksFocusAnchor'
-  | 'setBenchmarkExportMessage'
-  | 'setSessionFeedbackMessage'
 > & {
   adaptiveWorkspaceState: AdaptiveWorkspaceState;
 };
@@ -31,8 +28,5 @@ export function useDictaRootAdaptiveRuntime({
     adaptiveSessionFeedbackByInputLanguage: adaptiveWorkspaceState.adaptiveSessionFeedbackByInputLanguage,
     setAdaptiveSessionFeedbackByInputLanguage: adaptiveWorkspaceState.setAdaptiveSessionFeedbackByInputLanguage,
     adaptiveSessionFeedbackRef: adaptiveWorkspaceState.adaptiveSessionFeedbackRef,
-    setAdaptiveBenchmarksFocusAnchor: adaptiveWorkspaceState.setAdaptiveBenchmarksFocusAnchor,
-    setBenchmarkExportMessage: adaptiveWorkspaceState.setBenchmarkExportMessage,
-    setSessionFeedbackMessage: adaptiveWorkspaceState.setSessionFeedbackMessage,
   });
 }

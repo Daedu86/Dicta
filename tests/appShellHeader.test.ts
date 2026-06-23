@@ -63,32 +63,26 @@ describe('AppShellHeader', () => {
     expect(syncIndex).toBeGreaterThan(badgeIndex);
   });
 
-  it('renders the adaptive pace layer flow tab next to the adaptive tab', () => {
-    const onOpenAdaptive = vi.fn();
+  it('renders the adaptive pace layer flow tab without the removed cockpit tab', () => {
     const onOpenAdaptiveFlow = vi.fn();
 
     act(() => {
       root.render(createElement(AppShellHeader, appShellHeaderProps({
-        showAdaptiveButton: true,
-        onOpenAdaptive,
+        showAdaptiveFlowButton: true,
         onOpenAdaptiveFlow,
       })));
     });
 
-    const actions = host.querySelector<HTMLElement>('.brand-header-actions');
-    const actionChildren = Array.from(actions?.children ?? []);
     const adaptiveButton = host.querySelector<HTMLButtonElement>('.brand-adaptive-button');
     const adaptiveFlowButton = host.querySelector<HTMLButtonElement>('.brand-adaptive-flow-button');
 
-    expect(adaptiveButton?.textContent).toContain('Adaptive Pace Layer');
+    expect(adaptiveButton).toBeNull();
     expect(adaptiveFlowButton?.textContent).toContain('Adaptive Pace Layer Flow');
-    expect(actionChildren.indexOf(adaptiveFlowButton as HTMLElement)).toBe(actionChildren.indexOf(adaptiveButton as HTMLElement) + 1);
 
     act(() => {
       adaptiveFlowButton?.click();
     });
 
-    expect(onOpenAdaptive).not.toHaveBeenCalled();
     expect(onOpenAdaptiveFlow).toHaveBeenCalledTimes(1);
   });
 
@@ -143,7 +137,7 @@ function appShellHeaderProps(overrides: Partial<AppShellHeaderProps> = {}): AppS
     buildInfoTitle: 'Dicta build',
     buildInfoLabel: 'commit: test',
     showAdminButton: false,
-    showAdaptiveButton: false,
+    showAdaptiveFlowButton: false,
     showOpenRouterButton: false,
     syncStatusState: 'idle',
     syncStatusText: 'Sync: idle',
@@ -161,7 +155,6 @@ function appShellHeaderProps(overrides: Partial<AppShellHeaderProps> = {}): AppS
     sessionQuotaUsed: 0,
     sessionQuotaBlocked: false,
     onOpenMobileTraining: vi.fn(),
-    onOpenAdaptive: vi.fn(),
     onOpenAdaptiveFlow: vi.fn(),
     onOpenAdmin: vi.fn(),
     onOpenOpenRouter: vi.fn(),

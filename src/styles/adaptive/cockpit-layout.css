@@ -1,9 +1,0 @@
-.adaptive-cockpit-panel {
-  margin-bottom: 0.4rem;
-}
-
-.adaptive-cockpit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 0.8rem;
-}

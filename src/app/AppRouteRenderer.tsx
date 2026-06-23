@@ -42,7 +42,6 @@ type AppRouteRendererProps = {
   formatSessionStatus: AppWorkspaceContentProps['formatSessionStatus'];
   formatSessionDate: AppWorkspaceContentProps['formatSessionDate'];
   formatSessionPlaybackDuration: AppWorkspaceContentProps['formatSessionPlaybackDuration'];
-  adaptiveBenchmarkSectionProps: AppWorkspaceContentProps['adaptiveBenchmarkSectionProps'];
   openRouterAccessState: AppWorkspaceContentProps['openRouterAccessState'];
   openRouterAccessMessage: AppWorkspaceContentProps['openRouterAccessMessage'];
   openRouterWorkspaceProps: AppWorkspaceContentProps['openRouterWorkspaceProps'];
@@ -71,7 +70,6 @@ function getAppSpeedInsightsRoute({
   if (sessionCreationMode) return '/session/new';
 
   switch (workspaceMode) {
-    case 'adaptive': return '/adaptive';
     case 'adaptive-flow': return '/adaptive/flow';
     case 'dashboard': return '/session/dashboard';
     case 'openrouter': return '/openrouter';
@@ -113,7 +111,6 @@ export function AppRouteRenderer({
   formatSessionStatus,
   formatSessionDate,
   formatSessionPlaybackDuration,
-  adaptiveBenchmarkSectionProps,
   openRouterAccessState,
   openRouterAccessMessage,
   openRouterWorkspaceProps,
@@ -196,12 +193,10 @@ export function AppRouteRenderer({
             formatSessionDate={formatSessionDate}
             formatSessionPlaybackDuration={formatSessionPlaybackDuration}
             onBackToTraining={showLeaderboardWorkspace}
-            adaptiveBenchmarkSectionProps={adaptiveBenchmarkSectionProps}
             openRouterAccessState={openRouterAccessState}
             openRouterAccessMessage={openRouterAccessMessage}
             openRouterWorkspaceProps={openRouterWorkspaceProps}
             canAccessAdminWorkspace={canAccessAdminWorkspace}
-            adaptiveReportButtonProps={liveMetricsDockProps}
             adminWorkspaceProps={adminWorkspaceProps}
           />
         </section>

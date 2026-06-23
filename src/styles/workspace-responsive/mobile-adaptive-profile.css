@@ -1,83 +1,11 @@
 @media (max-width: 640px) {
-  .adaptive-selected-profile-actions,
-  .adaptive-human-feedback-actions,
-  .adaptive-zone-kpis {
+  .adaptive-human-feedback-actions {
     align-items: stretch;
     flex-direction: column;
     width: 100%;
   }
 
-  .adaptive-selected-profile-actions .compact-button,
-  .adaptive-human-feedback-actions button,
-  .adaptive-export-panel summary em {
+  .adaptive-human-feedback-actions button {
     width: 100%;
-  }
-
-  .adaptive-adapter-card-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .adaptive-profile-cell::before {
-    color: #5b6d83;
-    font-size: 0.68rem;
-    font-weight: 900;
-    letter-spacing: 0.04em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-
-  .adaptive-profile-matrix-row .adaptive-profile-cell:nth-child(2)::before {
-    content: 'EN';
-  }
-
-  .adaptive-profile-matrix-row .adaptive-profile-cell:nth-child(3)::before {
-    content: 'ES';
-  }
-
-  .adaptive-profile-matrix-row .adaptive-profile-cell:nth-child(4)::before {
-    content: 'DE';
-  }
-
-  .adaptive-profile-matrix-row .adaptive-profile-cell:nth-child(5)::before {
-    content: 'FR';
-  }
-
-  .adaptive-profile-matrix-row .adaptive-profile-cell:nth-child(6)::before {
-    content: 'PT';
-  }
-
-  .adaptive-cockpit-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .adaptive-profile-stat-strip span {
-    border-left: 0;
-    border-top: 1px solid #dbe6f2;
-  }
-
-  .adaptive-profile-stat-strip span:first-child {
-    border-top: 0;
-  }
-
-  .adaptive-coach-card-gauge {
-    grid-template-rows: minmax(170px, 46vw) auto;
-  }
-
-  .adaptive-gauge {
-    height: min(220px, 48vw);
-    min-height: 170px;
-  }
-
-  .adaptive-zone-chart {
-    height: min(340px, 74vw);
-    min-height: 260px;
-  }
-
-  .adaptive-mini-trends,
-  .adaptive-rate-strip,
-  .adaptive-lag-distribution {
-    height: min(190px, 52vw);
-    min-height: 150px;
   }
 }

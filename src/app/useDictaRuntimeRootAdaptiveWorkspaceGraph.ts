@@ -2,7 +2,6 @@ import { useDictaRootAdaptiveRuntime } from './useDictaRootAdaptiveRuntime';
 import { useDictaRootWorkspaceSessionRuntime } from './useDictaRootWorkspaceSessionRuntime';
 import type { DictaRuntimeRootEnvironment } from './useDictaRuntimeRootEnvironment';
 import type { DictaRuntimeRootSessionGraph } from './useDictaRuntimeRootSessionGraph';
-import { isMobileViewport } from './viewport';
 
 type UseDictaRuntimeRootAdaptiveWorkspaceGraphOptions = {
   environment: DictaRuntimeRootEnvironment;
@@ -30,7 +29,6 @@ export function useDictaRuntimeRootAdaptiveWorkspaceGraph({
     clearDashboardSession,
     showWorkspaceMode,
     showLeaderboardWorkspace,
-    showAdaptiveWorkspace,
     showDashboardWorkspace,
     showSessionInputWorkspace,
   } = routing;
@@ -49,7 +47,6 @@ export function useDictaRuntimeRootAdaptiveWorkspaceGraph({
     leaderboardLanguageView,
     adminLanguageView,
     metricsRangeView,
-    setAdaptiveSectionExpanded,
   } = uiPreferences;
   const {
     adaptiveBenchmarksByInputLanguage,
@@ -80,9 +77,6 @@ export function useDictaRuntimeRootAdaptiveWorkspaceGraph({
     perfDiagnosticsEnabled,
     dictaLanguageView,
     setDictaLanguageView,
-    showAdaptiveWorkspace,
-    setAdaptiveSectionExpanded,
-    isMobileViewport,
   });
 
   const workspaceSessionRuntime = useDictaRootWorkspaceSessionRuntime({

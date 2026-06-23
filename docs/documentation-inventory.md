@@ -46,8 +46,6 @@ Current baseline: post OpenRouter workspace runtime and jobs route modularizatio
 | `docs/archive/legacy-multi-input-2026-06-05.md` | HISTORICAL, ARCHIVED | Legacy multi-input snapshot. |
 | `docs/next-modularization-plan.md` | HISTORICAL | Former near-term plan. |
 | `docs/openrouter-workspace-modularization.md` | HISTORICAL | Compacted; OpenRouter workspace/runtime and jobs route split are closed. |
-| `docs/adaptive-advanced-diagnostics-modularization.md` | HISTORICAL | Completed checkpoint. |
-| `docs/adaptive-workspace-modularization.md` | HISTORICAL | Completed checkpoint. |
 | `docs/admin-workspace-modularization.md` | HISTORICAL | Historical checkpoint. |
 | `docs/app-post-leaderboard-measurement.md` | HISTORICAL | Historical measurement note. |
 | `docs/app-shell-header-modularization.md` | HISTORICAL | Historical checkpoint. |

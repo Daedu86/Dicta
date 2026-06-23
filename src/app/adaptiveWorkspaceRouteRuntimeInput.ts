@@ -6,7 +6,6 @@ type AdaptiveWorkspaceRouteRuntimeInput = Parameters<typeof useAdaptiveWorkspace
 export function buildAdaptiveWorkspaceRouteRuntimeInput({
   adaptiveBenchmarksByInputLanguage,
   adaptiveSessionFeedbackByInputLanguage,
-  adaptiveBenchmarksFocusAnchor,
   selectedBenchmarkInputMode,
   selectedBenchmarkLanguage,
   insightsDiagnosticInputMode,
@@ -21,13 +20,6 @@ export function buildAdaptiveWorkspaceRouteRuntimeInput({
   setSessionFeedbackMessage,
   setInsightsDiagnosticFallbackReport,
   setInsightsDiagnosticMessage,
-  adaptiveSectionExpanded,
-  setAdaptiveSectionExpanded,
-  setSelectedBenchmarkInputMode,
-  setSelectedBenchmarkLanguage,
-  benchmarkExportMessage,
-  sessionFeedbackMessage,
-  formatSessionDate,
 }: DictaAppRouteCompositionRuntimeParams): AdaptiveWorkspaceRouteRuntimeInput {
   return {
     presentation: {
@@ -51,21 +43,6 @@ export function buildAdaptiveWorkspaceRouteRuntimeInput({
       setSessionFeedbackMessage,
       setInsightsDiagnosticFallbackReport,
       setInsightsDiagnosticMessage,
-    },
-    benchmark: {
-      adaptiveBenchmarksByInputLanguage,
-      adaptiveSectionExpanded,
-      adaptiveBenchmarksFocusAnchor,
-      selectedBenchmarkInputMode,
-      selectedBenchmarkLanguage,
-      benchmarkExportMessage,
-      sessionFeedbackMessage,
-      formatSessionDate,
-      setAdaptiveSectionExpanded,
-      setSelectedBenchmarkInputMode,
-      setSelectedBenchmarkLanguage,
-      setBenchmarkExportMessage,
-      setSessionFeedbackMessage,
     },
   };
 }

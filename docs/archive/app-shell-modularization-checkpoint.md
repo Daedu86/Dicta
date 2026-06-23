@@ -109,7 +109,7 @@ The latest line-count snapshot shows that modularization pressure has shifted aw
 | App runtime | `src/app/DictaAppRuntime.tsx` | New main orchestration hotspot |
 | Persistence | `src/app/useSessionPersistenceSync.ts` | Large runtime with likely extractable planning/storage seams |
 | OpenRouter UI | `src/components/openrouter/OpenRouterWorkspace.tsx` | Large presentational workspace |
-| Adaptive UI | `src/components/adaptive-workspace/AdaptiveBenchmarkCockpit.tsx` | Large cockpit/workspace UI |
+| Adaptive UI | Removed cockpit workspace | Historical target; the Adaptive Pace Layer cockpit/dashboard tab no longer exists |
 | Supabase core | `src/core/supabaseSync.ts` | High-risk core sync module; avoid casual extraction |
 
 Future work should not assume that `App.tsx` is still the best ROI target.

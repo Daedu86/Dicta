@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import type { AdaptiveWorkspaceFocusAnchor } from '../components/adaptive-workspace/types';
 import type {
   AdaptiveBenchmarksByInputLanguage,
   AdaptiveSessionFeedbackByInputLanguage,
@@ -39,8 +38,6 @@ export function useAdaptiveWorkspaceState() {
     adaptiveSessionFeedbackByInputLanguage,
   );
 
-  const [adaptiveBenchmarksFocusAnchor, setAdaptiveBenchmarksFocusAnchor] =
-    useState<AdaptiveWorkspaceFocusAnchor>(null);
   const [benchmarkExportMessage, setBenchmarkExportMessage] = useState('');
   const [sessionFeedbackMessage, setSessionFeedbackMessage] = useState('');
 
@@ -53,8 +50,6 @@ export function useAdaptiveWorkspaceState() {
     adaptiveSessionFeedbackByInputLanguage,
     setAdaptiveSessionFeedbackByInputLanguage,
     adaptiveSessionFeedbackRef,
-    adaptiveBenchmarksFocusAnchor,
-    setAdaptiveBenchmarksFocusAnchor,
     benchmarkExportMessage,
     setBenchmarkExportMessage,
     sessionFeedbackMessage,

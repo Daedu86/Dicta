@@ -98,7 +98,6 @@ function buildHeaderRuntimeArgs(overrides: Partial<HeaderRuntimeArgs> = {}): Hea
       remaining: null,
     },
     navigateAppRoute: vi.fn(),
-    openAdaptiveWorkspaceFromHeader: vi.fn(),
     showAdaptiveFlowWorkspace: vi.fn(),
     showAdminWorkspace: vi.fn(),
     showOpenRouterWorkspace: vi.fn(),

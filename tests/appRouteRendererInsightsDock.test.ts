@@ -4,7 +4,6 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppRouteRenderer } from '../src/app/AppRouteRenderer';
 import type { WorkspaceMode } from '../src/app/useWorkspaceRouting';
-import type { AdaptiveBenchmarkSection } from '../src/components/adaptive-workspace/AdaptiveBenchmarkWorkspace';
 import type { LiveMetricsDockProps } from '../src/components/runtime-workspaces/LiveMetricsDock';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -35,7 +34,7 @@ describe('AppRouteRenderer Insights dock visibility', () => {
     },
   );
 
-  it.each<WorkspaceMode>(['adaptive', 'adaptive-flow', 'admin', 'openrouter'])(
+  it.each<WorkspaceMode>(['adaptive-flow', 'admin', 'openrouter'])(
     'omits the shared Insights dock from the %s workspace',
     (workspaceMode) => {
       renderRoute(workspaceMode);
@@ -94,7 +93,7 @@ function createRouteProps(workspaceMode: WorkspaceMode): ComponentProps<typeof A
       buildInfoTitle: '',
       buildInfoLabel: '',
       showAdminButton: false,
-      showAdaptiveButton: false,
+      showAdaptiveFlowButton: false,
       showOpenRouterButton: false,
       syncStatusState: 'idle',
       syncStatusText: 'Idle',
@@ -103,7 +102,6 @@ function createRouteProps(workspaceMode: WorkspaceMode): ComponentProps<typeof A
       sessionQuotaUsed: 0,
       sessionQuotaBlocked: false,
       onOpenMobileTraining: vi.fn(),
-      onOpenAdaptive: vi.fn(),
       onOpenAdaptiveFlow: vi.fn(),
       onOpenAdmin: vi.fn(),
       onOpenOpenRouter: vi.fn(),
@@ -122,7 +120,6 @@ function createRouteProps(workspaceMode: WorkspaceMode): ComponentProps<typeof A
     formatSessionStatus: (status) => status,
     formatSessionDate: (value) => value,
     formatSessionPlaybackDuration: () => '0s',
-    adaptiveBenchmarkSectionProps: createCollapsedAdaptiveBenchmarkProps(),
     openRouterAccessState: 'denied',
     openRouterAccessMessage: 'OpenRouter unavailable',
     openRouterWorkspaceProps: {} as never,
@@ -130,33 +127,6 @@ function createRouteProps(workspaceMode: WorkspaceMode): ComponentProps<typeof A
     adminWorkspaceProps: {} as never,
     showLeaderboardWorkspace: vi.fn(),
     liveMetricsDockProps,
-  };
-}
-
-function createCollapsedAdaptiveBenchmarkProps(): ComponentProps<typeof AdaptiveBenchmarkSection> {
-  return {
-    adapters: [],
-    benchmarks: {} as never,
-    expanded: false,
-    onToggleExpanded: vi.fn(),
-    selectedInputMode: 'browser-tts',
-    selectedLanguage: 'de',
-    selectedProfile: { inputMode: 'browser-tts', language: 'de' } as never,
-    repeatWordStats: [],
-    formatSessionDate: (value) => value,
-    onSelect: vi.fn(),
-    benchmarkExportMessage: '',
-    sessionFeedback: null,
-    sessionFeedbackMessage: '',
-    onCopyBenchmark: vi.fn(),
-    onExportBenchmark: vi.fn(),
-    onCopyScriptPrompt: vi.fn(),
-    onCopyBenchmarkWithScriptPrompt: vi.fn(),
-    onCopyScriptTemplate: vi.fn(),
-    onCopySessionFeedback: vi.fn(),
-    onCopyBenchmarkFeedback: vi.fn(),
-    onCopyBenchmarkFeedbackPrompt: vi.fn(),
-    onCopyBenchmarkFeedbackPromptWithHumanFeedback: vi.fn(),
   };
 }
 

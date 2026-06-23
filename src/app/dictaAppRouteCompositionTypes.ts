@@ -43,7 +43,6 @@ export type DictaAppRouteCompositionRuntimeParams =
     | 'allowDictationScriptCreation'
   > & {
     currentPath: string;
-    openAdaptiveExportsForActiveInput: unknown;
     syncConfig: { authRequired: boolean };
     localDevFeaturesAvailable: boolean;
   };

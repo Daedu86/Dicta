@@ -9,7 +9,7 @@ _Initial plan created: 2026-06-02_
 - `SessionDashboard` currently lives inline in `src/App.tsx`.
 - `src/App.tsx` is about `12,568` lines before this extraction.
 - The dashboard render call is owned by the main app routing branch, and the parent still owns `workspaceMode`, `dashboardSessionId`, `sessions`, and navigation callbacks.
-- The component starts at `function SessionDashboard` around line `9,199` and ends before `function AdaptiveBenchmarkWorkspace` around line `9,716`.
+- The component starts at `function SessionDashboard` around line `9,199`; the adjacent adaptive cockpit workspace referenced in the original extraction notes has since been removed.
 - The inline dashboard block plus immediate dashboard subcomponents is about `516` lines.
 
 ## Objective

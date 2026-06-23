@@ -6,7 +6,7 @@ Runtime CSS is fully modularized.
 
 - `src/App.css` is intentionally retained as the Vite/React stylesheet entrypoint and should only import `src/styles/index.css`.
 - `src/styles/index.css` is the single ordered cascade manifest for extracted runtime CSS modules.
-- CSS modules under `src/styles/` are grouped by UI/runtime boundary: auth, training shell/session/header/interaction/responsive, workspace shell/responsive, TTS workspace, session status, transcript preview/review, sidebar support/brand/controls, dashboard, admin, leaderboard, adaptive workspace/timeline/charts, bottom metrics, shared controls, app shell, and final responsive breakpoints.
+- CSS modules under `src/styles/` are grouped by UI/runtime boundary: auth, training shell/session/header/interaction/responsive, workspace shell/responsive, TTS workspace, session status, transcript preview/review, sidebar support/brand/controls, dashboard, admin, leaderboard, adaptive flow/OpenRouter export styles, bottom metrics, shared controls, app shell, and final responsive breakpoints.
 - Responsive CSS that was formerly in `App.css` is now module-owned, including `responsive-980.css` and `responsive-640.css`, with imports ordered after the modules they override.
 - New runtime styles should be added to the closest existing module. If a new module is needed, import it through `src/styles/index.css` at the point that preserves the original cascade.
 - Do not reintroduce runtime selectors into `src/App.css`.
@@ -48,7 +48,7 @@ Languages: `en`, `es`, `de`, `fr`, `pt`.
 
 Adaptive benchmarks, telemetry, recommendations, and session feedback are scoped per `(inputMode, language)`. Do not share behavioral fixes across profiles unless the task explicitly asks for that.
 
-Visible training modes are only `Precision`, `Stabilize`, and `Challenge`. Legacy one-minute express OpenRouter jobs and short historical sessions remain compatible storage/job metadata, but they are grouped into the same three modes in Training Mode, Leaderboard, OpenRouter status, Admin-visible summaries, Adaptive Pace Layer entry points, and notifications.
+Visible training modes are only `Precision`, `Stabilize`, and `Challenge`. Legacy one-minute express OpenRouter jobs and short historical sessions remain compatible storage/job metadata, but they are grouped into the same three modes in Training Mode, Leaderboard, OpenRouter status, Admin-visible summaries, and notifications.
 
 ## Runtime Boundaries
 
@@ -95,7 +95,7 @@ Browser app:
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
-- Adaptive Pace Layer cockpit: benchmark and feedback diagnostics.
+- Adaptive Pace Layer Flow workspace: read-only implementation map. The former benchmark/feedback cockpit dashboard tab no longer exists; adaptive data still feeds Training Mode, OpenRouter context/export behavior, Live Metrics diagnostics, IndexedDB persistence, and Supabase sync internally.
 - OpenRouter workspace: structured dictation script generation slots.
 - Admin workspace: members, remote sessions, and local diagnostics.
 - `localStorage`: small profile/sync/migration manifests, preferences, and small OpenRouter pointers only.
