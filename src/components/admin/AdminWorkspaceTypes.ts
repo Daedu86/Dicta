@@ -55,6 +55,8 @@ export type AdminWorkspaceProps<TSession extends AdminWorkspaceSession> = {
   languageView: MetricsLanguageView;
   onChangeLanguage: (value: MetricsLanguageView) => void;
   onBackToTraining: () => void;
+  onOpenOverview: () => void;
+  onOpenOpenRouter: () => void;
   onCopyLocalStorage: () => void;
   onExportLocalStorage: () => void;
   onImportLocalStorage: (rawJson: string) => void;

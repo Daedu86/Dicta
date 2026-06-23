@@ -14,6 +14,8 @@ export type UseWorkspacePanelPropsRuntimeArgs = {
   openRouterError: OpenRouterWorkspacePropsArgs['error'];
   refreshOpenRouterModels: OpenRouterWorkspacePropsArgs['onRefreshModels'];
   showLeaderboardWorkspace: OpenRouterWorkspacePropsArgs['onBackToTraining'];
+  showAdminWorkspace: AdminWorkspacePropsArgs['onOpenOverview'];
+  showOpenRouterWorkspace: AdminWorkspacePropsArgs['onOpenOpenRouter'];
 
   adaptiveBenchmarksByInputLanguage: OpenRouterWorkspacePropsArgs['benchmarks'];
   adaptiveSessionFeedbackByInputLanguage: OpenRouterWorkspacePropsArgs['sessionFeedbackByInputLanguage'];

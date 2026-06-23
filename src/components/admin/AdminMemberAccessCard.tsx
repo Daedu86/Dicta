@@ -34,7 +34,7 @@ export function AdminMemberAccessCard({
   onResetSessionLimit,
 }: AdminMemberAccessCardProps) {
   return (
-    <section className="dashboard-card admin-card">
+    <section className="dashboard-card admin-card admin-card-wide admin-card-priority">
       <div className="admin-card-header">
         <div>
           <h3>Member access</h3>

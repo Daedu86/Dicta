@@ -74,6 +74,7 @@ Current access model:
 - Admin profiles can manage members, OpenRouter access, assigned free OpenRouter models, and member session limits.
 - Member profiles default to a 15-session limit, no OpenRouter access, and only their own synced rows.
 - Hosted and PWA access must go through Supabase Auth + RLS; the old single-password app gate has been removed.
+- OpenRouter configuration is nested under Admin at `/admin/openrouter`; the top-level app header links to Admin, then Admin exposes OpenRouter as a subtab.
 - Local and remote verification can use the Supabase E2E test account defined by `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, and `E2E_TEST_PROFILE_ID` in `.env.local` or the secure execution environment. Keep the password out of committed docs, source, screenshots, and logs.
 
 Server-only secrets:

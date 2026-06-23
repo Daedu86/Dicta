@@ -20,7 +20,7 @@ export function AdminUsersCard({
   }
 
   return (
-    <section className="dashboard-card admin-card">
+    <section className="dashboard-card admin-card admin-card-wide">
       <div className="admin-card-header">
         <div>
           <h3>Users</h3>
@@ -42,7 +42,7 @@ export function AdminUsersCard({
       {remoteAdminStatus ? (
         <p className={remoteAdminStatus.toLowerCase().includes('failed') ? 'error' : 'hint'}>{remoteAdminStatus}</p>
       ) : null}
-      <div className="admin-table">
+      <div className="admin-table admin-table-users">
         <div className="admin-table-row admin-table-header">
           <span>Name</span>
           <span>Role</span>

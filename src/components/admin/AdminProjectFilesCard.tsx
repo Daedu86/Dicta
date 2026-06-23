@@ -39,7 +39,7 @@ export function AdminProjectFilesCard({
         </div>
       </div>
       {fileInventoryError ? <p className="hint">{fileInventoryError}</p> : null}
-      <div className="admin-table">
+      <div className="admin-table admin-table-files">
         <div className="admin-table-row admin-table-header">
           <span>Folder</span>
           <span>Files</span>

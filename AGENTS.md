@@ -66,6 +66,7 @@ Access model:
 - Admin users can manage members, OpenRouter access, assigned free OpenRouter model, and member session limits.
 - Members default to 15 sessions and no OpenRouter access.
 - Hosted and PWA access must go through Supabase Auth + RLS; there is no single-password app gate.
+- OpenRouter configuration lives inside the Admin workspace as `/admin/openrouter`, not as a separate top-level header button.
 
 Test account:
 

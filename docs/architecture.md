@@ -96,8 +96,8 @@ Browser app:
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
 - Adaptive Pace Layer Flow workspace: implementation map for the closed adaptive loop. Phase 1 / Generation owns the live OpenRouter Generate Training Session card, while the former benchmark/feedback cockpit dashboard tab no longer exists; adaptive data still feeds Training Mode, OpenRouter generation context behavior, Live Metrics diagnostics, IndexedDB persistence, and Supabase sync internally.
-- OpenRouter workspace: OpenRouter API key, model selection, and model test.
-- Admin workspace: members, remote sessions, and local diagnostics.
+- Admin workspace: members, remote sessions, local diagnostics, and the nested OpenRouter subworkspace.
+- Admin OpenRouter subworkspace (`/admin/openrouter`, with legacy `/openrouter` still routed internally): OpenRouter API key, model selection, and model test.
 - `localStorage`: small profile/sync/migration manifests, preferences, and small OpenRouter pointers only.
 - `IndexedDB`: local working-copy sessions, tombstones, adaptive benchmarks, and adaptive feedback.
 - Saved `finished` and `error` sessions are retained for 20 days by last activity (`telemetry.finishedAt`, then `updatedAt`, then `createdAt`); older completed/error sessions are removed from IndexedDB active payloads and synced as Supabase tombstones. `ready`, `running`, and `paused` sessions are preserved regardless of age.

@@ -49,7 +49,7 @@ export function AdminBrowserStorageCard({
   onImportFileChange,
 }: AdminBrowserStorageCardProps) {
   return (
-    <section className="dashboard-card admin-card">
+    <section className="dashboard-card admin-card admin-card-wide">
       <div className="admin-card-header">
         <div>
           <h3>Browser storage</h3>
@@ -83,7 +83,7 @@ export function AdminBrowserStorageCard({
         {syncStatus.lastSyncedAt ? ` Last synced ${formatSessionDate(syncStatus.lastSyncedAt)}.` : ''}
         {syncStatus.enabled ? ` Imported ${syncStatus.imported}; pushed ${syncStatus.pushed}.` : ''}
       </p>
-      <div className="admin-table">
+      <div className="admin-table admin-table-storage">
         <div className="admin-table-row admin-table-header">
           <span>Key</span>
           <span>Size</span>

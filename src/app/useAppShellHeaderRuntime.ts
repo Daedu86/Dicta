@@ -75,7 +75,7 @@ export function useAppShellHeaderRuntime({
     buildInfoLabel: DICTA_BUILD_INFO_LABEL,
     showAdminButton: canAccessInternalWorkspace,
     showAdaptiveFlowButton: canAccessInternalWorkspace,
-    showOpenRouterButton: canAccessInternalWorkspace,
+    showOpenRouterButton: false,
     syncStatusState: supabaseSyncStatus.state,
     syncStatusText: appShellSyncStatusText,
     appProfile,

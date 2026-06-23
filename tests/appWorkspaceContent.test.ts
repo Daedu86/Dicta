@@ -6,6 +6,7 @@ import { AppWorkspaceContent } from '../src/app/AppWorkspaceContent';
 import type { StoredSession } from '../src/app/sessionTypes';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../src/core/sessionInputModes';
+import type { AdminWorkspaceProps } from '../src/components/admin/AdminWorkspace';
 import type { OpenRouterWorkspaceProps } from '../src/components/openrouter/types';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -184,9 +185,14 @@ describe('AppWorkspaceContent', () => {
         workspaceMode: 'openrouter',
         openRouterAccessState: 'allowed',
         openRouterWorkspaceProps: createOpenRouterWorkspaceProps(),
+        canAccessAdminWorkspace: true,
+        adminWorkspaceProps: createAdminWorkspaceProps(),
       })));
     });
 
+    expect(host.textContent).toContain('Admin');
+    expect(host.textContent).toContain('Overview');
+    expect(host.textContent).toContain('OpenRouter');
     expect(host.textContent).toContain('Section # 1 API Key');
     expect(host.textContent).toContain('Section # 2 Free Models');
     expect(host.textContent).toContain('Section # 3 Testing model');
@@ -306,6 +312,67 @@ function createOpenRouterWorkspaceProps(overrides: Partial<OpenRouterWorkspacePr
     generationNowMs: Date.parse('2026-06-23T00:00:00.000Z'),
     onTrackJob: vi.fn(),
     onCreateGenerationErrorSession: vi.fn(),
+    ...overrides,
+  };
+}
+
+function createAdminWorkspaceProps(overrides: Partial<AdminWorkspaceProps<StoredSession>> = {}): AdminWorkspaceProps<StoredSession> {
+  return {
+    sessions: [],
+    summary: {
+      sessionCount: 0,
+      finishedSessions: 0,
+      inputModeCounts: { [BROWSER_TTS_SESSION_INPUT_MODE]: 0 },
+      dictaLocalStorageBytes: 0,
+      ttsTextChars: 0,
+      typedTextChars: 0,
+      telemetrySamples: 0,
+      telemetryActions: 0,
+      ttsChunks: 0,
+      localStorageEntries: [],
+    },
+    fileInventory: null,
+    fileInventoryError: '',
+    exportMessage: '',
+    syncStatus: {
+      enabled: true,
+      state: 'synced',
+      message: 'Synced',
+      lastSyncedAt: null,
+      imported: 0,
+      pushed: 0,
+    },
+    languageView: 'en',
+    onChangeLanguage: vi.fn(),
+    onBackToTraining: vi.fn(),
+    onOpenOverview: vi.fn(),
+    onOpenOpenRouter: vi.fn(),
+    onCopyLocalStorage: vi.fn(),
+    onExportLocalStorage: vi.fn(),
+    onImportLocalStorage: vi.fn(),
+    onExportSession: vi.fn(),
+    onCopySession: vi.fn(),
+    appProfile: {
+      userId: 'user-1',
+      profileId: 'admin',
+      displayName: 'Admin',
+      role: 'admin',
+      active: true,
+      canAccessOpenRouter: true,
+      assignedOpenRouterModel: null,
+      sessionLimit: null,
+    },
+    visibleProfiles: [],
+    profileSessionCounts: {},
+    selectedProfileFilter: 'self',
+    onChangeProfileFilter: vi.fn(),
+    onUpdateProfileAccess: vi.fn(async (profile) => profile),
+    authHeaders: {},
+    remoteAdminStatus: '',
+    openRouterModels: [],
+    openRouterModelStatus: 'ready',
+    openRouterModelError: '',
+    onRefreshOpenRouterModels: vi.fn(async () => undefined),
     ...overrides,
   };
 }

@@ -134,7 +134,7 @@ export function AdminSessionInventoryCard<TSession extends AdminInventorySession
   );
 
   return (
-    <section className="dashboard-card admin-card">
+    <section className="dashboard-card admin-card admin-card-wide">
       <div className="admin-card-header">
         <div>
           <h3>Session inventory ({languageView.toUpperCase()})</h3>

@@ -1,18 +1,32 @@
 .admin-workspace {
   display: grid;
-  gap: 1rem;
+  align-content: start;
+  gap: 1.05rem;
   min-height: 640px;
 }
 
 .admin-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 0.65rem;
+}
+
+.admin-kpi-grid .metric {
+  min-height: 86px;
+  border-color: #bfd0e4;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.admin-kpi-grid .metric strong {
+  color: #102f63;
+  font-size: 1.42rem;
 }
 
 .admin-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  align-items: start;
   gap: 0.85rem;
 }
 
@@ -30,6 +44,19 @@
 .dashboard-card.admin-card {
   grid-template-rows: auto;
   min-height: 0;
+  overflow: visible;
+  border-color: #cbd8e8;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff, #f7faff);
+}
+
+.dashboard-card.admin-card.admin-card-wide {
+  grid-column: 1 / -1;
+}
+
+.dashboard-card.admin-card.admin-card-priority {
+  border-color: #9cbde3;
+  background: linear-gradient(180deg, #ffffff, #f3f8ff);
 }
 
 .admin-card-header {
@@ -37,6 +64,10 @@
   justify-content: space-between;
   gap: 0.85rem;
   align-items: flex-start;
+}
+
+.admin-card-header > div {
+  min-width: 0;
 }
 
 .admin-card-header h3,
@@ -52,6 +83,24 @@
   color: #4e6076;
 }
 
+.admin-card label {
+  display: grid;
+  gap: 0.35rem;
+  color: #24384f;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.admin-card input,
+.admin-card select {
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  border-color: #bfd0e4;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
 .admin-actions {
   display: flex;
   flex-wrap: wrap;
@@ -65,25 +114,43 @@
   gap: 0.55rem;
 }
 
+.admin-table,
+.admin-access-table {
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+}
+
 .admin-table-row,
 .admin-access-row {
   display: grid;
   gap: 0.65rem;
   min-width: 0;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid #d7e2ee;
-  background: #f8fbff;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid #dbe6f2;
+  background: #ffffff;
   color: #24384f;
 }
 
+.admin-table-users .admin-table-row {
+  grid-template-columns: minmax(120px, 0.8fr) minmax(80px, 0.38fr) minmax(180px, 1.45fr) minmax(90px, 0.45fr);
+}
+
+.admin-table-storage .admin-table-row {
+  grid-template-columns: minmax(160px, 0.85fr) minmax(80px, 0.3fr) minmax(220px, 1.55fr);
+}
+
+.admin-table-files .admin-table-row {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 0.75fr) minmax(90px, 0.35fr);
+}
+
 .admin-table-row {
-  grid-template-columns: minmax(0, 1.05fr) minmax(80px, 0.4fr) minmax(0, 1.35fr) minmax(100px, 0.45fr);
   align-items: start;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .admin-access-row {
-  grid-template-columns: minmax(0, 1fr) minmax(115px, 0.55fr) minmax(170px, 1fr) minmax(100px, 0.45fr) minmax(105px, 0.45fr) minmax(150px, 0.7fr);
+  grid-template-columns: minmax(130px, 0.9fr) minmax(110px, 0.55fr) minmax(190px, 1.2fr) minmax(90px, 0.45fr) minmax(100px, 0.45fr) minmax(145px, 0.75fr);
   align-items: center;
   border-radius: 8px;
 }
@@ -95,6 +162,8 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   background: transparent;
+  border-color: transparent;
+  padding-block: 0.15rem;
 }
 
 .admin-table-row span,
@@ -122,21 +191,65 @@
   width: auto;
 }
 
+.admin-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+}
+
+.admin-section-tab {
+  min-height: 38px;
+  border: 1px solid #bfd0e4;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  background: #ffffff;
+  color: #24384f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.admin-section-tab:hover,
+.admin-section-tab:focus-visible {
+  border-color: #8fb1d8;
+  background: #f3f8ff;
+}
+
+.admin-section-tab-active,
+.admin-section-tab-active:hover,
+.admin-section-tab-active:focus-visible {
+  border-color: #14365c;
+  background: #14365c;
+  color: #ffffff;
+}
+
+.admin-openrouter-panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
 .admin-session-card {
   display: grid;
-  grid-template-columns: minmax(160px, 0.8fr) minmax(0, 1.5fr) auto;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.25fr) auto;
   gap: 0.8rem;
   align-items: center;
   padding: 0.8rem;
   border: 1px solid #d7e2ee;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #fcfdff, #f6f9fc);
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 .admin-session-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.admin-session-metrics .metric {
+  border-radius: 8px;
+  padding: 0.65rem;
 }
 
 .admin-language-tabs {
@@ -144,6 +257,10 @@
 }
 
 @media (max-width: 900px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
   .admin-table-row,
   .admin-access-row {
     grid-template-columns: 1fr;

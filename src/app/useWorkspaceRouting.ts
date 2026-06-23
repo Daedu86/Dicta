@@ -22,6 +22,7 @@ type AppRoutePath =
   | '/#adaptive-flow'
   | AdaptiveFlowPhaseRoutePath
   | '/admin'
+  | '/admin/openrouter'
   | '/openrouter';
 
 function loadInitialWorkspaceMode(): WorkspaceMode {
@@ -66,6 +67,7 @@ function getWorkspaceModeForLocation(path: string, hash = ''): WorkspaceMode {
       return 'adaptive-flow';
     case '/admin':
       return 'admin';
+    case '/admin/openrouter':
     case '/openrouter':
       return 'openrouter';
     case '/training':
@@ -86,7 +88,7 @@ function getPathForWorkspaceMode(mode: WorkspaceMode): AppRoutePath {
     case 'admin':
       return '/admin';
     case 'openrouter':
-      return '/openrouter';
+      return '/admin/openrouter';
     case 'training':
     case 'dashboard':
     case 'tts':

@@ -31,6 +31,8 @@ export function AdminWorkspace<TSession extends AdminWorkspaceSession>({
   languageView,
   onChangeLanguage,
   onBackToTraining,
+  onOpenOverview,
+  onOpenOpenRouter,
   onCopyLocalStorage,
   onExportLocalStorage,
   onImportLocalStorage,
@@ -71,6 +73,9 @@ export function AdminWorkspace<TSession extends AdminWorkspaceSession>({
         languageView={languageView}
         onChangeLanguage={onChangeLanguage}
         onBackToTraining={onBackToTraining}
+        activeSection="overview"
+        onOpenOverview={onOpenOverview}
+        onOpenOpenRouter={onOpenOpenRouter}
       />
 
       {exportMessage ? <p className="success">{exportMessage}</p> : null}

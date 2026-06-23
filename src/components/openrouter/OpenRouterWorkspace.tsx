@@ -13,16 +13,20 @@ const sectionTitles = {
   test: 'Section # 3 Testing model',
 };
 
-const O = (props: OpenRouterWorkspaceProps) => {
+type OpenRouterWorkspaceComponentProps = OpenRouterWorkspaceProps & {
+  embedded?: boolean;
+};
+
+const O = (props: OpenRouterWorkspaceComponentProps) => {
   const runtime = useOpenRouterWorkspaceRuntime(props);
 
   const toggleSection = (sectionId: OpenRouterWorkspaceSectionId) => {
     runtime.setSectionsExpanded((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
-  return (
-    <section className="panel workspace-panel admin-workspace">
-      <OpenRouterWorkspaceHeader onBackToTraining={props.onBackToTraining} />
+  const content = (
+    <>
+      {props.embedded ? null : <OpenRouterWorkspaceHeader onBackToTraining={props.onBackToTraining} />}
 
       <OpenRouterCollapsibleSection title={sectionTitles.apiKey} expanded={runtime.sectionsExpanded.apiKey} onToggle={() => toggleSection('apiKey')}>
         <OpenRouterApiKeySection workspace={props} runtime={runtime} />
@@ -35,6 +39,16 @@ const O = (props: OpenRouterWorkspaceProps) => {
       <OpenRouterCollapsibleSection title={sectionTitles.test} expanded={runtime.sectionsExpanded.test} onToggle={() => toggleSection('test')}>
         <OpenRouterModelTestSection workspace={props} runtime={runtime} />
       </OpenRouterCollapsibleSection>
+    </>
+  );
+
+  if (props.embedded) {
+    return <div className="admin-openrouter-panel">{content}</div>;
+  }
+
+  return (
+    <section className="panel workspace-panel admin-workspace">
+      {content}
     </section>
   );
 };

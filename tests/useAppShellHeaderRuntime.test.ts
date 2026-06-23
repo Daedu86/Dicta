@@ -58,6 +58,25 @@ describe('useAppShellHeaderRuntime', () => {
     expect(navigateAppRoute).toHaveBeenCalledTimes(1);
     expect(navigateAppRoute).toHaveBeenCalledWith('/training');
   });
+
+  it('keeps OpenRouter out of the global header actions', () => {
+    let runtime: ReturnType<typeof useAppShellHeaderRuntime> | null = null;
+
+    function Harness() {
+      runtime = useAppShellHeaderRuntime(buildHeaderRuntimeArgs({
+        isCurrentProfileAdmin: true,
+        authRequired: true,
+      }));
+      return null;
+    }
+
+    act(() => {
+      root.render(createElement(Harness));
+    });
+
+    expect(runtime?.appShellHeaderProps.showAdminButton).toBe(true);
+    expect(runtime?.appShellHeaderProps.showOpenRouterButton).toBe(false);
+  });
 });
 
 type HeaderRuntimeArgs = Parameters<typeof useAppShellHeaderRuntime>[0];

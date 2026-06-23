@@ -14,6 +14,8 @@ export function useWorkspacePanelPropsRuntime({
   openRouterError,
   refreshOpenRouterModels,
   showLeaderboardWorkspace,
+  showAdminWorkspace,
+  showOpenRouterWorkspace,
 
   adaptiveBenchmarksByInputLanguage,
   adaptiveSessionFeedbackByInputLanguage,
@@ -76,6 +78,8 @@ export function useWorkspacePanelPropsRuntime({
     languageView: adminLanguageView,
     onChangeLanguage: setAdminLanguageView,
     onBackToTraining: showLeaderboardWorkspace,
+    onOpenOverview: showAdminWorkspace,
+    onOpenOpenRouter: showOpenRouterWorkspace,
     onImportLocalStorage: importDictaLocalStorageSnapshot,
     appProfile,
     visibleProfiles,

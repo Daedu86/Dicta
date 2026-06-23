@@ -5,6 +5,7 @@ import { OpenRouterWorkspace } from '../components/openrouter/OpenRouterWorkspac
 import { SessionDashboard } from '../components/session-dashboard/SessionDashboard';
 import { AdaptivePaceLayerFlowWorkspace } from '../components/adaptive-workspace/AdaptivePaceLayerFlowWorkspace';
 import { AdminWorkspace, type AdminWorkspaceProps } from '../components/admin/AdminWorkspace';
+import { AdminHeader } from '../components/admin/AdminHeader';
 import type { StoredSession } from './sessionTypes';
 import type { WorkspaceMode } from './useWorkspaceRouting';
 
@@ -78,14 +79,33 @@ export function AppWorkspaceContent({
             onBackToTraining={onBackToTraining}
           />
         ) : workspaceMode === 'openrouter' ? (
-          openRouterAccessState !== 'allowed' ? (
+          canAccessAdminWorkspace ? (
             <section className="panel workspace-panel">
-              <p className={openRouterAccessState === 'pending' ? 'hint' : 'error'}>
-                {openRouterAccessState === 'pending' ? 'Checking OpenRouter access...' : openRouterAccessMessage}
-              </p>
+              <div className="admin-workspace">
+                <AdminHeader
+                  appProfile={adminWorkspaceProps.appProfile}
+                  languageView={adminWorkspaceProps.languageView}
+                  onChangeLanguage={adminWorkspaceProps.onChangeLanguage}
+                  onBackToTraining={adminWorkspaceProps.onBackToTraining}
+                  activeSection="openrouter"
+                  onOpenOverview={adminWorkspaceProps.onOpenOverview}
+                  onOpenOpenRouter={adminWorkspaceProps.onOpenOpenRouter}
+                />
+                {openRouterAccessState !== 'allowed' ? (
+                  <section className="dashboard-card admin-card admin-card-wide">
+                    <p className={openRouterAccessState === 'pending' ? 'hint' : 'error'}>
+                      {openRouterAccessState === 'pending' ? 'Checking OpenRouter access...' : openRouterAccessMessage}
+                    </p>
+                  </section>
+                ) : (
+                  <OpenRouterWorkspace {...openRouterWorkspaceProps} embedded />
+                )}
+              </div>
             </section>
           ) : (
-            <OpenRouterWorkspace {...openRouterWorkspaceProps} />
+            <section className="panel workspace-panel">
+              <p className="error">Admin access required.</p>
+            </section>
           )
         ) : workspaceMode === 'admin' ? (
           canAccessAdminWorkspace ? <AdminWorkspace {...adminWorkspaceProps} /> : (

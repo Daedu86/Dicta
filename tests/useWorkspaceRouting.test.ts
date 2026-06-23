@@ -123,7 +123,7 @@ describe('useWorkspaceRouting', () => {
   it.each<{ action: WorkspaceRoutingActionName; mode: WorkspaceMode; path: string }>([
     { action: 'showLeaderboardWorkspace', mode: 'training', path: '/' },
     { action: 'showAdminWorkspace', mode: 'admin', path: '/admin' },
-    { action: 'showOpenRouterWorkspace', mode: 'openrouter', path: '/openrouter' },
+    { action: 'showOpenRouterWorkspace', mode: 'openrouter', path: '/admin/openrouter' },
     { action: 'showAdaptiveFlowWorkspace', mode: 'adaptive-flow', path: '/#adaptive-flow' },
     { action: 'showAdaptiveFlowGenerationWorkspace', mode: 'adaptive-flow', path: '/#adaptive-flow/generation' },
   ])('switches to $mode and clears the dashboard session id', async ({ action, mode, path }) => {
@@ -149,6 +149,28 @@ describe('useWorkspaceRouting', () => {
       dashboardSessionId: null,
     });
     expectStoredWorkspaceMode('training');
+  });
+
+  it('starts on the nested Admin OpenRouter workspace route', async () => {
+    const { getRouting } = await renderWorkspaceRouting('/admin/openrouter');
+
+    expectWorkspaceState(getRouting(), {
+      mode: 'openrouter',
+      currentPath: '/admin/openrouter',
+      dashboardSessionId: null,
+    });
+    expectStoredWorkspaceMode('openrouter');
+  });
+
+  it('keeps the legacy OpenRouter route mapped to the OpenRouter workspace', async () => {
+    const { getRouting } = await renderWorkspaceRouting('/openrouter');
+
+    expectWorkspaceState(getRouting(), {
+      mode: 'openrouter',
+      currentPath: '/openrouter',
+      dashboardSessionId: null,
+    });
+    expectStoredWorkspaceMode('openrouter');
   });
 
   it('opens the adaptive flow workspace off the focused training route', async () => {
