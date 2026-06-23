@@ -1,6 +1,7 @@
 import { normalizeBenchmarkLanguage } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { buildBrowserTtsChunkCompletionDebugUpdate } from './browserTtsAdaptiveSemanticDebug';
 import { completeBrowserTtsChunk } from './browserTtsChunkCompletion';
+import { isBrowserTtsChunkTypedWithTolerantMatch } from './browserTtsChunkCompletionGate';
 import { scheduleBrowserTtsNextChunk } from './browserTtsNextChunkScheduler';
 import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlan';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
@@ -25,6 +26,8 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   pauseBeforeNextChunkMs: BrowserTtsPlaybackPlan['pauseBeforeNextChunkMs'];
   runtimeDecision: BrowserTtsPlaybackPlan['runtimeDecision'];
   ttsCompletedSourceWordsRef: BrowserTtsPlaybackLoopOptions['ttsCompletedSourceWordsRef'];
+  ttsPracticeLiveTextRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLiveTextRef'];
+  ttsTranscript: BrowserTtsPlaybackLoopOptions['ttsTranscript'];
   recordPhrasePlaybackEvent: BrowserTtsPlaybackLoopOptions['recordPhrasePlaybackEvent'];
   ttsLanguage: BrowserTtsPlaybackLoopOptions['ttsLanguage'];
   semanticPhrase: ReturnType<BrowserTtsPlaybackLoopOptions['buildSemanticPhrasesForCurrentSession']>[number];
@@ -56,6 +59,8 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   pauseBeforeNextChunkMs,
   runtimeDecision,
   ttsCompletedSourceWordsRef,
+  ttsPracticeLiveTextRef,
+  ttsTranscript,
   recordPhrasePlaybackEvent,
   ttsLanguage,
   semanticPhrase,
@@ -143,6 +148,16 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
     shouldPauseBeforeNextChunk: chunkCompletion.shouldPauseBeforeNextChunk,
     pauseBeforeNextChunkMs: chunkCompletion.pauseBeforeNextChunkMs,
     scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+    completionGate: chunkCompletion.shouldPauseBeforeNextChunk && chunk.canPauseAfter && ttsTranscript
+      ? {
+          isComplete: () =>
+            isBrowserTtsChunkTypedWithTolerantMatch({
+              typedText: ttsPracticeLiveTextRef.current,
+              transcript: ttsTranscript,
+              chunk,
+            }),
+        }
+      : undefined,
     speakNext,
   });
 }
