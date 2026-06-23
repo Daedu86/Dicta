@@ -60,17 +60,19 @@ The benchmark service is central, but sample quality is not yet universally norm
 
 This was useful historically because DE Browser TTS had raw lag alignment problems and Android/runtime pressure. It protected benchmark averages while still allowing session insight. It is not the target architecture because it is a language-specific pipeline. The reset keeps the idea of separate use buckets, but moves it into a universal gate with language calibration.
 
-## Why ES Can Feel Fast Despite Accepted Samples
+## Historical Problem: Why ES Could Feel Fast Despite Accepted Samples
 
-Browser TTS ES can accept many samples and still feel too fast because the current loop does not treat perceptual pause as a primary signal.
+Browser TTS ES could accept many samples and still feel too fast when the runtime treated pause as a mostly fixed resolved delay instead of a learner-facing completion gate.
 
 - `targetPauseMs` is a benchmark recommendation, not guaranteed perceived phrase space.
-- V3 chunk pause buckets are fixed defaults: micro, boundary, sentence, recovery.
+- V3 chunk pause buckets were execution defaults: micro, boundary, sentence, recovery.
 - Controller pauses only extend V3 buckets when the runtime decision is `support` or `recovery`.
 - A clean ES chunk with high accuracy may use sentence or boundary pauses that remain too short for dictation.
 - `defer_pause` can hide the learner-facing problem: the system knows a pause was unsafe or delayed, but that does not become a central pressure axis.
 - Chunk pause does not always equal macro phrase pause; a chunk boundary may be technically valid while the learner experiences the phrase-to-phrase gap as rushed.
 - Rate, WPM, chunking, boundary strictness, and pause are still coupled through legacy mode labels.
+
+Current Browser TTS scheduling addresses the learner-facing part of this problem with completion-gated safe pauses: after a safe chunk finishes speaking, the next chunk can start when the learner's typed text covers the current chunk with tolerant matching, or after the 4000 ms fallback. The continuous pause signal still matters, but it is not documented as a guaranteed wait that the learner must always experience.
 
 ## Target Architecture
 

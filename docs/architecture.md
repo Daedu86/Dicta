@@ -69,7 +69,7 @@ Browser app:
 - `src/app/useFocusedTrainingRuntime.ts`: focused-training composition, active-session sync, TTS handoff, and focused route props.
 - `src/app/useTtsSessionOrchestrationRuntime.ts`: TTS orchestration across keyboard remap, practice input, metrics, Browser TTS playback loop, controls, reset, and submit.
 - `src/app/useBrowserTtsRuntime.ts`: Browser TTS SpeechSynthesis voice discovery and command boundary.
-- `src/app/useBrowserTtsPlaybackLoop.ts`: Browser TTS playback loop owner for `playTts` / `playTtsFromWord`, utterance configuration, event handlers, phrase progression, telemetry handoff, and next-chunk scheduling.
+- `src/app/useBrowserTtsPlaybackLoop.ts`: Browser TTS playback loop owner for `playTts` / `playTtsFromWord`, utterance configuration, event handlers, phrase progression, telemetry handoff, and completion-gated next-chunk scheduling.
 - `src/app/useTtsPlaybackControls.ts`: Browser TTS pause/resume/stop/seek controls and related status transitions.
 - `src/app/useResetSessionRuntime.ts`: reset-session side-effect sequencing, including playback stop ordering, ref cleanup, UI metric reset, setup-lock preservation, and adaptive feedback reset.
 - `src/app/useTtsSessionSubmitAction.ts`: Browser TTS submit orchestration, final sampling, finalization, persistence push, playback stop, and finished statuses.
@@ -77,6 +77,7 @@ Browser app:
 - `src/app/useTtsUiPublisher.ts`: Browser TTS live metric UI publication thresholds, throttling, ref updates, and visible metric setter routing.
 - `src/app/useTtsPlaybackProgressEstimator.ts`: Browser TTS spoken-word progress estimation for active chunks, completed-word fallback, and finished playback.
 - `src/app/browserTtsPlaybackPlan.ts`: pure Browser TTS next-chunk playback planning for candidate chunk selection, continuous adaptive decision mapping, runtime rate floor, V3 pause resolution, unsafe-boundary policy, mobile fallback, telemetry frames, and rolling accuracy state updates.
+- `src/app/browserTtsNextChunkScheduler.ts` and `src/app/browserTtsChunkCompletionGate.ts`: pure Browser TTS next-chunk scheduling helpers that keep safe-boundary pauses completion-gated while preserving timeout fallback behavior.
 - `src/app/browserTtsPlaybackDecisionTrace.ts`: pure diagnostic decision trace snapshots for planned, clamped, runtime, and benchmark-recorded Browser TTS chunk outcomes.
 - `src/app/browserTtsPlaybackLoopChunkSpeaker.ts`: single-chunk Browser TTS execution seam for plan build, utterance creation, telemetry commit, utterance handlers, and SpeechSynthesis execution.
 - `src/app/browserTtsAdaptiveSemanticDebug.ts`: pure Browser TTS semantic debug state builders for phrase-start aggregation and chunk-completion phrase identity/counter updates.
@@ -174,7 +175,7 @@ Important implementation details:
 - OpenRouter adaptive prompts consume `trainingPrescription.runtimePolicy` and `trainingPrescription.learningPolicy`; runtime recovery should not cause harder learning content.
 - Browser TTS benchmark samples and completed session feedback include a structured `ttsEnvironment` fingerprint.
 - Browser TTS benchmark timelines can carry compact decision-trace metadata and rejection reasons for diagnostics.
-- Listening Cycle V3 pauses use continuous `pauseMsTarget` with a conceptual `100-4000ms` window, then runtime/voice execution clamps as needed. Requested-vs-actual pause and deferred pause are reported.
+- Listening Cycle V3 pauses use continuous `pauseMsTarget` as an adaptive intent signal, then Browser TTS resolves whether a pause is safe at the current boundary. Safe learner-facing pauses are completion-gated: the next chunk can start as soon as the current chunk is typed with tolerant matching, with a 4000 ms fallback to avoid blocking. Unsafe or incomplete boundaries defer pause pressure instead of creating unnatural wait points. Requested-vs-actual pause, deferred pause, and execution timing are reported.
 - Adaptive user/system reports use schema v3 and include a top-level `listeningCycleV3` block for primary constraint, evidence, next-session knobs, contradiction notes, accessibility wording, continuous adaptive summary, sample quality, pressure vector, pacing output, calibration, and requested-vs-actual execution.
 
 ## Account And Access Model

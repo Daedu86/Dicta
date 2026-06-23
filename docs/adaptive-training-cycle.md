@@ -13,7 +13,7 @@ Related docs:
 
 ## One-line model
 
-The runtime loop is causal: memory feeds preparation, preparation drives the current session, the session produces evidence, and that evidence updates the next turn. Benchmark and feedback feed the training prescription. The prescription guides LLM generation. The planner turns generated text into playable chunks. The controller chooses live pacing. The runtime pipeline makes the decision executable. Browser TTS speaks the chunk. Telemetry updates benchmark and feedback. The insight report explains the full loop.
+The runtime loop is causal: memory feeds preparation, preparation drives the current session, the session produces evidence, and that evidence updates the next turn. Benchmark and feedback feed the training prescription. The prescription guides LLM generation. The planner turns generated text into playable chunks. The controller chooses live pacing. The runtime pipeline makes the decision executable. Browser TTS speaks the chunk, then safe pauses are completion-gated so the next chunk can start once the learner has typed the current chunk or the 4000 ms fallback expires. Telemetry updates benchmark and feedback. The insight report explains the full loop.
 
 ## Workspace map
 

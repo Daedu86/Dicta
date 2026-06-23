@@ -56,8 +56,9 @@ Focused test:
 
 Owns the next-chunk scheduling decision:
 
-- call `speakNext` immediately; or
-- call it after an injected timeout delay.
+- call `speakNext` immediately when no learner-facing pause applies;
+- call it after an injected timeout delay for legacy/fallback scheduling; or
+- use an optional completion gate that polls typed progress, starts the next chunk early when the current safe chunk is covered by tolerant matching, and falls back after 4000 ms.
 
 Focused tests:
 
@@ -118,7 +119,7 @@ Owns Browser TTS `playTts` / `playTtsFromWord` runtime behavior:
 - chunk telemetry;
 - adaptive benchmark writes;
 - semantic phrase advancement;
-- next-chunk scheduling;
+- completion-gated next-chunk scheduling;
 - final playback completion transitions.
 
 Focused tests:

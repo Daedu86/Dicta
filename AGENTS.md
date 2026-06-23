@@ -108,6 +108,8 @@ Supabase tombstones are retained for 30 days. Clients whose last successful sync
 
 OpenRouter and other LLM paths generate structured training material only. The Dicta runtime and Adaptive Pace Layer still control actual playback, rate, pauses, chunking, replay support, continuous adaptive level, and Browser TTS execution. Direct mobile generation buttons represent user intent (`recover`, `progress`, `challenge`), not unconditional difficulty commands; the policy may downgrade difficulty when the active `(inputMode, language)` profile is unstable.
 
+Browser TTS safe-boundary pauses are completion-gated at execution time: once a safe chunk finishes speaking, the next chunk may start as soon as the learner's typed text covers that chunk with tolerant matching, with a 4000 ms fallback to avoid blocking. Unsafe or incomplete boundaries should not become learner-facing wait points.
+
 Browser TTS benchmark samples and completed session feedback include a structured `ttsEnvironment` fingerprint (hashed user agent, platform/PWA mode, selected voice metadata, and voice counts) so analysis can separate learner progress from browser, OS, voice, or speechSynthesis changes without storing the raw user agent.
 
 The active Listening V3 reset uses one continuous Browser TTS adaptive cycle for `en`, `es`, `de`, `fr`, and `pt`: normalized telemetry, universal sample quality, pressure vector, adaptive level, output mapper, and language calibration. Legacy `support/recovery/balanced/flow` values remain compatibility/debug labels only; do not make them the primary runtime motor again.

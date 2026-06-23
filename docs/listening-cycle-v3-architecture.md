@@ -66,17 +66,27 @@ Files:
 - `src/app/browserTtsPlaybackLoopPauseModel.ts`
 - `src/app/browserTtsPlaybackPlan.ts`
 - `src/app/browserTtsPlaybackLoopCompletionHandler.ts`
+- `src/app/browserTtsNextChunkScheduler.ts`
+- `src/app/browserTtsChunkCompletionGate.ts`
 
-The runtime now maps `v3Prosody.pauseClass` to separate pause buckets:
+The runtime separates three concepts that used to be described as one pause value:
+
+- `v3Prosody.pauseClass`: semantic/prosodic intent from the chunk planner.
+- Resolved audible pause: the Browser TTS execution primitive used for telemetry and fallback scheduling.
+- Completion-gated scheduling: the learner-facing wait before the next chunk.
+
+`v3Prosody.pauseClass` still maps to separate execution buckets:
 
 - `micro`: 500 ms
 - `boundary`: 900 ms
 - `sentence`: 1400 ms
 - `recovery`: 2600 ms
 
-All nonzero chunk pauses are clamped to 500-4000 ms. Pause resolution happens in the playback plan and is carried through chunk commit, completion scheduling, benchmark telemetry, and decision traces as the same resolved value. Legacy fallback remains available when no V3 prosody exists, but controller fallback pauses only schedule when the controller explicitly requested a pause.
+Those bucket values are execution primitives, not guaranteed user wait durations. Pause resolution happens in the playback plan and is carried through chunk commit, benchmark telemetry, and decision traces as the resolved requested/actual pause. Legacy fallback remains available when no V3 prosody exists, but controller fallback pauses only schedule when the controller explicitly requested a pause.
 
-Minor boundaries are playable microchunk pauses. Unsafe boundaries stay unpaused at the immediate edge so the next planning pass can move toward a safe clause or sentence boundary.
+Safe pauses are completion-gated at scheduling time. After a safe chunk finishes speaking, the next chunk starts as soon as the learner's typed text covers the current chunk with normalized/tolerant matching. If the chunk is not completed, a 4000 ms fallback starts the next chunk so the session does not block.
+
+Safe pause means a semantic or syntactic boundary where waiting sounds natural. Unsafe pause means the boundary is incomplete, such as a cut after a determiner, preposition, auxiliary, or otherwise unfinished unit. Minor boundaries can still produce playable microchunk pauses; unsafe boundaries stay unpaused at the immediate edge so the next planning pass can move toward a safe clause or sentence boundary.
 
 ### 3. Browser TTS voice calibration
 

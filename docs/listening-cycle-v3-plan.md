@@ -79,7 +79,7 @@ Current Browser TTS V3 buckets are:
 - `sentence`: 1400 ms
 - `recovery`: 2600 ms
 
-Chunk pause buckets remain useful execution primitives, but the active controller maps continuous `pauseMsTarget` through the playback plan. The playback plan owns the resolved pause so completion, telemetry, benchmark records, and decision traces share the same `actualPauseMs`.
+Chunk pause buckets remain useful execution primitives, but the active controller maps continuous `pauseMsTarget` through the playback plan. The playback plan owns the resolved pause so telemetry, benchmark records, and decision traces share the same requested/actual pause evidence. The next-chunk wait is no longer a fixed-duration delay: safe boundaries use completion-gated scheduling, so Browser TTS may advance as soon as the current chunk is typed with tolerant matching, with a 4000 ms fallback to avoid blocking.
 
 Runtime rule:
 
@@ -92,7 +92,7 @@ Validation:
 
 - Tests for pause class mapping.
 - Tests that continuous perceptual-pause pressure can extend pauses without forcing playback rate down.
-- Tests that minor boundaries are pausable microchunks and unsafe edges remain unpaused until the next safe boundary.
+- Tests that minor boundaries are pausable microchunks, safe waits are completion-gated, and unsafe edges remain unpaused until the next safe boundary.
 
 ## Phase 3 — Browser TTS voice calibration
 
