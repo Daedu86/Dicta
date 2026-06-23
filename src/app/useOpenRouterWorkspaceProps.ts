@@ -18,15 +18,8 @@ export type UseOpenRouterWorkspacePropsArgs = {
   error: string;
   onRefreshModels: () => Promise<void>;
   onBackToTraining: () => void;
-  exportProfile: OpenRouterWorkspaceProps['exportProfile'];
-  exportSessionFeedback: OpenRouterWorkspaceProps['exportSessionFeedback'];
-  getBenchmarkActiveSessionStatus: (profile: OpenRouterWorkspaceProps['exportProfile']) => string | undefined;
   benchmarks: OpenRouterWorkspaceProps['benchmarks'];
   sessionFeedbackByInputLanguage: OpenRouterWorkspaceProps['sessionFeedbackByInputLanguage'];
-  setSelectedBenchmarkInputMode: (inputMode: InputMode) => void;
-  setSelectedBenchmarkLanguage: (language: BenchmarkLanguageButton) => void;
-  setBenchmarkExportMessage: (message: string) => void;
-  setSessionFeedbackMessage: (message: string) => void;
   defaultGenerateInputMode: InputMode;
   defaultGenerateLanguage: BenchmarkLanguageButton;
   focusGenerateRequest: number;
@@ -35,15 +28,6 @@ export type UseOpenRouterWorkspacePropsArgs = {
   generationNowMs: number;
   onTrackJob: (job: ActiveOpenRouterJob) => void;
   onCreateGenerationErrorSession: OpenRouterWorkspaceProps['onCreateGenerationErrorSession'];
-  onCopyBenchmark: OpenRouterWorkspaceProps['onCopyBenchmark'];
-  onExportBenchmark: OpenRouterWorkspaceProps['onExportBenchmark'];
-  onCopyBenchmarkWithScriptPrompt: OpenRouterWorkspaceProps['onCopyBenchmarkWithScriptPrompt'];
-  onCopyBenchmarkFeedbackPrompt: OpenRouterWorkspaceProps['onCopyBenchmarkFeedbackPrompt'];
-  onCopyBenchmarkFeedback: OpenRouterWorkspaceProps['onCopyBenchmarkFeedback'];
-  onCopySessionFeedback: OpenRouterWorkspaceProps['onCopySessionFeedback'];
-  onCopyScriptPrompt: OpenRouterWorkspaceProps['onCopyScriptPrompt'];
-  onCopyScriptTemplate: OpenRouterWorkspaceProps['onCopyScriptTemplate'];
-  onCopyBenchmarkFeedbackPromptWithHumanFeedback: OpenRouterWorkspaceProps['onCopyBenchmarkFeedbackPromptWithHumanFeedback'];
 };
 
 export function useOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArgs): OpenRouterWorkspaceProps {
@@ -57,15 +41,8 @@ export function useOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArg
     error,
     onRefreshModels,
     onBackToTraining,
-    exportProfile,
-    exportSessionFeedback,
-    getBenchmarkActiveSessionStatus,
     benchmarks,
     sessionFeedbackByInputLanguage,
-    setSelectedBenchmarkInputMode,
-    setSelectedBenchmarkLanguage,
-    setBenchmarkExportMessage,
-    setSessionFeedbackMessage,
     defaultGenerateInputMode,
     defaultGenerateLanguage,
     focusGenerateRequest,
@@ -74,15 +51,6 @@ export function useOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArg
     generationNowMs,
     onTrackJob,
     onCreateGenerationErrorSession,
-    onCopyBenchmark,
-    onExportBenchmark,
-    onCopyBenchmarkWithScriptPrompt,
-    onCopyBenchmarkFeedbackPrompt,
-    onCopyBenchmarkFeedback,
-    onCopySessionFeedback,
-    onCopyScriptPrompt,
-    onCopyScriptTemplate,
-    onCopyBenchmarkFeedbackPromptWithHumanFeedback,
   } = args;
 
   return useMemo(() => buildOpenRouterWorkspaceProps(args), [
@@ -95,15 +63,8 @@ export function useOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArg
     error,
     onRefreshModels,
     onBackToTraining,
-    exportProfile,
-    exportSessionFeedback,
-    getBenchmarkActiveSessionStatus,
     benchmarks,
     sessionFeedbackByInputLanguage,
-    setSelectedBenchmarkInputMode,
-    setSelectedBenchmarkLanguage,
-    setBenchmarkExportMessage,
-    setSessionFeedbackMessage,
     defaultGenerateInputMode,
     defaultGenerateLanguage,
     focusGenerateRequest,
@@ -112,14 +73,5 @@ export function useOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsArg
     generationNowMs,
     onTrackJob,
     onCreateGenerationErrorSession,
-    onCopyBenchmark,
-    onExportBenchmark,
-    onCopyBenchmarkWithScriptPrompt,
-    onCopyBenchmarkFeedbackPrompt,
-    onCopyBenchmarkFeedback,
-    onCopySessionFeedback,
-    onCopyScriptPrompt,
-    onCopyScriptTemplate,
-    onCopyBenchmarkFeedbackPromptWithHumanFeedback,
   ]);
 }

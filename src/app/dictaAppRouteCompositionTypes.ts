@@ -14,20 +14,6 @@ type FlatAppPresentationRuntimeArgs = Exclude<
   { workspacePanels: unknown }
 >;
 
-type RouteDerivedWorkspacePanelKey =
-  | 'selectedBenchmarkProfile'
-  | 'selectedSessionFeedback'
-  | 'getBenchmarkActiveSessionStatus'
-  | 'copySelectedBenchmarkJson'
-  | 'downloadSelectedBenchmarkJson'
-  | 'copyBenchmarkWithDictationScriptPrompt'
-  | 'copyBenchmarkFeedbackPrompt'
-  | 'copyBenchmarkFeedbackJson'
-  | 'copySessionFeedbackJson'
-  | 'copyDictationScriptPrompt'
-  | 'copyDictationScriptTemplate'
-  | 'copyBenchmarkFeedbackPromptWithHumanFeedback';
-
 type RouteDerivedLiveMetricsDockKey =
   | 'insightsDiagnosticInputOptions'
   | 'copyInsightsDiagnosticPackage'
@@ -37,7 +23,6 @@ export type DictaAppRouteCompositionRuntimeParams =
   FlatAdaptiveWorkspaceRouteRuntimeArgs &
   Omit<
     FlatAppPresentationRuntimeArgs,
-    | RouteDerivedWorkspacePanelKey
     | RouteDerivedLiveMetricsDockKey
     | 'authRequired'
     | 'allowDictationScriptCreation'

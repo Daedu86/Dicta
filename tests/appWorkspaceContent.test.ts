@@ -178,7 +178,7 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelector('.adaptive-flow-generation-live-card')).not.toBeNull();
   });
 
-  it('keeps Generate Training Session out of the OpenRouter workspace', () => {
+  it('keeps Generate Training Session and export/copy actions out of the OpenRouter workspace', () => {
     act(() => {
       root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
         workspaceMode: 'openrouter',
@@ -188,7 +188,10 @@ describe('AppWorkspaceContent', () => {
     });
 
     expect(host.textContent).toContain('Section # 1 API Key');
-    expect(host.textContent).toContain('Section # 4 Export / Copy Actions');
+    expect(host.textContent).toContain('Section # 2 Free Models');
+    expect(host.textContent).toContain('Section # 3 Testing model');
+    expect(host.textContent).not.toContain('Section # 4 Export / Copy Actions');
+    expect(host.textContent).not.toContain('Copy Benchmark JSON');
     expect(host.textContent).not.toContain('Section # 5 Generate Training Session');
     expect(host.textContent).not.toContain('Prompt sent to OpenRouter');
   });
@@ -289,16 +292,12 @@ function createOpenRouterWorkspaceProps(overrides: Partial<OpenRouterWorkspacePr
     error: '',
     onRefreshModels: vi.fn(async () => undefined),
     onBackToTraining: vi.fn(),
-    exportProfile: benchmark,
-    exportSessionFeedback: null,
-    exportActiveSessionStatus: undefined,
     benchmarks: {
       'browser-tts': {
         en: benchmark,
       },
     },
     sessionFeedbackByInputLanguage: {},
-    onSelectExportProfile: vi.fn(),
     defaultGenerateInputMode: 'browser-tts',
     defaultGenerateLanguage: 'en',
     focusGenerateRequest: 0,
@@ -307,15 +306,6 @@ function createOpenRouterWorkspaceProps(overrides: Partial<OpenRouterWorkspacePr
     generationNowMs: Date.parse('2026-06-23T00:00:00.000Z'),
     onTrackJob: vi.fn(),
     onCreateGenerationErrorSession: vi.fn(),
-    onCopyBenchmark: vi.fn(),
-    onExportBenchmark: vi.fn(),
-    onCopyBenchmarkWithScriptPrompt: vi.fn(),
-    onCopyBenchmarkFeedbackPrompt: vi.fn(),
-    onCopyBenchmarkFeedback: vi.fn(),
-    onCopySessionFeedback: vi.fn(),
-    onCopyScriptPrompt: vi.fn(),
-    onCopyScriptTemplate: vi.fn(),
-    onCopyBenchmarkFeedbackPromptWithHumanFeedback: vi.fn(),
     ...overrides,
   };
 }

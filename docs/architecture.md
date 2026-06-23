@@ -6,7 +6,7 @@ Runtime CSS is fully modularized.
 
 - `src/App.css` is intentionally retained as the Vite/React stylesheet entrypoint and should only import `src/styles/index.css`.
 - `src/styles/index.css` is the single ordered cascade manifest for extracted runtime CSS modules.
-- CSS modules under `src/styles/` are grouped by UI/runtime boundary: auth, training shell/session/header/interaction/responsive, workspace shell/responsive, TTS workspace, session status, transcript preview/review, sidebar support/brand/controls, dashboard, admin, leaderboard, adaptive flow/OpenRouter export styles, bottom metrics, shared controls, app shell, and final responsive breakpoints.
+- CSS modules under `src/styles/` are grouped by UI/runtime boundary: auth, training shell/session/header/interaction/responsive, workspace shell/responsive, TTS workspace, session status, transcript preview/review, sidebar support/brand/controls, dashboard, admin, leaderboard, adaptive flow/OpenRouter controls styles, bottom metrics, shared controls, app shell, and final responsive breakpoints.
 - Responsive CSS that was formerly in `App.css` is now module-owned, including `responsive-980.css` and `responsive-640.css`, with imports ordered after the modules they override.
 - New runtime styles should be added to the closest existing module. If a new module is needed, import it through `src/styles/index.css` at the point that preserves the original cascade.
 - Do not reintroduce runtime selectors into `src/App.css`.
@@ -95,8 +95,8 @@ Browser app:
 - `src/app/useTrainingSessionLifecycle.ts`: browser-side training lifecycle gates, setup locking, ready checklist derivation, and focused training action routing.
 - `/training`: low-latency typing surface and session controls.
 - Dedicated mobile typing performance harness: `e2e-training.html` mounts `src/e2e/trainingPerfHarness.tsx`; `e2e/training-mobile.spec.ts` runs it with Playwright's mobile Chrome profile through `npm run test:e2e:mobile`. GitHub CI enforces this guard after the production build and uploads Playwright trace, screenshot, and video artifacts only on failure.
-- Adaptive Pace Layer Flow workspace: implementation map for the closed adaptive loop. Phase 1 / Generation owns the live OpenRouter Generate Training Session card, while the former benchmark/feedback cockpit dashboard tab no longer exists; adaptive data still feeds Training Mode, OpenRouter context/export behavior, Live Metrics diagnostics, IndexedDB persistence, and Supabase sync internally.
-- OpenRouter workspace: OpenRouter API key, model selection, model test, and export/copy actions.
+- Adaptive Pace Layer Flow workspace: implementation map for the closed adaptive loop. Phase 1 / Generation owns the live OpenRouter Generate Training Session card, while the former benchmark/feedback cockpit dashboard tab no longer exists; adaptive data still feeds Training Mode, OpenRouter generation context behavior, Live Metrics diagnostics, IndexedDB persistence, and Supabase sync internally.
+- OpenRouter workspace: OpenRouter API key, model selection, and model test.
 - Admin workspace: members, remote sessions, and local diagnostics.
 - `localStorage`: small profile/sync/migration manifests, preferences, and small OpenRouter pointers only.
 - `IndexedDB`: local working-copy sessions, tombstones, adaptive benchmarks, and adaptive feedback.

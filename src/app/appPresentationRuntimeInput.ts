@@ -4,32 +4,16 @@ import type { DictaAppRouteCompositionRuntimeParams } from './dictaAppRouteCompo
 type AppPresentationRuntimeInput = Parameters<typeof useAppPresentationRuntime>[0];
 type GroupedAppPresentationRuntimeInput = Extract<
   AppPresentationRuntimeInput,
-  { workspacePanels: unknown }
+  { liveMetricsDock: unknown }
 >;
-type WorkspacePanelsInput = GroupedAppPresentationRuntimeInput['workspacePanels'];
 type LiveMetricsDockInput = GroupedAppPresentationRuntimeInput['liveMetricsDock'];
 
 type RouteDerivedPresentationInput = Pick<
-  WorkspacePanelsInput,
-  | 'selectedBenchmarkProfile'
-  | 'selectedSessionFeedback'
-  | 'getBenchmarkActiveSessionStatus'
-  | 'copySelectedBenchmarkJson'
-  | 'downloadSelectedBenchmarkJson'
-  | 'copyBenchmarkWithDictationScriptPrompt'
-  | 'copyBenchmarkFeedbackPrompt'
-  | 'copyBenchmarkFeedbackJson'
-  | 'copySessionFeedbackJson'
-  | 'copyDictationScriptPrompt'
-  | 'copyDictationScriptTemplate'
-  | 'copyBenchmarkFeedbackPromptWithHumanFeedback'
-> &
-  Pick<
-    LiveMetricsDockInput,
-    | 'insightsDiagnosticInputOptions'
-    | 'copyInsightsDiagnosticPackage'
-    | 'selectInsightsDiagnosticFallbackReport'
-  >;
+  LiveMetricsDockInput,
+  | 'insightsDiagnosticInputOptions'
+  | 'copyInsightsDiagnosticPackage'
+  | 'selectInsightsDiagnosticFallbackReport'
+>;
 
 export function buildAppPresentationRuntimeInput(
   params: DictaAppRouteCompositionRuntimeParams,

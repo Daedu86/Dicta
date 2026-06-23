@@ -2,14 +2,6 @@ import type { OpenRouterWorkspaceProps } from '../components/openrouter/types';
 import { persistOpenRouterDefaultModel } from './modelPreferenceStorage';
 import type { UseOpenRouterWorkspacePropsArgs } from './useOpenRouterWorkspaceProps';
 
-type OpenRouterWorkspaceSelectionArgs = Pick<
-  UseOpenRouterWorkspacePropsArgs,
-  | 'setSelectedBenchmarkInputMode'
-  | 'setSelectedBenchmarkLanguage'
-  | 'setBenchmarkExportMessage'
-  | 'setSessionFeedbackMessage'
->;
-
 type OpenRouterWorkspaceModelArgs = Pick<
   UseOpenRouterWorkspacePropsArgs,
   'defaultModel' | 'assignedModel' | 'getAuthHeaders' | 'setOpenRouterDefaultModel'
@@ -22,9 +14,6 @@ export function buildOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsA
     error,
     onRefreshModels,
     onBackToTraining,
-    exportProfile,
-    exportSessionFeedback,
-    getBenchmarkActiveSessionStatus,
     benchmarks,
     sessionFeedbackByInputLanguage,
     defaultGenerateInputMode,
@@ -35,15 +24,6 @@ export function buildOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsA
     generationNowMs,
     onTrackJob,
     onCreateGenerationErrorSession,
-    onCopyBenchmark,
-    onExportBenchmark,
-    onCopyBenchmarkWithScriptPrompt,
-    onCopyBenchmarkFeedbackPrompt,
-    onCopyBenchmarkFeedback,
-    onCopySessionFeedback,
-    onCopyScriptPrompt,
-    onCopyScriptTemplate,
-    onCopyBenchmarkFeedbackPromptWithHumanFeedback,
   } = args;
 
   return {
@@ -53,12 +33,8 @@ export function buildOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsA
     error,
     onRefreshModels,
     onBackToTraining,
-    exportProfile,
-    exportSessionFeedback,
-    exportActiveSessionStatus: getBenchmarkActiveSessionStatus(exportProfile),
     benchmarks,
     sessionFeedbackByInputLanguage,
-    onSelectExportProfile: buildOpenRouterExportProfileSelector(args),
     defaultGenerateInputMode,
     defaultGenerateLanguage,
     focusGenerateRequest,
@@ -67,15 +43,6 @@ export function buildOpenRouterWorkspaceProps(args: UseOpenRouterWorkspacePropsA
     generationNowMs,
     onTrackJob,
     onCreateGenerationErrorSession,
-    onCopyBenchmark,
-    onExportBenchmark,
-    onCopyBenchmarkWithScriptPrompt,
-    onCopyBenchmarkFeedbackPrompt,
-    onCopyBenchmarkFeedback,
-    onCopySessionFeedback,
-    onCopyScriptPrompt,
-    onCopyScriptTemplate,
-    onCopyBenchmarkFeedbackPromptWithHumanFeedback,
   };
 }
 
@@ -96,19 +63,5 @@ function buildOpenRouterWorkspaceModelProps({
       setOpenRouterDefaultModel(value);
       persistOpenRouterDefaultModel(value);
     },
-  };
-}
-
-function buildOpenRouterExportProfileSelector({
-  setSelectedBenchmarkInputMode,
-  setSelectedBenchmarkLanguage,
-  setBenchmarkExportMessage,
-  setSessionFeedbackMessage,
-}: OpenRouterWorkspaceSelectionArgs): OpenRouterWorkspaceProps['onSelectExportProfile'] {
-  return (inputMode, language) => {
-    setSelectedBenchmarkInputMode(inputMode);
-    setSelectedBenchmarkLanguage(language);
-    setBenchmarkExportMessage('');
-    setSessionFeedbackMessage('');
   };
 }

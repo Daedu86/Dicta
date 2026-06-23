@@ -16,14 +16,10 @@ export function useOpenRouterWorkspaceUiState({
   const [testUsage, setTestUsage] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null);
   const [testBusy, setTestBusy] = useState(false);
   const [testError, setTestError] = useState('');
-  const [exportStatusMessage, setExportStatusMessage] = useState('');
-  const [humanFeedbackEditorOpen, setHumanFeedbackEditorOpen] = useState(false);
-  const [humanFeedbackDraft, setHumanFeedbackDraft] = useState('');
   const [sectionsExpanded, setSectionsExpanded] = useState({
     apiKey: true,
     models: true,
     test: true,
-    exports: true,
   });
 
   return {
@@ -40,12 +36,6 @@ export function useOpenRouterWorkspaceUiState({
     setTestBusy,
     testError,
     setTestError,
-    exportStatusMessage,
-    setExportStatusMessage,
-    humanFeedbackEditorOpen,
-    setHumanFeedbackEditorOpen,
-    humanFeedbackDraft,
-    setHumanFeedbackDraft,
     sectionsExpanded,
     setSectionsExpanded,
   };

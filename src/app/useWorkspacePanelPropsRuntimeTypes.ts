@@ -15,15 +15,8 @@ export type UseWorkspacePanelPropsRuntimeArgs = {
   refreshOpenRouterModels: OpenRouterWorkspacePropsArgs['onRefreshModels'];
   showLeaderboardWorkspace: OpenRouterWorkspacePropsArgs['onBackToTraining'];
 
-  selectedBenchmarkProfile: OpenRouterWorkspacePropsArgs['exportProfile'];
-  selectedSessionFeedback: OpenRouterWorkspacePropsArgs['exportSessionFeedback'];
-  getBenchmarkActiveSessionStatus: OpenRouterWorkspacePropsArgs['getBenchmarkActiveSessionStatus'];
   adaptiveBenchmarksByInputLanguage: OpenRouterWorkspacePropsArgs['benchmarks'];
   adaptiveSessionFeedbackByInputLanguage: OpenRouterWorkspacePropsArgs['sessionFeedbackByInputLanguage'];
-  setSelectedBenchmarkInputMode: OpenRouterWorkspacePropsArgs['setSelectedBenchmarkInputMode'];
-  setSelectedBenchmarkLanguage: OpenRouterWorkspacePropsArgs['setSelectedBenchmarkLanguage'];
-  setBenchmarkExportMessage: OpenRouterWorkspacePropsArgs['setBenchmarkExportMessage'];
-  setSessionFeedbackMessage: OpenRouterWorkspacePropsArgs['setSessionFeedbackMessage'];
   selectedBenchmarkInputMode: OpenRouterWorkspacePropsArgs['defaultGenerateInputMode'];
   selectedBenchmarkLanguage: OpenRouterWorkspacePropsArgs['defaultGenerateLanguage'];
   openRouterGenerateFocusRequest: OpenRouterWorkspacePropsArgs['focusGenerateRequest'];
@@ -32,15 +25,6 @@ export type UseWorkspacePanelPropsRuntimeArgs = {
   trainingGenerationNowMs: OpenRouterWorkspacePropsArgs['generationNowMs'];
   trackOpenRouterJob: OpenRouterWorkspacePropsArgs['onTrackJob'];
   createOpenRouterErrorSession: OpenRouterWorkspacePropsArgs['onCreateGenerationErrorSession'];
-  copySelectedBenchmarkJson: OpenRouterWorkspacePropsArgs['onCopyBenchmark'];
-  downloadSelectedBenchmarkJson: OpenRouterWorkspacePropsArgs['onExportBenchmark'];
-  copyBenchmarkWithDictationScriptPrompt: OpenRouterWorkspacePropsArgs['onCopyBenchmarkWithScriptPrompt'];
-  copyBenchmarkFeedbackPrompt: OpenRouterWorkspacePropsArgs['onCopyBenchmarkFeedbackPrompt'];
-  copyBenchmarkFeedbackJson: OpenRouterWorkspacePropsArgs['onCopyBenchmarkFeedback'];
-  copySessionFeedbackJson: OpenRouterWorkspacePropsArgs['onCopySessionFeedback'];
-  copyDictationScriptPrompt: OpenRouterWorkspacePropsArgs['onCopyScriptPrompt'];
-  copyDictationScriptTemplate: OpenRouterWorkspacePropsArgs['onCopyScriptTemplate'];
-  copyBenchmarkFeedbackPromptWithHumanFeedback: OpenRouterWorkspacePropsArgs['onCopyBenchmarkFeedbackPromptWithHumanFeedback'];
 
   adminSessions: AdminWorkspacePropsArgs['sessions'];
   adminStorageSummary: AdminWorkspacePropsArgs['summary'];

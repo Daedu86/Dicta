@@ -8,21 +8,9 @@ export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteComposit
   const { currentPath } = params;
 
   const {
-    selectedBenchmarkProfile,
     insightsDiagnosticInputOptions,
     copyInsightsDiagnosticPackage,
     selectInsightsDiagnosticFallbackReport,
-    selectedSessionFeedback,
-    getBenchmarkActiveSessionStatus,
-    copySelectedBenchmarkJson,
-    downloadSelectedBenchmarkJson,
-    copyDictationScriptPrompt,
-    copyBenchmarkWithDictationScriptPrompt,
-    copyDictationScriptTemplate,
-    copySessionFeedbackJson,
-    copyBenchmarkFeedbackJson,
-    copyBenchmarkFeedbackPrompt,
-    copyBenchmarkFeedbackPromptWithHumanFeedback,
   } = useAdaptiveWorkspaceRouteRuntime(buildAdaptiveWorkspaceRouteRuntimeInput(params));
   const isFocusedTrainingRoute = currentPath === '/training' || currentPath === '/training/';
 
@@ -35,18 +23,6 @@ export function useDictaAppRouteCompositionRuntime(params: DictaAppRouteComposit
     liveMetricsDockProps,
   } = useAppPresentationRuntime(
     buildAppPresentationRuntimeInput(params, {
-      selectedBenchmarkProfile,
-      selectedSessionFeedback,
-      getBenchmarkActiveSessionStatus,
-      copySelectedBenchmarkJson,
-      downloadSelectedBenchmarkJson,
-      copyBenchmarkWithDictationScriptPrompt,
-      copyBenchmarkFeedbackPrompt,
-      copyBenchmarkFeedbackJson,
-      copySessionFeedbackJson,
-      copyDictationScriptPrompt,
-      copyDictationScriptTemplate,
-      copyBenchmarkFeedbackPromptWithHumanFeedback,
       insightsDiagnosticInputOptions,
       copyInsightsDiagnosticPackage,
       selectInsightsDiagnosticFallbackReport,

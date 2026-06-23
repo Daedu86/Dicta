@@ -75,12 +75,8 @@ export type OpenRouterWorkspaceProps = {
   error: string;
   onRefreshModels: () => Promise<void>;
   onBackToTraining: () => void;
-  exportProfile: InputLanguageBenchmarkMetrics;
-  exportSessionFeedback: AdaptiveSessionFeedback | null;
-  exportActiveSessionStatus: string | undefined;
   benchmarks: AdaptiveBenchmarksByInputLanguage;
   sessionFeedbackByInputLanguage: AdaptiveSessionFeedbackByInputLanguage;
-  onSelectExportProfile: (inputMode: InputMode, language: BenchmarkLanguageButton) => void;
   defaultGenerateInputMode: InputMode;
   defaultGenerateLanguage: BenchmarkLanguageButton;
   focusGenerateRequest: number;
@@ -94,17 +90,4 @@ export type OpenRouterWorkspaceProps = {
     language: BenchmarkLanguageButton;
     message: string;
   }) => void;
-  onCopyBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
-  onExportBenchmark: (profile: InputLanguageBenchmarkMetrics) => void;
-  onCopyBenchmarkWithScriptPrompt: (profile: InputLanguageBenchmarkMetrics) => void;
-  onCopyBenchmarkFeedbackPrompt: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
-  onCopyBenchmarkFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
-  onCopySessionFeedback: (profile: InputLanguageBenchmarkMetrics, feedback: AdaptiveSessionFeedback | null) => void;
-  onCopyScriptPrompt: (profile: InputLanguageBenchmarkMetrics) => void;
-  onCopyScriptTemplate: (profile: InputLanguageBenchmarkMetrics) => void;
-  onCopyBenchmarkFeedbackPromptWithHumanFeedback: (
-    profile: InputLanguageBenchmarkMetrics,
-    feedback: AdaptiveSessionFeedback | null,
-    humanFeedback: string,
-  ) => void;
 };

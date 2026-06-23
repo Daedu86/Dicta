@@ -1,6 +1,5 @@
 import { OpenRouterApiKeySection } from './OpenRouterApiKeySection';
 import { OpenRouterCollapsibleSection } from './OpenRouterCollapsibleSection';
-import { OpenRouterCopyActionsSection as CopyActionsSection } from './OpenRouterCopyActionsSection';
 import { OpenRouterModelTestSection } from './OpenRouterModelTestSection';
 import { OpenRouterModelsSection } from './OpenRouterModelsSection';
 import { OpenRouterWorkspaceHeader } from './OpenRouterWorkspaceHeader';
@@ -9,10 +8,9 @@ import { useOpenRouterWorkspaceRuntime } from './useOpenRouterWorkspaceRuntime';
 import type { OpenRouterWorkspaceSectionId } from './openRouterWorkspaceRuntimeTypes';
 
 const sectionTitles = {
-  apiKey: `Section # 1 API ${'Key'}`,
-  models: `Section # 2 Free ${'Models'}`,
-  test: `Section # 3 Testing ${'model'}`,
-  exports: `Section # 4 ${'Ex' + 'port'} / Copy ${'Actions'}`,
+  apiKey: 'Section # 1 API Key',
+  models: 'Section # 2 Free Models',
+  test: 'Section # 3 Testing model',
 };
 
 const O = (props: OpenRouterWorkspaceProps) => {
@@ -36,10 +34,6 @@ const O = (props: OpenRouterWorkspaceProps) => {
 
       <OpenRouterCollapsibleSection title={sectionTitles.test} expanded={runtime.sectionsExpanded.test} onToggle={() => toggleSection('test')}>
         <OpenRouterModelTestSection workspace={props} runtime={runtime} />
-      </OpenRouterCollapsibleSection>
-
-      <OpenRouterCollapsibleSection title={sectionTitles.exports} expanded={runtime.sectionsExpanded.exports} onToggle={() => toggleSection('exports')}>
-        <CopyActionsSection workspace={props} runtime={runtime} />
       </OpenRouterCollapsibleSection>
     </section>
   );

@@ -6,9 +6,7 @@ import type {
   BenchmarkLanguageButton,
   OpenRouterGenerationSlotId,
   OpenRouterGenerationSlotState,
-  OpenRouterWorkspaceProps,
 } from './types';
-export { buildOpenRouterWorkspaceExportPayloads } from './openRouterWorkspaceExportPayloadBuilders';
 
 export const OPEN_ROUTER_PROFILE_INPUT_MODE_OPTIONS: Array<{ value: InputMode; label: string; description: string }> = [
   { value: 'browser-tts', label: 'Browser TTS', description: 'Browser SpeechSynthesis' },
@@ -30,18 +28,6 @@ export const OPEN_ROUTER_GENERATE_PROMPT_SOURCE_OPTIONS: Array<{ value: OpenRout
 ];
 
 export const OPEN_ROUTER_GENERATE_DURATION_OPTIONS: Array<2 | 3 | 4> = [2, 3, 4];
-
-export type BuildOpenRouterWorkspaceExportPayloadsArgs = Pick<
-  OpenRouterWorkspaceProps,
-  'exportActiveSessionStatus' | 'exportProfile' | 'exportSessionFeedback'
-> & {
-  humanFeedbackDraft: string;
-};
-
-export type OpenRouterWorkspaceExportContext = BuildOpenRouterWorkspaceExportPayloadsArgs & {
-  activeSessionStatus: string | undefined;
-  llmPrompt: string;
-};
 
 export function formatOpenRouterPromptSizeHint(value: string): string {
   const normalized = value.trim();
