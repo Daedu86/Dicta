@@ -28,6 +28,7 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   runtimeDecision: BrowserTtsPlaybackPlan['runtimeDecision'];
   ttsCompletedSourceWordsRef: BrowserTtsPlaybackLoopOptions['ttsCompletedSourceWordsRef'];
   ttsPracticeLiveTextRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLiveTextRef'];
+  setTtsPracticeText: BrowserTtsPlaybackLoopOptions['setTtsPracticeText'];
   ttsTranscript: BrowserTtsPlaybackLoopOptions['ttsTranscript'];
   browserTtsSafePauseGateSettings: BrowserTtsPlaybackLoopOptions['browserTtsSafePauseGateSettings'];
   recordPhrasePlaybackEvent: BrowserTtsPlaybackLoopOptions['recordPhrasePlaybackEvent'];
@@ -48,6 +49,22 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   updatePlaybackCursor: (cursor: BrowserTtsPlaybackCursor) => void;
 };
 
+function flushBrowserTtsChunkLiveMetrics({
+  ttsPracticeLiveTextRef,
+  setTtsPracticeText,
+  applyTtsPerformanceSample,
+}: Pick<
+  BrowserTtsPlaybackLoopCompletionHandlerParams,
+  'ttsPracticeLiveTextRef' | 'setTtsPracticeText' | 'applyTtsPerformanceSample'
+>): void {
+  const practiceText = ttsPracticeLiveTextRef.current;
+  setTtsPracticeText(practiceText);
+  applyTtsPerformanceSample({
+    forcePublishUi: true,
+    practiceTextOverride: practiceText,
+  });
+}
+
 export function handleBrowserTtsPlaybackLoopChunkEnd({
   perfDiagnostics,
   perfUtteranceId,
@@ -63,6 +80,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   runtimeDecision,
   ttsCompletedSourceWordsRef,
   ttsPracticeLiveTextRef,
+  setTtsPracticeText,
   ttsTranscript,
   browserTtsSafePauseGateSettings,
   recordPhrasePlaybackEvent,
@@ -110,6 +128,12 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
 
   updatePlaybackCursor(nextCursor);
 
+  flushBrowserTtsChunkLiveMetrics({
+    ttsPracticeLiveTextRef,
+    setTtsPracticeText,
+    applyTtsPerformanceSample,
+  });
+
   if (chunkCompletion.phraseAdvanced) {
     ttsSemanticPhraseAdvanceCountRef.current += 1;
     recordPhrasePlaybackEvent('phrase_advanced', 'browser-tts', ttsLanguage, semanticPhrase, nextCursor.macroPhraseIndex);
@@ -141,6 +165,14 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
         }
       : undefined,
     onResolved: (actualWaitMs, pauseGateResolutionReason) => {
+      if (actualWaitMs > 0 || pauseGateResolutionReason !== 'no-gate') {
+        flushBrowserTtsChunkLiveMetrics({
+          ttsPracticeLiveTextRef,
+          setTtsPracticeText,
+          applyTtsPerformanceSample,
+        });
+      }
+
       recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
         actualPlaybackRate: rate,
         actualPauseMs: actualWaitMs,
@@ -154,7 +186,6 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
       });
 
       if (completesMacroPhrase && normalizeBenchmarkLanguage(ttsLanguage) === 'de') {
-        applyTtsPerformanceSample();
         const completionLiveSignal = ttsLiveSignalRef.current;
         const completionTelemetry = buildBrowserTtsPhraseCompletionTelemetry({
           chunkTelemetry,
