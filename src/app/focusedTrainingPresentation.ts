@@ -69,7 +69,7 @@ export function buildFocusedSourceLabel({
   ttsLanguage: string | null | undefined;
 }): string {
   return ttsHasText
-    ? `${ttsTranscriptWordCount} words Â· ${ttsLanguage?.toUpperCase()}`
+    ? `${ttsTranscriptWordCount} words \u00b7 ${ttsLanguage?.toUpperCase()}`
     : 'TTS source not loaded';
 }
 
