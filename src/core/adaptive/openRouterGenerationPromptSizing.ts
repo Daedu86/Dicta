@@ -27,6 +27,6 @@ export function getOpenRouterGenerationMaxTokens(durationMinutes: OpenRouterDura
     case 5:
       return 6_000;
     case 6:
-      return 6_000;
+      return 7_200;
   }
 }

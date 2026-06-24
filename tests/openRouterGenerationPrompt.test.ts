@@ -92,34 +92,80 @@ describe('buildOpenRouterGenerationPrompt', () => {
     expect(payload.trainingPrescription.learningPolicy.phrasePolicy).toBe('short_safe_semantic');
   });
 
-  it('uses a runtime-aware smaller six-minute word budget for slow recovery prompts', () => {
+  it('keeps duration budgets monotonic for slow recovery prompts while preserving trainer constraints', () => {
     const profile = unstableProfile();
     profile.recommendation = {
       targetRateRange: [0.66, 0.74],
       targetPhraseSize: 'short',
-      targetPauseMs: 3200,
+      targetPauseMs: 3265,
       nextTrainingFocus: ['Rebuild flow with short safe phrases'],
       confidence: 0.2,
       summary: 'Slow recovery profile.',
     };
 
-    const payload = buildOpenRouterGenerationPrompt({
-      profile,
-      sessionFeedback: null,
-      promptSource: 'compact-adaptive-v2',
-      durationMinutes: 6,
-      userIntent: 'recover',
-      targetDifficulty: 'hard',
+    const budgets = ([2, 3, 4, 5, 6] as const).map((durationMinutes) => {
+      const payload = buildOpenRouterGenerationPrompt({
+        profile,
+        sessionFeedback: null,
+        promptSource: 'compact-adaptive-v2',
+        durationMinutes,
+        userIntent: 'recover',
+        targetDifficulty: 'hard',
+      });
+
+      expect(payload.trainingPrescription.durationMinutes).toBe(durationMinutes);
+      expect(payload.trainingPrescription.mode).toBe('recover');
+      expect(payload.trainingPrescription.difficulty).toBe('easy');
+      expect(payload.trainingPrescription.targetRateRange).toEqual([0.66, 0.74]);
+      expect(payload.trainingPrescription.targetPhraseSize).toBe('short');
+      expect(payload.trainingPrescription.targetPauseMs).toBe(3665);
+      expect(payload.trainingPrescription.phraseDifficultyRange).toEqual([0.25, 0.45]);
+      expect(payload.prompt).toContain(`Target voice playback duration: ${durationMinutes} minutes; set "estimatedDurationSec" close to ${durationMinutes * 60}.`);
+      expect(payload.prompt).toContain('Set "difficulty" exactly to "easy".');
+      expect(payload.prompt).toContain('Set "recommendedRateRange" to [0.66,0.74].');
+      expect(payload.prompt).toContain('Set "recommendedPhraseSize" to "short".');
+      expect(payload.prompt).toContain('Set "recommendedPauseMs" close to 3665.');
+      expect(payload.prompt).toContain('Keep phrase-level "difficulty" values in 0.25-0.45.');
+      expect(payload.prompt).not.toContain('"runtimePolicy"');
+      expect(payload.prompt).not.toContain('"learningPolicy"');
+      expect(payload.prompt).not.toContain('"rationale"');
+
+      return extractPromptBudget(payload.prompt);
     });
 
-    expect(payload.prompt).toContain('Target voice playback duration: 6 minutes; set "estimatedDurationSec" close to 360.');
-    expect(payload.prompt).toContain('Combined spoken phrase text: 382-494 words, approximately 449 words total.');
-    expect(payload.prompt).toContain('Create at least 42 phrases');
-    expect(payload.prompt).toContain('"targetPauseMs": 3600');
-    expect(payload.prompt).not.toContain('"runtimePolicy"');
-    expect(payload.prompt).not.toContain('"learningPolicy"');
-    expect(payload.prompt).not.toContain('"rationale"');
-    expect(payload.trainingPrescription.mode).toBe('recover');
-    expect(payload.trainingPrescription.difficulty).toBe('easy');
+    budgets.forEach((budget, index) => {
+      const durationMinutes = index + 2;
+      expect(budget.estimatedDurationSec).toBe(durationMinutes * 60);
+      expect(budget.minimumPhraseCount).toBe(durationMinutes * 10);
+      if (index === 0) return;
+      expect(budget.targetSpokenWords).toBeGreaterThanOrEqual(budgets[index - 1].targetSpokenWords);
+      expect(budget.minimumPhraseCount).toBeGreaterThanOrEqual(budgets[index - 1].minimumPhraseCount);
+    });
+
+    expect(budgets[4]).toMatchObject({
+      minSpokenWords: 796,
+      maxSpokenWords: 1030,
+      targetSpokenWords: 936,
+      minimumPhraseCount: 60,
+    });
+    expect(budgets[4].targetSpokenWords).toBeGreaterThan(budgets[3].targetSpokenWords);
   });
 });
+
+function extractPromptBudget(prompt: string) {
+  const durationMatch = prompt.match(/Target voice playback duration: \d+ minutes; set "estimatedDurationSec" close to (\d+)\./);
+  const wordsMatch = prompt.match(/Combined spoken phrase text: (\d+)-(\d+) words, approximately (\d+) words total\./);
+  const phrasesMatch = prompt.match(/Create at least (\d+) phrases/);
+
+  expect(durationMatch).toBeTruthy();
+  expect(wordsMatch).toBeTruthy();
+  expect(phrasesMatch).toBeTruthy();
+
+  return {
+    estimatedDurationSec: Number(durationMatch?.[1]),
+    minSpokenWords: Number(wordsMatch?.[1]),
+    maxSpokenWords: Number(wordsMatch?.[2]),
+    targetSpokenWords: Number(wordsMatch?.[3]),
+    minimumPhraseCount: Number(phrasesMatch?.[1]),
+  };
+}
