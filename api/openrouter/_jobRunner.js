@@ -20,6 +20,7 @@ function buildSucceededJobResult(response, requestPayload) {
     requestedModel: requestPayload.model,
     contentType: response.contentType,
     attempts: response.attempts,
+    jsonRepairApplied: response.jsonRepairApplied === true,
   };
 }
 

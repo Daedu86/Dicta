@@ -2,6 +2,8 @@ import { extractOpenRouterJobSessionJson, tryParseOpenRouterJobJson } from './_j
 
 const OPENROUTER_JOB_MAX_ATTEMPTS = 3;
 const OPENROUTER_JOB_RETRY_BASE_DELAY_MS = 750;
+const OPENROUTER_REPAIR_PROMPT_MAX_CHARS = 28_000;
+const OPENROUTER_INVALID_RESPONSE_EXCERPT_MAX_CHARS = 8_000;
 const OPENROUTER_RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 const OPENROUTER_RETRYABLE_ERROR_MARKERS = [
   'no healthy upstream',
@@ -67,6 +69,64 @@ export function readOpenRouterApiKey() {
   return getRequiredEnv('OPENROUTER_API_KEY');
 }
 
+function truncateText(value, maxChars) {
+  const text = String(value ?? '');
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}\n[truncated ${text.length - maxChars} chars]`;
+}
+
+function buildJsonOnlySystemMessage() {
+  return [
+    'You are a strict JSON generator for Dicta.',
+    'Return exactly one valid JSON object in message.content.',
+    'Do not include markdown, code fences, explanations, reasoning text, or extra prose.',
+  ].join(' ');
+}
+
+function buildChatCompletionRequestBody({ model, prompt, maxTokens }) {
+  return {
+    model,
+    messages: [
+      { role: 'system', content: buildJsonOnlySystemMessage() },
+      { role: 'user', content: prompt },
+    ],
+    max_tokens: maxTokens,
+    temperature: 0,
+    include_reasoning: false,
+    reasoning: {
+      effort: 'low',
+      exclude: true,
+    },
+  };
+}
+
+function buildSessionJsonRepairPrompt({ originalPrompt, invalidText }) {
+  return [
+    'The previous response did not contain a valid Dicta DictationScript JSON object.',
+    'Repair the result now. Return exactly one JSON object and nothing else.',
+    'Required top-level fields: title, language, inputMode, difficulty, estimatedDurationSec, targetSkills, recommendedRateRange, recommendedPhraseSize, recommendedPauseMs, phrases.',
+    'Each phrase must include: id, text, boundaryType, pauseAfterMs, canReplayIndependently, requiresContinuation, semanticCompleteness, difficulty, emphasisWords, intonationHint.',
+    'If the previous response includes usable phrase content, preserve it. If it does not, generate a fresh DictationScript from the original request.',
+    '',
+    'Original request:',
+    truncateText(originalPrompt, OPENROUTER_REPAIR_PROMPT_MAX_CHARS),
+    '',
+    'Previous invalid response excerpt:',
+    truncateText(invalidText, OPENROUTER_INVALID_RESPONSE_EXCERPT_MAX_CHARS),
+  ].join('\n');
+}
+
+function readMessageContent(payload) {
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => typeof part === 'string' ? part : typeof part?.text === 'string' ? part.text : '')
+      .join('');
+  }
+  return '';
+}
+
 async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -79,7 +139,7 @@ async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeo
         'HTTP-Referer': req.headers.origin ?? 'https://vercel.app',
         'X-Title': 'Dicta',
       },
-      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: maxTokens }),
+      body: JSON.stringify(buildChatCompletionRequestBody({ model, prompt, maxTokens })),
       signal: controller.signal,
     });
     const body = await response.text();
@@ -89,14 +149,14 @@ async function postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeo
   }
 }
 
-async function postChatCompletionWithRetries({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
+async function postChatCompletionWithRetries({ apiKey, req, model, prompt, maxTokens, timeoutMs, phase = 'generate' }) {
   const attempts = [];
   let lastResponse = null;
   for (let attempt = 1; attempt <= OPENROUTER_JOB_MAX_ATTEMPTS; attempt += 1) {
     const response = await postChatCompletion({ apiKey, req, model, prompt, maxTokens, timeoutMs });
     const retryable = isRetryableOpenRouterJobResponse(response);
     const { providerName } = readOpenRouterErrorDetails(response.body);
-    attempts.push({ attempt, model, status: response.status, ok: response.ok, retryable: !response.ok && retryable, ...(providerName ? { providerName } : {}) });
+    attempts.push({ attempt, phase, model, status: response.status, ok: response.ok, retryable: !response.ok && retryable, ...(providerName ? { providerName } : {}) });
     lastResponse = response;
     if (response.ok || !retryable || attempt === OPENROUTER_JOB_MAX_ATTEMPTS) break;
     await delay(OPENROUTER_JOB_RETRY_BASE_DELAY_MS * attempt);
@@ -120,11 +180,43 @@ export async function postChatCompletionWithSelectedModelRetries({ apiKey, req, 
 
     receivedSuccessfulResponse = true;
     const payload = tryParseOpenRouterJobJson(response.body);
-    const text = typeof payload?.choices?.[0]?.message?.content === 'string' ? payload.choices[0].message.content : '';
+    const text = readMessageContent(payload);
     const scriptText = extractOpenRouterJobSessionJson(text);
     const latestAttempt = allAttempts[allAttempts.length - 1];
     if (latestAttempt) latestAttempt.jsonValid = Boolean(scriptText);
     if (scriptText) return { ...response, attempts: allAttempts, model: candidateModel, payload, scriptText };
+
+    const repairResponse = await postChatCompletionWithRetries({
+      apiKey,
+      req,
+      model: candidateModel,
+      prompt: buildSessionJsonRepairPrompt({ originalPrompt: prompt, invalidText: text || response.body }),
+      maxTokens,
+      timeoutMs,
+      phase: 'json-repair',
+    });
+    allAttempts.push(...repairResponse.attempts);
+    lastResponse = { ...repairResponse, attempts: allAttempts };
+    if (!repairResponse.ok) {
+      if (!isRetryableOpenRouterJobResponse(repairResponse)) break;
+      continue;
+    }
+
+    const repairPayload = tryParseOpenRouterJobJson(repairResponse.body);
+    const repairText = readMessageContent(repairPayload);
+    const repairedScriptText = extractOpenRouterJobSessionJson(repairText);
+    const latestRepairAttempt = allAttempts[allAttempts.length - 1];
+    if (latestRepairAttempt) latestRepairAttempt.jsonValid = Boolean(repairedScriptText);
+    if (repairedScriptText) {
+      return {
+        ...repairResponse,
+        attempts: allAttempts,
+        model: candidateModel,
+        payload: repairPayload,
+        scriptText: repairedScriptText,
+        jsonRepairApplied: true,
+      };
+    }
   }
 
   if (lastResponse && !receivedSuccessfulResponse) {
@@ -136,6 +228,6 @@ export async function postChatCompletionWithSelectedModelRetries({ apiKey, req, 
     ok: false,
     status: 422,
     attempts: allAttempts,
-    scriptError: `OpenRouter returned text without valid session JSON for selected model "${model}".`,
+    scriptError: `OpenRouter returned text without valid session JSON for selected model "${model}" after a JSON repair attempt.`,
   };
 }
