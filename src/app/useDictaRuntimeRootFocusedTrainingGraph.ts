@@ -93,6 +93,7 @@ export function useDictaRuntimeRootFocusedTrainingGraph({
     openRouterJobNotifications: openRouterGraph.openRouterJobNotifications,
     trainingGenerationNotices: openRouterGraph.trainingGenerationNotices,
     trainingGenerationNowMs: openRouterGraph.trainingGenerationNowMs,
+    cancelOpenRouterJob: openRouterGraph.cancelOpenRouterJob,
     adaptiveOpenRouterBusy: openRouterGraph.adaptiveOpenRouterBusy,
     topicOpenRouterBusy: openRouterGraph.topicOpenRouterBusy,
     directGenerationDurationMinutes: openRouterGraph.directGenerationDurationMinutes,

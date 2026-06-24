@@ -24,6 +24,8 @@ The Adaptive Pace Layer Flow workspace explains the loop as four auditable group
 - Run: Browser TTS and the Playback loop execute the current session and collect live pressure.
 - Learn: Scoring, Telemetry, Benchmark, and Adaptation return evidence to the next cycle.
 
+Training Mode direct generation keeps each OpenRouter request as a separate visible job row with its own elapsed-time counter. Active rows can be canceled, which marks the durable job as canceled and stops browser polling for that request without treating it as a learner-facing generated error session.
+
 ## Module map
 
 | Module | Owns |

@@ -104,6 +104,7 @@ export function createFocusedTrainingRouteRuntimeArgs(
     openRouterJobNotifications: {},
     trainingGenerationNotices: {},
     trainingGenerationNowMs: 0,
+    cancelOpenRouterJob: vi.fn(),
     adaptiveOpenRouterBusy: false,
     topicOpenRouterBusy: false,
     directGenerationDurationMinutes: 3,

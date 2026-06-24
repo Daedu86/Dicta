@@ -13,6 +13,7 @@ import {
   cleanupOldOpenRouterJobs,
   enforceActiveOpenRouterJobLimit,
   insertQueuedOpenRouterJob,
+  markOpenRouterJobCanceled,
   normalizeOpenRouterJobRow,
   readOpenRouterJobRow,
 } from './_jobPersistence.js';
@@ -97,6 +98,40 @@ async function getJob(req, res) {
   res.status(200).json(normalizeOpenRouterJobRow(data));
 }
 
+async function cancelJob(req, res) {
+  const supabase = createSupabaseServiceClient();
+  const requester = await resolveRequestProfile(req);
+  assertOpenRouterAccess(requester);
+  const { profileId } = requester;
+  const url = new URL(req.url, `https://${req.headers.host ?? 'dicta.local'}`);
+  const jobId = url.searchParams.get('id')?.trim() ?? '';
+  if (!jobId) {
+    res.status(400).send('Missing job id.');
+    return;
+  }
+
+  const completedAt = new Date().toISOString();
+  const { data, error } = await markOpenRouterJobCanceled(supabase, { profileId, jobId, completedAt });
+  if (error) throw error;
+  if (data) {
+    await auditOpenRouterJobEvent(supabase, 'openrouter_job_cancelled', requester, {
+      severity: 'info',
+      metadata: { jobId },
+    });
+    res.status(200).json(normalizeOpenRouterJobRow(data));
+    return;
+  }
+
+  const current = await readOpenRouterJobRow(supabase, { profileId, jobId });
+  if (current.error) throw current.error;
+  if (!current.data) {
+    res.status(404).send('OpenRouter job not found.');
+    return;
+  }
+
+  res.status(200).json(normalizeOpenRouterJobRow(current.data));
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method === 'POST') {
@@ -105,6 +140,10 @@ export default async function handler(req, res) {
     }
     if (req.method === 'GET') {
       await getJob(req, res);
+      return;
+    }
+    if (req.method === 'DELETE') {
+      await cancelJob(req, res);
       return;
     }
     res.status(405).send('Method not allowed');

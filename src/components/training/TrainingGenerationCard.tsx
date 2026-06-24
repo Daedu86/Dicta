@@ -35,6 +35,26 @@ export function TrainingGenerationCard({ generationButtons, className = '' }: Tr
                   {button.statusMessage}
                 </p>
               ) : null}
+              {button.statusItems && button.statusItems.length > 0 ? (
+                <ul className="training-generation-log" aria-live="polite">
+                  {button.statusItems.map((item) => (
+                    <li key={item.id} className={`training-generation-log-item training-generation-notice-${item.tone}`}>
+                      <span className="training-generation-log-message">{item.message}</span>
+                      {item.onCancel ? (
+                        <button
+                          type="button"
+                          className="training-generation-cancel-button"
+                          onClick={item.onCancel}
+                          disabled={item.cancelDisabled}
+                          title={item.cancelTitle ?? item.cancelLabel ?? 'Cancel generation'}
+                        >
+                          {item.cancelLabel ?? 'Cancel'}
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           );
         })}

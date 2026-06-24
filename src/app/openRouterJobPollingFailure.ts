@@ -33,6 +33,9 @@ export function failTrackedOpenRouterJob({
   }
   setTrainingGenerationNotices((current) => ({
     ...current,
-    [trackedJob.slotLabel]: buildTrackedOpenRouterGenerationFailureNotice(trackedJob, message, completedAt),
+    [trackedJob.jobId]: {
+      jobId: trackedJob.jobId,
+      ...buildTrackedOpenRouterGenerationFailureNotice(trackedJob, message, completedAt),
+    },
   }));
 }

@@ -6,6 +6,7 @@ import {
   extractOpenRouterJobText,
   extractOpenRouterJobUsage,
   isOpenRouterJobTerminal,
+  isOpenRouterJobCanceledError,
   loadActiveOpenRouterJob,
   loadActiveOpenRouterJobs,
   OPENROUTER_ACTIVE_JOBS_STORAGE_KEY,
@@ -51,6 +52,11 @@ describe('openRouterJobs', () => {
     expect(isOpenRouterJobTerminal('running')).toBe(false);
     expect(isOpenRouterJobTerminal('succeeded')).toBe(true);
     expect(isOpenRouterJobTerminal('failed')).toBe(true);
+  });
+
+  it('recognizes user-canceled OpenRouter jobs from their stored error', () => {
+    expect(isOpenRouterJobCanceledError('Canceled by user.')).toBe(true);
+    expect(isOpenRouterJobCanceledError('Provider timeout')).toBe(false);
   });
 
   it('persists multiple active OpenRouter jobs and removes them one at a time', () => {

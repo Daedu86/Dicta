@@ -27,6 +27,7 @@ export type UseFocusedTrainingGenerationButtonsArgs = {
   openRouterJobNotifications: Record<string, OpenRouterJobNotification>;
   trainingGenerationNotices: Record<string, TrainingGenerationNotice>;
   trainingGenerationNowMs: number;
+  cancelOpenRouterJob: (jobId: string) => void | Promise<void>;
   adaptiveOpenRouterBusy: boolean;
   topicOpenRouterBusy: boolean;
   directGenerationDurationMinutes: OpenRouterDurationMinutes;
@@ -44,6 +45,7 @@ export type BuildFocusedTrainingGenerationButtonsArgs = Pick<
   | 'openRouterJobNotifications'
   | 'trainingGenerationNotices'
   | 'trainingGenerationNowMs'
+  | 'cancelOpenRouterJob'
   | 'adaptiveOpenRouterBusy'
   | 'topicOpenRouterBusy'
   | 'directGenerationDurationMinutes'
@@ -62,6 +64,7 @@ export function useFocusedTrainingGenerationButtons({
   openRouterJobNotifications,
   trainingGenerationNotices,
   trainingGenerationNowMs,
+  cancelOpenRouterJob,
   adaptiveOpenRouterBusy,
   topicOpenRouterBusy,
   directGenerationDurationMinutes,
@@ -80,6 +83,7 @@ export function useFocusedTrainingGenerationButtons({
       openRouterJobNotifications,
       trainingGenerationNotices,
       trainingGenerationNowMs,
+      cancelOpenRouterJob,
       adaptiveOpenRouterBusy,
       topicOpenRouterBusy,
       directGenerationDurationMinutes,
@@ -92,6 +96,7 @@ export function useFocusedTrainingGenerationButtons({
     trainingGenerationNotices,
     openRouterJobNotifications,
     activeOpenRouterJobs,
+    cancelOpenRouterJob,
     trainingGenerationNowMs,
     sessionQuotaStatus.blocked,
     sessionQuotaStatus.message,

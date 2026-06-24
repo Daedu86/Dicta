@@ -3,11 +3,18 @@ import type { DictationScript } from '../core/adaptive/dictationScriptValidation
 import {
   addActiveOpenRouterJob,
   loadActiveOpenRouterJobs,
+  OPENROUTER_JOB_CANCELED_MESSAGE,
+  removeActiveOpenRouterJob,
   type ActiveOpenRouterJob,
+  type OpenRouterJobResponse,
 } from '../core/openRouterJobs';
-import { formatOpenRouterJobNotifications } from '../components/openrouter/openRouterViewHelpers';
+import {
+  buildOpenRouterJobNotification,
+  formatOpenRouterJobNotifications,
+} from '../components/openrouter/openRouterViewHelpers';
 import type { OpenRouterJobNotification, TrainingGenerationNotice } from '../components/openrouter/types';
 import { useOpenRouterJobPollingRuntime } from './useOpenRouterJobPollingRuntime';
+import { formatOpenRouterGenerationDisplayLabel } from './openRouterGenerationFailurePolicy';
 
 type OpenRouterJobsRuntimeOptions = {
   localStorageReady: boolean;
@@ -25,6 +32,7 @@ type OpenRouterJobsRuntime = {
   trainingGenerationNotices: Record<string, TrainingGenerationNotice>;
   trainingGenerationNowMs: number;
   trackOpenRouterJob: (activeJob: ActiveOpenRouterJob) => void;
+  cancelOpenRouterJob: (jobId: string) => Promise<void>;
   recordOpenRouterGenerationFailure: (notice: {
     slotLabel: string;
     displayLabel: string;
@@ -94,6 +102,54 @@ export function useOpenRouterJobsRuntime({
     });
   }, []);
 
+  const cancelOpenRouterJob = useCallback(async (jobId: string): Promise<void> => {
+    const trackedJob = activeOpenRouterJobs.find((job) => job.jobId === jobId);
+    if (!trackedJob) return;
+
+    try {
+      const response = await fetch(`/api/openrouter/jobs?id=${encodeURIComponent(jobId)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `OpenRouter job cancellation failed (${response.status}).`);
+      }
+
+      const canceledJob = (await response.json()) as OpenRouterJobResponse;
+      const completedAt = canceledJob.completedAt || canceledJob.updatedAt || new Date().toISOString();
+      const notification = buildOpenRouterJobNotification(trackedJob, canceledJob);
+
+      setOpenRouterJobNotifications((current) => {
+        const next = {
+          ...current,
+          [jobId]: notification,
+        };
+        setOpenRouterJobStatus(formatOpenRouterJobNotifications(next));
+        return next;
+      });
+
+      if (notification.status !== 'canceled') return;
+
+      setActiveOpenRouterJobs((current) => removeActiveOpenRouterJob(jobId, current));
+      setTrainingGenerationNotices((current) => ({
+        ...current,
+        [jobId]: {
+          jobId,
+          slotLabel: trackedJob.slotLabel,
+          displayLabel: formatOpenRouterGenerationDisplayLabel(trackedJob.slotLabel),
+          model: trackedJob.model,
+          startedAt: trackedJob.startedAt,
+          status: 'canceled',
+          completedAt,
+          error: OPENROUTER_JOB_CANCELED_MESSAGE,
+        },
+      }));
+    } catch (error) {
+      onOpenRouterError(error instanceof Error ? error.message : 'OpenRouter job cancellation failed.');
+    }
+  }, [activeOpenRouterJobs, getAuthHeaders, onOpenRouterError]);
+
   const recordOpenRouterGenerationFailure = useCallback((notice: {
     slotLabel: string;
     displayLabel: string;
@@ -104,7 +160,7 @@ export function useOpenRouterJobsRuntime({
   }): void => {
     setTrainingGenerationNotices((current) => ({
       ...current,
-      [notice.slotLabel]: {
+      [`${notice.slotLabel}:${notice.startedAt}`]: {
         slotLabel: notice.slotLabel,
         displayLabel: notice.displayLabel,
         model: notice.model,
@@ -131,6 +187,7 @@ export function useOpenRouterJobsRuntime({
     trainingGenerationNotices,
     trainingGenerationNowMs,
     trackOpenRouterJob,
+    cancelOpenRouterJob,
     recordOpenRouterGenerationFailure,
     resetOpenRouterJobsRuntime,
   };

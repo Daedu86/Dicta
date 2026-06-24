@@ -40,11 +40,12 @@ function classifyOpenRouterJobError(error, message) {
 }
 
 export async function runOpenRouterJob({ req, supabase, requester, profileId, jobId, requestPayload }) {
-  await markOpenRouterJobRunning(supabase, {
+  const runningJob = await markOpenRouterJobRunning(supabase, {
     profileId,
     jobId,
     now: new Date().toISOString(),
   });
+  if (!runningJob) return;
 
   try {
     const response = await postChatCompletionWithSelectedModelRetries({

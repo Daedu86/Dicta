@@ -24,5 +24,7 @@ export {
   extractOpenRouterJobUsage,
 } from './openRouterJobResultExtractors';
 export {
+  OPENROUTER_JOB_CANCELED_MESSAGE,
+  isOpenRouterJobCanceledError,
   isOpenRouterJobTerminal,
 } from './openRouterJobStatus';

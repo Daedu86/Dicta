@@ -28,6 +28,7 @@ export function useDictaOpenRouterRuntime({
     trainingGenerationNotices,
     trainingGenerationNowMs,
     trackOpenRouterJob,
+    cancelOpenRouterJob,
     recordOpenRouterGenerationFailure,
   } = useDictaOpenRouterJobsRuntime({
     errorSessionActions,
@@ -64,6 +65,7 @@ export function useDictaOpenRouterRuntime({
     trainingGenerationNotices,
     trainingGenerationNowMs,
     trackOpenRouterJob,
+    cancelOpenRouterJob,
     ...generationRuntime,
   };
 }

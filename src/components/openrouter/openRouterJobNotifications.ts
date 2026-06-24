@@ -1,4 +1,8 @@
-import type { ActiveOpenRouterJob, OpenRouterJobResponse } from '../../core/openRouterJobs';
+import {
+  isOpenRouterJobCanceledError,
+  type ActiveOpenRouterJob,
+  type OpenRouterJobResponse,
+} from '../../core/openRouterJobs';
 import type { OpenRouterJobNotification } from './types';
 import { formatElapsedMs } from './openRouterTimeFormatting';
 import { formatOpenRouterSlotDisplayLabel } from './openRouterTrainingSlotLabels';
@@ -8,8 +12,11 @@ export function buildOpenRouterJobNotification(
   job: OpenRouterJobResponse | null,
   error?: string,
 ): OpenRouterJobNotification {
+  const resolvedError = error || job?.error || '';
   const status: OpenRouterJobNotification['status'] = error
     ? 'failed'
+    : isOpenRouterJobCanceledError(resolvedError)
+      ? 'canceled'
     : job?.status === 'succeeded' || job?.status === 'failed'
       ? job.status
       : 'running';
@@ -20,7 +27,7 @@ export function buildOpenRouterJobNotification(
     startedAt: trackedJob.startedAt,
     status,
     ...(status === 'running' ? {} : { completedAt: job?.completedAt || job?.updatedAt || new Date().toISOString() }),
-    ...(error || job?.error ? { error: error || job?.error } : {}),
+    ...(resolvedError ? { error: resolvedError } : {}),
   };
 }
 
@@ -44,6 +51,9 @@ export function formatOpenRouterJobNotifications(notifications: Record<string, O
       }
       if (notification.status === 'failed') {
         return `${displayLabel} failed with ${notification.model} after ${elapsed}${notification.error ? `: ${notification.error}` : '.'}`;
+      }
+      if (notification.status === 'canceled') {
+        return `${displayLabel} canceled after ${elapsed}.`;
       }
       return `${displayLabel} running with ${notification.model}; elapsed ${elapsed}.`;
     })

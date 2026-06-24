@@ -7,6 +7,13 @@ import type {
 import { formatElapsedMs, parseTimestampMs } from './openRouterTimeFormatting';
 import { getOpenRouterTrainingSlotAliases } from './openRouterTrainingSlotLabels';
 
+export type TrainingGenerationNoticeListItem = TrainingGenerationNoticeView & {
+  id: string;
+  jobId?: string;
+  status: TrainingGenerationNotice['status'];
+  startedAt: string;
+};
+
 export function buildTrainingGenerationButtonNotice({
   slotLabel,
   displayLabel,
@@ -22,45 +29,107 @@ export function buildTrainingGenerationButtonNotice({
   activeJobs: ActiveOpenRouterJob[];
   nowMs: number;
 }): TrainingGenerationNoticeView | null {
+  return buildTrainingGenerationButtonNoticeList({
+    slotLabel,
+    displayLabel,
+    notices,
+    jobNotifications,
+    activeJobs,
+    nowMs,
+  })[0] ?? null;
+}
+
+export function buildTrainingGenerationButtonNoticeList({
+  slotLabel,
+  displayLabel,
+  notices,
+  jobNotifications,
+  activeJobs,
+  nowMs,
+}: {
+  slotLabel: string;
+  displayLabel: string;
+  notices: Record<string, TrainingGenerationNotice>;
+  jobNotifications: Record<string, OpenRouterJobNotification>;
+  activeJobs: ActiveOpenRouterJob[];
+  nowMs: number;
+}): TrainingGenerationNoticeListItem[] {
   const slotAliases = getOpenRouterTrainingSlotAliases(slotLabel);
-  const localNotice = slotAliases.map((alias) => notices[alias]).find(Boolean);
-  const activeJob = [...activeJobs]
+  const activeJobIds = new Set(activeJobs.map((job) => job.jobId));
+  const byId = new Map<string, TrainingGenerationNoticeListItem>();
+
+  activeJobs
     .filter((job) => slotAliases.includes(job.slotLabel))
-    .sort((a, b) => parseTimestampMs(b.startedAt, nowMs) - parseTimestampMs(a.startedAt, nowMs))[0];
-  if (activeJob) {
-    return formatTrainingGenerationNotice({
-      slotLabel: activeJob.slotLabel,
-      displayLabel,
-      model: activeJob.model,
-      startedAt: activeJob.startedAt,
-      status: 'running',
-    }, nowMs);
-  }
+    .forEach((activeJob) => {
+      byId.set(activeJob.jobId, formatTrainingGenerationNoticeListItem({
+        id: activeJob.jobId,
+        jobId: activeJob.jobId,
+        notice: {
+          slotLabel: activeJob.slotLabel,
+          displayLabel,
+          model: activeJob.model,
+          startedAt: activeJob.startedAt,
+          status: 'running',
+        },
+        nowMs,
+      }));
+    });
 
-  if (localNotice && localNotice.status !== 'running') {
-    return formatTrainingGenerationNotice({ ...localNotice, displayLabel }, nowMs);
-  }
+  Object.values(jobNotifications)
+    .filter((notification) => slotAliases.includes(notification.slotLabel) && !activeJobIds.has(notification.jobId))
+    .forEach((jobNotification) => {
+      byId.set(jobNotification.jobId, formatTrainingGenerationNoticeListItem({
+        id: jobNotification.jobId,
+        jobId: jobNotification.jobId,
+        notice: {
+          slotLabel: jobNotification.slotLabel,
+          displayLabel,
+          model: jobNotification.model,
+          startedAt: jobNotification.startedAt,
+          status: jobNotification.status,
+          completedAt: jobNotification.completedAt,
+          error: jobNotification.error,
+        },
+        nowMs,
+      }));
+    });
 
-  const jobNotification = Object.values(jobNotifications)
-    .filter((notification) => slotAliases.includes(notification.slotLabel))
-    .sort((a, b) => parseTimestampMs(b.startedAt, nowMs) - parseTimestampMs(a.startedAt, nowMs))[0];
-  if (jobNotification) {
-    return formatTrainingGenerationNotice({
-      slotLabel: jobNotification.slotLabel,
-      displayLabel,
-      model: jobNotification.model,
-      startedAt: jobNotification.startedAt,
-      status: jobNotification.status,
-      completedAt: jobNotification.completedAt,
-      error: jobNotification.error,
-    }, nowMs);
-  }
+  Object.entries(notices)
+    .filter(([, notice]) => slotAliases.includes(notice.slotLabel))
+    .forEach(([key, localNotice]) => {
+      const id = localNotice.jobId ?? key;
+      if (byId.has(id)) return;
+      byId.set(id, formatTrainingGenerationNoticeListItem({
+        id,
+        jobId: localNotice.jobId,
+        notice: { ...localNotice, displayLabel },
+        nowMs,
+      }));
+    });
 
-  if (localNotice) {
-    return formatTrainingGenerationNotice({ ...localNotice, displayLabel }, nowMs);
-  }
+  return Array.from(byId.values())
+    .sort((a, b) => parseTimestampMs(b.startedAt, nowMs) - parseTimestampMs(a.startedAt, nowMs))
+    .slice(0, 6);
+}
 
-  return null;
+function formatTrainingGenerationNoticeListItem({
+  id,
+  jobId,
+  notice,
+  nowMs,
+}: {
+  id: string;
+  jobId?: string;
+  notice: TrainingGenerationNotice;
+  nowMs: number;
+}): TrainingGenerationNoticeListItem {
+  return {
+    id,
+    jobId,
+    status: notice.status,
+    startedAt: notice.startedAt,
+    ...formatTrainingGenerationNotice(notice, nowMs),
+  };
 }
 
 export function formatTrainingGenerationNotice(
@@ -82,6 +151,13 @@ export function formatTrainingGenerationNotice(
     return {
       tone: 'error',
       message: `${notice.displayLabel} could not be created after ${elapsed}${notice.error ? `: ${notice.error}` : '.'}`,
+    };
+  }
+
+  if (notice.status === 'canceled') {
+    return {
+      tone: 'hint',
+      message: `${notice.displayLabel} canceled after ${elapsed}.`,
     };
   }
 

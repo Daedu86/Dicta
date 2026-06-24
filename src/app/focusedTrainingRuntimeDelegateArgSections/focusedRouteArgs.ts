@@ -48,6 +48,7 @@ export function buildFocusedTrainingRouteArgs(
     openRouterJobNotifications: args.openRouterJobNotifications,
     trainingGenerationNotices: args.trainingGenerationNotices,
     trainingGenerationNowMs: args.trainingGenerationNowMs,
+    cancelOpenRouterJob: args.cancelOpenRouterJob,
     adaptiveOpenRouterBusy: args.adaptiveOpenRouterBusy,
     topicOpenRouterBusy: args.topicOpenRouterBusy,
     directGenerationDurationMinutes: args.directGenerationDurationMinutes,

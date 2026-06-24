@@ -70,9 +70,39 @@ describe('useFocusedTrainingRouteRuntime', () => {
     expect(topicButton?.disabled).toBe(false);
     expect(topicButton?.label).toBe('Generate Topic Session (1/3)');
   });
+
+  it('exposes separate cancelable log rows for each active direct generation job', async () => {
+    const { args, runtime } = await renderFocusedTrainingRouteRuntime({
+      activeOpenRouterJobs: [
+        createActiveTrainingJob('adaptive-1', 'Adaptive direct session', '2026-06-20T12:00:00.000Z'),
+        createActiveTrainingJob('adaptive-2', 'Adaptive direct session', '2026-06-20T12:01:00.000Z'),
+      ],
+      trainingGenerationNowMs: Date.parse('2026-06-20T12:02:00.000Z'),
+    });
+
+    const adaptiveButton = runtime.focusedTrainingProps.generationButtons.find((button) => button.id === 'adaptive');
+
+    expect(adaptiveButton?.statusItems).toHaveLength(2);
+    expect(adaptiveButton?.statusItems?.map((item) => item.message)).toEqual([
+      'Adaptive session is being created... elapsed 60.00s.',
+      'Adaptive session is being created... elapsed 120.00s.',
+    ]);
+
+    act(() => {
+      adaptiveButton?.statusItems?.[0]?.onCancel?.();
+      adaptiveButton?.statusItems?.[1]?.onCancel?.();
+    });
+
+    expect(args.cancelOpenRouterJob).toHaveBeenNthCalledWith(1, 'adaptive-2');
+    expect(args.cancelOpenRouterJob).toHaveBeenNthCalledWith(2, 'adaptive-1');
+  });
 });
 
-function createActiveTrainingJob(jobId: string, slotLabel: string): ActiveOpenRouterJob {
+function createActiveTrainingJob(
+  jobId: string,
+  slotLabel: string,
+  startedAt = '2026-06-20T12:00:00.000Z',
+): ActiveOpenRouterJob {
   return {
     jobId,
     model: 'test-model',
@@ -80,6 +110,6 @@ function createActiveTrainingJob(jobId: string, slotLabel: string): ActiveOpenRo
     inputMode: BROWSER_TTS_SESSION_INPUT_MODE,
     language: 'de',
     durationMinutes: 2,
-    startedAt: '2026-06-20T12:00:00.000Z',
+    startedAt,
   };
 }

@@ -1,3 +1,13 @@
+export type TrainingGenerationStatusItem = {
+  id: string;
+  message: string;
+  tone: 'hint' | 'success' | 'error';
+  onCancel?: () => void;
+  cancelLabel?: string;
+  cancelTitle?: string;
+  cancelDisabled?: boolean;
+};
+
 export type TrainingGenerationButton = {
   id: string;
   label: string;
@@ -8,6 +18,7 @@ export type TrainingGenerationButton = {
   helpText?: string;
   statusMessage?: string;
   statusTone?: 'hint' | 'success' | 'error';
+  statusItems?: TrainingGenerationStatusItem[];
 };
 
 export type TrainingGenerationButtonDisplay = TrainingGenerationButton & {

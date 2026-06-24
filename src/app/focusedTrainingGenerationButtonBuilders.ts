@@ -1,4 +1,4 @@
-import { buildTrainingGenerationButtonNotice } from '../components/openrouter/openRouterViewHelpers';
+import { buildTrainingGenerationButtonNoticeList } from '../components/openrouter/openRouterViewHelpers';
 import type { TrainingGenerationButton } from '../components/training/TrainingGenerationCard';
 import {
   OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
@@ -34,6 +34,7 @@ type DirectGenerationButtonContext = Pick<
   | 'openRouterJobNotifications'
   | 'trainingGenerationNotices'
   | 'trainingGenerationNowMs'
+  | 'cancelOpenRouterJob'
   | 'directGenerationDurationMinutes'
 > & { modelIsSet: boolean };
 
@@ -92,7 +93,7 @@ function buildDirectGenerationButton(
 ): TrainingGenerationButton {
   const activeJobCount = countActiveOpenRouterJobsForSlot(context.activeOpenRouterJobs, config.preset.slotLabel);
   const atActiveJobLimit = activeJobCount >= MAX_ACTIVE_OPEN_ROUTER_JOBS_PER_BUTTON;
-  const notice = buildTrainingGenerationButtonNotice({
+  const noticeItems = buildTrainingGenerationButtonNoticeList({
     slotLabel: config.preset.slotLabel,
     displayLabel: config.preset.displayLabel,
     notices: context.trainingGenerationNotices,
@@ -114,8 +115,21 @@ function buildDirectGenerationButton(
     }),
     durationMinutes: context.directGenerationDurationMinutes,
     helpText: config.helpText,
-    statusMessage: notice?.message,
-    statusTone: notice?.tone,
+    statusItems: noticeItems.map((item) => {
+      const cancelJobId = item.status === 'running' ? item.jobId : undefined;
+      return {
+        id: item.id,
+        message: item.message,
+        tone: item.tone,
+        ...(cancelJobId
+          ? {
+              onCancel: () => void context.cancelOpenRouterJob(cancelJobId),
+              cancelLabel: 'Cancel',
+              cancelTitle: `Cancel ${config.preset.displayLabel}`,
+            }
+          : {}),
+      };
+    }),
   };
 }
 

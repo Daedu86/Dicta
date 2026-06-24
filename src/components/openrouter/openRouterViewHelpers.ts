@@ -3,10 +3,12 @@ export const OPENROUTER_GENERATED_SCRIPT_KEY = 'dicta.openrouterGeneratedScript.
 export const OPENROUTER_GENERATED_VARIANTS_KEY = 'dicta.openrouterGeneratedVariants.v1';
 export {
   buildTrainingGenerationButtonNotice,
+  buildTrainingGenerationButtonNoticeList,
   formatInterruptedOpenRouterMessage,
   formatTrainingGenerationNotice,
   formatTrainingGenerationNoticeMessage,
 } from './openRouterTrainingGenerationNotices';
+export type { TrainingGenerationNoticeListItem } from './openRouterTrainingGenerationNotices';
 export { shouldCreatePersistentGenerationErrorSession } from './openRouterJobResults';
 export { buildOpenRouterModelOptions } from './openRouterModelOptions';
 export { stripJsonFence, validateGeneratedScriptForTarget } from './openRouterScriptValidation';

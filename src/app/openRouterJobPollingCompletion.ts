@@ -1,5 +1,6 @@
 import {
   extractOpenRouterJobText,
+  isOpenRouterJobCanceledError,
   type ActiveOpenRouterJob,
   type OpenRouterJobResponse,
 } from '../core/openRouterJobs';
@@ -45,6 +46,22 @@ export function handleOpenRouterTerminalJob({
   const completedAt = getOpenRouterJobCompletedAt(job);
 
   if (job.status === 'failed') {
+    if (isOpenRouterJobCanceledError(job.error)) {
+      setTrainingGenerationNotices((current) => ({
+        ...current,
+        [trackedJob.jobId]: {
+          jobId: trackedJob.jobId,
+          slotLabel: trackedJob.slotLabel,
+          displayLabel: formatOpenRouterGenerationDisplayLabel(trackedJob.slotLabel),
+          model: trackedJob.model,
+          startedAt: trackedJob.startedAt,
+          status: 'canceled',
+          completedAt,
+          error: job.error,
+        },
+      }));
+      return;
+    }
     failTrackedJob(trackedJob, job.error || 'OpenRouter job failed.', completedAt);
     return;
   }
@@ -67,7 +84,8 @@ export function handleOpenRouterTerminalJob({
     callbacksRef.current.onGeneratedScript(validation.script, trackedJob);
     setTrainingGenerationNotices((current) => ({
       ...current,
-      [trackedJob.slotLabel]: {
+      [trackedJob.jobId]: {
+        jobId: trackedJob.jobId,
         slotLabel: trackedJob.slotLabel,
         displayLabel: formatOpenRouterGenerationDisplayLabel(trackedJob.slotLabel),
         model: trackedJob.model,

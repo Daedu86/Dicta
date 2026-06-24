@@ -4,6 +4,7 @@ const JOB_TABLE = 'dicta_openrouter_jobs';
 const VALID_STATUSES = new Set(['queued', 'running', 'succeeded', 'failed']);
 const JOB_RETENTION_DAYS = 14;
 const OPENROUTER_JOB_COLUMNS = 'job_id,status,request,result,error,created_at,updated_at,completed_at';
+export const OPENROUTER_JOB_CANCELED_MESSAGE = 'Canceled by user.';
 
 export function normalizeOpenRouterJobRow(row) {
   return {
@@ -59,11 +60,16 @@ export async function insertQueuedOpenRouterJob(supabase, { profileId, jobId, re
 }
 
 export async function markOpenRouterJobRunning(supabase, { profileId, jobId, now }) {
-  await supabase
+  const { data, error } = await supabase
     .from(JOB_TABLE)
     .update({ status: 'running', updated_at: now, error: null })
     .eq('profile_id', profileId)
-    .eq('job_id', jobId);
+    .eq('job_id', jobId)
+    .eq('status', 'queued')
+    .select(OPENROUTER_JOB_COLUMNS)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
 export async function markOpenRouterJobSucceeded(supabase, { profileId, jobId, result, completedAt }) {
@@ -77,7 +83,8 @@ export async function markOpenRouterJobSucceeded(supabase, { profileId, jobId, r
       completed_at: completedAt,
     })
     .eq('profile_id', profileId)
-    .eq('job_id', jobId);
+    .eq('job_id', jobId)
+    .in('status', ['queued', 'running']);
 }
 
 export async function markOpenRouterJobFailed(supabase, { profileId, jobId, error, completedAt }) {
@@ -91,7 +98,25 @@ export async function markOpenRouterJobFailed(supabase, { profileId, jobId, erro
       completed_at: completedAt,
     })
     .eq('profile_id', profileId)
-    .eq('job_id', jobId);
+    .eq('job_id', jobId)
+    .in('status', ['queued', 'running']);
+}
+
+export async function markOpenRouterJobCanceled(supabase, { profileId, jobId, completedAt }) {
+  return supabase
+    .from(JOB_TABLE)
+    .update({
+      status: 'failed',
+      result: null,
+      error: OPENROUTER_JOB_CANCELED_MESSAGE,
+      updated_at: completedAt,
+      completed_at: completedAt,
+    })
+    .eq('profile_id', profileId)
+    .eq('job_id', jobId)
+    .in('status', ['queued', 'running'])
+    .select(OPENROUTER_JOB_COLUMNS)
+    .maybeSingle();
 }
 
 export async function readOpenRouterJobRow(supabase, { profileId, jobId }) {

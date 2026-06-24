@@ -130,9 +130,75 @@ describe('useOpenRouterJobsRuntime', () => {
     expect(errors).toEqual([]);
     expect(loadActiveOpenRouterJobs()).toEqual([]);
     expect(runtime?.activeOpenRouterJobs).toEqual([]);
-    expect(runtime?.trainingGenerationNotices['Easy direct session']).toMatchObject({
+    expect(runtime?.trainingGenerationNotices['job-1']).toMatchObject({
+      jobId: 'job-1',
       status: 'succeeded',
       completedAt: '2026-06-04T13:00:00.000Z',
     });
+  });
+
+  it('cancels an active job, clears active storage, and records a canceled notice', async () => {
+    const errors: string[] = [];
+    let runtime: RuntimeSnapshot | null = null;
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        jobId: 'job-cancel',
+        status: 'failed',
+        error: 'Canceled by user.',
+        completedAt: '2026-06-04T13:01:00.000Z',
+      }),
+      text: async () => '',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    function Harness() {
+      runtime = useOpenRouterJobsRuntime({
+        localStorageReady: false,
+        openRouterAccessAllowed: true,
+        getAuthHeaders: () => ({ Authorization: 'Bearer test-token' }),
+        onOpenRouterError: (message) => errors.push(message),
+        onCreateGenerationErrorSession: vi.fn(),
+        onGeneratedScript: vi.fn(),
+      });
+      return null;
+    }
+
+    await act(async () => {
+      root.render(createElement(Harness));
+    });
+
+    const activeJob: ActiveOpenRouterJob = {
+      jobId: 'job-cancel',
+      model: 'openrouter/free',
+      slotLabel: 'Adaptive direct session',
+      inputMode: 'browser-tts',
+      language: 'de',
+      durationMinutes: 6,
+      origin: 'direct-training',
+      startedAt: '2026-06-04T13:00:00.000Z',
+    };
+
+    await act(async () => {
+      runtime?.trackOpenRouterJob(activeJob);
+    });
+
+    await act(async () => {
+      await runtime?.cancelOpenRouterJob('job-cancel');
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/openrouter/jobs?id=job-cancel', {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+    expect(loadActiveOpenRouterJobs()).toEqual([]);
+    expect(runtime?.openRouterJobNotifications['job-cancel']).toMatchObject({ status: 'canceled' });
+    expect(runtime?.trainingGenerationNotices['job-cancel']).toMatchObject({
+      jobId: 'job-cancel',
+      status: 'canceled',
+      completedAt: '2026-06-04T13:01:00.000Z',
+    });
+    expect(errors).toEqual([]);
   });
 });

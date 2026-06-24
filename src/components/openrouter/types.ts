@@ -9,7 +9,7 @@ export type OpenRouterJobNotification = {
   slotLabel: string;
   model: string;
   startedAt: string;
-  status: 'running' | 'succeeded' | 'failed';
+  status: 'running' | 'succeeded' | 'failed' | 'canceled';
   completedAt?: string;
   error?: string;
 };
@@ -17,11 +17,12 @@ export type OpenRouterJobNotification = {
 export type OpenRouterModelSummary = { id: string; name?: string; context_length?: number };
 
 export type TrainingGenerationNotice = {
+  jobId?: string;
   slotLabel: string;
   displayLabel: string;
   model: string;
   startedAt: string;
-  status: 'running' | 'succeeded' | 'failed';
+  status: 'running' | 'succeeded' | 'failed' | 'canceled';
   completedAt?: string;
   error?: string;
 };
