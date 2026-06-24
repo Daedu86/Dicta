@@ -117,9 +117,9 @@ describe('Browser TTS utterance configuration contract', () => {
       'ttsChunkWordCountRef.current = chunk.wordCount;',
       'ttsCompletedSourceWordsRef.current = chunk.startWordIndex;',
       'recordTtsChunkTelemetry({',
-      'recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {',
       'setAdaptiveSemanticDebug((current) =>',
     ]);
+    expect(playbackLoopChunkCommitSource).not.toContain('recordAdaptiveBenchmark(');
   });
 
   it('keeps unexpected SpeechSynthesis errors paused, detached from the active utterance, and user-visible', () => {

@@ -23,11 +23,13 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   macroWordsLength: number;
   chunk: BrowserTtsPlaybackPlan['chunk'];
   effectivePauseNow: BrowserTtsPlaybackPlan['effectivePauseNow'];
+  effectiveReplay: BrowserTtsPlaybackPlan['effectiveReplay'];
   pauseBeforeNextChunkMs: BrowserTtsPlaybackPlan['pauseBeforeNextChunkMs'];
   runtimeDecision: BrowserTtsPlaybackPlan['runtimeDecision'];
   ttsCompletedSourceWordsRef: BrowserTtsPlaybackLoopOptions['ttsCompletedSourceWordsRef'];
   ttsPracticeLiveTextRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLiveTextRef'];
   ttsTranscript: BrowserTtsPlaybackLoopOptions['ttsTranscript'];
+  browserTtsSafePauseGateSettings: BrowserTtsPlaybackLoopOptions['browserTtsSafePauseGateSettings'];
   recordPhrasePlaybackEvent: BrowserTtsPlaybackLoopOptions['recordPhrasePlaybackEvent'];
   ttsLanguage: BrowserTtsPlaybackLoopOptions['ttsLanguage'];
   semanticPhrase: ReturnType<BrowserTtsPlaybackLoopOptions['buildSemanticPhrasesForCurrentSession']>[number];
@@ -56,11 +58,13 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   macroWordsLength,
   chunk,
   effectivePauseNow,
+  effectiveReplay,
   pauseBeforeNextChunkMs,
   runtimeDecision,
   ttsCompletedSourceWordsRef,
   ttsPracticeLiveTextRef,
   ttsTranscript,
+  browserTtsSafePauseGateSettings,
   recordPhrasePlaybackEvent,
   ttsLanguage,
   semanticPhrase,
@@ -96,29 +100,6 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
 
   if (completesMacroPhrase) {
     recordPhrasePlaybackEvent('phrase_completed', 'browser-tts', ttsLanguage, semanticPhrase, macroPhraseIndex);
-
-    if (normalizeBenchmarkLanguage(ttsLanguage) === 'de') {
-      applyTtsPerformanceSample();
-      const completionLiveSignal = ttsLiveSignalRef.current;
-      const completionTelemetry = buildBrowserTtsPhraseCompletionTelemetry({
-        chunkTelemetry,
-        semanticPhraseId: semanticPhrase?.id,
-        macroPhraseIndex,
-        liveSignal: completionLiveSignal,
-        unsafeChunkCount: ttsUnsafeChunkCountRef.current,
-      });
-
-      recordAdaptiveBenchmark(completionTelemetry, runtimeDecision, {
-        actualPlaybackRate: rate,
-        actualPauseMs: chunkCompletion.pauseBeforeNextChunkMs,
-        replayExecuted: false,
-        actualBoundaryType: chunk.phraseBoundaryType,
-        ttsEnvironment: browserTtsEnvironment,
-        event: 'phrase_completed',
-        phraseIndex: macroPhraseIndex,
-        totalSemanticPhrases: semanticPhrases.length,
-      });
-    }
   }
 
   const nextCursor = {
@@ -148,6 +129,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
     shouldPauseBeforeNextChunk: chunkCompletion.shouldPauseBeforeNextChunk,
     pauseBeforeNextChunkMs: chunkCompletion.pauseBeforeNextChunkMs,
     scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+    safePauseGateSettings: browserTtsSafePauseGateSettings,
     completionGate: chunkCompletion.shouldPauseBeforeNextChunk && chunk.canPauseAfter && ttsTranscript
       ? {
           isComplete: () =>
@@ -158,6 +140,54 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
             }),
         }
       : undefined,
+    onResolved: (actualWaitMs, pauseGateResolutionReason) => {
+      recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
+        actualPlaybackRate: rate,
+        actualPauseMs: actualWaitMs,
+        pauseGateResolutionReason,
+        replayExecuted: effectiveReplay,
+        actualBoundaryType: chunk.phraseBoundaryType,
+        ttsEnvironment: browserTtsEnvironment,
+        event: resolveBrowserTtsBenchmarkEvent({ effectiveReplay, effectivePauseNow, runtimeDecision }),
+        phraseIndex: macroPhraseIndex,
+        totalSemanticPhrases: semanticPhrases.length,
+      });
+
+      if (completesMacroPhrase && normalizeBenchmarkLanguage(ttsLanguage) === 'de') {
+        applyTtsPerformanceSample();
+        const completionLiveSignal = ttsLiveSignalRef.current;
+        const completionTelemetry = buildBrowserTtsPhraseCompletionTelemetry({
+          chunkTelemetry,
+          semanticPhraseId: semanticPhrase?.id,
+          macroPhraseIndex,
+          liveSignal: completionLiveSignal,
+          unsafeChunkCount: ttsUnsafeChunkCountRef.current,
+        });
+
+        recordAdaptiveBenchmark(completionTelemetry, runtimeDecision, {
+          actualPlaybackRate: rate,
+          actualPauseMs: actualWaitMs,
+          pauseGateResolutionReason,
+          replayExecuted: false,
+          actualBoundaryType: chunk.phraseBoundaryType,
+          ttsEnvironment: browserTtsEnvironment,
+          event: 'phrase_completed',
+          phraseIndex: macroPhraseIndex,
+          totalSemanticPhrases: semanticPhrases.length,
+        });
+      }
+    },
     speakNext,
   });
+}
+
+function resolveBrowserTtsBenchmarkEvent({
+  effectiveReplay,
+  effectivePauseNow,
+  runtimeDecision,
+}: Pick<BrowserTtsPlaybackPlan, 'effectiveReplay' | 'effectivePauseNow' | 'runtimeDecision'>): 'replay' | 'pause' | 'defer_pause' | 'phrase_advance' {
+  if (effectiveReplay) return 'replay';
+  if (effectivePauseNow) return 'pause';
+  if (runtimeDecision.deferPauseUntilSafeBoundary) return 'defer_pause';
+  return 'phrase_advance';
 }

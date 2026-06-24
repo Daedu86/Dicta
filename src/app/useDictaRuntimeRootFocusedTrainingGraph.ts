@@ -23,6 +23,7 @@ export function useDictaRuntimeRootFocusedTrainingGraph({
     browserTts,
     refs,
     accessRuntime,
+    uiPreferences,
     adaptiveWorkspaceState,
   } = environment;
   const {
@@ -55,6 +56,7 @@ export function useDictaRuntimeRootFocusedTrainingGraph({
     supabaseSyncStatus,
     sessionQuotaStatus,
   } = persistenceRuntime;
+  const { browserTtsSafePauseGateSettings } = uiPreferences;
 
   return useDictaRootFocusedTrainingRuntime({
     ttsSessionRuntime,
@@ -70,6 +72,7 @@ export function useDictaRuntimeRootFocusedTrainingGraph({
     recordPhrasePlaybackEvent,
     recordAdaptiveBenchmark,
     setAdaptiveSemanticDebug: adaptiveWorkspaceState.setAdaptiveSemanticDebug,
+    browserTtsSafePauseGateSettings,
     completeAdaptiveSessionFeedback,
     adaptiveSemanticDebug: adaptiveWorkspaceState.adaptiveSemanticDebug,
     persistAndPushSessionsNow,

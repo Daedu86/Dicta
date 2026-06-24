@@ -1,5 +1,11 @@
 import type { InputMode } from './inputModes';
-import type { LanguageCode, ListeningPrecisionMetrics, PhraseBoundaryType, PhraseSize } from './types';
+import type {
+  InputExecutionPauseGateResolutionReason,
+  LanguageCode,
+  ListeningPrecisionMetrics,
+  PhraseBoundaryType,
+  PhraseSize,
+} from './types';
 
 export type LagReliability = 'raw' | 'stable' | 'fallback' | 'invalid';
 
@@ -75,6 +81,7 @@ export type NormalizedRuntimeTelemetry = {
   actualPlaybackRate?: number;
   requestedPauseMs?: number;
   actualPauseMs?: number;
+  pauseGateResolutionReason?: InputExecutionPauseGateResolutionReason;
   currentPlaybackRate: number;
   currentPauseAfterPhraseMs: number;
   pauseDeferred: boolean;

@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { OpenRouterAccessState } from '../../core/appProfiles';
+import {
+  DEFAULT_BROWSER_TTS_SAFE_PAUSE_GATE_SETTINGS,
+  type BrowserTtsSafePauseGateSettings,
+} from '../../app/browserTtsNextChunkScheduler';
 import type { OpenRouterWorkspaceProps } from '../openrouter/types';
 import {
   AdaptiveFlowDirectGenerationCard,
@@ -65,6 +69,8 @@ export type AdaptivePaceLayerFlowWorkspaceProps = {
   openRouterAccessState: OpenRouterAccessState;
   openRouterAccessMessage: string;
   openRouterWorkspaceProps: OpenRouterWorkspaceProps;
+  safePauseGateSettings: BrowserTtsSafePauseGateSettings;
+  onSaveSafePauseGateSettings: (settings: BrowserTtsSafePauseGateSettings) => void;
 };
 
 const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
@@ -171,20 +177,22 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
     kpis: [
       { label: 'Lag', value: 'stable lag sec' },
       { label: 'Replay', value: 'replay count' },
-      { label: 'Pause', value: 'shortfall ms' },
+      { label: 'Pause', value: 'actual ms + gate reason' },
     ],
     metrics: [
       { label: 'Stable lag', value: 'seconds', detail: 'Uses smoothed lag to decide learner pressure during phrase playback.' },
       { label: 'Replay pressure', value: 'count + denial reason', detail: 'Counts replay attempts and whether the current boundary can safely replay.' },
-      { label: 'Pause shortfall', value: 'requested vs actual', detail: 'Compares intended pause support with the pause the runtime could deliver.' },
+      { label: 'Safe pause gate', value: 'min rest + max fallback', detail: 'Resolves safe-boundary waits after Browser TTS finishes each chunk.' },
+      { label: 'Pause evidence', value: 'requested vs actual', detail: 'Keeps planner target separate from the wait the runtime actually delivered.' },
     ],
     repositoryOwners: [
       { label: 'loop orchestration', path: 'src/app/useBrowserTtsPlaybackLoop.ts' },
+      { label: 'next chunk scheduler', path: 'src/app/browserTtsNextChunkScheduler.ts' },
       { label: 'progress estimator', path: 'src/app/useTtsPlaybackProgressEstimator.ts' },
       { label: 'decision trace', path: 'src/app/browserTtsPlaybackDecisionTrace.ts' },
       { label: 'control surface', path: 'src/app/useTtsPlaybackControls.ts' },
     ],
-    signals: ['stable lag sec', 'replay count', 'pause shortfall', 'phrase progress'],
+    signals: ['stable lag sec', 'replay count', 'actual pause ms', 'gate reason', 'phrase progress'],
   },
   {
     id: 'scoring',
@@ -376,6 +384,8 @@ export function AdaptivePaceLayerFlowWorkspace({
   openRouterAccessState,
   openRouterAccessMessage,
   openRouterWorkspaceProps,
+  safePauseGateSettings,
+  onSaveSafePauseGateSettings,
 }: AdaptivePaceLayerFlowWorkspaceProps) {
   const [selectedLanguageCode, setSelectedLanguageCode] = useState<AdaptiveFlowLanguageCode>(() =>
     normalizeAdaptiveFlowLanguageCode(openRouterWorkspaceProps.defaultGenerateLanguage),
@@ -418,6 +428,8 @@ export function AdaptivePaceLayerFlowWorkspace({
         openRouterAccessState={openRouterAccessState}
         openRouterAccessMessage={openRouterAccessMessage}
         openRouterWorkspaceProps={openRouterWorkspaceProps}
+        safePauseGateSettings={safePauseGateSettings}
+        onSaveSafePauseGateSettings={onSaveSafePauseGateSettings}
         onBack={backToFlowIndex}
         onSelectLanguage={setSelectedLanguageCode}
       />
@@ -618,6 +630,8 @@ function AdaptiveFlowPhasePage({
   openRouterAccessState,
   openRouterAccessMessage,
   openRouterWorkspaceProps,
+  safePauseGateSettings,
+  onSaveSafePauseGateSettings,
   onBack,
   onSelectLanguage,
 }: {
@@ -627,6 +641,8 @@ function AdaptiveFlowPhasePage({
   openRouterAccessState: OpenRouterAccessState;
   openRouterAccessMessage: string;
   openRouterWorkspaceProps: OpenRouterWorkspaceProps;
+  safePauseGateSettings: BrowserTtsSafePauseGateSettings;
+  onSaveSafePauseGateSettings: (settings: BrowserTtsSafePauseGateSettings) => void;
   onBack: () => void;
   onSelectLanguage: (languageCode: AdaptiveFlowLanguageCode) => void;
 }) {
@@ -729,6 +745,13 @@ function AdaptiveFlowPhasePage({
           />
         ) : null}
 
+        {selectedPhase.id === 'playback-loop' ? (
+          <AdaptiveFlowSafePauseGateCard
+            settings={safePauseGateSettings}
+            onSave={onSaveSafePauseGateSettings}
+          />
+        ) : null}
+
         <section className="adaptive-flow-cycle-workspace-section" aria-label={`${selectedPhase.title} related files`}>
           <p className="dashboard-eyebrow">Related files</p>
           <div className="adaptive-flow-repo-list adaptive-flow-repo-list-wide">
@@ -749,6 +772,139 @@ function AdaptiveFlowPhasePage({
       </section>
     </section>
   );
+}
+
+function AdaptiveFlowSafePauseGateCard({
+  settings,
+  onSave,
+}: {
+  settings: BrowserTtsSafePauseGateSettings;
+  onSave: (settings: BrowserTtsSafePauseGateSettings) => void;
+}) {
+  const [draft, setDraft] = useState<BrowserTtsSafePauseGateSettings>(settings);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setDraft(settings);
+  }, [settings]);
+
+  const updateDraftValue = (key: keyof BrowserTtsSafePauseGateSettings, value: string): void => {
+    const nextValue = Number(value);
+    setDraft((current) => ({
+      ...current,
+      [key]: Number.isFinite(nextValue) ? nextValue : current[key],
+    }));
+    setSaved(false);
+  };
+
+  const saveSettings = (): void => {
+    onSave(normalizeSafePauseGateSettingsDraft(draft));
+    setSaved(true);
+  };
+
+  return (
+    <section
+      className="adaptive-flow-cycle-workspace-section adaptive-flow-safe-pause-gate-card"
+      aria-label="Safe chunk pause gate settings"
+    >
+      <div className="adaptive-flow-safe-pause-gate-header">
+        <div>
+          <p className="dashboard-eyebrow">Runtime safe pause</p>
+          <h3>Safe chunk pause gate</h3>
+          <p className="hint">
+            Applies only after a safe chunk boundary; unsafe semantic cuts still advance without artificial rest.
+          </p>
+        </div>
+        <span>browser-tts runtime</span>
+      </div>
+
+      <dl className="adaptive-flow-safe-pause-gate-summary" aria-label="Safe pause gate concepts">
+        <div>
+          <dt>Minimum mental rest</dt>
+          <dd>{settings.minimumMentalRestMs} ms</dd>
+        </div>
+        <div>
+          <dt>Completion gate</dt>
+          <dd>typed chunk coverage</dd>
+        </div>
+        <div>
+          <dt>Max fallback</dt>
+          <dd>{settings.completionGateMaxWaitMs} ms</dd>
+        </div>
+      </dl>
+
+      <div className="adaptive-flow-safe-pause-gate-form">
+        <label htmlFor="adaptive-flow-minimum-mental-rest-ms">
+          <span>Minimum mental rest</span>
+          <input
+            id="adaptive-flow-minimum-mental-rest-ms"
+            type="number"
+            min={0}
+            max={10000}
+            step={100}
+            value={draft.minimumMentalRestMs}
+            onChange={(event) => updateDraftValue('minimumMentalRestMs', event.target.value)}
+          />
+        </label>
+        <label htmlFor="adaptive-flow-completion-gate-max-wait-ms">
+          <span>Max fallback</span>
+          <input
+            id="adaptive-flow-completion-gate-max-wait-ms"
+            type="number"
+            min={1}
+            max={10000}
+            step={100}
+            value={draft.completionGateMaxWaitMs}
+            onChange={(event) => updateDraftValue('completionGateMaxWaitMs', event.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          className="primary-button adaptive-flow-safe-pause-gate-save-button"
+          onClick={saveSettings}
+        >
+          Save
+        </button>
+      </div>
+      <p className="hint adaptive-flow-safe-pause-gate-status" aria-live="polite">
+        {saved ? 'Saved locally for Browser TTS playback.' : 'Save updates the next safe pause resolution.'}
+      </p>
+    </section>
+  );
+}
+
+function normalizeSafePauseGateSettingsDraft(
+  draft: BrowserTtsSafePauseGateSettings,
+): BrowserTtsSafePauseGateSettings {
+  const completionGateMaxWaitMs = normalizeDelayMs(
+    draft.completionGateMaxWaitMs,
+    DEFAULT_BROWSER_TTS_SAFE_PAUSE_GATE_SETTINGS.completionGateMaxWaitMs,
+  );
+  const minimumMentalRestMs = Math.min(
+    completionGateMaxWaitMs,
+    normalizeDelayMs(
+      draft.minimumMentalRestMs,
+      DEFAULT_BROWSER_TTS_SAFE_PAUSE_GATE_SETTINGS.minimumMentalRestMs,
+      { allowZero: true },
+    ),
+  );
+
+  return {
+    minimumMentalRestMs,
+    completionGateMaxWaitMs,
+  };
+}
+
+function normalizeDelayMs(
+  value: unknown,
+  fallback: number,
+  options: { allowZero?: boolean } = {},
+): number {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  const rounded = Math.round(numeric);
+  if (!Number.isFinite(rounded)) return fallback;
+  if (rounded > 0) return rounded;
+  return options.allowZero && rounded === 0 ? 0 : fallback;
 }
 
 function AdaptiveFlowGenerationLiveCard({

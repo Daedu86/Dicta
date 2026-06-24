@@ -8,12 +8,16 @@ import {
   type LeaderboardSectionId,
 } from './leaderboardSections';
 import {
+  loadBrowserTtsSafePauseGateSettings,
   loadInsightsCollapsed,
   loadMetricsRangeView,
+  loadOpenRouterDirectGenerationDurationMinutes,
   loadPersistedDictaLanguageView,
+  persistBrowserTtsSafePauseGateSettings,
   persistDictaLanguageView,
   persistInsightsCollapsed,
   persistMetricsRangeView,
+  persistOpenRouterDirectGenerationDurationMinutes,
 } from './uiPreferenceStorage';
 
 export function useDictaUiPreferences() {
@@ -33,6 +37,13 @@ export function useDictaUiPreferences() {
     () => ({ ...DEFAULT_LEADERBOARD_SECTION_EXPANDED }),
   );
   const [metricsRangeView, setMetricsRangeView] = useState<MetricsRangeView>(() => loadMetricsRangeView());
+  const [browserTtsSafePauseGateSettings, setBrowserTtsSafePauseGateSettings] = useState(() =>
+    loadBrowserTtsSafePauseGateSettings(),
+  );
+  const [openRouterDirectGenerationDurationMinutes, setOpenRouterDirectGenerationDurationMinutes] = useState(() =>
+    loadOpenRouterDirectGenerationDurationMinutes(),
+  );
+
   useEffect(() => {
     persistDictaLanguageView(dictaLanguageView);
   }, [dictaLanguageView]);
@@ -44,6 +55,14 @@ export function useDictaUiPreferences() {
   useEffect(() => {
     persistInsightsCollapsed(insightsCollapsed);
   }, [insightsCollapsed]);
+
+  useEffect(() => {
+    persistBrowserTtsSafePauseGateSettings(browserTtsSafePauseGateSettings);
+  }, [browserTtsSafePauseGateSettings]);
+
+  useEffect(() => {
+    persistOpenRouterDirectGenerationDurationMinutes(openRouterDirectGenerationDurationMinutes);
+  }, [openRouterDirectGenerationDurationMinutes]);
 
   return {
     dictaLanguageView,
@@ -62,5 +81,9 @@ export function useDictaUiPreferences() {
     setLeaderboardSectionExpanded,
     metricsRangeView,
     setMetricsRangeView,
+    browserTtsSafePauseGateSettings,
+    setBrowserTtsSafePauseGateSettings,
+    openRouterDirectGenerationDurationMinutes,
+    setOpenRouterDirectGenerationDurationMinutes,
   };
 }

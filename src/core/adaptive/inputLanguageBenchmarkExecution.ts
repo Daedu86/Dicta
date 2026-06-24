@@ -11,7 +11,9 @@ export function computeExecutionFidelity(execution?: InputExecutionTelemetry): n
     scores.push(clamp01(1 - Math.abs(execution.requestedPlaybackRate - execution.actualPlaybackRate) / 0.25));
   }
   if (execution.requestedPauseMs !== undefined && execution.actualPauseMs !== undefined) {
-    scores.push(clamp01(1 - Math.abs(execution.requestedPauseMs - execution.actualPauseMs) / 1000));
+    scores.push(execution.pauseGateResolutionReason === 'completed'
+      ? 1
+      : clamp01(1 - Math.max(0, execution.requestedPauseMs - execution.actualPauseMs) / 1000));
   }
   if (execution.requestedReplay !== undefined && execution.replayExecuted !== undefined) {
     scores.push(execution.requestedReplay === execution.replayExecuted ? 1 : 0.35);

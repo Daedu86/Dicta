@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { OPEN_ROUTER_DIRECT_GENERATION_DEFAULT_DURATION } from './openRouterDirectGenerationPresets';
 import { useDictaRootOpenRouterRuntime } from './useDictaRootOpenRouterRuntime';
 import type { DictaRuntimeRootAdaptiveWorkspaceGraph } from './useDictaRuntimeRootAdaptiveWorkspaceGraph';
 import type { DictaRuntimeRootEnvironment } from './useDictaRuntimeRootEnvironment';
@@ -16,7 +14,6 @@ export function useDictaRuntimeRootOpenRouterGraph({
   sessionGraph,
   adaptiveWorkspaceGraph,
 }: UseDictaRuntimeRootOpenRouterGraphOptions) {
-  const [directGenerationDurationMinutes, setDirectGenerationDurationMinutes] = useState(OPEN_ROUTER_DIRECT_GENERATION_DEFAULT_DURATION);
   const {
     sessionsState,
     trainingState,
@@ -30,7 +27,11 @@ export function useDictaRuntimeRootOpenRouterGraph({
   const { setError } = trainingState;
   const { showLeaderboardWorkspace, showAdaptiveFlowGenerationWorkspace } = routing;
   const { suppressSidebarAutoSelectRef } = refs;
-  const { setLeaderboardLanguageView } = uiPreferences;
+  const {
+    setLeaderboardLanguageView,
+    openRouterDirectGenerationDurationMinutes: directGenerationDurationMinutes,
+    setOpenRouterDirectGenerationDurationMinutes: setDirectGenerationDurationMinutes,
+  } = uiPreferences;
   const {
     syncConfig,
     getAuthHeaders,

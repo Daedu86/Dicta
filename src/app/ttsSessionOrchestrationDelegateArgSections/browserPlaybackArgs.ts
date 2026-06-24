@@ -19,6 +19,7 @@ export function buildTtsSessionBrowserPlaybackArgs(
     ttsTranscript: args.ttsTranscript,
     browserTtsVoices: args.browserTtsVoices,
     ttsPlaybackProfile: args.ttsPlaybackProfile,
+    browserTtsSafePauseGateSettings: args.browserTtsSafePauseGateSettings,
     perfDiagnostics: args.perfDiagnostics,
     stopTtsPlaybackRef: args.stopTtsPlaybackRef,
     ttsPausedAtWordIndexRef: args.ttsPausedAtWordIndexRef,

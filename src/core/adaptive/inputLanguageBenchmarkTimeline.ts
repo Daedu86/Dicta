@@ -23,6 +23,7 @@ export type InputLanguageBenchmarkTimelinePointArgs = {
   actualPlaybackRate?: number;
   requestedPauseMs?: number;
   actualPauseMs?: number;
+  pauseGateResolutionReason?: AdaptiveTimelinePoint['pauseGateResolutionReason'];
   replayExecuted?: boolean;
   unsafeBoundaryApplied?: boolean;
   mobileFallbackApplied?: boolean;
@@ -61,6 +62,7 @@ export function buildInputLanguageBenchmarkTimelinePoint(args: InputLanguageBenc
     actualPlaybackRate: args.actualPlaybackRate,
     requestedPauseMs: args.requestedPauseMs,
     actualPauseMs: args.actualPauseMs,
+    pauseGateResolutionReason: args.pauseGateResolutionReason,
     replayExecuted: args.replayExecuted,
     unsafeBoundaryApplied: args.unsafeBoundaryApplied,
     mobileFallbackApplied: args.mobileFallbackApplied,

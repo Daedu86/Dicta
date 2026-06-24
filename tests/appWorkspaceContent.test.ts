@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppWorkspaceContent } from '../src/app/AppWorkspaceContent';
 import type { StoredSession } from '../src/app/sessionTypes';
+import { DEFAULT_BROWSER_TTS_SAFE_PAUSE_GATE_SETTINGS } from '../src/app/browserTtsNextChunkScheduler';
 import { createEmptyInputLanguageBenchmark } from '../src/core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../src/core/sessionInputModes';
 import type { AdminWorkspaceProps } from '../src/components/admin/AdminWorkspace';
@@ -217,6 +218,53 @@ describe('AppWorkspaceContent', () => {
     expect(host.textContent).toContain('Berlin appointment vocabulary');
   });
 
+  it('edits safe chunk pause gate settings inside adaptive flow phase 5', () => {
+    const onSaveSafePauseGateSettings = vi.fn();
+    window.history.replaceState(null, '', '/#adaptive-flow/playback-loop');
+
+    act(() => {
+      root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
+        workspaceMode: 'adaptive-flow',
+        safePauseGateSettings: {
+          minimumMentalRestMs: 700,
+          completionGateMaxWaitMs: 4000,
+        },
+        onSaveSafePauseGateSettings,
+      })));
+    });
+
+    expect(host.querySelector('.adaptive-flow-phase-page')).not.toBeNull();
+    expect(host.textContent).toContain('Step 5 workspace');
+    expect(host.textContent).toContain('Safe chunk pause gate');
+    expect(host.textContent).toContain('Minimum mental rest');
+    expect(host.textContent).toContain('Completion gate');
+    expect(host.textContent).toContain('Max fallback');
+
+    const minimumInput = host.querySelector<HTMLInputElement>('#adaptive-flow-minimum-mental-rest-ms');
+    const fallbackInput = host.querySelector<HTMLInputElement>('#adaptive-flow-completion-gate-max-wait-ms');
+    expect(minimumInput?.value).toBe('700');
+    expect(fallbackInput?.value).toBe('4000');
+
+    act(() => {
+      const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      valueSetter?.call(minimumInput, '900');
+      minimumInput!.dispatchEvent(new Event('input', { bubbles: true }));
+      valueSetter?.call(fallbackInput, '3000');
+      fallbackInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const saveButton = host.querySelector<HTMLButtonElement>('.adaptive-flow-safe-pause-gate-save-button');
+    act(() => {
+      saveButton?.click();
+    });
+
+    expect(onSaveSafePauseGateSettings).toHaveBeenCalledWith({
+      minimumMentalRestMs: 900,
+      completionGateMaxWaitMs: 3000,
+    });
+    expect(host.textContent).toContain('Saved locally for Browser TTS playback.');
+  });
+
   it('keeps Generate Training Session and export/copy actions out of the OpenRouter workspace', () => {
     act(() => {
       root.render(createElement(AppWorkspaceContent, buildWorkspaceContentProps({
@@ -276,6 +324,8 @@ function buildWorkspaceContentProps(overrides: Partial<AppWorkspaceContentProps>
     openRouterAccessState: 'denied',
     openRouterAccessMessage: '',
     openRouterWorkspaceProps: {} as never,
+    safePauseGateSettings: DEFAULT_BROWSER_TTS_SAFE_PAUSE_GATE_SETTINGS,
+    onSaveSafePauseGateSettings: vi.fn(),
     canAccessAdminWorkspace: false,
     adminWorkspaceProps: {} as never,
     ...overrides,

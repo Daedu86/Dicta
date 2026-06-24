@@ -55,7 +55,12 @@ export function useDictaRuntimeRootPresentationGraph({
     setOpenRouterDefaultModel,
   } = accessRuntime;
 
-  const { dictaLanguageView, setDictaLanguageView } = uiPreferences;
+  const {
+    dictaLanguageView,
+    setDictaLanguageView,
+    browserTtsSafePauseGateSettings,
+    setBrowserTtsSafePauseGateSettings,
+  } = uiPreferences;
 
   const {
     setAdaptiveBenchmarksByInputLanguage,
@@ -144,6 +149,8 @@ export function useDictaRuntimeRootPresentationGraph({
       openRouterAccessState,
       openRouterAccessMessage,
       openRouterWorkspaceProps: routeCompositionRuntime.openRouterWorkspaceProps,
+      safePauseGateSettings: browserTtsSafePauseGateSettings,
+      onSaveSafePauseGateSettings: setBrowserTtsSafePauseGateSettings,
       canAccessAdminWorkspace: openRouterGraph.allowCustomSessionGeneration,
       adminWorkspaceProps: routeCompositionRuntime.adminWorkspaceProps,
       liveMetricsDockProps: routeCompositionRuntime.liveMetricsDockProps,

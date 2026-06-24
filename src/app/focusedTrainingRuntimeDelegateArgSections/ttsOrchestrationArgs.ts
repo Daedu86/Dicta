@@ -49,6 +49,7 @@ export function buildFocusedTrainingTtsOrchestrationArgs(
     ttsPacingMode: args.ttsPacingMode,
     browserTtsVoices: args.browserTtsVoices,
     ttsPlaybackProfile: args.ttsPlaybackProfile,
+    browserTtsSafePauseGateSettings: args.browserTtsSafePauseGateSettings,
     perfDiagnostics: args.perfDiagnostics,
     stopTtsPlaybackRef: args.stopTtsPlaybackRef,
     ttsPausedAtWordIndexRef: args.ttsPausedAtWordIndexRef,

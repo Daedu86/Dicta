@@ -88,6 +88,7 @@ export function updateInputLanguageBenchmark(args: InputLanguageBenchmarkUpdateA
     actualPlaybackRate: args.execution?.actualPlaybackRate,
     requestedPauseMs: args.execution?.requestedPauseMs,
     actualPauseMs: args.execution?.actualPauseMs,
+    pauseGateResolutionReason: args.execution?.pauseGateResolutionReason,
     replayExecuted: args.execution?.replayExecuted,
     unsafeBoundaryApplied: args.decision.deferPauseUntilSafeBoundary,
     mobileFallbackApplied: args.execution?.fallbackUsed,

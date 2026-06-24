@@ -45,6 +45,8 @@ type AppRouteRendererProps = {
   openRouterAccessState: AppWorkspaceContentProps['openRouterAccessState'];
   openRouterAccessMessage: AppWorkspaceContentProps['openRouterAccessMessage'];
   openRouterWorkspaceProps: AppWorkspaceContentProps['openRouterWorkspaceProps'];
+  safePauseGateSettings: AppWorkspaceContentProps['safePauseGateSettings'];
+  onSaveSafePauseGateSettings: AppWorkspaceContentProps['onSaveSafePauseGateSettings'];
   canAccessAdminWorkspace: AppWorkspaceContentProps['canAccessAdminWorkspace'];
   adminWorkspaceProps: AppWorkspaceContentProps['adminWorkspaceProps'];
   showLeaderboardWorkspace: AppWorkspaceContentProps['onBackToTraining'];
@@ -114,6 +116,8 @@ export function AppRouteRenderer({
   openRouterAccessState,
   openRouterAccessMessage,
   openRouterWorkspaceProps,
+  safePauseGateSettings,
+  onSaveSafePauseGateSettings,
   canAccessAdminWorkspace,
   adminWorkspaceProps,
   showLeaderboardWorkspace,
@@ -196,6 +200,8 @@ export function AppRouteRenderer({
             openRouterAccessState={openRouterAccessState}
             openRouterAccessMessage={openRouterAccessMessage}
             openRouterWorkspaceProps={openRouterWorkspaceProps}
+            safePauseGateSettings={safePauseGateSettings}
+            onSaveSafePauseGateSettings={onSaveSafePauseGateSettings}
             canAccessAdminWorkspace={canAccessAdminWorkspace}
             adminWorkspaceProps={adminWorkspaceProps}
           />

@@ -9,6 +9,7 @@ import type { PerfDiagnostics } from '../core/perfDiagnostics';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 import type { AdaptiveRuntime } from './useAdaptiveRuntime';
 import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlanTypes';
+import type { BrowserTtsSafePauseGateSettings } from './browserTtsNextChunkScheduler';
 import type {
   AdaptiveSemanticDebug,
   SessionStatus,
@@ -38,6 +39,7 @@ export type BrowserTtsPlaybackLoopOptions = {
   ttsTranscript: Transcript | null;
   browserTtsVoices: SpeechSynthesisVoice[];
   ttsPlaybackProfile: TtsPlaybackProfile;
+  browserTtsSafePauseGateSettings: BrowserTtsSafePauseGateSettings;
   perfDiagnostics: PerfDiagnostics;
   stopTtsPlaybackRef: MutableRefObject<() => void>;
   ttsPausedAtWordIndexRef: MutableRefObject<number | null>;
@@ -100,6 +102,7 @@ export type BrowserTtsPlaybackRunContext = {
   ttsTranscript: Transcript | null;
   ttsSpeechRate: number;
   ttsPlaybackProfile: TtsPlaybackProfile;
+  browserTtsSafePauseGateSettings: BrowserTtsSafePauseGateSettings;
   browserTtsVoices: SpeechSynthesisVoice[];
   browserTtsVoice: SpeechSynthesisVoice | null;
   browserTtsEnvironment: ReturnType<BrowserTtsPlaybackLoopOptions['collectBrowserTtsEnvironmentForSession']>;

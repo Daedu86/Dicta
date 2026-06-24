@@ -1,6 +1,6 @@
 # Adaptive Runtime Pacing Versions
 
-_Last updated: 2026-06-23_
+_Last updated: 2026-06-24_
 
 This note records the runtime pacing evolution for Browser TTS dictation.
 
@@ -50,12 +50,12 @@ It learns/derives:
 
 ## V3 current: completion-gated safe pauses
 
-V3 keeps pause pressure as an adaptive signal, but the learner-facing wait is no longer a fixed-duration delay. The runtime first decides whether the current chunk boundary is safe enough to pause. If it is safe and a pause is requested, the next-chunk scheduler waits only until one of these happens:
+V3 keeps pause pressure as an adaptive signal, but the learner-facing wait is no longer a fixed-duration delay. The runtime first decides whether the current chunk boundary is safe enough to pause. If it is safe and a pause is requested, the next-chunk scheduler waits for a default 700 ms minimum mental rest and then only until one of these happens:
 
 - the learner's typed text covers the current chunk with normalized/tolerant matching;
-- the 4000 ms anti-blocking fallback expires.
+- the default 4000 ms anti-blocking fallback expires.
 
-Unsafe or incomplete boundaries do not become wait points. The runtime continues toward a safer clause or sentence boundary instead of making unnatural mid-phrase silence part of the training experience.
+Unsafe or incomplete boundaries do not become wait points. The runtime continues toward a safer clause or sentence boundary instead of making unnatural mid-phrase silence part of the training experience. The default minimum rest and max fallback are local browser preferences editable from Adaptive Pace Layer Flow Step 5 / Playback loop.
 
 Current execution contract:
 
@@ -63,7 +63,10 @@ Current execution contract:
 pause intent: continuous adaptive pressure and V3 prosody buckets
 safe pause: natural semantic/syntactic boundary
 completion gate: typed chunk coverage with tolerant matching
-fallback: 4000ms maximum wait before advancing
+minimum mental rest: default 700ms for safe pauses, editable in Flow Step 5
+fallback: default 4000ms maximum wait before advancing, editable in Flow Step 5
+telemetry: requestedPauseMs is the controller target; actualPauseMs is the resolved gate wait; pauseGateResolutionReason is completed, timeout, or no-gate
+interpretation: completed records the real resolved wait but does not count as adaptive pause shortfall pressure
 ```
 
 ## Product rule
@@ -75,7 +78,7 @@ language profile = safe starting point
 user language history = what tunes the experience
 controller = applies the learned comfort profile live
 runtime pipeline = makes the decision executable
-next-chunk scheduler = applies completion-gated safe pauses
+next-chunk scheduler = applies completion-gated safe pauses using Step 5 local settings
 ```
 
 ## Affected code

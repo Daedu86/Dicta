@@ -271,6 +271,30 @@ describe('continuous adaptive listening brain', () => {
     expect(pressure.boundary).toBeGreaterThan(0);
   });
 
+  it('keeps completed-gate actual pause telemetry from becoming shortfall pressure', () => {
+    const calibration = resolveLanguageAdaptiveCalibration('es');
+    const telemetry = normalizeRuntimeTelemetry({
+      live: live('es', {
+        currentPauseAfterPhraseMs: 1400,
+      }),
+      decision: decision({ pauseAfterPhraseMs: 1400 }),
+      execution: {
+        requestedPauseMs: 1400,
+        actualPauseMs: 700,
+        pauseGateResolutionReason: 'completed',
+      },
+      event: 'pause',
+      phraseIndex: 0,
+      totalSemanticPhrases: 2,
+      calibration,
+    });
+
+    expect(telemetry.actualPauseMs).toBe(700);
+    expect(telemetry.pauseGateResolutionReason).toBe('completed');
+    expect(telemetry.pauseShortfallMs).toBe(0);
+    expect(telemetry.executionConfidence).toBeGreaterThanOrEqual(0.85);
+  });
+
   it('maps pause and rate independently from adaptive pressure', () => {
     const calibration: LanguageAdaptiveCalibration = resolveLanguageAdaptiveCalibration('pt');
     const telemetry = normalizeRuntimeTelemetry({

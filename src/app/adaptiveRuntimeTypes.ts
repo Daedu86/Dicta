@@ -3,6 +3,7 @@ import type { BrowserTtsEnvironmentFingerprint, SessionTelemetry } from '../type
 import type { AdaptiveDictationController } from '../core/adaptive/AdaptiveDictationController';
 import type {
   AdaptiveTimelinePoint,
+  InputExecutionPauseGateResolutionReason,
   HistoricalPerformanceProfile,
   InputLanguageBenchmarkMetrics,
   InputMode,
@@ -57,6 +58,7 @@ export type AdaptiveRuntimeRecordBenchmarkOptions = {
   event?: AdaptiveTimelinePoint['event'];
   phraseIndex?: number;
   totalSemanticPhrases?: number;
+  pauseGateResolutionReason?: InputExecutionPauseGateResolutionReason;
   throttleMs?: number;
 };
 

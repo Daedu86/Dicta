@@ -54,6 +54,7 @@ export interface AdaptiveTimelinePoint {
   actualPlaybackRate?: number;
   requestedPauseMs?: number;
   actualPauseMs?: number;
+  pauseGateResolutionReason?: InputExecutionPauseGateResolutionReason;
   replayExecuted?: boolean;
   unsafeBoundaryApplied?: boolean;
   mobileFallbackApplied?: boolean;
@@ -83,11 +84,14 @@ export interface AdaptiveTimelinePoint {
     | 'flow_entered';
 }
 
+export type InputExecutionPauseGateResolutionReason = 'completed' | 'timeout' | 'no-gate';
+
 export interface InputExecutionTelemetry {
   requestedPlaybackRate?: number;
   actualPlaybackRate?: number;
   requestedPauseMs?: number;
   actualPauseMs?: number;
+  pauseGateResolutionReason?: InputExecutionPauseGateResolutionReason;
   requestedReplay?: boolean;
   replayExecuted?: boolean;
   requestedBoundaryType?: PhraseBoundaryType;

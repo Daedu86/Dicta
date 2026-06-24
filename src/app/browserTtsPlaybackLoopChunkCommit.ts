@@ -1,5 +1,4 @@
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
-import type { BrowserTtsEnvironmentFingerprint } from '../types/dictation';
 import { buildBrowserTtsPhraseStartDebugUpdate } from './browserTtsAdaptiveSemanticDebug';
 import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlan';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
@@ -16,7 +15,6 @@ type BrowserTtsChunkCommitArgs = Pick<
   | 'ttsSemanticPhraseAdvanceCountRef'
   | 'ttsSemanticPhraseReplayCountRef'
   | 'recordTtsChunkTelemetry'
-  | 'recordAdaptiveBenchmark'
   | 'setAdaptiveSemanticDebug'
   | 'setTtsCurrentChunk'
   | 'setTtsPacingMode'
@@ -26,7 +24,6 @@ type BrowserTtsChunkCommitArgs = Pick<
   macroPhraseIndex: number;
   semanticPhrase: SemanticPhrase;
   semanticPhraseCount: number;
-  browserTtsEnvironment: BrowserTtsEnvironmentFingerprint | null;
 };
 
 export function commitBrowserTtsPlaybackLoopChunk({
@@ -34,7 +31,6 @@ export function commitBrowserTtsPlaybackLoopChunk({
   macroPhraseIndex,
   semanticPhrase,
   semanticPhraseCount,
-  browserTtsEnvironment,
   ttsCompletedSourceWordsRef,
   ttsChunkStartMsRef,
   ttsChunkStartWordIndexRef,
@@ -45,7 +41,6 @@ export function commitBrowserTtsPlaybackLoopChunk({
   ttsSemanticPhraseAdvanceCountRef,
   ttsSemanticPhraseReplayCountRef,
   recordTtsChunkTelemetry,
-  recordAdaptiveBenchmark,
   setAdaptiveSemanticDebug,
   setTtsCurrentChunk,
   setTtsPacingMode,
@@ -59,9 +54,7 @@ export function commitBrowserTtsPlaybackLoopChunk({
     semanticCompleteness,
     rate,
     effectivePauseNow,
-    pauseBeforeNextChunkMs,
     effectiveReplay,
-    chunkTelemetry,
   } = playbackPlan;
 
   if (playbackPlan.unsafeBoundaryApplied) {
@@ -80,16 +73,6 @@ export function commitBrowserTtsPlaybackLoopChunk({
     wordCount: chunk.wordCount,
     rate,
     pacingMode,
-  });
-  recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
-    actualPlaybackRate: rate,
-    actualPauseMs: pauseBeforeNextChunkMs,
-    replayExecuted: effectiveReplay,
-    actualBoundaryType: chunk.phraseBoundaryType,
-    ttsEnvironment: browserTtsEnvironment,
-    event: resolveBrowserTtsBenchmarkEvent(playbackPlan),
-    phraseIndex: macroPhraseIndex,
-    totalSemanticPhrases: semanticPhraseCount,
   });
   ttsChunkAccuracyWindowRef.current = playbackPlan.nextAccuracyWindow;
   ttsLastAccuracySnapshotRef.current = {
@@ -114,13 +97,4 @@ export function commitBrowserTtsPlaybackLoopChunk({
       phraseReplayCount: ttsSemanticPhraseReplayCountRef.current,
     }),
   );
-}
-
-function resolveBrowserTtsBenchmarkEvent(
-  playbackPlan: Pick<BrowserTtsPlaybackPlan, 'effectiveReplay' | 'effectivePauseNow' | 'runtimeDecision'>,
-): 'replay' | 'pause' | 'defer_pause' | 'phrase_advance' {
-  if (playbackPlan.effectiveReplay) return 'replay';
-  if (playbackPlan.effectivePauseNow) return 'pause';
-  if (playbackPlan.runtimeDecision.deferPauseUntilSafeBoundary) return 'defer_pause';
-  return 'phrase_advance';
 }

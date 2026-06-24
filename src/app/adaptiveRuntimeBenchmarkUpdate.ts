@@ -41,6 +41,7 @@ export function buildAdaptiveBenchmarkUpdate({
       actualPlaybackRate: options.actualPlaybackRate ?? live.currentPlaybackRate,
       requestedPauseMs: decision.pauseAfterPhraseMs,
       actualPauseMs: options.actualPauseMs,
+      pauseGateResolutionReason: options.pauseGateResolutionReason,
       requestedReplay: decision.shouldReplayPhrase,
       replayExecuted: options.replayExecuted,
       requestedBoundaryType: live.phraseBoundaryType,

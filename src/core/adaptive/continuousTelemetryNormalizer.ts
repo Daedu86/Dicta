@@ -50,9 +50,12 @@ export function normalizeRuntimeTelemetry({
   const actualPlaybackRate = finiteOrUndefined(execution?.actualPlaybackRate ?? live.currentPlaybackRate);
   const requestedPauseMs = finiteOrUndefined(execution?.requestedPauseMs ?? decision?.pauseAfterPhraseMs);
   const actualPauseMs = finiteOrUndefined(execution?.actualPauseMs);
+  const pauseGateResolutionReason = execution?.pauseGateResolutionReason;
   const currentPauseAfterPhraseMs = Math.max(0, finiteOr(live.currentPauseAfterPhraseMs, live.pauseMs));
   const perceptualGapMs = Math.max(0, actualPauseMs ?? currentPauseAfterPhraseMs);
-  const pauseShortfallMs = Math.max(0, (requestedPauseMs ?? 0) - perceptualGapMs);
+  const pauseShortfallMs = pauseGateResolutionReason === 'completed'
+    ? 0
+    : Math.max(0, (requestedPauseMs ?? 0) - perceptualGapMs);
   const spokenProgressRatio = finiteOr(live.spokenProgressRatio, 0);
   const typedProgressRatio = finiteOr(live.typedProgressRatio, 0);
   const progressGap = spokenProgressRatio > 0 && typedProgressRatio > 0
@@ -97,6 +100,7 @@ export function normalizeRuntimeTelemetry({
     actualPlaybackRate,
     requestedPauseMs,
     actualPauseMs,
+    pauseGateResolutionReason,
     currentPlaybackRate: Math.max(0, finiteOr(live.currentPlaybackRate, requestedPlaybackRate ?? history?.comfortablePlaybackRate ?? 1)),
     currentPauseAfterPhraseMs,
     pauseDeferred,
@@ -112,6 +116,7 @@ export function normalizeRuntimeTelemetry({
       actualPlaybackRate,
       requestedPauseMs,
       actualPauseMs,
+      pauseGateResolutionReason,
       pauseDeferred,
     }),
   };
@@ -174,12 +179,14 @@ function computeExecutionConfidence({
   actualPlaybackRate,
   requestedPauseMs,
   actualPauseMs,
+  pauseGateResolutionReason,
   pauseDeferred,
 }: {
   requestedPlaybackRate?: number;
   actualPlaybackRate?: number;
   requestedPauseMs?: number;
   actualPauseMs?: number;
+  pauseGateResolutionReason?: InputExecutionTelemetry['pauseGateResolutionReason'];
   pauseDeferred: boolean;
 }): number {
   const scores: number[] = [];
@@ -187,7 +194,9 @@ function computeExecutionConfidence({
     scores.push(clamp01(1 - Math.abs(requestedPlaybackRate - actualPlaybackRate) / 0.35));
   }
   if (requestedPauseMs !== undefined && actualPauseMs !== undefined) {
-    scores.push(clamp01(1 - Math.max(0, requestedPauseMs - actualPauseMs) / 1500));
+    scores.push(pauseGateResolutionReason === 'completed'
+      ? 1
+      : clamp01(1 - Math.max(0, requestedPauseMs - actualPauseMs) / 1500));
   }
   if (pauseDeferred) scores.push(0.45);
   return scores.length > 0 ? scores.reduce((sum, value) => sum + value, 0) / scores.length : 0.78;

@@ -24,6 +24,8 @@ type AppWorkspaceContentProps = {
   openRouterAccessState: OpenRouterAccessState;
   openRouterAccessMessage: string;
   openRouterWorkspaceProps: ComponentProps<typeof OpenRouterWorkspace>;
+  safePauseGateSettings: ComponentProps<typeof AdaptivePaceLayerFlowWorkspace>['safePauseGateSettings'];
+  onSaveSafePauseGateSettings: ComponentProps<typeof AdaptivePaceLayerFlowWorkspace>['onSaveSafePauseGateSettings'];
   canAccessAdminWorkspace: boolean;
   adminWorkspaceProps: AdminWorkspaceProps<StoredSession>;
 };
@@ -43,6 +45,8 @@ export function AppWorkspaceContent({
   openRouterAccessState,
   openRouterAccessMessage,
   openRouterWorkspaceProps,
+  safePauseGateSettings,
+  onSaveSafePauseGateSettings,
   canAccessAdminWorkspace,
   adminWorkspaceProps,
 }: AppWorkspaceContentProps) {
@@ -54,6 +58,8 @@ export function AppWorkspaceContent({
             openRouterAccessState={openRouterAccessState}
             openRouterAccessMessage={openRouterAccessMessage}
             openRouterWorkspaceProps={openRouterWorkspaceProps}
+            safePauseGateSettings={safePauseGateSettings}
+            onSaveSafePauseGateSettings={onSaveSafePauseGateSettings}
           />
         </section>
       </section>
