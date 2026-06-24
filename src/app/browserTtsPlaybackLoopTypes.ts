@@ -77,6 +77,7 @@ export type BrowserTtsPlaybackLoopOptions = {
   applyTtsPerformanceSample: (options?: TtsPerformanceSampleOptions) => TtsPerformanceSampleResult;
   setAdaptiveSemanticDebug: Dispatch<SetStateAction<AdaptiveSemanticDebug>>;
   setTtsCurrentChunk: Dispatch<SetStateAction<string>>;
+  setTtsPracticeText: Dispatch<SetStateAction<string>>;
   setTtsPacingMode: Dispatch<SetStateAction<TtsPacingMode>>;
   setTtsSpeechRate: Dispatch<SetStateAction<number>>;
   setTtsStatus: Dispatch<SetStateAction<TtsStatus>>;
@@ -140,7 +141,7 @@ export type BrowserTtsPlaybackAdaptiveContext = {
 };
 
 export type BrowserTtsPlaybackTelemetryContext = {
-  perfDiagnostics: PerfDiagnostics;
+  perfDiagnostics: BrowserTtsPlaybackLoopOptions['perfDiagnostics'];
   recordTtsChunkTelemetry: BrowserTtsPlaybackLoopOptions['recordTtsChunkTelemetry'];
   recordAdaptiveBenchmark: BrowserTtsPlaybackLoopOptions['recordAdaptiveBenchmark'];
   recordPhrasePlaybackEvent: BrowserTtsPlaybackLoopOptions['recordPhrasePlaybackEvent'];
@@ -149,6 +150,7 @@ export type BrowserTtsPlaybackTelemetryContext = {
 
 export type BrowserTtsPlaybackUiContext = {
   setTtsCurrentChunk: BrowserTtsPlaybackLoopOptions['setTtsCurrentChunk'];
+  setTtsPracticeText: BrowserTtsPlaybackLoopOptions['setTtsPracticeText'];
   setTtsPacingMode: BrowserTtsPlaybackLoopOptions['setTtsPacingMode'];
   setTtsSpeechRate: BrowserTtsPlaybackLoopOptions['setTtsSpeechRate'];
   setTtsStatus: BrowserTtsPlaybackLoopOptions['setTtsStatus'];
