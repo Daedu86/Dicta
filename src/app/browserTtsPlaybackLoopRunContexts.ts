@@ -99,6 +99,7 @@ export function createBrowserTtsPlaybackLoopContexts({
     },
     uiContext: {
       setTtsCurrentChunk: options.setTtsCurrentChunk,
+      setTtsPracticeText: options.setTtsPracticeText,
       setTtsPacingMode: options.setTtsPacingMode,
       setTtsSpeechRate: options.setTtsSpeechRate,
       setTtsStatus: options.setTtsStatus,
