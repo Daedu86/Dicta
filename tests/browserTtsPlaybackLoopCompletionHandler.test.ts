@@ -108,6 +108,7 @@ function createChunkEndParams(overrides: Partial<ChunkEndParams> = {}): ChunkEnd
     runtimeDecision: createDecision(),
     ttsCompletedSourceWordsRef: { current: 0 },
     ttsPracticeLiveTextRef,
+    setTtsPracticeText: vi.fn() as ChunkEndParams['setTtsPracticeText'],
     ttsTranscript: {
       words: [
         { word: 'hello', start: 0, end: 0.3 },
@@ -169,6 +170,21 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
     vi.unstubAllGlobals();
   });
 
+  it('flushes live text and publishes a forced metric sample when a chunk ends', () => {
+    const params = createChunkEndParams({
+      effectivePauseNow: false,
+      ttsPracticeLiveTextRef: { current: 'hello wor' },
+    });
+
+    handleBrowserTtsPlaybackLoopChunkEnd(params);
+
+    expect(params.setTtsPracticeText).toHaveBeenCalledWith('hello wor');
+    expect(params.applyTtsPerformanceSample).toHaveBeenCalledWith({
+      forcePublishUi: true,
+      practiceTextOverride: 'hello wor',
+    });
+  });
+
   it('records benchmark pause with the minimum mental rest when the gate completes early', () => {
     vi.useFakeTimers();
     installWindowTimers();
@@ -186,6 +202,11 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
 
     vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS - 100);
 
+    expect(params.setTtsPracticeText).toHaveBeenLastCalledWith('hello world');
+    expect(params.applyTtsPerformanceSample).toHaveBeenLastCalledWith({
+      forcePublishUi: true,
+      practiceTextOverride: 'hello world',
+    });
     expect(params.recordAdaptiveBenchmark).toHaveBeenCalledTimes(1);
     expect(params.recordAdaptiveBenchmark).toHaveBeenCalledWith(
       expect.any(Object),
