@@ -80,7 +80,7 @@ describe('focused training presentation state', () => {
         ttsTranscriptWordCount: 12,
         ttsLanguage: 'es',
       }),
-    ).toBe('12 words Â· ES');
+    ).toBe('12 words \u00b7 ES');
   });
 
   it('preserves focused text placeholder behavior', () => {
