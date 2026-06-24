@@ -37,7 +37,7 @@ export function buildOpenRouterHardRulesPrompt({
   topicContext,
 }: BuildHardRulesPromptArgs): string {
   const { durationLabel, targetSpokenWords, minSpokenWords, maxSpokenWords, minimumPhraseCount } =
-    getDurationTargets(durationMinutes);
+    getDurationTargets(durationMinutes, trainingPrescription);
 
   return [
     'Return only a single JSON object. Do not wrap it in Markdown.',
@@ -49,7 +49,8 @@ export function buildOpenRouterHardRulesPrompt({
     `Generate a training script with voice playback duration of ${durationLabel} and set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
     `The combined spoken text across all phrases should be ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total, so the actual dictation lasts about ${durationLabel}.`,
     `Create at least ${minimumPhraseCount} phrases unless the phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
-    'If unsure, prefer a slightly longer script over a short one. Do not satisfy the duration by changing only "estimatedDurationSec"; generate enough phrase text to match the requested audio length.',
+    'The word budget already accounts for Browser TTS rate and phrase pauses. Stay within the word range and complete the JSON.',
+    'Do not satisfy the duration by changing only "estimatedDurationSec"; generate enough phrase text for the requested voice/audio length.',
     '"estimatedDurationSec" means the expected time the learner hears the voice/audio, not total attempt or typing time.',
     'The JSON must validate against the DictationScript output template.',
     ...buildDiversificationPromptLines(diversificationHints),
@@ -72,7 +73,7 @@ export function buildCompactAdaptiveV2Prompt({
   compactAdaptiveV2Context,
 }: BuildCompactAdaptiveV2PromptArgs): string {
   const { durationLabel, targetSpokenWords, minSpokenWords, maxSpokenWords, minimumPhraseCount } =
-    getDurationTargets(durationMinutes);
+    getDurationTargets(durationMinutes, trainingPrescription);
   const languageName = formatSupportedLanguage(normalizedProfile.language);
 
   return [
@@ -80,10 +81,8 @@ export function buildCompactAdaptiveV2Prompt({
     'Return only valid JSON. Do not use Markdown or code fences.',
     `Use exactly inputMode "${normalizedProfile.inputMode}" and language "${normalizedProfile.language}".`,
     `Write all phrase text naturally in ${languageName}.`,
-    'The LLM generates structured training material only.',
-    'Dicta runtime and the Adaptive Pace Layer control playback, pacing, recovery, rate, pauses, chunking, and Browser TTS execution.',
-    'Follow trainingPrescription as the pedagogical source of truth.',
-    'Use benchmark and latest feedback as context, but do not override trainingPrescription.',
+    'Generate phrase text only; Dicta controls playback, rate, pauses, chunking, recovery, and replay at runtime.',
+    'Use the resolved trainer constraints below as the source of truth; benchmark and feedback context are secondary.',
     `Set "difficulty" exactly to "${trainingPrescription.difficulty}".`,
     `Set "recommendedRateRange" to ${JSON.stringify(trainingPrescription.targetRateRange)}.`,
     `Set "recommendedPhraseSize" to "${trainingPrescription.targetPhraseSize}".`,
@@ -94,9 +93,10 @@ export function buildCompactAdaptiveV2Prompt({
     `Target voice playback duration: ${durationLabel}; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
     `Combined spoken phrase text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
     `Create at least ${minimumPhraseCount} phrases unless phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
-    'Generate semantic phrases compatible with trainingPrescription.',
+    'The word budget already accounts for Browser TTS rate and phrase pauses. Stay within the word range and complete the JSON.',
+    'Generate natural semantic phrases for dictation.',
     'Use safe semantic boundaries, replayable phrases when possible, the prescribed phrase difficulty range, content guidance, and pacing-compatible phrase lengths.',
-    'Do not satisfy duration by changing only "estimatedDurationSec"; generate enough phrase text.',
+    'Do not satisfy duration by changing only "estimatedDurationSec"; generate enough phrase text for the requested voice/audio length.',
     ...buildAdaptivePolicyConstraintsSection(trainingPrescription),
     ...buildDiversificationPromptLines(diversificationHints),
     '',
@@ -108,7 +108,14 @@ export function buildCompactAdaptiveV2Prompt({
   ].join('\n');
 }
 
-function getDurationTargets(durationMinutes: OpenRouterDurationMinutes): DurationTargets {
+function getDurationTargets(
+  durationMinutes: OpenRouterDurationMinutes,
+  trainingPrescription: ListeningTrainingPrescription,
+): DurationTargets {
+  if (durationMinutes === 6) {
+    return getRuntimeAwareSixMinuteTargets(trainingPrescription);
+  }
+
   const targetSpokenWords = Math.round(durationMinutes * 60 * 2.6);
   return {
     durationLabel: formatDurationMinutes(durationMinutes),
@@ -117,6 +124,31 @@ function getDurationTargets(durationMinutes: OpenRouterDurationMinutes): Duratio
     maxSpokenWords: Math.round(targetSpokenWords * 1.1),
     minimumPhraseCount: durationMinutes * 10,
   };
+}
+
+function getRuntimeAwareSixMinuteTargets(trainingPrescription: ListeningTrainingPrescription): DurationTargets {
+  const durationMinutes: OpenRouterDurationMinutes = 6;
+  const minimumPhraseCount = 42;
+  const [lowRate, highRate] = trainingPrescription.targetRateRange;
+  const averageRate = clampFinite((lowRate + highRate) / 2, 0.55, 1.1);
+  const pauseSec = clampFinite(trainingPrescription.targetPauseMs / 1000, 0.5, 4);
+  const targetVoiceSeconds = durationMinutes * 60;
+  const estimatedPauseSeconds = minimumPhraseCount * pauseSec * 0.75;
+  const spokenSeconds = Math.max(120, targetVoiceSeconds - estimatedPauseSeconds);
+  const targetSpokenWords = Math.round(clampFinite(spokenSeconds * 2.6 * averageRate, 430, 760));
+
+  return {
+    durationLabel: formatDurationMinutes(durationMinutes),
+    targetSpokenWords,
+    minSpokenWords: Math.round(targetSpokenWords * 0.85),
+    maxSpokenWords: Math.round(targetSpokenWords * 1.1),
+    minimumPhraseCount,
+  };
+}
+
+function clampFinite(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
 }
 
 function formatDurationMinutes(minutes: OpenRouterDurationMinutes): string {

@@ -73,32 +73,64 @@ export function buildCompactAdaptiveV2Context({
       profileKey: `${normalizedProfile.inputMode}/${normalizedProfile.language}`,
       inputMode: normalizedProfile.inputMode,
       language: normalizedProfile.language,
-      trainingPrescription,
-      sessionCount: normalizedProfile.sessionCount,
-      sampleCount: normalizedProfile.sampleCount,
-      weakAreas: normalizedProfile.weakAreas,
-      recommendation: normalizedProfile.recommendation,
-      kpis: {
-        sweetSpotScore: normalizedProfile.sweetSpotScore,
-        semanticFidelityScore: normalizedProfile.semanticFidelityScore,
-        controlFidelityScore: normalizedProfile.controlFidelityScore,
-        learningEffectivenessScore: normalizedProfile.learningEffectivenessScore,
-        flowStabilityScore: normalizedProfile.flowStabilityScore,
+      trainingPrescription: {
+        mode: trainingPrescription.mode,
+        userIntent: trainingPrescription.userIntent,
+        difficulty: trainingPrescription.difficulty,
+        durationMinutes: trainingPrescription.durationMinutes,
+        targetAccuracyBand: trainingPrescription.targetAccuracyBand,
+        targetLagMaxSec: trainingPrescription.targetLagMaxSec,
+        targetRateRange: trainingPrescription.targetRateRange,
+        targetPauseMs: trainingPrescription.targetPauseMs,
+        targetPhraseSize: trainingPrescription.targetPhraseSize,
+        phraseDifficultyRange: trainingPrescription.phraseDifficultyRange,
+        phrasePolicy: trainingPrescription.phrasePolicy,
+        boundaryPolicy: trainingPrescription.boundaryPolicy,
+        contentGuidance: trainingPrescription.contentGuidance.slice(0, 4),
+      },
+      learnerSignals: {
+        sessionCount: normalizedProfile.sessionCount,
+        sampleCount: normalizedProfile.sampleCount,
+        recommendationConfidence: normalizedProfile.recommendation.confidence,
+        recommendationSummary: normalizedProfile.recommendation.summary,
+        nextTrainingFocus: normalizedProfile.recommendation.nextTrainingFocus.slice(0, 4),
+        weakAreas: normalizedProfile.weakAreas.slice(0, 6),
         averageAccuracy: normalizedProfile.averageAccuracy,
         averageWpm: normalizedProfile.averageWpm,
         averageLagSec: normalizedProfile.averageLagSec,
+        flowStabilityScore: normalizedProfile.flowStabilityScore,
         preferredPlaybackRate: normalizedProfile.preferredPlaybackRate,
         preferredPhraseSize: normalizedProfile.preferredPhraseSize,
+        preferredPauseAfterPhraseMs: normalizedProfile.preferredPauseAfterPhraseMs,
       },
       ...(sessionFeedback
         ? {
-            latestSessionFeedback: buildCompactSessionFeedback(sessionFeedback),
+            latestSessionFeedback: buildCompactAdaptiveV2SessionFeedback(sessionFeedback),
           }
         : {}),
     },
     null,
     2,
   );
+}
+
+function buildCompactAdaptiveV2SessionFeedback(sessionFeedback: AdaptiveSessionFeedback): Record<string, unknown> {
+  return {
+    verdict: sessionFeedback.verdict,
+    improvementDelta: {
+      accuracyDelta: sessionFeedback.improvementDelta.accuracyDelta,
+      lagDelta: sessionFeedback.improvementDelta.lagDelta,
+      wpmDelta: sessionFeedback.improvementDelta.wpmDelta,
+      overallImprovementScore: sessionFeedback.improvementDelta.overallImprovementScore,
+    },
+    playbackIssues: {
+      repeatedPhraseCount: sessionFeedback.playbackIssues.repeatedPhraseCount,
+      skippedPhraseCount: sessionFeedback.playbackIssues.skippedPhraseCount,
+      phraseIndexJumpCount: sessionFeedback.playbackIssues.phraseIndexJumpCount,
+    },
+    phraseStats: sessionFeedback.phraseStats,
+    notes: sessionFeedback.notes.slice(0, 3),
+  };
 }
 
 function buildCompactSessionFeedback(sessionFeedback: AdaptiveSessionFeedback | null): Record<string, unknown> {

@@ -91,4 +91,35 @@ describe('buildOpenRouterGenerationPrompt', () => {
     expect(payload.trainingPrescription.runtimePolicy.targetPhraseSize).toBe('short');
     expect(payload.trainingPrescription.learningPolicy.phrasePolicy).toBe('short_safe_semantic');
   });
+
+  it('uses a runtime-aware smaller six-minute word budget for slow recovery prompts', () => {
+    const profile = unstableProfile();
+    profile.recommendation = {
+      targetRateRange: [0.66, 0.74],
+      targetPhraseSize: 'short',
+      targetPauseMs: 3200,
+      nextTrainingFocus: ['Rebuild flow with short safe phrases'],
+      confidence: 0.2,
+      summary: 'Slow recovery profile.',
+    };
+
+    const payload = buildOpenRouterGenerationPrompt({
+      profile,
+      sessionFeedback: null,
+      promptSource: 'compact-adaptive-v2',
+      durationMinutes: 6,
+      userIntent: 'recover',
+      targetDifficulty: 'hard',
+    });
+
+    expect(payload.prompt).toContain('Target voice playback duration: 6 minutes; set "estimatedDurationSec" close to 360.');
+    expect(payload.prompt).toContain('Combined spoken phrase text: 382-494 words, approximately 449 words total.');
+    expect(payload.prompt).toContain('Create at least 42 phrases');
+    expect(payload.prompt).toContain('"targetPauseMs": 3600');
+    expect(payload.prompt).not.toContain('"runtimePolicy"');
+    expect(payload.prompt).not.toContain('"learningPolicy"');
+    expect(payload.prompt).not.toContain('"rationale"');
+    expect(payload.trainingPrescription.mode).toBe('recover');
+    expect(payload.trainingPrescription.difficulty).toBe('easy');
+  });
 });

@@ -76,7 +76,7 @@ export function registerOpenRouterJobPayloadSuite(): void {
           durationMinutes: 6,
         }),
       ).toMatchObject({
-        maxTokens: 7200,
+        maxTokens: 6000,
         durationMinutes: 6,
       });
     });

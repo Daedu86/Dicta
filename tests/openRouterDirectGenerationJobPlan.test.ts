@@ -35,12 +35,22 @@ describe('buildOpenRouterDirectGenerationJobPlan', () => {
 
     expect(plan.prompt).toBe(plan.jobRequestBody.prompt);
     expect(plan.jobRequestBody.durationMinutes).toBe(6);
-    expect(plan.jobRequestBody.maxTokens).toBe(7200);
+    expect(plan.jobRequestBody.maxTokens).toBe(6000);
     expect(plan.activeJobDraft.durationMinutes).toBe(6);
     expect(plan.prompt).toContain('Target voice playback duration: 6 minutes; set "estimatedDurationSec" close to 360.');
-    expect(plan.prompt).toContain('Combined spoken phrase text: 796-1030 words, approximately 936 words total.');
-    expect(plan.prompt).toContain('Create at least 60 phrases');
+    expect(plan.prompt).toContain('Combined spoken phrase text: 480-622 words, approximately 565 words total.');
+    expect(plan.prompt).toContain('Create at least 42 phrases');
     expect(plan.prompt).toContain('bank appointment vocabulary');
+  });
+
+  it('keeps five-minute context prompts on the existing prose budget', () => {
+    const plan = buildPlan('topic', 'train station announcements', 5);
+
+    expect(plan.jobRequestBody.durationMinutes).toBe(5);
+    expect(plan.jobRequestBody.maxTokens).toBe(6000);
+    expect(plan.prompt).toContain('Target voice playback duration: 5 minutes; set "estimatedDurationSec" close to 300.');
+    expect(plan.prompt).toContain('Combined spoken phrase text: 663-858 words, approximately 780 words total.');
+    expect(plan.prompt).toContain('Create at least 50 phrases');
   });
 });
 
