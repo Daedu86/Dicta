@@ -15,7 +15,7 @@ export type OpenRouterGeneratePromptSource =
   | 'original-benchmark-only'
   | 'original-base';
 
-export type OpenRouterDurationMinutes = 1 | 2 | 3 | 4 | 5;
+export type OpenRouterDurationMinutes = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type OpenRouterGenerationPromptArgs = {
   profile: InputLanguageBenchmarkMetrics;

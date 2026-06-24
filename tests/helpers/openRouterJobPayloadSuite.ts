@@ -65,6 +65,22 @@ export function registerOpenRouterJobPayloadSuite(): void {
       });
     });
 
+    it('accepts six-minute durable generation jobs', () => {
+      expect(
+        readCreateJobPayload({
+          model: 'openrouter/free',
+          prompt: 'Generate a longer Dicta session.',
+          inputMode: 'browser-tts',
+          language: 'en',
+          slotLabel: 'Adaptive direct session',
+          durationMinutes: 6,
+        }),
+      ).toMatchObject({
+        maxTokens: 7200,
+        durationMinutes: 6,
+      });
+    });
+
     it('accepts all three direct mobile generation button job payloads', () => {
       for (const payload of directMobileButtonPayloads) {
         expect(

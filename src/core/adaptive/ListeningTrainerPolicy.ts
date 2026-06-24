@@ -24,7 +24,7 @@ export function buildListeningTrainingPrescription(args: {
   profile: InputLanguageBenchmarkMetrics;
   latestFeedback?: AdaptiveSessionFeedback | null;
   userIntent?: ListeningTrainingIntent;
-  durationMinutes?: 1 | 2 | 3 | 4 | 5;
+  durationMinutes?: 1 | 2 | 3 | 4 | 5 | 6;
   targetDifficulty?: DictationScriptDifficulty;
 }): ListeningTrainingPrescription {
   const { profile, targetDifficulty } = args;

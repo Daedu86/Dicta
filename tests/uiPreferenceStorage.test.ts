@@ -17,10 +17,10 @@ describe('uiPreferenceStorage', () => {
   });
 
   it('persists the OpenRouter direct generation duration preference', () => {
-    persistOpenRouterDirectGenerationDurationMinutes(5);
+    persistOpenRouterDirectGenerationDurationMinutes(6);
 
-    expect(loadOpenRouterDirectGenerationDurationMinutes()).toBe(5);
-    expect(window.localStorage.getItem(OPEN_ROUTER_DIRECT_GENERATION_DURATION_KEY)).toBe('5');
+    expect(loadOpenRouterDirectGenerationDurationMinutes()).toBe(6);
+    expect(window.localStorage.getItem(OPEN_ROUTER_DIRECT_GENERATION_DURATION_KEY)).toBe('6');
   });
 
   it('falls back to the default duration when the stored value is invalid', () => {

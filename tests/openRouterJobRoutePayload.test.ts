@@ -64,7 +64,7 @@ describe('OpenRouter jobs route payload validation', () => {
     });
   });
 
-  it('accepts five-minute durable generation jobs', () => {
+  it('accepts six-minute durable generation jobs', () => {
     expect(
       readCreateJobPayload({
         model: 'openrouter/free',
@@ -72,11 +72,11 @@ describe('OpenRouter jobs route payload validation', () => {
         inputMode: 'browser-tts',
         language: 'en',
         slotLabel: 'Adaptive direct session',
-        durationMinutes: 5,
+        durationMinutes: 6,
       }),
     ).toMatchObject({
-      maxTokens: 6000,
-      durationMinutes: 5,
+      maxTokens: 7200,
+      durationMinutes: 6,
     });
   });
 

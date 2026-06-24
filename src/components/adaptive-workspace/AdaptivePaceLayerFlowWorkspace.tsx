@@ -86,7 +86,7 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Target', value: (language) => `${language.name} script package` },
     ],
     metrics: [
-      { label: 'Prompt budget', value: 'max tokens by duration', detail: 'Keeps generation inside the selected 2-5 minute session duration and model budget.' },
+      { label: 'Prompt budget', value: 'max tokens by duration', detail: 'Keeps generation inside the selected 2-6 minute session duration and model budget.' },
       { label: 'Validation', value: 'DictationScript schema', detail: 'Rejects malformed scripts before they become playable sessions.' },
       { label: 'Language target', value: (language) => language.name, detail: 'Locks script language to the active Browser TTS profile.' },
     ],

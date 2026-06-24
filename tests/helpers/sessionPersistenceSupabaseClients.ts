@@ -31,13 +31,18 @@ export function createDeferredSupabaseClient(remoteRows: DictaSyncRow[]): {
 
 export function createKeepaliveSupabaseClient(): SupabaseClient {
   const pullResult = Promise.resolve<{ data: DictaSyncRow[]; error: null }>({ data: [], error: null });
+  let upsertCalls = 0;
   const query = {
     select: () => query,
     eq: () => query,
     gt: () => query,
     order: () => query,
     range: () => pullResult,
-    upsert: () => new Promise<{ error: null }>(() => undefined),
+    upsert: () => {
+      upsertCalls += 1;
+      if (upsertCalls === 1) return Promise.resolve<{ error: null }>({ error: null });
+      return new Promise<{ error: null }>(() => undefined);
+    },
   };
   return {
     from: () => query,
@@ -50,13 +55,16 @@ export function createKeepaliveSupabaseClient(): SupabaseClient {
         },
         error: null,
       }),
-      onAuthStateChange: () => ({
-        data: {
-          subscription: {
-            unsubscribe: vi.fn(),
+      onAuthStateChange: (_callback: (event: string, session: { access_token: string }) => void) => {
+        _callback('INITIAL_SESSION', { access_token: 'access-token' });
+        return {
+          data: {
+            subscription: {
+              unsubscribe: vi.fn(),
+            },
           },
-        },
-      }),
+        };
+      },
     },
   } as unknown as SupabaseClient;
 }

@@ -17,6 +17,7 @@ registerSessionPersistenceSyncTestLifecycle();
 
 describe('useSessionPersistenceSync keepalive flush', () => {
   it('flushes critical finished session rows with keepalive when the page exits before Supabase push resolves', async () => {
+    vi.setSystemTime(new Date('2026-06-05T12:10:00.000Z'));
     const firstSession = session('s1');
     window.localStorage.setItem(PROFILE_SCOPED_STORAGE_MARKER_KEY, 'profile-b');
     const fetchSpy = vi.fn(() => Promise.resolve({ ok: true }));
@@ -27,6 +28,7 @@ describe('useSessionPersistenceSync keepalive flush', () => {
       effectiveProfileId: 'profile-b',
       supabaseClient: createKeepaliveSupabaseClient(),
     });
+    await flushReactWork();
     await flushReactWork();
     await flushReactWork();
 

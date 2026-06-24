@@ -30,16 +30,16 @@ describe('buildOpenRouterDirectGenerationJobPlan', () => {
     expect(plan.prompt).toContain('everyday errands in Berlin');
   });
 
-  it('builds a five-minute context prompt and sends the preview prompt as the request body prompt', () => {
-    const plan = buildPlan('topic', 'bank appointment vocabulary', 5);
+  it('builds a six-minute context prompt and sends the preview prompt as the request body prompt', () => {
+    const plan = buildPlan('topic', 'bank appointment vocabulary', 6);
 
     expect(plan.prompt).toBe(plan.jobRequestBody.prompt);
-    expect(plan.jobRequestBody.durationMinutes).toBe(5);
-    expect(plan.jobRequestBody.maxTokens).toBe(6000);
-    expect(plan.activeJobDraft.durationMinutes).toBe(5);
-    expect(plan.prompt).toContain('Target voice playback duration: 5 minutes; set "estimatedDurationSec" close to 300.');
-    expect(plan.prompt).toContain('Combined spoken phrase text: 663-858 words, approximately 780 words total.');
-    expect(plan.prompt).toContain('Create at least 50 phrases');
+    expect(plan.jobRequestBody.durationMinutes).toBe(6);
+    expect(plan.jobRequestBody.maxTokens).toBe(7200);
+    expect(plan.activeJobDraft.durationMinutes).toBe(6);
+    expect(plan.prompt).toContain('Target voice playback duration: 6 minutes; set "estimatedDurationSec" close to 360.');
+    expect(plan.prompt).toContain('Combined spoken phrase text: 796-1030 words, approximately 936 words total.');
+    expect(plan.prompt).toContain('Create at least 60 phrases');
     expect(plan.prompt).toContain('bank appointment vocabulary');
   });
 });

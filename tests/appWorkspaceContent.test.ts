@@ -183,14 +183,14 @@ describe('AppWorkspaceContent', () => {
     expect(host.querySelector('#adaptive-flow-generation-session-card')).not.toBeNull();
     expect(host.querySelector('.adaptive-flow-generation-live-card')).not.toBeNull();
     const durationButtons = Array.from(host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-direct-duration-button'));
-    expect(durationButtons.map((button) => button.textContent)).toEqual(['2 min', '3 min', '4 min', '5 min']);
-    expect(durationButtons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
+    expect(durationButtons.map((button) => button.textContent)).toEqual(['2 min', '3 min', '4 min', '5 min', '6 min']);
+    expect(durationButtons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false', 'false']);
 
     act(() => {
-      durationButtons[3].click();
+      durationButtons[4].click();
     });
 
-    expect(onChangeDirectGenerationDurationMinutes).toHaveBeenCalledWith(5);
+    expect(onChangeDirectGenerationDurationMinutes).toHaveBeenCalledWith(6);
 
     const actionButtons = Array.from(host.querySelectorAll<HTMLButtonElement>('.adaptive-flow-direct-generation-button'));
     expect(actionButtons.map((button) => button.textContent)).toEqual(['Prompt generation', 'Prompt generation + my context']);
