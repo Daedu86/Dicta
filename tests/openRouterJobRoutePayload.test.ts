@@ -75,7 +75,7 @@ describe('OpenRouter jobs route payload validation', () => {
         durationMinutes: 6,
       }),
     ).toMatchObject({
-      maxTokens: 7200,
+      maxTokens: 6000,
       durationMinutes: 6,
     });
   });

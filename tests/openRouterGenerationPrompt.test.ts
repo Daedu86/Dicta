@@ -136,19 +136,26 @@ describe('buildOpenRouterGenerationPrompt', () => {
     budgets.forEach((budget, index) => {
       const durationMinutes = index + 2;
       expect(budget.estimatedDurationSec).toBe(durationMinutes * 60);
-      expect(budget.minimumPhraseCount).toBe(durationMinutes * 10);
+      if (durationMinutes < 6) {
+        expect(budget.minimumPhraseCount).toBe(durationMinutes * 10);
+      }
       if (index === 0) return;
       expect(budget.targetSpokenWords).toBeGreaterThanOrEqual(budgets[index - 1].targetSpokenWords);
       expect(budget.minimumPhraseCount).toBeGreaterThanOrEqual(budgets[index - 1].minimumPhraseCount);
     });
 
     expect(budgets[4]).toMatchObject({
-      minSpokenWords: 796,
-      maxSpokenWords: 1030,
-      targetSpokenWords: 936,
-      minimumPhraseCount: 60,
+      minSpokenWords: 680,
+      maxSpokenWords: 880,
+      targetSpokenWords: 800,
+      minimumPhraseCount: 51,
     });
     expect(budgets[4].targetSpokenWords).toBeGreaterThan(budgets[3].targetSpokenWords);
+    expect(budgets[4].minimumPhraseCount).toBeGreaterThan(budgets[3].minimumPhraseCount);
+    expect(budgets[4].targetSpokenWords / budgets[4].minimumPhraseCount).toBeCloseTo(
+      budgets[3].targetSpokenWords / budgets[3].minimumPhraseCount,
+      0,
+    );
   });
 });
 

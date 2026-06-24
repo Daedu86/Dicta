@@ -11,6 +11,13 @@ type DurationTargets = {
   minimumPhraseCount: number;
 };
 
+const BASE_SPOKEN_WORDS_PER_SECOND = 2.6;
+const MIN_WORD_FACTOR = 0.85;
+const MAX_WORD_FACTOR = 1.1;
+// Six-minute scripts must stay monotonic without pushing free OpenRouter providers past the 300s job window.
+const PROVIDER_SAFE_SIX_MINUTE_TARGET_WORDS = 800;
+const PROVIDER_SAFE_SIX_MINUTE_PHRASES = 51;
+
 type BuildHardRulesPromptArgs = {
   normalizedProfile: InputLanguageBenchmarkMetrics;
   outputTemplate: string;
@@ -109,13 +116,20 @@ export function buildCompactAdaptiveV2Prompt({
 }
 
 function getDurationTargets(durationMinutes: OpenRouterDurationMinutes): DurationTargets {
-  const targetSpokenWords = Math.round(durationMinutes * 60 * 2.6);
+  const targetSpokenWords =
+    durationMinutes === 6
+      ? PROVIDER_SAFE_SIX_MINUTE_TARGET_WORDS
+      : Math.round(durationMinutes * 60 * BASE_SPOKEN_WORDS_PER_SECOND);
+  const minimumPhraseCount =
+    durationMinutes === 6
+      ? PROVIDER_SAFE_SIX_MINUTE_PHRASES
+      : durationMinutes * 10;
   return {
     durationLabel: formatDurationMinutes(durationMinutes),
     targetSpokenWords,
-    minSpokenWords: Math.round(targetSpokenWords * 0.85),
-    maxSpokenWords: Math.round(targetSpokenWords * 1.1),
-    minimumPhraseCount: durationMinutes * 10,
+    minSpokenWords: Math.round(targetSpokenWords * MIN_WORD_FACTOR),
+    maxSpokenWords: Math.round(targetSpokenWords * MAX_WORD_FACTOR),
+    minimumPhraseCount,
   };
 }
 

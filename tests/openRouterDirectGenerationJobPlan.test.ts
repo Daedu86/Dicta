@@ -35,11 +35,11 @@ describe('buildOpenRouterDirectGenerationJobPlan', () => {
 
     expect(plan.prompt).toBe(plan.jobRequestBody.prompt);
     expect(plan.jobRequestBody.durationMinutes).toBe(6);
-    expect(plan.jobRequestBody.maxTokens).toBe(7200);
+    expect(plan.jobRequestBody.maxTokens).toBe(6000);
     expect(plan.activeJobDraft.durationMinutes).toBe(6);
     expect(plan.prompt).toContain('Target voice playback duration: 6 minutes; set "estimatedDurationSec" close to 360.');
-    expect(plan.prompt).toContain('Combined spoken phrase text: 796-1030 words, approximately 936 words total.');
-    expect(plan.prompt).toContain('Create at least 60 phrases');
+    expect(plan.prompt).toContain('Combined spoken phrase text: 680-880 words, approximately 800 words total.');
+    expect(plan.prompt).toContain('Create at least 51 phrases');
     expect(plan.prompt).toContain('bank appointment vocabulary');
   });
 

@@ -18,7 +18,7 @@ const DEFAULT_JOB_MAX_TOKENS_BY_DURATION = new Map([
   [3, 3_800],
   [4, 4_800],
   [5, 6_000],
-  [6, 7_200],
+  [6, 6_000],
 ]);
 const OPENROUTER_MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
 
