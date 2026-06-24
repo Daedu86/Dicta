@@ -52,6 +52,7 @@ export function buildTtsSessionBrowserPlaybackArgs(
     recordAdaptiveBenchmark: args.recordAdaptiveBenchmark,
     setAdaptiveSemanticDebug: args.setAdaptiveSemanticDebug,
     setTtsCurrentChunk: args.setTtsCurrentChunk,
+    setTtsPracticeText: args.setTtsPracticeText,
     setTtsPacingMode: args.setTtsPacingMode,
     setTtsSpeechRate: args.setTtsSpeechRate,
     setTtsStatus: args.setTtsStatus,
