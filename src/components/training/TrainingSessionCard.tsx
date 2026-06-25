@@ -14,7 +14,6 @@ export type TrainingSessionCardProps = {
   sessionTitle: string;
   submissionMeta: TrainingSessionSubmissionMeta | null;
   activeDifficultyLabel: string;
-  progressLabel: string;
   sourceLabel: string;
   sessionStatusLabel: string;
 };
@@ -24,7 +23,6 @@ export function TrainingSessionCard({
   sessionTitle,
   submissionMeta,
   activeDifficultyLabel,
-  progressLabel,
   sourceLabel,
   sessionStatusLabel,
 }: TrainingSessionCardProps) {
@@ -54,7 +52,6 @@ export function TrainingSessionCard({
         </div>
       ) : null}
       <div className="training-session-meta" aria-label="Current session info">
-        <span>{progressLabel}</span>
         <span>{sourceLabel}</span>
         {!submissionMeta ? <span>Difficulty {activeDifficultyLabel}</span> : null}
         <span>{sessionStatusLabel}</span>

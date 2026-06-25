@@ -99,7 +99,6 @@ export function TrainingView<Session extends TrainingViewSession>({
         sessionTitle={activeSession ? getSessionDisplayTitle(activeSession) : 'No active session'}
         submissionMeta={submissionMeta}
         activeDifficultyLabel={activeDifficultyLabel}
-        progressLabel={progressLabel}
         sourceLabel={sourceLabel}
         sessionStatusLabel={formatSessionStatus(sessionStatus)}
       />
@@ -132,6 +131,7 @@ export function TrainingView<Session extends TrainingViewSession>({
         syncKey={`${activeSession?.id ?? 'none'}:${activeSession?.inputMode ?? 'none'}`}
         liveScoreLabel={liveScoreLabel}
         liveScoreHelpText={liveScoreHelpText}
+        progressLabel={progressLabel}
         livePointsLabel={livePointsLabel}
         livePointsHelpText={livePointsHelpText}
         liveAccuracyLabel={liveAccuracyLabel}

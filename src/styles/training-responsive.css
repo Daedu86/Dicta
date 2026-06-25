@@ -46,8 +46,7 @@
 
   .training-input-header,
   .training-live-metrics {
-    align-items: stretch;
-    justify-content: stretch;
+    align-items: center;
   }
 
   .training-input-header {
@@ -56,8 +55,12 @@
     margin: 0;
   }
 
+  .training-live-metrics {
+    justify-content: flex-start;
+  }
+
   .training-live-metrics span {
-    flex: 1 1 42%;
+    flex: 0 0 auto;
     justify-content: center;
   }
 

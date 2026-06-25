@@ -16,6 +16,7 @@ export type TrainingInputCardProps = {
   syncKey: string;
   liveScoreLabel: string;
   liveScoreHelpText: string;
+  progressLabel: string;
   livePointsLabel: string;
   livePointsHelpText: string;
   liveAccuracyLabel: string;
@@ -39,6 +40,7 @@ export function TrainingInputCard({
   syncKey,
   liveScoreLabel,
   liveScoreHelpText,
+  progressLabel,
   livePointsLabel,
   livePointsHelpText,
   liveAccuracyLabel,
@@ -49,16 +51,26 @@ export function TrainingInputCard({
   review,
 }: TrainingInputCardProps) {
   const effectiveTextCommitDelayMs = Math.max(textCommitDelayMs, 160);
+  const progressMetric = buildProgressMetric(progressLabel);
 
   return (
     <section className="training-card training-input-card" aria-label="Dictation input">
       <div className="training-input-header">
         <label className="training-input-heading" htmlFor={textAreaId}>Type what you hear</label>
-        <div className="training-live-metrics" aria-label="Live session score, points, accuracy, and lag">
+        <div className="training-live-metrics" aria-label="Live session score, progress, points, accuracy, and lag">
           <span title={liveScoreHelpText} aria-label={`Live score ${liveScoreLabel}. ${liveScoreHelpText}`}>
             <small>Score</small>
             <strong>{liveScoreLabel}</strong>
           </span>
+          {progressMetric ? (
+            <span
+              className="training-live-progress-metric"
+              aria-label={`Live ${progressMetric.label.toLowerCase()} ${progressMetric.value}`}
+            >
+              <small>{progressMetric.label}</small>
+              <strong>{progressMetric.value}</strong>
+            </span>
+          ) : null}
           <span title={livePointsHelpText} aria-label={`Live points ${livePointsLabel}. ${livePointsHelpText}`}>
             <small>Points</small>
             <strong>{livePointsLabel}</strong>
@@ -93,4 +105,22 @@ export function TrainingInputCard({
       )}
     </section>
   );
+}
+
+function buildProgressMetric(progressLabel: string): { label: string; value: string } | null {
+  const trimmed = progressLabel.trim();
+  if (!trimmed || trimmed === 'No source loaded') return null;
+
+  const namedCounter = trimmed.match(/^(Phrase|Word)\s+(.+)$/i);
+  if (namedCounter) {
+    return {
+      label: namedCounter[1].charAt(0).toUpperCase() + namedCounter[1].slice(1).toLowerCase(),
+      value: namedCounter[2].trim(),
+    };
+  }
+
+  return {
+    label: 'Progress',
+    value: trimmed,
+  };
 }
