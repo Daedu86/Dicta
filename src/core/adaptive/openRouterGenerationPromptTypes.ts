@@ -2,6 +2,7 @@ import type { DictationScriptDifficulty } from './dictationScriptValidation';
 import type {
   AdaptiveSessionFeedback,
   InputLanguageBenchmarkMetrics,
+  ListeningTrainingDurationMinutes,
   ListeningTrainingIntent,
   ListeningTrainingPrescription,
 } from './types';
@@ -15,7 +16,7 @@ export type OpenRouterGeneratePromptSource =
   | 'original-benchmark-only'
   | 'original-base';
 
-export type OpenRouterDurationMinutes = 1 | 2 | 3 | 4 | 5 | 6;
+export type OpenRouterDurationMinutes = ListeningTrainingDurationMinutes;
 
 export type OpenRouterGenerationPromptArgs = {
   profile: InputLanguageBenchmarkMetrics;

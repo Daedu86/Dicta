@@ -86,8 +86,8 @@ const ADAPTIVE_FLOW_PHASES: readonly AdaptiveFlowPhase[] = [
       { label: 'Target', value: (language) => `${language.name} script package` },
     ],
     metrics: [
-      { label: 'Prompt budget', value: 'max tokens by duration', detail: 'Keeps generation inside the selected 2-6 minute session duration and model budget.' },
-      { label: 'Validation', value: 'DictationScript schema', detail: 'Rejects malformed scripts before they become playable sessions.' },
+      { label: 'Prompt budget', value: 'compact chunks by duration', detail: 'Keeps generation inside the selected 2-10 minute session duration and model budget.' },
+      { label: 'Validation', value: 'compact chunks + DictationScript build', detail: 'Rejects malformed chunks before they become playable sessions.' },
       { label: 'Language target', value: (language) => language.name, detail: 'Locks script language to the active Browser TTS profile.' },
     ],
     repositoryOwners: [
@@ -929,7 +929,7 @@ function AdaptiveFlowGenerationLiveCard({
           <p className="dashboard-eyebrow">Live generation</p>
           <h3>Generate Training Session</h3>
           <p className="hint">
-            Configures the prompt that goes to OpenRouter and validates the returned DictationScript before playback.
+            Configures the prompt that goes to OpenRouter and builds the returned compact chunks into a DictationScript before playback.
           </p>
         </div>
       </div>

@@ -9,13 +9,17 @@ import {
   markOpenRouterJobRunning,
   markOpenRouterJobSucceeded,
 } from './_jobPersistence.js';
+import {
+  formatOpenRouterJobTimeoutError,
+  OPENROUTER_JOB_TIMEOUT_MS,
+} from './_jobTimeout.js';
 
-export const OPENROUTER_JOB_TIMEOUT_MS = 296_000;
-
-export function formatOpenRouterJobTimeoutError(model, timeoutMs = OPENROUTER_JOB_TIMEOUT_MS) {
-  const timeoutSec = Math.round(timeoutMs / 1000);
-  return `Selected OpenRouter model "${model}" timed out after ${timeoutSec} seconds. Vercel free-tier functions are capped at 300 seconds; use a shorter prompt budget or a faster OpenRouter model/provider.`;
-}
+export {
+  formatOpenRouterJobStaleError,
+  formatOpenRouterJobTimeoutError,
+  OPENROUTER_JOB_STALE_AFTER_MS,
+  OPENROUTER_JOB_TIMEOUT_MS,
+} from './_jobTimeout.js';
 
 function buildSucceededJobResult(response, requestPayload) {
   return {
@@ -25,6 +29,8 @@ function buildSucceededJobResult(response, requestPayload) {
     requestedModel: requestPayload.model,
     contentType: response.contentType,
     attempts: response.attempts,
+    generationFormat: response.generationFormat || requestPayload.generationFormat || 'dictation-script-v1',
+    ...(requestPayload.scriptBuildPolicy ? { scriptBuildPolicy: requestPayload.scriptBuildPolicy } : {}),
     jsonRepairApplied: response.jsonRepairApplied === true,
   };
 }
@@ -61,6 +67,7 @@ export async function runOpenRouterJob({ req, supabase, requester, profileId, jo
       prompt: requestPayload.prompt,
       maxTokens: requestPayload.maxTokens,
       timeoutMs: OPENROUTER_JOB_TIMEOUT_MS,
+      generationFormat: requestPayload.generationFormat,
     });
     if (!response.ok) {
       throw Object.assign(new Error(formatOpenRouterJobProviderError(response, response.attempts)), {
@@ -70,7 +77,7 @@ export async function runOpenRouterJob({ req, supabase, requester, profileId, jo
       });
     }
 
-    if (!response.scriptText?.trim()) throw new Error('OpenRouter returned no valid session JSON.');
+    if (!response.scriptText?.trim()) throw new Error('OpenRouter returned no valid generation JSON.');
 
     await markOpenRouterJobSucceeded(supabase, {
       profileId,

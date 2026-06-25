@@ -15,6 +15,8 @@ export type ListeningTrainingMode =
   | 'progress'
   | 'challenge';
 
+export type ListeningTrainingDurationMinutes = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
 export type ListeningTrainingPrescription = {
   goal: 'listening_comprehension';
   profileKey: string;
@@ -23,7 +25,7 @@ export type ListeningTrainingPrescription = {
   mode: ListeningTrainingMode;
   userIntent: ListeningTrainingIntent;
   difficulty: 'easy' | 'normal' | 'hard';
-  durationMinutes: 1 | 2 | 3 | 4 | 5 | 6;
+  durationMinutes: ListeningTrainingDurationMinutes;
   targetAccuracyBand: [number, number];
   targetLagMaxSec: number;
   targetRateRange: [number, number];

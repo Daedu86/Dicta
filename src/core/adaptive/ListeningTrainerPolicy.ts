@@ -2,6 +2,7 @@ import type { DictationScriptDifficulty } from './dictationScriptValidation';
 import type {
   AdaptiveSessionFeedback,
   InputLanguageBenchmarkMetrics,
+  ListeningTrainingDurationMinutes,
   ListeningTrainingIntent,
   ListeningTrainingPrescription,
 } from './types';
@@ -24,7 +25,7 @@ export function buildListeningTrainingPrescription(args: {
   profile: InputLanguageBenchmarkMetrics;
   latestFeedback?: AdaptiveSessionFeedback | null;
   userIntent?: ListeningTrainingIntent;
-  durationMinutes?: 1 | 2 | 3 | 4 | 5 | 6;
+  durationMinutes?: ListeningTrainingDurationMinutes;
   targetDifficulty?: DictationScriptDifficulty;
 }): ListeningTrainingPrescription {
   const { profile, targetDifficulty } = args;

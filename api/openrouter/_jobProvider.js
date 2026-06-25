@@ -1,4 +1,8 @@
-import { extractOpenRouterJobSessionJson, tryParseOpenRouterJobJson } from './_jobJson.js';
+import {
+  extractOpenRouterJobCompactChunksJson,
+  extractOpenRouterJobSessionJson,
+  tryParseOpenRouterJobJson,
+} from './_jobJson.js';
 
 const OPENROUTER_JOB_MAX_ATTEMPTS = 3;
 const OPENROUTER_JOB_RETRY_BASE_DELAY_MS = 750;
@@ -116,6 +120,46 @@ function buildSessionJsonRepairPrompt({ originalPrompt, invalidText }) {
   ].join('\n');
 }
 
+function buildCompactChunksRepairPrompt({ originalPrompt, invalidText }) {
+  return [
+    'The previous response did not contain valid Dicta compact chunks JSON.',
+    'Repair the result now. Return exactly one JSON object and nothing else.',
+    'Required shape: {"title":"short specific title","chunks":["semantic chunk one","semantic chunk two"]}.',
+    'The title is optional. chunks must be a non-empty array of natural text strings.',
+    'Do not include playback metadata, per-phrase metadata, explanations, markdown, or extra prose.',
+    'If the previous response includes usable text, preserve it as chunks. If it does not, generate fresh chunks from the original request.',
+    '',
+    'Original request:',
+    truncateText(originalPrompt, OPENROUTER_REPAIR_PROMPT_MAX_CHARS),
+    '',
+    'Previous invalid response excerpt:',
+    truncateText(invalidText, OPENROUTER_INVALID_RESPONSE_EXCERPT_MAX_CHARS),
+  ].join('\n');
+}
+
+function extractExpectedJobJson(raw, { generationFormat }) {
+  if (generationFormat === 'compact-chunks-v1') {
+    const compactText = extractOpenRouterJobCompactChunksJson(raw);
+    if (compactText) return { text: compactText, generationFormat: 'compact-chunks-v1' };
+  }
+
+  const sessionText = extractOpenRouterJobSessionJson(raw);
+  if (sessionText) return { text: sessionText, generationFormat: 'dictation-script-v1' };
+
+  return { text: '', generationFormat };
+}
+
+function buildRepairPrompt({ generationFormat, originalPrompt, invalidText }) {
+  if (generationFormat === 'compact-chunks-v1') {
+    return buildCompactChunksRepairPrompt({ originalPrompt, invalidText });
+  }
+  return buildSessionJsonRepairPrompt({ originalPrompt, invalidText });
+}
+
+function expectedFormatLabel(generationFormat) {
+  return generationFormat === 'compact-chunks-v1' ? 'compact chunks' : 'session';
+}
+
 function readMessageContent(payload) {
   const content = payload?.choices?.[0]?.message?.content;
   if (typeof content === 'string') return content;
@@ -164,7 +208,15 @@ async function postChatCompletionWithRetries({ apiKey, req, model, prompt, maxTo
   return { ...lastResponse, model, attempts };
 }
 
-export async function postChatCompletionWithSelectedModelRetries({ apiKey, req, model, prompt, maxTokens, timeoutMs }) {
+async function postChatCompletionWithSelectedModelRetriesInternal({
+  apiKey,
+  req,
+  model,
+  prompt,
+  maxTokens,
+  timeoutMs,
+  generationFormat,
+}) {
   const allAttempts = [];
   let lastResponse = null;
   let receivedSuccessfulResponse = false;
@@ -181,16 +233,26 @@ export async function postChatCompletionWithSelectedModelRetries({ apiKey, req, 
     receivedSuccessfulResponse = true;
     const payload = tryParseOpenRouterJobJson(response.body);
     const text = readMessageContent(payload);
-    const scriptText = extractOpenRouterJobSessionJson(text);
+    const extracted = extractExpectedJobJson(text, { generationFormat });
+    const scriptText = extracted.text;
     const latestAttempt = allAttempts[allAttempts.length - 1];
     if (latestAttempt) latestAttempt.jsonValid = Boolean(scriptText);
-    if (scriptText) return { ...response, attempts: allAttempts, model: candidateModel, payload, scriptText };
+    if (scriptText) {
+      return {
+        ...response,
+        attempts: allAttempts,
+        model: candidateModel,
+        payload,
+        scriptText,
+        generationFormat: extracted.generationFormat,
+      };
+    }
 
     const repairResponse = await postChatCompletionWithRetries({
       apiKey,
       req,
       model: candidateModel,
-      prompt: buildSessionJsonRepairPrompt({ originalPrompt: prompt, invalidText: text || response.body }),
+      prompt: buildRepairPrompt({ generationFormat, originalPrompt: prompt, invalidText: text || response.body }),
       maxTokens,
       timeoutMs,
       phase: 'json-repair',
@@ -204,7 +266,8 @@ export async function postChatCompletionWithSelectedModelRetries({ apiKey, req, 
 
     const repairPayload = tryParseOpenRouterJobJson(repairResponse.body);
     const repairText = readMessageContent(repairPayload);
-    const repairedScriptText = extractOpenRouterJobSessionJson(repairText);
+    const repaired = extractExpectedJobJson(repairText, { generationFormat });
+    const repairedScriptText = repaired.text;
     const latestRepairAttempt = allAttempts[allAttempts.length - 1];
     if (latestRepairAttempt) latestRepairAttempt.jsonValid = Boolean(repairedScriptText);
     if (repairedScriptText) {
@@ -214,6 +277,7 @@ export async function postChatCompletionWithSelectedModelRetries({ apiKey, req, 
         model: candidateModel,
         payload: repairPayload,
         scriptText: repairedScriptText,
+        generationFormat: repaired.generationFormat,
         jsonRepairApplied: true,
       };
     }
@@ -228,6 +292,26 @@ export async function postChatCompletionWithSelectedModelRetries({ apiKey, req, 
     ok: false,
     status: 422,
     attempts: allAttempts,
-    scriptError: `OpenRouter returned text without valid session JSON for selected model "${model}" after a JSON repair attempt.`,
+    scriptError: `OpenRouter returned text without valid ${expectedFormatLabel(generationFormat)} JSON for selected model "${model}" after a JSON repair attempt.`,
   };
+}
+
+export async function postChatCompletionWithSelectedModelRetries({
+  apiKey,
+  req,
+  model,
+  prompt,
+  maxTokens,
+  timeoutMs,
+  generationFormat = 'dictation-script-v1',
+}) {
+  return postChatCompletionWithSelectedModelRetriesInternal({
+    apiKey,
+    req,
+    model,
+    prompt,
+    maxTokens,
+    timeoutMs,
+    generationFormat,
+  });
 }

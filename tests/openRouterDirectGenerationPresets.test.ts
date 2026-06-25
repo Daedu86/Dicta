@@ -25,7 +25,7 @@ describe('OPEN_ROUTER_DIRECT_GENERATION_PRESETS', () => {
   });
 
   it('supports direct generation duration choices for the adaptive flow selector', () => {
-    expect(OPEN_ROUTER_DIRECT_GENERATION_DURATION_OPTIONS).toEqual([2, 3, 4, 5, 6]);
+    expect(OPEN_ROUTER_DIRECT_GENERATION_DURATION_OPTIONS).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 
   it('requests the highest safe level and lets the trainer downgrade if needed', () => {

@@ -11,14 +11,21 @@ export const OPENROUTER_TARGET_DIFFICULTY_MAX_CHARS = 40;
 
 const VALID_LANGUAGES = new Set(['en', 'es', 'de', 'fr', 'pt']);
 const VALID_INPUT_MODES = new Set(['browser-tts']);
-const VALID_DURATIONS = new Set([1, 2, 3, 4, 5, 6]);
+const VALID_DURATIONS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+const VALID_GENERATION_FORMATS = new Set(['dictation-script-v1', 'compact-chunks-v1']);
+const VALID_PHRASE_SIZES = new Set(['short', 'medium', 'long']);
+const VALID_DIFFICULTIES = new Set(['easy', 'normal', 'hard']);
 const DEFAULT_JOB_MAX_TOKENS_BY_DURATION = new Map([
   [1, 1_800],
-  [2, 2_600],
-  [3, 3_800],
-  [4, 4_800],
-  [5, 6_000],
-  [6, 6_000],
+  [2, 1_800],
+  [3, 2_400],
+  [4, 3_000],
+  [5, 3_600],
+  [6, 4_200],
+  [7, 4_800],
+  [8, 5_400],
+  [9, 6_000],
+  [10, 6_600],
 ]);
 const OPENROUTER_MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
 
@@ -69,6 +76,15 @@ export function readOpenRouterJobPayload(body) {
 
   const slotLabel = normalizeShortLabel(payload.slotLabel, 'OpenRouter session', OPENROUTER_SLOT_LABEL_MAX_CHARS);
   const targetDifficulty = normalizeShortLabel(payload.targetDifficulty, '', OPENROUTER_TARGET_DIFFICULTY_MAX_CHARS);
+  const generationFormat = normalizeGenerationFormat(payload.generationFormat);
+  const scriptBuildPolicy = generationFormat === 'compact-chunks-v1'
+    ? normalizeScriptBuildPolicy(payload.scriptBuildPolicy, {
+        inputMode,
+        language,
+        durationMinutes,
+        difficulty: VALID_DIFFICULTIES.has(targetDifficulty) ? targetDifficulty : 'normal',
+      })
+    : null;
 
   return {
     model,
@@ -82,7 +98,9 @@ export function readOpenRouterJobPayload(body) {
     language,
     slotLabel,
     durationMinutes,
+    generationFormat,
     ...(targetDifficulty ? { targetDifficulty } : {}),
+    ...(scriptBuildPolicy ? { scriptBuildPolicy } : {}),
   };
 }
 
@@ -119,6 +137,60 @@ function normalizeShortLabel(value, fallback, maxChars) {
   if (!label) return fallback;
   if (/[\u0000-\u001f\u007f]/.test(label)) throw validationError('Invalid OpenRouter request label.');
   return label.slice(0, maxChars);
+}
+
+function normalizeGenerationFormat(value) {
+  const format = typeof value === 'string' ? value.trim() : '';
+  if (!format) return 'dictation-script-v1';
+  if (!VALID_GENERATION_FORMATS.has(format)) throw validationError('Invalid generationFormat.');
+  return format;
+}
+
+function normalizeScriptBuildPolicy(value, fallback) {
+  const record = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const inputMode = typeof record.inputMode === 'string' && VALID_INPUT_MODES.has(record.inputMode.trim())
+    ? record.inputMode.trim()
+    : fallback.inputMode;
+  const language = typeof record.language === 'string' && VALID_LANGUAGES.has(record.language.trim())
+    ? record.language.trim()
+    : fallback.language;
+  const difficulty = typeof record.difficulty === 'string' && VALID_DIFFICULTIES.has(record.difficulty.trim())
+    ? record.difficulty.trim()
+    : fallback.difficulty;
+  const durationMinutes = VALID_DURATIONS.has(Number(record.durationMinutes))
+    ? Number(record.durationMinutes)
+    : fallback.durationMinutes;
+  return {
+    inputMode,
+    language,
+    difficulty,
+    durationMinutes,
+    recommendedRateRange: normalizeNumberPair(record.recommendedRateRange, [0.9, 1], 0.1, 2),
+    recommendedPhraseSize: typeof record.recommendedPhraseSize === 'string' && VALID_PHRASE_SIZES.has(record.recommendedPhraseSize.trim())
+      ? record.recommendedPhraseSize.trim()
+      : 'medium',
+    recommendedPauseMs: normalizeNonNegativeNumber(record.recommendedPauseMs, 600),
+    phraseDifficultyRange: normalizeNumberPair(record.phraseDifficultyRange, [0.45, 0.65], 0, 1),
+  };
+}
+
+function normalizeNumberPair(value, fallback, min, max) {
+  if (!Array.isArray(value) || value.length < 2) return fallback;
+  const first = Number(value[0]);
+  const second = Number(value[1]);
+  if (!Number.isFinite(first) || !Number.isFinite(second)) return fallback;
+  const low = Math.max(min, Math.min(max, first));
+  const high = Math.max(min, Math.min(max, second));
+  return low <= high ? [round2(low), round2(high)] : [round2(high), round2(low)];
+}
+
+function normalizeNonNegativeNumber(value, fallback) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : fallback;
+}
+
+function round2(value) {
+  return Math.round(value * 100) / 100;
 }
 
 function validationError(message) {

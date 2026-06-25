@@ -1,6 +1,12 @@
 import type { DictationScriptDifficulty } from './adaptive/dictationScriptValidation';
-import type { OpenRouterDurationMinutes } from './adaptive/openRouterGenerationPrompt';
+import type {
+  OpenRouterDurationMinutes,
+  OpenRouterGenerationFormat,
+  OpenRouterScriptBuildPolicy,
+} from './adaptive/openRouterGenerationPrompt';
 import type { InputMode, LanguageCode } from './adaptive/types';
+
+export type { OpenRouterGenerationFormat, OpenRouterScriptBuildPolicy };
 
 export const OPENROUTER_ACTIVE_JOB_STORAGE_KEY = 'dicta.openrouterActiveJob.v1';
 export const OPENROUTER_ACTIVE_JOBS_STORAGE_KEY = 'dicta.openrouterActiveJobs.v1';
@@ -17,6 +23,8 @@ export type ActiveOpenRouterJob = {
   language: LanguageCode;
   durationMinutes: OpenRouterDurationMinutes;
   targetDifficulty?: DictationScriptDifficulty;
+  generationFormat?: OpenRouterGenerationFormat;
+  scriptBuildPolicy?: OpenRouterScriptBuildPolicy;
   promptMode?: string;
   promptCharacterCount?: number;
   promptApproximateTokenCount?: number;

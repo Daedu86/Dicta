@@ -15,11 +15,12 @@ describe('OpenRouter jobs route payload validation', () => {
       }),
     ).toMatchObject({
       model: 'openrouter/free',
-      maxTokens: 2600,
+      maxTokens: 1800,
       inputMode: 'browser-tts',
       language: 'fr',
       slotLabel: 'Session 1',
       durationMinutes: 2,
+      generationFormat: 'dictation-script-v1',
     });
   });
 
@@ -75,8 +76,47 @@ describe('OpenRouter jobs route payload validation', () => {
         durationMinutes: 6,
       }),
     ).toMatchObject({
-      maxTokens: 6000,
+      maxTokens: 4200,
       durationMinutes: 6,
+    });
+  });
+
+  it('accepts compact chunk jobs with a normalized script build policy through ten minutes', () => {
+    expect(
+      readCreateJobPayload({
+        model: 'openrouter/free',
+        prompt: 'Generate compact chunks.',
+        inputMode: 'browser-tts',
+        language: 'pt',
+        slotLabel: 'Adaptive direct session',
+        durationMinutes: 10,
+        targetDifficulty: 'hard',
+        generationFormat: 'compact-chunks-v1',
+        scriptBuildPolicy: {
+          inputMode: 'browser-tts',
+          language: 'pt',
+          difficulty: 'hard',
+          durationMinutes: 10,
+          recommendedRateRange: [0.76, 0.8],
+          recommendedPhraseSize: 'short',
+          recommendedPauseMs: 2600,
+          phraseDifficultyRange: [0.65, 0.82],
+        },
+      }),
+    ).toMatchObject({
+      maxTokens: 6600,
+      durationMinutes: 10,
+      generationFormat: 'compact-chunks-v1',
+      scriptBuildPolicy: {
+        inputMode: 'browser-tts',
+        language: 'pt',
+        difficulty: 'hard',
+        durationMinutes: 10,
+        recommendedRateRange: [0.76, 0.8],
+        recommendedPhraseSize: 'short',
+        recommendedPauseMs: 2600,
+        phraseDifficultyRange: [0.65, 0.82],
+      },
     });
   });
 
@@ -88,17 +128,17 @@ describe('OpenRouter jobs route payload validation', () => {
           prompt: `Generate ${payload.slotLabel}.`,
           inputMode: 'browser-tts',
           language: 'de',
-          maxTokens: payload.durationMinutes === 1 ? 1800 : 2600,
+          maxTokens: 1800,
           ...payload,
         }),
       ).toMatchObject({
-        model: 'openrouter/free',
-        inputMode: 'browser-tts',
-        language: 'de',
-        maxTokens: payload.durationMinutes === 1 ? 1800 : 2600,
-        slotLabel: payload.slotLabel,
-        durationMinutes: payload.durationMinutes,
-        targetDifficulty: payload.targetDifficulty,
+          model: 'openrouter/free',
+          inputMode: 'browser-tts',
+          language: 'de',
+          maxTokens: 1800,
+          slotLabel: payload.slotLabel,
+          durationMinutes: payload.durationMinutes,
+          targetDifficulty: payload.targetDifficulty,
       });
     }
   });

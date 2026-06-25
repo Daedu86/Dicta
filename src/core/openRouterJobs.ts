@@ -4,10 +4,12 @@ export {
 } from './openRouterJobTypes';
 export type {
   ActiveOpenRouterJob,
+  OpenRouterGenerationFormat,
   OpenRouterCustomSlotId,
   OpenRouterJobOrigin,
   OpenRouterJobResponse,
   OpenRouterJobStatus,
+  OpenRouterScriptBuildPolicy,
   OpenRouterUsage,
 } from './openRouterJobTypes';
 export {

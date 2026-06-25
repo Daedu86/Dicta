@@ -17,14 +17,14 @@ The runtime loop is causal: memory feeds preparation, preparation drives the cur
 
 ## Workspace map
 
-The Adaptive Pace Layer Flow workspace explains the loop as four auditable groups. Phase 1 / Generation also contains the live direct OpenRouter Generate Training Session card. Step 5 / Playback loop contains the local safe-pause gate controls for Browser TTS minimum mental rest and max fallback. The generation card now uses the same `direct-training` path as Training Mode, owns the locally persisted 2-6 minute duration preference, shows the final prompt sent to OpenRouter, and offers no-context and "my context" prompt variants. Training Mode does not expose a duration selector; its direct generation labels, help text, and OpenRouter job duration reflect the Phase 1 selector.
+The Adaptive Pace Layer Flow workspace explains the loop as four auditable groups. Phase 1 / Generation also contains the live direct OpenRouter Generate Training Session card. Step 5 / Playback loop contains the local safe-pause gate controls for Browser TTS minimum mental rest and max fallback. The generation card now uses the same `direct-training` path as Training Mode, owns the locally persisted 2-10 minute duration preference, shows the final compact prompt sent to OpenRouter, and offers no-context and "my context" prompt variants. Training Mode does not expose a duration selector; its direct generation labels, help text, and OpenRouter job duration reflect the Phase 1 selector.
 
 - Memory: 20-day benchmark, recent feedback, and active `browser-tts/{language}` calibration.
 - Prepare: Generation, Planner, and Chunker convert evidence into content, runtime policy, and playable chunks.
 - Run: Browser TTS and the Playback loop execute the current session and collect live pressure.
 - Learn: Scoring, Telemetry, Benchmark, and Adaptation return evidence to the next cycle.
 
-Training Mode direct generation keeps each OpenRouter request as a separate visible job row with its own elapsed-time counter. Active rows can be canceled, which marks the durable job as canceled and stops browser polling for that request without treating it as a learner-facing generated error session.
+Training Mode direct generation keeps each OpenRouter request as a separate visible job row with its own elapsed-time counter. Active rows can be canceled, which marks the durable job as canceled and stops browser polling for that request without treating it as a learner-facing generated error session. Provider waits leave a persistence buffer before the 300-second Vercel job window, and stale durable jobs are marked failed on poll instead of remaining active indefinitely. Direct prompts request `compact-chunks-v1` by default: OpenRouter returns only a title and semantic chunks, while Dicta locally builds the full `DictationScript` from the trainer prescription and semantic phrase planner. Legacy full `DictationScript` JSON is still accepted for old jobs and fallback responses.
 
 ## Module map
 

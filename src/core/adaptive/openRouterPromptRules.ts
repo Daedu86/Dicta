@@ -14,9 +14,6 @@ type DurationTargets = {
 const BASE_SPOKEN_WORDS_PER_SECOND = 2.6;
 const MIN_WORD_FACTOR = 0.85;
 const MAX_WORD_FACTOR = 1.1;
-// Six-minute scripts must stay monotonic without pushing free OpenRouter providers past the 300s job window.
-const PROVIDER_SAFE_SIX_MINUTE_TARGET_WORDS = 800;
-const PROVIDER_SAFE_SIX_MINUTE_PHRASES = 51;
 
 type BuildHardRulesPromptArgs = {
   normalizedProfile: InputLanguageBenchmarkMetrics;
@@ -71,7 +68,6 @@ export function buildOpenRouterHardRulesPrompt({
 export function buildCompactAdaptiveV2Prompt({
   normalizedProfile,
   trainingPrescription,
-  outputTemplate,
   durationMinutes,
   targetDifficulty,
   difficultyInstruction,
@@ -85,30 +81,27 @@ export function buildCompactAdaptiveV2Prompt({
 
   return [
     'Generate the next Dicta dictation training session.',
-    'Return only valid JSON. Do not use Markdown or code fences.',
-    `Use exactly inputMode "${normalizedProfile.inputMode}" and language "${normalizedProfile.language}".`,
-    `Write all phrase text naturally in ${languageName}.`,
-    'Generate phrase text only; Dicta controls playback, rate, pauses, chunking, recovery, and replay at runtime.',
+    'Return only valid compact JSON. Do not use Markdown or code fences.',
+    'Required output shape: {"title":"short specific title","chunks":["semantic chunk one","semantic chunk two"]}.',
+    'The title is optional but preferred; chunks must be a non-empty array of natural text strings.',
+    'Do not include per-phrase metadata, playback metadata, schema templates, or extra fields. Dicta builds the full DictationScript locally.',
+    `Target Dicta profile: inputMode "${normalizedProfile.inputMode}", language "${normalizedProfile.language}".`,
+    `Write all chunk text naturally in ${languageName}.`,
+    'Generate content chunks only; Dicta controls playback, rate, pauses, chunking, recovery, and replay at runtime.',
     'Use the resolved trainer constraints below as the source of truth; benchmark and feedback context are secondary.',
-    `Set "difficulty" exactly to "${trainingPrescription.difficulty}".`,
-    `Set "recommendedRateRange" to ${JSON.stringify(trainingPrescription.targetRateRange)}.`,
-    `Set "recommendedPhraseSize" to "${trainingPrescription.targetPhraseSize}".`,
-    `Set "recommendedPauseMs" close to ${trainingPrescription.targetPauseMs}.`,
-    `Keep phrase-level "difficulty" values in ${trainingPrescription.phraseDifficultyRange[0].toFixed(2)}-${trainingPrescription.phraseDifficultyRange[1].toFixed(2)}.`,
+    `Resolved content difficulty: "${trainingPrescription.difficulty}".`,
+    `Use ${trainingPrescription.targetPhraseSize} semantic chunks with content complexity in the ${trainingPrescription.phraseDifficultyRange[0].toFixed(2)}-${trainingPrescription.phraseDifficultyRange[1].toFixed(2)} training zone.`,
     ...buildTrainingPrescriptionRequestNotes(trainingPrescription, targetDifficulty, difficultyInstruction),
     ...buildTopicContextPromptLines(topicContext),
-    `Target voice playback duration: ${durationLabel}; set "estimatedDurationSec" close to ${durationMinutes * 60}.`,
-    `Combined spoken phrase text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
-    `Create at least ${minimumPhraseCount} phrases unless phrases are unusually long; each phrase should usually contain 10-18 spoken words.`,
-    'The word budget scales with the selected duration. Stay within the word range and complete the JSON.',
-    'Generate natural semantic phrases for dictation.',
-    'Use safe semantic boundaries, replayable phrases when possible, the prescribed phrase difficulty range, content guidance, and pacing-compatible phrase lengths.',
-    'Do not satisfy duration by changing only "estimatedDurationSec"; generate enough phrase text for the requested voice/audio length.',
+    `Target voice playback duration: ${durationLabel}; Dicta will set duration metadata locally.`,
+    `Combined spoken chunk text: ${minSpokenWords}-${maxSpokenWords} words, approximately ${targetSpokenWords} words total.`,
+    `Create at least ${minimumPhraseCount} chunks unless chunks are unusually long; each chunk should usually contain 10-18 spoken words.`,
+    'The word budget scales with the selected duration. Stay within the word range and complete the compact JSON.',
+    'Generate natural semantic chunks for dictation.',
+    'Use safe semantic boundaries, replayable ideas when possible, the prescribed difficulty range, content guidance, and pacing-compatible chunk lengths.',
+    'Do not satisfy duration by adding metadata; generate enough chunk text for the requested voice/audio length.',
     ...buildAdaptivePolicyConstraintsSection(trainingPrescription),
     ...buildDiversificationPromptLines(diversificationHints),
-    '',
-    'Required output JSON schema/template:',
-    outputTemplate,
     '',
     'Compact adaptive context:',
     compactAdaptiveV2Context,
@@ -116,14 +109,8 @@ export function buildCompactAdaptiveV2Prompt({
 }
 
 function getDurationTargets(durationMinutes: OpenRouterDurationMinutes): DurationTargets {
-  const targetSpokenWords =
-    durationMinutes === 6
-      ? PROVIDER_SAFE_SIX_MINUTE_TARGET_WORDS
-      : Math.round(durationMinutes * 60 * BASE_SPOKEN_WORDS_PER_SECOND);
-  const minimumPhraseCount =
-    durationMinutes === 6
-      ? PROVIDER_SAFE_SIX_MINUTE_PHRASES
-      : durationMinutes * 10;
+  const targetSpokenWords = Math.round(durationMinutes * 60 * BASE_SPOKEN_WORDS_PER_SECOND);
+  const minimumPhraseCount = durationMinutes * 10;
   return {
     durationLabel: formatDurationMinutes(durationMinutes),
     targetSpokenWords,

@@ -69,6 +69,17 @@ describe('openRouterJobs', () => {
       language: 'de',
       durationMinutes: 2,
       targetDifficulty: 'easy',
+      generationFormat: 'compact-chunks-v1',
+      scriptBuildPolicy: {
+        inputMode: 'browser-tts',
+        language: 'de',
+        difficulty: 'easy',
+        durationMinutes: 2,
+        recommendedRateRange: [0.8, 0.9],
+        recommendedPhraseSize: 'short',
+        recommendedPauseMs: 1200,
+        phraseDifficultyRange: [0.25, 0.45],
+      },
       promptMode: 'compact-adaptive-v2',
       promptCharacterCount: 3600,
       promptApproximateTokenCount: 900,
@@ -88,6 +99,12 @@ describe('openRouterJobs', () => {
     expect(loadActiveOpenRouterJob()?.jobId).toBe('job-easy');
     expect(loadActiveOpenRouterJob()?.promptMode).toBe('compact-adaptive-v2');
     expect(loadActiveOpenRouterJob()?.promptApproximateTokenCount).toBe(900);
+    expect(loadActiveOpenRouterJob()?.generationFormat).toBe('compact-chunks-v1');
+    expect(loadActiveOpenRouterJob()?.scriptBuildPolicy).toMatchObject({
+      language: 'de',
+      durationMinutes: 2,
+      recommendedPhraseSize: 'short',
+    });
 
     const remainingJobs = removeActiveOpenRouterJob('job-easy', activeJobs);
     expect(remainingJobs.map((job) => job.jobId)).toEqual(['job-hard']);
@@ -106,7 +123,7 @@ describe('openRouterJobs', () => {
           slotLabel: 'Express easy direct session',
           inputMode: 'browser-tts',
           language: 'fr',
-          durationMinutes: 5,
+          durationMinutes: 10,
           startedAt: '2026-05-17T10:00:00.000Z',
         },
         {
@@ -132,7 +149,7 @@ describe('openRouterJobs', () => {
       jobId: 'job-legacy',
       inputMode: 'browser-tts',
       language: 'fr',
-      durationMinutes: 5,
+      durationMinutes: 10,
     });
     expect(restoredJobs[0]).not.toHaveProperty('origin');
     expect(restoredJobs[0]).not.toHaveProperty('customSlotId');

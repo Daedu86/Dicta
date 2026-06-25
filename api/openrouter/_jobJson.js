@@ -103,6 +103,33 @@ function isValidSessionScript(value) {
   );
 }
 
+function isValidCompactChunks(value) {
+  if (!value || typeof value !== 'object') return false;
+  const payload = value;
+  return (
+    Array.isArray(payload.chunks) &&
+    payload.chunks.some((chunk) => typeof chunk === 'string' && chunk.trim().length > 0) &&
+    (payload.title === undefined || typeof payload.title === 'string')
+  );
+}
+
+function normalizeCompactChunks(value) {
+  const seen = new Set();
+  const chunks = [];
+  for (const chunk of Array.isArray(value?.chunks) ? value.chunks : []) {
+    if (typeof chunk !== 'string') continue;
+    const text = chunk.replace(/\s+/g, ' ').trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    chunks.push(text);
+  }
+  const title = typeof value?.title === 'string' ? value.title.replace(/\s+/g, ' ').trim() : '';
+  return {
+    ...(title ? { title } : {}),
+    chunks,
+  };
+}
+
 function findValidSessionScript(value, depth = 0) {
   if (isValidSessionScript(value)) return value;
   if (depth >= 4) return null;
@@ -131,11 +158,48 @@ function findValidSessionScript(value, depth = 0) {
   return null;
 }
 
+function findValidCompactChunks(value, depth = 0) {
+  if (isValidCompactChunks(value)) return normalizeCompactChunks(value);
+  if (depth >= 4) return null;
+
+  if (typeof value === 'string') {
+    const parsed = tryParseOpenRouterJobJson(value);
+    if (parsed !== null && parsed !== value) return findValidCompactChunks(parsed, depth + 1);
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findValidCompactChunks(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) {
+      const found = findValidCompactChunks(item, depth + 1);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
 export function extractOpenRouterJobSessionJson(raw) {
   for (const candidate of collectJsonObjectCandidates(raw)) {
     const parsed = tryParseOpenRouterJobJson(candidate);
     const script = findValidSessionScript(parsed);
     if (script) return JSON.stringify(script, null, 2);
+  }
+  return '';
+}
+
+export function extractOpenRouterJobCompactChunksJson(raw) {
+  for (const candidate of collectJsonObjectCandidates(raw)) {
+    const parsed = tryParseOpenRouterJobJson(candidate);
+    const payload = findValidCompactChunks(parsed);
+    if (payload && payload.chunks.length > 0) return JSON.stringify(payload, null, 2);
   }
   return '';
 }

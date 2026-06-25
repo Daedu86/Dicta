@@ -16,11 +16,12 @@ import {
   markOpenRouterJobCanceled,
   normalizeOpenRouterJobRow,
   readOpenRouterJobRow,
+  settleStaleOpenRouterJob,
 } from './_jobPersistence.js';
 import { readCreateJobPayload, resolveCreateJobPayloadForRequester } from './_jobPayload.js';
 import { runOpenRouterJob } from './_jobRunner.js';
 
-export { extractOpenRouterJobSessionJson } from './_jobJson.js';
+export { extractOpenRouterJobCompactChunksJson, extractOpenRouterJobSessionJson } from './_jobJson.js';
 export {
   formatOpenRouterJobProviderError,
   isRetryableOpenRouterJobResponse,
@@ -95,7 +96,8 @@ async function getJob(req, res) {
     return;
   }
 
-  res.status(200).json(normalizeOpenRouterJobRow(data));
+  const settledRow = await settleStaleOpenRouterJob(supabase, { profileId, row: data });
+  res.status(200).json(normalizeOpenRouterJobRow(settledRow));
 }
 
 async function cancelJob(req, res) {

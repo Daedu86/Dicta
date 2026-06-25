@@ -68,6 +68,10 @@ describe('buildOpenRouterGenerationPrompt', () => {
     expect(payload.prompt).toContain('Adaptive policy constraints:');
     expect(payload.prompt).toContain('Runtime policy:');
     expect(payload.prompt).toContain('Learning policy:');
+    expect(payload.prompt).toContain('Required output shape: {"title":"short specific title","chunks":["semantic chunk one","semantic chunk two"]}.');
+    expect(payload.prompt).not.toContain('boundaryType');
+    expect(payload.prompt).not.toContain('pauseAfterMs');
+    expect(payload.prompt).not.toContain('semanticCompleteness');
     expect(payload.trainingPrescription.difficulty).toBe('hard');
     expect(payload.trainingPrescription.learningPolicy.difficulty).toBe('hard');
     expect(payload.trainingPrescription.runtimePolicy.boundaryPolicy).toBe('normal_semantic');
@@ -103,7 +107,7 @@ describe('buildOpenRouterGenerationPrompt', () => {
       summary: 'Slow recovery profile.',
     };
 
-    const budgets = ([2, 3, 4, 5, 6] as const).map((durationMinutes) => {
+    const budgets = ([2, 3, 4, 5, 6, 7, 8, 9, 10] as const).map((durationMinutes) => {
       const payload = buildOpenRouterGenerationPrompt({
         profile,
         sessionFeedback: null,
@@ -120,59 +124,58 @@ describe('buildOpenRouterGenerationPrompt', () => {
       expect(payload.trainingPrescription.targetPhraseSize).toBe('short');
       expect(payload.trainingPrescription.targetPauseMs).toBe(3665);
       expect(payload.trainingPrescription.phraseDifficultyRange).toEqual([0.25, 0.45]);
-      expect(payload.prompt).toContain(`Target voice playback duration: ${durationMinutes} minutes; set "estimatedDurationSec" close to ${durationMinutes * 60}.`);
-      expect(payload.prompt).toContain('Set "difficulty" exactly to "easy".');
-      expect(payload.prompt).toContain('Set "recommendedRateRange" to [0.66,0.74].');
-      expect(payload.prompt).toContain('Set "recommendedPhraseSize" to "short".');
-      expect(payload.prompt).toContain('Set "recommendedPauseMs" close to 3665.');
-      expect(payload.prompt).toContain('Keep phrase-level "difficulty" values in 0.25-0.45.');
+      expect(payload.prompt).toContain(`Target voice playback duration: ${durationMinutes} minutes; Dicta will set duration metadata locally.`);
+      expect(payload.prompt).toContain('Resolved content difficulty: "easy".');
+      expect(payload.prompt).toContain('Use short semantic chunks with content complexity in the 0.25-0.45 training zone.');
       expect(payload.prompt).not.toContain('"runtimePolicy"');
       expect(payload.prompt).not.toContain('"learningPolicy"');
       expect(payload.prompt).not.toContain('"rationale"');
+      expect(payload.prompt).not.toContain('boundaryType');
+      expect(payload.prompt).not.toContain('pauseAfterMs');
+      expect(payload.prompt).not.toContain('semanticCompleteness');
+      expect(payload.prompt).not.toContain('"phrases"');
+      expect(payload.prompt).not.toContain('"recommendedRateRange"');
+      expect(payload.prompt).not.toContain('"recommendedPauseMs"');
 
       return extractPromptBudget(payload.prompt);
     });
 
     budgets.forEach((budget, index) => {
       const durationMinutes = index + 2;
-      expect(budget.estimatedDurationSec).toBe(durationMinutes * 60);
-      if (durationMinutes < 6) {
-        expect(budget.minimumPhraseCount).toBe(durationMinutes * 10);
-      }
+      expect(budget.minimumChunkCount).toBe(durationMinutes * 10);
       if (index === 0) return;
       expect(budget.targetSpokenWords).toBeGreaterThanOrEqual(budgets[index - 1].targetSpokenWords);
-      expect(budget.minimumPhraseCount).toBeGreaterThanOrEqual(budgets[index - 1].minimumPhraseCount);
+      expect(budget.minimumChunkCount).toBeGreaterThanOrEqual(budgets[index - 1].minimumChunkCount);
     });
 
-    expect(budgets[4]).toMatchObject({
-      minSpokenWords: 680,
-      maxSpokenWords: 880,
-      targetSpokenWords: 800,
-      minimumPhraseCount: 51,
+    expect(budgets[8]).toMatchObject({
+      minSpokenWords: 1326,
+      maxSpokenWords: 1716,
+      targetSpokenWords: 1560,
+      minimumChunkCount: 100,
     });
-    expect(budgets[4].targetSpokenWords).toBeGreaterThan(budgets[3].targetSpokenWords);
-    expect(budgets[4].minimumPhraseCount).toBeGreaterThan(budgets[3].minimumPhraseCount);
-    expect(budgets[4].targetSpokenWords / budgets[4].minimumPhraseCount).toBeCloseTo(
-      budgets[3].targetSpokenWords / budgets[3].minimumPhraseCount,
+    expect(budgets[8].targetSpokenWords).toBeGreaterThan(budgets[7].targetSpokenWords);
+    expect(budgets[8].minimumChunkCount).toBeGreaterThan(budgets[7].minimumChunkCount);
+    expect(budgets[8].targetSpokenWords / budgets[8].minimumChunkCount).toBeCloseTo(
+      budgets[7].targetSpokenWords / budgets[7].minimumChunkCount,
       0,
     );
   });
 });
 
 function extractPromptBudget(prompt: string) {
-  const durationMatch = prompt.match(/Target voice playback duration: \d+ minutes; set "estimatedDurationSec" close to (\d+)\./);
-  const wordsMatch = prompt.match(/Combined spoken phrase text: (\d+)-(\d+) words, approximately (\d+) words total\./);
-  const phrasesMatch = prompt.match(/Create at least (\d+) phrases/);
+  const durationMatch = prompt.match(/Target voice playback duration: \d+ minutes; Dicta will set duration metadata locally\./);
+  const wordsMatch = prompt.match(/Combined spoken chunk text: (\d+)-(\d+) words, approximately (\d+) words total\./);
+  const chunksMatch = prompt.match(/Create at least (\d+) chunks/);
 
   expect(durationMatch).toBeTruthy();
   expect(wordsMatch).toBeTruthy();
-  expect(phrasesMatch).toBeTruthy();
+  expect(chunksMatch).toBeTruthy();
 
   return {
-    estimatedDurationSec: Number(durationMatch?.[1]),
     minSpokenWords: Number(wordsMatch?.[1]),
     maxSpokenWords: Number(wordsMatch?.[2]),
     targetSpokenWords: Number(wordsMatch?.[3]),
-    minimumPhraseCount: Number(phrasesMatch?.[1]),
+    minimumChunkCount: Number(chunksMatch?.[1]),
   };
 }

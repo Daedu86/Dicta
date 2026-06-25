@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractOpenRouterJobSessionJson } from '../api/openrouter/jobs.js';
+import { extractOpenRouterJobCompactChunksJson, extractOpenRouterJobSessionJson } from '../api/openrouter/jobs.js';
 import { validScript } from './helpers/openRouterJobFixtures';
 
 describe('OpenRouter jobs route session JSON extraction', () => {
@@ -37,5 +37,15 @@ describe('OpenRouter jobs route session JSON extraction', () => {
         'We need to produce JSON with specified fields. Let us craft about 12 phrases, each around 13 words.',
       ),
     ).toBe('');
+  });
+
+  it('extracts compact chunks JSON for compact OpenRouter jobs', () => {
+    const extracted = extractOpenRouterJobCompactChunksJson(
+      'Reasoning\n{"title":"Everyday moments","chunks":["Morning light reaches the kitchen.","Morning light reaches the kitchen.","The bus arrives after the rain."]}',
+    );
+    expect(JSON.parse(extracted)).toEqual({
+      title: 'Everyday moments',
+      chunks: ['Morning light reaches the kitchen.', 'The bus arrives after the rain.'],
+    });
   });
 });

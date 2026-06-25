@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildOpenRouterDirectGenerationJobPlan } from '../src/app/openRouterDirectGenerationJobPlan';
 import { OPEN_ROUTER_DIRECT_GENERATION_PRESETS } from '../src/app/openRouterDirectGenerationPresets';
+import type { OpenRouterDurationMinutes } from '../src/core/adaptive/openRouterGenerationPrompt';
 
 describe('buildOpenRouterDirectGenerationJobPlan', () => {
   it('uses the adaptive preset for direct session generation', () => {
@@ -12,11 +13,22 @@ describe('buildOpenRouterDirectGenerationJobPlan', () => {
     const plan = buildPlan('adaptive');
 
     expect(plan.jobRequestBody.durationMinutes).toBe(3);
-    expect(plan.jobRequestBody.maxTokens).toBe(3800);
+    expect(plan.jobRequestBody.maxTokens).toBe(2400);
+    expect(plan.jobRequestBody.generationFormat).toBe('compact-chunks-v1');
+    expect(plan.jobRequestBody.scriptBuildPolicy).toMatchObject({
+      inputMode: 'browser-tts',
+      language: 'en',
+      durationMinutes: 3,
+    });
+    expect(plan.activeJobDraft.generationFormat).toBe('compact-chunks-v1');
     expect(plan.activeJobDraft.durationMinutes).toBe(3);
-    expect(plan.prompt).toContain('Target voice playback duration: 3 minutes; set "estimatedDurationSec" close to 180.');
-    expect(plan.prompt).toContain('Combined spoken phrase text: 398-515 words, approximately 468 words total.');
-    expect(plan.prompt).toContain('Create at least 30 phrases');
+    expect(plan.prompt).toContain('Required output shape: {"title":"short specific title","chunks":["semantic chunk one","semantic chunk two"]}.');
+    expect(plan.prompt).toContain('Target voice playback duration: 3 minutes; Dicta will set duration metadata locally.');
+    expect(plan.prompt).toContain('Combined spoken chunk text: 398-515 words, approximately 468 words total.');
+    expect(plan.prompt).toContain('Create at least 30 chunks');
+    expect(plan.prompt).not.toContain('boundaryType');
+    expect(plan.prompt).not.toContain('pauseAfterMs');
+    expect(plan.prompt).not.toContain('semanticCompleteness');
     expect(plan.prompt).not.toContain('User topic context:');
   });
 
@@ -24,8 +36,8 @@ describe('buildOpenRouterDirectGenerationJobPlan', () => {
     const plan = buildPlan('topic', 'everyday errands in Berlin');
 
     expect(plan.jobRequestBody.durationMinutes).toBe(3);
-    expect(plan.jobRequestBody.maxTokens).toBe(3800);
-    expect(plan.prompt).toContain('Target voice playback duration: 3 minutes; set "estimatedDurationSec" close to 180.');
+    expect(plan.jobRequestBody.maxTokens).toBe(2400);
+    expect(plan.prompt).toContain('Target voice playback duration: 3 minutes; Dicta will set duration metadata locally.');
     expect(plan.prompt).toContain('User topic context:');
     expect(plan.prompt).toContain('everyday errands in Berlin');
   });
@@ -35,29 +47,39 @@ describe('buildOpenRouterDirectGenerationJobPlan', () => {
 
     expect(plan.prompt).toBe(plan.jobRequestBody.prompt);
     expect(plan.jobRequestBody.durationMinutes).toBe(6);
-    expect(plan.jobRequestBody.maxTokens).toBe(6000);
+    expect(plan.jobRequestBody.maxTokens).toBe(4200);
     expect(plan.activeJobDraft.durationMinutes).toBe(6);
-    expect(plan.prompt).toContain('Target voice playback duration: 6 minutes; set "estimatedDurationSec" close to 360.');
-    expect(plan.prompt).toContain('Combined spoken phrase text: 680-880 words, approximately 800 words total.');
-    expect(plan.prompt).toContain('Create at least 51 phrases');
+    expect(plan.prompt).toContain('Target voice playback duration: 6 minutes; Dicta will set duration metadata locally.');
+    expect(plan.prompt).toContain('Combined spoken chunk text: 796-1030 words, approximately 936 words total.');
+    expect(plan.prompt).toContain('Create at least 60 chunks');
     expect(plan.prompt).toContain('bank appointment vocabulary');
   });
 
-  it('keeps five-minute context prompts on the existing prose budget', () => {
+  it('builds a ten-minute context prompt with compact chunk output budget', () => {
+    const plan = buildPlan('topic', 'train station announcements', 10);
+
+    expect(plan.jobRequestBody.durationMinutes).toBe(10);
+    expect(plan.jobRequestBody.maxTokens).toBe(6600);
+    expect(plan.prompt).toContain('Target voice playback duration: 10 minutes; Dicta will set duration metadata locally.');
+    expect(plan.prompt).toContain('Combined spoken chunk text: 1326-1716 words, approximately 1560 words total.');
+    expect(plan.prompt).toContain('Create at least 100 chunks');
+  });
+
+  it('builds five-minute context prompts from real duration word targets', () => {
     const plan = buildPlan('topic', 'train station announcements', 5);
 
     expect(plan.jobRequestBody.durationMinutes).toBe(5);
-    expect(plan.jobRequestBody.maxTokens).toBe(6000);
-    expect(plan.prompt).toContain('Target voice playback duration: 5 minutes; set "estimatedDurationSec" close to 300.');
-    expect(plan.prompt).toContain('Combined spoken phrase text: 663-858 words, approximately 780 words total.');
-    expect(plan.prompt).toContain('Create at least 50 phrases');
+    expect(plan.jobRequestBody.maxTokens).toBe(3600);
+    expect(plan.prompt).toContain('Target voice playback duration: 5 minutes; Dicta will set duration metadata locally.');
+    expect(plan.prompt).toContain('Combined spoken chunk text: 663-858 words, approximately 780 words total.');
+    expect(plan.prompt).toContain('Create at least 50 chunks');
   });
 });
 
 function buildPlan(
   presetKey: keyof typeof OPEN_ROUTER_DIRECT_GENERATION_PRESETS,
   topicContext?: string,
-  durationMinutes = OPEN_ROUTER_DIRECT_GENERATION_PRESETS[presetKey].durationMinutes,
+  durationMinutes: OpenRouterDurationMinutes = OPEN_ROUTER_DIRECT_GENERATION_PRESETS[presetKey].durationMinutes,
 ) {
   return buildOpenRouterDirectGenerationJobPlan({
     model: 'openrouter/free',

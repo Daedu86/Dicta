@@ -17,14 +17,14 @@ describe('uiPreferenceStorage', () => {
   });
 
   it('persists the OpenRouter direct generation duration preference', () => {
-    persistOpenRouterDirectGenerationDurationMinutes(6);
+    persistOpenRouterDirectGenerationDurationMinutes(10);
 
-    expect(loadOpenRouterDirectGenerationDurationMinutes()).toBe(6);
-    expect(window.localStorage.getItem(OPEN_ROUTER_DIRECT_GENERATION_DURATION_KEY)).toBe('6');
+    expect(loadOpenRouterDirectGenerationDurationMinutes()).toBe(10);
+    expect(window.localStorage.getItem(OPEN_ROUTER_DIRECT_GENERATION_DURATION_KEY)).toBe('10');
   });
 
   it('falls back to the default duration when the stored value is invalid', () => {
-    window.localStorage.setItem(OPEN_ROUTER_DIRECT_GENERATION_DURATION_KEY, '9');
+    window.localStorage.setItem(OPEN_ROUTER_DIRECT_GENERATION_DURATION_KEY, '11');
 
     expect(loadOpenRouterDirectGenerationDurationMinutes()).toBe(3);
   });

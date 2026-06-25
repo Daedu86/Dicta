@@ -3,8 +3,12 @@ import {
 } from '../core/adaptive/AdaptiveInputLanguageBenchmarkService';
 import {
   buildOpenRouterGenerationPrompt,
+  buildOpenRouterScriptBuildPolicy,
   estimateOpenRouterPromptSize,
   getOpenRouterGenerationMaxTokens,
+  OPENROUTER_COMPACT_CHUNKS_GENERATION_FORMAT,
+  type OpenRouterGenerationFormat,
+  type OpenRouterScriptBuildPolicy,
 } from '../core/adaptive/openRouterGenerationPrompt';
 import { selectLatestAdaptiveSessionFeedback } from '../core/adaptive/sessionFeedback';
 import type { InputMode } from '../core/adaptive/types';
@@ -33,6 +37,8 @@ export type OpenRouterDirectGenerationJobRequestBody = {
   language: BenchmarkLanguageButton;
   durationMinutes: OpenRouterDirectGenerationPreset['durationMinutes'];
   targetDifficulty: OpenRouterDirectGenerationPreset['targetDifficulty'];
+  generationFormat: OpenRouterGenerationFormat;
+  scriptBuildPolicy: OpenRouterScriptBuildPolicy;
 };
 
 export type OpenRouterDirectGenerationActiveJobDraft = Omit<ActiveOpenRouterJob, 'jobId'>;
@@ -110,6 +116,7 @@ export function buildOpenRouterDirectGenerationJobPlan({
     }),
   });
   const resolvedTargetDifficulty = trainingPrescription.difficulty;
+  const scriptBuildPolicy = buildOpenRouterScriptBuildPolicy(trainingPrescription);
   const promptSize = estimateOpenRouterPromptSize(prompt, {
     promptMode: 'compact-adaptive-v2',
     durationMinutes,
@@ -132,6 +139,8 @@ export function buildOpenRouterDirectGenerationJobPlan({
       language,
       durationMinutes,
       targetDifficulty: resolvedTargetDifficulty,
+      generationFormat: OPENROUTER_COMPACT_CHUNKS_GENERATION_FORMAT,
+      scriptBuildPolicy,
     },
     activeJobDraft: {
       model,
@@ -140,6 +149,8 @@ export function buildOpenRouterDirectGenerationJobPlan({
       language,
       durationMinutes,
       targetDifficulty: resolvedTargetDifficulty,
+      generationFormat: OPENROUTER_COMPACT_CHUNKS_GENERATION_FORMAT,
+      scriptBuildPolicy,
       promptMode: promptSize.promptMode,
       promptCharacterCount: promptSize.characterCount,
       promptApproximateTokenCount: promptSize.approximateTokenCount,

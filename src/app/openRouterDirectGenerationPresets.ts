@@ -15,7 +15,7 @@ export type OpenRouterDirectGenerationPreset = {
 };
 
 export const OPEN_ROUTER_DIRECT_GENERATION_DEFAULT_DURATION: OpenRouterDurationMinutes = 3;
-export const OPEN_ROUTER_DIRECT_GENERATION_DURATION_OPTIONS: OpenRouterDurationMinutes[] = [2, 3, 4, 5, 6];
+export const OPEN_ROUTER_DIRECT_GENERATION_DURATION_OPTIONS: OpenRouterDurationMinutes[] = [2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const ADAPTIVE_DIRECT_GENERATION_PRESET: OpenRouterDirectGenerationPreset = {
   id: 'adaptive',

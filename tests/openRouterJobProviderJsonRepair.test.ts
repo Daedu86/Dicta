@@ -93,4 +93,60 @@ describe('OpenRouter job provider JSON repair', () => {
     expect(repairBody.messages[1].content).toContain('Previous invalid response excerpt:');
     expect(repairBody.messages[1].content).toContain('provide JSON later');
   });
+
+  it('accepts compact chunks JSON when requested', async () => {
+    const fetchMock = vi.fn(async () => openRouterResponse(JSON.stringify({
+      title: 'Everyday moments',
+      chunks: ['Morning light reaches the kitchen.', 'The bus arrives after the rain.'],
+    })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await postChatCompletionWithSelectedModelRetries({
+      apiKey: 'openrouter-key',
+      req: request(),
+      model: 'provider/json-model:free',
+      prompt: 'Generate compact chunks.',
+      maxTokens: 1800,
+      timeoutMs: 1000,
+      generationFormat: 'compact-chunks-v1',
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.generationFormat).toBe('compact-chunks-v1');
+    expect(JSON.parse(response.scriptText)).toEqual({
+      title: 'Everyday moments',
+      chunks: ['Morning light reaches the kitchen.', 'The bus arrives after the rain.'],
+    });
+  });
+
+  it('repairs compact chunks without requesting full phrase metadata', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(openRouterResponse('I will think through the chunks first.'))
+      .mockResolvedValueOnce(openRouterResponse(JSON.stringify({
+        title: 'Everyday moments',
+        chunks: ['Morning light reaches the kitchen.', 'The bus arrives after the rain.'],
+      })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await postChatCompletionWithSelectedModelRetries({
+      apiKey: 'openrouter-key',
+      req: request(),
+      model: 'openai/gpt-oss-120b:free',
+      prompt: 'Generate compact chunks.',
+      maxTokens: 1800,
+      timeoutMs: 1000,
+      generationFormat: 'compact-chunks-v1',
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.jsonRepairApplied).toBe(true);
+    expect(response.generationFormat).toBe('compact-chunks-v1');
+    const [, repairInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const repairBody = JSON.parse(String(repairInit.body));
+    expect(repairBody.messages[1].content).toContain('"chunks"');
+    expect(repairBody.messages[1].content).not.toContain('boundaryType');
+    expect(repairBody.messages[1].content).not.toContain('pauseAfterMs');
+    expect(repairBody.messages[1].content).not.toContain('semanticCompleteness');
+  });
 });
