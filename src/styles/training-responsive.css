@@ -46,21 +46,27 @@
 
   .training-input-header,
   .training-live-metrics {
-    align-items: center;
+    align-items: stretch;
   }
 
   .training-input-header {
     position: static;
     z-index: auto;
     margin: 0;
+    flex-direction: column;
   }
 
   .training-live-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: flex-start;
+    overflow-x: visible;
   }
 
   .training-live-metrics span {
-    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 auto;
     justify-content: center;
   }
 

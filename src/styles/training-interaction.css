@@ -4,6 +4,8 @@
 .training-generation-card,
 .training-generation-action {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .training-audio-card,
@@ -75,8 +77,11 @@
 .training-generation-button,
 .training-submit-button {
   min-height: 54px;
+  min-width: 0;
   font-size: 1rem;
   border-radius: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .training-reset-button {
@@ -99,6 +104,9 @@
   background: rgba(244, 248, 253, 0.96);
   box-shadow: 0 14px 28px -26px rgba(16, 47, 99, 0.65);
   backdrop-filter: blur(10px);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .training-route-app-with-generation .training-input-header {
@@ -117,6 +125,7 @@
   gap: 0.45rem;
   flex-wrap: nowrap;
   min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   scrollbar-width: thin;
 }

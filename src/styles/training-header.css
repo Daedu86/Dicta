@@ -8,6 +8,9 @@
   border-radius: 16px;
   background: linear-gradient(165deg, rgba(24, 59, 105, 0.96), rgba(17, 46, 82, 0.93));
   box-shadow: 0 14px 36px -30px rgba(8, 20, 42, 0.95);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .training-header-brand {
@@ -107,6 +110,8 @@
 .training-header-generation-card .training-generation-button {
   font-size: 0.82rem;
   font-weight: 900;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .training-header-generation-card .training-generation-button-row .help-icon {

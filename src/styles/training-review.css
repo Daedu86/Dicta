@@ -1,6 +1,8 @@
 .training-review-panel {
   display: grid;
   gap: 0.85rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .training-review-legend,
@@ -8,6 +10,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .training-review-legend-item,
@@ -61,6 +65,10 @@
   background: #f8fbff;
   color: #182338;
   line-height: 1.6;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
 }
 
 .training-review-word {
@@ -68,6 +76,8 @@
   flex-direction: column;
   align-items: flex-start;
   min-height: 34px;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.18rem 0.52rem;
   border: 1px solid #d7e2ee;
   border-radius: 10px;
