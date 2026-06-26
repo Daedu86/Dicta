@@ -1,3 +1,39 @@
+@media (max-width: 720px) and (min-width: 641px) {
+  .training-input-header {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .training-live-metrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.28rem;
+    justify-content: stretch;
+    overflow-x: visible;
+  }
+
+  .training-live-metrics span {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 0.05rem;
+    padding: 0.18rem 0.26rem;
+    text-align: center;
+  }
+
+  .training-live-metrics small {
+    font-size: 0.55rem;
+    line-height: 1;
+  }
+
+  .training-live-metrics strong {
+    font-size: 0.76rem;
+    line-height: 1.05;
+  }
+}
+
 @media (max-width: 640px) {
   #root {
     padding: 0.65rem;
@@ -53,7 +89,7 @@
     position: static;
     z-index: auto;
     margin: 0;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .training-live-metrics {
@@ -61,6 +97,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: flex-start;
     overflow-x: visible;
+    gap: 0.35rem;
   }
 
   .training-live-metrics span {
@@ -68,6 +105,9 @@
     width: 100%;
     flex: 1 1 auto;
     justify-content: center;
+    grid-template-columns: auto auto;
+    gap: 0.22rem;
+    padding: 0.22rem 0.4rem;
   }
 
   .training-input-card textarea {

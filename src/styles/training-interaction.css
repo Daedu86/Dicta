@@ -92,11 +92,10 @@
   position: sticky;
   top: 5.75rem;
   z-index: 18;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(max-content, auto) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 0.7rem;
-  flex-wrap: nowrap;
+  gap: 0.55rem;
   margin: -0.35rem -0.35rem 0;
   padding: 0.35rem;
   border: 1px solid rgba(201, 217, 233, 0.86);
@@ -114,15 +113,18 @@
 }
 
 .training-input-heading {
-  flex: 0 0 auto;
+  min-width: 0;
   color: #24415f;
+  font-size: 0.98rem;
   font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .training-live-metrics {
-  flex: 1 1 auto;
+  display: flex;
   justify-content: flex-end;
-  gap: 0.45rem;
+  gap: 0.35rem;
   flex-wrap: nowrap;
   min-width: 0;
   max-width: 100%;
@@ -135,9 +137,9 @@
   display: inline-grid;
   grid-template-columns: auto auto;
   align-items: baseline;
-  gap: 0.35rem;
-  min-height: 32px;
-  padding: 0.25rem 0.55rem;
+  gap: 0.28rem;
+  min-height: 28px;
+  padding: 0.2rem 0.44rem;
   border: 1px solid #c9d9e9;
   border-radius: 999px;
   background: #f4f8fd;
@@ -147,13 +149,13 @@
 
 .training-live-metrics small {
   color: #60758d;
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .training-live-metrics strong {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 900;
 }
 
