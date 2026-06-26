@@ -107,6 +107,7 @@ function createChunkEndParams(overrides: Partial<ChunkEndParams> = {}): ChunkEnd
     pauseBeforeNextChunkMs: 1400,
     runtimeDecision: createDecision(),
     ttsCompletedSourceWordsRef: { current: 0 },
+    ttsText: 'hello world again today',
     ttsPracticeLiveTextRef,
     setTtsPracticeText: vi.fn() as ChunkEndParams['setTtsPracticeText'],
     ttsTranscript: {
@@ -218,6 +219,52 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
       }),
     );
     expect(params.speakNext).toHaveBeenCalledTimes(1);
+  });
+
+  it('auto-inserts target punctuation when the safe pause gate completes a chunk', () => {
+    vi.useFakeTimers();
+    installWindowTimers();
+    const params = createChunkEndParams({
+      ttsText: 'hello, world! again today',
+    });
+
+    handleBrowserTtsPlaybackLoopChunkEnd(params);
+
+    params.ttsPracticeLiveTextRef.current = 'hello world';
+    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS - 100);
+
+    expect(params.ttsPracticeLiveTextRef.current).toBe('hello, world!');
+    expect(params.setTtsPracticeText).toHaveBeenLastCalledWith('hello, world!');
+    expect(params.applyTtsPerformanceSample).toHaveBeenLastCalledWith({
+      forcePublishUi: true,
+      practiceTextOverride: 'hello, world!',
+    });
+  });
+
+  it('does not auto-insert punctuation while the user is editing inside the textarea', () => {
+    vi.useFakeTimers();
+    installWindowTimers();
+    vi.stubGlobal('document', {
+      activeElement: {
+        tagName: 'TEXTAREA',
+        selectionStart: 3,
+        selectionEnd: 3,
+        value: 'hello world',
+      },
+    });
+    const params = createChunkEndParams({
+      ttsText: 'hello, world! again today',
+    });
+
+    handleBrowserTtsPlaybackLoopChunkEnd(params);
+
+    params.ttsPracticeLiveTextRef.current = 'hello world';
+    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS - 100);
+
+    expect(params.ttsPracticeLiveTextRef.current).toBe('hello world');
+    expect(params.setTtsPracticeText).toHaveBeenLastCalledWith('hello world');
   });
 
   it('records benchmark pause with a configured minimum mental rest when the gate completes early', () => {

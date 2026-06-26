@@ -99,6 +99,7 @@ export type BrowserTtsPlaybackCursorSnapshot = BrowserTtsPlaybackCursorPosition 
 
 export type BrowserTtsPlaybackRunContext = {
   activeSession: StoredSession | null;
+  ttsText: string;
   ttsLanguage: TtsLanguage;
   ttsTranscript: Transcript | null;
   ttsSpeechRate: number;

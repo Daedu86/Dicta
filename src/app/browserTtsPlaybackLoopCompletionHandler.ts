@@ -6,6 +6,7 @@ import { scheduleBrowserTtsNextChunk } from './browserTtsNextChunkScheduler';
 import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlan';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 import { buildBrowserTtsPhraseCompletionTelemetry } from './browserTtsPhraseCompletionTelemetry';
+import { applyCompletedChunkPunctuation } from './completedChunkPunctuation';
 
 type BrowserTtsPlaybackCursor = {
   chunkIndex: number;
@@ -27,6 +28,7 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   pauseBeforeNextChunkMs: BrowserTtsPlaybackPlan['pauseBeforeNextChunkMs'];
   runtimeDecision: BrowserTtsPlaybackPlan['runtimeDecision'];
   ttsCompletedSourceWordsRef: BrowserTtsPlaybackLoopOptions['ttsCompletedSourceWordsRef'];
+  ttsText: BrowserTtsPlaybackLoopOptions['ttsText'];
   ttsPracticeLiveTextRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLiveTextRef'];
   setTtsPracticeText: BrowserTtsPlaybackLoopOptions['setTtsPracticeText'];
   ttsTranscript: BrowserTtsPlaybackLoopOptions['ttsTranscript'];
@@ -50,19 +52,47 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
 };
 
 function flushBrowserTtsChunkLiveMetrics({
+  autoPunctuation,
   ttsPracticeLiveTextRef,
   setTtsPracticeText,
   applyTtsPerformanceSample,
 }: Pick<
   BrowserTtsPlaybackLoopCompletionHandlerParams,
   'ttsPracticeLiveTextRef' | 'setTtsPracticeText' | 'applyTtsPerformanceSample'
->): void {
-  const practiceText = ttsPracticeLiveTextRef.current;
+> & {
+  autoPunctuation?: {
+    targetText: string;
+    completedWordCount: number;
+  };
+}): void {
+  let practiceText = ttsPracticeLiveTextRef.current;
+  if (autoPunctuation && canAutoPunctuateCurrentTextarea()) {
+    const punctuatedText = applyCompletedChunkPunctuation({
+      targetText: autoPunctuation.targetText,
+      typedText: practiceText,
+      completedWordCount: autoPunctuation.completedWordCount,
+    });
+    if (punctuatedText !== practiceText) {
+      ttsPracticeLiveTextRef.current = punctuatedText;
+      practiceText = punctuatedText;
+    }
+  }
+
   setTtsPracticeText(practiceText);
   applyTtsPerformanceSample({
     forcePublishUi: true,
     practiceTextOverride: practiceText,
   });
+}
+
+function canAutoPunctuateCurrentTextarea(): boolean {
+  const activeElement = typeof document === 'undefined' ? null : document.activeElement;
+  if (!activeElement || activeElement.tagName !== 'TEXTAREA') return true;
+
+  const textarea = activeElement as HTMLTextAreaElement;
+  const selectionStart = textarea.selectionStart ?? textarea.value.length;
+  const selectionEnd = textarea.selectionEnd ?? selectionStart;
+  return selectionStart === selectionEnd && selectionEnd === textarea.value.length;
 }
 
 export function handleBrowserTtsPlaybackLoopChunkEnd({
@@ -79,6 +109,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   pauseBeforeNextChunkMs,
   runtimeDecision,
   ttsCompletedSourceWordsRef,
+  ttsText,
   ttsPracticeLiveTextRef,
   setTtsPracticeText,
   ttsTranscript,
@@ -167,6 +198,12 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
     onResolved: (actualWaitMs, pauseGateResolutionReason) => {
       if (actualWaitMs > 0 || pauseGateResolutionReason !== 'no-gate') {
         flushBrowserTtsChunkLiveMetrics({
+          autoPunctuation: pauseGateResolutionReason === 'completed'
+            ? {
+                targetText: ttsText,
+                completedWordCount: chunk.startWordIndex + chunk.wordCount,
+              }
+            : undefined,
           ttsPracticeLiveTextRef,
           setTtsPracticeText,
           applyTtsPerformanceSample,

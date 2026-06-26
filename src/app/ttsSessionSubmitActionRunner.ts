@@ -1,6 +1,7 @@
 import { perfDiagnostics } from '../core/perfDiagnostics';
 import { BROWSER_TTS_SESSION_INPUT_MODE } from '../core/sessionInputModes';
 import { buildTrainingSubmitMessage } from '../core/trainingSubmitMessage';
+import { applyCompletedChunkPunctuation } from './completedChunkPunctuation';
 import { buildFinalizedTtsSessionState } from './ttsSessionFinalization';
 import type {
   TtsSessionSubmitAction,
@@ -33,7 +34,13 @@ export function createTtsSessionSubmitAction({
 }: TtsSessionSubmitActionOptions): TtsSessionSubmitAction {
   return function submitTtsSession(latestPracticeText = ttsPracticeText): void {
     const endPerfSpan = startPerfSpan('tts.submit', { inputMode: activeInputMode });
-    if (!ttsHasText || !latestPracticeText.trim()) {
+    const finalPracticeText = autoPunctuateSubmittedPracticeText({
+      activeInputMode,
+      activeSession,
+      latestPracticeText,
+    });
+
+    if (!ttsHasText || !finalPracticeText.trim()) {
       setError('Paste TTS text and type your attempt before submitting.');
       setTrainingSubmitMessage('');
       endPerfSpan();
@@ -41,13 +48,13 @@ export function createTtsSessionSubmitAction({
     }
 
     try {
-      if (latestPracticeText !== ttsPracticeText) {
-        setTtsPracticeText(latestPracticeText);
+      if (finalPracticeText !== ttsPracticeText) {
+        setTtsPracticeText(finalPracticeText);
       }
       const finalSample = applyTtsPerformanceSample({
         action: 'submit',
         finalize: true,
-        practiceTextOverride: latestPracticeText,
+        practiceTextOverride: finalPracticeText,
       });
       const finishedAt = nowIso();
       const finalVoiceResolution = resolveFinalVoice({
@@ -65,7 +72,7 @@ export function createTtsSessionSubmitAction({
         sessions,
         activeSessionId,
         activeSession,
-        latestPracticeText,
+        latestPracticeText: finalPracticeText,
         finalSample,
         finishedAt,
         finalVoiceURI,
@@ -88,6 +95,24 @@ export function createTtsSessionSubmitAction({
       endPerfSpan();
     }
   };
+}
+
+function autoPunctuateSubmittedPracticeText({
+  activeInputMode,
+  activeSession,
+  latestPracticeText,
+}: Pick<TtsSessionSubmitActionOptions, 'activeInputMode' | 'activeSession'> & {
+  latestPracticeText: string;
+}): string {
+  if (activeInputMode !== BROWSER_TTS_SESSION_INPUT_MODE || !activeSession?.ttsText) {
+    return latestPracticeText;
+  }
+
+  return applyCompletedChunkPunctuation({
+    targetText: activeSession.ttsText,
+    typedText: latestPracticeText,
+    completedWordCount: Number.MAX_SAFE_INTEGER,
+  });
 }
 
 function resolveFinalVoice({
