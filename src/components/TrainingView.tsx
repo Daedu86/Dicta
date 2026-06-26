@@ -30,6 +30,7 @@ export function TrainingView<Session extends TrainingViewSession>({
   currentTextValue,
   onTextChange,
   onImmediateTextChange,
+  onTextBlur,
   onTextKeyDown,
   textPlaceholder,
   liveScoreLabel,
@@ -124,6 +125,7 @@ export function TrainingView<Session extends TrainingViewSession>({
         currentTextValue={currentTextValue}
         onTextChange={inputController.handleTextChange}
         onImmediateTextChange={inputController.handleImmediateTextChange}
+        onTextBlur={onTextBlur}
         onTextKeyDown={inputController.handleTextKeyDown}
         textPlaceholder={textPlaceholder}
         readOnly={readOnly}

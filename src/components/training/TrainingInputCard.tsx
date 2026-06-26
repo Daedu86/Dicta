@@ -9,6 +9,7 @@ export type TrainingInputCardProps = {
   currentTextValue: string;
   onTextChange: (value: string) => void;
   onImmediateTextChange: (value: string) => void;
+  onTextBlur?: (value: string) => void;
   onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   textPlaceholder: string;
   readOnly: boolean;
@@ -33,6 +34,7 @@ export function TrainingInputCard({
   currentTextValue,
   onTextChange,
   onImmediateTextChange,
+  onTextBlur,
   onTextKeyDown,
   textPlaceholder,
   readOnly,
@@ -94,6 +96,7 @@ export function TrainingInputCard({
           value={currentTextValue}
           onValueChange={onTextChange}
           onImmediateValueChange={onImmediateTextChange}
+          onBlur={(event) => onTextBlur?.(event.currentTarget.value)}
           onKeyDown={onTextKeyDown}
           placeholder={textPlaceholder}
           readOnly={readOnly}

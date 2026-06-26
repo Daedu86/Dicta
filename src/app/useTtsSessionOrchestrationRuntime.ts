@@ -10,6 +10,7 @@ import {
   type UseTtsSessionOrchestrationRuntimeArgs,
 } from './ttsSessionOrchestrationDelegateArgs';
 import { buildSemanticPhrasesForTtsSession } from './ttsSessionSemanticPhrases';
+import { applyPendingTtsPracticePunctuation } from './ttsPracticePunctuation';
 import type { TtsPacingMode } from '../types/dictation';
 import type { SemanticPhrase } from '../core/adaptive/SemanticPhrasePlanner';
 
@@ -83,6 +84,17 @@ export function useTtsSessionOrchestrationRuntime(args: UseTtsSessionOrchestrati
     stopTtsPlayback,
   });
 
+  function punctuateCompletedTtsPracticeText(latestPracticeText?: string): string {
+    return applyPendingTtsPracticePunctuation({
+      activeInputMode: args.activeInputMode,
+      ttsText: args.ttsText,
+      completedWordCount: args.ttsCompletedSourceWordsRef.current,
+      ttsPracticeLiveTextRef: args.ttsPracticeLiveTextRef,
+      setTtsPracticeText: args.setTtsPracticeText,
+      latestPracticeText,
+    });
+  }
+
   args.stopTtsPlaybackRef.current = stopTtsPlayback;
 
   return {
@@ -97,6 +109,7 @@ export function useTtsSessionOrchestrationRuntime(args: UseTtsSessionOrchestrati
     stopTtsPlayback,
     seekTtsPlayback,
     resetSession,
+    punctuateCompletedTtsPracticeText,
     submitTtsSession,
   };
 }

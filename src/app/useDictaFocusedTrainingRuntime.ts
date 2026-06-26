@@ -12,6 +12,7 @@ type TtsInjectedFocusedTrainingKeys =
   | 'config'
   | 'applyTtsPerformanceSampleRef'
   | 'ttsPracticeLiveTextRef'
+  | 'ttsPracticeLastInputAtMsRef'
   | 'ttsUiLastPublishedAtRef'
   | 'ttsPublishedUiRef'
   | 'telemetryRef'
@@ -51,6 +52,7 @@ export function useDictaFocusedTrainingRuntime({
     previousLagRef,
     previousAccuracyRef,
     ttsPracticeLiveTextRef,
+    ttsPracticeLastInputAtMsRef,
     ttsUtteranceRef,
     telemetryRef,
     ttsStartedAtMsRef,
@@ -92,6 +94,7 @@ export function useDictaFocusedTrainingRuntime({
     config,
     applyTtsPerformanceSampleRef,
     ttsPracticeLiveTextRef,
+    ttsPracticeLastInputAtMsRef,
     ttsUiLastPublishedAtRef,
     ttsPublishedUiRef,
     telemetryRef,

@@ -50,6 +50,7 @@ export type UseFocusedTrainingRouteRuntimeArgs = FocusedTrainingGenerationButton
   resumeTts: () => void | Promise<void>;
   pauseTts: () => void;
   stopTtsPlayback: (action?: ControlAction) => void;
+  punctuateTtsPracticeText: (latestTextValue?: string) => string;
   onTtsPracticeChange: (value: string) => void;
   onTtsPracticeKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   submitTtsSession: (latestTextValue?: string) => void;
@@ -59,6 +60,7 @@ export type UseFocusedTrainingRouteRuntimeArgs = FocusedTrainingGenerationButton
   telemetryRef: WritableRef<SessionTelemetry | null | undefined>;
   ttsStartedAtMsRef: WritableRef<number | null>;
   ttsPracticeLiveTextRef: WritableRef<string>;
+  ttsPracticeLastInputAtMsRef: WritableRef<number>;
   pendingSessions: StoredSession[];
   activeSessionId: string;
   openWorkspaceForSession: TrainingViewProps<StoredSession>['onOpenPendingSession'];

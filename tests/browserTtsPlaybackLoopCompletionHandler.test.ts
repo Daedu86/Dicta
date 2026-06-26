@@ -109,6 +109,7 @@ function createChunkEndParams(overrides: Partial<ChunkEndParams> = {}): ChunkEnd
     ttsCompletedSourceWordsRef: { current: 0 },
     ttsText: 'hello world again today',
     ttsPracticeLiveTextRef,
+    ttsPracticeLastInputAtMsRef: { current: 0 },
     setTtsPracticeText: vi.fn() as ChunkEndParams['setTtsPracticeText'],
     ttsTranscript: {
       words: [
@@ -224,6 +225,19 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
   it('auto-inserts target punctuation when the safe pause gate completes a chunk', () => {
     vi.useFakeTimers();
     installWindowTimers();
+    const activeTextarea = {
+      tagName: 'TEXTAREA',
+      selectionStart: 11,
+      selectionEnd: 11,
+      value: 'hello world',
+      setSelectionRange: vi.fn((start: number, end: number) => {
+        activeTextarea.selectionStart = start;
+        activeTextarea.selectionEnd = end;
+      }),
+    };
+    vi.stubGlobal('document', {
+      activeElement: activeTextarea,
+    });
     const params = createChunkEndParams({
       ttsText: 'hello, world! again today',
     });
@@ -235,6 +249,8 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
     vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS - 100);
 
     expect(params.ttsPracticeLiveTextRef.current).toBe('hello, world!');
+    expect(activeTextarea.value).toBe('hello, world!');
+    expect(activeTextarea.setSelectionRange).toHaveBeenCalledWith(13, 13);
     expect(params.setTtsPracticeText).toHaveBeenLastCalledWith('hello, world!');
     expect(params.applyTtsPerformanceSample).toHaveBeenLastCalledWith({
       forcePublishUi: true,
@@ -262,6 +278,24 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
     params.ttsPracticeLiveTextRef.current = 'hello world';
     vi.advanceTimersByTime(100);
     vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS - 100);
+
+    expect(params.ttsPracticeLiveTextRef.current).toBe('hello world');
+    expect(params.setTtsPracticeText).toHaveBeenLastCalledWith('hello world');
+  });
+
+  it('does not auto-insert punctuation when the user typed too recently', () => {
+    vi.useFakeTimers();
+    installWindowTimers();
+    const params = createChunkEndParams({
+      ttsText: 'hello, world! again today',
+    });
+
+    handleBrowserTtsPlaybackLoopChunkEnd(params);
+
+    params.ttsPracticeLiveTextRef.current = 'hello world';
+    vi.advanceTimersByTime(650);
+    params.ttsPracticeLastInputAtMsRef.current = performance.now();
+    vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS - 650);
 
     expect(params.ttsPracticeLiveTextRef.current).toBe('hello world');
     expect(params.setTtsPracticeText).toHaveBeenLastCalledWith('hello world');

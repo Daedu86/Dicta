@@ -48,6 +48,7 @@ export type TrainingViewProps<Session extends TrainingViewSession = TrainingView
   currentTextValue: string;
   onTextChange: (value: string) => void;
   onImmediateTextChange?: (value: string) => void;
+  onTextBlur?: (value: string) => void;
   onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   textPlaceholder: string;
   liveScoreLabel: string;

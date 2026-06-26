@@ -46,6 +46,7 @@ export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
     stopTtsPlayback,
     seekTtsPlayback,
     resetSession,
+    punctuateCompletedTtsPracticeText,
     submitTtsSession,
   } = useTtsSessionOrchestrationRuntime({
     ...delegateArgs.ttsOrchestration,
@@ -70,6 +71,7 @@ export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
     resumeTts,
     pauseTts,
     stopTtsPlayback,
+    punctuateTtsPracticeText: punctuateCompletedTtsPracticeText,
     onTtsPracticeChange,
     onTtsPracticeKeyDown,
     submitTtsSession,

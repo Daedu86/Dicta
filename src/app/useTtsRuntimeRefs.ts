@@ -11,6 +11,7 @@ export function useTtsRuntimeRefs({ ttsPracticeText }: UseTtsRuntimeRefsArgs) {
   const previousLagRef = useRef(0);
   const previousAccuracyRef = useRef(100);
   const ttsPracticeLiveTextRef = useRef('');
+  const ttsPracticeLastInputAtMsRef = useRef(0);
 
   const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const telemetryRef = useRef<SessionTelemetry | null>(null);
@@ -60,6 +61,7 @@ export function useTtsRuntimeRefs({ ttsPracticeText }: UseTtsRuntimeRefsArgs) {
     previousLagRef,
     previousAccuracyRef,
     ttsPracticeLiveTextRef,
+    ttsPracticeLastInputAtMsRef,
     ttsUtteranceRef,
     telemetryRef,
     ttsStartedAtMsRef,

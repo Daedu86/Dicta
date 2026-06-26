@@ -33,6 +33,7 @@ export type FocusedTrainingRouteDelegateArgs = Omit<
   | 'resumeTts'
   | 'pauseTts'
   | 'stopTtsPlayback'
+  | 'punctuateTtsPracticeText'
   | 'onTtsPracticeChange'
   | 'onTtsPracticeKeyDown'
   | 'submitTtsSession'

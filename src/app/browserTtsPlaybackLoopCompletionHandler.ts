@@ -8,6 +8,8 @@ import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopType
 import { buildBrowserTtsPhraseCompletionTelemetry } from './browserTtsPhraseCompletionTelemetry';
 import { applyCompletedChunkPunctuation } from './completedChunkPunctuation';
 
+const SAFE_PAUSE_AUTO_PUNCTUATION_IDLE_MS = 200;
+
 type BrowserTtsPlaybackCursor = {
   chunkIndex: number;
   macroPhraseIndex: number;
@@ -30,6 +32,7 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   ttsCompletedSourceWordsRef: BrowserTtsPlaybackLoopOptions['ttsCompletedSourceWordsRef'];
   ttsText: BrowserTtsPlaybackLoopOptions['ttsText'];
   ttsPracticeLiveTextRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLiveTextRef'];
+  ttsPracticeLastInputAtMsRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLastInputAtMsRef'];
   setTtsPracticeText: BrowserTtsPlaybackLoopOptions['setTtsPracticeText'];
   ttsTranscript: BrowserTtsPlaybackLoopOptions['ttsTranscript'];
   browserTtsSafePauseGateSettings: BrowserTtsPlaybackLoopOptions['browserTtsSafePauseGateSettings'];
@@ -54,29 +57,26 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
 function flushBrowserTtsChunkLiveMetrics({
   autoPunctuation,
   ttsPracticeLiveTextRef,
+  ttsPracticeLastInputAtMsRef,
   setTtsPracticeText,
   applyTtsPerformanceSample,
 }: Pick<
   BrowserTtsPlaybackLoopCompletionHandlerParams,
-  'ttsPracticeLiveTextRef' | 'setTtsPracticeText' | 'applyTtsPerformanceSample'
+  'ttsPracticeLiveTextRef' | 'ttsPracticeLastInputAtMsRef' | 'setTtsPracticeText' | 'applyTtsPerformanceSample'
 > & {
   autoPunctuation?: {
     targetText: string;
     completedWordCount: number;
+    nowMs?: () => number;
   };
 }): void {
-  let practiceText = ttsPracticeLiveTextRef.current;
-  if (autoPunctuation && canAutoPunctuateCurrentTextarea()) {
-    const punctuatedText = applyCompletedChunkPunctuation({
-      targetText: autoPunctuation.targetText,
-      typedText: practiceText,
-      completedWordCount: autoPunctuation.completedWordCount,
-    });
-    if (punctuatedText !== practiceText) {
-      ttsPracticeLiveTextRef.current = punctuatedText;
-      practiceText = punctuatedText;
-    }
-  }
+  const practiceText = autoPunctuation
+    ? applySafePausePunctuation({
+        autoPunctuation,
+        ttsPracticeLiveTextRef,
+        ttsPracticeLastInputAtMsRef,
+      })
+    : ttsPracticeLiveTextRef.current;
 
   setTtsPracticeText(practiceText);
   applyTtsPerformanceSample({
@@ -85,11 +85,55 @@ function flushBrowserTtsChunkLiveMetrics({
   });
 }
 
-function canAutoPunctuateCurrentTextarea(): boolean {
-  const activeElement = typeof document === 'undefined' ? null : document.activeElement;
-  if (!activeElement || activeElement.tagName !== 'TEXTAREA') return true;
+function applySafePausePunctuation({
+  autoPunctuation,
+  ttsPracticeLiveTextRef,
+  ttsPracticeLastInputAtMsRef,
+}: {
+  autoPunctuation: {
+    targetText: string;
+    completedWordCount: number;
+    nowMs?: () => number;
+  };
+  ttsPracticeLiveTextRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLiveTextRef'];
+  ttsPracticeLastInputAtMsRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLastInputAtMsRef'];
+}): string {
+  const practiceText = ttsPracticeLiveTextRef.current;
+  const nowMs = autoPunctuation.nowMs ?? (() => performance.now());
+  if (nowMs() - ttsPracticeLastInputAtMsRef.current < SAFE_PAUSE_AUTO_PUNCTUATION_IDLE_MS) {
+    return practiceText;
+  }
 
-  const textarea = activeElement as HTMLTextAreaElement;
+  const punctuatedText = applyCompletedChunkPunctuation({
+    targetText: autoPunctuation.targetText,
+    typedText: practiceText,
+    completedWordCount: autoPunctuation.completedWordCount,
+  });
+  if (punctuatedText === practiceText) return practiceText;
+
+  const activeTextarea = getActiveTextarea();
+  if (activeTextarea && !canPatchTextareaSafely(activeTextarea, practiceText)) {
+    return practiceText;
+  }
+
+  if (activeTextarea) {
+    activeTextarea.value = punctuatedText;
+    const end = punctuatedText.length;
+    activeTextarea.setSelectionRange(end, end);
+  }
+
+  ttsPracticeLiveTextRef.current = punctuatedText;
+  return punctuatedText;
+}
+
+function getActiveTextarea(): HTMLTextAreaElement | null {
+  const activeElement = typeof document === 'undefined' ? null : document.activeElement;
+  if (!activeElement || activeElement.tagName !== 'TEXTAREA') return null;
+  return activeElement as HTMLTextAreaElement;
+}
+
+function canPatchTextareaSafely(textarea: HTMLTextAreaElement, expectedText: string): boolean {
+  if (textarea.value !== expectedText) return false;
   const selectionStart = textarea.selectionStart ?? textarea.value.length;
   const selectionEnd = textarea.selectionEnd ?? selectionStart;
   return selectionStart === selectionEnd && selectionEnd === textarea.value.length;
@@ -111,6 +155,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   ttsCompletedSourceWordsRef,
   ttsText,
   ttsPracticeLiveTextRef,
+  ttsPracticeLastInputAtMsRef,
   setTtsPracticeText,
   ttsTranscript,
   browserTtsSafePauseGateSettings,
@@ -161,6 +206,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
 
   flushBrowserTtsChunkLiveMetrics({
     ttsPracticeLiveTextRef,
+    ttsPracticeLastInputAtMsRef,
     setTtsPracticeText,
     applyTtsPerformanceSample,
   });
@@ -205,6 +251,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
               }
             : undefined,
           ttsPracticeLiveTextRef,
+          ttsPracticeLastInputAtMsRef,
           setTtsPracticeText,
           applyTtsPerformanceSample,
         });

@@ -65,6 +65,7 @@ export function createBrowserTtsPlaybackLoopContexts({
       ttsText: options.ttsText,
       ttsLanguage: options.ttsLanguage,
       ttsTranscript: options.ttsTranscript,
+      ttsPracticeLastInputAtMsRef: options.ttsPracticeLastInputAtMsRef,
       ttsSpeechRate: options.ttsSpeechRate,
       ttsPlaybackProfile: options.ttsPlaybackProfile,
       browserTtsSafePauseGateSettings: options.browserTtsSafePauseGateSettings,

@@ -33,6 +33,7 @@ export function buildFocusedTrainingRouteArgs(
     telemetryRef: args.telemetryRef,
     ttsStartedAtMsRef: args.ttsStartedAtMsRef,
     ttsPracticeLiveTextRef: args.ttsPracticeLiveTextRef,
+    ttsPracticeLastInputAtMsRef: args.ttsPracticeLastInputAtMsRef,
     pendingSessions: args.pendingSessions,
     activeSessionId: args.activeSessionId,
     openWorkspaceForSession: args.openWorkspaceForSession,

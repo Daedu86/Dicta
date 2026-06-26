@@ -43,6 +43,7 @@ export function attachBrowserTtsPlaybackLoopChunkHandlers({
       ttsCompletedSourceWordsRef: input.progressContext.ttsCompletedSourceWordsRef,
       ttsText: input.playbackRuntime.ttsText,
       ttsPracticeLiveTextRef: input.planInput.ttsPracticeLiveTextRef,
+      ttsPracticeLastInputAtMsRef: input.playbackRuntime.ttsPracticeLastInputAtMsRef,
       setTtsPracticeText: input.uiContext.setTtsPracticeText,
       ttsTranscript: input.playbackRuntime.ttsTranscript,
       browserTtsSafePauseGateSettings: input.playbackRuntime.browserTtsSafePauseGateSettings,

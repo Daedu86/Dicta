@@ -12,6 +12,7 @@ type FocusedTrainingInputTelemetryRuntimeOptions = {
   telemetryRef: WritableRef<SessionTelemetry | null | undefined>;
   ttsStartedAtMsRef: WritableRef<number | null>;
   ttsPracticeLiveTextRef: WritableRef<string>;
+  ttsPracticeLastInputAtMsRef: WritableRef<number>;
   nowIso?: () => string;
   nowMs?: () => number;
 };
@@ -20,23 +21,26 @@ export function useFocusedTrainingInputTelemetryRuntime({
   telemetryRef,
   ttsStartedAtMsRef,
   ttsPracticeLiveTextRef,
+  ttsPracticeLastInputAtMsRef,
   nowIso = () => new Date().toISOString(),
   nowMs = () => performance.now(),
 }: FocusedTrainingInputTelemetryRuntimeOptions) {
   return useCallback(
     (value: string): void => {
+      const inputAtMs = nowMs();
       const next = applyFocusedImmediateInputTelemetry({
         value,
         telemetry: telemetryRef.current,
         ttsStartedAtMs: ttsStartedAtMsRef.current,
         nowIso,
-        nowMs,
+        nowMs: () => inputAtMs,
       });
 
       telemetryRef.current = next.telemetry;
       ttsStartedAtMsRef.current = next.ttsStartedAtMs;
       ttsPracticeLiveTextRef.current = next.liveText;
+      ttsPracticeLastInputAtMsRef.current = inputAtMs;
     },
-    [nowIso, nowMs, telemetryRef, ttsPracticeLiveTextRef, ttsStartedAtMsRef],
+    [nowIso, nowMs, telemetryRef, ttsPracticeLastInputAtMsRef, ttsPracticeLiveTextRef, ttsStartedAtMsRef],
   );
 }

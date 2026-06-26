@@ -37,6 +37,7 @@ export function buildFocusedTrainingViewProps({
   currentTextValue,
   onTextChange,
   onImmediateTextChange,
+  onTextBlur,
   onTextKeyDown,
   textPlaceholder,
   activeSessionFinished,
@@ -63,6 +64,7 @@ export function buildFocusedTrainingViewProps({
     currentTextValue,
     onTextChange,
     onImmediateTextChange,
+    onTextBlur,
     onTextKeyDown,
     textPlaceholder,
     ...buildFocusedTrainingLiveMetrics({

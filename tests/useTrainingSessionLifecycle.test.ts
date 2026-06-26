@@ -100,9 +100,23 @@ describe('useTrainingSessionLifecycle', () => {
     });
 
     expect(actions.onTtsPracticeChange).toHaveBeenNthCalledWith(1, 'new text');
+    expect(actions.punctuateTtsPracticeText).toHaveBeenNthCalledWith(1, 'new text');
     expect(actions.pauseTts).toHaveBeenCalledTimes(1);
     expect(actions.onTtsPracticeChange).toHaveBeenNthCalledWith(2, 'newer text');
+    expect(actions.punctuateTtsPracticeText).toHaveBeenNthCalledWith(2, 'newer text');
     expect(actions.stopTts).toHaveBeenCalledWith('stop');
+  });
+
+  it('applies pending punctuation when the typing textarea blurs', async () => {
+    const { lifecycle, actions } = await renderTrainingSessionLifecycle();
+
+    act(() => {
+      lifecycle.focusedTrainingControls.onTextBlur('blurred text');
+    });
+
+    expect(actions.punctuateTtsPracticeText).toHaveBeenCalledWith('blurred text');
+    expect(actions.pauseTts).not.toHaveBeenCalled();
+    expect(actions.stopTts).not.toHaveBeenCalled();
   });
 
   it('resumes paused Browser TTS playback instead of starting a new play action', async () => {

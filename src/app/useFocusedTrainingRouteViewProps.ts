@@ -33,6 +33,7 @@ export function useFocusedTrainingRouteViewProps({
     currentTextValue: focusedTrainingPresentationState.focusedTextValue,
     onTextChange: args.onTtsPracticeChange,
     onImmediateTextChange: focusedImmediateInputHandler,
+    onTextBlur: focusedTrainingControls.onTextBlur,
     onTextKeyDown: args.onTtsPracticeKeyDown,
     textPlaceholder: focusedTrainingPresentationState.focusedTextPlaceholder,
     activeVisibleScore: args.activeVisibleScore,

@@ -37,6 +37,7 @@ export function buildFocusedTrainingTtsOrchestrationArgs(
     ttsPublishedUiRef: args.ttsPublishedUiRef,
     ttsUiLastPublishedAtRef: args.ttsUiLastPublishedAtRef,
     applyTtsPerformanceSampleRef: args.applyTtsPerformanceSampleRef,
+    ttsPracticeLastInputAtMsRef: args.ttsPracticeLastInputAtMsRef,
     setControllerState: args.setControllerState,
     setRate: args.setRate,
     setLagSec: args.setLagSec,

@@ -53,6 +53,7 @@ export type BrowserTtsPlaybackLoopOptions = {
   ttsLastControllerActionRef: MutableRefObject<ControlAction>;
   ttsLiveSignalRef: MutableRefObject<TtsLiveSignal>;
   ttsPracticeLiveTextRef: MutableRefObject<string>;
+  ttsPracticeLastInputAtMsRef: MutableRefObject<number>;
   ttsUtteranceRef: MutableRefObject<SpeechSynthesisUtterance | null>;
   ttsChunkStartMsRef: MutableRefObject<number | null>;
   ttsChunkStartWordIndexRef: MutableRefObject<number>;
@@ -102,6 +103,7 @@ export type BrowserTtsPlaybackRunContext = {
   ttsText: string;
   ttsLanguage: TtsLanguage;
   ttsTranscript: Transcript | null;
+  ttsPracticeLastInputAtMsRef: BrowserTtsPlaybackLoopOptions['ttsPracticeLastInputAtMsRef'];
   ttsSpeechRate: number;
   ttsPlaybackProfile: TtsPlaybackProfile;
   browserTtsSafePauseGateSettings: BrowserTtsSafePauseGateSettings;

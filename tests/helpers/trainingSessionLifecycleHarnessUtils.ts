@@ -46,6 +46,7 @@ export function createDefaultActions(
     resumeTts: vi.fn(),
     pauseTts: vi.fn(),
     stopTts: vi.fn(),
+    punctuateTtsPracticeText: vi.fn((value?: string) => value ?? ''),
     onTtsPracticeChange: vi.fn(),
     submitTtsSession: vi.fn(),
     setInputSettingsLocked: vi.fn(),

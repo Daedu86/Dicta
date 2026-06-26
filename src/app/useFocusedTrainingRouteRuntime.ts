@@ -27,6 +27,7 @@ export function useFocusedTrainingRouteRuntime(
     telemetryRef: args.telemetryRef,
     ttsStartedAtMsRef: args.ttsStartedAtMsRef,
     ttsPracticeLiveTextRef: args.ttsPracticeLiveTextRef,
+    ttsPracticeLastInputAtMsRef: args.ttsPracticeLastInputAtMsRef,
   });
   const focusedTrainingGenerationButtons = useFocusedTrainingRouteGenerationButtons(args);
   const replayFocusedTts = useFocusedTrainingRouteReplayTts(

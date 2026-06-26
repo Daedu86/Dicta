@@ -33,6 +33,7 @@ export function buildTtsSessionBrowserPlaybackArgs(
     ttsLastControllerActionRef: args.ttsLastControllerActionRef,
     ttsLiveSignalRef: args.ttsLiveSignalRef,
     ttsPracticeLiveTextRef: args.ttsPracticeLiveTextRef,
+    ttsPracticeLastInputAtMsRef: args.ttsPracticeLastInputAtMsRef,
     ttsUtteranceRef: args.ttsUtteranceRef,
     ttsChunkStartMsRef: args.ttsChunkStartMsRef,
     ttsChunkStartWordIndexRef: args.ttsChunkStartWordIndexRef,

@@ -43,6 +43,7 @@ type TrainingLifecycleActions = {
   resumeTts: () => void | Promise<void>;
   pauseTts: () => void;
   stopTts: (action?: ControlAction) => void;
+  punctuateTtsPracticeText: (latestTextValue?: string) => string;
   onTtsPracticeChange: (value: string) => void;
   submitTtsSession: (latestTextValue?: string) => void;
   setInputSettingsLocked: (value: boolean) => void;
@@ -59,6 +60,7 @@ export type FocusedTrainingLifecycleControls = {
   onPause: (latestTextValue?: string) => void;
   canStop: boolean;
   onStop: (latestTextValue?: string) => void;
+  onTextBlur: (latestTextValue?: string) => void;
   canReset: boolean;
   onReset: () => void;
   canSubmit: boolean;
@@ -134,12 +136,17 @@ export function useTrainingSessionLifecycle({
       canPause: state.ttsStatus === 'playing',
       onPause: (latestTextValue?: string) => {
         if (latestTextValue !== undefined && latestTextValue !== text.ttsPracticeText) actions.onTtsPracticeChange(latestTextValue);
+        actions.punctuateTtsPracticeText(latestTextValue);
         actions.pauseTts();
       },
       canStop: state.ttsStatus !== 'idle',
       onStop: (latestTextValue?: string) => {
         if (latestTextValue !== undefined && latestTextValue !== text.ttsPracticeText) actions.onTtsPracticeChange(latestTextValue);
+        actions.punctuateTtsPracticeText(latestTextValue);
         actions.stopTts('stop');
+      },
+      onTextBlur: (latestTextValue?: string) => {
+        actions.punctuateTtsPracticeText(latestTextValue);
       },
       canReset: state.activeSessionPresent,
       onReset: resetFocusedTrainingAttempt,
