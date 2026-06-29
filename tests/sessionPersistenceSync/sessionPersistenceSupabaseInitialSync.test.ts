@@ -75,7 +75,8 @@ describe('useSessionPersistenceSync Supabase initial sync', () => {
   it('repairs a pending session during initial sync when Supabase has completed feedback', async () => {
     vi.useRealTimers();
     const pendingSession = session('s1', 'local-pending');
-    const completedAt = '2026-06-05T12:08:00.000Z';
+    const remotePendingUpdatedAt = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const completedAt = new Date(Date.now() - 60 * 1000).toISOString();
     window.localStorage.setItem(PROFILE_SCOPED_STORAGE_MARKER_KEY, 'profile-b');
     window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify([pendingSession]));
     const remoteRows: DictaSyncRow[] = [
@@ -86,9 +87,9 @@ describe('useSessionPersistenceSync Supabase initial sync', () => {
         payload: {
           ...pendingSession,
           marker: 'remote-pending',
-          updatedAt: '2026-06-05T12:00:00.000Z',
+          updatedAt: remotePendingUpdatedAt,
         },
-        updated_at: '2026-06-05T12:00:00.000Z',
+        updated_at: remotePendingUpdatedAt,
       },
       {
         profile_id: 'profile-b',

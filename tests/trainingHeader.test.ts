@@ -145,6 +145,43 @@ describe('TrainingHeader', () => {
 
     expect(generatePrecision).toHaveBeenCalledTimes(1);
   });
+
+  it('dismisses individual generation notifications without affecting the others', () => {
+    act(() => {
+      root.render(createElement(TrainingHeader, {
+        selectedLanguage: 'de',
+        onChangeLanguage: vi.fn(),
+        onBackToApp: vi.fn(),
+        generationButtons: [
+          generationButton({
+            id: 'adaptive',
+            label: 'Generate Session',
+            statusItems: [
+              { id: 'notice-1', message: 'First generation failed.', tone: 'error' },
+              { id: 'notice-2', message: 'Second generation finished.', tone: 'success' },
+            ],
+          }),
+        ],
+      }));
+    });
+
+    const dismissButtons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('.training-generation-dismiss-button'),
+    );
+
+    expect(dismissButtons).toHaveLength(2);
+    expect(dismissButtons[0].getAttribute('aria-label')).toBe('Dismiss notification');
+    expect(host.textContent).toContain('First generation failed.');
+    expect(host.textContent).toContain('Second generation finished.');
+
+    act(() => {
+      dismissButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(host.textContent).not.toContain('First generation failed.');
+    expect(host.textContent).toContain('Second generation finished.');
+    expect(host.querySelectorAll('.training-generation-dismiss-button')).toHaveLength(1);
+  });
 });
 
 function generationButton(overrides: Partial<TrainingGenerationButton> & Pick<TrainingGenerationButton, 'id' | 'label'>): TrainingGenerationButton {

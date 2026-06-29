@@ -209,6 +209,12 @@
   overflow-wrap: anywhere;
 }
 
+.training-generation-log-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .training-generation-cancel-button {
   min-height: 32px;
   padding: 0.35rem 0.55rem;
@@ -227,6 +233,26 @@
 .training-generation-cancel-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.training-generation-dismiss-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.72;
+}
+
+.training-generation-dismiss-button:hover,
+.training-generation-dismiss-button:focus-visible {
+  background: rgba(255, 255, 255, 0.64);
+  opacity: 1;
 }
 
 .training-generation-duration {
