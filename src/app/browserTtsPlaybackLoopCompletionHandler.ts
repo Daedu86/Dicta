@@ -7,6 +7,10 @@ import type { BrowserTtsPlaybackPlan } from './browserTtsPlaybackPlan';
 import type { BrowserTtsPlaybackLoopOptions } from './browserTtsPlaybackLoopTypes';
 import { buildBrowserTtsPhraseCompletionTelemetry } from './browserTtsPhraseCompletionTelemetry';
 import { applyCompletedChunkPunctuation } from './completedChunkPunctuation';
+import {
+  findBrowserTtsPracticeChunkForPhrase,
+  type BrowserTtsPracticeChunkDefinition,
+} from './browserTtsPracticeChunks';
 
 const SAFE_PAUSE_AUTO_PUNCTUATION_IDLE_MS = 200;
 
@@ -52,6 +56,10 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   setAdaptiveSemanticDebug: BrowserTtsPlaybackLoopOptions['setAdaptiveSemanticDebug'];
   speakNext: () => void;
   updatePlaybackCursor: (cursor: BrowserTtsPlaybackCursor) => void;
+  practiceChunks?: BrowserTtsPracticeChunkDefinition[];
+  practiceChunkAdvanceRequestRef?: BrowserTtsPlaybackLoopOptions['practiceChunkAdvanceRequestRef'];
+  onPracticeChunkResolved?: BrowserTtsPlaybackLoopOptions['onPracticeChunkResolved'];
+  onFinalPracticeChunkAudioCompleted?: BrowserTtsPlaybackLoopOptions['onFinalPracticeChunkAudioCompleted'];
 };
 
 function flushBrowserTtsChunkLiveMetrics({
@@ -175,6 +183,10 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   setAdaptiveSemanticDebug,
   speakNext,
   updatePlaybackCursor,
+  practiceChunks = [],
+  practiceChunkAdvanceRequestRef,
+  onPracticeChunkResolved,
+  onFinalPracticeChunkAudioCompleted,
 }: BrowserTtsPlaybackLoopCompletionHandlerParams): void {
   perfDiagnostics.recordTtsEnd(perfUtteranceId);
   if (cancelled) return;
@@ -226,12 +238,75 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
     }),
   );
 
+  const practiceChunk = findBrowserTtsPracticeChunkForPhrase(practiceChunks, macroPhraseIndex);
+  const isPracticeBoundary = Boolean(
+    practiceChunk &&
+    completesMacroPhrase &&
+    practiceChunk.lastSemanticPhraseIndex === macroPhraseIndex,
+  );
+  const learnerPacedPracticeBoundary = Boolean(
+    isPracticeBoundary &&
+    practiceChunkAdvanceRequestRef &&
+    onPracticeChunkResolved,
+  );
+
+  if (learnerPacedPracticeBoundary && practiceChunk?.isFinal) {
+    onFinalPracticeChunkAudioCompleted?.(practiceChunk);
+    const finalWasSubmittedEarly = practiceChunkAdvanceRequestRef?.current === practiceChunk.index;
+    scheduleBrowserTtsNextChunk({
+      shouldPauseBeforeNextChunk: finalWasSubmittedEarly,
+      pauseBeforeNextChunkMs: 0,
+      scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+      completionGate: finalWasSubmittedEarly
+        ? {
+            isComplete: () => false,
+            getResolutionReason: () => 'submitted',
+          }
+        : undefined,
+      onResolved: (actualWaitMs, pauseGateResolutionReason) => {
+        if (pauseGateResolutionReason === 'submitted') {
+          if (practiceChunkAdvanceRequestRef) practiceChunkAdvanceRequestRef.current = null;
+          onPracticeChunkResolved?.(practiceChunk, 'submitted');
+        }
+        recordResolvedBrowserTtsChunk({
+          actualWaitMs,
+          pauseGateResolutionReason,
+          params: {
+            chunk,
+            chunkTelemetry,
+            runtimeDecision,
+            rate,
+            effectiveReplay,
+            effectivePauseNow,
+            browserTtsEnvironment,
+            macroPhraseIndex,
+            semanticPhrase,
+            semanticPhrases,
+            ttsLanguage,
+            ttsLiveSignalRef,
+            ttsUnsafeChunkCountRef,
+            recordAdaptiveBenchmark,
+            completesMacroPhrase,
+          },
+        });
+      },
+      speakNext,
+    });
+    return;
+  }
+
   scheduleBrowserTtsNextChunk({
-    shouldPauseBeforeNextChunk: chunkCompletion.shouldPauseBeforeNextChunk,
+    shouldPauseBeforeNextChunk: learnerPacedPracticeBoundary || chunkCompletion.shouldPauseBeforeNextChunk,
     pauseBeforeNextChunkMs: chunkCompletion.pauseBeforeNextChunkMs,
     scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
     safePauseGateSettings: browserTtsSafePauseGateSettings,
-    completionGate: chunkCompletion.shouldPauseBeforeNextChunk && chunk.canPauseAfter && ttsTranscript
+    completionGate: learnerPacedPracticeBoundary && practiceChunk
+      ? {
+          isComplete: () => false,
+          getResolutionReason: () =>
+            practiceChunkAdvanceRequestRef?.current === practiceChunk.index ? 'submitted' : null,
+        }
+      : chunkCompletion.shouldPauseBeforeNextChunk && chunk.canPauseAfter && ttsTranscript
       ? {
           isComplete: () =>
             isBrowserTtsChunkTypedWithTolerantMatch({
@@ -242,9 +317,13 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
         }
       : undefined,
     onResolved: (actualWaitMs, pauseGateResolutionReason) => {
+      if (practiceChunk && learnerPacedPracticeBoundary && (pauseGateResolutionReason === 'submitted' || pauseGateResolutionReason === 'timeout')) {
+        if (practiceChunkAdvanceRequestRef) practiceChunkAdvanceRequestRef.current = null;
+        onPracticeChunkResolved?.(practiceChunk, pauseGateResolutionReason);
+      }
       if (actualWaitMs > 0 || pauseGateResolutionReason !== 'no-gate') {
         flushBrowserTtsChunkLiveMetrics({
-          autoPunctuation: pauseGateResolutionReason === 'completed'
+          autoPunctuation: pauseGateResolutionReason === 'completed' || pauseGateResolutionReason === 'submitted'
             ? {
                 targetText: ttsText,
                 completedWordCount: chunk.startWordIndex + chunk.wordCount,
@@ -257,40 +336,27 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
         });
       }
 
-      recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
-        actualPlaybackRate: rate,
-        actualPauseMs: actualWaitMs,
+      recordResolvedBrowserTtsChunk({
+        actualWaitMs,
         pauseGateResolutionReason,
-        replayExecuted: effectiveReplay,
-        actualBoundaryType: chunk.phraseBoundaryType,
-        ttsEnvironment: browserTtsEnvironment,
-        event: resolveBrowserTtsBenchmarkEvent({ effectiveReplay, effectivePauseNow, runtimeDecision }),
-        phraseIndex: macroPhraseIndex,
-        totalSemanticPhrases: semanticPhrases.length,
-      });
-
-      if (completesMacroPhrase && normalizeBenchmarkLanguage(ttsLanguage) === 'de') {
-        const completionLiveSignal = ttsLiveSignalRef.current;
-        const completionTelemetry = buildBrowserTtsPhraseCompletionTelemetry({
+        params: {
+          chunk,
           chunkTelemetry,
-          semanticPhraseId: semanticPhrase?.id,
+          runtimeDecision,
+          rate,
+          effectiveReplay,
+          effectivePauseNow,
+          browserTtsEnvironment,
           macroPhraseIndex,
-          liveSignal: completionLiveSignal,
-          unsafeChunkCount: ttsUnsafeChunkCountRef.current,
-        });
-
-        recordAdaptiveBenchmark(completionTelemetry, runtimeDecision, {
-          actualPlaybackRate: rate,
-          actualPauseMs: actualWaitMs,
-          pauseGateResolutionReason,
-          replayExecuted: false,
-          actualBoundaryType: chunk.phraseBoundaryType,
-          ttsEnvironment: browserTtsEnvironment,
-          event: 'phrase_completed',
-          phraseIndex: macroPhraseIndex,
-          totalSemanticPhrases: semanticPhrases.length,
-        });
-      }
+          semanticPhrase,
+          semanticPhrases,
+          ttsLanguage,
+          ttsLiveSignalRef,
+          ttsUnsafeChunkCountRef,
+          recordAdaptiveBenchmark,
+          completesMacroPhrase,
+        },
+      });
     },
     speakNext,
   });
@@ -305,4 +371,82 @@ function resolveBrowserTtsBenchmarkEvent({
   if (effectivePauseNow) return 'pause';
   if (runtimeDecision.deferPauseUntilSafeBoundary) return 'defer_pause';
   return 'phrase_advance';
+}
+
+type ResolvedBrowserTtsChunkParams = Pick<
+  BrowserTtsPlaybackLoopCompletionHandlerParams,
+  | 'chunk'
+  | 'chunkTelemetry'
+  | 'runtimeDecision'
+  | 'rate'
+  | 'effectiveReplay'
+  | 'effectivePauseNow'
+  | 'browserTtsEnvironment'
+  | 'macroPhraseIndex'
+  | 'semanticPhrase'
+  | 'semanticPhrases'
+  | 'ttsLanguage'
+  | 'ttsLiveSignalRef'
+  | 'ttsUnsafeChunkCountRef'
+  | 'recordAdaptiveBenchmark'
+> & { completesMacroPhrase: boolean };
+
+function recordResolvedBrowserTtsChunk({
+  actualWaitMs,
+  pauseGateResolutionReason,
+  params,
+}: {
+  actualWaitMs: number;
+  pauseGateResolutionReason: Parameters<NonNullable<Parameters<typeof scheduleBrowserTtsNextChunk>[0]['onResolved']>>[1];
+  params: ResolvedBrowserTtsChunkParams;
+}): void {
+  const {
+    chunk,
+    chunkTelemetry,
+    runtimeDecision,
+    rate,
+    effectiveReplay,
+    effectivePauseNow,
+    browserTtsEnvironment,
+    macroPhraseIndex,
+    semanticPhrase,
+    semanticPhrases,
+    ttsLanguage,
+    ttsLiveSignalRef,
+    ttsUnsafeChunkCountRef,
+    recordAdaptiveBenchmark,
+    completesMacroPhrase,
+  } = params;
+
+  recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
+    actualPlaybackRate: rate,
+    actualPauseMs: actualWaitMs,
+    pauseGateResolutionReason,
+    replayExecuted: effectiveReplay,
+    actualBoundaryType: chunk.phraseBoundaryType,
+    ttsEnvironment: browserTtsEnvironment,
+    event: resolveBrowserTtsBenchmarkEvent({ effectiveReplay, effectivePauseNow, runtimeDecision }),
+    phraseIndex: macroPhraseIndex,
+    totalSemanticPhrases: semanticPhrases.length,
+  });
+
+  if (!completesMacroPhrase || normalizeBenchmarkLanguage(ttsLanguage) !== 'de') return;
+  const completionTelemetry = buildBrowserTtsPhraseCompletionTelemetry({
+    chunkTelemetry,
+    semanticPhraseId: semanticPhrase?.id,
+    macroPhraseIndex,
+    liveSignal: ttsLiveSignalRef.current,
+    unsafeChunkCount: ttsUnsafeChunkCountRef.current,
+  });
+  recordAdaptiveBenchmark(completionTelemetry, runtimeDecision, {
+    actualPlaybackRate: rate,
+    actualPauseMs: actualWaitMs,
+    pauseGateResolutionReason,
+    replayExecuted: false,
+    actualBoundaryType: chunk.phraseBoundaryType,
+    ttsEnvironment: browserTtsEnvironment,
+    event: 'phrase_completed',
+    phraseIndex: macroPhraseIndex,
+    totalSemanticPhrases: semanticPhrases.length,
+  });
 }

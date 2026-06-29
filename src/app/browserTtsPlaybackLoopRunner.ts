@@ -41,6 +41,7 @@ export function runBrowserTtsPlaybackLoop(options: BrowserTtsPlaybackLoopRunOpti
   }
 
   const { playbackStartPlan, browserTtsVoice, browserTtsEnvironment } = startContext;
+  options.onPracticeChunkPlan?.(playbackStartPlan.practiceChunks, playbackStartPlan.clampedStartWordIndex);
   const playbackCursor = createBrowserTtsPlaybackLoopCursor({
     chunkIndex: playbackStartPlan.chunkIndex,
     macroPhraseIndex: playbackStartPlan.macroPhraseIndex,
@@ -59,6 +60,7 @@ export function runBrowserTtsPlaybackLoop(options: BrowserTtsPlaybackLoopRunOpti
     options,
     browserTtsVoice,
     browserTtsEnvironment,
+    practiceChunks: playbackStartPlan.practiceChunks,
   });
 
   const setCancelled = (nextCancelled: boolean): void => {

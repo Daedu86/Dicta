@@ -12,5 +12,6 @@ export function buildTtsSessionPracticeInputArgs(
     ttsStartedAtMsRef: args.ttsStartedAtMsRef,
     ttsPracticeLiveTextRef: args.ttsPracticeLiveTextRef,
     setTtsPracticeText: args.setTtsPracticeText,
+    transformPracticeText: args.transformPracticeText,
   };
 }

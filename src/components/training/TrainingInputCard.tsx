@@ -2,6 +2,9 @@ import type { KeyboardEvent, RefObject } from 'react';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from '../LowLatencyTextarea';
 import { TrainingReviewPanel } from './TrainingReviewPanel';
 import type { TrainingReviewModel } from '../../app/focusedTrainingReview';
+import type { BrowserTtsPracticeChunkView } from '../../app/browserTtsPracticeChunks';
+import type { BrowserTtsPracticeChunkTelemetry } from '../../types/dictation';
+import { TrainingChunkInputPanel } from './TrainingChunkInputPanel';
 
 export type TrainingInputCardProps = {
   textAreaId: string;
@@ -26,6 +29,12 @@ export type TrainingInputCardProps = {
   liveLagHelpText: string;
   showReview: boolean;
   review: TrainingReviewModel | null;
+  reviewChunks?: BrowserTtsPracticeChunkTelemetry[];
+  completedPracticeChunks?: BrowserTtsPracticeChunkView[];
+  activePracticeChunk?: BrowserTtsPracticeChunkView | null;
+  practiceChunkActionQueued?: boolean;
+  finalPracticeChunkAudioCompleted?: boolean;
+  onSubmitPracticeChunk?: (latestDraft: string) => void;
 };
 
 export function TrainingInputCard({
@@ -51,6 +60,12 @@ export function TrainingInputCard({
   liveLagHelpText,
   showReview,
   review,
+  reviewChunks,
+  completedPracticeChunks = [],
+  activePracticeChunk = null,
+  practiceChunkActionQueued = false,
+  finalPracticeChunkAudioCompleted = false,
+  onSubmitPracticeChunk,
 }: TrainingInputCardProps) {
   const effectiveTextCommitDelayMs = Math.max(textCommitDelayMs, 160);
   const progressMetric = buildProgressMetric(progressLabel);
@@ -88,7 +103,24 @@ export function TrainingInputCard({
         </div>
       </div>
       {showReview && review ? (
-        <TrainingReviewPanel review={review} />
+        <TrainingReviewPanel review={review} chunks={reviewChunks} />
+      ) : activePracticeChunk && onSubmitPracticeChunk ? (
+        <TrainingChunkInputPanel
+          textAreaId={textAreaId}
+          textInputRef={textInputRef}
+          completedChunks={completedPracticeChunks}
+          activeChunk={activePracticeChunk}
+          currentTextValue={currentTextValue}
+          onTextChange={onTextChange}
+          onImmediateTextChange={onImmediateTextChange}
+          onTextBlur={onTextBlur}
+          onTextKeyDown={onTextKeyDown}
+          onSubmitChunk={onSubmitPracticeChunk}
+          textCommitDelayMs={effectiveTextCommitDelayMs}
+          syncKey={syncKey}
+          actionQueued={practiceChunkActionQueued}
+          finalAudioCompleted={finalPracticeChunkAudioCompleted}
+        />
       ) : (
         <LowLatencyTextarea
           id={textAreaId}

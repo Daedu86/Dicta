@@ -1,6 +1,6 @@
 # Adaptive Training Cycle
 
-_Last updated: 2026-06-23_
+_Last updated: 2026-06-29_
 
 Dicta is a closed adaptive listening loop. This page is the compact entry point for the adaptive training cycle.
 
@@ -13,16 +13,16 @@ Related docs:
 
 ## One-line model
 
-The runtime loop is causal: memory feeds preparation, preparation drives the current session, the session produces evidence, and that evidence updates the next turn. Benchmark and feedback feed the training prescription. The prescription guides LLM generation. The planner turns generated text into playable chunks. The controller chooses live pacing. The runtime pipeline makes the decision executable. Browser TTS speaks the chunk, then safe pauses are completion-gated so the next chunk can start after the configured minimum mental rest once the learner has typed the current chunk, or when the configured fallback expires. Telemetry updates benchmark and feedback. The insight report explains the full loop.
+The runtime loop is causal: memory feeds preparation, preparation drives the current session, the session produces evidence, and that evidence updates the next turn. Benchmark and feedback feed the training prescription. The prescription guides LLM generation. The planner turns generated text into playable chunks. The controller chooses live pacing. The runtime pipeline makes the decision executable. Browser TTS speaks internal slices while Training Mode exposes one safe learner-facing chunk at a time. Safe pauses are learner-paced so the next chunk starts after the configured minimum mental rest when the learner submits/skips, or when the configured fallback expires for non-final chunks. Correct typing alone does not advance. The final chunk is manual via `Finish session`. Telemetry updates benchmark and feedback. The insight report explains the full loop.
 
 ## Workspace map
 
 The Adaptive Pace Layer Flow workspace explains the loop as four auditable groups. Phase 1 / Generation also contains the live direct OpenRouter Generate Training Session card. Step 5 / Playback loop contains the local safe-pause gate controls for Browser TTS minimum mental rest and max fallback. The generation card now uses the same `direct-training` path as Training Mode, owns the locally persisted 2-10 minute duration preference, shows the final compact prompt sent to OpenRouter, and offers no-context and "my context" prompt variants. Training Mode does not expose a duration selector; its direct generation labels, help text, and OpenRouter job duration reflect the Phase 1 selector.
 
 - Memory: 20-day benchmark, recent feedback, and active `browser-tts/{language}` calibration.
-- Prepare: Generation, Planner, and Chunker convert evidence into content, runtime policy, and playable chunks.
-- Run: Browser TTS and the Playback loop execute the current session and collect live pressure.
-- Learn: Scoring, Telemetry, Benchmark, and Adaptation return evidence to the next cycle.
+- Prepare: Generation, Planner, and Chunker convert evidence into content, runtime policy, playable TTS slices, and safe learner-facing practice chunks.
+- Run: Browser TTS and the Playback loop execute the current session, collect live pressure, and wait for learner chunk submission or configured timeout at safe boundaries.
+- Learn: Scoring, optional practice-chunk telemetry, Benchmark, and Adaptation return evidence to the next cycle.
 
 Training Mode direct generation keeps each OpenRouter request as a separate visible job row with its own elapsed-time counter. Active rows can be canceled, which marks the durable job as canceled and stops browser polling for that request without treating it as a learner-facing generated error session. Provider waits leave a persistence buffer before the 300-second Vercel job window, and stale durable jobs are marked failed on poll instead of remaining active indefinitely. Direct prompts request `compact-chunks-v1` by default: OpenRouter returns only a title and semantic chunks, while Dicta locally builds the full `DictationScript` from the trainer prescription and semantic phrase planner. Legacy full `DictationScript` JSON is still accepted for old jobs and fallback responses.
 
@@ -49,4 +49,5 @@ Training Mode direct generation keeps each OpenRouter request as a separate visi
 5. Keep content generation out of the controller.
 6. Surface runtime modifications to controller decisions.
 7. Prefer compact aggregates over raw debug.
-8. Update the owning doc when behavior changes.
+8. Keep learner-facing chunk state backward-compatible: aggregate scoring text stays cumulative, future text stays hidden, and per-chunk telemetry remains optional JSON.
+9. Update the owning doc when behavior changes.

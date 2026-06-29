@@ -66,6 +66,11 @@ export function TrainingView<Session extends TrainingViewSession>({
   syncStatus,
   pendingSyncSummary,
   isOnline,
+  completedPracticeChunks,
+  activePracticeChunk,
+  practiceChunkActionQueued,
+  finalPracticeChunkAudioCompleted,
+  onSubmitPracticeChunk,
 }: TrainingViewProps<Session>) {
   const inputController = useTrainingViewInputController({
     currentTextValue,
@@ -142,6 +147,12 @@ export function TrainingView<Session extends TrainingViewSession>({
         liveLagHelpText={liveLagHelpText}
         showReview={Boolean(activeSession && sessionStatus === 'finished')}
         review={review}
+        reviewChunks={activeSession?.telemetry?.practiceChunks}
+        completedPracticeChunks={completedPracticeChunks}
+        activePracticeChunk={activePracticeChunk}
+        practiceChunkActionQueued={practiceChunkActionQueued}
+        finalPracticeChunkAudioCompleted={finalPracticeChunkAudioCompleted}
+        onSubmitPracticeChunk={onSubmitPracticeChunk}
       />
 
       <TrainingSubmitCard
@@ -150,6 +161,7 @@ export function TrainingView<Session extends TrainingViewSession>({
         onSubmit={() => onSubmit(inputController.flushTextInput())}
         message={message}
         messageTone={messageTone}
+        showAction={!activePracticeChunk}
       />
     </section>
   );

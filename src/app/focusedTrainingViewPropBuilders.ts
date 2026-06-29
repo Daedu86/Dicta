@@ -51,6 +51,11 @@ export function buildFocusedTrainingViewProps({
   pendingSyncSummary,
   isOnline,
   generationButtons,
+  completedPracticeChunks,
+  activePracticeChunk,
+  practiceChunkActionQueued,
+  finalPracticeChunkAudioCompleted,
+  onSubmitPracticeChunk,
   ...focusedRuntime
 }: UseFocusedTrainingViewPropsArgs): TrainingViewProps<StoredSession> {
   return {
@@ -85,6 +90,11 @@ export function buildFocusedTrainingViewProps({
     pendingSyncSummary,
     isOnline,
     generationButtons,
+    completedPracticeChunks,
+    activePracticeChunk,
+    practiceChunkActionQueued,
+    finalPracticeChunkAudioCompleted,
+    onSubmitPracticeChunk,
   };
 }
 

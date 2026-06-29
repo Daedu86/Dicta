@@ -59,6 +59,31 @@ describe('session dashboard V3 insights', () => {
     expect(telemetry.liveFrames).toHaveLength(1);
   });
 
+  it('keeps Browser TTS practice chunk telemetry available after normalization', () => {
+    const telemetry = cloneTelemetry({
+      startedAt: '2026-06-18T00:00:00.000Z',
+      practiceChunks: [
+        {
+          id: 'practice-0-0',
+          index: 0,
+          startWordIndex: 0,
+          wordCount: 2,
+          typedWordStartIndex: 0,
+          typedWordCount: 2,
+          typedText: 'Der Sand',
+          resolution: 'submitted',
+        },
+      ],
+    });
+
+    expect(telemetry.practiceChunks).toEqual([
+      expect.objectContaining({
+        id: 'practice-0-0',
+        resolution: 'submitted',
+      }),
+    ]);
+  });
+
   it('surfaces Listening Cycle V3 insight bullets in the dashboard model', () => {
     const listenerStateV3 = buildListenerStateV3({
       phraseBoundaryType: 'unsafe',

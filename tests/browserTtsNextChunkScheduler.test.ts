@@ -138,6 +138,40 @@ describe('scheduleBrowserTtsNextChunk', () => {
     expect(onResolved).toHaveBeenCalledWith(BROWSER_TTS_MIN_MENTAL_REST_MS, 'completed');
   });
 
+  it('waits the minimum mental rest when a manual submitted gate resolves early', () => {
+    vi.useFakeTimers();
+    let submitted = false;
+    const speakNext = vi.fn();
+    const completionGateResolved = vi.fn();
+    const onResolved = vi.fn();
+
+    scheduleBrowserTtsNextChunk({
+      shouldPauseBeforeNextChunk: true,
+      pauseBeforeNextChunkMs: 1400,
+      scheduleTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
+      completionGate: {
+        isComplete: () => false,
+        getResolutionReason: () => (submitted ? 'submitted' : null),
+        onResolved: completionGateResolved,
+      },
+      onResolved,
+      speakNext,
+    });
+
+    submitted = true;
+    vi.advanceTimersByTime(100);
+
+    expect(speakNext).not.toHaveBeenCalled();
+    expect(completionGateResolved).not.toHaveBeenCalled();
+    expect(onResolved).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS - 100);
+
+    expect(speakNext).toHaveBeenCalledTimes(1);
+    expect(completionGateResolved).toHaveBeenCalledWith(BROWSER_TTS_MIN_MENTAL_REST_MS, 'submitted');
+    expect(onResolved).toHaveBeenCalledWith(BROWSER_TTS_MIN_MENTAL_REST_MS, 'submitted');
+  });
+
   it('waits the configured minimum mental rest when the completion gate becomes complete early', () => {
     vi.useFakeTimers();
     let complete = false;

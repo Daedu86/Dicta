@@ -7,9 +7,18 @@ import {
   buildFocusedTrainingRuntimeDelegateArgs,
   type UseFocusedTrainingRuntimeArgs,
 } from './focusedTrainingRuntimeDelegateArgs';
+import { useBrowserTtsPracticeChunkRuntime } from './useBrowserTtsPracticeChunkRuntime';
 
 export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
   const delegateArgs = buildFocusedTrainingRuntimeDelegateArgs(args);
+  const practiceChunkRuntime = useBrowserTtsPracticeChunkRuntime({
+    activeSession: args.activeSession,
+    activeSessionFinished: args.activeSessionFinished,
+    ttsPracticeText: args.ttsPracticeText,
+    setTtsPracticeText: args.setTtsPracticeText,
+    telemetryRef: args.telemetryRef,
+    ttsPracticeLiveTextRef: args.ttsPracticeLiveTextRef,
+  });
   const {
     ttsHasText,
     ttsTranscript,
@@ -52,7 +61,20 @@ export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
     ...delegateArgs.ttsOrchestration,
     ttsTranscript,
     ttsHasText,
+    transformPracticeText: practiceChunkRuntime.enabled
+      ? practiceChunkRuntime.transformCommittedDraft
+      : undefined,
+    practiceChunkAdvanceRequestRef: practiceChunkRuntime.practiceChunkAdvanceRequestRef,
+    onPracticeChunkPlan: practiceChunkRuntime.onPracticeChunkPlan,
+    onPracticeChunkResolved: practiceChunkRuntime.onPracticeChunkResolved,
+    onFinalPracticeChunkAudioCompleted: practiceChunkRuntime.onFinalPracticeChunkAudioCompleted,
   });
+
+  practiceChunkRuntime.finishSessionRef.current = submitTtsSession;
+  const resetSessionWithPracticeChunks = (options?: Parameters<typeof resetSession>[0]) => {
+    practiceChunkRuntime.resetPracticeChunks();
+    resetSession(options);
+  };
 
   const { focusedTrainingProps } = useFocusedTrainingRouteRuntime({
     ...delegateArgs.focusedRoute,
@@ -66,7 +88,7 @@ export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
     ttsTranscript,
     estimateTtsSpokenWordIndex,
     seekTtsPlayback,
-    resetSession,
+    resetSession: resetSessionWithPracticeChunks,
     playTts,
     resumeTts,
     pauseTts,
@@ -75,6 +97,7 @@ export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
     onTtsPracticeChange,
     onTtsPracticeKeyDown,
     submitTtsSession,
+    practiceChunkRuntime,
   });
 
   return {

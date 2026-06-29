@@ -63,6 +63,19 @@ export interface TtsChunkTelemetry {
   durationSec?: number;
 }
 
+export type BrowserTtsPracticeChunkResolution = 'submitted' | 'skipped' | 'timeout';
+
+export interface BrowserTtsPracticeChunkTelemetry {
+  id: string;
+  index: number;
+  startWordIndex: number;
+  wordCount: number;
+  typedWordStartIndex: number;
+  typedWordCount: number;
+  typedText: string;
+  resolution: BrowserTtsPracticeChunkResolution;
+}
+
 export interface ControllerConfig {
   minRate: number;
   maxRate: number;
@@ -84,6 +97,7 @@ export interface SessionTelemetry {
   accuracySeries: number[];
   actions: Array<{ t: number; action: ControlAction; rate: number }>;
   ttsChunks: TtsChunkTelemetry[];
+  practiceChunks?: BrowserTtsPracticeChunkTelemetry[];
   repeatCount: number;
   rateDistribution: Array<{ rate: number; seconds: number }>;
 }

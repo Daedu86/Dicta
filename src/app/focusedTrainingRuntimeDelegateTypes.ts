@@ -37,6 +37,7 @@ export type FocusedTrainingRouteDelegateArgs = Omit<
   | 'onTtsPracticeChange'
   | 'onTtsPracticeKeyDown'
   | 'submitTtsSession'
+  | 'practiceChunkRuntime'
 >;
 
 export type UseFocusedTrainingRuntimeArgs =

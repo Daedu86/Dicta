@@ -22,7 +22,13 @@ export function useFocusedTrainingRouteControls({
   setInputSettingsLocked,
   setError,
   setExportMessage,
+  practiceChunkRuntime,
 }: UseFocusedTrainingRouteRuntimeArgs) {
+  const punctuateVisiblePracticeText = (latestTextValue?: string) => punctuateTtsPracticeText(
+    latestTextValue !== undefined && practiceChunkRuntime?.enabled
+      ? practiceChunkRuntime.transformImmediateDraft(latestTextValue)
+      : latestTextValue,
+  );
   return useTrainingSessionLifecycle({
     state: {
       activeInputMode,
@@ -43,7 +49,7 @@ export function useFocusedTrainingRouteControls({
       resumeTts,
       pauseTts,
       stopTts: stopTtsPlayback,
-      punctuateTtsPracticeText,
+      punctuateTtsPracticeText: punctuateVisiblePracticeText,
       onTtsPracticeChange,
       submitTtsSession,
       setInputSettingsLocked,

@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const e2eBaseUrl = 'http://127.0.0.1:4174';
+const externalMobileServer = process.env.DICTA_E2E_EXTERNAL_SERVER === '1';
 
 export default defineConfig({
   testDir: './e2e',
@@ -16,12 +17,14 @@ export default defineConfig({
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
   },
-  webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4174',
-    url: `${e2eBaseUrl}/e2e-training.html`,
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  webServer: externalMobileServer
+    ? undefined
+    : {
+        command: 'node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4174',
+        url: `${e2eBaseUrl}/e2e-training.html`,
+        reuseExistingServer: false,
+        timeout: 120_000,
+      },
   projects: [
     {
       name: 'mobile-chrome',

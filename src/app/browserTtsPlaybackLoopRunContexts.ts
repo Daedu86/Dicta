@@ -17,6 +17,7 @@ type BrowserTtsPlaybackLoopContextsInput = {
   options: BrowserTtsPlaybackLoopRunOptions;
   browserTtsVoice: SpeechSynthesisVoice | null;
   browserTtsEnvironment: ReturnType<BrowserTtsPlaybackLoopOptions['collectBrowserTtsEnvironmentForSession']>;
+  practiceChunks: BrowserTtsPlaybackRunContext['practiceChunks'];
 };
 
 export type BrowserTtsPlaybackLoopContexts = {
@@ -58,6 +59,7 @@ export function createBrowserTtsPlaybackLoopContexts({
   options,
   browserTtsVoice,
   browserTtsEnvironment,
+  practiceChunks,
 }: BrowserTtsPlaybackLoopContextsInput): BrowserTtsPlaybackLoopContexts {
   return {
     playbackRuntime: {
@@ -76,6 +78,10 @@ export function createBrowserTtsPlaybackLoopContexts({
       perfPlayId: options.perfPlayId,
       speakBrowserTts: options.speakBrowserTts,
       ttsUtteranceRef: options.ttsUtteranceRef,
+      practiceChunks,
+      practiceChunkAdvanceRequestRef: options.practiceChunkAdvanceRequestRef,
+      onPracticeChunkResolved: options.onPracticeChunkResolved,
+      onFinalPracticeChunkAudioCompleted: options.onFinalPracticeChunkAudioCompleted,
     },
     progressContext: {
       ttsCompletedSourceWordsRef: options.ttsCompletedSourceWordsRef,

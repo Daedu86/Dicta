@@ -4,6 +4,7 @@ export type TrainingSubmitCardProps = {
   onSubmit: () => void;
   message: string;
   messageTone?: 'error' | 'success' | 'hint';
+  showAction?: boolean;
 };
 
 export function TrainingSubmitCard({
@@ -12,12 +13,16 @@ export function TrainingSubmitCard({
   onSubmit,
   message,
   messageTone,
+  showAction = true,
 }: TrainingSubmitCardProps) {
+  if (!showAction && !message) return null;
   return (
     <section className="training-card training-submit-card">
-      <button type="button" className="training-submit-button" onClick={onSubmit} disabled={!canSubmit}>
-        {submitLabel}
-      </button>
+      {showAction ? (
+        <button type="button" className="training-submit-button" onClick={onSubmit} disabled={!canSubmit}>
+          {submitLabel}
+        </button>
+      ) : null}
       {message ? <p className={messageTone ?? (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') ? 'error' : 'hint')}>{message}</p> : null}
     </section>
   );

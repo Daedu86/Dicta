@@ -89,6 +89,11 @@ export function useFocusedTrainingViewProps(args: UseFocusedTrainingViewPropsArg
     pendingSyncSummary,
     isOnline,
     generationButtons,
+    completedPracticeChunks,
+    activePracticeChunk,
+    practiceChunkActionQueued,
+    finalPracticeChunkAudioCompleted,
+    onSubmitPracticeChunk,
   } = args;
 
   return useMemo(() => buildFocusedTrainingViewProps(args), [
@@ -127,5 +132,10 @@ export function useFocusedTrainingViewProps(args: UseFocusedTrainingViewPropsArg
     pendingSyncSummary,
     isOnline,
     generationButtons,
+    completedPracticeChunks,
+    activePracticeChunk,
+    practiceChunkActionQueued,
+    finalPracticeChunkAudioCompleted,
+    onSubmitPracticeChunk,
   ]);
 }

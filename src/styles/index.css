@@ -11,6 +11,7 @@
 @import './training-shell.css';
 @import './training-session.css';
 @import './training-interaction.css';
+@import './training-chunks.css';
 @import './training-review.css';
 @import './perf-overlay.css';
 @import './shared-controls.css';

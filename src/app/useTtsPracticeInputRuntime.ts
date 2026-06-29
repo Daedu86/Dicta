@@ -21,6 +21,7 @@ export type TtsPracticeInputRuntimeOptions = {
   ttsPracticeLiveTextRef: MutableRefObject<string>;
   setTtsPracticeText: Dispatch<SetStateAction<string>>;
   handleEsKeyboardRemapKeyDown: KeyboardRemapHandler;
+  transformPracticeText?: (visibleValue: string) => string;
 };
 
 export type TtsPracticeInputRuntime = {
@@ -35,17 +36,19 @@ export function createTtsPracticeInputRuntime({
   ttsPracticeLiveTextRef,
   setTtsPracticeText,
   handleEsKeyboardRemapKeyDown,
+  transformPracticeText = (value) => value,
 }: TtsPracticeInputRuntimeOptions): TtsPracticeInputRuntime {
   function onTtsPracticeChange(value: string): void {
     if (activeSessionFinished) return;
+    const storedValue = transformPracticeText(value);
     if (!telemetryRef.current || !telemetryRef.current.startedAt) {
       telemetryRef.current = { ...cloneTelemetry(telemetryRef.current), startedAt: new Date().toISOString() };
     }
     if (ttsStartedAtMsRef.current === null) {
       ttsStartedAtMsRef.current = performance.now();
     }
-    ttsPracticeLiveTextRef.current = value;
-    setTtsPracticeText(value);
+    ttsPracticeLiveTextRef.current = storedValue;
+    setTtsPracticeText(storedValue);
   }
 
   function onTtsPracticeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {

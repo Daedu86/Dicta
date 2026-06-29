@@ -60,5 +60,9 @@ export function buildTtsSessionBrowserPlaybackArgs(
     setRunning: args.setRunning,
     setSessionStatus: args.setSessionStatus,
     setError: args.setError,
+    practiceChunkAdvanceRequestRef: args.practiceChunkAdvanceRequestRef,
+    onPracticeChunkPlan: args.onPracticeChunkPlan,
+    onPracticeChunkResolved: args.onPracticeChunkResolved,
+    onFinalPracticeChunkAudioCompleted: args.onFinalPracticeChunkAudioCompleted,
   };
 }

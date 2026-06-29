@@ -1,0 +1,116 @@
+.training-chunk-flow,
+.training-chunk-history,
+.training-review-chunks {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.training-chunk-history {
+  max-height: min(34vh, 280px);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.training-chunk-card,
+.training-review-chunk {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid #c9d9e9;
+  border-radius: 14px;
+  background: #f8fbff;
+  box-sizing: border-box;
+}
+
+.training-chunk-card header,
+.training-review-chunk header,
+.training-chunk-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.training-chunk-card header,
+.training-review-chunk header {
+  margin-bottom: 0.55rem;
+  color: #24415f;
+}
+
+.training-chunk-card header strong,
+.training-chunk-card header label,
+.training-review-chunk header strong {
+  font-weight: 900;
+}
+
+.training-chunk-card header span,
+.training-review-chunk header span {
+  color: #60758d;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.training-chunk-card-complete {
+  background: #f4f8fd;
+}
+
+.training-chunk-card-complete p {
+  margin: 0;
+  color: #344b66;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.training-chunk-card-active {
+  border-color: #75b9f3;
+  background: #eef7ff;
+  box-shadow: 0 14px 30px -26px rgba(16, 47, 99, 0.72);
+}
+
+.training-chunk-card-active textarea {
+  min-height: 150px;
+  background: #fff;
+}
+
+.training-chunk-action-row {
+  align-items: stretch;
+  margin-top: 0.65rem;
+}
+
+.training-chunk-action-row p {
+  align-self: center;
+  margin: 0;
+  color: #60758d;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.training-chunk-action-row button {
+  flex: 0 0 min(220px, 45%);
+  min-height: 48px;
+  border-radius: 11px;
+  font-weight: 900;
+}
+
+.training-review-chunk .training-review-inline {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+@media (max-width: 640px) {
+  .training-chunk-history {
+    max-height: 220px;
+  }
+
+  .training-chunk-action-row {
+    flex-direction: column;
+  }
+
+  .training-chunk-action-row button {
+    flex-basis: auto;
+    width: 100%;
+  }
+}

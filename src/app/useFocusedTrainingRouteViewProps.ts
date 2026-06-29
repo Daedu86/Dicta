@@ -22,6 +22,8 @@ export function useFocusedTrainingRouteViewProps({
   focusedTrainingPresentationState,
   replayFocusedTts,
 }: UseFocusedTrainingRouteViewPropsArgs) {
+  const practiceChunkRuntime = args.practiceChunkRuntime;
+  const practiceChunksEnabled = practiceChunkRuntime?.enabled ?? false;
   return useFocusedTrainingViewProps({
     activeSession: args.activeSession,
     submissionMeta: args.activeTrainingSubmissionMeta,
@@ -30,9 +32,15 @@ export function useFocusedTrainingRouteViewProps({
     sourceLabel: focusedTrainingPresentationState.focusedSourceLabel,
     progressLabel: focusedTrainingPresentationState.focusedProgressLabel,
     statusLabel: args.ttsStatus,
-    currentTextValue: focusedTrainingPresentationState.focusedTextValue,
+    currentTextValue: practiceChunksEnabled && practiceChunkRuntime
+      ? practiceChunkRuntime.activeDraft
+      : focusedTrainingPresentationState.focusedTextValue,
     onTextChange: args.onTtsPracticeChange,
-    onImmediateTextChange: focusedImmediateInputHandler,
+    onImmediateTextChange: (value) => focusedImmediateInputHandler(
+      practiceChunksEnabled && practiceChunkRuntime
+        ? practiceChunkRuntime.transformImmediateDraft(value)
+        : value,
+    ),
     onTextBlur: focusedTrainingControls.onTextBlur,
     onTextKeyDown: args.onTtsPracticeKeyDown,
     textPlaceholder: focusedTrainingPresentationState.focusedTextPlaceholder,
@@ -58,5 +66,10 @@ export function useFocusedTrainingRouteViewProps({
     pendingSyncSummary: args.pendingSyncSummary,
     isOnline: args.isOnline,
     generationButtons: focusedTrainingGenerationButtons,
+    completedPracticeChunks: practiceChunkRuntime?.completedChunks ?? [],
+    activePracticeChunk: practiceChunksEnabled && practiceChunkRuntime ? practiceChunkRuntime.activeChunk : null,
+    practiceChunkActionQueued: practiceChunkRuntime?.actionQueued ?? false,
+    finalPracticeChunkAudioCompleted: practiceChunkRuntime?.finalAudioCompleted ?? false,
+    onSubmitPracticeChunk: practiceChunkRuntime?.requestCurrentChunkAdvance,
   });
 }

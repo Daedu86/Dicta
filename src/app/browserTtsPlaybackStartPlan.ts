@@ -5,6 +5,10 @@ import type { TtsLanguage } from './sessionTypes';
 import { buildTtsSourceWords } from './dictationScriptSemanticPhrases';
 import { clamp } from './appRuntimeHelpers';
 import type { BrowserTtsBoundaryStrictness } from './browserTtsPlaybackPlan';
+import {
+  buildBrowserTtsPracticeChunks,
+  type BrowserTtsPracticeChunkDefinition,
+} from './browserTtsPracticeChunks';
 
 export type BrowserTtsPlaybackStartPlanInput = {
   ttsText: string;
@@ -30,6 +34,7 @@ export type BrowserTtsPlaybackStartPlan =
       semanticPhrases: SemanticPhrase[];
       semanticPhraseWords: string[][];
       semanticPhraseStartWordIndices: number[];
+      practiceChunks: BrowserTtsPracticeChunkDefinition[];
       lastPhraseSize: PhraseSize;
       lastBoundaryStrictness: BrowserTtsBoundaryStrictness;
     };
@@ -57,6 +62,11 @@ export function buildBrowserTtsPlaybackStartPlan({
   const macroPhraseIndex = semanticPhraseStartWordIndices.reduce((selectedIndex, phraseStartWordIndex, index) => {
     return phraseStartWordIndex <= clampedStartWordIndex ? index : selectedIndex;
   }, 0);
+  const practiceChunks = buildBrowserTtsPracticeChunks({
+    semanticPhrases,
+    semanticPhraseStartWordIndices,
+    semanticPhraseWords,
+  });
   const macroWordOffset = Math.max(0, clampedStartWordIndex - (semanticPhraseStartWordIndices[macroPhraseIndex] ?? 0));
 
   return {
@@ -69,6 +79,7 @@ export function buildBrowserTtsPlaybackStartPlan({
     semanticPhrases,
     semanticPhraseWords,
     semanticPhraseStartWordIndices,
+    practiceChunks,
     lastPhraseSize: 'medium',
     lastBoundaryStrictness: 'sentence',
   };

@@ -84,7 +84,7 @@ export interface AdaptiveTimelinePoint {
     | 'flow_entered';
 }
 
-export type InputExecutionPauseGateResolutionReason = 'completed' | 'timeout' | 'no-gate';
+export type InputExecutionPauseGateResolutionReason = 'completed' | 'submitted' | 'timeout' | 'no-gate';
 
 export interface InputExecutionTelemetry {
   requestedPlaybackRate?: number;

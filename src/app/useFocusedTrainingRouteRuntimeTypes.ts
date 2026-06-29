@@ -3,6 +3,7 @@ import type { TrainingViewProps } from '../components/TrainingView';
 import type { ControlAction, SessionTelemetry, Transcript } from '../types/dictation';
 import type { useFocusedTrainingGenerationButtons } from './useFocusedTrainingGenerationButtons';
 import type { AdaptiveSemanticDebug, SessionStatus, StoredSession, TtsLanguage, TtsStatus } from './sessionTypes';
+import type { useBrowserTtsPracticeChunkRuntime } from './useBrowserTtsPracticeChunkRuntime';
 
 type FocusedTrainingGenerationButtonArgs = Parameters<typeof useFocusedTrainingGenerationButtons>[0];
 
@@ -54,6 +55,7 @@ export type UseFocusedTrainingRouteRuntimeArgs = FocusedTrainingGenerationButton
   onTtsPracticeChange: (value: string) => void;
   onTtsPracticeKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   submitTtsSession: (latestTextValue?: string) => void;
+  practiceChunkRuntime?: ReturnType<typeof useBrowserTtsPracticeChunkRuntime>;
   setInputSettingsLocked: (value: boolean) => void;
   setError: (message: string) => void;
   setExportMessage: (message: string) => void;

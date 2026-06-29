@@ -5,6 +5,8 @@ import type { Difficulty } from '../core/config';
 import type { CreatedDeviceKind } from '../core/sessionDevice';
 import type { TrainingGenerationButton } from './training/TrainingGenerationCard';
 import type { TrainingSessionSubmissionMeta } from './training/TrainingSessionCard';
+import type { BrowserTtsPracticeChunkView } from '../app/browserTtsPracticeChunks';
+import type { BrowserTtsPracticeChunkTelemetry } from '../types/dictation';
 
 export type TrainingSessionStatus = 'ready' | 'running' | 'paused' | 'finished' | 'error';
 export type TrainingSessionInputMode = string;
@@ -35,6 +37,7 @@ export type TrainingViewSession = {
   createdDeviceKind: CreatedDeviceKind;
   createdDeviceLabel?: string;
   dictationScript: DictationScript | null;
+  telemetry?: { practiceChunks?: BrowserTtsPracticeChunkTelemetry[] };
 };
 
 export type TrainingViewProps<Session extends TrainingViewSession = TrainingViewSession> = {
@@ -85,4 +88,9 @@ export type TrainingViewProps<Session extends TrainingViewSession = TrainingView
   syncStatus: TrainingSupabaseSyncStatus;
   pendingSyncSummary: TrainingPendingSyncSummary;
   isOnline: boolean;
+  completedPracticeChunks?: BrowserTtsPracticeChunkView[];
+  activePracticeChunk?: BrowserTtsPracticeChunkView | null;
+  practiceChunkActionQueued?: boolean;
+  finalPracticeChunkAudioCompleted?: boolean;
+  onSubmitPracticeChunk?: (latestDraft: string) => void;
 };

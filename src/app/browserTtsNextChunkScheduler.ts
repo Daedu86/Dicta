@@ -1,7 +1,8 @@
-export type BrowserTtsNextChunkGateResolutionReason = 'completed' | 'timeout' | 'no-gate';
+export type BrowserTtsNextChunkGateResolutionReason = 'completed' | 'submitted' | 'timeout' | 'no-gate';
 
 export interface BrowserTtsNextChunkCompletionGate {
   isComplete: () => boolean;
+  getResolutionReason?: () => Extract<BrowserTtsNextChunkGateResolutionReason, 'completed' | 'submitted'> | null;
   pollMs?: number;
   maxWaitMs?: number;
   onResolved?: (actualWaitMs: number, reason: BrowserTtsNextChunkGateResolutionReason) => void;
@@ -86,8 +87,9 @@ export function scheduleBrowserTtsNextChunk({
     finish();
   };
 
-  if (isGateComplete(completionGate)) {
-    resolve(0, 'completed');
+  const initialReason = getGateResolutionReason(completionGate);
+  if (initialReason) {
+    resolve(0, initialReason);
     return;
   }
 
@@ -99,8 +101,9 @@ export function scheduleBrowserTtsNextChunk({
     scheduleTimeout(() => {
       if (resolved) return;
       elapsedMs = Math.min(maxWaitMs, elapsedMs + delayMs);
-      if (isGateComplete(completionGate)) {
-        resolve(elapsedMs, 'completed');
+      const reason = getGateResolutionReason(completionGate);
+      if (reason) {
+        resolve(elapsedMs, reason);
         return;
       }
       if (elapsedMs < maxWaitMs) {
@@ -145,5 +148,15 @@ function isGateComplete(completionGate: BrowserTtsNextChunkCompletionGate): bool
     return completionGate.isComplete();
   } catch {
     return false;
+  }
+}
+
+function getGateResolutionReason(
+  completionGate: BrowserTtsNextChunkCompletionGate,
+): Extract<BrowserTtsNextChunkGateResolutionReason, 'completed' | 'submitted'> | null {
+  try {
+    return completionGate.getResolutionReason?.() ?? (isGateComplete(completionGate) ? 'completed' : null);
+  } catch {
+    return null;
   }
 }

@@ -21,6 +21,7 @@ import type {
 import type { TtsLiveSignal, TtsPlaybackProfile } from './ttsPlaybackProfile';
 import type { TtsPerformanceSampleOptions } from './useTtsPerformanceSampler';
 import type { TtsTelemetryRecorder } from './useTtsTelemetryRecorder';
+import type { BrowserTtsPracticeChunkDefinition } from './browserTtsPracticeChunks';
 
 export type BrowserTtsEnvironmentResolver = (
   session: StoredSession | null | undefined,
@@ -85,6 +86,10 @@ export type BrowserTtsPlaybackLoopOptions = {
   setRunning: Dispatch<SetStateAction<boolean>>;
   setSessionStatus: Dispatch<SetStateAction<SessionStatus>>;
   setError: Dispatch<SetStateAction<string>>;
+  practiceChunkAdvanceRequestRef?: MutableRefObject<number | null>;
+  onPracticeChunkPlan?: (chunks: BrowserTtsPracticeChunkDefinition[], startWordIndex: number) => void;
+  onPracticeChunkResolved?: (chunk: BrowserTtsPracticeChunkDefinition, reason: 'submitted' | 'timeout') => void;
+  onFinalPracticeChunkAudioCompleted?: (chunk: BrowserTtsPracticeChunkDefinition) => void;
 };
 
 export type BrowserTtsPlaybackCursorPosition = {
@@ -114,6 +119,10 @@ export type BrowserTtsPlaybackRunContext = {
   perfPlayId: number;
   speakBrowserTts: BrowserTtsPlaybackLoopOptions['speakBrowserTts'];
   ttsUtteranceRef: BrowserTtsPlaybackLoopOptions['ttsUtteranceRef'];
+  practiceChunks: BrowserTtsPracticeChunkDefinition[];
+  practiceChunkAdvanceRequestRef?: BrowserTtsPlaybackLoopOptions['practiceChunkAdvanceRequestRef'];
+  onPracticeChunkResolved?: BrowserTtsPlaybackLoopOptions['onPracticeChunkResolved'];
+  onFinalPracticeChunkAudioCompleted?: BrowserTtsPlaybackLoopOptions['onFinalPracticeChunkAudioCompleted'];
 };
 
 export type BrowserTtsPlaybackMacroPhraseContext = {

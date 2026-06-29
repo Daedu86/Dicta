@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import type { TrainingReviewModel, TrainingReviewWord } from '../../app/focusedTrainingReview';
+import type { BrowserTtsPracticeChunkTelemetry } from '../../types/dictation';
 
 export type TrainingReviewPanelProps = {
   review: TrainingReviewModel;
+  chunks?: BrowserTtsPracticeChunkTelemetry[];
 };
 
-export function TrainingReviewPanel({ review }: TrainingReviewPanelProps) {
+export function TrainingReviewPanel({ review, chunks }: TrainingReviewPanelProps) {
   const renderedWords = buildInlineReviewWords(review);
 
   return (
@@ -24,24 +26,61 @@ export function TrainingReviewPanel({ review }: TrainingReviewPanelProps) {
         <span>Wrong {review.extraCount + countTypos(review.targetWords)}</span>
       </div>
 
-      <p className="training-review-inline" aria-label="Sentence review with highlighted words">
-        {renderedWords}
-      </p>
+      {chunks?.length ? (
+        <div className="training-review-chunks" aria-label="Chunked sentence review">
+          {chunks.map((chunk) => (
+            <article className="training-review-chunk" key={chunk.id}>
+              <header>
+                <strong>Chunk {chunk.index + 1}</strong>
+                <span>{formatChunkResolution(chunk)}</span>
+              </header>
+              <p className="training-review-inline" aria-label={`Chunk ${chunk.index + 1} review with highlighted words`}>
+                {buildInlineReviewWords(review, {
+                  targetStart: chunk.startWordIndex,
+                  targetEnd: chunk.startWordIndex + chunk.wordCount,
+                  typedStart: chunk.typedWordStartIndex,
+                  typedEnd: chunk.typedWordStartIndex + chunk.typedWordCount,
+                })}
+              </p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="training-review-inline" aria-label="Sentence review with highlighted words">
+          {renderedWords}
+        </p>
+      )}
     </div>
   );
 }
 
-function buildInlineReviewWords(review: TrainingReviewModel): ReactNode[] {
+function buildInlineReviewWords(
+  review: TrainingReviewModel,
+  range: { targetStart: number; targetEnd: number; typedStart: number; typedEnd: number } = {
+    targetStart: 0,
+    targetEnd: review.targetWords.length,
+    typedStart: 0,
+    typedEnd: review.typedWords.length,
+  },
+): ReactNode[] {
   const typedToTarget = new Map<number, number>();
 
   for (const pair of review.alignedPairs ?? []) {
-    typedToTarget.set(pair.typedIndex, pair.targetIndex);
+    if (
+      pair.typedIndex >= range.typedStart &&
+      pair.typedIndex < range.typedEnd &&
+      pair.targetIndex >= range.targetStart &&
+      pair.targetIndex < range.targetEnd
+    ) {
+      typedToTarget.set(pair.typedIndex, pair.targetIndex);
+    }
   }
 
   const nodes: ReactNode[] = [];
-  let nextTargetIndex = 0;
+  let nextTargetIndex = range.targetStart;
 
-  review.typedWords.forEach((typedWord, typedIndex) => {
+  review.typedWords.slice(range.typedStart, range.typedEnd).forEach((typedWord, localTypedIndex) => {
+    const typedIndex = range.typedStart + localTypedIndex;
     const targetIndex = typedToTarget.get(typedIndex);
 
     if (typedWord.state === 'extra') {
@@ -64,12 +103,18 @@ function buildInlineReviewWords(review: TrainingReviewModel): ReactNode[] {
     nextTargetIndex = targetIndex + 1;
   });
 
-  while (nextTargetIndex < review.targetWords.length) {
+  while (nextTargetIndex < range.targetEnd && nextTargetIndex < review.targetWords.length) {
     nodes.push(renderTargetWord(review.targetWords[nextTargetIndex]));
     nextTargetIndex += 1;
   }
 
   return nodes;
+}
+
+function formatChunkResolution(chunk: BrowserTtsPracticeChunkTelemetry): string {
+  if (chunk.resolution === 'timeout') return 'Continued automatically';
+  if (chunk.resolution === 'skipped') return 'Skipped';
+  return 'Submitted';
 }
 
 function renderTargetWord(word: TrainingReviewWord) {

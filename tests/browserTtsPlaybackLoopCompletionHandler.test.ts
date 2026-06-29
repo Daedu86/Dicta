@@ -380,4 +380,85 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
     );
     expect(params.speakNext).toHaveBeenCalledTimes(1);
   });
+
+  it('does not advance a learner-paced practice chunk from correct typing alone', () => {
+    vi.useFakeTimers();
+    installWindowTimers();
+    const practiceChunk = {
+      id: 'practice-0-0',
+      index: 0,
+      startWordIndex: 0,
+      wordCount: 2,
+      firstSemanticPhraseIndex: 0,
+      lastSemanticPhraseIndex: 0,
+      isFinal: false,
+    };
+    const onPracticeChunkResolved = vi.fn();
+    const params = createChunkEndParams({
+      macroWordsLength: 2,
+      ttsPracticeLiveTextRef: { current: 'hello world' },
+      practiceChunks: [practiceChunk],
+      practiceChunkAdvanceRequestRef: { current: null },
+      onPracticeChunkResolved,
+    });
+
+    handleBrowserTtsPlaybackLoopChunkEnd(params);
+
+    vi.advanceTimersByTime(3999);
+    expect(params.speakNext).not.toHaveBeenCalled();
+    expect(onPracticeChunkResolved).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+
+    expect(params.speakNext).toHaveBeenCalledTimes(1);
+    expect(onPracticeChunkResolved).toHaveBeenCalledWith(practiceChunk, 'timeout');
+    expect(params.recordAdaptiveBenchmark).toHaveBeenCalledWith(
+      expect.any(Object),
+      params.runtimeDecision,
+      expect.objectContaining({
+        pauseGateResolutionReason: 'timeout',
+      }),
+    );
+  });
+
+  it('honors manual practice chunk submission after the current utterance ends', () => {
+    vi.useFakeTimers();
+    installWindowTimers();
+    const practiceChunk = {
+      id: 'practice-0-0',
+      index: 0,
+      startWordIndex: 0,
+      wordCount: 2,
+      firstSemanticPhraseIndex: 0,
+      lastSemanticPhraseIndex: 0,
+      isFinal: false,
+    };
+    const advanceRef = { current: 0 };
+    const onPracticeChunkResolved = vi.fn();
+    const params = createChunkEndParams({
+      macroWordsLength: 2,
+      practiceChunks: [practiceChunk],
+      practiceChunkAdvanceRequestRef: advanceRef,
+      onPracticeChunkResolved,
+    });
+
+    handleBrowserTtsPlaybackLoopChunkEnd(params);
+
+    expect(params.speakNext).not.toHaveBeenCalled();
+    expect(onPracticeChunkResolved).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS);
+
+    expect(advanceRef.current).toBeNull();
+    expect(onPracticeChunkResolved).toHaveBeenCalledWith(practiceChunk, 'submitted');
+    expect(params.recordAdaptiveBenchmark).toHaveBeenCalledWith(
+      expect.any(Object),
+      params.runtimeDecision,
+      expect.objectContaining({
+        actualPauseMs: BROWSER_TTS_MIN_MENTAL_REST_MS,
+        pauseGateResolutionReason: 'submitted',
+      }),
+    );
+    expect(params.speakNext).toHaveBeenCalledTimes(1);
+  });
 });

@@ -63,6 +63,10 @@ export function attachBrowserTtsPlaybackLoopChunkHandlers({
       setAdaptiveSemanticDebug: input.adaptiveContext.setAdaptiveSemanticDebug,
       speakNext: input.callbacks.speakNext,
       updatePlaybackCursor: input.callbacks.updatePlaybackCursor,
+      practiceChunks: input.playbackRuntime.practiceChunks,
+      practiceChunkAdvanceRequestRef: input.playbackRuntime.practiceChunkAdvanceRequestRef,
+      onPracticeChunkResolved: input.playbackRuntime.onPracticeChunkResolved,
+      onFinalPracticeChunkAudioCompleted: input.playbackRuntime.onFinalPracticeChunkAudioCompleted,
     }),
     error: (event) => ({
       error: event.error,
