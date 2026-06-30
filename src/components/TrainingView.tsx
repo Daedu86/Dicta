@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { formatDifficultyLabel } from '../core/config';
 import { PendingSessionLane } from './training/PendingSessionLane';
 import { SyncStatusBanner } from './training/SyncStatusBanner';
@@ -73,6 +74,7 @@ export function TrainingView<Session extends TrainingViewSession>({
   finalPracticeChunkAudioCompleted,
   onSubmitPracticeChunk,
 }: TrainingViewProps<Session>) {
+  const [playFocusRequestId, setPlayFocusRequestId] = useState(0);
   const inputController = useTrainingViewInputController({
     currentTextValue,
     onTextChange,
@@ -82,7 +84,12 @@ export function TrainingView<Session extends TrainingViewSession>({
 
   function handlePlay(): void {
     onPlay();
-    inputController.focusTextInput({ scroll: !activePracticeChunk });
+    if (activePracticeChunk) {
+      setPlayFocusRequestId((currentRequestId) => currentRequestId + 1);
+      inputController.focusTextInput({ scroll: false, defer: false });
+      return;
+    }
+    inputController.focusTextInput();
   }
 
   const textAreaId = 'training-dictation-input';
@@ -155,6 +162,7 @@ export function TrainingView<Session extends TrainingViewSession>({
         practiceChunkAdvanceCountdownSeconds={practiceChunkAdvanceCountdownSeconds}
         finalPracticeChunkAudioCompleted={finalPracticeChunkAudioCompleted}
         onSubmitPracticeChunk={onSubmitPracticeChunk}
+        playFocusRequestId={playFocusRequestId}
       />
 
       <TrainingSubmitCard

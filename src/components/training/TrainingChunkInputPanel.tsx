@@ -25,6 +25,7 @@ export type TrainingChunkInputPanelProps = {
   actionQueued: boolean;
   advanceCountdownSeconds?: number | null;
   finalAudioCompleted: boolean;
+  playFocusRequestId?: number;
 };
 
 export function TrainingChunkInputPanel({
@@ -42,11 +43,13 @@ export function TrainingChunkInputPanel({
   actionQueued,
   advanceCountdownSeconds = null,
   finalAudioCompleted,
+  playFocusRequestId = 0,
 }: TrainingChunkInputPanelProps) {
   const keyboardDockReleaseTimerRef = useRef<number | null>(null);
   const keyboardScrollTimerRef = useRef<number | null>(null);
   const keyboardDockActivationSerialRef = useRef(0);
   const activeChunkIdRef = useRef(activeChunk.id);
+  const handledPlayFocusRequestIdRef = useRef(playFocusRequestId);
   const actionRowRef = useRef<HTMLDivElement | null>(null);
   const [keyboardDockActive, setKeyboardDockActive] = useState(false);
   const keyboardLayout = useVisualViewportKeyboardLayout(keyboardDockActive);
@@ -89,6 +92,11 @@ export function TrainingChunkInputPanel({
     scrollChunkActionIntoView();
   }, [clearKeyboardDockReleaseTimer, scrollChunkActionIntoView]);
 
+  const focusChunkTextareaAndRevealAction = useCallback(() => {
+    activateKeyboardDock();
+    textInputRef.current?.focus({ scroll: false });
+  }, [activateKeyboardDock, textInputRef]);
+
   const releaseKeyboardDockSoon = useCallback(() => {
     clearKeyboardDockReleaseTimer();
     const releaseSerial = keyboardDockActivationSerialRef.current;
@@ -113,9 +121,20 @@ export function TrainingChunkInputPanel({
 
   useEffect(() => {
     if (actionQueued) return;
-    activateKeyboardDock();
-    textInputRef.current?.focus({ scroll: false });
-  }, [activateKeyboardDock, activeChunk.id, actionQueued, textInputRef]);
+    focusChunkTextareaAndRevealAction();
+  }, [activeChunk.id, actionQueued, focusChunkTextareaAndRevealAction]);
+
+  useEffect(() => {
+    if (
+      !playFocusRequestId ||
+      actionQueued ||
+      handledPlayFocusRequestIdRef.current === playFocusRequestId
+    ) {
+      return;
+    }
+    handledPlayFocusRequestIdRef.current = playFocusRequestId;
+    focusChunkTextareaAndRevealAction();
+  }, [actionQueued, focusChunkTextareaAndRevealAction, playFocusRequestId]);
 
   useEffect(() => () => {
     clearKeyboardDockReleaseTimer();

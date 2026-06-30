@@ -46,6 +46,7 @@ function renderPanel(props: Partial<ComponentProps<typeof TrainingChunkInputPane
       actionQueued: false,
       advanceCountdownSeconds: null,
       finalAudioCompleted: false,
+      playFocusRequestId: 0,
       ...props,
     }));
   });
@@ -218,6 +219,51 @@ describe('TrainingChunkInputPanel focus handoff', () => {
 
       expect(scrollIntoView).toHaveBeenCalledTimes(1);
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('handles a play focus request by focusing the textarea and revealing submit once', () => {
+    vi.useFakeTimers();
+    const textInputRef = createRef<LowLatencyTextareaHandle>();
+    const scrollIntoView = vi.fn();
+    const outsideButton = document.createElement('button');
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    document.body.appendChild(outsideButton);
+
+    try {
+      renderPanel({
+        textInputRef,
+        currentTextValue: 'ready text',
+        playFocusRequestId: 0,
+      });
+      act(() => {
+        vi.advanceTimersByTime(90);
+      });
+      scrollIntoView.mockClear();
+
+      outsideButton.focus();
+      expect(document.activeElement).toBe(outsideButton);
+
+      renderPanel({
+        textInputRef,
+        currentTextValue: 'ready text',
+        playFocusRequestId: 1,
+      });
+
+      expect(document.activeElement).toBe(host.querySelector('#training-dictation-input'));
+      const textarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+      expect(textarea?.selectionStart).toBe('ready text'.length);
+      expect(textarea?.selectionEnd).toBe('ready text'.length);
+
+      act(() => {
+        vi.advanceTimersByTime(90);
+      });
+
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end', inline: 'nearest' });
+    } finally {
+      outsideButton.remove();
       vi.useRealTimers();
     }
   });

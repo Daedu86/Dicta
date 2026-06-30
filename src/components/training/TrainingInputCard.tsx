@@ -36,6 +36,7 @@ export type TrainingInputCardProps = {
   practiceChunkAdvanceCountdownSeconds?: number | null;
   finalPracticeChunkAudioCompleted?: boolean;
   onSubmitPracticeChunk?: (latestDraft: string) => void;
+  playFocusRequestId?: number;
 };
 
 export function TrainingInputCard({
@@ -67,6 +68,7 @@ export function TrainingInputCard({
   practiceChunkAdvanceCountdownSeconds = null,
   finalPracticeChunkAudioCompleted = false,
   onSubmitPracticeChunk,
+  playFocusRequestId = 0,
 }: TrainingInputCardProps) {
   const effectiveTextCommitDelayMs = Math.max(textCommitDelayMs, 160);
   const progressMetric = buildProgressMetric(progressLabel);
@@ -121,6 +123,7 @@ export function TrainingInputCard({
           actionQueued={practiceChunkActionQueued}
           advanceCountdownSeconds={practiceChunkAdvanceCountdownSeconds}
           finalAudioCompleted={finalPracticeChunkAudioCompleted}
+          playFocusRequestId={playFocusRequestId}
         />
       ) : (
         <LowLatencyTextarea

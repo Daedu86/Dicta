@@ -9,6 +9,11 @@ type UseTrainingViewInputControllerArgs = {
   onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
 };
 
+type FocusTextInputOptions = {
+  scroll?: boolean;
+  defer?: boolean;
+};
+
 export function useTrainingViewInputController({
   currentTextValue,
   onTextChange,
@@ -54,10 +59,15 @@ export function useTrainingViewInputController({
     return textInputRef.current?.flush() ?? currentTextValue;
   }
 
-  function focusTextInput(options?: { scroll?: boolean }): void {
-    window.requestAnimationFrame(() => {
+  function focusTextInput(options?: FocusTextInputOptions): void {
+    const focus = () => {
       textInputRef.current?.focus(options);
-    });
+    };
+    if (options?.defer === false) {
+      focus();
+      return;
+    }
+    window.requestAnimationFrame(focus);
   }
 
   return {
