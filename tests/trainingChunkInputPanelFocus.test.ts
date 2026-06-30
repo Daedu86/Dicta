@@ -169,6 +169,27 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     expect(flow?.style.getPropertyValue('--training-visual-viewport-height')).toBe('520px');
   });
 
+  it('scrolls the chunk action row into view after focus without docking the card', () => {
+    vi.useFakeTimers();
+    const scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    try {
+      renderPanel();
+
+      act(() => {
+        host.querySelector<HTMLTextAreaElement>('#training-dictation-input')?.focus();
+      });
+      act(() => {
+        vi.advanceTimersByTime(90);
+      });
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end', inline: 'nearest' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('ignores a stale blur release after the next chunk activates', () => {
     vi.useFakeTimers();
     const textInputRef = createRef<LowLatencyTextareaHandle>();

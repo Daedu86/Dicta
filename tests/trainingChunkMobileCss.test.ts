@@ -16,36 +16,40 @@ describe('mobile chunk practice CSS', () => {
     expect(responsiveCss).toContain('max-height: 8.5rem;');
   });
 
-  it('keeps the per-chunk submit row sticky and visible on phones', () => {
+  it('keeps the per-chunk submit row in normal flow on phones', () => {
     const responsiveCss = readRepoSource('src/styles/responsive-640.css');
 
     expectInOrder(responsiveCss, [
       '.training-input-card .training-chunk-action-row {',
-      'position: sticky;',
-      'bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);',
+      'margin: 0.5rem -0.15rem -0.1rem;',
+      'background: transparent;',
     ]);
+    expect(responsiveCss).not.toContain('position: sticky;');
     expect(responsiveCss).toContain('.training-input-card .training-chunk-action-row p');
     expect(responsiveCss).toContain('display: none;');
   });
 
-  it('docks the whole active chunk card above the visual keyboard while typing', () => {
+  it('keeps the active chunk in page flow while reserving keyboard scroll room', () => {
     const responsiveCss = readRepoSource('src/styles/responsive-640.css');
 
     expectInOrder(responsiveCss, [
-      '.training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active {',
-      'position: fixed;',
+      '.training-input-card .training-chunk-flow-keyboard-active {',
+      'padding-bottom: calc(',
       'var(--training-visual-keyboard-inset, 0px)',
-      'max-width: calc(640px - 1.3rem);',
-      'max-height: calc(var(--training-visual-viewport-height, 100dvh) - 0.75rem);',
+      'scroll-margin-bottom: calc(',
+    ]);
+    expectInOrder(responsiveCss, [
+      '.training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active {',
+      'display: grid;',
       'grid-template-rows: auto minmax(0, auto) auto;',
     ]);
-    expect(responsiveCss).toContain('min-height: min(12.5rem, calc(var(--training-visual-viewport-height, 100dvh) - 0.75rem));');
+    expect(responsiveCss).not.toContain('position: fixed;');
     expect(responsiveCss).toContain('height: clamp(4.75rem, 15dvh, 6rem);');
     expect(responsiveCss).toContain('max-height: 6rem;');
     expectInOrder(responsiveCss, [
       '.training-input-card .training-chunk-flow-keyboard-active .training-chunk-action-row {',
-      'position: static;',
       'margin: 0.5rem 0 0;',
+      'scroll-margin-bottom: calc(',
     ]);
   });
 });

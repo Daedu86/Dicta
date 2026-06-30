@@ -62,14 +62,18 @@ test('mobile chunk submit stays below the focused textbox', async ({ page }) => 
 
     const cardPosition = await page.locator('.training-chunk-card-active').evaluate((element) => getComputedStyle(element).position);
     const actionRowPosition = await page.locator('.training-chunk-action-row').evaluate((element) => getComputedStyle(element).position);
-    expect(cardPosition).toBe('fixed');
+    expect(cardPosition).not.toBe('fixed');
+    expect(actionRowPosition).not.toBe('sticky');
     expect(actionRowPosition).toBe('static');
 
     const textareaBox = await textarea.boundingBox();
     const submitBox = await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).boundingBox();
+    const viewport = page.viewportSize();
     expect(textareaBox).not.toBeNull();
     expect(submitBox).not.toBeNull();
+    expect(viewport).not.toBeNull();
     expect(submitBox!.y).toBeGreaterThanOrEqual(textareaBox!.y + textareaBox!.height - 1);
+    expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(viewport!.height);
 
     await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).click();
   }

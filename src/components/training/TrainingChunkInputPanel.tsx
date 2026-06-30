@@ -44,8 +44,10 @@ export function TrainingChunkInputPanel({
   finalAudioCompleted,
 }: TrainingChunkInputPanelProps) {
   const keyboardDockReleaseTimerRef = useRef<number | null>(null);
+  const keyboardScrollTimerRef = useRef<number | null>(null);
   const keyboardDockActivationSerialRef = useRef(0);
   const activeChunkIdRef = useRef(activeChunk.id);
+  const actionRowRef = useRef<HTMLDivElement | null>(null);
   const [keyboardDockActive, setKeyboardDockActive] = useState(false);
   const keyboardLayout = useVisualViewportKeyboardLayout(keyboardDockActive);
   const countdownLabel = advanceCountdownSeconds !== null ? ` (${Math.max(0, advanceCountdownSeconds)} Secs)` : '';
@@ -66,11 +68,26 @@ export function TrainingChunkInputPanel({
     keyboardDockReleaseTimerRef.current = null;
   }, []);
 
+  const clearKeyboardScrollTimer = useCallback(() => {
+    if (keyboardScrollTimerRef.current === null) return;
+    window.clearTimeout(keyboardScrollTimerRef.current);
+    keyboardScrollTimerRef.current = null;
+  }, []);
+
+  const scrollChunkActionIntoView = useCallback(() => {
+    clearKeyboardScrollTimer();
+    keyboardScrollTimerRef.current = window.setTimeout(() => {
+      keyboardScrollTimerRef.current = null;
+      actionRowRef.current?.scrollIntoView({ block: 'end', inline: 'nearest' });
+    }, 80);
+  }, [clearKeyboardScrollTimer]);
+
   const activateKeyboardDock = useCallback(() => {
     keyboardDockActivationSerialRef.current += 1;
     clearKeyboardDockReleaseTimer();
     setKeyboardDockActive(true);
-  }, [clearKeyboardDockReleaseTimer]);
+    scrollChunkActionIntoView();
+  }, [clearKeyboardDockReleaseTimer, scrollChunkActionIntoView]);
 
   const releaseKeyboardDockSoon = useCallback(() => {
     clearKeyboardDockReleaseTimer();
@@ -98,12 +115,24 @@ export function TrainingChunkInputPanel({
     if (actionQueued) return;
     activateKeyboardDock();
     textInputRef.current?.focus();
-  }, [activateKeyboardDock, activeChunk.id, actionQueued, textInputRef]);
+    scrollChunkActionIntoView();
+  }, [activateKeyboardDock, activeChunk.id, actionQueued, scrollChunkActionIntoView, textInputRef]);
+
+  useEffect(() => {
+    if (!keyboardDockActive || actionQueued) return;
+    scrollChunkActionIntoView();
+  }, [
+    actionQueued,
+    keyboardDockActive,
+    keyboardLayout.keyboardInsetPx,
+    keyboardLayout.visualViewportHeightPx,
+    scrollChunkActionIntoView,
+  ]);
 
   useEffect(() => () => {
-    if (keyboardDockReleaseTimerRef.current === null) return;
-    window.clearTimeout(keyboardDockReleaseTimerRef.current);
-  }, []);
+    clearKeyboardDockReleaseTimer();
+    clearKeyboardScrollTimer();
+  }, [clearKeyboardDockReleaseTimer, clearKeyboardScrollTimer]);
 
   const flowClassName = keyboardDockActive
     ? 'training-chunk-flow training-chunk-flow-keyboard-active'
@@ -145,7 +174,7 @@ export function TrainingChunkInputPanel({
           maxCommitDelayMs={Math.max(textCommitDelayMs * 2, 160)}
           syncKey={`${syncKey}:practice:${activeChunk.id}`}
         />
-        <div className="training-chunk-action-row">
+        <div ref={actionRowRef} className="training-chunk-action-row">
           <p>
             {actionQueued
               ? advanceCountdownSeconds !== null
