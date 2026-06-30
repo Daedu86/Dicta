@@ -37,6 +37,8 @@ export function useBrowserTtsPracticeChunkRuntime({
   const [activeIndex, setActiveIndex] = useState(restoredChunks.length);
   const [draft, setDraft] = useState(restoredChunks.length === 0 ? ttsPracticeText : '');
   const [queuedIndex, setQueuedIndex] = useState<number | null>(null);
+  const [countdownDeadlineMs, setCountdownDeadlineMs] = useState<number | null>(null);
+  const [advanceCountdownSeconds, setAdvanceCountdownSeconds] = useState<number | null>(null);
   const [finalAudioCompleted, setFinalAudioCompleted] = useState(false);
   const definitionsRef = useRef(definitions);
   const completedRef = useRef(completed);
@@ -59,8 +61,24 @@ export function useBrowserTtsPracticeChunkRuntime({
     setActiveIndex(restored.length);
     setDraft(draftRef.current);
     setQueuedIndex(null);
+    setCountdownDeadlineMs(null);
+    setAdvanceCountdownSeconds(null);
     setFinalAudioCompleted(false);
   }, [activeSession?.id]);
+
+  useEffect(() => {
+    if (countdownDeadlineMs === null) return undefined;
+
+    const updateCountdown = () => {
+      const remainingMs = Math.max(0, countdownDeadlineMs - Date.now());
+      setAdvanceCountdownSeconds(remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0);
+    };
+
+    updateCountdown();
+    const intervalId = window.setInterval(updateCountdown, 200);
+
+    return () => window.clearInterval(intervalId);
+  }, [countdownDeadlineMs]);
 
   const onPracticeChunkPlan = useCallback((chunks: BrowserTtsPracticeChunkDefinition[], startWordIndex: number) => {
     const samePlan = definitionsRef.current.length === chunks.length && definitionsRef.current.every(
@@ -121,6 +139,8 @@ export function useBrowserTtsPracticeChunkRuntime({
     draftRef.current = '';
     setDraft('');
     setQueuedIndex(null);
+    setCountdownDeadlineMs(null);
+    setAdvanceCountdownSeconds(null);
     practiceChunkAdvanceRequestRef.current = null;
     const nextIndex = Math.min(definition.index + 1, definitionsRef.current.length);
     activeIndexRef.current = nextIndex;
@@ -150,11 +170,23 @@ export function useBrowserTtsPracticeChunkRuntime({
     setFinalAudioCompleted(true);
   }, []);
 
+  const onPracticeChunkRestStarted = useCallback((
+    definition: BrowserTtsPracticeChunkDefinition,
+    remainingRestMs: number,
+  ) => {
+    if (definitionsRef.current[activeIndexRef.current]?.id !== definition.id) return;
+    const normalizedRemainingMs = Math.max(0, Math.round(remainingRestMs));
+    setCountdownDeadlineMs(Date.now() + normalizedRemainingMs);
+    setAdvanceCountdownSeconds(normalizedRemainingMs > 0 ? Math.ceil(normalizedRemainingMs / 1000) : 0);
+  }, []);
+
   const requestCurrentChunkAdvance = useCallback((latestDraft: string) => {
     const definition = definitionsRef.current[activeIndexRef.current];
     if (!definition || activeSessionFinished) return;
     draftRef.current = latestDraft;
     setDraft(latestDraft);
+    setCountdownDeadlineMs(null);
+    setAdvanceCountdownSeconds(null);
     const aggregateText = composeBrowserTtsPracticeText(completedRef.current, latestDraft);
     ttsPracticeLiveTextRef.current = aggregateText;
     setTtsPracticeText(aggregateText);
@@ -180,6 +212,8 @@ export function useBrowserTtsPracticeChunkRuntime({
     setActiveIndex(0);
     setDraft('');
     setQueuedIndex(null);
+    setCountdownDeadlineMs(null);
+    setAdvanceCountdownSeconds(null);
     setFinalAudioCompleted(false);
     const nextTelemetry = cloneTelemetry(telemetryRef.current);
     delete nextTelemetry.practiceChunks;
@@ -199,11 +233,13 @@ export function useBrowserTtsPracticeChunkRuntime({
     activeChunk: activeDefinition ? { ...activeDefinition, typedText: draft } : null,
     activeDraft: draft,
     actionQueued: queuedIndex === activeDefinition?.index,
+    advanceCountdownSeconds,
     finalAudioCompleted,
     practiceChunkAdvanceRequestRef,
     finishSessionRef,
     onPracticeChunkPlan,
     onPracticeChunkResolved,
+    onPracticeChunkRestStarted,
     onFinalPracticeChunkAudioCompleted,
     transformCommittedDraft,
     transformImmediateDraft,

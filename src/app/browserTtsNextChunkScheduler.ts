@@ -5,6 +5,8 @@ export interface BrowserTtsNextChunkCompletionGate {
   getResolutionReason?: () => Extract<BrowserTtsNextChunkGateResolutionReason, 'completed' | 'submitted'> | null;
   pollMs?: number;
   maxWaitMs?: number;
+  disableTimeout?: boolean;
+  onRestStarted?: (remainingRestMs: number, resolvedWaitMs: number, reason: BrowserTtsNextChunkGateResolutionReason) => void;
   onResolved?: (actualWaitMs: number, reason: BrowserTtsNextChunkGateResolutionReason) => void;
 }
 
@@ -71,7 +73,9 @@ export function scheduleBrowserTtsNextChunk({
     resolved = true;
     const resolvedWaitMs = reason === 'timeout'
       ? actualWaitMs
-      : Math.min(maxWaitMs, Math.max(actualWaitMs, resolvedSettings.minimumMentalRestMs));
+      : completionGate.disableTimeout
+        ? Math.max(actualWaitMs, resolvedSettings.minimumMentalRestMs)
+        : Math.min(maxWaitMs, Math.max(actualWaitMs, resolvedSettings.minimumMentalRestMs));
     const remainingRestMs = Math.max(0, resolvedWaitMs - actualWaitMs);
     const finish = (): void => {
       completionGate.onResolved?.(resolvedWaitMs, reason);
@@ -80,10 +84,12 @@ export function scheduleBrowserTtsNextChunk({
     };
 
     if (remainingRestMs > 0) {
+      completionGate.onRestStarted?.(remainingRestMs, resolvedWaitMs, reason);
       scheduleTimeout(finish, remainingRestMs);
       return;
     }
 
+    completionGate.onRestStarted?.(0, resolvedWaitMs, reason);
     finish();
   };
 
@@ -93,26 +99,28 @@ export function scheduleBrowserTtsNextChunk({
     return;
   }
 
-  scheduleTimeout(() => {
-    resolve(maxWaitMs, 'timeout');
-  }, maxWaitMs);
+  if (!completionGate.disableTimeout) {
+    scheduleTimeout(() => {
+      resolve(maxWaitMs, 'timeout');
+    }, maxWaitMs);
+  }
 
   const schedulePoll = (delayMs: number): void => {
     scheduleTimeout(() => {
       if (resolved) return;
-      elapsedMs = Math.min(maxWaitMs, elapsedMs + delayMs);
+      elapsedMs = completionGate.disableTimeout ? elapsedMs + delayMs : Math.min(maxWaitMs, elapsedMs + delayMs);
       const reason = getGateResolutionReason(completionGate);
       if (reason) {
         resolve(elapsedMs, reason);
         return;
       }
-      if (elapsedMs < maxWaitMs) {
-        schedulePoll(Math.min(pollMs, maxWaitMs - elapsedMs));
+      if (completionGate.disableTimeout || elapsedMs < maxWaitMs) {
+        schedulePoll(completionGate.disableTimeout ? pollMs : Math.min(pollMs, maxWaitMs - elapsedMs));
       }
     }, delayMs);
   };
 
-  schedulePoll(Math.min(pollMs, maxWaitMs));
+  schedulePoll(completionGate.disableTimeout ? pollMs : Math.min(pollMs, maxWaitMs));
 }
 
 function normalizeSafePauseGateSettings(

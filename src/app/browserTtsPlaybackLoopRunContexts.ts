@@ -81,6 +81,7 @@ export function createBrowserTtsPlaybackLoopContexts({
       practiceChunks,
       practiceChunkAdvanceRequestRef: options.practiceChunkAdvanceRequestRef,
       onPracticeChunkResolved: options.onPracticeChunkResolved,
+      onPracticeChunkRestStarted: options.onPracticeChunkRestStarted,
       onFinalPracticeChunkAudioCompleted: options.onFinalPracticeChunkAudioCompleted,
     },
     progressContext: {

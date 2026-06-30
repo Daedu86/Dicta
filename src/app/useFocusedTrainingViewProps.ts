@@ -92,6 +92,7 @@ export function useFocusedTrainingViewProps(args: UseFocusedTrainingViewPropsArg
     completedPracticeChunks,
     activePracticeChunk,
     practiceChunkActionQueued,
+    practiceChunkAdvanceCountdownSeconds,
     finalPracticeChunkAudioCompleted,
     onSubmitPracticeChunk,
   } = args;
@@ -135,6 +136,7 @@ export function useFocusedTrainingViewProps(args: UseFocusedTrainingViewPropsArg
     completedPracticeChunks,
     activePracticeChunk,
     practiceChunkActionQueued,
+    practiceChunkAdvanceCountdownSeconds,
     finalPracticeChunkAudioCompleted,
     onSubmitPracticeChunk,
   ]);

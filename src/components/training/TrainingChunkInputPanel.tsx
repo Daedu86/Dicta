@@ -16,6 +16,7 @@ export type TrainingChunkInputPanelProps = {
   textCommitDelayMs: number;
   syncKey: string;
   actionQueued: boolean;
+  advanceCountdownSeconds?: number | null;
   finalAudioCompleted: boolean;
 };
 
@@ -33,13 +34,18 @@ export function TrainingChunkInputPanel({
   textCommitDelayMs,
   syncKey,
   actionQueued,
+  advanceCountdownSeconds = null,
   finalAudioCompleted,
 }: TrainingChunkInputPanelProps) {
+  const countdownLabel = advanceCountdownSeconds !== null ? ` (${Math.max(0, advanceCountdownSeconds)} Secs)` : '';
   const actionLabel = activeChunk.isFinal
     ? 'Finish session'
     : currentTextValue.trim()
-      ? 'Submit chunk'
+      ? 'Submit / Check'
       : 'Skip chunk';
+  const queuedActionLabel = advanceCountdownSeconds !== null
+    ? `Submit / Check${countdownLabel}`
+    : 'Waiting for audio…';
 
   const submitLatest = () => onSubmitChunk(textInputRef.current?.flush() ?? currentTextValue);
 
@@ -88,13 +94,15 @@ export function TrainingChunkInputPanel({
         <div className="training-chunk-action-row">
           <p>
             {actionQueued
-              ? 'Submitted. Playback will continue after this phrase finishes.'
+              ? advanceCountdownSeconds !== null
+                ? 'Submitted. The next chunk starts when the counter reaches zero.'
+                : 'Submitted. Playback will continue after this phrase finishes.'
               : activeChunk.isFinal && finalAudioCompleted
                 ? 'Audio complete. Finish when your final answer is ready.'
                 : 'Ctrl/Cmd + Enter also submits this chunk.'}
           </p>
           <button type="button" onClick={submitLatest} disabled={actionQueued}>
-            {actionQueued ? 'Waiting for audio…' : actionLabel}
+            {actionQueued ? queuedActionLabel : actionLabel}
           </button>
         </div>
       </article>

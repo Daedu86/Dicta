@@ -69,6 +69,7 @@ export function TrainingView<Session extends TrainingViewSession>({
   completedPracticeChunks,
   activePracticeChunk,
   practiceChunkActionQueued,
+  practiceChunkAdvanceCountdownSeconds,
   finalPracticeChunkAudioCompleted,
   onSubmitPracticeChunk,
 }: TrainingViewProps<Session>) {
@@ -151,6 +152,7 @@ export function TrainingView<Session extends TrainingViewSession>({
         completedPracticeChunks={completedPracticeChunks}
         activePracticeChunk={activePracticeChunk}
         practiceChunkActionQueued={practiceChunkActionQueued}
+        practiceChunkAdvanceCountdownSeconds={practiceChunkAdvanceCountdownSeconds}
         finalPracticeChunkAudioCompleted={finalPracticeChunkAudioCompleted}
         onSubmitPracticeChunk={onSubmitPracticeChunk}
       />

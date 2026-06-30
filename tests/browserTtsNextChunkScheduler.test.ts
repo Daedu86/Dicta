@@ -256,6 +256,41 @@ describe('scheduleBrowserTtsNextChunk', () => {
     expect(onResolved).toHaveBeenCalledWith(4000, 'timeout');
   });
 
+  it('can disable the anti-blocking timeout for learner-paced manual gates', () => {
+    vi.useFakeTimers();
+    let submitted = false;
+    const speakNext = vi.fn();
+    const onResolved = vi.fn();
+    const onRestStarted = vi.fn();
+
+    scheduleBrowserTtsNextChunk({
+      shouldPauseBeforeNextChunk: true,
+      pauseBeforeNextChunkMs: 900,
+      scheduleTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
+      completionGate: {
+        isComplete: () => false,
+        getResolutionReason: () => (submitted ? 'submitted' : null),
+        disableTimeout: true,
+        onRestStarted,
+      },
+      onResolved,
+      speakNext,
+    });
+
+    vi.advanceTimersByTime(12000);
+
+    expect(speakNext).not.toHaveBeenCalled();
+    expect(onResolved).not.toHaveBeenCalled();
+    expect(onRestStarted).not.toHaveBeenCalled();
+
+    submitted = true;
+    vi.advanceTimersByTime(100);
+
+    expect(speakNext).toHaveBeenCalledTimes(1);
+    expect(onRestStarted).toHaveBeenCalledWith(0, 12100, 'submitted');
+    expect(onResolved).toHaveBeenCalledWith(12100, 'submitted');
+  });
+
   it('uses the configured max fallback when the completion gate never completes', () => {
     vi.useFakeTimers();
     const speakNext = vi.fn();

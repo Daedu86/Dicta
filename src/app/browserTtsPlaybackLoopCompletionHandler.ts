@@ -59,6 +59,7 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   practiceChunks?: BrowserTtsPracticeChunkDefinition[];
   practiceChunkAdvanceRequestRef?: BrowserTtsPlaybackLoopOptions['practiceChunkAdvanceRequestRef'];
   onPracticeChunkResolved?: BrowserTtsPlaybackLoopOptions['onPracticeChunkResolved'];
+  onPracticeChunkRestStarted?: BrowserTtsPlaybackLoopOptions['onPracticeChunkRestStarted'];
   onFinalPracticeChunkAudioCompleted?: BrowserTtsPlaybackLoopOptions['onFinalPracticeChunkAudioCompleted'];
 };
 
@@ -186,6 +187,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   practiceChunks = [],
   practiceChunkAdvanceRequestRef,
   onPracticeChunkResolved,
+  onPracticeChunkRestStarted,
   onFinalPracticeChunkAudioCompleted,
 }: BrowserTtsPlaybackLoopCompletionHandlerParams): void {
   perfDiagnostics.recordTtsEnd(perfUtteranceId);
@@ -261,6 +263,10 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
         ? {
             isComplete: () => false,
             getResolutionReason: () => 'submitted',
+            disableTimeout: true,
+            onRestStarted: (remainingRestMs) => {
+              onPracticeChunkRestStarted?.(practiceChunk, remainingRestMs);
+            },
           }
         : undefined,
       onResolved: (actualWaitMs, pauseGateResolutionReason) => {
@@ -305,6 +311,10 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
           isComplete: () => false,
           getResolutionReason: () =>
             practiceChunkAdvanceRequestRef?.current === practiceChunk.index ? 'submitted' : null,
+          disableTimeout: true,
+          onRestStarted: (remainingRestMs) => {
+            onPracticeChunkRestStarted?.(practiceChunk, remainingRestMs);
+          },
         }
       : chunkCompletion.shouldPauseBeforeNextChunk && chunk.canPauseAfter && ttsTranscript
       ? {
@@ -317,7 +327,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
         }
       : undefined,
     onResolved: (actualWaitMs, pauseGateResolutionReason) => {
-      if (practiceChunk && learnerPacedPracticeBoundary && (pauseGateResolutionReason === 'submitted' || pauseGateResolutionReason === 'timeout')) {
+      if (practiceChunk && learnerPacedPracticeBoundary && pauseGateResolutionReason === 'submitted') {
         if (practiceChunkAdvanceRequestRef) practiceChunkAdvanceRequestRef.current = null;
         onPracticeChunkResolved?.(practiceChunk, pauseGateResolutionReason);
       }

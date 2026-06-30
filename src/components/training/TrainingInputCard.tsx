@@ -33,6 +33,7 @@ export type TrainingInputCardProps = {
   completedPracticeChunks?: BrowserTtsPracticeChunkView[];
   activePracticeChunk?: BrowserTtsPracticeChunkView | null;
   practiceChunkActionQueued?: boolean;
+  practiceChunkAdvanceCountdownSeconds?: number | null;
   finalPracticeChunkAudioCompleted?: boolean;
   onSubmitPracticeChunk?: (latestDraft: string) => void;
 };
@@ -64,6 +65,7 @@ export function TrainingInputCard({
   completedPracticeChunks = [],
   activePracticeChunk = null,
   practiceChunkActionQueued = false,
+  practiceChunkAdvanceCountdownSeconds = null,
   finalPracticeChunkAudioCompleted = false,
   onSubmitPracticeChunk,
 }: TrainingInputCardProps) {
@@ -119,6 +121,7 @@ export function TrainingInputCard({
           textCommitDelayMs={effectiveTextCommitDelayMs}
           syncKey={syncKey}
           actionQueued={practiceChunkActionQueued}
+          advanceCountdownSeconds={practiceChunkAdvanceCountdownSeconds}
           finalAudioCompleted={finalPracticeChunkAudioCompleted}
         />
       ) : (

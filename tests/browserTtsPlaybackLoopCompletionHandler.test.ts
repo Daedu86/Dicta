@@ -381,7 +381,7 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
     expect(params.speakNext).toHaveBeenCalledTimes(1);
   });
 
-  it('does not advance a learner-paced practice chunk from correct typing alone', () => {
+  it('does not advance a learner-paced practice chunk from correct typing or timeout alone', () => {
     vi.useFakeTimers();
     installWindowTimers();
     const practiceChunk = {
@@ -408,17 +408,11 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
     expect(params.speakNext).not.toHaveBeenCalled();
     expect(onPracticeChunkResolved).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1);
+    vi.advanceTimersByTime(8001);
 
-    expect(params.speakNext).toHaveBeenCalledTimes(1);
-    expect(onPracticeChunkResolved).toHaveBeenCalledWith(practiceChunk, 'timeout');
-    expect(params.recordAdaptiveBenchmark).toHaveBeenCalledWith(
-      expect.any(Object),
-      params.runtimeDecision,
-      expect.objectContaining({
-        pauseGateResolutionReason: 'timeout',
-      }),
-    );
+    expect(params.speakNext).not.toHaveBeenCalled();
+    expect(onPracticeChunkResolved).not.toHaveBeenCalled();
+    expect(params.recordAdaptiveBenchmark).not.toHaveBeenCalled();
   });
 
   it('honors manual practice chunk submission after the current utterance ends', () => {
@@ -435,17 +429,20 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
     };
     const advanceRef = { current: 0 };
     const onPracticeChunkResolved = vi.fn();
+    const onPracticeChunkRestStarted = vi.fn();
     const params = createChunkEndParams({
       macroWordsLength: 2,
       practiceChunks: [practiceChunk],
       practiceChunkAdvanceRequestRef: advanceRef,
       onPracticeChunkResolved,
+      onPracticeChunkRestStarted,
     });
 
     handleBrowserTtsPlaybackLoopChunkEnd(params);
 
     expect(params.speakNext).not.toHaveBeenCalled();
     expect(onPracticeChunkResolved).not.toHaveBeenCalled();
+    expect(onPracticeChunkRestStarted).toHaveBeenCalledWith(practiceChunk, BROWSER_TTS_MIN_MENTAL_REST_MS);
 
     vi.advanceTimersByTime(BROWSER_TTS_MIN_MENTAL_REST_MS);
 

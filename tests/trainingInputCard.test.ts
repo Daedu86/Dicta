@@ -148,8 +148,54 @@ describe('TrainingInputCard', () => {
     expect(markup).toContain('Completed chunks');
     expect(markup).toContain('Der feine Sand');
     expect(markup).toContain('Chunk 2');
-    expect(markup).toContain('Submit chunk');
+    expect(markup).toContain('Submit / Check');
     expect(markup.match(/<textarea/g)).toHaveLength(1);
+  });
+
+  it('renders the queued chunk submit counter beside the submit action', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TrainingInputCard, {
+        textAreaId: 'training-dictation-input',
+        textInputRef: { current: null },
+        currentTextValue: 'glitzert im Morgenlicht',
+        onTextChange: () => undefined,
+        onImmediateTextChange: () => undefined,
+        onTextKeyDown: () => undefined,
+        textPlaceholder: 'Type the dictation here...',
+        readOnly: false,
+        textCommitDelayMs: 250,
+        syncKey: 'session-1:browser-tts',
+        liveScoreLabel: '530',
+        liveScoreHelpText: 'Score help',
+        progressLabel: 'Phrase 1/4',
+        livePointsLabel: '0/237',
+        livePointsHelpText: 'Points help',
+        liveAccuracyLabel: '100.0%',
+        liveAccuracyHelpText: 'Accuracy help',
+        liveLagLabel: '0.00s',
+        liveLagHelpText: 'Lag help',
+        showReview: false,
+        review: null,
+        completedPracticeChunks: [],
+        activePracticeChunk: {
+          id: 'practice-1-3',
+          index: 1,
+          startWordIndex: 3,
+          wordCount: 3,
+          firstSemanticPhraseIndex: 1,
+          lastSemanticPhraseIndex: 1,
+          isFinal: false,
+          typedText: 'glitzert im Morgenlicht',
+        },
+        practiceChunkActionQueued: true,
+        practiceChunkAdvanceCountdownSeconds: 3,
+        finalPracticeChunkAudioCompleted: false,
+        onSubmitPracticeChunk: () => undefined,
+      }),
+    );
+
+    expect(markup).toContain('Submitted. The next chunk starts when the counter reaches zero.');
+    expect(markup).toContain('Submit / Check (3 Secs)');
   });
 
   it('renders a manual finish action for the final practice chunk', () => {

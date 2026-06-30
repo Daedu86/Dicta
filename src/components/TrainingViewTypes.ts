@@ -91,6 +91,7 @@ export type TrainingViewProps<Session extends TrainingViewSession = TrainingView
   completedPracticeChunks?: BrowserTtsPracticeChunkView[];
   activePracticeChunk?: BrowserTtsPracticeChunkView | null;
   practiceChunkActionQueued?: boolean;
+  practiceChunkAdvanceCountdownSeconds?: number | null;
   finalPracticeChunkAudioCompleted?: boolean;
   onSubmitPracticeChunk?: (latestDraft: string) => void;
 };

@@ -1,6 +1,6 @@
 # Adaptive Runtime Pacing Versions
 
-_Last updated: 2026-06-29_
+_Last updated: 2026-06-30_
 
 This note records the runtime pacing evolution for Browser TTS dictation.
 
@@ -50,23 +50,22 @@ It learns/derives:
 
 ## V3 current: learner-paced safe chunks
 
-V3 keeps pause pressure as an adaptive signal, but the learner-facing wait is no longer a fixed-duration delay or a hidden cumulative textarea. The runtime first decides whether the current chunk boundary is safe enough to expose as a learner-facing practice chunk. Unsafe internal TTS slices continue inside the current visible chunk until the next safe semantic boundary. If a safe boundary is reached, the next-chunk scheduler waits for a default 700 ms minimum mental rest and then only until one of these happens:
+V3 keeps pause pressure as an adaptive signal, but the learner-facing wait is no longer a fixed-duration delay or a hidden cumulative textarea. The runtime first decides whether the current chunk boundary is safe enough to expose as a learner-facing practice chunk. Unsafe internal TTS slices continue inside the current visible chunk until the next safe semantic boundary. If a safe boundary is reached, the next-chunk scheduler waits until the learner submits or skips the visible chunk, then honors the default 700 ms minimum mental rest before the next chunk starts. One learner action advances chunk practice:
 
-- the learner submits or skips the current visible chunk;
-- the default 4000 ms anti-blocking fallback expires for a non-final chunk.
+- the learner submits or skips the current visible chunk.
 
-Correct typing alone does not advance Browser TTS chunk practice. The final visible chunk uses `Finish session` and never auto-submits. The default minimum rest and max fallback are local browser preferences editable from Adaptive Pace Layer Flow Step 5 / Playback loop.
+Correct typing and timeout alone do not advance Browser TTS chunk practice. The final visible chunk uses `Finish session` and never auto-submits. The default minimum rest is a local browser preference editable from Adaptive Pace Layer Flow Step 5 / Playback loop. The 4000 ms anti-blocking fallback remains available for internal non-practice completion gates, not learner-facing chunk practice.
 
 Current execution contract:
 
 ```text
 pause intent: continuous adaptive pressure and V3 prosody buckets
 safe pause: natural semantic/syntactic boundary
-completion gate: manual Submit chunk / Skip chunk, with timeout fallback for non-final chunks
+completion gate: manual Submit / Check or Skip chunk
 minimum mental rest: default 700ms for safe pauses, editable in Flow Step 5
-fallback: default 4000ms maximum wait before advancing, editable in Flow Step 5
+fallback: no timeout fallback for learner-facing practice chunks; default 4000ms remains for internal non-practice gates
 telemetry: requestedPauseMs is the controller target; actualPauseMs is the resolved gate wait; pauseGateResolutionReason is completed, submitted, timeout, or no-gate
-practice chunks: optional completed-session JSON records source/typed word ranges and submitted/skipped/timeout resolution
+practice chunks: optional completed-session JSON records source/typed word ranges and submitted/skipped/legacy-timeout resolution
 interpretation: completed records the real resolved wait but does not count as adaptive pause shortfall pressure
 ```
 

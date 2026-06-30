@@ -67,6 +67,7 @@ export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
     practiceChunkAdvanceRequestRef: practiceChunkRuntime.practiceChunkAdvanceRequestRef,
     onPracticeChunkPlan: practiceChunkRuntime.onPracticeChunkPlan,
     onPracticeChunkResolved: practiceChunkRuntime.onPracticeChunkResolved,
+    onPracticeChunkRestStarted: practiceChunkRuntime.onPracticeChunkRestStarted,
     onFinalPracticeChunkAudioCompleted: practiceChunkRuntime.onFinalPracticeChunkAudioCompleted,
   });
 

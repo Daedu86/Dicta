@@ -66,6 +66,7 @@ export function attachBrowserTtsPlaybackLoopChunkHandlers({
       practiceChunks: input.playbackRuntime.practiceChunks,
       practiceChunkAdvanceRequestRef: input.playbackRuntime.practiceChunkAdvanceRequestRef,
       onPracticeChunkResolved: input.playbackRuntime.onPracticeChunkResolved,
+      onPracticeChunkRestStarted: input.playbackRuntime.onPracticeChunkRestStarted,
       onFinalPracticeChunkAudioCompleted: input.playbackRuntime.onFinalPracticeChunkAudioCompleted,
     }),
     error: (event) => ({

@@ -89,6 +89,7 @@ export type BrowserTtsPlaybackLoopOptions = {
   practiceChunkAdvanceRequestRef?: MutableRefObject<number | null>;
   onPracticeChunkPlan?: (chunks: BrowserTtsPracticeChunkDefinition[], startWordIndex: number) => void;
   onPracticeChunkResolved?: (chunk: BrowserTtsPracticeChunkDefinition, reason: 'submitted' | 'timeout') => void;
+  onPracticeChunkRestStarted?: (chunk: BrowserTtsPracticeChunkDefinition, remainingRestMs: number) => void;
   onFinalPracticeChunkAudioCompleted?: (chunk: BrowserTtsPracticeChunkDefinition) => void;
 };
 
@@ -122,6 +123,7 @@ export type BrowserTtsPlaybackRunContext = {
   practiceChunks: BrowserTtsPracticeChunkDefinition[];
   practiceChunkAdvanceRequestRef?: BrowserTtsPlaybackLoopOptions['practiceChunkAdvanceRequestRef'];
   onPracticeChunkResolved?: BrowserTtsPlaybackLoopOptions['onPracticeChunkResolved'];
+  onPracticeChunkRestStarted?: BrowserTtsPlaybackLoopOptions['onPracticeChunkRestStarted'];
   onFinalPracticeChunkAudioCompleted?: BrowserTtsPlaybackLoopOptions['onFinalPracticeChunkAudioCompleted'];
 };
 
