@@ -68,7 +68,7 @@ Browser app:
 - `src/app/useSessionPersistenceRuntime.ts`: local/profile-scoped persistence, Supabase sync, quotas, deletion persistence, and pending sync state.
 - `src/app/useFocusedTrainingRuntime.ts`: focused-training composition, active-session sync, TTS handoff, and focused route props.
 - `src/app/useTtsSessionOrchestrationRuntime.ts`: TTS orchestration across keyboard remap, practice input, metrics, Browser TTS playback loop, controls, reset, and submit.
-- `src/app/useBrowserTtsPracticeChunkRuntime.ts` and `src/app/browserTtsPracticeChunks.ts`: Browser TTS learner-facing chunk state, safe semantic grouping, completed chunk history, cumulative practice-text composition, and optional practice-chunk telemetry ranges.
+- `src/app/useBrowserTtsPracticeChunkRuntime.ts` and `src/app/browserTtsPracticeChunks.ts`: Browser TTS learner-facing chunk state, safe semantic grouping, hidden completed-chunk state for cumulative practice-text composition, and optional practice-chunk telemetry ranges that render in the final submitted review.
 - `src/app/useBrowserTtsRuntime.ts`: Browser TTS SpeechSynthesis voice discovery and command boundary.
 - `src/app/useBrowserTtsPlaybackLoop.ts`: Browser TTS playback loop owner for `playTts` / `playTtsFromWord`, utterance configuration, event handlers, phrase progression, telemetry handoff, and completion-gated next-chunk scheduling.
 - `src/app/useTtsPlaybackControls.ts`: Browser TTS pause/resume/stop/seek controls and related status transitions.

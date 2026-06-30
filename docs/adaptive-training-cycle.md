@@ -49,5 +49,5 @@ Training Mode direct generation keeps each OpenRouter request as a separate visi
 5. Keep content generation out of the controller.
 6. Surface runtime modifications to controller decisions.
 7. Prefer compact aggregates over raw debug.
-8. Keep learner-facing chunk state backward-compatible: aggregate scoring text stays cumulative, future text stays hidden, and per-chunk telemetry remains optional JSON.
+8. Keep learner-facing chunk state backward-compatible: aggregate scoring text stays cumulative, submitted and future chunks stay hidden during practice, and per-chunk telemetry remains optional JSON for the final submitted review.
 9. Update the owning doc when behavior changes.

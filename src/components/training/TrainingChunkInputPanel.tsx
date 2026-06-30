@@ -5,7 +5,6 @@ import { LowLatencyTextarea, type LowLatencyTextareaHandle } from '../LowLatency
 export type TrainingChunkInputPanelProps = {
   textAreaId: string;
   textInputRef: RefObject<LowLatencyTextareaHandle | null>;
-  completedChunks: BrowserTtsPracticeChunkView[];
   activeChunk: BrowserTtsPracticeChunkView;
   currentTextValue: string;
   onTextChange: (value: string) => void;
@@ -23,7 +22,6 @@ export type TrainingChunkInputPanelProps = {
 export function TrainingChunkInputPanel({
   textAreaId,
   textInputRef,
-  completedChunks,
   activeChunk,
   currentTextValue,
   onTextChange,
@@ -56,20 +54,6 @@ export function TrainingChunkInputPanel({
 
   return (
     <div className="training-chunk-flow" aria-label="Chunk-by-chunk dictation input">
-      {completedChunks.length > 0 ? (
-        <div className="training-chunk-history" aria-label="Completed chunks">
-          {completedChunks.map((chunk) => (
-            <article className="training-chunk-card training-chunk-card-complete" key={chunk.id}>
-              <header>
-                <strong>Chunk {chunk.index + 1}</strong>
-                <span>{formatResolution(chunk.resolution)}</span>
-              </header>
-              <p>{chunk.typedText || 'No answer'}</p>
-            </article>
-          ))}
-        </div>
-      ) : null}
-
       <article className="training-chunk-card training-chunk-card-active">
         <header>
           <label htmlFor={textAreaId}>Chunk {activeChunk.index + 1}</label>
@@ -113,10 +97,4 @@ export function TrainingChunkInputPanel({
       </article>
     </div>
   );
-}
-
-function formatResolution(resolution: BrowserTtsPracticeChunkView['resolution']): string {
-  if (resolution === 'timeout') return 'Continued automatically';
-  if (resolution === 'skipped') return 'Skipped';
-  return 'Submitted';
 }

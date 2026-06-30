@@ -91,7 +91,7 @@ describe('TrainingInputCard', () => {
     expect(markup).toContain('aria-label="Live phrase 3/4"');
   });
 
-  it('renders chunk practice cards with one live textarea and a per-chunk submit action', () => {
+  it('renders only the active chunk during practice with one live textarea and a per-chunk submit action', () => {
     const markup = renderToStaticMarkup(
       React.createElement(TrainingInputCard, {
         textAreaId: 'training-dictation-input',
@@ -145,8 +145,8 @@ describe('TrainingInputCard', () => {
     );
 
     expect(markup).toContain('Chunk-by-chunk dictation input');
-    expect(markup).toContain('Completed chunks');
-    expect(markup).toContain('Der feine Sand');
+    expect(markup).not.toContain('Completed chunks');
+    expect(markup).not.toContain('Der feine Sand');
     expect(markup).toContain('Chunk 2');
     expect(markup).toContain('Submit / Check');
     expect(markup.match(/<textarea/g)).toHaveLength(1);

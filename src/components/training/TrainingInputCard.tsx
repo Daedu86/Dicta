@@ -62,7 +62,6 @@ export function TrainingInputCard({
   showReview,
   review,
   reviewChunks,
-  completedPracticeChunks = [],
   activePracticeChunk = null,
   practiceChunkActionQueued = false,
   practiceChunkAdvanceCountdownSeconds = null,
@@ -110,7 +109,6 @@ export function TrainingInputCard({
         <TrainingChunkInputPanel
           textAreaId={textAreaId}
           textInputRef={textInputRef}
-          completedChunks={completedPracticeChunks}
           activeChunk={activePracticeChunk}
           currentTextValue={currentTextValue}
           onTextChange={onTextChange}

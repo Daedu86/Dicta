@@ -33,7 +33,6 @@ function renderPanel(props: Partial<ComponentProps<typeof TrainingChunkInputPane
     root.render(createElement(TrainingChunkInputPanel, {
       textAreaId: 'training-dictation-input',
       textInputRef: createRef<LowLatencyTextareaHandle>(),
-      completedChunks: [],
       activeChunk: practiceChunk({ id: 'practice-0-0', index: 0, startWordIndex: 0 }),
       currentTextValue: '',
       onTextChange: vi.fn(),
