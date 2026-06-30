@@ -1,4 +1,4 @@
-import type { KeyboardEvent, RefObject } from 'react';
+import { useEffect, type KeyboardEvent, type RefObject } from 'react';
 import type { BrowserTtsPracticeChunkView } from '../../app/browserTtsPracticeChunks';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from '../LowLatencyTextarea';
 
@@ -48,6 +48,11 @@ export function TrainingChunkInputPanel({
     : 'Waiting for audio…';
 
   const submitLatest = () => onSubmitChunk(textInputRef.current?.flush() ?? currentTextValue);
+
+  useEffect(() => {
+    if (actionQueued) return;
+    textInputRef.current?.focus();
+  }, [activeChunk.id, actionQueued, textInputRef]);
 
   return (
     <div className="training-chunk-flow" aria-label="Chunk-by-chunk dictation input">
