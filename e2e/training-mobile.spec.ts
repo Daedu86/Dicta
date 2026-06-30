@@ -52,19 +52,25 @@ test('mobile chunk submit stays below the focused textbox', async ({ page }) => 
 
   const textarea = page.locator('#training-dictation-input');
   await expect(textarea).toBeVisible();
-  await textarea.focus();
 
-  const flow = page.locator('.training-chunk-flow-keyboard-active');
-  await expect(flow).toBeVisible();
+  for (let chunkIndex = 0; chunkIndex < 6; chunkIndex += 1) {
+    await expect(page.getByText(`Chunk ${chunkIndex + 1}`, { exact: true })).toBeVisible();
+    await textarea.focus();
 
-  const cardPosition = await page.locator('.training-chunk-card-active').evaluate((element) => getComputedStyle(element).position);
-  const actionRowPosition = await page.locator('.training-chunk-action-row').evaluate((element) => getComputedStyle(element).position);
-  expect(cardPosition).toBe('fixed');
-  expect(actionRowPosition).toBe('static');
+    const flow = page.locator('.training-chunk-flow-keyboard-active');
+    await expect(flow).toBeVisible();
 
-  const textareaBox = await textarea.boundingBox();
-  const submitBox = await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).boundingBox();
-  expect(textareaBox).not.toBeNull();
-  expect(submitBox).not.toBeNull();
-  expect(submitBox!.y).toBeGreaterThanOrEqual(textareaBox!.y + textareaBox!.height - 1);
+    const cardPosition = await page.locator('.training-chunk-card-active').evaluate((element) => getComputedStyle(element).position);
+    const actionRowPosition = await page.locator('.training-chunk-action-row').evaluate((element) => getComputedStyle(element).position);
+    expect(cardPosition).toBe('fixed');
+    expect(actionRowPosition).toBe('static');
+
+    const textareaBox = await textarea.boundingBox();
+    const submitBox = await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).boundingBox();
+    expect(textareaBox).not.toBeNull();
+    expect(submitBox).not.toBeNull();
+    expect(submitBox!.y).toBeGreaterThanOrEqual(textareaBox!.y + textareaBox!.height - 1);
+
+    await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).click();
+  }
 });

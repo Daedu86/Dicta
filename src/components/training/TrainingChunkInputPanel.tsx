@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -43,6 +44,8 @@ export function TrainingChunkInputPanel({
   finalAudioCompleted,
 }: TrainingChunkInputPanelProps) {
   const keyboardDockReleaseTimerRef = useRef<number | null>(null);
+  const keyboardDockActivationSerialRef = useRef(0);
+  const activeChunkIdRef = useRef(activeChunk.id);
   const [keyboardDockActive, setKeyboardDockActive] = useState(false);
   const keyboardLayout = useVisualViewportKeyboardLayout(keyboardDockActive);
   const countdownLabel = advanceCountdownSeconds !== null ? ` (${Math.max(0, advanceCountdownSeconds)} Secs)` : '';
@@ -57,29 +60,45 @@ export function TrainingChunkInputPanel({
 
   const submitLatest = () => onSubmitChunk(textInputRef.current?.flush() ?? currentTextValue);
 
-  const clearKeyboardDockReleaseTimer = () => {
+  const clearKeyboardDockReleaseTimer = useCallback(() => {
     if (keyboardDockReleaseTimerRef.current === null) return;
     window.clearTimeout(keyboardDockReleaseTimerRef.current);
     keyboardDockReleaseTimerRef.current = null;
-  };
+  }, []);
 
-  const activateKeyboardDock = () => {
+  const activateKeyboardDock = useCallback(() => {
+    keyboardDockActivationSerialRef.current += 1;
     clearKeyboardDockReleaseTimer();
     setKeyboardDockActive(true);
-  };
+  }, [clearKeyboardDockReleaseTimer]);
 
-  const releaseKeyboardDockSoon = () => {
+  const releaseKeyboardDockSoon = useCallback(() => {
     clearKeyboardDockReleaseTimer();
+    const releaseSerial = keyboardDockActivationSerialRef.current;
+    const releaseChunkId = activeChunkIdRef.current;
     keyboardDockReleaseTimerRef.current = window.setTimeout(() => {
+      if (
+        keyboardDockActivationSerialRef.current !== releaseSerial ||
+        activeChunkIdRef.current !== releaseChunkId ||
+        getVisualViewportKeyboardLayout().keyboardInsetPx > 0
+      ) {
+        keyboardDockReleaseTimerRef.current = null;
+        return;
+      }
       setKeyboardDockActive(false);
       keyboardDockReleaseTimerRef.current = null;
     }, 400);
-  };
+  }, [clearKeyboardDockReleaseTimer]);
+
+  useEffect(() => {
+    activeChunkIdRef.current = activeChunk.id;
+  }, [activeChunk.id]);
 
   useEffect(() => {
     if (actionQueued) return;
+    activateKeyboardDock();
     textInputRef.current?.focus();
-  }, [activeChunk.id, actionQueued, textInputRef]);
+  }, [activateKeyboardDock, activeChunk.id, actionQueued, textInputRef]);
 
   useEffect(() => () => {
     if (keyboardDockReleaseTimerRef.current === null) return;

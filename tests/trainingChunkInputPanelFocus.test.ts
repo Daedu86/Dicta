@@ -146,4 +146,40 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     expect(flow?.style.getPropertyValue('--training-visual-keyboard-inset')).toBe('280px');
     expect(flow?.style.getPropertyValue('--training-visual-viewport-height')).toBe('520px');
   });
+
+  it('ignores a stale blur release after the next chunk activates', () => {
+    vi.useFakeTimers();
+    const textInputRef = createRef<LowLatencyTextareaHandle>();
+    const nativeFocus = window.HTMLElement.prototype.focus;
+
+    try {
+      renderPanel({
+        textInputRef,
+        activeChunk: practiceChunk({ id: 'practice-0-0', index: 0, startWordIndex: 0 }),
+      });
+
+      const textarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+      act(() => {
+        textarea?.focus();
+      });
+      act(() => {
+        textarea?.blur();
+      });
+
+      window.HTMLElement.prototype.focus = vi.fn();
+      renderPanel({
+        textInputRef,
+        activeChunk: practiceChunk({ id: 'practice-1-3', index: 1, startWordIndex: 3 }),
+      });
+      act(() => {
+        vi.advanceTimersByTime(450);
+      });
+
+      const flow = host.querySelector<HTMLElement>('.training-chunk-flow');
+      expect(flow?.classList.contains('training-chunk-flow-keyboard-active')).toBe(true);
+    } finally {
+      window.HTMLElement.prototype.focus = nativeFocus;
+      vi.useRealTimers();
+    }
+  });
 });
