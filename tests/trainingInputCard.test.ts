@@ -226,23 +226,21 @@ describe('TrainingInputCard', () => {
           targetWords: [
             { id: 'target-0', text: 'Der', displayText: 'Der', state: 'matched', exact: true },
             { id: 'target-1', text: 'Sand', displayText: 'Sand', state: 'matched', exact: true },
-            { id: 'target-2', text: 'glitzert', displayText: 'glitzert', state: 'matched', exact: true },
+            { id: 'target-2', text: 'glitzert', displayText: 'glitzert', state: 'missing', exact: false },
           ],
           typedWords: [
             { id: 'typed-0', text: 'Der', displayText: 'Der', state: 'matched', exact: true },
             { id: 'typed-1', text: 'Sand', displayText: 'Sand', state: 'matched', exact: true },
-            { id: 'typed-2', text: 'glitzert', displayText: 'glitzert', state: 'matched', exact: true },
           ],
           extraTypedWords: [],
           alignedPairs: [
             { typedIndex: 0, targetIndex: 0 },
             { typedIndex: 1, targetIndex: 1 },
-            { typedIndex: 2, targetIndex: 2 },
           ],
-          matchedCount: 3,
-          missedCount: 0,
+          matchedCount: 2,
+          missedCount: 1,
           extraCount: 0,
-          accuracy: 100,
+          accuracy: 66.7,
         },
         reviewChunks: [
           {
@@ -261,8 +259,8 @@ describe('TrainingInputCard', () => {
             startWordIndex: 2,
             wordCount: 1,
             typedWordStartIndex: 2,
-            typedWordCount: 1,
-            typedText: 'glitzert',
+            typedWordCount: 0,
+            typedText: '',
             resolution: 'timeout',
           },
         ],
@@ -272,6 +270,12 @@ describe('TrainingInputCard', () => {
     expect(markup).toContain('Chunked sentence review');
     expect(markup).toContain('Chunk 1');
     expect(markup).toContain('Chunk 2');
+    expect(markup).toContain('aria-label="Chunk 1 score"');
+    expect(markup).toContain('Score 2/2');
+    expect(markup).toContain('Accuracy 100.0%');
+    expect(markup).toContain('aria-label="Chunk 2 score"');
+    expect(markup).toContain('Score 0/1');
+    expect(markup).toContain('Accuracy 0.0%');
     expect(markup).toContain('Continued automatically');
     expect(markup).not.toContain('aria-label="Sentence review with highlighted words"');
   });

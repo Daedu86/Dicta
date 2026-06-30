@@ -7,6 +7,13 @@ export type TrainingReviewPanelProps = {
   chunks?: BrowserTtsPracticeChunkTelemetry[];
 };
 
+type ChunkReviewRange = {
+  targetStart: number;
+  targetEnd: number;
+  typedStart: number;
+  typedEnd: number;
+};
+
 export function TrainingReviewPanel({ review, chunks }: TrainingReviewPanelProps) {
   const renderedWords = buildInlineReviewWords(review);
 
@@ -28,22 +35,34 @@ export function TrainingReviewPanel({ review, chunks }: TrainingReviewPanelProps
 
       {chunks?.length ? (
         <div className="training-review-chunks" aria-label="Chunked sentence review">
-          {chunks.map((chunk) => (
-            <article className="training-review-chunk" key={chunk.id}>
-              <header>
-                <strong>Chunk {chunk.index + 1}</strong>
-                <span>{formatChunkResolution(chunk)}</span>
-              </header>
-              <p className="training-review-inline" aria-label={`Chunk ${chunk.index + 1} review with highlighted words`}>
-                {buildInlineReviewWords(review, {
-                  targetStart: chunk.startWordIndex,
-                  targetEnd: chunk.startWordIndex + chunk.wordCount,
-                  typedStart: chunk.typedWordStartIndex,
-                  typedEnd: chunk.typedWordStartIndex + chunk.typedWordCount,
-                })}
-              </p>
-            </article>
-          ))}
+          {chunks.map((chunk) => {
+            const range = {
+              targetStart: chunk.startWordIndex,
+              targetEnd: chunk.startWordIndex + chunk.wordCount,
+              typedStart: chunk.typedWordStartIndex,
+              typedEnd: chunk.typedWordStartIndex + chunk.typedWordCount,
+            };
+            const stats = buildChunkReviewStats(review, range);
+
+            return (
+              <article className="training-review-chunk" key={chunk.id}>
+                <header>
+                  <strong>Chunk {chunk.index + 1}</strong>
+                  <span>{formatChunkResolution(chunk)}</span>
+                </header>
+                <div className="training-review-chunk-summary" aria-label={`Chunk ${chunk.index + 1} score`}>
+                  <span>Score {stats.matched}/{stats.total}</span>
+                  <span>Accuracy {stats.accuracy.toFixed(1)}%</span>
+                  <span>Matched {stats.matched}</span>
+                  <span>Missing {stats.missing}</span>
+                  <span>Wrong {stats.wrong}</span>
+                </div>
+                <p className="training-review-inline" aria-label={`Chunk ${chunk.index + 1} review with highlighted words`}>
+                  {buildInlineReviewWords(review, range)}
+                </p>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <p className="training-review-inline" aria-label="Sentence review with highlighted words">
@@ -56,7 +75,7 @@ export function TrainingReviewPanel({ review, chunks }: TrainingReviewPanelProps
 
 function buildInlineReviewWords(
   review: TrainingReviewModel,
-  range: { targetStart: number; targetEnd: number; typedStart: number; typedEnd: number } = {
+  range: ChunkReviewRange = {
     targetStart: 0,
     targetEnd: review.targetWords.length,
     typedStart: 0,
@@ -109,6 +128,24 @@ function buildInlineReviewWords(
   }
 
   return nodes;
+}
+
+function buildChunkReviewStats(review: TrainingReviewModel, range: ChunkReviewRange) {
+  const targetWords = review.targetWords.slice(range.targetStart, range.targetEnd);
+  const typedWords = review.typedWords.slice(range.typedStart, range.typedEnd);
+  const matched = targetWords.filter((word) => word.state === 'matched').length;
+  const missing = targetWords.filter((word) => word.state === 'missing').length;
+  const typo = targetWords.filter((word) => word.state === 'typo').length;
+  const extra = typedWords.filter((word) => word.state === 'extra').length;
+  const total = targetWords.length;
+
+  return {
+    total,
+    matched,
+    missing,
+    wrong: typo + extra,
+    accuracy: total > 0 ? (matched / total) * 100 : 0,
+  };
 }
 
 function formatChunkResolution(chunk: BrowserTtsPracticeChunkTelemetry): string {
