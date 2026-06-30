@@ -224,7 +224,11 @@ function getVisualViewportKeyboardLayout(): VisualViewportKeyboardLayout {
     };
   }
 
-  const layoutViewportHeight = fallbackViewportHeight || visualViewport.height;
+  const layoutViewportHeight = Math.max(
+    fallbackViewportHeight,
+    document.documentElement.clientHeight || 0,
+    visualViewport.height,
+  );
   const visibleViewportBottom = visualViewport.offsetTop + visualViewport.height;
   const keyboardInset = Math.max(0, layoutViewportHeight - visibleViewportBottom);
 

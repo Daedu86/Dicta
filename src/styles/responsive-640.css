@@ -45,7 +45,7 @@
   }
 
   .training-input-card .training-chunk-flow-keyboard-active {
-    min-height: min(15.5rem, calc(var(--training-visual-viewport-height, 100dvh) - 0.75rem));
+    min-height: min(12.5rem, calc(var(--training-visual-viewport-height, 100dvh) - 0.75rem));
   }
 
   .training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active {
@@ -63,14 +63,19 @@
     display: grid;
     grid-template-rows: auto minmax(0, auto) auto;
     overflow: hidden;
+    padding: 0.55rem;
     border: 1px solid rgba(117, 185, 243, 0.72);
   }
 
+  .training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active header {
+    margin-bottom: 0.4rem;
+  }
+
   .training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active textarea {
-    height: clamp(5.75rem, 18vh, 7.25rem);
-    height: clamp(5.75rem, 18dvh, 7.25rem);
-    min-height: 5.75rem;
-    max-height: 7.25rem;
+    height: clamp(4.75rem, 15vh, 6rem);
+    height: clamp(4.75rem, 15dvh, 6rem);
+    min-height: 4.75rem;
+    max-height: 6rem;
   }
 
   .training-input-card .training-chunk-flow-keyboard-active .training-chunk-action-row {

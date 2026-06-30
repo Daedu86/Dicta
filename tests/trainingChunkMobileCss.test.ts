@@ -39,6 +39,9 @@ describe('mobile chunk practice CSS', () => {
       'max-height: calc(var(--training-visual-viewport-height, 100dvh) - 0.75rem);',
       'grid-template-rows: auto minmax(0, auto) auto;',
     ]);
+    expect(responsiveCss).toContain('min-height: min(12.5rem, calc(var(--training-visual-viewport-height, 100dvh) - 0.75rem));');
+    expect(responsiveCss).toContain('height: clamp(4.75rem, 15dvh, 6rem);');
+    expect(responsiveCss).toContain('max-height: 6rem;');
     expectInOrder(responsiveCss, [
       '.training-input-card .training-chunk-flow-keyboard-active .training-chunk-action-row {',
       'position: static;',

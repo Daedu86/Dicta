@@ -53,10 +53,12 @@ function renderPanel(props: Partial<ComponentProps<typeof TrainingChunkInputPane
 
 function mockVisualViewport({
   innerHeight,
+  clientHeight = 0,
   height,
   offsetTop = 0,
 }: {
   innerHeight: number;
+  clientHeight?: number;
   height: number;
   offsetTop?: number;
 }) {
@@ -75,6 +77,7 @@ function mockVisualViewport({
   };
 
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: innerHeight });
+  Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, value: clientHeight });
   Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
 
   return {
@@ -89,6 +92,7 @@ function mockVisualViewport({
 
 beforeEach(() => {
   Object.defineProperty(window, 'visualViewport', { configurable: true, value: undefined });
+  Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, value: 0 });
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
   host = document.createElement('div');
   document.body.appendChild(host);
@@ -131,6 +135,24 @@ describe('TrainingChunkInputPanel focus handoff', () => {
 
   it('publishes the visual keyboard inset while the chunk textarea is focused', () => {
     const visualViewport = mockVisualViewport({ innerHeight: 800, height: 520 });
+
+    renderPanel();
+
+    act(() => {
+      host.querySelector<HTMLTextAreaElement>('#training-dictation-input')?.focus();
+    });
+    act(() => {
+      visualViewport.emit('resize');
+    });
+
+    const flow = host.querySelector<HTMLElement>('.training-chunk-flow');
+    expect(flow?.classList.contains('training-chunk-flow-keyboard-active')).toBe(true);
+    expect(flow?.style.getPropertyValue('--training-visual-keyboard-inset')).toBe('280px');
+    expect(flow?.style.getPropertyValue('--training-visual-viewport-height')).toBe('520px');
+  });
+
+  it('keeps the keyboard inset when Chrome reports innerHeight as the visible viewport', () => {
+    const visualViewport = mockVisualViewport({ innerHeight: 520, clientHeight: 800, height: 520 });
 
     renderPanel();
 
