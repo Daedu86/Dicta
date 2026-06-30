@@ -44,6 +44,26 @@
     display: none;
   }
 
+  .training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active {
+    padding-bottom: 4.85rem;
+  }
+
+  .training-input-card .training-chunk-flow-keyboard-active .training-chunk-action-row {
+    position: fixed;
+    left: max(0.65rem, env(safe-area-inset-left, 0px));
+    right: max(0.65rem, env(safe-area-inset-right, 0px));
+    bottom: calc(
+      var(--training-visual-keyboard-inset, 0px) +
+      env(safe-area-inset-bottom, 0px) +
+      0.35rem
+    );
+    max-width: calc(640px - 1.3rem);
+    margin: 0 auto;
+    padding: 0.45rem;
+    border: 1px solid rgba(117, 185, 243, 0.72);
+    background: #eef7ff;
+  }
+
   .tts-workspace-header,
   .tts-workspace-header .dashboard-header-actions {
     align-items: stretch;

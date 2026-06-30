@@ -1,4 +1,11 @@
-import { useEffect, type KeyboardEvent, type RefObject } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react';
 import type { BrowserTtsPracticeChunkView } from '../../app/browserTtsPracticeChunks';
 import { LowLatencyTextarea, type LowLatencyTextareaHandle } from '../LowLatencyTextarea';
 
@@ -35,6 +42,9 @@ export function TrainingChunkInputPanel({
   advanceCountdownSeconds = null,
   finalAudioCompleted,
 }: TrainingChunkInputPanelProps) {
+  const keyboardDockReleaseTimerRef = useRef<number | null>(null);
+  const [keyboardDockActive, setKeyboardDockActive] = useState(false);
+  const keyboardInsetPx = useVisualViewportKeyboardInset(keyboardDockActive);
   const countdownLabel = advanceCountdownSeconds !== null ? ` (${Math.max(0, advanceCountdownSeconds)} Secs)` : '';
   const actionLabel = activeChunk.isFinal
     ? 'Finish session'
@@ -47,13 +57,44 @@ export function TrainingChunkInputPanel({
 
   const submitLatest = () => onSubmitChunk(textInputRef.current?.flush() ?? currentTextValue);
 
+  const clearKeyboardDockReleaseTimer = () => {
+    if (keyboardDockReleaseTimerRef.current === null) return;
+    window.clearTimeout(keyboardDockReleaseTimerRef.current);
+    keyboardDockReleaseTimerRef.current = null;
+  };
+
+  const activateKeyboardDock = () => {
+    clearKeyboardDockReleaseTimer();
+    setKeyboardDockActive(true);
+  };
+
+  const releaseKeyboardDockSoon = () => {
+    clearKeyboardDockReleaseTimer();
+    keyboardDockReleaseTimerRef.current = window.setTimeout(() => {
+      setKeyboardDockActive(false);
+      keyboardDockReleaseTimerRef.current = null;
+    }, 400);
+  };
+
   useEffect(() => {
     if (actionQueued) return;
     textInputRef.current?.focus();
   }, [activeChunk.id, actionQueued, textInputRef]);
 
+  useEffect(() => () => {
+    if (keyboardDockReleaseTimerRef.current === null) return;
+    window.clearTimeout(keyboardDockReleaseTimerRef.current);
+  }, []);
+
+  const flowClassName = keyboardDockActive
+    ? 'training-chunk-flow training-chunk-flow-keyboard-active'
+    : 'training-chunk-flow';
+  const flowStyle = {
+    '--training-visual-keyboard-inset': `${keyboardInsetPx}px`,
+  } as CSSProperties;
+
   return (
-    <div className="training-chunk-flow" aria-label="Chunk-by-chunk dictation input">
+    <div className={flowClassName} style={flowStyle} aria-label="Chunk-by-chunk dictation input">
       <article className="training-chunk-card training-chunk-card-active">
         <header>
           <label htmlFor={textAreaId}>Chunk {activeChunk.index + 1}</label>
@@ -65,7 +106,11 @@ export function TrainingChunkInputPanel({
           value={currentTextValue}
           onValueChange={onTextChange}
           onImmediateValueChange={onImmediateTextChange}
-          onBlur={(event) => onTextBlur?.(event.currentTarget.value)}
+          onFocus={activateKeyboardDock}
+          onBlur={(event) => {
+            releaseKeyboardDockSoon();
+            onTextBlur?.(event.currentTarget.value);
+          }}
           onKeyDown={(event) => {
             onTextKeyDown(event);
             if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -90,11 +135,51 @@ export function TrainingChunkInputPanel({
                 ? 'Audio complete. Finish when your final answer is ready.'
                 : 'Ctrl/Cmd + Enter also submits this chunk.'}
           </p>
-          <button type="button" onClick={submitLatest} disabled={actionQueued}>
+          <button type="button" onPointerDown={activateKeyboardDock} onClick={submitLatest} disabled={actionQueued}>
             {actionQueued ? queuedActionLabel : actionLabel}
           </button>
         </div>
       </article>
     </div>
   );
+}
+
+function useVisualViewportKeyboardInset(active: boolean): number {
+  const [keyboardInsetPx, setKeyboardInsetPx] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setKeyboardInsetPx(0);
+      return;
+    }
+
+    const measure = () => {
+      setKeyboardInsetPx(getVisualViewportKeyboardInset());
+    };
+    const visualViewport = window.visualViewport;
+
+    measure();
+    visualViewport?.addEventListener('resize', measure);
+    visualViewport?.addEventListener('scroll', measure);
+    window.addEventListener('resize', measure);
+
+    return () => {
+      visualViewport?.removeEventListener('resize', measure);
+      visualViewport?.removeEventListener('scroll', measure);
+      window.removeEventListener('resize', measure);
+    };
+  }, [active]);
+
+  return keyboardInsetPx;
+}
+
+function getVisualViewportKeyboardInset(): number {
+  const visualViewport = window.visualViewport;
+  if (!visualViewport) return 0;
+
+  const layoutViewportHeight = window.innerHeight || document.documentElement.clientHeight || visualViewport.height;
+  const visibleViewportBottom = visualViewport.offsetTop + visualViewport.height;
+  const keyboardInset = Math.max(0, layoutViewportHeight - visibleViewportBottom);
+
+  return Math.round(keyboardInset);
 }

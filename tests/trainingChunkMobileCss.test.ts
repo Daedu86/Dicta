@@ -27,4 +27,17 @@ describe('mobile chunk practice CSS', () => {
     expect(responsiveCss).toContain('.training-input-card .training-chunk-action-row p');
     expect(responsiveCss).toContain('display: none;');
   });
+
+  it('docks the per-chunk submit row above the visual keyboard while typing', () => {
+    const responsiveCss = readRepoSource('src/styles/responsive-640.css');
+
+    expectInOrder(responsiveCss, [
+      '.training-input-card .training-chunk-flow-keyboard-active .training-chunk-action-row {',
+      'position: fixed;',
+      'var(--training-visual-keyboard-inset, 0px)',
+      'max-width: calc(640px - 1.3rem);',
+    ]);
+    expect(responsiveCss).toContain('.training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active');
+    expect(responsiveCss).toContain('padding-bottom: 4.85rem;');
+  });
 });
