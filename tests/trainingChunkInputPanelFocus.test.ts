@@ -144,5 +144,6 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     const flow = host.querySelector<HTMLElement>('.training-chunk-flow');
     expect(flow?.classList.contains('training-chunk-flow-keyboard-active')).toBe(true);
     expect(flow?.style.getPropertyValue('--training-visual-keyboard-inset')).toBe('280px');
+    expect(flow?.style.getPropertyValue('--training-visual-viewport-height')).toBe('520px');
   });
 });

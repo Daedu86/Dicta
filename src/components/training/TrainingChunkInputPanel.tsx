@@ -44,7 +44,7 @@ export function TrainingChunkInputPanel({
 }: TrainingChunkInputPanelProps) {
   const keyboardDockReleaseTimerRef = useRef<number | null>(null);
   const [keyboardDockActive, setKeyboardDockActive] = useState(false);
-  const keyboardInsetPx = useVisualViewportKeyboardInset(keyboardDockActive);
+  const keyboardLayout = useVisualViewportKeyboardLayout(keyboardDockActive);
   const countdownLabel = advanceCountdownSeconds !== null ? ` (${Math.max(0, advanceCountdownSeconds)} Secs)` : '';
   const actionLabel = activeChunk.isFinal
     ? 'Finish session'
@@ -90,7 +90,8 @@ export function TrainingChunkInputPanel({
     ? 'training-chunk-flow training-chunk-flow-keyboard-active'
     : 'training-chunk-flow';
   const flowStyle = {
-    '--training-visual-keyboard-inset': `${keyboardInsetPx}px`,
+    '--training-visual-keyboard-inset': `${keyboardLayout.keyboardInsetPx}px`,
+    '--training-visual-viewport-height': `${keyboardLayout.visualViewportHeightPx}px`,
   } as CSSProperties;
 
   return (
@@ -144,17 +145,31 @@ export function TrainingChunkInputPanel({
   );
 }
 
-function useVisualViewportKeyboardInset(active: boolean): number {
-  const [keyboardInsetPx, setKeyboardInsetPx] = useState(0);
+type VisualViewportKeyboardLayout = {
+  keyboardInsetPx: number;
+  visualViewportHeightPx: number;
+};
+
+function useVisualViewportKeyboardLayout(active: boolean): VisualViewportKeyboardLayout {
+  const [keyboardLayout, setKeyboardLayout] = useState<VisualViewportKeyboardLayout>(() => getVisualViewportKeyboardLayout());
 
   useEffect(() => {
     if (!active) {
-      setKeyboardInsetPx(0);
+      setKeyboardLayout({
+        ...getVisualViewportKeyboardLayout(),
+        keyboardInsetPx: 0,
+      });
       return;
     }
 
     const measure = () => {
-      setKeyboardInsetPx(getVisualViewportKeyboardInset());
+      const nextLayout = getVisualViewportKeyboardLayout();
+      setKeyboardLayout((currentLayout) => (
+        currentLayout.keyboardInsetPx === nextLayout.keyboardInsetPx &&
+        currentLayout.visualViewportHeightPx === nextLayout.visualViewportHeightPx
+          ? currentLayout
+          : nextLayout
+      ));
     };
     const visualViewport = window.visualViewport;
 
@@ -170,16 +185,32 @@ function useVisualViewportKeyboardInset(active: boolean): number {
     };
   }, [active]);
 
-  return keyboardInsetPx;
+  return keyboardLayout;
 }
 
-function getVisualViewportKeyboardInset(): number {
-  const visualViewport = window.visualViewport;
-  if (!visualViewport) return 0;
+function getVisualViewportKeyboardLayout(): VisualViewportKeyboardLayout {
+  if (typeof window === 'undefined') {
+    return {
+      keyboardInsetPx: 0,
+      visualViewportHeightPx: 0,
+    };
+  }
 
-  const layoutViewportHeight = window.innerHeight || document.documentElement.clientHeight || visualViewport.height;
+  const visualViewport = window.visualViewport;
+  const fallbackViewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+  if (!visualViewport) {
+    return {
+      keyboardInsetPx: 0,
+      visualViewportHeightPx: Math.round(fallbackViewportHeight),
+    };
+  }
+
+  const layoutViewportHeight = fallbackViewportHeight || visualViewport.height;
   const visibleViewportBottom = visualViewport.offsetTop + visualViewport.height;
   const keyboardInset = Math.max(0, layoutViewportHeight - visibleViewportBottom);
 
-  return Math.round(keyboardInset);
+  return {
+    keyboardInsetPx: Math.round(keyboardInset),
+    visualViewportHeightPx: Math.round(visualViewport.height),
+  };
 }

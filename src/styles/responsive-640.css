@@ -44,11 +44,11 @@
     display: none;
   }
 
-  .training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active {
-    padding-bottom: 4.85rem;
+  .training-input-card .training-chunk-flow-keyboard-active {
+    min-height: min(15.5rem, calc(var(--training-visual-viewport-height, 100dvh) - 0.75rem));
   }
 
-  .training-input-card .training-chunk-flow-keyboard-active .training-chunk-action-row {
+  .training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active {
     position: fixed;
     left: max(0.65rem, env(safe-area-inset-left, 0px));
     right: max(0.65rem, env(safe-area-inset-right, 0px));
@@ -58,10 +58,28 @@
       0.35rem
     );
     max-width: calc(640px - 1.3rem);
+    max-height: calc(var(--training-visual-viewport-height, 100dvh) - 0.75rem);
     margin: 0 auto;
-    padding: 0.45rem;
+    display: grid;
+    grid-template-rows: auto minmax(0, auto) auto;
+    overflow: hidden;
     border: 1px solid rgba(117, 185, 243, 0.72);
-    background: #eef7ff;
+  }
+
+  .training-input-card .training-chunk-flow-keyboard-active .training-chunk-card-active textarea {
+    height: clamp(5.75rem, 18vh, 7.25rem);
+    height: clamp(5.75rem, 18dvh, 7.25rem);
+    min-height: 5.75rem;
+    max-height: 7.25rem;
+  }
+
+  .training-input-card .training-chunk-flow-keyboard-active .training-chunk-action-row {
+    position: static;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .tts-workspace-header,

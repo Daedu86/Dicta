@@ -28,6 +28,7 @@ const session: HarnessSession = {
 
 export function E2ETrainingPerfHarness() {
   const [text, setText] = useState('');
+  const chunkPracticeMode = new URLSearchParams(window.location.search).get('chunkPractice') === '1';
 
   return (
     <TrainingView
@@ -77,6 +78,22 @@ export function E2ETrainingPerfHarness() {
       syncStatus={{ enabled: false, state: 'disabled', message: 'Sync disabled for E2E', lastSyncedAt: null, imported: 0, pushed: 0 }}
       pendingSyncSummary={{ count: 0, hasPending: false }}
       isOnline={true}
+      activePracticeChunk={chunkPracticeMode
+        ? {
+            id: 'practice-0-0',
+            index: 0,
+            startWordIndex: 0,
+            wordCount: 6,
+            firstSemanticPhraseIndex: 0,
+            lastSemanticPhraseIndex: 0,
+            isFinal: false,
+            typedText: text,
+          }
+        : null}
+      practiceChunkActionQueued={false}
+      practiceChunkAdvanceCountdownSeconds={null}
+      finalPracticeChunkAudioCompleted={false}
+      onSubmitPracticeChunk={chunkPracticeMode ? () => undefined : undefined}
     />
   );
 }

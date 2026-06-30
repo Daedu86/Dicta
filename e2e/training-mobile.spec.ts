@@ -46,3 +46,25 @@ test('mobile training typing stays local and batches commits', async ({ page }) 
   expect(afterFinalWait.renders.LowLatencyTextarea ?? 0).toBeLessThanOrEqual(lowLatencyRendersBefore + commitDelta + 1);
   expect(afterFinalWait.renders.TrainingView ?? 0).toBeLessThanOrEqual(trainingViewRendersBefore + commitDelta + 1);
 });
+
+test('mobile chunk submit stays below the focused textbox', async ({ page }) => {
+  await page.goto('/e2e-training.html?chunkPractice=1', { waitUntil: 'domcontentloaded' });
+
+  const textarea = page.locator('#training-dictation-input');
+  await expect(textarea).toBeVisible();
+  await textarea.focus();
+
+  const flow = page.locator('.training-chunk-flow-keyboard-active');
+  await expect(flow).toBeVisible();
+
+  const cardPosition = await page.locator('.training-chunk-card-active').evaluate((element) => getComputedStyle(element).position);
+  const actionRowPosition = await page.locator('.training-chunk-action-row').evaluate((element) => getComputedStyle(element).position);
+  expect(cardPosition).toBe('fixed');
+  expect(actionRowPosition).toBe('static');
+
+  const textareaBox = await textarea.boundingBox();
+  const submitBox = await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).boundingBox();
+  expect(textareaBox).not.toBeNull();
+  expect(submitBox).not.toBeNull();
+  expect(submitBox!.y).toBeGreaterThanOrEqual(textareaBox!.y + textareaBox!.height - 1);
+});
