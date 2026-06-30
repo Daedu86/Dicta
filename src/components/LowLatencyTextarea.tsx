@@ -19,7 +19,7 @@ import {
 
 export type LowLatencyTextareaHandle = {
   flush: () => string;
-  focus: () => void;
+  focus: (options?: { scroll?: boolean }) => void;
 };
 
 type LowLatencyTextareaProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'defaultValue' | 'onChange' | 'value'> & {
@@ -117,7 +117,7 @@ const LowLatencyTextareaComponent = forwardRef<LowLatencyTextareaHandle, LowLate
     ref,
     () => ({
       flush: commitNow,
-      focus: () => focusTextareaAtEnd(textareaRef.current),
+      focus: (options) => focusTextareaAtEnd(textareaRef.current, options),
     }),
     [],
   );

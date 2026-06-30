@@ -82,7 +82,7 @@ export function TrainingView<Session extends TrainingViewSession>({
 
   function handlePlay(): void {
     onPlay();
-    inputController.focusTextInput();
+    inputController.focusTextInput({ scroll: !activePracticeChunk });
   }
 
   const textAreaId = 'training-dictation-input';

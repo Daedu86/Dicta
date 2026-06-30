@@ -190,6 +190,38 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     }
   });
 
+  it('does not keep re-scrolling the chunk action row during viewport resize events', () => {
+    vi.useFakeTimers();
+    const visualViewport = mockVisualViewport({ innerHeight: 800, height: 520 });
+    const scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    try {
+      renderPanel();
+
+      act(() => {
+        host.querySelector<HTMLTextAreaElement>('#training-dictation-input')?.focus();
+      });
+      act(() => {
+        vi.advanceTimersByTime(90);
+      });
+
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        visualViewport.setHeight(500);
+        visualViewport.emit('resize');
+        visualViewport.setHeight(540);
+        visualViewport.emit('scroll');
+        vi.advanceTimersByTime(120);
+      });
+
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('ignores a stale blur release after the next chunk activates', () => {
     vi.useFakeTimers();
     const textInputRef = createRef<LowLatencyTextareaHandle>();

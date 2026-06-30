@@ -60,7 +60,7 @@ export function E2ETrainingPerfHarness() {
       liveLagLabel="—"
       liveLagHelpText="E2E lag fixture"
       readOnly={false}
-      canPlay={false}
+      canPlay={chunkPracticeMode}
       playLabel="Play"
       onPlay={() => undefined}
       canPause={false}

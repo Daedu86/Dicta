@@ -60,10 +60,15 @@ export function recordLowLatencyInputChange({
   return inputEventId;
 }
 
-export function focusTextareaAtEnd(textarea: HTMLTextAreaElement | null): void {
+export function focusTextareaAtEnd(
+  textarea: HTMLTextAreaElement | null,
+  options: { scroll?: boolean } = {},
+): void {
   if (!textarea) return;
   const end = textarea.value.length;
-  textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (options.scroll !== false) {
+    textarea.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
   textarea.focus({ preventScroll: true });
   textarea.setSelectionRange(end, end);
 }

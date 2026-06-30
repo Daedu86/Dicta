@@ -78,3 +78,45 @@ test('mobile chunk submit stays below the focused textbox', async ({ page }) => 
     await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).click();
   }
 });
+
+test('mobile chunk play focus keeps textbox and submit button stable', async ({ page }) => {
+  await page.goto('/e2e-training.html?chunkPractice=1', { waitUntil: 'domcontentloaded' });
+
+  const textarea = page.locator('#training-dictation-input');
+  const submitButton = page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ });
+
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(textarea).toBeFocused();
+  await expect(page.locator('.training-chunk-flow-keyboard-active')).toBeVisible();
+
+  await page.waitForTimeout(150);
+  const settledLayout = await readChunkLayout();
+  await page.waitForTimeout(500);
+  const laterLayout = await readChunkLayout();
+
+  expect(settledLayout.cardPosition).not.toBe('fixed');
+  expect(settledLayout.actionRowPosition).toBe('static');
+  expect(settledLayout.submitBottom).toBeLessThanOrEqual(settledLayout.viewportHeight);
+  expect(settledLayout.submitY).toBeGreaterThanOrEqual(settledLayout.textareaBottom - 1);
+  expect(Math.abs(laterLayout.textareaY - settledLayout.textareaY)).toBeLessThanOrEqual(1);
+  expect(Math.abs(laterLayout.submitY - settledLayout.submitY)).toBeLessThanOrEqual(1);
+
+  async function readChunkLayout() {
+    const textareaBox = await textarea.boundingBox();
+    const submitBox = await submitButton.boundingBox();
+    const viewport = page.viewportSize();
+    expect(textareaBox).not.toBeNull();
+    expect(submitBox).not.toBeNull();
+    expect(viewport).not.toBeNull();
+
+    return {
+      textareaY: textareaBox!.y,
+      textareaBottom: textareaBox!.y + textareaBox!.height,
+      submitY: submitBox!.y,
+      submitBottom: submitBox!.y + submitBox!.height,
+      viewportHeight: viewport!.height,
+      cardPosition: await page.locator('.training-chunk-card-active').evaluate((element) => getComputedStyle(element).position),
+      actionRowPosition: await page.locator('.training-chunk-action-row').evaluate((element) => getComputedStyle(element).position),
+    };
+  }
+});

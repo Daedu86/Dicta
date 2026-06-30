@@ -54,9 +54,9 @@ export function useTrainingViewInputController({
     return textInputRef.current?.flush() ?? currentTextValue;
   }
 
-  function focusTextInput(): void {
+  function focusTextInput(options?: { scroll?: boolean }): void {
     window.requestAnimationFrame(() => {
-      textInputRef.current?.focus();
+      textInputRef.current?.focus(options);
     });
   }
 

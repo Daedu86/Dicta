@@ -114,20 +114,8 @@ export function TrainingChunkInputPanel({
   useEffect(() => {
     if (actionQueued) return;
     activateKeyboardDock();
-    textInputRef.current?.focus();
-    scrollChunkActionIntoView();
-  }, [activateKeyboardDock, activeChunk.id, actionQueued, scrollChunkActionIntoView, textInputRef]);
-
-  useEffect(() => {
-    if (!keyboardDockActive || actionQueued) return;
-    scrollChunkActionIntoView();
-  }, [
-    actionQueued,
-    keyboardDockActive,
-    keyboardLayout.keyboardInsetPx,
-    keyboardLayout.visualViewportHeightPx,
-    scrollChunkActionIntoView,
-  ]);
+    textInputRef.current?.focus({ scroll: false });
+  }, [activateKeyboardDock, activeChunk.id, actionQueued, textInputRef]);
 
   useEffect(() => () => {
     clearKeyboardDockReleaseTimer();
