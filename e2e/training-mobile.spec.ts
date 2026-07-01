@@ -52,6 +52,8 @@ test('mobile chunk submit stays below the focused textbox', async ({ page }) => 
 
   const textarea = page.locator('#training-dictation-input');
   await expect(textarea).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Media player and audio controls' })).toHaveCount(0);
+  await expect(page.locator('.training-chunk-action-buttons').getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 
   for (let chunkIndex = 0; chunkIndex < 6; chunkIndex += 1) {
     await expect(page.getByText(`Chunk ${chunkIndex + 1}`, { exact: true })).toBeVisible();
@@ -67,12 +69,16 @@ test('mobile chunk submit stays below the focused textbox', async ({ page }) => 
     expect(actionRowPosition).toBe('static');
 
     const textareaBox = await textarea.boundingBox();
+    const replayBox = await page.getByRole('button', { name: 'Replay chunk', exact: true }).boundingBox();
     const submitBox = await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).boundingBox();
     const viewport = page.viewportSize();
     expect(textareaBox).not.toBeNull();
+    expect(replayBox).not.toBeNull();
     expect(submitBox).not.toBeNull();
     expect(viewport).not.toBeNull();
+    expect(Math.abs(replayBox!.y - submitBox!.y)).toBeLessThanOrEqual(1);
     expect(submitBox!.y).toBeGreaterThanOrEqual(textareaBox!.y + textareaBox!.height - 1);
+    expect(replayBox!.y + replayBox!.height).toBeLessThanOrEqual(viewport!.height);
     expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(viewport!.height);
 
     await page.getByRole('button', { name: /Skip chunk|Submit \/ Check/ }).click();

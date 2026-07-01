@@ -46,6 +46,7 @@ export type UseFocusedTrainingRouteRuntimeArgs = FocusedTrainingGenerationButton
   ttsPracticeText: string;
   ttsPlayerProgressTick: number;
   seekTtsPlayback: (progressRatio: number) => void;
+  playTtsFromWord: (startWordIndex: number) => void;
   resetSession: (options?: ResetSessionOptions) => void;
   playTts: () => void;
   resumeTts: () => void | Promise<void>;

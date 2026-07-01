@@ -104,6 +104,7 @@ export function useTtsSessionOrchestrationRuntime(args: UseTtsSessionOrchestrati
     estimateTtsSpokenWordIndex,
     applyTtsPerformanceSample,
     playTts,
+    playTtsFromWord,
     pauseTts,
     resumeTts,
     stopTtsPlayback,

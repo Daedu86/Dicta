@@ -140,6 +140,10 @@ describe('TrainingInputCard', () => {
         },
         practiceChunkActionQueued: false,
         finalPracticeChunkAudioCompleted: false,
+        canPlayPracticeChunk: true,
+        playPracticeChunkLabel: 'Play',
+        onPlayPracticeChunk: () => undefined,
+        onReplayPracticeChunk: () => undefined,
         onSubmitPracticeChunk: () => undefined,
       }),
     );
@@ -148,6 +152,8 @@ describe('TrainingInputCard', () => {
     expect(markup).not.toContain('Completed chunks');
     expect(markup).not.toContain('Der feine Sand');
     expect(markup).toContain('Chunk 2');
+    expect(markup).toContain('>Play</button>');
+    expect(markup).toContain('Replay chunk');
     expect(markup).toContain('Submit / Check');
     expect(markup.match(/<textarea/g)).toHaveLength(1);
   });
@@ -190,12 +196,18 @@ describe('TrainingInputCard', () => {
         practiceChunkActionQueued: true,
         practiceChunkAdvanceCountdownSeconds: 3,
         finalPracticeChunkAudioCompleted: false,
+        canPlayPracticeChunk: true,
+        playPracticeChunkLabel: 'Play',
+        onPlayPracticeChunk: () => undefined,
+        onReplayPracticeChunk: () => undefined,
         onSubmitPracticeChunk: () => undefined,
       }),
     );
 
     expect(markup).toContain('Submitted. The next chunk starts when the counter reaches zero.');
     expect(markup).toContain('Submit / Check (3 Secs)');
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Play<\/button>/);
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Replay chunk<\/button>/);
   });
 
   it('renders a manual finish action for the final practice chunk', () => {
@@ -235,6 +247,10 @@ describe('TrainingInputCard', () => {
         },
         practiceChunkActionQueued: false,
         finalPracticeChunkAudioCompleted: true,
+        canPlayPracticeChunk: true,
+        playPracticeChunkLabel: 'Play',
+        onPlayPracticeChunk: () => undefined,
+        onReplayPracticeChunk: () => undefined,
         onSubmitPracticeChunk: () => undefined,
       }),
     );

@@ -93,5 +93,6 @@ export type TrainingViewProps<Session extends TrainingViewSession = TrainingView
   practiceChunkActionQueued?: boolean;
   practiceChunkAdvanceCountdownSeconds?: number | null;
   finalPracticeChunkAudioCompleted?: boolean;
+  onReplayPracticeChunk?: (startWordIndex: number) => void;
   onSubmitPracticeChunk?: (latestDraft: string) => void;
 };

@@ -19,6 +19,10 @@ export type TrainingChunkInputPanelProps = {
   onImmediateTextChange: (value: string) => void;
   onTextBlur?: (value: string) => void;
   onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  canPlay: boolean;
+  playLabel: string;
+  onPlay?: () => void;
+  onReplayChunk?: (startWordIndex: number) => void;
   onSubmitChunk: (latestDraft: string) => void;
   textCommitDelayMs: number;
   syncKey: string;
@@ -37,6 +41,10 @@ export function TrainingChunkInputPanel({
   onImmediateTextChange,
   onTextBlur,
   onTextKeyDown,
+  canPlay,
+  playLabel,
+  onPlay,
+  onReplayChunk,
   onSubmitChunk,
   textCommitDelayMs,
   syncKey,
@@ -191,9 +199,28 @@ export function TrainingChunkInputPanel({
                 ? 'Audio complete. Finish when your final answer is ready.'
                 : 'Ctrl/Cmd + Enter also submits this chunk.'}
           </p>
-          <button type="button" onPointerDown={activateKeyboardDock} onClick={submitLatest} disabled={actionQueued}>
-            {actionQueued ? queuedActionLabel : actionLabel}
-          </button>
+          <div className="training-chunk-action-buttons">
+            <button
+              type="button"
+              onPointerDown={activateKeyboardDock}
+              onClick={onPlay}
+              disabled={actionQueued || !canPlay || !onPlay}
+            >
+              {playLabel}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onPointerDown={activateKeyboardDock}
+              onClick={() => onReplayChunk?.(activeChunk.startWordIndex)}
+              disabled={actionQueued || !onReplayChunk}
+            >
+              Replay chunk
+            </button>
+            <button type="button" onPointerDown={activateKeyboardDock} onClick={submitLatest} disabled={actionQueued}>
+              {actionQueued ? queuedActionLabel : actionLabel}
+            </button>
+          </div>
         </div>
       </article>
     </div>

@@ -40,6 +40,10 @@ function renderPanel(props: Partial<ComponentProps<typeof TrainingChunkInputPane
       onImmediateTextChange: vi.fn(),
       onTextBlur: vi.fn(),
       onTextKeyDown: vi.fn(),
+      canPlay: true,
+      playLabel: 'Play',
+      onPlay: vi.fn(),
+      onReplayChunk: vi.fn(),
       onSubmitChunk: vi.fn(),
       textCommitDelayMs: 80,
       syncKey: 'session-1:browser-tts',
@@ -108,6 +112,32 @@ afterEach(() => {
 });
 
 describe('TrainingChunkInputPanel focus handoff', () => {
+  it('runs the embedded play action from the chunk controls', () => {
+    const onPlay = vi.fn();
+    renderPanel({ onPlay });
+
+    act(() => {
+      host.querySelector<HTMLButtonElement>('.training-chunk-action-buttons button')?.click();
+    });
+
+    expect(onPlay).toHaveBeenCalledOnce();
+  });
+
+  it('replays the active chunk from its exact source-word boundary', () => {
+    const onReplayChunk = vi.fn();
+    renderPanel({
+      activeChunk: practiceChunk({ id: 'practice-2-12', index: 2, startWordIndex: 12 }),
+      onReplayChunk,
+    });
+
+    act(() => {
+      host.querySelector<HTMLButtonElement>('.training-chunk-action-buttons .secondary-button')?.click();
+    });
+
+    expect(onReplayChunk).toHaveBeenCalledOnce();
+    expect(onReplayChunk).toHaveBeenCalledWith(12);
+  });
+
   it('focuses the active chunk textarea when a submitted chunk advances', () => {
     const textInputRef = createRef<LowLatencyTextareaHandle>();
     const outsideButton = document.createElement('button');

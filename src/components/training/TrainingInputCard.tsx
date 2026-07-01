@@ -35,6 +35,10 @@ export type TrainingInputCardProps = {
   practiceChunkActionQueued?: boolean;
   practiceChunkAdvanceCountdownSeconds?: number | null;
   finalPracticeChunkAudioCompleted?: boolean;
+  canPlayPracticeChunk?: boolean;
+  playPracticeChunkLabel?: string;
+  onPlayPracticeChunk?: () => void;
+  onReplayPracticeChunk?: (startWordIndex: number) => void;
   onSubmitPracticeChunk?: (latestDraft: string) => void;
   playFocusRequestId?: number;
 };
@@ -67,6 +71,10 @@ export function TrainingInputCard({
   practiceChunkActionQueued = false,
   practiceChunkAdvanceCountdownSeconds = null,
   finalPracticeChunkAudioCompleted = false,
+  canPlayPracticeChunk = false,
+  playPracticeChunkLabel = 'Play',
+  onPlayPracticeChunk,
+  onReplayPracticeChunk,
   onSubmitPracticeChunk,
   playFocusRequestId = 0,
 }: TrainingInputCardProps) {
@@ -117,6 +125,10 @@ export function TrainingInputCard({
           onImmediateTextChange={onImmediateTextChange}
           onTextBlur={onTextBlur}
           onTextKeyDown={onTextKeyDown}
+          canPlay={canPlayPracticeChunk}
+          playLabel={playPracticeChunkLabel}
+          onPlay={onPlayPracticeChunk}
+          onReplayChunk={onReplayPracticeChunk}
           onSubmitChunk={onSubmitPracticeChunk}
           textCommitDelayMs={effectiveTextCommitDelayMs}
           syncKey={syncKey}

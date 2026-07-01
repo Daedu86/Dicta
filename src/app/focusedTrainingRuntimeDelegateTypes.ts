@@ -28,6 +28,7 @@ export type FocusedTrainingRouteDelegateArgs = Omit<
   | 'ttsTranscript'
   | 'estimateTtsSpokenWordIndex'
   | 'seekTtsPlayback'
+  | 'playTtsFromWord'
   | 'resetSession'
   | 'playTts'
   | 'resumeTts'

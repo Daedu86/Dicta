@@ -72,6 +72,7 @@ export function TrainingView<Session extends TrainingViewSession>({
   practiceChunkActionQueued,
   practiceChunkAdvanceCountdownSeconds,
   finalPracticeChunkAudioCompleted,
+  onReplayPracticeChunk,
   onSubmitPracticeChunk,
 }: TrainingViewProps<Session>) {
   const [playFocusRequestId, setPlayFocusRequestId] = useState(0);
@@ -117,20 +118,22 @@ export function TrainingView<Session extends TrainingViewSession>({
         sessionStatusLabel={formatSessionStatus(sessionStatus)}
       />
 
-      <TrainingAudioCard
-        statusLabel={statusLabel}
-        canPlay={canPlay}
-        playLabel={playLabel}
-        onPlay={handlePlay}
-        canPause={canPause}
-        onPause={() => onPause(inputController.flushTextInput())}
-        canReplay={canReplay}
-        onReplay={onReplay}
-        canStop={canStop}
-        onStop={() => onStop(inputController.flushTextInput())}
-        canReset={canReset}
-        onReset={onReset}
-      />
+      {!activePracticeChunk ? (
+        <TrainingAudioCard
+          statusLabel={statusLabel}
+          canPlay={canPlay}
+          playLabel={playLabel}
+          onPlay={handlePlay}
+          canPause={canPause}
+          onPause={() => onPause(inputController.flushTextInput())}
+          canReplay={canReplay}
+          onReplay={onReplay}
+          canStop={canStop}
+          onStop={() => onStop(inputController.flushTextInput())}
+          canReset={canReset}
+          onReset={onReset}
+        />
+      ) : null}
 
       <TrainingInputCard
         textAreaId={textAreaId}
@@ -161,6 +164,10 @@ export function TrainingView<Session extends TrainingViewSession>({
         practiceChunkActionQueued={practiceChunkActionQueued}
         practiceChunkAdvanceCountdownSeconds={practiceChunkAdvanceCountdownSeconds}
         finalPracticeChunkAudioCompleted={finalPracticeChunkAudioCompleted}
+        canPlayPracticeChunk={canPlay}
+        playPracticeChunkLabel={playLabel}
+        onPlayPracticeChunk={handlePlay}
+        onReplayPracticeChunk={onReplayPracticeChunk}
         onSubmitPracticeChunk={onSubmitPracticeChunk}
         playFocusRequestId={playFocusRequestId}
       />
