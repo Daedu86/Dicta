@@ -15,7 +15,7 @@ Related docs:
 
 The runtime loop is causal: memory feeds preparation, preparation drives the current session, the session produces evidence, and that evidence updates the next turn. Benchmark and feedback feed the training prescription. The prescription guides LLM generation. The planner turns generated text into playable chunks. The controller chooses live pacing. The runtime pipeline makes the decision executable. Browser TTS speaks internal slices while Training Mode exposes one safe learner-facing chunk at a time and can replay that active chunk from its exact source-word boundary. Safe pauses are learner-paced so the next chunk starts after the configured minimum mental rest only when the learner submits/skips. Correct typing and timeout alone do not advance chunk practice. The final chunk is manual via `Finish session`. Telemetry updates benchmark and feedback. The insight report explains the full loop.
 
-During active chunk practice, the separate Media player card is hidden. Its existing `Play` command is rendered inside the active chunk action row and returns focus to the learner textarea; `Replay chunk` remains scoped to the active chunk's exact source-word boundary.
+Browser TTS Training hides the separate Media player card from the initial state onward. Its existing `Play` command appears below the textarea before the first chunk plan exists, then inside the active chunk action row; both placements return focus to the learner textarea. `Replay chunk` remains scoped to the active chunk's exact source-word boundary.
 
 ## Workspace map
 

@@ -1,45 +1,45 @@
 **Comparison Target**
 
-- Source visual truth: the two browser annotation screenshots attached to the current request at a 916 x 698 viewport.
-- Implementation screenshot: unavailable; the in-app browser refused local-page inspection after the implementation refresh.
-- Intended viewport: 916 x 698.
-- State: active Browser TTS learner-facing chunk, submission not queued.
+- Source visual truth: `C:\Users\daedu\AppData\Local\Temp\codex-clipboard-ffad6d52-4050-4f0a-956c-f2f80159d89a.png`.
+- Implementation screenshot: unavailable; the in-app browser rendered and exposed the corrected initial DOM state, but screenshot capture timed out.
+- Source viewport: 1137 x 872.
+- State: Browser TTS session before first playback, with the generic textarea visible.
 
 **Full-view Comparison Evidence**
 
-- Source: a standalone Media player card appears between the session card and chunk input card.
-- Intended implementation: the standalone Media player card is absent only while an active practice chunk exists. Non-chunk Training states retain it.
-- Automated rendered checks confirm the Media player region count is zero during chunk practice.
+- Source: a standalone Media player card appears above the Training input card.
+- Corrected local browser state: no `Media player and audio controls` region is present for Browser TTS.
+- Corrected local browser state: `Play` renders inside the Training input card below the initial textarea.
 
 **Focused Region Comparison Evidence**
 
-- Source: the chunk action row contains help text, `Replay chunk`, and submit/skip.
-- Intended implementation: the same row contains `Play`, `Replay chunk`, and submit/skip; `Play` uses the existing playback callback.
-- Automated browser E2E confirms the embedded `Play` is visible, the three controls remain below the textbox, and selecting `Play` focuses the textarea.
+- Before playback: the mobile browser E2E verifies embedded `Play` is enabled and the standalone Media player region count is zero.
+- After selecting `Play`: the E2E verifies the textarea receives focus, the initial play row disappears, and the active chunk row contains `Play`, `Replay chunk`, and submit/skip.
+- Active chunk layout: all three action controls remain below the focused textarea and inside the viewport.
 
 **Findings**
 
-- [P2] Final visual comparison could not be captured in the selected in-app browser.
-  Location: active chunk Training screen.
-  Evidence: component, integration, and mobile browser tests pass, but the required final screenshot is unavailable.
-  Impact: spacing and visual fidelity at the annotated 916 x 698 viewport cannot receive the final screenshot-based sign-off.
-  Fix: refresh the already-open local tab, then recapture the annotated state in the in-app browser.
-- Typography: controls inherit existing Training button typography.
-- Spacing/layout: three flexible actions use the existing action-row gap and 48 px minimum height; mobile E2E passes.
-- Colors/tokens: `Replay chunk` retains secondary styling; `Play` and submit/skip use existing primary button styling.
+- [P2] A final screenshot at the source viewport could not be captured by the selected in-app browser.
+  Location: Browser TTS Training initial and active-chunk states.
+  Evidence: initial DOM inspection and four browser E2E flows pass, but the browser screenshot request timed out.
+  Impact: pixel-level comparison against the supplied production screenshot remains unavailable.
+  Fix: deploy the verified build, then capture the production route at the same authenticated state and viewport.
+- Typography: embedded controls inherit existing Training button typography.
+- Spacing/layout: the start action and three chunk actions use the existing action-row rhythm and 48 px minimum height; mobile E2E passes.
+- Colors/tokens: controls reuse existing primary and secondary button styles.
 - Image quality: no image assets are involved.
-- Copy/content: the standalone Media player copy is removed from active chunk practice; the relocated action keeps the current `Play`/resume label.
+- Copy/content: the standalone Media player content is removed for Browser TTS; the existing dynamic `Play`/resume label is preserved.
 
 **Patches Made**
 
-- Hid the standalone Media player card during active chunk practice.
-- Added `Play` to the chunk action row using the existing playback and focus-handoff callback.
-- Disabled chunk `Play` while submission/advance is queued.
-- Expanded responsive action sizing for three controls.
-- Added component and mobile E2E coverage.
+- Removed the standalone Media player card for Browser TTS from the initial state onward.
+- Added embedded `Play` below the textarea before the first chunk plan exists.
+- Kept `Play`, `Replay chunk`, and submit/skip together after chunk practice starts.
+- Preserved the existing playback command and textarea focus handoff.
+- Added a complete initial-play-to-first-chunk browser E2E flow.
 
 **Follow-up Polish**
 
-- Complete the final screenshot comparison after the local tab can be refreshed.
+- Complete screenshot comparison after a production deployment is authorized.
 
 final result: blocked

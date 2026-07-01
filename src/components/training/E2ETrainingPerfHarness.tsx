@@ -29,8 +29,12 @@ const session: HarnessSession = {
 export function E2ETrainingPerfHarness() {
   const [text, setText] = useState('');
   const [chunkIndex, setChunkIndex] = useState(0);
-  const chunkPracticeMode = new URLSearchParams(window.location.search).get('chunkPractice') === '1';
-  const submitPracticeChunk = chunkPracticeMode
+  const [embeddedPlayStarted, setEmbeddedPlayStarted] = useState(false);
+  const searchParams = new URLSearchParams(window.location.search);
+  const chunkPracticeMode = searchParams.get('chunkPractice') === '1';
+  const embeddedPlayMode = searchParams.get('embeddedPlay') === '1';
+  const showChunkPractice = chunkPracticeMode || (embeddedPlayMode && embeddedPlayStarted);
+  const submitPracticeChunk = showChunkPractice
     ? () => {
         setText('');
         setChunkIndex((currentIndex) => currentIndex + 1);
@@ -60,9 +64,11 @@ export function E2ETrainingPerfHarness() {
       liveLagLabel="—"
       liveLagHelpText="E2E lag fixture"
       readOnly={false}
-      canPlay={chunkPracticeMode}
+      canPlay={chunkPracticeMode || embeddedPlayMode}
       playLabel="Play"
-      onPlay={() => undefined}
+      onPlay={() => {
+        if (embeddedPlayMode) setEmbeddedPlayStarted(true);
+      }}
       canPause={false}
       onPause={() => undefined}
       canReplay={false}
@@ -85,7 +91,7 @@ export function E2ETrainingPerfHarness() {
       syncStatus={{ enabled: false, state: 'disabled', message: 'Sync disabled for E2E', lastSyncedAt: null, imported: 0, pushed: 0 }}
       pendingSyncSummary={{ count: 0, hasPending: false }}
       isOnline={true}
-      activePracticeChunk={chunkPracticeMode
+      activePracticeChunk={showChunkPractice
         ? {
             id: `practice-${chunkIndex}-${chunkIndex * 6}`,
             index: chunkIndex,

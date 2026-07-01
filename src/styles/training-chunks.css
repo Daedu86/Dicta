@@ -84,6 +84,14 @@
   white-space: normal;
 }
 
+.training-chunk-start-action-row {
+  margin-top: 0.75rem;
+}
+
+.training-chunk-start-action-buttons button {
+  width: 100%;
+}
+
 .training-review-chunk .training-review-inline {
   border: 0;
   padding: 0;

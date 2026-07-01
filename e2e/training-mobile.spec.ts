@@ -14,6 +14,8 @@ test('mobile training typing stays local and batches commits', async ({ page }) 
 
   const textarea = page.getByLabel('Type what you hear');
   await expect(textarea).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Media player and audio controls' })).toHaveCount(0);
+  await expect(page.locator('.training-chunk-start-action-row').getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 
   const text = 'dies ist ein langer test fuer mobile pwa low latency typing ohne parent render pro taste';
   await textarea.focus();
@@ -45,6 +47,24 @@ test('mobile training typing stays local and batches commits', async ({ page }) 
   expect(afterFinalWait.input.inputToCommit.max).toBeLessThan(1500);
   expect(afterFinalWait.renders.LowLatencyTextarea ?? 0).toBeLessThanOrEqual(lowLatencyRendersBefore + commitDelta + 1);
   expect(afterFinalWait.renders.TrainingView ?? 0).toBeLessThanOrEqual(trainingViewRendersBefore + commitDelta + 1);
+});
+
+test('embedded Browser TTS play replaces the media card and focuses the first chunk', async ({ page }) => {
+  await page.goto('/e2e-training.html?embeddedPlay=1', { waitUntil: 'domcontentloaded' });
+
+  const textarea = page.locator('#training-dictation-input');
+  const startPlay = page.locator('.training-chunk-start-action-row').getByRole('button', { name: 'Play', exact: true });
+
+  await expect(page.getByRole('region', { name: 'Media player and audio controls' })).toHaveCount(0);
+  await expect(startPlay).toBeVisible();
+  await expect(startPlay).toBeEnabled();
+
+  await startPlay.click();
+
+  await expect(textarea).toBeFocused();
+  await expect(page.locator('.training-chunk-start-action-row')).toHaveCount(0);
+  await expect(page.locator('.training-chunk-action-buttons').getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Replay chunk', exact: true })).toBeVisible();
 });
 
 test('mobile chunk submit stays below the focused textbox', async ({ page }) => {

@@ -35,6 +35,7 @@ export type TrainingInputCardProps = {
   practiceChunkActionQueued?: boolean;
   practiceChunkAdvanceCountdownSeconds?: number | null;
   finalPracticeChunkAudioCompleted?: boolean;
+  showEmbeddedPlay?: boolean;
   canPlayPracticeChunk?: boolean;
   playPracticeChunkLabel?: string;
   onPlayPracticeChunk?: () => void;
@@ -71,6 +72,7 @@ export function TrainingInputCard({
   practiceChunkActionQueued = false,
   practiceChunkAdvanceCountdownSeconds = null,
   finalPracticeChunkAudioCompleted = false,
+  showEmbeddedPlay = false,
   canPlayPracticeChunk = false,
   playPracticeChunkLabel = 'Play',
   onPlayPracticeChunk,
@@ -138,21 +140,37 @@ export function TrainingInputCard({
           playFocusRequestId={playFocusRequestId}
         />
       ) : (
-        <LowLatencyTextarea
-          id={textAreaId}
-          ref={textInputRef}
-          value={currentTextValue}
-          onValueChange={onTextChange}
-          onImmediateValueChange={onImmediateTextChange}
-          onBlur={(event) => onTextBlur?.(event.currentTarget.value)}
-          onKeyDown={onTextKeyDown}
-          placeholder={textPlaceholder}
-          readOnly={readOnly}
-          rows={10}
-          commitDelayMs={effectiveTextCommitDelayMs}
-          maxCommitDelayMs={Math.max(effectiveTextCommitDelayMs * 2, 160)}
-          syncKey={syncKey}
-        />
+        <>
+          <LowLatencyTextarea
+            id={textAreaId}
+            ref={textInputRef}
+            value={currentTextValue}
+            onValueChange={onTextChange}
+            onImmediateValueChange={onImmediateTextChange}
+            onBlur={(event) => onTextBlur?.(event.currentTarget.value)}
+            onKeyDown={onTextKeyDown}
+            placeholder={textPlaceholder}
+            readOnly={readOnly}
+            rows={10}
+            commitDelayMs={effectiveTextCommitDelayMs}
+            maxCommitDelayMs={Math.max(effectiveTextCommitDelayMs * 2, 160)}
+            syncKey={syncKey}
+          />
+          {showEmbeddedPlay && !readOnly ? (
+            <div className="training-chunk-action-row training-chunk-start-action-row">
+              <p>Start playback and continue typing in this field.</p>
+              <div className="training-chunk-action-buttons training-chunk-start-action-buttons">
+                <button
+                  type="button"
+                  onClick={onPlayPracticeChunk}
+                  disabled={!canPlayPracticeChunk || !onPlayPracticeChunk}
+                >
+                  {playPracticeChunkLabel}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
     </section>
   );

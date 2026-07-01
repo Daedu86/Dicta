@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatDifficultyLabel } from '../core/config';
+import { BROWSER_TTS_SESSION_INPUT_MODE } from '../core/sessionInputModes';
 import { PendingSessionLane } from './training/PendingSessionLane';
 import { SyncStatusBanner } from './training/SyncStatusBanner';
 import { TrainingAudioCard } from './training/TrainingAudioCard';
@@ -96,6 +97,7 @@ export function TrainingView<Session extends TrainingViewSession>({
   const textAreaId = 'training-dictation-input';
   const activeDifficultyLabel = activeSession ? formatDifficultyLabel(activeSession.difficulty) : '—';
   const review = activeSession ? buildFocusedTrainingReview(activeSession.ttsText ?? '', currentTextValue) : null;
+  const usesEmbeddedTtsControls = activeSession?.inputMode === BROWSER_TTS_SESSION_INPUT_MODE;
 
   return (
     <section className="training-view" aria-label="Focused training view">
@@ -118,7 +120,7 @@ export function TrainingView<Session extends TrainingViewSession>({
         sessionStatusLabel={formatSessionStatus(sessionStatus)}
       />
 
-      {!activePracticeChunk ? (
+      {!usesEmbeddedTtsControls ? (
         <TrainingAudioCard
           statusLabel={statusLabel}
           canPlay={canPlay}
@@ -164,6 +166,7 @@ export function TrainingView<Session extends TrainingViewSession>({
         practiceChunkActionQueued={practiceChunkActionQueued}
         practiceChunkAdvanceCountdownSeconds={practiceChunkAdvanceCountdownSeconds}
         finalPracticeChunkAudioCompleted={finalPracticeChunkAudioCompleted}
+        showEmbeddedPlay={usesEmbeddedTtsControls}
         canPlayPracticeChunk={canPlay}
         playPracticeChunkLabel={playLabel}
         onPlayPracticeChunk={handlePlay}

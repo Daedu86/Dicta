@@ -91,6 +91,42 @@ describe('TrainingInputCard', () => {
     expect(markup).toContain('aria-label="Live phrase 3/4"');
   });
 
+  it('renders the Browser TTS play action below the textarea before chunk practice starts', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TrainingInputCard, {
+        textAreaId: 'training-dictation-input',
+        textInputRef: { current: null },
+        currentTextValue: '',
+        onTextChange: () => undefined,
+        onImmediateTextChange: () => undefined,
+        onTextKeyDown: () => undefined,
+        textPlaceholder: 'Type the dictation here...',
+        readOnly: false,
+        textCommitDelayMs: 250,
+        syncKey: 'session-1:browser-tts',
+        liveScoreLabel: '0',
+        liveScoreHelpText: 'Score help',
+        progressLabel: 'Word 0/10',
+        livePointsLabel: '0/10',
+        livePointsHelpText: 'Points help',
+        liveAccuracyLabel: '0.0%',
+        liveAccuracyHelpText: 'Accuracy help',
+        liveLagLabel: '0.00s',
+        liveLagHelpText: 'Lag help',
+        showReview: false,
+        review: null,
+        showEmbeddedPlay: true,
+        canPlayPracticeChunk: true,
+        playPracticeChunkLabel: 'Play',
+        onPlayPracticeChunk: () => undefined,
+      }),
+    );
+
+    expect(markup).toContain('training-chunk-start-action-row');
+    expect(markup).toContain('Start playback and continue typing in this field.');
+    expect(markup).toContain('>Play</button>');
+  });
+
   it('renders only the active chunk during practice with one live textarea and a per-chunk submit action', () => {
     const markup = renderToStaticMarkup(
       React.createElement(TrainingInputCard, {
