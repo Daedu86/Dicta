@@ -138,6 +138,34 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     expect(onReplayChunk).toHaveBeenCalledWith(12);
   });
 
+  it('keeps textarea focus and the existing caret position when replay is pressed', () => {
+    const onReplayChunk = vi.fn();
+    renderPanel({
+      currentTextValue: 'partially typed answer',
+      onReplayChunk,
+    });
+
+    const textarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+    const replayButton = host.querySelector<HTMLButtonElement>('.training-chunk-action-buttons .secondary-button');
+
+    act(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(9, 9);
+    });
+
+    const pointerDownEvent = new MouseEvent('pointerdown', { bubbles: true, cancelable: true });
+    act(() => {
+      replayButton?.dispatchEvent(pointerDownEvent);
+      replayButton?.click();
+    });
+
+    expect(pointerDownEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(textarea);
+    expect(textarea?.selectionStart).toBe(9);
+    expect(textarea?.selectionEnd).toBe(9);
+    expect(onReplayChunk).toHaveBeenCalledOnce();
+  });
+
   it('focuses the active chunk textarea when a submitted chunk advances', () => {
     const textInputRef = createRef<LowLatencyTextareaHandle>();
     const outsideButton = document.createElement('button');

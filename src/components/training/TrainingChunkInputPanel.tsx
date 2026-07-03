@@ -211,7 +211,10 @@ export function TrainingChunkInputPanel({
             <button
               type="button"
               className="secondary-button"
-              onPointerDown={activateKeyboardDock}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                activateKeyboardDock();
+              }}
               onClick={() => onReplayChunk?.(activeChunk.startWordIndex)}
               disabled={actionQueued || !onReplayChunk}
             >

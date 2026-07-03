@@ -146,3 +146,21 @@ test('mobile chunk play focus keeps textbox and submit button stable', async ({ 
     };
   }
 });
+
+test('mobile replay keeps textbox focus and caret position', async ({ page }) => {
+  await page.goto('/e2e-training.html?chunkPractice=1', { waitUntil: 'domcontentloaded' });
+
+  const textarea = page.locator('#training-dictation-input');
+  const replayButton = page.getByRole('button', { name: 'Replay chunk', exact: true });
+
+  await textarea.fill('partially typed answer');
+  await textarea.focus();
+  await textarea.evaluate((element) => element.setSelectionRange(9, 9));
+
+  await replayButton.click();
+
+  await expect(textarea).toBeFocused();
+  await expect.poll(() => textarea.evaluate((element) => element.selectionStart)).toBe(9);
+  await expect.poll(() => textarea.evaluate((element) => element.selectionEnd)).toBe(9);
+  await expect(page.locator('.training-chunk-flow-keyboard-active')).toBeVisible();
+});
