@@ -179,6 +179,7 @@ export function TrainingChunkInputPanel({
           <span>{activeChunk.isFinal ? 'Final chunk' : 'Listening chunk'}</span>
         </header>
         <LowLatencyTextarea
+          key={activeChunk.id}
           id={textAreaId}
           ref={textInputRef}
           value={currentTextValue}

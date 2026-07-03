@@ -197,6 +197,72 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     expect(onSubmitChunk).not.toHaveBeenCalled();
   });
 
+  it('starts the next chunk with an empty focused textarea at the first cursor position after Enter', () => {
+    const textInputRef = createRef<LowLatencyTextareaHandle>();
+    const onSubmitChunk = vi.fn();
+    renderPanel({
+      textInputRef,
+      activeChunk: practiceChunk({ id: 'practice-0-0', index: 0, startWordIndex: 0 }),
+      currentTextValue: 'first chunk answer',
+      onSubmitChunk,
+    });
+
+    const firstTextarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+    act(() => {
+      firstTextarea?.focus();
+      firstTextarea?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+      }));
+    });
+
+    expect(onSubmitChunk).toHaveBeenCalledWith('first chunk answer');
+
+    renderPanel({
+      textInputRef,
+      activeChunk: practiceChunk({ id: 'practice-1-3', index: 1, startWordIndex: 3 }),
+      currentTextValue: '',
+      onSubmitChunk,
+    });
+
+    const nextTextarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+    expect(nextTextarea).not.toBe(firstTextarea);
+    expect(nextTextarea?.value).toBe('');
+    expect(document.activeElement).toBe(nextTextarea);
+    expect(nextTextarea?.selectionStart).toBe(0);
+    expect(nextTextarea?.selectionEnd).toBe(0);
+  });
+
+  it('starts the next chunk empty and focused after the visible submit button is used', () => {
+    const textInputRef = createRef<LowLatencyTextareaHandle>();
+    const onSubmitChunk = vi.fn();
+    renderPanel({
+      textInputRef,
+      activeChunk: practiceChunk({ id: 'practice-0-0', index: 0, startWordIndex: 0 }),
+      currentTextValue: 'button submitted answer',
+      onSubmitChunk,
+    });
+
+    act(() => {
+      host.querySelector<HTMLButtonElement>('.training-chunk-action-buttons button:last-child')?.click();
+    });
+    expect(onSubmitChunk).toHaveBeenCalledWith('button submitted answer');
+
+    renderPanel({
+      textInputRef,
+      activeChunk: practiceChunk({ id: 'practice-1-3', index: 1, startWordIndex: 3 }),
+      currentTextValue: '',
+      onSubmitChunk,
+    });
+
+    const nextTextarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+    expect(nextTextarea?.value).toBe('');
+    expect(document.activeElement).toBe(nextTextarea);
+    expect(nextTextarea?.selectionStart).toBe(0);
+    expect(nextTextarea?.selectionEnd).toBe(0);
+  });
+
   it('keeps textarea focus and the existing caret position when replay is pressed', () => {
     const onReplayChunk = vi.fn();
     renderPanel({

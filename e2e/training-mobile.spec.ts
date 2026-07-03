@@ -105,6 +105,21 @@ test('mobile chunk submit stays below the focused textbox', async ({ page }) => 
   }
 });
 
+test('mobile Enter advances to a blank focused chunk with the cursor at the start', async ({ page }) => {
+  await page.goto('/e2e-training.html?chunkPractice=1', { waitUntil: 'domcontentloaded' });
+
+  const textarea = page.locator('#training-dictation-input');
+  await expect(page.getByText('Chunk 1', { exact: true })).toBeVisible();
+  await textarea.fill('mobile first chunk answer');
+  await textarea.press('Enter');
+
+  await expect(page.getByText('Chunk 2', { exact: true })).toBeVisible();
+  await expect(textarea).toHaveValue('');
+  await expect(textarea).toBeFocused();
+  await expect.poll(() => textarea.evaluate((element) => element.selectionStart)).toBe(0);
+  await expect.poll(() => textarea.evaluate((element) => element.selectionEnd)).toBe(0);
+});
+
 test('mobile chunk play focus keeps textbox and submit button stable', async ({ page }) => {
   await page.goto('/e2e-training.html?chunkPractice=1', { waitUntil: 'domcontentloaded' });
 
