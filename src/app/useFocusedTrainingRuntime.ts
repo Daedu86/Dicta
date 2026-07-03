@@ -69,7 +69,7 @@ export function useFocusedTrainingRuntime(args: UseFocusedTrainingRuntimeArgs) {
     onPracticeChunkPlan: practiceChunkRuntime.onPracticeChunkPlan,
     onPracticeChunkResolved: practiceChunkRuntime.onPracticeChunkResolved,
     onPracticeChunkRestStarted: practiceChunkRuntime.onPracticeChunkRestStarted,
-    onFinalPracticeChunkAudioCompleted: practiceChunkRuntime.onFinalPracticeChunkAudioCompleted,
+    onPracticeChunkAudioCompleted: practiceChunkRuntime.onPracticeChunkAudioCompleted,
   });
 
   practiceChunkRuntime.finishSessionRef.current = submitTtsSession;

@@ -70,7 +70,7 @@ export function useFocusedTrainingRouteViewProps({
     activePracticeChunk: practiceChunksEnabled && practiceChunkRuntime ? practiceChunkRuntime.activeChunk : null,
     practiceChunkActionQueued: practiceChunkRuntime?.actionQueued ?? false,
     practiceChunkAdvanceCountdownSeconds: practiceChunkRuntime?.advanceCountdownSeconds ?? null,
-    finalPracticeChunkAudioCompleted: practiceChunkRuntime?.finalAudioCompleted ?? false,
+    activePracticeChunkAudioCompleted: practiceChunkRuntime?.activeChunkAudioCompleted ?? false,
     onReplayPracticeChunk: args.playTtsFromWord,
     onSubmitPracticeChunk: practiceChunkRuntime?.requestCurrentChunkAdvance,
   });

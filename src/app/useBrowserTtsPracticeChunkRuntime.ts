@@ -39,12 +39,12 @@ export function useBrowserTtsPracticeChunkRuntime({
   const [queuedIndex, setQueuedIndex] = useState<number | null>(null);
   const [countdownDeadlineMs, setCountdownDeadlineMs] = useState<number | null>(null);
   const [advanceCountdownSeconds, setAdvanceCountdownSeconds] = useState<number | null>(null);
-  const [finalAudioCompleted, setFinalAudioCompleted] = useState(false);
+  const [audioCompletedChunkId, setAudioCompletedChunkId] = useState<string | null>(null);
   const definitionsRef = useRef(definitions);
   const completedRef = useRef(completed);
   const activeIndexRef = useRef(activeIndex);
   const draftRef = useRef(draft);
-  const finalAudioCompletedRef = useRef(finalAudioCompleted);
+  const audioCompletedChunkIdRef = useRef(audioCompletedChunkId);
   const practiceChunkAdvanceRequestRef = useRef<number | null>(null);
   const finishSessionRef = useRef<(latestTextValue?: string) => void>(() => undefined);
 
@@ -54,7 +54,7 @@ export function useBrowserTtsPracticeChunkRuntime({
     completedRef.current = restored;
     activeIndexRef.current = restored.length;
     draftRef.current = restored.length === 0 ? activeSession?.ttsPracticeText ?? '' : '';
-    finalAudioCompletedRef.current = false;
+    audioCompletedChunkIdRef.current = null;
     practiceChunkAdvanceRequestRef.current = null;
     setDefinitions([]);
     setCompleted(restored);
@@ -63,7 +63,7 @@ export function useBrowserTtsPracticeChunkRuntime({
     setQueuedIndex(null);
     setCountdownDeadlineMs(null);
     setAdvanceCountdownSeconds(null);
-    setFinalAudioCompleted(false);
+    setAudioCompletedChunkId(null);
   }, [activeSession?.id]);
 
   useEffect(() => {
@@ -84,10 +84,10 @@ export function useBrowserTtsPracticeChunkRuntime({
     const samePlan = definitionsRef.current.length === chunks.length && definitionsRef.current.every(
       (chunk, index) => chunk.id === chunks[index]?.id,
     );
-    if (samePlan) return;
-
-    definitionsRef.current = chunks;
-    setDefinitions(chunks);
+    if (!samePlan) {
+      definitionsRef.current = chunks;
+      setDefinitions(chunks);
+    }
     const startIndex = Math.max(
       completedRef.current.length,
       chunks.find((chunk) =>
@@ -96,6 +96,12 @@ export function useBrowserTtsPracticeChunkRuntime({
     );
     activeIndexRef.current = Math.min(startIndex, Math.max(0, chunks.length - 1));
     setActiveIndex(activeIndexRef.current);
+    practiceChunkAdvanceRequestRef.current = null;
+    setQueuedIndex(null);
+    setCountdownDeadlineMs(null);
+    setAdvanceCountdownSeconds(null);
+    audioCompletedChunkIdRef.current = null;
+    setAudioCompletedChunkId(null);
   }, []);
 
   const composeWithDraft = useCallback((visibleDraft: string, publishDraft: boolean): string => {
@@ -142,6 +148,8 @@ export function useBrowserTtsPracticeChunkRuntime({
     setCountdownDeadlineMs(null);
     setAdvanceCountdownSeconds(null);
     practiceChunkAdvanceRequestRef.current = null;
+    audioCompletedChunkIdRef.current = null;
+    setAudioCompletedChunkId(null);
     const nextIndex = Math.min(definition.index + 1, definitionsRef.current.length);
     activeIndexRef.current = nextIndex;
     setActiveIndex(nextIndex);
@@ -164,10 +172,10 @@ export function useBrowserTtsPracticeChunkRuntime({
     resolvePracticeChunk(definition, reason);
   }, [resolvePracticeChunk]);
 
-  const onFinalPracticeChunkAudioCompleted = useCallback((definition: BrowserTtsPracticeChunkDefinition) => {
-    if (!definition.isFinal) return;
-    finalAudioCompletedRef.current = true;
-    setFinalAudioCompleted(true);
+  const onPracticeChunkAudioCompleted = useCallback((definition: BrowserTtsPracticeChunkDefinition) => {
+    if (definitionsRef.current[activeIndexRef.current]?.id !== definition.id) return;
+    audioCompletedChunkIdRef.current = definition.id;
+    setAudioCompletedChunkId(definition.id);
   }, []);
 
   const onPracticeChunkRestStarted = useCallback((
@@ -183,6 +191,7 @@ export function useBrowserTtsPracticeChunkRuntime({
   const requestCurrentChunkAdvance = useCallback((latestDraft: string) => {
     const definition = definitionsRef.current[activeIndexRef.current];
     if (!definition || activeSessionFinished) return;
+    if (audioCompletedChunkIdRef.current !== definition.id) return;
     draftRef.current = latestDraft;
     setDraft(latestDraft);
     setCountdownDeadlineMs(null);
@@ -191,7 +200,7 @@ export function useBrowserTtsPracticeChunkRuntime({
     ttsPracticeLiveTextRef.current = aggregateText;
     setTtsPracticeText(aggregateText);
 
-    if (definition.isFinal && finalAudioCompletedRef.current) {
+    if (definition.isFinal) {
       resolvePracticeChunk(definition, 'submitted');
       return;
     }
@@ -205,7 +214,7 @@ export function useBrowserTtsPracticeChunkRuntime({
     completedRef.current = [];
     activeIndexRef.current = 0;
     draftRef.current = '';
-    finalAudioCompletedRef.current = false;
+    audioCompletedChunkIdRef.current = null;
     practiceChunkAdvanceRequestRef.current = null;
     setDefinitions([]);
     setCompleted([]);
@@ -214,7 +223,7 @@ export function useBrowserTtsPracticeChunkRuntime({
     setQueuedIndex(null);
     setCountdownDeadlineMs(null);
     setAdvanceCountdownSeconds(null);
-    setFinalAudioCompleted(false);
+    setAudioCompletedChunkId(null);
     const nextTelemetry = cloneTelemetry(telemetryRef.current);
     delete nextTelemetry.practiceChunks;
     telemetryRef.current = nextTelemetry;
@@ -234,13 +243,13 @@ export function useBrowserTtsPracticeChunkRuntime({
     activeDraft: draft,
     actionQueued: queuedIndex === activeDefinition?.index,
     advanceCountdownSeconds,
-    finalAudioCompleted,
+    activeChunkAudioCompleted: audioCompletedChunkId === activeDefinition?.id,
     practiceChunkAdvanceRequestRef,
     finishSessionRef,
     onPracticeChunkPlan,
     onPracticeChunkResolved,
     onPracticeChunkRestStarted,
-    onFinalPracticeChunkAudioCompleted,
+    onPracticeChunkAudioCompleted,
     transformCommittedDraft,
     transformImmediateDraft,
     requestCurrentChunkAdvance,

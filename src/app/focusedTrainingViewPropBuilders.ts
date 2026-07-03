@@ -55,7 +55,7 @@ export function buildFocusedTrainingViewProps({
   activePracticeChunk,
   practiceChunkActionQueued,
   practiceChunkAdvanceCountdownSeconds,
-  finalPracticeChunkAudioCompleted,
+  activePracticeChunkAudioCompleted,
   onReplayPracticeChunk,
   onSubmitPracticeChunk,
   ...focusedRuntime
@@ -96,7 +96,7 @@ export function buildFocusedTrainingViewProps({
     activePracticeChunk,
     practiceChunkActionQueued,
     practiceChunkAdvanceCountdownSeconds,
-    finalPracticeChunkAudioCompleted,
+    activePracticeChunkAudioCompleted,
     onReplayPracticeChunk,
     onSubmitPracticeChunk,
   };

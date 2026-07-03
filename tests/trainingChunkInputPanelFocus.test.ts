@@ -49,7 +49,7 @@ function renderPanel(props: Partial<ComponentProps<typeof TrainingChunkInputPane
       syncKey: 'session-1:browser-tts',
       actionQueued: false,
       advanceCountdownSeconds: null,
-      finalAudioCompleted: false,
+      audioCompleted: true,
       playFocusRequestId: 0,
       ...props,
     }));
@@ -160,6 +160,29 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     expect(enterEvent.defaultPrevented).toBe(true);
     expect(onSubmitChunk).toHaveBeenCalledOnce();
     expect(onSubmitChunk).toHaveBeenCalledWith('latest uncommitted answer');
+  });
+
+  it('keeps typing editable but ignores Enter until the complete visible chunk finishes', () => {
+    const onSubmitChunk = vi.fn();
+    renderPanel({ audioCompleted: false, onSubmitChunk });
+    const textarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+    const submitButton = host.querySelector<HTMLButtonElement>('.training-chunk-action-buttons button:last-child');
+
+    expect(textarea?.readOnly).toBe(false);
+    expect(submitButton?.disabled).toBe(true);
+    expect(submitButton?.textContent).toBe('Listening…');
+
+    const enterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      textarea?.dispatchEvent(enterEvent);
+    });
+
+    expect(enterEvent.defaultPrevented).toBe(true);
+    expect(onSubmitChunk).not.toHaveBeenCalled();
   });
 
   it('keeps Shift + Enter available for a new line', () => {

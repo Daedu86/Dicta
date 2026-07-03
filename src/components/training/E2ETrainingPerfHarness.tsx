@@ -105,7 +105,7 @@ export function E2ETrainingPerfHarness() {
         : null}
       practiceChunkActionQueued={false}
       practiceChunkAdvanceCountdownSeconds={null}
-      finalPracticeChunkAudioCompleted={false}
+      activePracticeChunkAudioCompleted={chunkPracticeMode}
       onReplayPracticeChunk={() => undefined}
       onSubmitPracticeChunk={submitPracticeChunk}
     />

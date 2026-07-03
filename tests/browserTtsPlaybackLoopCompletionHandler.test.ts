@@ -394,12 +394,14 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
       isFinal: false,
     };
     const onPracticeChunkResolved = vi.fn();
+    const onPracticeChunkAudioCompleted = vi.fn();
     const params = createChunkEndParams({
       macroWordsLength: 2,
       ttsPracticeLiveTextRef: { current: 'hello world' },
       practiceChunks: [practiceChunk],
       practiceChunkAdvanceRequestRef: { current: null },
       onPracticeChunkResolved,
+      onPracticeChunkAudioCompleted,
     });
 
     handleBrowserTtsPlaybackLoopChunkEnd(params);
@@ -407,12 +409,48 @@ describe('handleBrowserTtsPlaybackLoopChunkEnd', () => {
     vi.advanceTimersByTime(3999);
     expect(params.speakNext).not.toHaveBeenCalled();
     expect(onPracticeChunkResolved).not.toHaveBeenCalled();
+    expect(onPracticeChunkAudioCompleted).toHaveBeenCalledWith(practiceChunk);
 
     vi.advanceTimersByTime(8001);
 
     expect(params.speakNext).not.toHaveBeenCalled();
     expect(onPracticeChunkResolved).not.toHaveBeenCalled();
     expect(params.recordAdaptiveBenchmark).not.toHaveBeenCalled();
+  });
+
+  it('suppresses adaptive waits between internal slices of one visible practice chunk', () => {
+    const practiceChunk = {
+      id: 'practice-0-0',
+      index: 0,
+      startWordIndex: 0,
+      wordCount: 4,
+      firstSemanticPhraseIndex: 0,
+      lastSemanticPhraseIndex: 1,
+      isFinal: false,
+    };
+    const onPracticeChunkAudioCompleted = vi.fn();
+    const params = createChunkEndParams({
+      macroPhraseIndex: 0,
+      macroWordsLength: 2,
+      practiceChunks: [practiceChunk],
+      practiceChunkAdvanceRequestRef: { current: null },
+      onPracticeChunkResolved: vi.fn(),
+      onPracticeChunkAudioCompleted,
+    });
+
+    handleBrowserTtsPlaybackLoopChunkEnd(params);
+
+    expect(onPracticeChunkAudioCompleted).not.toHaveBeenCalled();
+    expect(params.speakNext).toHaveBeenCalledTimes(1);
+    expect(params.recordAdaptiveBenchmark).toHaveBeenCalledWith(
+      expect.any(Object),
+      params.runtimeDecision,
+      expect.objectContaining({
+        actualPauseMs: 0,
+        pauseGateResolutionReason: 'no-gate',
+        event: 'defer_pause',
+      }),
+    );
   });
 
   it('honors manual practice chunk submission after the current utterance ends', () => {

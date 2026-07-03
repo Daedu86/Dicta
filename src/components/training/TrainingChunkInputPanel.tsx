@@ -28,7 +28,7 @@ export type TrainingChunkInputPanelProps = {
   syncKey: string;
   actionQueued: boolean;
   advanceCountdownSeconds?: number | null;
-  finalAudioCompleted: boolean;
+  audioCompleted: boolean;
   playFocusRequestId?: number;
 };
 
@@ -50,7 +50,7 @@ export function TrainingChunkInputPanel({
   syncKey,
   actionQueued,
   advanceCountdownSeconds = null,
-  finalAudioCompleted,
+  audioCompleted,
   playFocusRequestId = 0,
 }: TrainingChunkInputPanelProps) {
   const keyboardDockReleaseTimerRef = useRef<number | null>(null);
@@ -69,7 +69,7 @@ export function TrainingChunkInputPanel({
       : 'Skip chunk';
   const queuedActionLabel = advanceCountdownSeconds !== null
     ? `Submit / Check${countdownLabel}`
-    : 'Waiting for audio…';
+    : 'Preparing next chunk…';
 
   const submitLatest = () => onSubmitChunk(textInputRef.current?.flush() ?? currentTextValue);
 
@@ -84,7 +84,7 @@ export function TrainingChunkInputPanel({
     if (!isEnterSubmission) return;
 
     event.preventDefault();
-    if (!actionQueued && !event.repeat) submitLatest();
+    if (audioCompleted && !actionQueued && !event.repeat) submitLatest();
   };
 
   const clearKeyboardDockReleaseTimer = useCallback(() => {
@@ -200,14 +200,16 @@ export function TrainingChunkInputPanel({
           syncKey={`${syncKey}:practice:${activeChunk.id}`}
         />
         <div ref={actionRowRef} className="training-chunk-action-row">
-          <p>
+          <p aria-live="polite">
             {actionQueued
               ? advanceCountdownSeconds !== null
                 ? 'Submitted. The next chunk starts when the counter reaches zero.'
-                : 'Submitted. Playback will continue after this phrase finishes.'
-              : activeChunk.isFinal && finalAudioCompleted
-                ? 'Audio complete. Finish when your final answer is ready.'
-                : 'Enter submits this chunk. Shift + Enter adds a new line.'}
+                : 'Submitted. Preparing the next chunk.'
+              : !audioCompleted
+                ? 'Listening… Keep typing. Submit unlocks when this chunk finishes.'
+                : activeChunk.isFinal
+                  ? 'Audio complete. Finish when your final answer is ready.'
+                  : 'Audio complete. Enter submits this chunk. Shift + Enter adds a new line.'}
           </p>
           <div className="training-chunk-action-buttons">
             <button
@@ -230,8 +232,13 @@ export function TrainingChunkInputPanel({
             >
               Replay chunk
             </button>
-            <button type="button" onPointerDown={activateKeyboardDock} onClick={submitLatest} disabled={actionQueued}>
-              {actionQueued ? queuedActionLabel : actionLabel}
+            <button
+              type="button"
+              onPointerDown={activateKeyboardDock}
+              onClick={submitLatest}
+              disabled={actionQueued || !audioCompleted}
+            >
+              {actionQueued ? queuedActionLabel : audioCompleted ? actionLabel : 'Listening…'}
             </button>
           </div>
         </div>

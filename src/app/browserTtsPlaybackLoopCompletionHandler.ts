@@ -60,7 +60,7 @@ type BrowserTtsPlaybackLoopCompletionHandlerParams = {
   practiceChunkAdvanceRequestRef?: BrowserTtsPlaybackLoopOptions['practiceChunkAdvanceRequestRef'];
   onPracticeChunkResolved?: BrowserTtsPlaybackLoopOptions['onPracticeChunkResolved'];
   onPracticeChunkRestStarted?: BrowserTtsPlaybackLoopOptions['onPracticeChunkRestStarted'];
-  onFinalPracticeChunkAudioCompleted?: BrowserTtsPlaybackLoopOptions['onFinalPracticeChunkAudioCompleted'];
+  onPracticeChunkAudioCompleted?: BrowserTtsPlaybackLoopOptions['onPracticeChunkAudioCompleted'];
 };
 
 function flushBrowserTtsChunkLiveMetrics({
@@ -188,7 +188,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   practiceChunkAdvanceRequestRef,
   onPracticeChunkResolved,
   onPracticeChunkRestStarted,
-  onFinalPracticeChunkAudioCompleted,
+  onPracticeChunkAudioCompleted,
 }: BrowserTtsPlaybackLoopCompletionHandlerParams): void {
   perfDiagnostics.recordTtsEnd(perfUtteranceId);
   if (cancelled) return;
@@ -251,9 +251,13 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
     practiceChunkAdvanceRequestRef &&
     onPracticeChunkResolved,
   );
+  const suppressInternalPracticePause = Boolean(practiceChunk && !isPracticeBoundary);
+
+  if (isPracticeBoundary && practiceChunk) {
+    onPracticeChunkAudioCompleted?.(practiceChunk);
+  }
 
   if (learnerPacedPracticeBoundary && practiceChunk?.isFinal) {
-    onFinalPracticeChunkAudioCompleted?.(practiceChunk);
     const finalWasSubmittedEarly = practiceChunkAdvanceRequestRef?.current === practiceChunk.index;
     scheduleBrowserTtsNextChunk({
       shouldPauseBeforeNextChunk: finalWasSubmittedEarly,
@@ -293,6 +297,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
             ttsUnsafeChunkCountRef,
             recordAdaptiveBenchmark,
             completesMacroPhrase,
+            pauseSuppressedForPracticeChunk: false,
           },
         });
       },
@@ -302,7 +307,8 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
   }
 
   scheduleBrowserTtsNextChunk({
-    shouldPauseBeforeNextChunk: learnerPacedPracticeBoundary || chunkCompletion.shouldPauseBeforeNextChunk,
+    shouldPauseBeforeNextChunk:
+      learnerPacedPracticeBoundary || (!suppressInternalPracticePause && chunkCompletion.shouldPauseBeforeNextChunk),
     pauseBeforeNextChunkMs: chunkCompletion.pauseBeforeNextChunkMs,
     scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
     safePauseGateSettings: browserTtsSafePauseGateSettings,
@@ -316,7 +322,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
             onPracticeChunkRestStarted?.(practiceChunk, remainingRestMs);
           },
         }
-      : chunkCompletion.shouldPauseBeforeNextChunk && chunk.canPauseAfter && ttsTranscript
+      : !suppressInternalPracticePause && chunkCompletion.shouldPauseBeforeNextChunk && chunk.canPauseAfter && ttsTranscript
       ? {
           isComplete: () =>
             isBrowserTtsChunkTypedWithTolerantMatch({
@@ -365,6 +371,7 @@ export function handleBrowserTtsPlaybackLoopChunkEnd({
           ttsUnsafeChunkCountRef,
           recordAdaptiveBenchmark,
           completesMacroPhrase,
+          pauseSuppressedForPracticeChunk: suppressInternalPracticePause && effectivePauseNow,
         },
       });
     },
@@ -376,8 +383,12 @@ function resolveBrowserTtsBenchmarkEvent({
   effectiveReplay,
   effectivePauseNow,
   runtimeDecision,
-}: Pick<BrowserTtsPlaybackPlan, 'effectiveReplay' | 'effectivePauseNow' | 'runtimeDecision'>): 'replay' | 'pause' | 'defer_pause' | 'phrase_advance' {
+  pauseSuppressedForPracticeChunk,
+}: Pick<BrowserTtsPlaybackPlan, 'effectiveReplay' | 'effectivePauseNow' | 'runtimeDecision'> & {
+  pauseSuppressedForPracticeChunk: boolean;
+}): 'replay' | 'pause' | 'defer_pause' | 'phrase_advance' {
   if (effectiveReplay) return 'replay';
+  if (pauseSuppressedForPracticeChunk) return 'defer_pause';
   if (effectivePauseNow) return 'pause';
   if (runtimeDecision.deferPauseUntilSafeBoundary) return 'defer_pause';
   return 'phrase_advance';
@@ -399,7 +410,10 @@ type ResolvedBrowserTtsChunkParams = Pick<
   | 'ttsLiveSignalRef'
   | 'ttsUnsafeChunkCountRef'
   | 'recordAdaptiveBenchmark'
-> & { completesMacroPhrase: boolean };
+> & {
+  completesMacroPhrase: boolean;
+  pauseSuppressedForPracticeChunk: boolean;
+};
 
 function recordResolvedBrowserTtsChunk({
   actualWaitMs,
@@ -426,6 +440,7 @@ function recordResolvedBrowserTtsChunk({
     ttsUnsafeChunkCountRef,
     recordAdaptiveBenchmark,
     completesMacroPhrase,
+    pauseSuppressedForPracticeChunk,
   } = params;
 
   recordAdaptiveBenchmark(chunkTelemetry, runtimeDecision, {
@@ -435,7 +450,12 @@ function recordResolvedBrowserTtsChunk({
     replayExecuted: effectiveReplay,
     actualBoundaryType: chunk.phraseBoundaryType,
     ttsEnvironment: browserTtsEnvironment,
-    event: resolveBrowserTtsBenchmarkEvent({ effectiveReplay, effectivePauseNow, runtimeDecision }),
+    event: resolveBrowserTtsBenchmarkEvent({
+      effectiveReplay,
+      effectivePauseNow,
+      runtimeDecision,
+      pauseSuppressedForPracticeChunk,
+    }),
     phraseIndex: macroPhraseIndex,
     totalSemanticPhrases: semanticPhrases.length,
   });

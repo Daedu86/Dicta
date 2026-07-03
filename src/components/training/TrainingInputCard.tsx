@@ -34,7 +34,7 @@ export type TrainingInputCardProps = {
   activePracticeChunk?: BrowserTtsPracticeChunkView | null;
   practiceChunkActionQueued?: boolean;
   practiceChunkAdvanceCountdownSeconds?: number | null;
-  finalPracticeChunkAudioCompleted?: boolean;
+  activePracticeChunkAudioCompleted?: boolean;
   showEmbeddedPlay?: boolean;
   canPlayPracticeChunk?: boolean;
   playPracticeChunkLabel?: string;
@@ -71,7 +71,7 @@ export function TrainingInputCard({
   activePracticeChunk = null,
   practiceChunkActionQueued = false,
   practiceChunkAdvanceCountdownSeconds = null,
-  finalPracticeChunkAudioCompleted = false,
+  activePracticeChunkAudioCompleted = false,
   showEmbeddedPlay = false,
   canPlayPracticeChunk = false,
   playPracticeChunkLabel = 'Play',
@@ -136,7 +136,7 @@ export function TrainingInputCard({
           syncKey={syncKey}
           actionQueued={practiceChunkActionQueued}
           advanceCountdownSeconds={practiceChunkAdvanceCountdownSeconds}
-          finalAudioCompleted={finalPracticeChunkAudioCompleted}
+          audioCompleted={activePracticeChunkAudioCompleted}
           playFocusRequestId={playFocusRequestId}
         />
       ) : (

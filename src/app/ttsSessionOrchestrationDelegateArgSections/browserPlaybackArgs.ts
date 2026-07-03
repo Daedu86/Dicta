@@ -64,6 +64,6 @@ export function buildTtsSessionBrowserPlaybackArgs(
     onPracticeChunkPlan: args.onPracticeChunkPlan,
     onPracticeChunkResolved: args.onPracticeChunkResolved,
     onPracticeChunkRestStarted: args.onPracticeChunkRestStarted,
-    onFinalPracticeChunkAudioCompleted: args.onFinalPracticeChunkAudioCompleted,
+    onPracticeChunkAudioCompleted: args.onPracticeChunkAudioCompleted,
   };
 }
