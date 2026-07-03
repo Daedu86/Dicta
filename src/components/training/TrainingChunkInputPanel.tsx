@@ -56,6 +56,7 @@ export function TrainingChunkInputPanel({
   const keyboardDockReleaseTimerRef = useRef<number | null>(null);
   const keyboardScrollTimerRef = useRef<number | null>(null);
   const keyboardDockActivationSerialRef = useRef(0);
+  const soloShiftReplayRef = useRef(false);
   const activeChunkIdRef = useRef(activeChunk.id);
   const handledPlayFocusRequestIdRef = useRef(playFocusRequestId);
   const actionRowRef = useRef<HTMLDivElement | null>(null);
@@ -76,6 +77,17 @@ export function TrainingChunkInputPanel({
   const handleChunkKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     onTextKeyDown(event);
 
+    if (event.key === 'Shift') {
+      if (!event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        soloShiftReplayRef.current = true;
+      }
+      return;
+    }
+
+    if (event.shiftKey) {
+      soloShiftReplayRef.current = false;
+    }
+
     const isEnterSubmission = event.key === 'Enter' && !event.nativeEvent.isComposing && (
       event.ctrlKey ||
       event.metaKey ||
@@ -85,6 +97,16 @@ export function TrainingChunkInputPanel({
 
     event.preventDefault();
     if (audioCompleted && !actionQueued && !event.repeat) submitLatest();
+  };
+
+  const handleChunkKeyUp = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Shift') return;
+    const shouldReplay = soloShiftReplayRef.current;
+    soloShiftReplayRef.current = false;
+    if (!shouldReplay || actionQueued || !onReplayChunk) return;
+
+    event.preventDefault();
+    onReplayChunk(activeChunk.startWordIndex);
   };
 
   const clearKeyboardDockReleaseTimer = useCallback(() => {
@@ -187,10 +209,12 @@ export function TrainingChunkInputPanel({
           onImmediateValueChange={onImmediateTextChange}
           onFocus={activateKeyboardDock}
           onBlur={(event) => {
+            soloShiftReplayRef.current = false;
             releaseKeyboardDockSoon();
             onTextBlur?.(event.currentTarget.value);
           }}
           onKeyDown={handleChunkKeyDown}
+          onKeyUp={handleChunkKeyUp}
           placeholder="Type only this spoken chunk..."
           readOnly={actionQueued}
           enterKeyHint={activeChunk.isFinal ? 'done' : 'next'}
@@ -206,10 +230,10 @@ export function TrainingChunkInputPanel({
                 ? 'Submitted. The next chunk starts when the counter reaches zero.'
                 : 'Submitted. Preparing the next chunk.'
               : !audioCompleted
-                ? 'Listening… Keep typing. Submit unlocks when this chunk finishes.'
+                ? 'Listening… Keep typing. Tap Shift to replay; Submit unlocks when this chunk finishes.'
                 : activeChunk.isFinal
-                  ? 'Audio complete. Finish when your final answer is ready.'
-                  : 'Audio complete. Enter submits this chunk. Shift + Enter adds a new line.'}
+                  ? 'Audio complete. Tap Shift to replay or Enter to finish.'
+                  : 'Audio complete. Enter submits this chunk. Tap Shift to replay; Shift + Enter adds a new line.'}
           </p>
           <div className="training-chunk-action-buttons">
             <button

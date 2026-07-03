@@ -138,6 +138,60 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     expect(onReplayChunk).toHaveBeenCalledWith(12);
   });
 
+  it('replays the active chunk when Shift is tapped without another key', () => {
+    const onReplayChunk = vi.fn();
+    renderPanel({
+      activeChunk: practiceChunk({ id: 'practice-2-12', index: 2, startWordIndex: 12 }),
+      onReplayChunk,
+    });
+    const textarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+
+    act(() => {
+      textarea?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Shift',
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      textarea?.dispatchEvent(new KeyboardEvent('keyup', {
+        key: 'Shift',
+        bubbles: true,
+        cancelable: true,
+      }));
+    });
+
+    expect(onReplayChunk).toHaveBeenCalledOnce();
+    expect(onReplayChunk).toHaveBeenCalledWith(12);
+  });
+
+  it('does not replay when Shift is used as a typing modifier', () => {
+    const onReplayChunk = vi.fn();
+    renderPanel({ onReplayChunk });
+    const textarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+
+    act(() => {
+      textarea?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Shift',
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      textarea?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'A',
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      textarea?.dispatchEvent(new KeyboardEvent('keyup', {
+        key: 'Shift',
+        bubbles: true,
+        cancelable: true,
+      }));
+    });
+
+    expect(onReplayChunk).not.toHaveBeenCalled();
+  });
+
   it('submits the latest visible chunk draft when Enter is pressed', () => {
     const onSubmitChunk = vi.fn();
     renderPanel({ onSubmitChunk });

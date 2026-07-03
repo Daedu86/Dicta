@@ -292,7 +292,7 @@ describe('TrainingInputCard', () => {
     );
 
     expect(markup).toContain('Final chunk');
-    expect(markup).toContain('Audio complete. Finish when your final answer is ready.');
+    expect(markup).toContain('Audio complete. Tap Shift to replay or Enter to finish.');
     expect(markup).toContain('Finish session');
     expect(markup).not.toContain('Skip chunk');
   });
