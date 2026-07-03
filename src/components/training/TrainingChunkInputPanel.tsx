@@ -73,6 +73,20 @@ export function TrainingChunkInputPanel({
 
   const submitLatest = () => onSubmitChunk(textInputRef.current?.flush() ?? currentTextValue);
 
+  const handleChunkKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    onTextKeyDown(event);
+
+    const isEnterSubmission = event.key === 'Enter' && !event.nativeEvent.isComposing && (
+      event.ctrlKey ||
+      event.metaKey ||
+      (!event.shiftKey && !event.altKey)
+    );
+    if (!isEnterSubmission) return;
+
+    event.preventDefault();
+    if (!actionQueued && !event.repeat) submitLatest();
+  };
+
   const clearKeyboardDockReleaseTimer = useCallback(() => {
     if (keyboardDockReleaseTimerRef.current === null) return;
     window.clearTimeout(keyboardDockReleaseTimerRef.current);
@@ -175,15 +189,10 @@ export function TrainingChunkInputPanel({
             releaseKeyboardDockSoon();
             onTextBlur?.(event.currentTarget.value);
           }}
-          onKeyDown={(event) => {
-            onTextKeyDown(event);
-            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-              event.preventDefault();
-              submitLatest();
-            }
-          }}
+          onKeyDown={handleChunkKeyDown}
           placeholder="Type only this spoken chunk..."
           readOnly={actionQueued}
+          enterKeyHint={activeChunk.isFinal ? 'done' : 'next'}
           rows={5}
           commitDelayMs={textCommitDelayMs}
           maxCommitDelayMs={Math.max(textCommitDelayMs * 2, 160)}
@@ -197,7 +206,7 @@ export function TrainingChunkInputPanel({
                 : 'Submitted. Playback will continue after this phrase finishes.'
               : activeChunk.isFinal && finalAudioCompleted
                 ? 'Audio complete. Finish when your final answer is ready.'
-                : 'Ctrl/Cmd + Enter also submits this chunk.'}
+                : 'Enter submits this chunk. Shift + Enter adds a new line.'}
           </p>
           <div className="training-chunk-action-buttons">
             <button

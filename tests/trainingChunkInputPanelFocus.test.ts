@@ -138,6 +138,65 @@ describe('TrainingChunkInputPanel focus handoff', () => {
     expect(onReplayChunk).toHaveBeenCalledWith(12);
   });
 
+  it('submits the latest visible chunk draft when Enter is pressed', () => {
+    const onSubmitChunk = vi.fn();
+    renderPanel({ onSubmitChunk });
+    const textarea = host.querySelector<HTMLTextAreaElement>('#training-dictation-input');
+
+    act(() => {
+      if (!textarea) return;
+      textarea.value = 'latest uncommitted answer';
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const enterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      textarea?.dispatchEvent(enterEvent);
+    });
+
+    expect(enterEvent.defaultPrevented).toBe(true);
+    expect(onSubmitChunk).toHaveBeenCalledOnce();
+    expect(onSubmitChunk).toHaveBeenCalledWith('latest uncommitted answer');
+  });
+
+  it('keeps Shift + Enter available for a new line', () => {
+    const onSubmitChunk = vi.fn();
+    renderPanel({ onSubmitChunk });
+    const shiftEnterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    act(() => {
+      host.querySelector<HTMLTextAreaElement>('#training-dictation-input')?.dispatchEvent(shiftEnterEvent);
+    });
+
+    expect(shiftEnterEvent.defaultPrevented).toBe(false);
+    expect(onSubmitChunk).not.toHaveBeenCalled();
+  });
+
+  it('does not resubmit with Enter while the chunk action is queued', () => {
+    const onSubmitChunk = vi.fn();
+    renderPanel({ actionQueued: true, onSubmitChunk });
+    const enterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+
+    act(() => {
+      host.querySelector<HTMLTextAreaElement>('#training-dictation-input')?.dispatchEvent(enterEvent);
+    });
+
+    expect(enterEvent.defaultPrevented).toBe(true);
+    expect(onSubmitChunk).not.toHaveBeenCalled();
+  });
+
   it('keeps textarea focus and the existing caret position when replay is pressed', () => {
     const onReplayChunk = vi.fn();
     renderPanel({
