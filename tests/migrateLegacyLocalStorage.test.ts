@@ -31,11 +31,14 @@ type MigratedSession = {
 const nowMs = Date.parse('2026-06-18T12:00:00.000Z');
 
 beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(nowMs);
   setDictaLocalDbAdapterForTests(createMemoryDictaLocalDbAdapter());
 });
 
 afterEach(() => {
   window.localStorage.clear();
+  vi.useRealTimers();
   setDictaLocalDbAdapterForTests(null);
   vi.restoreAllMocks();
 });
