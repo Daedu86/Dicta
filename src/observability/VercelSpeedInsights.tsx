@@ -57,7 +57,7 @@ function shouldSendSpeedInsight(metric: SpeedInsightsMetric) {
   return metric;
 }
 
-export function setVercelSpeedInsightsRoute(route: string) {
+function setVercelSpeedInsightsRoute(route: string) {
   if (typeof window === 'undefined') {
     return;
   }
