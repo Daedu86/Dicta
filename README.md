@@ -1,6 +1,6 @@
 # Dicta
 
-Dicta is a local-first dictation trainer for practicing listening and typing. It uses browser text-to-speech and adapts practice sessions by language, input mode, pace, chunking, replay support, and learner performance.
+Dicta is a web-based dictation trainer for practicing listening and typing. It uses browser text-to-speech and adapts practice sessions by language, input mode, pace, chunking, replay support, and learner performance.
 
 ## Features
 
